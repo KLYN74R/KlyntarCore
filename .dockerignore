@@ -1,0 +1,39 @@
+#Always
+build
+.vscode
+.idea
+node_modules
+dynconfigs.txt
+
+#Hello legend
+useful.txt
+
+#Images collection for docs
+images/RELEASES
+images/SYMBIOTES
+images/SITES
+
+
+#Databases
+M
+C
+
+#Workflow
+tr.js
+RELEASES
+SHARDS/*.json
+SERVICES
+DOCS
+my_readme.md
+CIIPs
+
+#Configs
+configs/chains*
+
+
+#The Hell
+KLY_Tests/test_evm*
+KLY_Tests/send_tx.js
+KLY_Tests/hostchains/monitors/evm_sub.js
+KLY_Tests/hostchains/evm_contracts/*interact*
+KLY_Tests/hostchains/connectors/

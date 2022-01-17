@@ -1,0 +1,86 @@
+{
+    "ALIASES":{
+        "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=":"\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@\u001b[0m\u001b[30;1mkNULL\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@@\u001b[0m",
+        "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=":"\u001b[38;5;124m≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈|\u001b[37mCARNAGE\u001b[38;5;124m|≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈\u001b[0m",
+        "TESTNET":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
+    },
+
+    "ANIMATION_DURATION":1000,
+
+    "TYPES_PREFIXES":{
+        "0":"connectors",
+        "1":"contracts"
+    },
+
+
+    "CACHES":{
+    
+        "ACCOUNTS":{
+            "SIZE":1000000,
+            "TTL":900000,
+            "FLUSH_LIMIT":50000,
+            "DELAY":240000
+        }
+
+    },
+
+
+    "TTL":{
+        "INFO":600
+    },
+
+    "TRIGGERS":{     
+        "START_SPACE_ID":1
+    },
+
+
+    "DEBOUNCE_TIME":20000,
+    "DEBOUNCE_MODULUS":1000,
+    
+    "PAYLOAD_SIZE":1000,
+    "EXTENDED_PAYLOAD_SIZE":10000,
+    "MAX_PAYLOAD_SIZE":10000000,
+
+    "ENABLE_LOGS":true,
+
+    "CONTRACTS_PER_ADDRESS":3,
+    "SNAPSHOT_PERIOD":60000,
+    
+    "CHANGE_PROCEDURE":[
+        {
+            "2dtMmYHpLLb25l5LUktwFvIgQ5dhK54X4Mw0sEhdyAc=SomeAddr":{
+                "domain":"https://example.com",
+                "sid":"someSID"
+            }
+        
+        }
+    ],
+
+    "INFORM_WHEN_SPACE_CHANGE":false,
+
+
+    "INFO":{
+        "VERSION":"v0.0.1-pre-alpha",
+        "NEWNEWS_EMPIRE_PUBLIC":"some.com,onemore.io,sameinterest.news",
+        "CONTACT":"@:node@example.com,tg:@someuser,inst:@user",
+        "DEBOUNCE_TIME":20000,
+        "SYMBIOTES":"kNULL,CARNAGE"
+    },
+
+
+    "START_SID_EVERYONE":true,
+    "DEFAULT_ROLES":"",
+
+
+    "HOSTCHAINS_PROVIDERS":{
+        
+        "xrp":"wss://s.altnet.rippletest.net:51233",
+        "trx":"https://api.shasta.trongrid.io"
+
+    },
+
+    
+    "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys"],
+    "BITFORKS":["btc","ltc","doge","dash"]
+
+}

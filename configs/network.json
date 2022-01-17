@@ -1,0 +1,15 @@
+{
+    "GALAXY":0,
+    "ROLE":"CORE",
+    "TLS_ENABLED":false,
+    "TLS_CONFIGS":{
+        "key_file_name":"security/cert.key",
+        "cert_file_name":"security/cert.pem"
+    },
+    "INTERFACE":"0.0.0.0",
+    "PORT":7777,
+    
+    "CONTROL_SID":"<SOME PRIVATE_KEY>",
+    "CONTROL_PUB_KEY":"DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=",
+    "2FA":false
+}
