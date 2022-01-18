@@ -41,20 +41,22 @@ import TronWeb from 'tronweb'
 
 
 
-let HttpProvider = TronWeb.providers.HttpProvider,
-            
-    solidityNode = new HttpProvider(CONFIG.HOSTCHAINS_PROVIDERS.trx),
-            
-    eventServer = new HttpProvider(CONFIG.HOSTCHAINS_PROVIDERS.trx),
-
-    fullNode = new HttpProvider(CONFIG.HOSTCHAINS_PROVIDERS.trx)
-
-
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>
-    
-        new TronWeb(fullNode, solidityNode, eventServer, CONFIG.CHAINS[chainId].HC_CONFIGS.trx.PRV)
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
+
+        let {URL,PRV}=CONFIG.CHAINS[chainId].HC_CONFIGS.trx,
+        
+            HttpProvider = TronWeb.providers.HttpProvider,
+            
+            solidityNode = new HttpProvider(URL),
+            
+            eventServer = new HttpProvider(URL),
+
+            fullNode = new HttpProvider(URL)
+
+   
+        return new TronWeb(fullNode, solidityNode, eventServer,PRV)
         
         .trx
         
@@ -66,17 +68,32 @@ export default {
 
         }).catch(e=>false)
         
-    ,
+
+    },
 
 
 
     
     sendTx:async(chainId,blockIndex,klyntarHash)=>{
 
-        let {PRV,AMOUNT,TO} = CONFIG.CHAINS[chainId].HC_CONFIGS.trx,
-        
+        let {PRV,AMOUNT,TO,URL} = CONFIG.CHAINS[chainId].HC_CONFIGS.trx,
+                    
+
+
+            HttpProvider = TronWeb.providers.HttpProvider,
+            
+            solidityNode = new HttpProvider(URL),
+            
+            eventServer = new HttpProvider(URL),
+
+            fullNode = new HttpProvider(URL),
+
+
+
             tronWeb = new TronWeb(fullNode,solidityNode,eventServer,PRV),
             
+
+
             unSignedTxn = await tronWeb.transactionBuilder.sendTrx(TO,AMOUNT),
 
             unSignedTxnWithNote = await tronWeb.transactionBuilder.addUpdateData(unSignedTxn,blockIndex+'_'+klyntarHash,'utf8'),
@@ -97,10 +114,24 @@ export default {
     },
 
     getBalance:symbiote=>{
+
+        let {URL,PUB,PRV}=CONFIG.CHAINS[symbiote].HC_CONFIGS.trx,
+
+            HttpProvider = TronWeb.providers.HttpProvider,
+            
+            solidityNode = new HttpProvider(URL),
+            
+            eventServer = new HttpProvider(URL),
+
+            fullNode = new HttpProvider(URL), 
+
+
+
+            tronWeb = new TronWeb(fullNode, solidityNode, eventServer,PRV)
         
-        let tronWeb = new TronWeb(fullNode, solidityNode, eventServer, CONFIG.CHAINS[symbiote].HC_CONFIGS.trx.PRV)
-        
-        return tronWeb.trx.getAccount(CONFIG.CHAINS[symbiote].HC_CONFIGS.trx.PUB).then(acc=>acc.balance/10**6).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+
+
+        return tronWeb.trx.getAccount(PUB).then(acc=>acc.balance/10**6).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
     
     }
 
