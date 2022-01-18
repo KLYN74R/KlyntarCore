@@ -30,6 +30,7 @@ COLORS = {
     S:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
     W:'\u001b[38;5;3m', // yellow(non critical warnings)
     I:'\x1b[36;1m', // cyan(default messages useful to grasp the events)
+    CB:'\u001b[38;5;200m'// ControllerBlock
 },
 
 
@@ -266,7 +267,7 @@ BLOCKLOG=(msg,type,chain,hash,spaces,color)=>{
 
     if(CONFIG.CHAINS[chain].LOGS.BLOCK){
 
-        LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'W')         
+        LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')         
 
         chain=CHAIN_LABEL(chain)
 

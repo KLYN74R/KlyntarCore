@@ -45,23 +45,34 @@ import{RippleAPI} from 'ripple-lib'
 
 
 
+let connections=new Map()
 
-let api = new RippleAPI({server:CONFIG.HOSTCHAINS_PROVIDERS.xrp})
+Object.keys(CONFIG.CHAINS).forEach(
+    
+    symbiote => {
+
+        let server=CONFIG.CHAINS[symbiote].HC_CONFIGS.xrp?.URL
+        
+        if(server) connections.set(symbiote,new RippleAPI({server}))
+
+    }
+    
+)
 
 
 
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chain)=>
 
-        api.connect().then(()=>
+        connections.get(chain).connect().then(()=>
         
-            api.getTransaction(hostChainHash).then(async tx=>{
+            connections.get(chain).getTransaction(hostChainHash).then(async tx=>{
             
                 if(tx.outcome.result==='tesSUCCESS'){
                 
-                    await api.disconnect()
+                    await connections.get(chain).disconnect()
 
                     let data=tx.specification.memos[0].data.split('_')
                 
@@ -80,18 +91,18 @@ export default {
     
     sendTx:async(chainId,blockIndex,klyntarHash)=>
 
-        api.connect().then(async()=>{
+        connections.get(chainId).connect().then(async()=>{
 
             
             let {PUB,PRV,AMOUNT,TO,MAX_LEDGER_VERSION_OFFSET} = CONFIG.CHAINS[chainId].HC_CONFIGS.xrp,
 
             
                 //0st script in config means MEMO transaction
-                preparedTx = await api.prepareTransaction({
+                preparedTx = await connections.get(chainId).prepareTransaction({
 
                     "TransactionType": "Payment",
                     "Account": PUB,
-                    "Amount": api.xrpToDrops(AMOUNT),
+                    "Amount": connections.get(chainId).xrpToDrops(AMOUNT),
                     "Destination":TO,//Choose another our address
                     "Memos": [
                         {
@@ -105,7 +116,7 @@ export default {
         
         
                 //Sign the transaction
-                signed = api.sign(preparedTx.txJSON,PRV),
+                signed = connections.get(chainId).sign(preparedTx.txJSON,PRV),
         
                 txID = signed.id,
         
@@ -113,9 +124,9 @@ export default {
         
             
                 //Final operations
-                result = await api.submit(tx_blob)
+                result = await connections.get(chainId).submit(tx_blob)
         
-            await api.disconnect()
+            await connections.get(chainId).disconnect()
 
             return txID//[txID,result.resultCode]       
 
@@ -132,13 +143,13 @@ export default {
 
     getBalance:async symbiote=>{
 
-        let balance=await api.connect().then(()=>
+        let balance=await connections.get(symbiote).connect().then(()=>
       
-            api.getAccountInfo(CONFIG.CHAINS[symbiote].HC_CONFIGS.xrp.PUB).then(acc=>acc.xrpBalance)
+            connections.get(symbiote).getAccountInfo(CONFIG.CHAINS[symbiote].HC_CONFIGS.xrp.PUB).then(acc=>acc.xrpBalance)
         
         ).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
-        await api.disconnect()
+        await connections.get(symbiote).disconnect()
 
         return balance
 

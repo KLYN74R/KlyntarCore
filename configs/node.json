@@ -74,7 +74,6 @@
 
     "HOSTCHAINS_PROVIDERS":{
         
-        "xrp":"wss://s.altnet.rippletest.net:51233",
         "trx":"https://api.shasta.trongrid.io"
 
     },
