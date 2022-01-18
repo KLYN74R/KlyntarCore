@@ -41,7 +41,7 @@ PERIOD_START=async()=>{
 
     await dezCA.put('SNAPSHOT',SNAPSHOT)
     
-    .then(()=>LOG(fs.readFileSync(PATH_RESOLVE('images/custom/snapshot.txt')).toString(),'S'))
+    .then(()=>LOG(fs.readFileSync(PATH_RESOLVE('images/events/snapshot.txt')).toString(),'S'))
 
     .catch(e=>{
         

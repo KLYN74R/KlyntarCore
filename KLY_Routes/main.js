@@ -403,7 +403,7 @@ export let M={
 
             }else{
                 
-                LOG(fs.readFileSync(PATH_RESOLVE('images/custom/fork.txt')).toString(),'F')
+                LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
 
                 LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
                 

@@ -483,7 +483,7 @@ let graceful=()=>{
     console.log('\n')
 
     LOG('Klyntar stop has been initiated.Keep waiting...','I')
-    LOG(fs.readFileSync(PATH_RESOLVE('images/custom/termination.txt')).toString(),'W') 
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W') 
     
     //Probably stop logs on this step
     
@@ -604,7 +604,7 @@ global.SIG_PROCESS={}
     .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
     
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/custom/start.txt')).toString(),'S')
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
     
 
 

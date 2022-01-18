@@ -8,6 +8,8 @@ import fetch from 'node-fetch'
 
 import c from 'crypto'
 
+import fs from 'fs'
+
 
 
 
@@ -263,6 +265,8 @@ LOG=(msg,type)=>CONFIG.ENABLE_LOGS&&console.log(COLORS.T,`[${new Date().toLocale
 BLOCKLOG=(msg,type,chain,hash,spaces,color)=>{
 
     if(CONFIG.CHAINS[chain].LOGS.BLOCK){
+
+        LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'W')         
 
         chain=CHAIN_LABEL(chain)
 
