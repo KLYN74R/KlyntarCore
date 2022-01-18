@@ -4,7 +4,11 @@ import{Transaction}from'ethereumjs-tx'
 
 import Common from 'ethereumjs-common'
 
+import pkg from '@ethereumjs/tx'
+
 import Web3 from 'web3'
+
+const {FeeMarketEIP1559Transaction} = pkg
 
 
 

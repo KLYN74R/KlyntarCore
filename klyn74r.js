@@ -315,7 +315,9 @@ export let
         //Load way to communicate with hostchain via appropriate type
         for(let i=0,l=tickers.length;i<l;i++){
 
+            
             let way=CONFIG.TYPES_PREFIXES[chainConfig.MANIFEST.HOSTCHAINS[tickers[i]].TYPE]
+
 
             if(CONFIG.EVM.includes(tickers[i])){
                 
@@ -323,11 +325,9 @@ export let
                 
                 hostchainmap.set(tickers[i],new EvmHostChain(controllerAddr,tickers[i]))
 
-            }else{
+            }else hostchainmap.set(tickers[i],(await import(`./KLY_Hostchains/${way}/${tickers[i]}.js`)).default)
 
-                hostchainmap.set(tickers[i],(await import(`./KLY_Hostchains/${way}/${tickers[i]}.js`)).default)
 
-            }
 
             hostchains.set(controllerAddr,hostchainmap)
 
