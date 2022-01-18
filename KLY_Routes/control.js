@@ -20,7 +20,7 @@ export let W={
 
     config:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async bytes=>{
 
-        let b=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+        let body=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
     
     })

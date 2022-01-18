@@ -22,19 +22,19 @@ export let C={
                 
                 if(last){
                     
-                    let b=await PARSE_JSON(buf)
+                    let body=await PARSE_JSON(buf)
         
-                    typeof b.c==='string'&&typeof b.d==='string'&&typeof b.f==='string'
+                    typeof body.c==='string'&&typeof body.d==='string'&&typeof body.f==='string'
                     &&
-                    await ACC_CONTROL(b.c,b.d,b.f,1,1)
+                    await ACC_CONTROL(body.c,body.d,body.f,1,1)
                     ?
-                    contracts.get(b.c).then(ctr=>{
+                    contracts.get(body.c).then(ctr=>{
                         
                         if(ctr.length<=CONFIG.CONTRACTS_NUM){
                         
-                            ctr.push(b.c)
+                            ctr.push(body.c)
                         
-                            contracts.put(b.c,ctr).then(()=>a.end('OK')).catch(e=>a.end(''))
+                            contracts.put(body.c,ctr).then(()=>a.end('OK')).catch(e=>a.end(''))
                         
                         }else a.end('')
                     
@@ -42,7 +42,7 @@ export let C={
                     
                         e.notFound
                         ?
-                        contracts.put(b.c,[b.d]).then(()=>a.end('OK')).catch(e=>a.end(''))//encrypt by RSA.In short,way of msg may be like: USER ---> RSA(msg,RSA_pub) ---> THIS NODE ---> NODE OWNER CLIENTSIDE ---> RSA(msg,RSA_prv)
+                        contracts.put(body.c,[body.d]).then(()=>a.end('OK')).catch(e=>a.end(''))//encrypt by RSA.In short,way of msg may be like: USER ---> RSA(msg,RSA_pub) ---> THIS NODE ---> NODE OWNER CLIENTSIDE ---> RSA(msg,RSA_prv)
                         :
                         a.end('')
                     

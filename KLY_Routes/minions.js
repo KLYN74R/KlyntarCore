@@ -14,9 +14,9 @@ export let Z={
     
     getResources:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
             
-        let b=await BODY(v,CONFIG.PAYLOAD_SIZE)
+        let body=await BODY(v,CONFIG.PAYLOAD_SIZE)
         
-        if(typeof b.c==='string'&&typeof b.f==='string'&&await ACC_CONTROL(b.c,'1',b.f,1,0,MINION,0)){
+        if(typeof body.c==='string'&&typeof body.f==='string'&&await ACC_CONTROL(body.c,'1',body.f,1,0,MINION,0)){
     
         }else a.end('')
     
@@ -27,9 +27,9 @@ export let Z={
     
     minionsVerify:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
         
-        let b=await BODY(v,CONFIG.PAYLOAD_SIZE)
+        let body=await BODY(v,CONFIG.PAYLOAD_SIZE)
         
-        if(typeof b.c==='string'&&typeof b.f==='string'&&await ACC_CONTROL(b.c,'1',b.f,1,0,MINION,0)){
+        if(typeof body.c==='string'&&typeof body.f==='string'&&await ACC_CONTROL(body.c,'1',body.f,1,0,MINION,0)){
     
         }else a.end('')
     
@@ -40,9 +40,9 @@ export let Z={
 
     ord:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
 
-        let b=await BODY(v,CONFIG.PAYLOAD_SIZE)
+        let body=await BODY(v,CONFIG.PAYLOAD_SIZE)
 
-        if(typeof b.c==='string'&&typeof b.f==='string'&&await ACC_CONTROL(b.c,'1',b.f,1,0,MINION,0)){
+        if(typeof body.c==='string'&&typeof body.f==='string'&&await ACC_CONTROL(body.c,'1',body.f,1,0,MINION,0)){
 
         }else a.end('')
 

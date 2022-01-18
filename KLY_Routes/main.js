@@ -122,15 +122,15 @@ export let M={
     //There is no 'c'(creator) field-we get it from tx
     tx:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-        let b=await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let body=await BODY(v,CONFIG.PAYLOAD_SIZE),
         
-            chain=b.d?.[0],
+            chain=body.d?.[0],
             
-            obj=b.d?.[1]
+            obj=body.d?.[1]
         
         
         //Reject all txs if route is off and other guards methods
-        if(!(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof obj?.c!=='string' || typeof obj.n!=='number' || typeof b.f!=='string'){
+        if(!(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof obj?.c!=='string' || typeof obj.n!=='number' || typeof body.f!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -173,7 +173,7 @@ export let M={
 
             if(signa!=='') obj.s=signa
 
-            if(strData&&await ACC_CONTROL(obj.c,strData+chain+obj.n,b.f,1)){
+            if(strData&&await ACC_CONTROL(obj.c,strData+chain+obj.n,body.f,1)){
     
                 !a.aborted&&a.end('OK')
 
@@ -206,21 +206,21 @@ export let M={
     //[0,1,2] -> 0-RSA pubkey 1-signature 2-chain(controllerAddr)
     startSpaceId:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
-        let b=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
+        let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
 
         //_________________________________Let's check permission for initial SpaceID generation_________________________________
 
         allow=
         
         //Check lightweight instant predicates
-        typeof b.c==='string'&&typeof b.d?.[0]==='string'&&typeof b.d[1]==='string'&&typeof b.d[2]==='string'&&CONFIG.TRIGGERS.START_SPACE_ID
+        typeof body.c==='string'&&typeof body.d?.[0]==='string'&&typeof body.d[1]==='string'&&typeof body.d[2]==='string'&&CONFIG.TRIGGERS.START_SPACE_ID
         
         &&//Also lightweight but account can be read from db,not from cache,so it might be promise.Check if address is on some chain(or entry is free) and address still don't have SID...etc
         
-        (CONFIG.START_SID_EVERYONE || await GET_CHAIN_ACC(b.c,b.d[2])) && !(ACCOUNTS.cache.has(b.c) || await ACCOUNTS.db.get(b.c).catch(e=>false))
+        (CONFIG.START_SID_EVERYONE || await GET_CHAIN_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
         
         &&//...Check signature(SIG(RSApub+GUID)) to allow user to create account in <space>
-        await VERIFY(b.d[0]+GUID,b.d[1],b.c)
+        await VERIFY(body.d[0]+GUID,body.d[1],body.c)
 
 
 
@@ -240,9 +240,9 @@ export let M={
 
                     //ACCOUNTS.set(b.c,acc)
 
-                    space.put(b.c,acc).catch(e=>'')
+                    space.put(body.c,acc).catch(e=>'')
 
-                    !a.aborted&&a.end(ENCRYPT(acc.S,b.d[0]))
+                    !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
     
                 }else !a.aborted&&a.end('Bytes generation failed')
             
@@ -259,11 +259,11 @@ export let M={
     //0-RSA pubkey 1-signature
     spaceChange:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
-        let b=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE)
+        let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE)
 
-        ACCOUNTS.get(b.c).then(async acc=>{
+        ACCOUNTS.get(body.c).then(async acc=>{
             
-            if(acc&&await VERIFY(b.d[0]+GUID,b.d[1],b.c)){
+            if(acc&&await VERIFY(body.d[0]+GUID,body.d[1],body.c)){
                 
                 c.randomBytes(64,(e,r)=>{
                 
@@ -273,9 +273,9 @@ export let M={
                         
                         //acc.TIME=new Date().getTime()
     
-                        ACCOUNTS.set(b.c,acc)
+                        ACCOUNTS.set(body.c,acc)
     
-                        !a.aborted&&a.end(ENCRYPT(acc.S,b.d[0]))
+                        !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
 
 
                         //For future upgrading of Space protocol

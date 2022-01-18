@@ -22,13 +22,13 @@ ______________________________________Available prefixes________________________
 Так можно на разных уровнях от локальных узлов,дальше запрос в Consorcium,которые делают тоже самое*/
     addIntegrity:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
     
-        let b=await BODY(v)
+        let body=await BODY(v)
     
-        CONFIG.NEAR.includes(b.c)
+        CONFIG.NEAR.includes(body.c)
         &&
         BLAKE3()
         &&
-        integrity.put(b.c+b.h,b.d).then(()=>a.end('OK')).catch(e=>a.end(''))
+        integrity.put(body.c+body.h,body.d).then(()=>a.end('OK')).catch(e=>a.end(''))
     
     }),
     
@@ -36,7 +36,7 @@ ______________________________________Available prefixes________________________
     //By hash
     branchcomIntegrity:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
     
-        let b=await BODY(v)
+        let body=await BODY(v)
     
     }),
     
@@ -45,7 +45,7 @@ ______________________________________Available prefixes________________________
 
     newsIntegrity:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
     
-        let b=await BODY(v)
+        let body=await BODY(v)
     
     }),
     
@@ -54,7 +54,7 @@ ______________________________________Available prefixes________________________
 
     storeIntegrity:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
     
-        let b=await BODY(v)
+        let body=await BODY(v)
     
     }),
     
@@ -63,7 +63,7 @@ ______________________________________Available prefixes________________________
 
     likesIntegrity:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async v=>{
     
-        let b=await BODY(v)
+        let body=await BODY(v)
     
     })
 
