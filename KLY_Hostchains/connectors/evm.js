@@ -28,8 +28,18 @@ export default class {
         this.GAS_PRICE=GAS_PRICE
         this.AMOUNT=AMOUNT
         this.TO=TO
-        this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID},HARDFORK)
+        this.CHAIN_ID=CHAIN_ID
         this.HARDFORK=HARDFORK
+
+        if(this.HARDFORK==='london'){
+
+            this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK})
+        
+            this.MAX_FEE_PER_GAS=CONFIG.CHAINS[chainId].HC_CONFIGS[ticker].MAX_FEE_PER_GAS
+            
+            this.MAX_PRIORITY_FEE_PER_GAS=CONFIG.CHAINS[chainId].HC_CONFIGS[ticker].MAX_PRIORITY_FEE_PER_GAS
+
+        }else this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID},HARDFORK)
         
     }
 
@@ -57,27 +67,55 @@ export default class {
     
             err&&reject(err)
     
+            let tx//external variable
 
-            // Build a transaction
-            let txObject = {
+            // Build a transaction to to the hardfork
+            if(this.HARDFORK==='london'){
+
+                let web3Utils=this.web3.utils
+
+                // Build a transaction
+                const rawTx = {
+                    "to"                    :   this.TO,
+                    "gasLimit"              :   web3Utils.toHex(this.GAS_LIMIT),
+                    "maxFeePerGas"          :   web3Utils.toHex(web3Utils.toWei( this.MAX_FEE_PER_GAS , 'gwei' ) ),
+                    "maxPriorityFeePerGas"  :   web3Utils.toHex(web3Utils.toWei( this.MAX_PRIORITY_FEE_PER_GAS , 'gwei' ) ),
+                    "value"                 :   web3Utils.toHex(web3Utils.toWei(this.AMOUNT, 'ether')),
+                    "data"                  :   '0x'+Buffer.from(blockIndex+'_'+klyntarHash,'utf8').toString('hex'),
+                    "nonce"                 :   web3Utils.toHex(txCount),
+                    "chainId"               :   `0x${this.CHAIN_ID.toString(16)}`,
+                    "accessList"            :   [],
+                    "type"                  :   "0x02"
+                }
+
+                // Creating a new transaction
+                tx = FeeMarketEIP1559Transaction.fromTxData( rawTx , { chain:this.COMMON } );
+
+                //Sign the transaction
+                tx=tx.sign(this.PRV)
             
-                nonce: this.web3.utils.toHex(txCount),
-                to: this.TO,
-                value: this.web3.utils.toHex(this.web3.utils.toWei(this.AMOUNT, 'ether')),
-                gasLimit: this.web3.utils.toHex(this.GAS_LIMIT),
-                gasPrice: this.web3.utils.toHex(this.web3.utils.toWei(this.GAS_PRICE, 'gwei')),
-    
-                //Set payload in hex
-                data:'0x'+Buffer.from(blockIndex+'_'+klyntarHash,'utf8').toString('hex')
+            }else{
+
+                let txObject = {
+            
+                    nonce: this.web3.utils.toHex(txCount),
+                    to: this.TO,
+                    value: this.web3.utils.toHex(this.web3.utils.toWei(this.AMOUNT, 'ether')),
+                    gasLimit: this.web3.utils.toHex(this.GAS_LIMIT),
+                    gasPrice: this.web3.utils.toHex(this.web3.utils.toWei(this.GAS_PRICE, 'gwei')),
         
+                    //Set payload in hex
+                    data:'0x'+Buffer.from(blockIndex+'_'+klyntarHash,'utf8').toString('hex')
+            
+                }
+        
+        
+                tx = new Transaction(txObject,{common:this.COMMON})
+        
+                //Sign the transaction
+                tx.sign(this.PRV)
+            
             }
-    
-    
-            //Note-choose "scope"(Ropsten testnet in this case)
-            let tx = new Transaction(txObject,{common:this.COMMON})
-    
-            //Sign the transaction
-            tx.sign(this.PRV)
              
             let raw = '0x' + tx.serialize().toString('hex')
     

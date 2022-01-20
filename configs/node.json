@@ -70,14 +70,6 @@
 
     "START_SID_EVERYONE":true,
     "DEFAULT_ROLES":"",
-
-
-    "HOSTCHAINS_PROVIDERS":{
-        
-        "trx":"https://api.shasta.trongrid.io"
-
-    },
-
     
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys"],
     "BITFORKS":["btc","ltc","doge","dash"]
