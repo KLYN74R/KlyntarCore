@@ -44,7 +44,12 @@
 import{RippleAPI} from 'ripple-lib'
 
 
-
+/**
+ * 
+ * ________________Add separate thread of connection for each symbiote________________
+ * 
+ * 
+ */
 let connections=new Map()
 
 Object.keys(CONFIG.CHAINS).forEach(
@@ -70,6 +75,7 @@ export default {
         
             connections.get(chain).getTransaction(hostChainHash).then(async tx=>{
             
+                //Testnet mode
                 if(tx.outcome.result==='tesSUCCESS'){
                 
                     await connections.get(chain).disconnect()
@@ -124,7 +130,7 @@ export default {
         
             
                 //Final operations
-                result = await connections.get(chainId).submit(tx_blob)
+                _result = await connections.get(chainId).submit(tx_blob)
         
             await connections.get(chainId).disconnect()
 

@@ -54,81 +54,113 @@ import fetch from 'node-fetch'
 
 export default {
 
-//https://chain.so/api/v2/get_tx_outputs/DOGE/6f47f0b2e1ec762698a9b62fa23b98881b03d052c9d8cb1d16bb0b04eb3b7c5b/0
-    checkTx:(chainId,hostChainHash,blockIndex,klyntarHash)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chain)=>{
 
-        let {URL,TOKEN}=CONFIG.CHAINS[chainId].HC_CONFIGS.doge,        
-        
-        return fetch(`${URL}/tx/${hostChainHash}`).then(r=>r.json()).then(v=>{
-        
-            if(v.status==='success'){
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.doge
 
-                let data=Buffer.from(v.data.outputs.script.slice(10),'hex').toString('utf8').split('_')
 
-                return data[0]==blockIndex&&data[1]===klyntarHash//== coz data[1] will be string
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'gettx',hash:hostChainHash},
+            
+            command:`doge-cli gettransaction ${hostChainHash}`
         
-            }
-        
-        }).catch(e=>false)
+        })}).then(r=>r.json()).then(tx=>
+            
+            tx.confirmations>=CONFIRMATIONS
+            &&
+            fetch(URL,{method:'POST',body:JSON.stringify({
+
+                password:CREDS,
+
+                data:{command:'getdecoded',hash:hostChainHash},
+
+                command:`doge-cli decoderawtransaction $(doge-cli getrawtransaction ${hostChainHash})`
+
+            })}).then(r=>r.json()).then(tx=>{
+                
+                //Convert hexademical data from output and get rid of magic bytes
+                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
+
+                return data[0]==blockIndex&&data[1]===klyntarHash
+
+            })
+
+        ).catch(e=>LOG(`Some error has been occured in DOGE \x1b[36;1m${e}`,'W'))
+    
 
     },
+
+
+
 
     sendTx:async(chainId,blockIndex,klyntarHash)=>{
-    
-        let {URL,PUB,PRV}=CONFIG.CHAINS[chainId].HC_CONFIGS.doge,
-        
-            inputCount = 0,
-    
-            utxos = await fetch(`${URL}/utxos/${PUB}`).then(r=>r.json()),
 
-            inputs = []
-   
-    
-        utxos.data.txs.forEach(async input => {
         
-            let utxo = {}
-      
-            utxo.satoshis = Math.floor(Number(input.value) * 100000000)
-        
-            utxo.script = input.script_hex
-        
-            utxo.address = utxos.data.address
-        
-            utxo.txId = input.txid
-        
-            utxo.outputIndex = input.output_no
-    
-            inputCount ++
+        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.doge,
             
-            inputs.push(utxo)
+            inputs=[],
+            
+            //Fetch available from utxo pool
+            nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
 
-        })
+                password:CREDS,
+
+                data:{command:'getutxos',address:PUB},
+            
+                command:'doge-cli listunspent'
+           
+            })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
+
+
+            //Try to get UTXOs from node
+            nodeUtxos.forEach(output=>{
+     
+                let utxo = {}
+
+                utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
+                utxo.script = output.scriptPubKey
+                utxo.address = output.address
+                utxo.txId = output.txid
+                utxo.outputIndex = output.vout
+            
+                inputs.push(utxo)
+        
+            })
+
+
+    
+        //Create empty instance...
+        let transaction = new dashcore.Transaction()
+
+
+        transaction.from(inputs)//Set transaction inputs
   
+            .addData(blockIndex+'_'+klyntarHash)//Add payload
 
+            .change(PUB)// Set change address - Address to receive the left over funds after transfer
 
-        let transaction = new bitdoge.Transaction()
-        
-            .from(inputs)
-        
-            .addData(blockIndex+'_'+klyntarHash)//Set our payload
-        
-            .change(PUB)
-        
-            .fee(1926668)
-        
-            .sign(PRV)
+            .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
 
-   
-        //Finally-send transaction
-        return fetch(`${URL}/send`,{
-        
-            method: "POST",
-                
-            data:{hex:transaction.serialize()}
+            .sign(PRV)// Sign transaction with your private key
             
-        }).then(r=>r.json()).then(r=>r.data.txid)
+
+            
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'sendtx',hex:transaction.serialize()},
+
+            command:`doge-cli sendrawtransaction ${transaction.serialize()}`
     
+        })}).then(r=>r.text()).catch(e=>LOG(`ERROR DOGE ${e}`,'W'))
+
+
     },
+
 
     
     //Only for Controller(at least in first releases)
@@ -137,11 +169,24 @@ export default {
     },
 
 
-    getBalance:symbiote=>fetch(`${CONFIG.CHAINS[symbiote].URL}/balance/${CONFIG.CHAINS[symbiote].HC_CONFIGS.btc.PUB}`)
-    
-                            .then(r=>r.json())
-                            
-                            .then(info=>info.data.confirmed_balance)
-                            
-                            .catch(e=>'No data')
+
+
+    getBalance:symbiote=>{
+
+
+        let {URL,PUB,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.doge
+
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'getbalance',address:PUB},
+            
+            command:'doge-cli getbalance'
+        
+        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+        
+    }
+
+
 }

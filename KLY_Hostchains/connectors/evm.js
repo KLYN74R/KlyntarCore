@@ -1,6 +1,6 @@
-import{LOG}from'../../KLY_Space/utils.js'
+import {LOG} from '../../KLY_Space/utils.js'
 
-import{Transaction}from'ethereumjs-tx'
+import {Transaction} from 'ethereumjs-tx'
 
 import Common from 'ethereumjs-common'
 
@@ -144,7 +144,13 @@ export default class {
 
         let err,
         
-            balance=this.web3.utils.fromWei(await this.web3.eth.getBalance(this.PUB).catch(e=>{err=`No data\x1b[31;1m (${e})\x1b[0m`; return '0'}),'ether')
+            balance=this.web3.utils.fromWei(await this.web3.eth.getBalance(this.PUB).catch(e=>{
+                
+                err=`No data\x1b[31;1m (${e})\x1b[0m`
+                
+                return '0'
+            
+            }),'ether')
 
         return err||balance
     

@@ -45,7 +45,7 @@
 
 import dashcore from '@dashevo/dashcore-lib'
 
-import{LOG}from'../../KLY_Space/utils.js'
+import {LOG} from '../../KLY_Space/utils.js'
 
 import fetch from 'node-fetch'
 
@@ -58,58 +58,40 @@ export default {
     checkTx:(hostChainHash,blockIndex,klyntarHash,chain)=>{
 
 
-        let {PROVIDER_TYPE,URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.dash
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.dash
 
 
+        return fetch(URL,{method:'POST',body:JSON.stringify({
 
-        if(PROVIDER_TYPE==='NODE'){
+            password:CREDS,
 
-            return fetch(URL,{method:'POST',body:JSON.stringify({
+            data:{command:'gettx',hash:hostChainHash},
+            
+            command:`dash-cli gettransaction ${hostChainHash}`
+        
+        })}).then(r=>r.json()).then(tx=>
+            
+            tx.confirmations>=CONFIRMATIONS
+            &&
+            fetch(URL,{method:'POST',body:JSON.stringify({
 
                 password:CREDS,
+
+                data:{command:'getdecoded',hash:hostChainHash},
+
+                command:`dash-cli decoderawtransaction $(dash-cli getrawtransaction ${hostChainHash})`
+
+            })}).then(r=>r.json()).then(tx=>{
                 
-                command:`dash-cli gettransaction ${hostChainHash}`
-            
-            })}).then(r=>r.json()).then(tx=>
-                
-                tx.confirmations>=CONFIRMATIONS
-                &&
-                fetch(URL,{method:'POST',body:JSON.stringify({
+                //Convert hexademical data from output and get rid of magic bytes
+                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
 
-                    password:CREDS,
+                return data[0]==blockIndex&&data[1]===klyntarHash
+
+            })
+
+        ).catch(e=>LOG(`Some error has been occured in DASH \x1b[36;1m${e}`,'W'))
     
-                    command:`dash-cli decoderawtransaction $(dash-cli getrawtransaction ${hostChainHash})`
-
-                })}).then(r=>r.json()).then(tx=>{
-                    
-                    //Convert hexademical data from output and get rid of magic bytes
-                    let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
-
-                    return data[0]==blockIndex&&data[1]===klyntarHash
-
-                })
-
-            ).catch(e=>LOG(`Some error has been occured in DASH \x1b[36;1m${e}`,'W'))
-            
-
-        }else if(PROVIDER_TYPE==='API'){
-
-            
-            return fetch(`https://chain.so/api/v2/get_tx_outputs/DASHTEST/${hostChainHash}/0`).then(r=>r.json()).then(v=>{
-        
-                if(v.status==='success'){
-
-                    let data=Buffer.from(v.data.outputs.script.slice(10),'hex').toString('utf8').split('_')
-
-                    return data[0]==blockIndex&&data[1]===klyntarHash//== coz data[1] will be string
-        
-                }
-
-            }).catch(e=>false)
-    
-
-        }
-
 
     },
 
@@ -119,18 +101,17 @@ export default {
     sendTx:async(chainId,blockIndex,klyntarHash)=>{
 
         
-        let {PUB,PRV,PROVIDER_TYPE,URL,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.dash
-        
-
-        if(PROVIDER_TYPE==='NODE'){
-
+        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.dash,
             
-            let inputs=[],
+            inputs=[],
             
             //Fetch available from utxo pool
             nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
 
                 password:CREDS,
+
+                data:{command:'getutxos',address:PUB},
+            
                 command:'dash-cli listunspent'
            
             })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
@@ -153,86 +134,35 @@ export default {
 
 
     
-            //Create empty instance...
-            let transaction = new dashcore.Transaction()
+        //Create empty instance...
+        let transaction = new dashcore.Transaction()
 
 
-            transaction.from(inputs)//Set transaction inputs
+        transaction.from(inputs)//Set transaction inputs
   
-                .addData(blockIndex+'_'+klyntarHash)//Add payload
+            .addData(blockIndex+'_'+klyntarHash)//Add payload
 
-                .change(PUB)// Set change address - Address to receive the left over funds after transfer
+            .change(PUB)// Set change address - Address to receive the left over funds after transfer
 
-                .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
+            .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
 
-                .sign(PRV)// Sign transaction with your private key
+            .sign(PRV)// Sign transaction with your private key
             
 
             
-            return fetch(URL,{method:'POST',body:JSON.stringify({
+        return fetch(URL,{method:'POST',body:JSON.stringify({
 
-                password:CREDS,
-                command:`dash-cli sendrawtransaction ${transaction.serialize()}`
+            password:CREDS,
+
+            data:{command:'sendtx',hex:transaction.serialize()},
+
+            command:`dash-cli sendrawtransaction ${transaction.serialize()}`
     
-            })}).then(r=>r.text()).catch(e=>LOG(`ERROR DASH ${e}`,'W'))
+        })}).then(r=>r.text()).catch(e=>LOG(`ERROR DASH ${e}`,'W'))
 
-
-
-        }else if(PROVIDER_TYPE==='API'){
-
-            // let utxos = await fetch(`https://sochain.com/api/v2/get_tx_unspent/${NETWORK}/${PUB}`).then(r=>r.json()),
-    
-            //     inputs = []
-    
-
-       
-            // utxos.data.txs.forEach(async input => {
-             
-            //     let utxo = {}
-           
-
-            //     utxo.satoshis = Math.floor(Number(input.value) * 100_000_000)
-           
-            //     utxo.script = input.script_hex
-           
-            //     utxo.address = utxos.data.address
-           
-            //     utxo.txId = input.txid
-           
-            //     utxo.outputIndex = input.output_no
-                
-                
-            //     inputs.push(utxo)
-     
-            // })
-
-       
-     
-            // let transaction = new dashcore.Transaction()
-             
-            //     .from(inputs)
-
-            //     .addData(blockIndex+'_'+klyntarHash)
-            
-            //     .change(PUB)
-                
-            //     .fee(FEE)
-            
-            //     .sign(PRV)
-        
-
-
-            // return fetch(`https://sochain.com/api/v2/send_tx/${NETWORK}`,{
-            
-            //     method: "POST",
-                    
-            //     data:{tx_hex:transaction.serialize()}
-                
-            // }).then(r=>r.json()).then(r=>r.data.txid)
-
-        }
 
     },
+
 
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
@@ -243,32 +173,18 @@ export default {
     getBalance:symbiote=>{
 
 
-        let {PROVIDER_TYPE,URL,PUB,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.dash
+        let {URL,PUB,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.dash
 
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'getbalance',address:PUB},
+            
+            command:'dash-cli getbalance'
         
-        if(PROVIDER_TYPE==='NODE'){
-
-            return fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-                
-                command:'dash-cli getbalance'
-            
-            })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
-            
-
-        }else if(PROVIDER_TYPE==='API'){
-
-            return fetch(`https://sochain.com/api/v2/get_address_balance/DASHTEST/${PUB}`)
-    
-                    .then(r=>r.json())
-                            
-                    .then(info=>info.data.confirmed_balance)
-                            
-                    .catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
-
-        }
-
+        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+        
     }
 
 }

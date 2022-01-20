@@ -1,14 +1,14 @@
-import{VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,SIG,BLAKE3,PATH_RESOLVE}from'../KLY_Space/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,SIG,BLAKE3,PATH_RESOLVE} from '../KLY_Space/utils.js'
 
-import ControllerBlock from'../KLY_Blocks/controllerblock.js'
+import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import InstantBlock from'../KLY_Blocks/instantblock.js'
+import InstantBlock from '../KLY_Blocks/instantblock.js'
 
-import{chains,hostchains}from'../klyn74r.js'
+import {chains,hostchains} from '../klyn74r.js'
 
-import fetch from'node-fetch'
+import fetch from 'node-fetch'
 
-import fs from'fs'
+import fs from 'fs'
 
 
 

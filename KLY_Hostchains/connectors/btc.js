@@ -103,91 +103,120 @@ import fetch from 'node-fetch'
 
 export default {
     
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>
+    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
 
-        fetch(`https://chain.so/api/v2/get_tx_outputs/BTCTEST/${hostChainHash}/0`).then(r=>r.json()).then(v=>{
 
-            if(v.status==='success'){
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.btc
 
-                let data=Buffer.from(v.data.outputs.script.slice(10),'hex').toString('utf8').split('_')
 
-                return data[0]==blockIndex&&data[1]===klyntarHash//== coz data[0] will be string
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'gettx',hash:hostChainHash},
             
-            }
+            command:`bitcoin-cli gettransaction ${hostChainHash}`
+        
+        })}).then(r=>r.json()).then(tx=>
+            
+            tx.confirmations>=CONFIRMATIONS
+            &&
+            fetch(URL,{method:'POST',body:JSON.stringify({
 
-        }).catch(e=>false)
-    
-    ,
+                password:CREDS,
+
+                data:{command:'getdecoded',hash:hostChainHash},
+
+                command:`bitcoin-cli decoderawtransaction $(bitcoin-cli getrawtransaction ${hostChainHash})`
+
+            })}).then(r=>r.json()).then(tx=>{
+                
+                //Convert hexademical data from output and get rid of magic bytes
+                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
+
+                return data[0]==blockIndex&&data[1]===klyntarHash
+
+            })
+
+        ).catch(e=>LOG(`Some error has been occured in BTC \x1b[36;1m${e}`,'W'))
+        
+
+    },
 
 
 
 
     sendTx:async(chainId,blockIndex,klyntarHash)=>{
         
-        let {PUB,PRV,NETWORK,FEE_PER_BYTE}=CONFIG.CHAINS[chainId].HC_CONFIGS.btc,
+        
+        let {URL,PUB,PRV,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.btc,
+        
+            inputs=[],
+            
 
-            fee = 0, inputCount = 0, outputCount = 2,//Set payload + return UTXO
 
             //Fetch available from utxo pool
-            utxos = await fetch(`https://sochain.com/api/v2/get_tx_unspent/${NETWORK}/${PUB}`).then(r=>r.json()),
+            nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
+
+                password:CREDS,
+                
+                data:{command:'getutxos',address:PUB},
+                
+                command:'bitcoin-cli listunspent'
+           
+            })})    .then(r=>r.text())      
         
-            inputs=[]
+                    .then(
+                        
+                        obj => JSON.parse(obj).filter(utxo=>utxo.address===PUB)//do it coz bitcoin daemon can return utxos from your another addresses of wallet
+                    
+                    )
 
 
-  
-        //Go through UTXO pool and build "input part"
-        utxos.data.txs.forEach(async element => {
-        
+
+        nodeUtxos.forEach(output=>{
+     
             let utxo = {}
-  
-            utxo.satoshis = Math.floor(Number(element.value) * 100_000_000)
-            
-            utxo.script = element.script_hex
-            
-            utxo.address = utxos.data.address
-            
-            utxo.txId = element.txid
-            
-            utxo.outputIndex = element.output_no
-            
-            inputCount++
+
+            utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
+            utxo.script = output.scriptPubKey
+            utxo.address = output.address
+            utxo.txId = output.txid
+            utxo.outputIndex = output.vout
             
             inputs.push(utxo)
-  
+        
         })
 
-        //Create empty instance
-        let transaction = new bitcore.Transaction(),transactionSize = inputCount * 146 + outputCount * 34
+
     
+        //Create empty instance...
+        let transaction = new bitcore.Transaction()
 
-        //Check if we have enough funds to cover the transaction and the fees assuming we want to pay 20 satoshis per byte
-        fee = transactionSize * FEE_PER_BYTE
-
-        //_________________________________________________HERE WE CHOOSE THE SCRIPT_________________________________________________
-
-        //0 in first releases-default OP_RETURN(type doesn't matter-P2PKH,P2SH,P2WPKH)
 
         transaction.from(inputs)//Set transaction inputs
-    
-            .addData(blockIndex+'_'+klyntarHash)//0st script type
-              
-            .change(PUB) //Set address to receive the left over funds after transfer
   
-            .fee(fee)
+            .addData(blockIndex+'_'+klyntarHash)//Add payload
 
-            .sign(PRV)
+            .change(PUB)// Set change address - Address to receive the left over funds after transfer
 
+            .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
 
-
-        //Send transaction
-        return fetch(`https://sochain.com/api/v2/send_tx/${NETWORK}`,{
-        
-            method: "POST",
-                
-            data:{tx_hex:transaction.serialize()}
+            .sign(PRV)// Sign transaction with your private key
             
-        }).then(r=>r.json()).then(r=>r.data.txid)
+
+        
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+            
+            data:{command:'sendtx',hex:transaction.serialize()},
+
+            command:`bitcoin-cli sendrawtransaction ${transaction.serialize()}`
     
+        })}).then(r=>r.text()).catch(e=>LOG(`ERROR BTC ${e}`,'W'))
+
+
     },
 
     
@@ -199,12 +228,21 @@ export default {
     },
 
 
-    getBalance:symbiote=>fetch(`https://sochain.com/api/v2/get_address_balance/BTCTEST/${CONFIG.CHAINS[symbiote].HC_CONFIGS.btc.PUB}`)
-    
-                            .then(r=>r.json())
-                            
-                            .then(info=>info.data.confirmed_balance)
-                            
-                            .catch(e=>'No data')
+    getBalance:symbiote=>{
+
+      
+        let {URL,PUB}=CONFIG.CHAINS[symbiote].HC_CONFIGS.btc
+
+        return fetch(URL,{method:'POST',body:JSON.stringify({
+
+            password:CREDS,
+
+            data:{command:'getbalance',address:PUB},
+
+            command:'bitcoin-cli getbalance'
+        
+        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+
+    }
 
 }

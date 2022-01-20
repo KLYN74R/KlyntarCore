@@ -41,12 +41,11 @@
 
 
 
-import{LOG}from '../../KLY_Space/utils.js'
+import {LOG} from '../../KLY_Space/utils.js'
 
 import bitlite from 'litecore-lib'
 
 import fetch from 'node-fetch'
-
 
 
 
@@ -57,57 +56,38 @@ export default {
 
 
 
-        let {PROVIDER_TYPE,URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.ltc
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.ltc
 
+        return fetch(URL,{method:'POST',body:JSON.stringify({
 
+            password:CREDS,
 
-        if(PROVIDER_TYPE==='NODE'){
-
-            return fetch(URL,{method:'POST',body:JSON.stringify({
+            data:{command:'gettx',hash:hostChainHash},
+            
+            command:`litecoin-cli gettransaction ${hostChainHash}`
+        
+        })}).then(r=>r.json()).then(tx=>
+            
+            tx.confirmations>=CONFIRMATIONS
+            &&
+            fetch(URL,{method:'POST',body:JSON.stringify({
 
                 password:CREDS,
+
+                data:{command:'getdecoded',hash:hostChainHash},
+
+                command:`litecoin-cli decoderawtransaction $(litecoin-cli getrawtransaction ${hostChainHash})`
+
+            })}).then(r=>r.json()).then(tx=>{
                 
-                command:`litecoin-cli gettransaction ${hostChainHash}`
-            
-            })}).then(r=>r.json()).then(tx=>
-                
-                tx.confirmations>=CONFIRMATIONS
-                &&
-                fetch(URL,{method:'POST',body:JSON.stringify({
+                //Convert hexademical data from output and get rid of magic bytes
+                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
 
-                    password:CREDS,
-    
-                    command:`litecoin-cli decoderawtransaction $(litecoin-cli getrawtransaction ${hostChainHash})`
+                return data[0]==blockIndex&&data[1]===klyntarHash
 
-                })}).then(r=>r.json()).then(tx=>{
-                    
-                    //Convert hexademical data from output and get rid of magic bytes
-                    let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
+            })
 
-                    return data[0]==blockIndex&&data[1]===klyntarHash
-
-                })
-
-            ).catch(e=>LOG(`Some error has been occured in LTC \x1b[36;1m${e}`,'W'))
-            
-
-        }else if(PROVIDER_TYPE==='API'){
-
-            
-            return fetch(`LINK/${hostChainHash}`).then(r=>r.json()).then(v=>{
-        
-                if(v.status==='success'){
-
-                    let data=Buffer.from(v.data.outputs.script.slice(10),'hex').toString('utf8').split('_')
-
-                    return data[0]==blockIndex&&data[1]===klyntarHash//== coz data[1] will be string
-        
-                }
-
-            }).catch(e=>false)
-    
-
-        }
+        ).catch(e=>LOG(`Some error has been occured in LTC \x1b[36;1m${e}`,'W'))
         
 
     },
@@ -122,19 +102,17 @@ export default {
 
         
 
-        let {URL,PUB,PRV,PROVIDER_TYPE,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.ltc
-
-
-
-        if(PROVIDER_TYPE==='NODE'){
-
-            
-            let inputs=[],
+        let {URL,PUB,PRV,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.ltc,
+    
+            inputs=[],
             
             //Fetch available from utxo pool
             nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
 
                 password:CREDS,
+
+                data:{command:'getutxos',address:PUB},
+            
                 command:'litecoin-cli listunspent'
            
             })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
@@ -173,19 +151,16 @@ export default {
             
 
         
-            return fetch(URL,{method:'POST',body:JSON.stringify({
+        return fetch(URL,{method:'POST',body:JSON.stringify({
 
-                password:CREDS,
-                command:`litecoin-cli sendrawtransaction ${transaction.serialize()}`
+            password:CREDS,
+
+            data:{command:'sendtx',hex:transaction.serialize()},
+
+            command:`litecoin-cli sendrawtransaction ${transaction.serialize()}`
     
-            })}).then(r=>r.text()).catch(e=>LOG(`ERROR LTC ${e}`,'W'))
+        })}).then(r=>r.text()).catch(e=>LOG(`ERROR LTC ${e}`,'W'))
 
-
-
-        }else if(PROVIDER_TYPE==='API'){
-
-
-        }
         
     },
 
@@ -205,23 +180,18 @@ export default {
     getBalance:symbiote=>{
 
       
-        let {PROVIDER_TYPE,URL,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.ltc
+        let {URL,CREDS,PUB}=CONFIG.CHAINS[symbiote].HC_CONFIGS.ltc
 
-        
-        if(PROVIDER_TYPE==='NODE'){
+        return fetch(URL,{method:'POST',body:JSON.stringify({
 
-            return fetch(URL,{method:'POST',body:JSON.stringify({
+            password:CREDS,
 
-                password:CREDS,
-                
-                command:'litecoin-cli getbalance'
+            data:{command:'getbalance',address:PUB},
             
-            })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+            command:'litecoin-cli getbalance'
+        
+        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
-        }else if(PROVIDER_TYPE==='API'){
-           
-
-        }
 
     }
 
