@@ -4,7 +4,7 @@ import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
 import InstantBlock from '../KLY_Blocks/instantblock.js'
 
-import {chains,hostchains} from '../klyn74r.js'
+import {chains,hostchains, metadata} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -475,11 +475,7 @@ verifyControllerBlock=async controllerBlock=>{
 
         //________________________________________________COMMIT STATE__________________________________________________    
 
-        //Clear previous snapshot data
-        QUANT_CONTROL[chain].DATA={}
-
-
-        let promises=[],quantRef=QUANT_CONTROL[chain]
+        let promises=[],snapshot={}
 
 
         
@@ -492,7 +488,7 @@ verifyControllerBlock=async controllerBlock=>{
 
                 promises.push(chainReference.STATE.put(addr,acc.ACCOUNT))
 
-                quantRef.DATA[addr]=acc.ACCOUNT
+                snapshot[addr]=acc.ACCOUNT       
 
             })
             
@@ -504,7 +500,7 @@ verifyControllerBlock=async controllerBlock=>{
 
                 promises.push(chainReference.STATE.put(addr,acc.ACCOUNT))
             
-                quantRef.DATA[addr]=acc.ACCOUNT
+                snapshot[addr]=acc.ACCOUNT
 
 
 
@@ -519,10 +515,8 @@ verifyControllerBlock=async controllerBlock=>{
         
         }
 
-        quantRef.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
-
         //Make commit to staging area
-        await chainReference.STATE.put('STAGE',
+        await metadata.put(chain+'/STAGE',
         
             {
                 data:snapshot,

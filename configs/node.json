@@ -44,7 +44,6 @@
     "ENABLE_LOGS":true,
 
     "CONTRACTS_PER_ADDRESS":3,
-    "SNAPSHOT_PERIOD":60000,
     
     "CHANGE_PROCEDURE":[
         {

@@ -70,10 +70,6 @@ TODO:Завтра попробовать с несколькими нодами-
 
 //Следущее-в зависимости от того,что мы за узел-по разному вести себя в функции проверки Instant блоков
 
-//! Дорешать с блоками в общем 
-//! Подтверждение доменов,аккаунтов в DezCA 
-  //Так же разные уровни - на уровне отдельного узла,на уровне IE, на уровне всей сети
-
 //!Взаимодействие по Web-сначала по SpaceID(отдельному),потом открытие сессии и уже по ключам и подписям мб
 //!Подумать что делать с nonce при отмене транзакции
   //Например глобальний можно оставить(ничего не делать с ним),а приватный уменьшить на некоторый N(в качестве "наказания")
@@ -105,7 +101,7 @@ export let
     
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     
-    dezCA=l(PATH_RESOLVE('M/DEZCA'),{valueEncoding:'json'}),//For different levels of anonymous NNDezCA | Для разных уровней проекта NNDezCA
+    metadata=l(PATH_RESOLVE('M/METADATA'),{valueEncoding:'json'}),//For chains metadata flows e.g. generation flow,verification flow,staging etc.
        
     space=l(PATH_RESOLVE('M/SPACE'),{valueEncoding:'json'}),//To store zero level data of accounts i.e SpaceID,Roles flags,private nonce etc and data on different chains
     
@@ -267,29 +263,8 @@ export let
 
         }
 
-
-
-
         
-        //____________________________Load(if we have) stored data from previos session__________________________________
 
-
-        //If exists for this chain-return txs to process and match MEMPOOL with SNAPSHOT via link[array<->array],otherwise-create empty
-        if(!SNAPSHOT.TXS[controllerAddr]){
-
-            SNAPSHOT.TXS[controllerAddr]={DTXS:[],STXS:[]}
-            
-            ['DTXS','STXS'].forEach(type=>chainRef[`MEMPOOL_${type}`]=SNAPSHOT.TXS[controllerAddr][type])
-                 
-        }
-
-        //If less than 5 minutes from previous downtime-we can load cache of txs,probably,they're still ok and there were no nonce correction by issuers 
-        (new Date().getTime()-SNAPSHOT.TIME>300000)
-        &&    
-        ['DTXS','STXS'].forEach(type=>chainRef[`MEMPOOL_${type}`]=SNAPSHOT.TXS[controllerAddr][type].splice(0))
-
-
-        
         
         chainRef.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
 
@@ -526,9 +501,6 @@ global.PRIVATE_KEYS=new Map()
 global.ACCOUNTS=new AdvancedCache(CONFIG.CACHES.ACCOUNTS.SIZE,space)//quick access to accounts in different chains and to fetch zero level data
 
 
-
-//Load last snapshot file
-global.SNAPSHOT=await dezCA.get('SNAPSHOT').catch(e=>({TIME:0,TXS:{}}))//if it's first time-than load empty file
 
 global.HOSTCHAINS_DATA={}
 

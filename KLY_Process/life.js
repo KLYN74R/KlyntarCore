@@ -6,7 +6,7 @@ import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
 import InstantBlock from '../KLY_Blocks/instantblock.js'
 
-import {chains,dezCA,hostchains} from '../klyn74r.js'
+import {chains,metadata,hostchains} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -32,28 +32,6 @@ GET_TXS=chain=>
         chains.get(chain)[`MEMPOOL_${type}TXS`].splice(0,CONFIG.CHAINS[chain].MANIFEST[`INSTANT_BLOCK_${type}TXS_MAX`])
         
     ),
-
-
-
-
-//There is no ability to stop PERIOD function,coz it's part of process,so you can manipulate only by time
-PERIOD_START=async()=>{
-
-    await dezCA.put('SNAPSHOT',SNAPSHOT)
-    
-    .then(()=>LOG(fs.readFileSync(PATH_RESOLVE('images/events/snapshot.txt')).toString(),'S'))
-
-    .catch(e=>{
-        
-        LOG(`Can't make snapshot\x1b[36;1m\n${e}\n`,'F')
-        
-        process.exit(103)
-    
-    })
-
-    setTimeout(PERIOD_START,CONFIG.SNAPSHOT_PERIOD)
-
-},
 
 
 
