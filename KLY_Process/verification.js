@@ -419,7 +419,7 @@ verifyControllerBlock=async controllerBlock=>{
                 
                 txsSet[txType].forEach(obj=>{
                     
-                    let sig = txType==='s'&&obj.s
+                    let sig = txType==='s' && obj.s
 
                     //Sequence depends on priority and frequency-the highest frequency have transaction address<->address
                     if(obj.a) txsPromises.push(verifyTransaction(obj.c,obj.r,obj.t,obj.a,rewardBox.get(hash),chain,obj.n,sig))
@@ -468,24 +468,33 @@ verifyControllerBlock=async controllerBlock=>{
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
         CONFIG.CHAINS[chain].STORE_CONTROLLER_BLOCKS
         &&
-        chainReference.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock).catch(e=>LOG(`Failed to store ControllerBlock ${controllerBlock.i} on ${CHAIN_LABEL(chain)}`,'W'))
+        chainReference.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock).catch(e=>LOG(`Failed to store ControllerBlock ${controllerBlock.i} on ${CHAIN_LABEL(chain)}\nError:${e}`,'W'))
      
     
 
 
         //________________________________________________COMMIT STATE__________________________________________________    
 
-        let promises=[]
+        //Clear previous snapshot data
+        QUANT_CONTROL[chain].DATA={}
 
+
+        let promises=[],quantRef=QUANT_CONTROL[chain]
+
+
+        
+        
         //Commit state
         //Use caching(such primitive for the first time)
         if(chainReference.ACCOUNTS.size>=CONFIG.CHAINS[chain].BLOCK_TO_BLOCK_CACHE_SIZE){
 
-            chainReference.ACCOUNTS.forEach((acc,addr)=>
-            
+            chainReference.ACCOUNTS.forEach((acc,addr)=>{
+
                 promises.push(chainReference.STATE.put(addr,acc.ACCOUNT))
-        
-            )
+
+                quantRef.DATA[addr]=acc.ACCOUNT
+
+            })
             
             chainReference.ACCOUNTS.clear()//flush cache.NOTE-some kind of advanced upgrade soon
         
@@ -495,6 +504,10 @@ verifyControllerBlock=async controllerBlock=>{
 
                 promises.push(chainReference.STATE.put(addr,acc.ACCOUNT))
             
+                quantRef.DATA[addr]=acc.ACCOUNT
+
+
+
                 //Update urgent balance for the next blocks
                 acc.OUT=acc.ACCOUNT.B
 
@@ -506,7 +519,19 @@ verifyControllerBlock=async controllerBlock=>{
         
         }
 
+        quantRef.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
 
+        //Make commit to staging area
+        await chainReference.STATE.put('STAGE',
+        
+            {
+                data:snapshot,
+                height:controllerBlock.i,
+                blockHash:controllerHash,
+                checksum:BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
+            }
+            
+        )
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         chainReference.BLACKLIST.clear()
@@ -693,7 +718,7 @@ verifyInstantBlock=async block=>{
         
         .then(()=>{
 
-            Promise.all(BROADCAST('/ib',block,block.n))
+            Promise.all(BROADCAST('/ib',block,block.n))//share with the network
             
             chainData.INSTANT_CANDIDATES.set(hash,block.c)
         

@@ -169,7 +169,7 @@ export let
         
         chainRef.HOSTCHAINS_DATA=l(PATH_RESOLVE(`C/${hexPath}/HOSTCHAINS_DATA`),{valueEncoding:'json'})//To store external flow of commits for ControllerBlocks
         
-        chainRef.CANDIDATES=l(PATH_RESOLVE(`C/${hexPath}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is hash(coz it's also InstantBlocks,but yet not included to chain))
+        chainRef.CANDIDATES=l(PATH_RESOLVE(`C/${hexPath}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
         
         chainRef.STATE=l(PATH_RESOLVE(`C/${hexPath}/STATE`),{valueEncoding:'json'})//State of accounts
         
@@ -183,7 +183,7 @@ export let
             
             e.notFound
             ?
-            {EXPORT_COLLAPSE:-1,EXPORT_HASH:'',IN_SUPERPOSITION:false,COLLAPSED_HASH:'',COLLAPSED_INDEX:-1,SYNC_QUANT:false}
+            {EXPORT_COLLAPSE:-1,EXPORT_HASH:'',IN_SUPERPOSITION:false,COLLAPSED_HASH:'',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
             :
             process.exit(124)
         

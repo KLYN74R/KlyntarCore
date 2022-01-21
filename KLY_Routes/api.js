@@ -1,4 +1,4 @@
-import {BODY,GET_NODES, PATH_RESOLVE} from '../KLY_Space/utils.js'
+import {BODY,GET_NODES,PATH_RESOLVE,LOG,CHAIN_LABEL} from '../KLY_Space/utils.js'
 
 import {chains,WRAP_RESPONSE} from '../klyn74r.js'
 
@@ -195,74 +195,79 @@ export let A={
 
     range:a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        /**
-         * 
-         * type = 'i'(instant blocks) OR 'c'(controllers)
-         * 
-         * 
-         *             /‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾ \
-         *            /    type='c' ---> [startIndex;finishIndex] array where first is start index of controllerBlock and to finishIndex       \
-         *           /                                                                                                                          \
-         * range  = <                                                                                                                            \ 
-         *           \     type='i' ---> [hash1,hash2...,hashN] array of hashes of InstantBlocks                                                 / 
-         *            \                                                                                                                        /
-         *             \_____________________________________________________________________________________________________________________/ 
-         */
-        let {chain,type,range}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+        
+        let {chain,fromHeight}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
     
     
-        if(chains.has(chain) && Array.isArray(range) && typeof type==='string'){
+        if(chains.has(chain)){
     
             let chainConfig=CONFIG.CHAINS[chain],
     
-                storage=chains.get(chain)[type==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS']
-    
-    
-    
-    
-            if(type==='i'){
-    
-                range.splice(chainConfig.INSTANT_BLOCKS_EXPORT_RANGE)
-    
-                let promises=[]
-    
-                range.forEach(hash=>
-                    
-                    promises.push(storage.get(hash).catch(e=>false))
+                cbStorage=chains.get(chain).CONTROLLER_BLOCKS,
                 
+                insStorage=chains.get(chain).INSTANT_BLOCKS,
+
+                promises=[],
+
+                response={}
+
+
+            for(;fromHeight<fromHeight+chainConfig.BLOCKS_EXPORT_PORTION;fromHeight++){
+
+                promises.push(cbStorage.get(fromHeight).then(
+                    
+                    block => response[fromHeight]={c:block,i:[]}
+                    
+                ).catch(
+                    
+                    e => LOG(`ControllerBlock ${fromHeight} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
+                    
+                ))
+
+            }
+
+
+
+
+            //Now let's fetch InstantBlocks
+            let instantPromises=[]
+
+            await Promise.all(promises.splice(0)).then(blocks=>blocks.filter(x=>x)).then(
+                
+                controllerBlocks.forEach(
+                
+                    cBlock => {
+
+                        //Go through hashes of InstantBlocks and load them
+                        cBlock.a.forEach(
+                        
+                            iBlockHash => instantPromises.push(insStorage.get(iBlockHash).then(
+                            
+                                iBlock => response[cBlock.i].i.push(iBlock)
+                            
+                            ).catch(
+
+                                e => LOG(`InstantBlock ${iBlockHash} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
+                            
+                            )) 
+                        
+                        )
+                    
+                    }
+                    
                 )
-    
-    
-                Promise.all(promises).then(blocks=>!a.aborted && a.end(JSON.stringify(blocks)))
-    
-    
-            }else{
-    
-                let [start,finish]=range,
                 
-                    promises=[]
-                
-    
-    
-                finish=finish-start>chainConfig.CONTROLLER_BLOCKS_EXPORT_RANGE?start+chainConfig.CONTROLLER_BLOCKS_EXPORT_RANGE:finish
-            
-                if(start>0&&finish>0){
-    
-                    
-                    for(;start<finish;start++) promises.push(storage.get(start).catch(e=>false))
-    
-                    
-                    Promise.all(promises).then(controllerBlocks=>!a.aborted && a.end(JSON.stringify(controllerBlocks)))
-    
+            )
 
-                }else !a.aborted && a.end(JSON.stringify({e:'Wrong indexes'}))
+            await Promise.all(instantPromises.splice(0))
 
-            }    
+            a.end(JSON.stringify(response))
+
     
         }else !a.aborted && a.end(JSON.stringify({e:'Chain not supported'}))
     
     })
 
-
+    
 
 }
