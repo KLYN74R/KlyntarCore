@@ -601,9 +601,6 @@ verifyControllerBlock=async controllerBlock=>{
         //____________________________________NOW WE CAN SAFELY WRITE STATE OF ACCOUNTS_________________________________
         
 
-
-
-        //If we'll have error here or node will be offed we we'll have SYNC_QUANT=true in file,so it will be a sign that node should revert state from SHARDS
         await Promise.all(promises.splice(0)).then(()=>
             
             metadata.put(chain+'/CANARY',chainReference.VERIFICATION_THREAD.CHECKSUM)//canary is the signal that current height is verified and you can continue from this point
@@ -615,8 +612,6 @@ verifyControllerBlock=async controllerBlock=>{
             process.exit(108)
         
         })
-
-
 
 
         //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________

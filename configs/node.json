@@ -5,7 +5,7 @@
         "TESTNET":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
     },
 
-    "ANIMATION_DURATION":0,
+    "ANIMATION_DURATION":1000,
 
     "TYPES_PREFIXES":{
         "0":"connectors",

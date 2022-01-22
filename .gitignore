@@ -21,7 +21,6 @@ C
 #Workflow
 tr.js
 RELEASES
-SHARDS/*.json
 SERVICES
 DOCS
 my_readme.md

@@ -236,9 +236,12 @@ export let
 
 
         
+
         if(await metadata.get(controllerAddr+'/CANARY').then(canary=>!canary===chainRef.VERIFICATION_THREAD.CHECKSUM).catch(e=>{
 
-            LOG(`Problems with canary on ${CHAIN_LABEL(controllerAddr)}\n${e}`)
+            initSpinner.stop()
+
+            LOG(`Problems with canary on ${CHAIN_LABEL(controllerAddr)}\n${e}`,'W')
 
             return true
 
@@ -248,7 +251,7 @@ export let
             chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
         }
-                
+        
 
         
         chainRef.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
@@ -351,6 +354,8 @@ export let
                 }   \x1b[36;1m[${chainConfig.STOP_PUSH_TO_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
             }
+
+            LOG(`Canary is \x1b[32;1m<OK> \x1b[36;1mon \x1b[32;1m${CHAIN_LABEL(controllerAddr)}`,'I')
 
 
             //Ask to approve current set of hostchains
