@@ -1,4 +1,4 @@
-import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,SIG,BLAKE3,PATH_RESOLVE} from '../KLY_Space/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,BLAKE3} from '../KLY_Space/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
@@ -7,8 +7,6 @@ import InstantBlock from '../KLY_Blocks/instantblock.js'
 import {chains,hostchains, metadata} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
-
-import fs from 'fs'
 
 
 
@@ -146,6 +144,62 @@ export let
 
 
 
+GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
+
+    fetch(CONFIG.CHAINS[chain].GET_MULTI+`/multiplicity/${Buffer.from(chain,'base64').toString('hex')}/`+fromHeight)
+
+    .then(r=>r.json()).then(blocksSet=>{
+
+        /*
+
+        Receive set in format:
+            
+            {
+                45(index):{
+                    c:<ControllerBLock object>
+                    i:[<InstantBlock 0>,<InstantBlock 1>,<InstantBlock 2>,...]
+                }
+            }
+        
+        */
+
+        Object.keys(blocksSet).forEach(
+            
+            async blockIndex => {
+
+                let {c:controllerBlock,i:instantBlocks}=blocksSet[blockIndex],
+
+                    controllerHash=ControllerBlock.genHash(chain,controllerBlock.a,controllerBlock.i,controllerBlock.p)
+    
+                if(await VERIFY(controllerHash,controllerBlock.sig,chain)){
+
+                    chains.get(chain).CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock)
+
+                    instantBlocks.forEach(
+                        
+                        iBlock => {
+
+                            let hash=InstantBlock.genHash(chain,iBlock.d,iBlock.s,iBlock.c)
+
+                            controllerBlock.a?.includes(hash) && chains.get(chain).INSTANT_BLOCKS.put(hash,iBlock)
+
+                        }
+                        
+                    )
+
+                }
+
+            }
+
+        )
+
+    })
+
+},
+
+
+
+
 //Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
 GET_CONTROLLER_BLOCK=(chain,blockId)=>chains.get(chain).CONTROLLER_BLOCKS.get(blockId).catch(e=>
 
@@ -166,6 +220,9 @@ GET_CONTROLLER_BLOCK=(chain,blockId)=>chains.get(chain).CONTROLLER_BLOCKS.get(bl
 
             BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m${BLOCK_PATTERN}│`,'S',block.c,hash,59,'\x1b[31m')
 
+            //Try to instantly and asynchronously load more blocks if it's possible
+            GET_FORWARD_BLOCKS(chain,blockId+1)
+
             return block
 
         }
@@ -185,7 +242,9 @@ START_VERIFY_POLLING=async chain=>{
     if(!SIG_SIGNAL){
 
         //Try to get block
-        let blockId=QUANT_CONTROL[chain].COLLAPSED_INDEX+1,
+        let verifThread=chains.get(chain).VERIFICATION_THREAD,
+            
+            blockId=verifThread.COLLAPSED_INDEX+1,
         
             block=await GET_CONTROLLER_BLOCK(chain,blockId), nextBlock
     
@@ -196,11 +255,11 @@ START_VERIFY_POLLING=async chain=>{
             await verifyControllerBlock(block)
 
             //Signal that verification was successful
-            if(blockId===QUANT_CONTROL[chain].COLLAPSED_INDEX) nextBlock=await GET_CONTROLLER_BLOCK(chain,QUANT_CONTROL[chain].COLLAPSED_INDEX+1)
+            if(blockId===verifThread.COLLAPSED_INDEX) nextBlock=await GET_CONTROLLER_BLOCK(chain,verifThread.COLLAPSED_INDEX+1)
 
         }
 
-        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${QUANT_CONTROL[chain].COLLAPSED_INDEX+1}`,'W')
+        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${verifThread.COLLAPSED_INDEX+1}`,'W')
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
         global[`CONTROLLER_${chain}`]=setTimeout(()=>START_VERIFY_POLLING(chain),nextBlock?0:CONFIG.CHAINS[chain].CONTROLLER_POLLING)
@@ -242,7 +301,7 @@ verifyControllerBlock=async controllerBlock=>{
 
    
     //block.a.length<=100.At least this limit is only for first times
-    if(await VERIFY(controllerHash,controllerBlock.sig,chain) && QUANT_CONTROL[chain].COLLAPSED_HASH === controllerBlock.p){
+    if(await VERIFY(controllerHash,controllerBlock.sig,chain) && chainReference.VERIFICATION_THREAD.COLLAPSED_HASH === controllerBlock.p){
 
 
 
@@ -475,10 +534,13 @@ verifyControllerBlock=async controllerBlock=>{
 
         //________________________________________________COMMIT STATE__________________________________________________    
 
-        let promises=[],snapshot={}
+        chainReference.VERIFICATION_THREAD.DATA={}//prepare clear staging data
 
 
+        let promises=[],snapshot=chainReference.VERIFICATION_THREAD.DATA
         
+
+
         
         //Commit state
         //Use caching(such primitive for the first time)
@@ -515,51 +577,40 @@ verifyControllerBlock=async controllerBlock=>{
         
         }
 
+
+
+
+        chainReference.VERIFICATION_THREAD.COLLAPSED_INDEX=controllerBlock.i
+                
+        chainReference.VERIFICATION_THREAD.COLLAPSED_HASH=controllerHash
+
+        chainReference.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
+
+
         //Make commit to staging area
-        await metadata.put(chain+'/STAGE',
-        
-            {
-                data:snapshot,
-                height:controllerBlock.i,
-                blockHash:controllerHash,
-                checksum:BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
-            }
-            
-        )
+        await metadata.put(chain+'/VT',chainReference.VERIFICATION_THREAD)
+
+
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         chainReference.BLACKLIST.clear()
 
         
+
+
         //____________________________________NOW WE CAN SAFELY WRITE STATE OF ACCOUNTS_________________________________
         
 
 
+
         //If we'll have error here or node will be offed we we'll have SYNC_QUANT=true in file,so it will be a sign that node should revert state from SHARDS
-        await Promise.all(promises.splice(0)).then(async()=>{
+        await Promise.all(promises.splice(0)).then(()=>
             
-            try{
-                
-                chainReference.VERIFICATION_THREAD.COLLAPSED_INDEX=controllerBlock.i
-                
-                chainReference.VERIFICATION_THREAD.COLLAPSED_HASH=controllerHash//for InstantGenerators we do it here
+            metadata.put(chain+'/CANARY',chainReference.VERIFICATION_THREAD.CHECKSUM)//canary is the signal that current height is verified and you can continue from this point
 
-                //If error will be here we'll have SYNC_QUANT=true
-                await metadata.put(chain+'/VD',QUANT_CONTROL[chain])
-
-
-        
-            }catch(e){
+        ).catch(e=>{
             
-                LOG(`Try to commit quant control of \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[31;1m but failed\n${e}\n`,'F')
-        
-                process.exit(107)
-
-            }
-
-        }).catch(e=>{
-            
-            LOG(`Problem when write to state on \x1b[36;1m${CHAIN_LABEL(chain)}`,'F')
+            LOG(`Problem when write to state or canary on \x1b[36;1m${CHAIN_LABEL(chain)}\n${e}`,'F')
             
             process.exit(108)
         
@@ -569,6 +620,8 @@ verifyControllerBlock=async controllerBlock=>{
 
 
         //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________
+
+
 
 
         //Controller shouldn't check
@@ -583,7 +636,7 @@ verifyControllerBlock=async controllerBlock=>{
                 &&
                 chainReference.HOSTCHAINS_DATA.get(controllerBlock.i+ticker).then(async proof=>{
                         
-                    if(proof.KLYNTAR_HASH===controllerHash&&await hostchains.get(chain).get(ticker).checkTx(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH,chain).catch(e=>false)){
+                    if(proof.KLYNTAR_HASH===controllerHash && await hostchains.get(chain).get(ticker).checkTx(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH,chain).catch(e=>false)){
     
                         LOG(`Proof for block \x1b[36;1m${controllerBlock.i}\x1b[32;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
     

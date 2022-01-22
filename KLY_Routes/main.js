@@ -2,7 +2,7 @@ import{
 
     BASE64,VERIFY,ENCRYPT,BODY,SAFE_ADD,GET_CHAIN_ACC,
 
-    PARSE_JSON,BLOCKLOG,ACC_CONTROL,BROADCAST,CHAIN_LABEL,LOG, PATH_RESOLVE, SEND_REPORT
+    PARSE_JSON,BLOCKLOG,ACC_CONTROL,BROADCAST,CHAIN_LABEL,LOG,PATH_RESOLVE,SEND_REPORT
 
 } from '../KLY_Space/utils.js'
 
@@ -370,7 +370,7 @@ export let M={
             }
 
             //If we're working higher than proof for some block we can check instantly
-            QUANT_CONTROL[chain].COLLAPSED_INDEX>=INDEX
+            chains.get(get).VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
             &&
             await chains.get(chain).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
                 

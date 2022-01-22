@@ -121,9 +121,9 @@ export let
         
 
 
-        //________________________________________Prepare structures_____________________________________________________
+        //____________________________________________Prepare structures_________________________________________________
 
-        
+
         chainConfig=CONFIG.CHAINS[controllerAddr]
 
 
@@ -134,7 +134,7 @@ export let
             MEMPOOL_STXS:[],
             
             //Finally-create mapping to optimize processes while we check blocks-not to read/write to db many times
-            ACCOUNTS:new Map(),// ADDRESS => {ACCOUNT_STATE,NONCE_SET,NONCE_DUPLICATES,OUT}
+            ACCOUNTS:new Map(),// ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
 
             BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another ControllerBlock
 
@@ -179,11 +179,22 @@ export let
             
             e.notFound
             ?
-            {COLLAPSED_HASH:'',COLLAPSED_INDEX:-1}//initial
+            {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}//initial
             :
             (LOG(`Some problem with loading metadata of verification thread\nChain:${controllerAddr}\nError:${e}`,'F'),process.exit(124))
                         
         )
+
+
+
+
+
+
+
+
+        //_____Load security stuff-check if stop was graceful,canary is present,should we reload the state and so on_____
+
+
 
 
         //These options only for Controller
@@ -194,82 +205,57 @@ export let
             
                 e.notFound
                 ?
-                {PREV_HASH:'',NEXT_INDEX:0}//initial
+                {
+                    PREV_HASH:`Poyekhali!@Y.A.Gagarin`,//Genesis hash
+                    NEXT_INDEX:0//So the first block will be with index 0
+                }
                 :
                 (LOG(`Some problem with loading metadata of generation thread\nChain:${controllerAddr}\nError:${e}`,'F'),process.exit(125))
                             
             )
-            
-        }
-        
 
 
+            let nextIsPresent = await chainRef.CONTROLLER_BLOCKS.get(chainRef.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
 
-        //Make sure that accounts has collapsed state since previous session.If no-we can revert state from previous checkpoint
-        if(quantRef.SYNC_QUANT && !quantRef.IN_SUPERPOSITION){
-
-            initSpinner.stop()
-
-            LOG(`State wasn't collapsed since previous session.Let's revert some data for \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'W')
-
-
-            //Only 0 shard in first releases
-            let shard=JSON.parse(fs.readFileSync(PATH_RESOLVE(`SHARDS/${Buffer.from(controllerAddr,'base64').toString('hex')+'0'}.json`))),
-            
-                promises=[]
-            
-            Object.keys(shard).forEach(addr=>promises.push(chainRef.STATE.put(addr,shard[addr])))
-
-            await Promise.all(promises.splice(0)).catch(e=>{
-            
-                LOG(`Some problem with writing account state for \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'F')
-
-                process.exit(115)
-            
-            })
-
-            LOG(`Local state has been successfully reverted to block \x1b[36;1m${quantRef.EXPORT_COLLAPSE}\x1b[32;1m on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'S')
-
-
-
-            quantRef.SYNC_QUANT=false
-
-            quantRef.COLLAPSED_INDEX=quantRef.EXPORT_COLLAPSE
-
-            quantRef.COLLAPSED_HASH=(await chainRef.CONTROLLER_BLOCKS.get(quantRef.EXPORT_COLLAPSE+1)).p//or calculate hash
-
-
-        }
-
-
+                previous=await chainRef.CONTROLLER_BLOCKS.get(chainRef.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
 
         
-        if(chainConfig.CONTROLLER.ME){
 
-            let nextIsPresent=await chainRef.CONTROLLER_BLOCKS.get(quantRef.NEXT_INDEX).catch(e=>false),
-
-                previous=await chainRef.CONTROLLER_BLOCKS.get(quantRef.NEXT_INDEX-1).catch(e=>false)
-
-        
-            if(nextIsPresent || !(quantRef.NEXT_INDEX===0 || quantRef.GENERATED_PREV_HASH === BLAKE3( JSON.stringify(previous.a) + controllerAddr + previous.i + previous.p))){
+            if(nextIsPresent || !(chainRef.GENERATION_THREAD.NEXT_INDEX===0 || chainRef.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + controllerAddr + previous.i + previous.p))){
             
                 initSpinner.stop()
 
-                LOG(`Something wrong with sequence verification on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'F')
+                LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'F')
                 
                 process.exit(125)
 
             }
 
+            
         }
 
+
         
+        if(await metadata.get(controllerAddr+'/CANARY').then(canary=>!canary===chainRef.VERIFICATION_THREAD.CHECKSUM).catch(e=>{
+
+            LOG(`Problems with canary on ${CHAIN_LABEL(controllerAddr)}\n${e}`)
+
+            return true
+
+        })){
+
+            //Reset verification breakpoint
+            chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+
+        }
+                
 
         
         chainRef.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
 
 
-        //Clear,to not store OUT-OF-CHAIN blocks.UPD:Self clean time by time
+        //Clear,to not store OUT-OF-CHAIN blocks
+        //*UPD:Node operators should run cleaning time by time
         //chainRef.CANDIDATES.clear()
 
         
@@ -327,7 +313,7 @@ export let
         
         ).catch(e=>{
         
-            LOG('Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via REPL','F')
+            LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via REPL\n${e}`,'F')
      
             process.exit(100)
     
@@ -336,7 +322,8 @@ export let
 
 
 
-        //Load data from hostchains
+        //___________________________________________Load data from hostchains___________________________________________
+
         //TODO:Add more advanced info    
         if(chainConfig.CONTROLLER.ME){
 
@@ -370,7 +357,7 @@ export let
             
             await new Promise(resolve=>
         
-                readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
+                readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
                 
                 .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                     
@@ -381,7 +368,7 @@ export let
         
         
 
-        SIG_PROCESS[controllerAddr]={VERIFY:false,GENERATE:false}
+        SIG_PROCESS[controllerAddr]={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation
 
     },
 
@@ -442,6 +429,7 @@ export let
 global.CONFIG={}
 
 
+//Load all the configs
 fs.readdirSync(PATH_RESOLVE('configs')).forEach(file=>
     
     Object.assign(CONFIG,JSON.parse(fs.readFileSync(PATH_RESOLVE(`configs/${file}`))))
@@ -460,14 +448,14 @@ let graceful=()=>{
     console.log('\n')
 
     LOG('Klyntar stop has been initiated.Keep waiting...','I')
+    
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W') 
     
     //Probably stop logs on this step
-    
     setInterval(()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(Object.values(SIG_PROCESS).every(chain=>Object.values(chain).every(x=>x))){
+        if(Object.keys(SIG_PROCESS).every(chain => Object.values(SIG_PROCESS[chain]).every(x=>x))){
 
             console.log('\n')
 
@@ -477,7 +465,7 @@ let graceful=()=>{
     
         }
 
-    },1000)
+    },500)
 
 }
 
@@ -693,20 +681,16 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 
 
-.get('/account/:chain/:address',A.acccount)
+.get('/multiplicity/:chain/:fromHeigth',A.multiplicity)
 
+.get('/account/:chain/:address',A.acccount)
 
 .get('/nodes/:symbiote/:region',A.nodes)
 
-
 .get('/block/:chain/:type/:id',A.block)
-
-.post('/multiplicity',A.multiplicity)
-
 
 //Send address in hex format.Use Buffer.from('<YOUR ADDRESS>','base64').toString('hex')
 .get('/local/:address',A.local)
-
 
 .get('/i',A.info)
 

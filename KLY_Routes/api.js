@@ -1,8 +1,6 @@
-import {BODY,GET_NODES,PATH_RESOLVE,LOG,CHAIN_LABEL} from '../KLY_Space/utils.js'
+import {GET_NODES,LOG,CHAIN_LABEL} from '../KLY_Space/utils.js'
 
 import {chains,WRAP_RESPONSE} from '../klyn74r.js'
-
-import fs from 'fs'
 
 
 
@@ -28,7 +26,7 @@ export let A={
             
                 ...await chains.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
             
-                COLLAPSE:QUANT_CONTROL[chain].COLLAPSED_INDEX
+                COLLAPSE:chains.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
         
             }
 
@@ -37,6 +35,7 @@ export let A={
         }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
 
     },
+
 
 
 
@@ -52,7 +51,7 @@ export let A={
             
                 ...await chains.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
             
-                COLLAPSE:QUANT_CONTROL[chain].COLLAPSED_INDEX
+                COLLAPSE:chains.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
         
             }
 
@@ -136,13 +135,18 @@ export let A={
 
 
 
-    multiplicity:a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true).onData(async v=>{
+    multiplicity:async(a,q)=>{
+
+        a.onAborted(()=>a.aborted=true)
 
         
-        let {chain,fromHeight}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64'),
+        
+            fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(chains.has(chain)){
+        if(chains.has(chain) && !isNaN(fromHeight)){
+
     
             let chainConfig=CONFIG.CHAINS[chain],
     
@@ -155,11 +159,18 @@ export let A={
                 response={}
 
 
-            for(;fromHeight<fromHeight+chainConfig.BLOCKS_EXPORT_PORTION;fromHeight++){
+
+            for(let max=fromHeight+chainConfig.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
 
                 promises.push(cbStorage.get(fromHeight).then(
                     
-                    block => response[fromHeight]={c:block,i:[]}
+                    block => {
+                        
+                        response[block.i]={c:block,i:[]}
+
+                        return block
+
+                    }
                     
                 ).catch(
                     
@@ -170,47 +181,39 @@ export let A={
             }
 
 
-
-
             //Now let's fetch InstantBlocks
             let instantPromises=[]
 
-            await Promise.all(promises.splice(0)).then(blocks=>blocks.filter(x=>x)).then(
+            await Promise.all(promises.splice(0)).then(
                 
-                controllerBlocks.forEach(
+                controllerBlocks => controllerBlocks.forEach(
                 
-                    cBlock => {
-
-                        //Go through hashes of InstantBlocks and load them
-                        cBlock.a.forEach(
+                    //Go through hashes of InstantBlocks and load them
+                    cBlock => cBlock.a.forEach(
                         
-                            iBlockHash => instantPromises.push(insStorage.get(iBlockHash).then(
+                        iBlockHash => instantPromises.push(insStorage.get(iBlockHash).then(
                             
-                                iBlock => response[cBlock.i].i.push(iBlock)
+                            iBlock => response[cBlock.i].i.push(iBlock)
                             
-                            ).catch(
+                        ).catch(
 
-                                e => LOG(`InstantBlock ${iBlockHash} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
+                            e => LOG(`InstantBlock ${iBlockHash} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
                             
-                            )) 
+                        )) 
                         
-                        )
-                    
-                    }
-                    
+                    )
+                        
                 )
                 
             )
 
             await Promise.all(instantPromises.splice(0))
 
-            a.end(JSON.stringify(response))
+            !a.aborted && a.end(JSON.stringify(response))
 
     
         }else !a.aborted && a.end(JSON.stringify({e:'Chain not supported'}))
     
-    })
-
-
+    }
 
 }

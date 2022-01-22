@@ -1,4 +1,5 @@
 import {BLAKE3} from '../KLY_Space/utils.js'
+import {chains} from '../klyn74r.js'
 
 export default class ControllerBlock{
     
@@ -8,9 +9,9 @@ export default class ControllerBlock{
         
         this.a=instantBlocksArr//array of InstantBlocks' hashes
         
-        this.i=QUANT_CONTROL[chain].NEXT_INDEX//index of block.Need for indexation in DB only
+        this.i=chains.get(chain).GENERATION_THREAD.NEXT_INDEX//index of block.Need for indexation in DB only
         
-        this.p=QUANT_CONTROL[chain].GENERATED_PREV_HASH
+        this.p=chains.get(chain).GENERATION_THREAD.PREV_HASH
         
         this.sig=''
     
