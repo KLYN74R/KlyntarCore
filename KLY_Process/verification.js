@@ -530,14 +530,6 @@ verifyControllerBlock=async controllerBlock=>{
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         chainReference.BLACKLIST.clear()
 
-
-        //Set some atomic confirmations here before commit state of accounts
-        QUANT_CONTROL[chain].SYNC_QUANT=true
-        
-        await chainReference.STATE.put('QUANT',QUANT_CONTROL[chain])
-
-        
-
         
         //____________________________________NOW WE CAN SAFELY WRITE STATE OF ACCOUNTS_________________________________
         
@@ -548,66 +540,14 @@ verifyControllerBlock=async controllerBlock=>{
             
             try{
                 
-                QUANT_CONTROL[chain].COLLAPSED_INDEX=controllerBlock.i
+                chainReference.VERIFICATION_THREAD.COLLAPSED_INDEX=controllerBlock.i
                 
-                QUANT_CONTROL[chain].COLLAPSED_HASH=controllerHash//for InstantGenerators we do it here
-
-                QUANT_CONTROL[chain].SYNC_QUANT=false//make it false again to sign that we can move on to the next block
-
+                chainReference.VERIFICATION_THREAD.COLLAPSED_HASH=controllerHash//for InstantGenerators we do it here
 
                 //If error will be here we'll have SYNC_QUANT=true
-                await chainReference.STATE.put('QUANT',QUANT_CONTROL[chain])
+                await metadata.put(chain+'/VD',QUANT_CONTROL[chain])
 
 
-
-                //It it's time to update shard for export
-                if(controllerBlock.i%CONFIG.CHAINS[chain].CLONE_EXPORT_UPDATE_RANGE===0){
-                    
-                    QUANT_CONTROL[chain].IN_SUPERPOSITION=true
-
-                    await new Promise(resolve=>{
-                        
-                        let quark={},accountsQuantity=0,stateId=0
-                        
-                        chainReference.STATE.createReadStream().on('data',async data=>{
-                            
-                            quark[data.key]=data.value
-                            
-                            if(accountsQuantity++===2000000){
-                                
-                                //Sign this shard for secured export
-                                quark={ quark , sig:await SIG(BLAKE3(JSON.stringify(quark)),PRIVATE_KEYS.get(chain)) }
-
-                                fs.writeFileSync(PATH_RESOLVE(`SHARDS/${Buffer.from(chain,'base64').toString('hex')+stateId++}.json`,JSON.stringify(quark)))
-
-                                quark={}
-
-                                accountsQuantity=0
-
-                            }
-
-
-                        }).on('end',async()=>{
-
-                            //Sign this shard for secured export
-                            quark={ quark , sig:await SIG(BLAKE3(JSON.stringify(quark)),PRIVATE_KEYS.get(chain))}
-
-                            fs.writeFile(PATH_RESOLVE(`SHARDS/${Buffer.from(chain,'base64').toString('hex')+stateId++}.json`),JSON.stringify(quark),resolve)
-                        
-                        })
-
-                    
-                    })
-
-                    QUANT_CONTROL[chain].EXPORT_COLLAPSE=controllerBlock.i
-
-                    QUANT_CONTROL[chain].EXPORT_HASH=controllerHash
-                    
-                    QUANT_CONTROL[chain].IN_SUPERPOSITION=false//unlock access
-
-                    await chainReference.STATE.put('QUANT',QUANT_CONTROL[chain])
-
-                }
         
             }catch(e){
             

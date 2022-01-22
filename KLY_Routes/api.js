@@ -102,63 +102,6 @@ export let A={
 
 
 
-    collapsed:(a,q)=>{
-
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
-    
-        chains.has(chain)
-        ?
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.CHAINS[chain].TTL.NODES).end(
-    
-            JSON.stringify({id:QUANT_CONTROL[chain].EXPORT_COLLAPSE,hash:QUANT_CONTROL[chain].EXPORT_HASH,statemap:['0'],stop:QUANT_CONTROL[chain].IN_SUPERPOSITION})
-    
-        )
-        :
-        !a.aborted&&a.end('Chain not supported')
-    
-    },
-
-
-
-
-    state:(a,q)=>{
-
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64'),
-            
-            stateId=q.getParameter(1),//useless first time,but set reminder
-      
-            aborted=false//if connection was aborted
-    
-    
-    
-    
-        if(chains.has(chain) && CONFIG.CHAINS[chain].TRIGGERS.STATE && !QUANT_CONTROL[chain].IN_SUPERPOSITION){
-            
-            a.onAborted(()=>{
-            
-                aborted=true
-                
-                stateStream.emit('end','End session')
-    
-            })
-
-    
-            //!NOTE: Add stateID to path to get appropriate shard
-            //Start read stream
-            let stateStream=fs.createReadStream(PATH_RESOLVE(`SHARDS/${Buffer.from(chain,'base64').toString('hex')+stateId}.json`)).on('data',chunk=>
-                    
-                !aborted && a.write(chunk)
-                    
-            ).on('end',val=> !val && !aborted && a.end('') )//end reading and close connection
-    
-        
-        }else !a.aborted&&a.end(`Chain not supported or superposition now.To check which symbiotes does this node support check <b>GET /i</b>.If it's superposition-try later`)
-    
-    
-    },
-
-
-
 
     block:(a,q)=>{
 
@@ -193,7 +136,7 @@ export let A={
 
 
 
-    range:a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true).onData(async v=>{
+    multiplicity:a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true).onData(async v=>{
 
         
         let {chain,fromHeight}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
@@ -268,6 +211,6 @@ export let A={
     
     })
 
-    
+
 
 }

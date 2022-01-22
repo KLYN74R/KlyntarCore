@@ -464,7 +464,7 @@ export let GEN_BLOCK=async(chain,data)=>{
                         //TODO:Add more advanced logic
                         if(!CONFIG.CHAINS[chain].STOP_PUSH_TO_HOSTCHAINS[ticker]){
     
-                            let control=HOSTCHAINS_DATA[chain][ticker],
+                            let control=chains.get(chain).HOSTCHAINS_WORKFLOW[ticker],
                         
                                 hostchain=hostchains.get(chain).get(ticker),
     
@@ -522,7 +522,7 @@ export let GEN_BLOCK=async(chain,data)=>{
                                     
                                     await chains.get(chain).HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
 
-                                                .then(()=>chains.get(chain).HOSTCHAINS_DATA.put(ticker,control))
+                                                .then(()=>chains.get(chain).HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
                             
                                                 .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
                             

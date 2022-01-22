@@ -149,12 +149,13 @@ export let
         let chainRef=chains.get(controllerAddr),hexPath=Buffer.from(controllerAddr,'base64').toString('hex')
 
         //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each chain
-        !fs.existsSync(PATH_RESOLVE(`C/${hexPath}`))&&fs.mkdirSync(PATH_RESOLVE(`C/${hexPath}`))
+        !fs.existsSync(PATH_RESOLVE(`C/${hexPath}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${hexPath}`))
 
 
 
 
         //______________________________________Prepare databases and storages___________________________________________
+
 
 
 
@@ -174,34 +175,33 @@ export let
 
         //________________Load metadata about chain-current hight,collaped height,height for export,etc.___________________
 
-        
-        QUANT_CONTROL[controllerAddr] = await chainRef.STATE.get('QUANT').catch(e=>
+        chainRef.VERIFICATION_THREAD = await metadata.get(controllerAddr+'/VT').catch(e=>
             
             e.notFound
             ?
-            {EXPORT_COLLAPSE:-1,EXPORT_HASH:'',IN_SUPERPOSITION:false,COLLAPSED_HASH:'',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+            {COLLAPSED_HASH:'',COLLAPSED_INDEX:-1}//initial
             :
-            process.exit(124)
-        
+            (LOG(`Some problem with loading metadata of verification thread\nChain:${controllerAddr}\nError:${e}`,'F'),process.exit(124))
+                        
         )
-        
-
-
-        let quantRef=QUANT_CONTROL[controllerAddr]
-
-
 
 
         //These options only for Controller
-        //Due to phantom blocks,we'll generate blocks faster than state become collapsed,that's why we need two extra properties
-        if(chainConfig.CONTROLLER.ME && !quantRef.GENERATED_PREV_HASH){
-     
-            quantRef.GENERATED_PREV_HASH=''
+        //Due to phantom blocks,we'll generate blocks faster than state become verified,that's why we need two extra properties
+        if(chainConfig.CONTROLLER.ME){
 
-            quantRef.NEXT_INDEX=0
-         
+            chainRef.GENERATION_THREAD = await metadata.get(controllerAddr+'/GT').catch(e=>
+            
+                e.notFound
+                ?
+                {PREV_HASH:'',NEXT_INDEX:0}//initial
+                :
+                (LOG(`Some problem with loading metadata of generation thread\nChain:${controllerAddr}\nError:${e}`,'F'),process.exit(125))
+                            
+            )
+            
         }
-
+        
 
 
 
@@ -282,8 +282,9 @@ export let
 
 
         let tickers=Object.keys(chainConfig.MANIFEST.HOSTCHAINS),EvmHostChain,hostchainmap=new Map()
-        
-        HOSTCHAINS_DATA[controllerAddr]={}
+
+
+        chainRef.HOSTCHAINS_WORKFLOW={}
 
 
         //Add hostchains to mapping
@@ -308,7 +309,8 @@ export let
 
             //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
             
-            HOSTCHAINS_DATA[controllerAddr][tickers[i]]=await chainRef.HOSTCHAINS_DATA.get(tickers[i]).catch(e=>(  {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  ))
+            //Load canary
+            chainRef.HOSTCHAINS_WORKFLOW[tickers[i]]=await chainRef.HOSTCHAINS_DATA.get(tickers[i]).catch(e=>(  {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  ))
 
         }
 
@@ -481,7 +483,7 @@ let graceful=()=>{
 
 
 
-//Define listeners to safely stop the node
+//Define listeners on typical signals to safely stop the node
 process.on('SIGTERM',graceful)
 process.on('SIGINT',graceful)
 process.on('SIGHUP',graceful)
@@ -499,13 +501,6 @@ process.on('SIGHUP',graceful)
 global.PRIVATE_KEYS=new Map()
 
 global.ACCOUNTS=new AdvancedCache(CONFIG.CACHES.ACCOUNTS.SIZE,space)//quick access to accounts in different chains and to fetch zero level data
-
-
-
-global.HOSTCHAINS_DATA={}
-
-global.QUANT_CONTROL={}
-
 
 
 global.SIG_SIGNAL=false
@@ -706,18 +701,11 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 .get('/block/:chain/:type/:id',A.block)
 
-
-.get('/state/:chain/:stateId',A.state)
-
-
-.get('/collapsed/:chain',A.collapsed)
+.post('/multiplicity',A.multiplicity)
 
 
 //Send address in hex format.Use Buffer.from('<YOUR ADDRESS>','base64').toString('hex')
 .get('/local/:address',A.local)
-
-
-.post('/range',A.range)
 
 
 .get('/i',A.info)
