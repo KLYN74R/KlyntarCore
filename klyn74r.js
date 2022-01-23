@@ -233,39 +233,73 @@ export let
 
             
         }
-
-
+        
         
 
-        if(await metadata.get(controllerAddr+'/CANARY').then(canary=>{
 
-            //This is the signal that we should rewrite state changes from 
-            if(canary!==chainRef.VERIFICATION_THREAD.CHECKSUM){
+        //If we just start verification thread, there is no sense to do following logic
+        if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1){
 
-                console.log('Canary',canary)
-                console.log('checksum',chainRef.VERIFICATION_THREAD.CHECKSUM)
+            await metadata.get(controllerAddr+'/CANARY').then(canary=>{
 
+                let verifThread=chainRef.VERIFICATION_THREAD
+    
+                //If chunk is OK
+                if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH)){
 
-            }
+                    //This is the signal that we should rewrite state changes from 
+                    if(canary!==chainRef.VERIFICATION_THREAD.CHECKSUM){
 
+                        initSpinner.stop()
+    
+                        LOG(`Load state data from staging zone on \x1b[32;1m${CHAIN_LABEL(controllerAddr)}`,'I')
+    
+                        Object.keys(chainRef.VERIFICATION_THREAD.DATA).forEach(
+                            
+                            address => chainRef.STATE.put(address,chainRef.VERIFICATION_THREAD.DATA[address])
+                            
+                        )
+    
+                    }
+                    
+                }else{
 
-        }).catch(e=>{
+                    initSpinner.stop()
+    
+                    LOG(`Problems with staging zone of verification thread on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'W')
 
-            initSpinner.stop()
+                    //Reset verification breakpoint
+                    chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+                    //Load genesis state or data from backups(not to load state from the beginning)
 
-            LOG(`Problems with canary on ${CHAIN_LABEL(controllerAddr)}\n${e}`,'W')
-
-            return true
-
-        })){
-
-            //Reset verification breakpoint
-            chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+                }
+    
+            }).catch(e=>{
+    
+                initSpinner.stop()
+    
+                LOG(`Problems with canary on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\n${e}`,'W')
+    
+                //Reset verification breakpoint
+                chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+    
+    
+            })    
 
         }
-        
+        else {
 
-        
+            //Clear previous state to avoid mistakes
+            chainRef.STATE.clear()
+
+            //Load data from genesis state(initial values)
+
+
+        }
+
+
+
+
         chainRef.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
 
 
