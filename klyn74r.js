@@ -237,7 +237,17 @@ export let
 
         
 
-        if(await metadata.get(controllerAddr+'/CANARY').then(canary=>!canary===chainRef.VERIFICATION_THREAD.CHECKSUM).catch(e=>{
+        if(await metadata.get(controllerAddr+'/CANARY').then(canary=>{
+
+            //This is the signal that we should rewrite state changes from 
+            if(canary!==chainRef.VERIFICATION_THREAD.CHECKSUM){
+
+
+
+            }
+
+
+        }).catch(e=>{
 
             initSpinner.stop()
 
@@ -284,8 +294,9 @@ export let
             let way=CONFIG.TYPES_PREFIXES[chainConfig.MANIFEST.HOSTCHAINS[tickers[i]].TYPE]
 
 
+            //Depending on TYPE load appropriate module
             if(CONFIG.EVM.includes(tickers[i])){
-                
+            
                 EvmHostChain=(await import(`./KLY_Hostchains/${way}/evm.js`)).default
                 
                 hostchainmap.set(tickers[i],new EvmHostChain(controllerAddr,tickers[i]))
@@ -696,6 +707,8 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 //Send address in hex format.Use Buffer.from('<YOUR ADDRESS>','base64').toString('hex')
 .get('/local/:address',A.local)
+
+.post('/alert',A.alert)
 
 .get('/i',A.info)
 

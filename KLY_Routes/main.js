@@ -359,9 +359,12 @@ export let M={
 
         if(chains.has(chain) && !CONFIG.CHAINS[chain].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,chain)){
 
+            //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
             let alreadyHas=await chains.get(chain).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
 
-            if(alreadyHas){
+
+            //If it's literally the same proof-just send OK
+            if(alreadyHas.KLYNTAR_HASH===KLYNTAR_HASH && alreadyHas.INDEX===INDEX){
                 
                 !a.aborted&&a.end('OK')
 

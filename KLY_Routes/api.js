@@ -174,7 +174,7 @@ export let A={
                     
                 ).catch(
                     
-                    e => LOG(`ControllerBlock ${fromHeight} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
+                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
                     
                 ))
 
@@ -184,7 +184,7 @@ export let A={
             //Now let's fetch InstantBlocks
             let instantPromises=[]
 
-            await Promise.all(promises.splice(0)).then(
+            await Promise.all(promises.splice(0)).then(blocks=>blocks.filter(x=>x)).then(
                 
                 controllerBlocks => controllerBlocks.forEach(
                 
@@ -214,6 +214,15 @@ export let A={
     
         }else !a.aborted && a.end(JSON.stringify({e:'Chain not supported'}))
     
-    }
+    },
+
+
+    alert:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+        
+
+
+    })
 
 }

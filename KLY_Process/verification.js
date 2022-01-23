@@ -630,8 +630,10 @@ verifyControllerBlock=async controllerBlock=>{
                 workflow[ticker].STORE
                 &&
                 chainReference.HOSTCHAINS_DATA.get(controllerBlock.i+ticker).then(async proof=>{
+
+                    let response = await hostchains.get(chain).get(ticker).checkTx(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH,chain).catch(e=>-1)
                         
-                    if(proof.KLYNTAR_HASH===controllerHash && await hostchains.get(chain).get(ticker).checkTx(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH,chain).catch(e=>false)){
+                    if(proof.KLYNTAR_HASH===controllerHash && response!=-1 && response){
     
                         LOG(`Proof for block \x1b[36;1m${controllerBlock.i}\x1b[32;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
     
