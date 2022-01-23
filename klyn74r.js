@@ -107,6 +107,31 @@ export let
     
 
 
+    RELOAD_STATE=async(chain,chainRef)=>{
+
+        //Reset verification breakpoint
+        await chainRef.STATE.clear()
+
+        chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+        
+
+        
+        //Load genesis state or data from backups(not to load state from the beginning)
+        let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`/C/${Buffer.from(chain,'base64').toString('hex')}/genesis.json`))),
+
+            promises=[]
+        
+        Object.keys(genesis).forEach(
+            
+            address => promises.push(chainRef.STATE.put(address,genesis[address].B))
+            
+        )
+
+        await Promise.all(promises)
+        
+
+    },
+
 
     PREPARE_CHAIN=async controllerAddr=>{
 
@@ -240,7 +265,7 @@ export let
         //If we just start verification thread, there is no sense to do following logic
         if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1){
 
-            await metadata.get(controllerAddr+'/CANARY').then(canary=>{
+            await metadata.get(controllerAddr+'/CANARY').then(async canary=>{
 
                 let verifThread=chainRef.VERIFICATION_THREAD
     
@@ -268,9 +293,7 @@ export let
     
                     LOG(`Problems with staging zone of verification thread on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}`,'W')
 
-                    //Reset verification breakpoint
-                    chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
-                    //Load genesis state or data from backups(not to load state from the beginning)
+                    await RELOAD_STATE(controllerAddr,chainRef)
 
                 }
     
@@ -281,19 +304,17 @@ export let
                 LOG(`Problems with canary on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\n${e}`,'W')
     
                 //Reset verification breakpoint
-                chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
-    
+                await RELOAD_STATE(controllerAddr,chainRef)
     
             })    
 
-        }
-        else {
+        }else {
 
             //Clear previous state to avoid mistakes
             chainRef.STATE.clear()
 
             //Load data from genesis state(initial values)
-
+            await RELOAD_STATE(controllerAddr,chainRef)
 
         }
 
