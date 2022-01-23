@@ -297,7 +297,7 @@ export let
 
                 }
     
-            }).catch(e=>{
+            }).catch(async e=>{
     
                 initSpinner.stop()
     
