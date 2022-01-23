@@ -156,11 +156,16 @@ export let A={
 
                 promises=[],
 
-                response={}
+                response={},
+
+                verifThread=chains.get(chain).VERIFICATION_THREAD
 
 
 
             for(let max=fromHeight+chainConfig.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
+
+                //This is the signal that this node haven't process this height yet and even didn't have forward loading 
+                if(fromHeight>verifThread.COLLAPSED_INDEX && !(await cbStorage.get(fromHeight).catch(e=>false))) break
 
                 promises.push(cbStorage.get(fromHeight).then(
                     

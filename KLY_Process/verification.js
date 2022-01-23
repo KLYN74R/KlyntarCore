@@ -155,10 +155,15 @@ GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
         Receive set in format:
             
             {
+                ...
+
                 45(index):{
-                    c:<ControllerBLock object>
+                    c:<ControllerBLock object with index 45>
                     i:[<InstantBlock 0>,<InstantBlock 1>,<InstantBlock 2>,...]
                 }
+                
+                ...
+
             }
         
         */
@@ -193,7 +198,11 @@ GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
 
         )
 
-    })
+    }).catch(
+        
+        e => LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${chain}`,'I')
+    
+    )
 
 },
 

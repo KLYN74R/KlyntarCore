@@ -242,6 +242,8 @@ export let
             //This is the signal that we should rewrite state changes from 
             if(canary!==chainRef.VERIFICATION_THREAD.CHECKSUM){
 
+                console.log('Canary',canary)
+                console.log('checksum',chainRef.VERIFICATION_THREAD.CHECKSUM)
 
 
             }
