@@ -25,6 +25,7 @@ SERVICES
 DOCS
 my_readme.md
 CIIPs
+GENESIS/*.json
 
 #Configs
 configs/chains*

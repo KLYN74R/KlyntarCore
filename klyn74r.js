@@ -117,7 +117,7 @@ export let
 
         
         //Load genesis state or data from backups(not to load state from the beginning)
-        let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`/C/${Buffer.from(chain,'base64').toString('hex')}/genesis.json`))),
+        let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`/GENESIS/${Buffer.from(chain,'base64').toString('hex')}.json`))),
 
             promises=[]
         
