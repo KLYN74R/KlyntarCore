@@ -300,6 +300,8 @@ export let
             }).catch(async e=>{
     
                 initSpinner.stop()
+
+                LOG(fs.readFileSync(PATH_RESOLVE('images/events/canaryDied.txt')).toString(),'CD')
     
                 LOG(`Problems with canary on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\n${e}`,'W')
     
@@ -317,8 +319,7 @@ export let
             await RELOAD_STATE(controllerAddr,chainRef)
 
         }
-
-
+ 
 
 
         chainRef.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
@@ -439,8 +440,6 @@ export let
   
         }
         
-        
-
         SIG_PROCESS[controllerAddr]={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation
 
     },
@@ -522,7 +521,7 @@ let graceful=()=>{
 
     LOG('Klyntar stop has been initiated.Keep waiting...','I')
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W') 
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
     
     //Probably stop logs on this step
     setInterval(()=>{

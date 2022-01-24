@@ -1,4 +1,4 @@
-import {GET_NODES,LOG,CHAIN_LABEL} from '../KLY_Space/utils.js'
+import {GET_NODES,LOG,CHAIN_LABEL,BODY} from '../KLY_Space/utils.js'
 
 import {chains,WRAP_RESPONSE} from '../klyn74r.js'
 
@@ -225,7 +225,7 @@ export let A={
     alert:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
-        
+        let body=await BODY(v,CONFIG.PAYLOAD_SIZE)
 
 
     })

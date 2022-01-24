@@ -131,7 +131,23 @@ LOAD_STATE=async chain=>{
 
 export let GEN_BLOCK=async(chain,data)=>{
 
-    let block,hash,route
+    let block,hash,route,
+    
+    chainRef=chains.get(chain)
+
+    
+    
+    //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
+    if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.CHAINS[chain].VT_GT_NORMAL_DIFFERENCE < chainRef.GENERATION_THREAD.NEXT_INDEX){
+
+        
+        LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m stopped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I')
+
+        return
+
+    }
+
+
 
     if(data==='C'){
 

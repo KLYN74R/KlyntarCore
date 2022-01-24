@@ -379,12 +379,20 @@ export let M={
                 
                 workflowOk= ControllerBlock.genHash(chain,controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
                             &&
-                            await hostchains.get(chain).get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,chain).catch(e=>false)
+                            await hostchains.get(chain).get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,chain).catch(
+                                
+                                e => {
+                                    
+                                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${e}`,'W')
+                                    
+                                    return -1
+                                
+                                })
 
             ).catch(e=>
                 
                 //You also don't have ability to compare this if you don't have block locally
-                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false`,'W')
+                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
                     
             )    
 
@@ -404,7 +412,7 @@ export let M={
                     .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
 
 
-            }else{
+            }else if(workflowOk!==-1){
                 
                 LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
 

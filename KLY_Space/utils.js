@@ -30,8 +30,11 @@ COLORS = {
     S:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
     W:'\u001b[38;5;3m', // yellow(non critical warnings)
     I:'\x1b[36;1m', // cyan(default messages useful to grasp the events)
-    CB:'\u001b[38;5;200m'// ControllerBlock
+    CB:'\u001b[38;5;200m',// ControllerBlock
+    CD:`\u001b[38;5;50m`,//Canary died
+    GTS:`\u001b[38;5;m`//Generation Thread Stop
 },
+
 
 
 
@@ -395,6 +398,7 @@ GET_NODES=(chain,region)=>{
 
 
 //Receient must support HTTPS
+//*UPD:Sign with our pubkey to avoid certifications 
 SEND_REPORT=(chain,alertInfo)=>
 
     fetch(CONFIG.CHAINS[chain].WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
