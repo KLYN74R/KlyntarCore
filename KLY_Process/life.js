@@ -141,7 +141,7 @@ export let GEN_BLOCK=async(chain,data)=>{
     if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.CHAINS[chain].VT_GT_NORMAL_DIFFERENCE < chainRef.GENERATION_THREAD.NEXT_INDEX){
 
         
-        LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m stopped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I')
+        LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I')
 
         return
 
