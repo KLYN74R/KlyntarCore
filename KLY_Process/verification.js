@@ -4,7 +4,7 @@ import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
 import InstantBlock from '../KLY_Blocks/instantblock.js'
 
-import {chains,hostchains, metadata} from '../klyn74r.js'
+import {chains,hostchains,metadata} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 

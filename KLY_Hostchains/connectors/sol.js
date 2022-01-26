@@ -66,7 +66,7 @@ Mainnet txs pool:[
 export default {
 
 
-    checkTx:(chainId,txHash)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
 
     },
 

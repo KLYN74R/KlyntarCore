@@ -32,7 +32,7 @@ Links:[
 export default {
 
 
-    checkTx:(chainId,txHash)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
 
     },
 

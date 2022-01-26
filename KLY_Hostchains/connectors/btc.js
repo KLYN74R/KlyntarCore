@@ -103,7 +103,7 @@ import fetch from 'node-fetch'
 
 export default {
     
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,chain)=>{
 
 
         let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.btc
