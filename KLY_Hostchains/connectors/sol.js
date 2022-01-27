@@ -63,14 +63,89 @@ Mainnet txs pool:[
 
 
 
+import {LOG} from '../../KLY_Space/utils.js'
+import Web3 from '@solana/web3.js'
+import Base58 from 'base-58'
+
+
+
+let {TransactionInstruction,PublicKey,Transaction,Connection,Account} = Web3
+
+
+
+/**
+ * 
+ * ________________Add separate thread of connection for each symbiote________________
+ * 
+ * 
+ */
+
+let connections=new Map()
+
+Object.keys(CONFIG.CHAINS).forEach(
+     
+    symbiote => {
+ 
+        let {URL,COMMITMENT}=CONFIG.CHAINS[symbiote].HC_CONFIGS.sol
+         
+        if(configs) connections.set(symbiote,new Web3.Connection(URL,COMMITMENT))
+ 
+    }
+     
+)
+
+
+
+
 export default {
 
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
+    checkTx:(hostChainSig,blockIndex,klyntarHash,chainId)=>
+    
+        connections.get(chainId).getTransaction(hostChainSig).then(tx=>{
+        
+            //In default case we'll have track as the first instruction of tx
+            let [index,hash]=Buffer.from(Base58.decode(tx.transaction.message.instructions[0].data)).toString('utf-8').split('_')
+        
+            return index==blockIndex && hash===klyntarHash
 
-    },
+        }).catch(e=>LOG(`Some error has been occured in SOL \x1b[36;1m${e}`,'W')),
+
+
+
 
     sendTx:(chainId,blockIndex,klyntarHash)=>{
+
+        //PRV-private key in Base64
+        let {PRV,PROGRAM,COMMITMENT}=CONFIG.CHAINS[chainId].HC_CONFIGS.sol,
+
+            account=new Account(new Uint8Array(Buffer.from(PRV,'base64'))),
+
+
+            instruction = new TransactionInstruction({
+    
+                keys:[],
+            
+                programId:PROGRAM,
+            
+                data:Buffer.from(blockIndex+'_'+klyntarHash,'utf8'),
+          
+            })
+      
+
+
+        return Web3.sendAndConfirmTransaction(
+            
+            connections.get(chainId),
+            
+            new Transaction().add(instruction), [account], {skipPreflight:true,commitment:COMMITMENT}
+            
+        ).catch(e=>
+            
+            LOG(`Some error has been occured in SOL \x1b[36;1m${e}`,'W')
+            
+        )
+ 
         
     },
 
@@ -78,5 +153,25 @@ export default {
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
 
+    },
+
+
+
+    getBalance:async symbiote=>{
+
+        let {PRV}=CONFIG.CHAINS[symbiote].HC_CONFIGS.sol,
+
+            pub=new Account(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
+
+        return connections.get(pub).then(lamparts=>lamparts/10**9).catch(e=>{
+            
+            LOG(`Some error has been occured in SOL \x1b[36;1m${e}`,'W')
+            
+            return '0'
+
+        })
+
     }
+
+
 }
