@@ -120,24 +120,33 @@ export let
 
         chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
         
-
         
-        //Load genesis state or data from backups(not to load state from the beginning)
-        let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`/GENESIS/${Buffer.from(chain,'base64').toString('hex')}.json`))),
-
-            promises=[]
         
-        Object.keys(genesis).forEach(
+        let promises=[],chainHex=Buffer.from(chain,'base64').toString('hex')
+
+
+
+        //Load all the configs
+        fs.readdirSync(PATH_RESOLVE(`GENESIS/${chainHex}`)).forEach(file=>{
+
+            //Load genesis state or data from backups(not to load state from the beginning)
+            let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${chainHex}/${file}.json`)))
+        
+            Object.keys(genesis).forEach(
             
-            address => promises.push(chainRef.STATE.put(address,genesis[address].B))
-            
-        )
+                address => promises.push(chainRef.STATE.put(address,genesis[address].B))
+                
+            )
+
+        })
 
         await Promise.all(promises)
         
 
     },
 
+
+    
 
     PREPARE_CHAIN=async controllerAddr=>{
 

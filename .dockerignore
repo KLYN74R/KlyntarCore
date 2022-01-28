@@ -17,6 +17,8 @@ images/SITES
 #Databases
 M
 C
+!GENESIS/README.md
+
 
 #Workflow
 tr.js
@@ -25,7 +27,6 @@ SERVICES
 DOCS
 my_readme.md
 CIIPs
-GENESIS/*.json
 
 #Configs
 configs/chains*
