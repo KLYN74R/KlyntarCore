@@ -57,7 +57,7 @@ import Base58 from 'base-58'
 
 
 
-let {TransactionInstruction,Transaction,Account} = Web3
+let {TransactionInstruction,Transaction,Keypair} = Web3
 
 
 
@@ -107,7 +107,7 @@ export default {
         //PRV-private key in Base64
         let {PRV,PROGRAM,COMMITMENT}=CONFIG.CHAINS[chainId].HC_CONFIGS.sol,
 
-            account=new Account(new Uint8Array(Buffer.from(PRV,'base64'))),
+            account=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))),
 
 
             instruction = new TransactionInstruction({
@@ -150,7 +150,7 @@ export default {
 
         let {PRV}=CONFIG.CHAINS[symbiote].HC_CONFIGS.sol,
 
-            pub=new Account(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
+            pub=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
 
         return connections.get(pub).then(lamparts=>lamparts/10**9).catch(e=>{
             
