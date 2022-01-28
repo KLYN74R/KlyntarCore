@@ -523,7 +523,7 @@ RENAISSANCE=async()=>{
             
             !chainRef.STOP_I&&setTimeout(()=>{
 
-                STOP_GEN_BLOCK[controllerAddr]?STOP_GEN_BLOCK[controllerAddr]['I']='':STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
+                STOP_GEN_BLOCK[controllerAddr] ? STOP_GEN_BLOCK[controllerAddr]['I']='' : STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
 
                 GEN_BLOCK_START(controllerAddr,'I')
 

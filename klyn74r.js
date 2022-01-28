@@ -24,7 +24,19 @@ import fs from 'fs'
 
 
 
-/* OBLIGATORY PATH RESOLUTION*/
+/*
+
+_______________OBLIGATORY PATH RESOLUTION_______________
+
+
+✔️Sets the absolute path over relative one
+
+🔗Used to allow us to link and start deamon from everywhere
+
+😈Also,to prevent different attacks e.g. search order hijacking,modules substitution,NPM hijacking etc.
+prevent privilleges escalation via path misconfiguration or lack of access control.
+
+*/
 global.__dirname = await import('path').then(async mod=>
   
     mod.dirname(
@@ -45,12 +57,7 @@ TODO:Реализация функционала симбиотических ц
 +TODO:Работать над приемом и распространением блоков
 *TODO:Provide async formatting ratings due to fair addresses and liars
 !TODO:Что делать с цепочками которые только-только появились
-
 !TODO:Ограничить время TCP сессии для fetch(через Promise.any и один из промисов таймер на заданое кол-во секунд)
-TODO:Завтра попробовать с несколькими нодами-протестировать как они добавляются/удаляются/обмениваются данными
-
-
-
 
 
 */
@@ -80,7 +87,6 @@ TODO:Завтра попробовать с несколькими нодами-
 //!Пройтись по тем местам,где возможна динамическая замена(там где импорт/экспорт/прием/отправка и тд) и проверить безопасно ли их менять
 
 
-//*Динамическая работа с теми пунктами что в dynconfigs.txt и динамическое удаление/добавление категорий новостей IE
 //?Так же будет полезно при контейнеризации и масштабировании
 
 //*Чистка цепочки будет поэлементной.Хочешь-удаляй блоки,но состояние храни и тд
@@ -664,6 +670,34 @@ global.SIG_PROCESS={}
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
     global.INFO=JSON.stringify({GUID,...CONFIG.INFO})
+    
+
+
+
+//____________________________________________ASK FOR FINAL AGREEMENT____________________________________________
+
+
+
+    console.log('\n\n\n')
+    
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m'),'S')
+
+    CONFIG.TLS_ENABLED ? LOG('TLS is enabled!','S') : LOG('TLS is disabled','W')
+
+    LOG(`Server configuration is ———> \x1b[36;1m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')
+
+
+
+    await new Promise(resolve=>
+        
+        readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
+    
+        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current server configuration? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        
+    ).then(answer=>answer!=='YES'&& process.exit(126))
+
+
+
 
 
     //Get urgent state and go on!
@@ -677,6 +711,7 @@ global.SIG_PROCESS={}
 
 
 
+//Load route modules
 let {W}=await import('./KLY_Routes/control.js'),
     {M}=await import('./KLY_Routes/main.js'),
     {A}=await import('./KLY_Routes/api.js')
@@ -715,7 +750,6 @@ let {W}=await import('./KLY_Routes/control.js'),
 
 //...And only after that we start routes
 
-CONFIG.TLS_ENABLED ? LOG('TLS is enabled!','S') : LOG('TLS is disabled','W')
 
 UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 

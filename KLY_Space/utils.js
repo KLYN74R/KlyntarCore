@@ -32,7 +32,8 @@ COLORS = {
     I:'\x1b[36;1m', // cyan(default messages useful to grasp the events)
     CB:'\u001b[38;5;200m',// ControllerBlock
     CD:`\u001b[38;5;50m`,//Canary died
-    GTS:`\u001b[38;5;m`//Generation Thread Stop
+    GTS:`\u001b[38;5;m`,//Generation Thread Stop
+    CON:`\u001b[38;5;168m`//CONFIGS
 },
 
 
