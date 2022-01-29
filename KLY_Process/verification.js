@@ -290,6 +290,32 @@ START_VERIFY_POLLING=async chain=>{
 
 
 
+MAKE_SNAPSHOT=async chain=>{
+
+    let {SNAPSHOT,STATE}=chains.get(chain),
+
+        canary=''
+
+
+    await new Promise(
+        
+        (resolve,reject) => STATE.createReadStream().on('data',
+        
+            data => SNAPSHOT.put(data.key,data.value).catch(e=>reject(e))
+            
+        ).on('close',()=>SNAPSHOT.put('CANARY',canary).catch(e=>reject(e))).on('end',resolve)
+        
+    ).catch(
+
+        e => LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+
+    )
+
+},
+
+
+
+
 verifyControllerBlock=async controllerBlock=>{
 
 
@@ -621,6 +647,16 @@ verifyControllerBlock=async controllerBlock=>{
             process.exit(108)
         
         })
+
+        //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
+
+        controllerBlock.i!==0
+        &&
+        CONFIG.CHAINS[chain].SNAPSHOTS.ENABLE
+        &&
+        CONFIG.CHAINS[chain].SNAPSHOTS.RANGE%controllerBlock.i===0
+        &&
+        await MAKE_SNAPSHOT(chain)
 
 
         //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________

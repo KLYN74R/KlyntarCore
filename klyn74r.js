@@ -215,8 +215,12 @@ export let
         chainRef.STATE=l(PATH_RESOLVE(`C/${hexPath}/STATE`),{valueEncoding:'json'})//State of accounts
         
 
+        //...and separate dir for snapshots
+        chainRef.SNAPSHOT=l(PATH_RESOLVE(`SNAPSHOTS/${hexPath}`),{valueEncoding:'json'})
 
 
+
+        
         //________________Load metadata about chain-current hight,collaped height,height for export,etc.___________________
 
         chainRef.VERIFICATION_THREAD = await metadata.get(controllerAddr+'/VT').catch(e=>
@@ -597,10 +601,11 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 //Location for chains
 !fs.existsSync(PATH_RESOLVE('C')) && fs.mkdirSync(PATH_RESOLVE('C'));
 
-//And for logs streams
+//For logs streams
 !fs.existsSync(PATH_RESOLVE(`LOGS`)) && fs.mkdirSync(PATH_RESOLVE(`LOGS`));
 
-
+//And for snapshots
+!fs.existsSync(PATH_RESOLVE(`SNAPSHOTS`)) && fs.mkdirSync(PATH_RESOLVE(`SNAPSHOTS`));
 
 
 
