@@ -38,6 +38,6 @@
  * ]
  * 
  * 
- *                                                                IMPLEMENTATION OF MONITOR FOR SOLANA TYPE 0(Memo program interaction)
+ *                                                                IMPLEMENTATION OF MONITOR FOR LUNA TYPE 0(Memo program interaction)
  * 
  */

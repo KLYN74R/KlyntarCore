@@ -67,7 +67,7 @@ let {PublicKey,Connection}=Web3,
             //Let's use only unique sources
             if(!unique.includes(URL)){
     
-                monitors.set(chain,new Web3.Connection(URL,COMMITMENT))
+                monitors.set(chain,new Connection(URL,COMMITMENT))
 
                 //Set default responder
                 monitors.get(chain).onLogs(new PublicKey(TARGET),logs=>{
