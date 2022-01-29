@@ -400,7 +400,7 @@ export let
         await DECRYPT_KEYS(controllerAddr,initSpinner).then(()=>
         
             //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
-            LOG(`Private key on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\x1b[32;1m was decrypted ———> \x1b[36;1m${chainConfig.PRV.slice(0,10)}...`,'S')        
+            LOG(`Private key on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\x1b[32;1m was decrypted successfully`,'S')        
         
         ).catch(e=>{
         
@@ -595,7 +595,7 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 
 //Location for chains
-!fs.existsSync(PATH_RESOLVE('C'))&&fs.mkdirSync(PATH_RESOLVE('C'));
+!fs.existsSync(PATH_RESOLVE('C')) && fs.mkdirSync(PATH_RESOLVE('C'));
 
 //And for logs streams
 !fs.existsSync(PATH_RESOLVE(`LOGS`)) && fs.mkdirSync(PATH_RESOLVE(`LOGS`));
@@ -707,47 +707,37 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 
     LOG(`Server configuration is ———> \x1b[36;1m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')
 
+    LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;200m:\u001b[38;5;50m ')}`,'CON')
+
+
 
 
     await new Promise(resolve=>
         
         readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
     
-        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current server configuration? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
         
     ).then(answer=>answer!=='YES'&& process.exit(126))
 
 
 
+    //Run custom modules
+    //To load them one by one,use top level await,so we need "for...of"
+    for(let scriptPath of CONFIG.RUN_CUSTOM){
+
+        await import(`./KLY_Custom/${scriptPath}`).catch(
+            
+            e => LOG(`Some error has been occured in process of module \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
+            
+        )
+
+    }
+    
 
 
     //Get urgent state and go on!
     await RENAISSANCE()
-
-
-
-    
-//_______________________________________________GET SERVER ROUTES______________________________________________
-
-
-
-
-//Load route modules
-let {W}=await import('./KLY_Routes/control.js'),
-    {M}=await import('./KLY_Routes/main.js'),
-    {A}=await import('./KLY_Routes/api.js')
-
-
-
-
-//_____________________________________________START EXPORT PROCESSES___________________________________________
-
-
-    
-    global.BRANCHCOMS_CONTROL=[]
-    global.STORE_CONTROL=[]
-
-
 
 
     //...and start this stuff.Note-if TTL is 0-there won't be any auto flush.Also,there is ability to start this process further,in runtime,so let it be
@@ -757,12 +747,16 @@ let {W}=await import('./KLY_Routes/control.js'),
 
 
 
-    
 
-    
-
+//_______________________________________________GET SERVER ROUTES______________________________________________
 
 
+
+
+//Load route modules
+let {W}=await import('./KLY_Routes/control.js'),
+    {M}=await import('./KLY_Routes/main.js'),
+    {A}=await import('./KLY_Routes/api.js')
 
 
 
