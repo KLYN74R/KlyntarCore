@@ -39,7 +39,7 @@ Links:[
 
 import {LCDClient,MsgSend,MnemonicKey} from '@terra-money/terra.js'
 
-import {LOG} from '../../KLY_Space/utils.js'
+import {LOG} from '../../../KLY_Space/utils.js'
 
 
 

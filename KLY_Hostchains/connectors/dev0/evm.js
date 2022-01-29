@@ -1,4 +1,4 @@
-import {LOG} from '../../KLY_Space/utils.js'
+import {LOG} from '../../../KLY_Space/utils.js'
 
 import {Transaction} from 'ethereumjs-tx'
 

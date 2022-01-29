@@ -8,8 +8,8 @@
     "ANIMATION_DURATION":1000,
 
     "TYPES_PREFIXES":{
-        "0":"connectors",
-        "1":"contracts"
+        "0":"connectors/dev0",
+        "1":"connectors/contracts"
     },
 
 

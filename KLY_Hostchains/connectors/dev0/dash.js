@@ -1,51 +1,51 @@
 /**
  * ________________________________________________________________KLYNTAR_________________________________________________________________
  * 
- * @Vlad@ Chernenko 24.07.-1
+ * @Vlad@ Chernenko 18.08.-1
  * 
  * 
  * 
  * 
- * We can generate also via bitcore-lib or bitcoin-lib
  * 
- * Test transactions available by hashes:
- * [
- *    1ff8f7a5e828661ca6a29caea9b9eaac5eda9510387f39c10e0bd5945756abb1, (NOT ACCEPTED)
- *    0425a2da0ec20e82882ce3e11ffb05460f4b33ddad6f7682b79c7d6a96eaa1df,
- *    cbe42d16bff97caec05ceeec8667f65393394e5434f21105a3d2beaae5deef29,
- *    52a8fcb2b596f8305c100613d5a2fb1c25df28ba00dfc65392d9bb118e715fda (update useful.txt)
+ * 
+ * 
+ * TXS:[
+ * 
+ *      TESTNET:[
+ * 
+ *                dee7a4c2961c23cb8f73cfcc73bb98a6bbdfc062bc14c37d6e27e9fbd9f034fc (useful.txt)
+ *                d7bd1f63294008bd802073635725e7f8b184f65604fc223d9c9a083ebaaac629
+ *                4f9d0506b4e9328cca58b14194035215d5bd6b32e45c3af5667e41ebec52e54f
+ *                cc1d182a4dda762cc3588d9e977ef40c5b1e79fbb5120537abd8bd91a61f3897 (via own node)
+ *                ff7ddbb3d86803388c9537b96237a325caea7bf3ea4e8cb28641675131e53351 (via own node)
+ *                61bdbf0c4149f8a0da4d8b79985868f4fde6b431068716a767f31641c3f66c28 (via node + gateway)
+ *                1ae5869cf082361a01e60654992e646da44486549260bbecaf489320c0a2e6d2 (get UTXOs from node)
+ * 
+ *      ]
+ * 
  * ]
  * 
  * 
- * MAINNET COMMIT -> 5645cf4d2615fd7f9659b8e78b45aca0eb762fc4182256e66297bce27b8e8aec (NOT ACCEPTED)
+ * Links:[
  * 
- *                   8e51fbd60e41be6930a32227126daab3d6390dea30fdfa6ec77674228228bceb
- * 
- * 
- * 
- * ____________________________________________________Alternative(via BLock.io API)__________________________________________________
+ * https://github.com/dashevo/dashcore-lib
+ * https://github.com/dashevo/dashcore-lib/blob/master/docs/examples.md
+ * https://github.com/BlockchainCommons/Learning-Bitcoin-from-the-Command-Line/blob/master/03_3_Setting_Up_Your_Wallet.md
  * 
  * 
- * 
- * 
- * import BlockIo from 'block_io'
- * 
- * P.S:Useful link which helped me to solve one problem -> https://github.com/bitpay/bitcore/issues/1247
- *     We can generate also via bitcore-lib or bitcoin-lib 
- * 
- * 
- * 
- * 
+ * ]
  * 
  * 
  * @Build for KLYNTAR symbiotic platform and hostchains
- * 
- */
+ *
+ * */
 
 
 
 
-import bitdoge from 'bitcore-doge-lib'
+import {LOG} from '../../../KLY_Space/utils.js'
+
+import dashcore from '@dashevo/dashcore-lib'
 
 import fetch from 'node-fetch'
 
@@ -54,9 +54,11 @@ import fetch from 'node-fetch'
 
 export default {
 
+
     checkTx:(hostChainHash,blockIndex,klyntarHash,chain)=>{
 
-        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.doge
+
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.CHAINS[chain].HC_CONFIGS.dash
 
 
         return fetch(URL,{method:'POST',body:JSON.stringify({
@@ -65,7 +67,7 @@ export default {
 
             data:{command:'gettx',hash:hostChainHash},
             
-            command:`doge-cli gettransaction ${hostChainHash}`
+            command:`dash-cli gettransaction ${hostChainHash}`
         
         })}).then(r=>r.json()).then(tx=>
             
@@ -77,7 +79,7 @@ export default {
 
                 data:{command:'getdecoded',hash:hostChainHash},
 
-                command:`doge-cli decoderawtransaction $(doge-cli getrawtransaction ${hostChainHash})`
+                command:`dash-cli decoderawtransaction $(dash-cli getrawtransaction ${hostChainHash})`
 
             })}).then(r=>r.json()).then(tx=>{
                 
@@ -88,7 +90,7 @@ export default {
 
             })
 
-        ).catch(e=>LOG(`Some error has been occured in DOGE \x1b[36;1m${e}`,'W'))
+        ).catch(e=>LOG(`Some error has been occured in DASH \x1b[36;1m${e}`,'W'))
     
 
     },
@@ -99,7 +101,7 @@ export default {
     sendTx:async(chainId,blockIndex,klyntarHash)=>{
 
         
-        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.doge,
+        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.CHAINS[chainId].HC_CONFIGS.dash,
             
             inputs=[],
             
@@ -110,7 +112,7 @@ export default {
 
                 data:{command:'getutxos',address:PUB},
             
-                command:'doge-cli listunspent'
+                command:'dash-cli listunspent'
            
             })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
 
@@ -154,27 +156,24 @@ export default {
 
             data:{command:'sendtx',hex:transaction.serialize()},
 
-            command:`doge-cli sendrawtransaction ${transaction.serialize()}`
+            command:`dash-cli sendrawtransaction ${transaction.serialize()}`
     
-        })}).then(r=>r.text()).catch(e=>LOG(`ERROR DOGE ${e}`,'W'))
+        })}).then(r=>r.text()).catch(e=>LOG(`ERROR DASH ${e}`,'W'))
 
 
     },
 
 
-    
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
 
     },
 
 
-
-
     getBalance:symbiote=>{
 
 
-        let {URL,PUB,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.doge
+        let {URL,PUB,CREDS}=CONFIG.CHAINS[symbiote].HC_CONFIGS.dash
 
         return fetch(URL,{method:'POST',body:JSON.stringify({
 
@@ -182,11 +181,10 @@ export default {
 
             data:{command:'getbalance',address:PUB},
             
-            command:'doge-cli getbalance'
+            command:'dash-cli getbalance'
         
         })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
         
     }
-
 
 }

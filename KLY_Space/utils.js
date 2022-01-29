@@ -261,9 +261,9 @@ SEND=(url,ob,callback)=>fetch(url,{method:'POST',body:JSON.stringify(ob)}).then(
 
 //Segregate console and "in-file" logs can be occured by directing stdin to some "nnlog" file to handle logs
 //Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
-LOG=(msg,type,chain)=>{
+LOG=(msg,msgColor,chain)=>{
 
-    CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C)
+    CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[msgColor],msg,COLORS.C)
 
     if(chain) CONFIG.CHAINS[chain].LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(chain).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 
@@ -278,8 +278,6 @@ BLOCKLOG=(msg,type,chain,hash,spaces,color)=>{
     if(CONFIG.CHAINS[chain].LOGS.BLOCK){
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
-
-        LOG(`Block generated ${hash}`,'W',chain)
 
         chain=CHAIN_LABEL(chain)
 
