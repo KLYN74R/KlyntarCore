@@ -1,6 +1,6 @@
 <div align="center">
 
-# 😈 Place for your custom monitors 😇
+# 😈 Place for your monitors 😇
 
 </div>
 

@@ -33,11 +33,37 @@
  *
  * LINKS:[
  * 
- *      https://docs.solana.com/developing/clients/jsonrpc-api
+ *      https://github.com/terra-money/terra.js/wiki/WebSockets
+ *      https://docs.terra.money/index.html
  * 
  * ]
  * 
  * 
- *                                                                IMPLEMENTATION OF MONITOR FOR LUNA TYPE 0(Memo program interaction)
+ *                                                                IMPLEMENTATION OF MONITOR FOR LUNA TYPE 0(via tracks in txs)
  * 
  */
+
+
+
+
+ import { LocalTerra, WebSocketClient } from '@terra-money/terra.js';
+
+ const wsclient = new WebSocketClient('ws://bombay-lcd.terra.dev/websocket');
+ 
+ const terra = new LocalTerra();
+ 
+ let count = 0;
+ wsclient.subscribe('NewBlock', {}, (_) => {
+   console.log(count);
+   count += 1;
+ 
+   if (count === 3) {
+     wsclient.destroy();
+   }
+ });
+ 
+ // send tracker
+ wsclient.subscribe('Tx', { 'message.action': 'send' }, data => {
+   console.log('Send occured!');
+   console.log(data.value);
+ });

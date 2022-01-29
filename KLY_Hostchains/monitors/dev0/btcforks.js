@@ -38,6 +38,6 @@
  * ]
  * 
  * 
- *                                                                IMPLEMENTATION OF MONITOR FOR SOLANA TYPE 0(Memo program interaction)
+ *                                                                IMPLEMENTATION OF MONITOR FOR BTC & FORKS TYPE 0(via tracks in OP_RETURN)
  * 
  */

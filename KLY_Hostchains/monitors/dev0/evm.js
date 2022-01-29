@@ -33,11 +33,59 @@
  *
  * LINKS:[
  * 
- *      https://docs.solana.com/developing/clients/jsonrpc-api
+ *         https://web3js.readthedocs.io/en/v1.2.0/web3-eth-contract.html#id36
+ *         https://ethereum.stackexchange.com/questions/35997/how-to-listen-to-events-using-web3-v1-0/49472
+ *         https://ethereumdev.io/listening-to-new-transactions-happening-on-the-blockchain/
+ *  
+ * ] 
  * 
- * ]
- * 
- * 
- *                                                                IMPLEMENTATION OF MONITOR FOR SOLANA TYPE 0(Memo program interaction)
+ *                                                                IMPLEMENTATION OF MONITOR FOR EVM TYPE 0(via tracks in data field of txs)
  * 
  */
+
+
+
+
+/**
+ * 
+ * 
+
+ * 
+ * 
+*/
+
+
+
+import Web3 from 'web3'
+
+
+
+//________________________________________________ SIMPLE BLOCK LISTENER ___________________________________________________
+
+
+// BSC example
+
+const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
+let latestKnownBlockNumber = -1;
+let blockTime = 5000;
+
+// Our function that will triggered for every block
+async function processBlock(blockNumber) {
+    console.log("We process block: " + blockNumber)
+    latestKnownBlockNumber = blockNumber;
+    
+    let block = await web3.eth.getBlock(blockNumber);
+    console.log("New block :", block)
+}
+
+// This function is called every blockTime, check the current block number and order the processing of the new block(s)
+async function checkCurrentBlock() {
+    const currentBlockNumber = await web3.eth.getBlockNumber()
+    console.log("Current blockchain top: " + currentBlockNumber, " | Script is at: " + latestKnownBlockNumber)
+    while (latestKnownBlockNumber == -1 || currentBlockNumber > latestKnownBlockNumber) {
+        await processBlock(latestKnownBlockNumber == -1 ? currentBlockNumber : latestKnownBlockNumber + 1);
+    }
+    setTimeout(checkCurrentBlock, blockTime);
+}
+
+checkCurrentBlock()
