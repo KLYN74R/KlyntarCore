@@ -4,6 +4,8 @@ build
 .idea
 node_modules
 dynconfigs.txt
+LOGS/
+
 
 #Hello legend
 useful.txt

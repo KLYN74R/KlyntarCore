@@ -188,6 +188,10 @@ export let
 
         let chainRef=chains.get(controllerAddr),hexPath=Buffer.from(controllerAddr,'base64').toString('hex')
 
+
+        //Open writestream in append mode
+        SYMBIOTES_LOGS_STREAMS.set(controllerAddr,fs.createWriteStream(PATH_RESOLVE(`LOGS/${hexPath}.txt`),{flags:'a+'}))
+
         //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each chain
         !fs.existsSync(PATH_RESOLVE(`C/${hexPath}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${hexPath}`))
 
@@ -547,6 +551,8 @@ let graceful=()=>{
             console.log('\n')
 
             LOG('Node was gracefully stopped','I')
+
+            SYMBIOTES_LOGS_STREAMS.forEach(stream=>stream.close(()=>LOG('Klyntar logging was stopped...','I')))
         
             process.exit(0)
     
@@ -583,10 +589,16 @@ global.SIG_SIGNAL=false
 global.SIG_PROCESS={}
 
 
+global.SYMBIOTES_LOGS_STREAMS=new Map()
+
+
+
+
 //Location for chains
 !fs.existsSync(PATH_RESOLVE('C'))&&fs.mkdirSync(PATH_RESOLVE('C'));
 
-
+//And for logs streams
+!fs.existsSync(PATH_RESOLVE(`LOGS`)) && fs.mkdirSync(PATH_RESOLVE(`LOGS`));
 
 
 
