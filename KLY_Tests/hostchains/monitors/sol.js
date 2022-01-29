@@ -33,11 +33,6 @@ let {Keypair,PublicKey}=Web3,
     PUBKEY=new PublicKey(account.publicKey.toString())
 
 
-
-// console.log(account.publicKey)
-// console.log(PUBKEY)
-
-
 //Handle logs which specific address left
 connection.onLogs(account.publicKey,(logs,ctx)=>{
   
