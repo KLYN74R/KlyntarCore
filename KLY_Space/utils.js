@@ -189,6 +189,19 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
 
 
 
+CHECK_UPDATES=()=>fetch(`${CONFIG.UPDATES}/${CONFIG.INFO.VERSION}`).then(r=>r.json()).then(
+    
+    resp => LOG(resp.msg,resp.msgColor)
+    
+).catch(
+    
+    e => LOG(`Can't check for updates(\u001b[38;5;50mcurrent ${CONFIG.INFO.VERSION}\u001b[38;5;168m) ———> \u001b[38;5;50m${e}`,'CON')
+    
+),
+
+
+
+
 /**
  *   Add chunk to buffer and prevent buffer overflow cases 
  *

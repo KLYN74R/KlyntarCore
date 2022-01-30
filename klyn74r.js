@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {BASE64,CHAIN_LABEL,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE} from './KLY_Space/utils.js'
+import {BASE64,CHAIN_LABEL,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Space/utils.js'
 
 import AdvancedCache from './KLY_Essences/advancedcache.js'
 
@@ -516,6 +516,14 @@ export let
 
 
 
+
+
+
+
+
+
+
+
     
 //_________________________________________________CONFIG_PROCESS_______________________________________________
 
@@ -706,13 +714,15 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 
     console.log('\n\n\n')
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m'),'S')
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
 
-    CONFIG.TLS_ENABLED ? LOG('TLS is enabled!','S') : LOG('TLS is disabled','W')
+    CONFIG.TLS_ENABLED ? LOG('TLS is enabled!','CON') : LOG('TLS is disabled','CON')
 
-    LOG(`Server configuration is ———> \x1b[36;1m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')
+    await CHECK_UPDATES()
 
-    LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;200m:\u001b[38;5;50m ')}`,'CON')
+    LOG(`Server configuration is ———> \u001b[38;5;50m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')
+
+    LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
 
 
