@@ -214,6 +214,29 @@ export let
         
         chainRef.STATE=l(PATH_RESOLVE(`C/${hexPath}/STATE`),{valueEncoding:'json'})//State of accounts
         
+        /*
+            Aliases of accounts & groups & contracts & services & conveyors & domains. Some hint to Web23.Read more on our sources
+        
+            Examples:
+            
+            🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by Klyntar)
+            
+            ❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
+            
+            🌌 => aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(Root of hashes tree mapped to conveyor set of addresses protected by hash-based post quantum signatures)
+
+        */
+        chainRef.ALIASES=l(PATH_RESOLVE(`C/${hexPath}/ALIASES`),{valueEncoding:'json'})
+
+
+        //Metadata
+        chainRef.SERVICES=l(PATH_RESOLVE(`C/${hexPath}/SERVICES`),{valueEncoding:'json'})
+
+        chainRef.CONVEYORS=l(PATH_RESOLVE(`C/${hexPath}/CONVEYORS`),{valueEncoding:'json'})
+
+
+
+
 
         //...and separate dir for snapshots
         chainRef.SNAPSHOT=l(PATH_RESOLVE(`SNAPSHOTS/${hexPath}`),{valueEncoding:'json'})
