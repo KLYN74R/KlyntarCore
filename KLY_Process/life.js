@@ -103,7 +103,7 @@ GEN_BLOCK_START=async(chain,type)=>{
       
     }else{
 
-        LOG(`Block generation for \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[36;1m was stopped`,'I')
+        LOG(`Block generation for \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[36;1m was stopped`,'I',chain)
 
         SIG_PROCESS[chain].GENERATE=true
 
@@ -143,7 +143,7 @@ export let GEN_BLOCK=async(chain,data)=>{
     if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.CHAINS[chain].VT_GT_NORMAL_DIFFERENCE < chainRef.GENERATION_THREAD.NEXT_INDEX){
 
         
-        LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I')
+        LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',chain)
 
         return
 

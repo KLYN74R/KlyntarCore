@@ -279,7 +279,7 @@ START_VERIFY_POLLING=async chain=>{
     
     }else{
 
-        LOG(`Polling for \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[36;1m was stopped`,'I')
+        LOG(`Polling for \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[36;1m was stopped`,'I',chain)
 
         SIG_PROCESS[chain].VERIFY=true
 

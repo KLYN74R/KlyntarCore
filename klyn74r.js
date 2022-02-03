@@ -215,15 +215,17 @@ export let
         chainRef.STATE=l(PATH_RESOLVE(`C/${hexPath}/STATE`),{valueEncoding:'json'})//State of accounts
         
         /*
-            Aliases of accounts & groups & contracts & services & conveyors & domains. Some hint to Web23.Read more on our sources
+            Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web23.Read more on our sources
         
             Examples:
             
-            🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by Klyntar)
+            Single emoji refers to address and domain:❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
+
+            Combo:🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by Klyntar)
             
-            ❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
-            
-            🌌 => aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(Root of hashes tree mapped to conveyor set of addresses protected by hash-based post quantum signatures)
+            Emoji ref to special signature type🌌 => aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(Root of hashes tree mapped to conveyor set of addresses protected by hash-based post quantum signatures)
+
+            Usernames(Twitter in this case) @jack => bc1qsmljf8cmfhul2tuzcljc2ylxrqhwf7qxpstj2a
 
         */
         chainRef.ALIASES=l(PATH_RESOLVE(`C/${hexPath}/ALIASES`),{valueEncoding:'json'})
@@ -578,7 +580,7 @@ let graceful=()=>{
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
     
     //Probably stop logs on this step
-    setInterval(()=>{
+    setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
         if(Object.keys(SIG_PROCESS).every(chain => Object.values(SIG_PROCESS[chain]).every(x=>x))){
@@ -587,9 +589,25 @@ let graceful=()=>{
 
             LOG('Node was gracefully stopped','I')
 
-            SYMBIOTES_LOGS_STREAMS.forEach(stream=>stream.close(()=>LOG('Klyntar logging was stopped...','I')))
-        
-            process.exit(0)
+            let streamsPromises=[]
+
+            SYMBIOTES_LOGS_STREAMS.forEach(
+                
+                (stream,symbiote) => streamsPromises.push(
+                    
+                    new Promise( resolve => stream.close( e => {
+
+                        LOG(`Klyntar logging was stopped for ${CHAIN_LABEL(symbiote)} ${e?'\n'+e:''}`,'I')
+
+                        resolve()
+                    
+                    }))
+                    
+                )
+                
+            )
+
+            await Promise.all(streamsPromises).then(_=>process.exit(0))
     
         }
 
