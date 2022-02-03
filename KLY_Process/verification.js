@@ -27,7 +27,7 @@ verifyOffspringCreationTx=async(from,manifest,blockCreator,chain,nonce,sig)=>{
 
         sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE
 
-        sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)//update maximum
+        sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)//update maximum nonce
     
         blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
 
@@ -289,7 +289,8 @@ START_VERIFY_POLLING=async chain=>{
 
 
 
-
+//!REWRITE
+//Стрим закончится ранее чем асинхронные put вызовы закончатся(потому что они асинхронны)
 MAKE_SNAPSHOT=async chain=>{
 
     let {SNAPSHOT,STATE}=chains.get(chain),
@@ -298,6 +299,8 @@ MAKE_SNAPSHOT=async chain=>{
 
     
     await SNAPSHOT.del('CANARY').catch(e=>false)//delete old canary.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
+
+    LOG(`Start making snapshot for ${CHAIN_LABEL(chain)}`,'I')
 
     await new Promise(
         

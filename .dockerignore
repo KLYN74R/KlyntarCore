@@ -39,6 +39,6 @@ configs/chains*
 #The Hell
 KLY_Tests/test_evm*
 KLY_Tests/send_tx.js
-KLY_Tests/hostchains/monitors/evm_sub.js
+KLY_Tests/hostchains/monitors/evm.js
 KLY_Tests/hostchains/evm_contracts/*interact*
 KLY_Tests/hostchains/connectors/
