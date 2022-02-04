@@ -195,7 +195,7 @@ export let GEN_BLOCK=async(chain,data)=>{
                 
                 LOG(`Failed to store block ${block.i} on ${CHAIN_LABEL(chain)}`,'F')
 
-                process.exit(122)
+                process.emit('SIGINT',122)
             
             }))
            
@@ -319,7 +319,7 @@ export let GEN_BLOCK=async(chain,data)=>{
 
                 LOG(e,'F')
                     
-                process.exit(114)
+                process.emit('SIGINT',114)
 
             })
         

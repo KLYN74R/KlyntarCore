@@ -321,7 +321,7 @@ MAKE_SNAPSHOT=async chain=>{
 
             LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
             
-            process.exit(1)
+            process.emit('SIGINT',130)
 
         }
 
@@ -342,7 +342,7 @@ MAKE_SNAPSHOT=async chain=>{
 
         LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
         
-        process.exit(1)
+        process.emit('SIGINT',130)
 
     })
 
@@ -679,7 +679,7 @@ verifyControllerBlock=async controllerBlock=>{
             
             LOG(`Problem when write to state or canary on \x1b[36;1m${CHAIN_LABEL(chain)}\n${e}`,'F')
             
-            process.exit(108)
+            process.emit('SIGINT',108)
         
         })
 
