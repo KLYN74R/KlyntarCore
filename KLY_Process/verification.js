@@ -289,35 +289,62 @@ START_VERIFY_POLLING=async chain=>{
 
 
 
-//!REWRITE
-//Стрим закончится ранее чем асинхронные put вызовы закончатся(потому что они асинхронны)
+
 MAKE_SNAPSHOT=async chain=>{
 
     let {SNAPSHOT,STATE}=chains.get(chain),
 
         canary=await metadata.get(chain+'/CANARY').catch(e=>false)
 
-    
+
+
+
     await SNAPSHOT.del('CANARY').catch(e=>false)//delete old canary.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
 
     LOG(`Start making snapshot for ${CHAIN_LABEL(chain)}`,'I')
 
+    let accounts={}
+
+
     await new Promise(
         
-        (resolve,reject) => STATE.createReadStream()
+        resolve => STATE.createReadStream()
         
-                            .on('data',data => SNAPSHOT.put(data.key,data.value).catch(e=>reject(e)))//add state of each account to snapshot dbs
+                        .on('data',data => accounts[data.key]=data.value)//add state of each account to snapshot dbs
         
-                            .on('close',()=>SNAPSHOT.put('CANARY',canary).catch(e=>reject(e)))//after that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
-        
-                            .on('end',resolve)
+                        .on('close',resolve)
         
 
     ).catch(
 
-        e => LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+        e => {
+
+            LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+            
+            process.exit(1)
+
+        }
 
     )
+
+
+    let promises=[]
+
+    Object.keys(accounts).forEach(
+        
+        addr => promises.push(SNAPSHOT.put(addr,accounts[addr]).catch(e=>e))
+        
+    )
+
+
+    //After that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
+    await Promise.all(promises).then(_=>SNAPSHOT.put('CANARY',canary)).catch(e => {
+
+        LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+        
+        process.exit(1)
+
+    })
 
 },
 
