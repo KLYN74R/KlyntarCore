@@ -110,6 +110,7 @@ export let
     metadata=l(PATH_RESOLVE('M/METADATA'),{valueEncoding:'json'}),//For chains metadata flows e.g. generation flow,verification flow,staging etc.
        
     space=l(PATH_RESOLVE('M/SPACE'),{valueEncoding:'json'}),//To store zero level data of accounts i.e SpaceID,Roles flags,private nonce etc and data on different chains
+
     
 
 
@@ -118,30 +119,81 @@ export let
         //Reset verification breakpoint
         await chainRef.STATE.clear()
 
-        chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
-        
-        
-        
         let promises=[],chainHex=Buffer.from(chain,'base64').toString('hex')
 
 
+        //Try to load from snapshot
+        if(fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${chainHex}`))){
 
-        //Load all the configs
-        fs.readdirSync(PATH_RESOLVE(`GENESIS/${chainHex}`)).forEach(file=>{
+            //Try to load snapshot metadata to use as last collapsed
+            let canary=await chainRef.SNAPSHOT.get('CANARY').catch(e=>false),
 
-            //Load genesis state or data from backups(not to load state from the beginning)
-            let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${chainHex}/${file}.json`)))
-        
-            Object.keys(genesis).forEach(
+                snapshotVT=await chainRef.SNAPSHOT.get('VT').catch(e=>false),
+
+                snapshotIsOk=snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH)
+
+
+
+            //Means that you have local copy of full snapshot
+            if(CONFIG.CHAINS[chain].SNAPSHOTS.ALL&&snapshotIsOk&&canary===snapshotVT.CHECKSUM){
+
+                chainRef.VERIFICATION_THREAD=snapshotVT
+
+                let accs={},promises=[]
+
+                await new Promise(
+                    
+                    resolve => chainRef.SNAPSHOT.createReadStream()
+                    
+                                        .on('data',data=>accs[data.key]=data.value)
+                                        
+                                        .on('close',resolve)
+                    
+                )
+
+                Object.keys(accs).forEach(addr=>promises.push(chainRef.STATE.put(addr,accs[addr])))
+
+                await Promise.all(promises).catch(e=>{
+
+                    LOG(`Problems with loading state from snaphot to state db \n${e}`,'F')
+
+                    process.exit(138)
+                })
+
+
+            }else{
+
+                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<hex of chain> and reload demon`,'F')
+
+                process.exit(138)
+
+            }
+
+        }else{
+
+            //Otherwise start rescan form height=0
             
-                address => promises.push(chainRef.STATE.put(address,genesis[address].B))
+            chainRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+
+            //Load all the configs
+            fs.readdirSync(PATH_RESOLVE(`GENESIS/${chainHex}`)).forEach(file=>{
+    
+                //Load genesis state or data from backups(not to load state from the beginning)
+                let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${chainHex}/${file}.json`)))
+            
+                Object.keys(genesis).forEach(
                 
-            )
+                    address => promises.push(chainRef.STATE.put(address,genesis[address].B))
+                    
+                )
+    
+            })
+    
+            await Promise.all(promises)
+            
 
-        })
+        }
 
-        await Promise.all(promises)
-        
 
     },
 
@@ -317,21 +369,31 @@ export let
 
                 let verifThread=chainRef.VERIFICATION_THREAD
     
-                //If chunk is OK
+                //If staging zone is OK
                 if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH)){
 
-                    //This is the signal that we should rewrite state changes from 
+                    //This is the signal that we should rewrite state changes from the staging zone
                     if(canary!==chainRef.VERIFICATION_THREAD.CHECKSUM){
 
                         initSpinner.stop()
     
                         LOG(`Load state data from staging zone on \x1b[32;1m${CHAIN_LABEL(controllerAddr)}`,'I')
+                        
+                        let promises=[]
     
                         Object.keys(chainRef.VERIFICATION_THREAD.DATA).forEach(
                             
-                            address => chainRef.STATE.put(address,chainRef.VERIFICATION_THREAD.DATA[address])
+                            address => promise.push(chainRef.STATE.put(address,chainRef.VERIFICATION_THREAD.DATA[address]))
                             
                         )
+
+                        await Promise.all(promises).catch(e=>{
+
+                            LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${CHAIN_LABEL(controllerAddr)}\x1b[31;1m\n${e}`,'F')
+
+                            process.exit(133)
+
+                        })
     
                     }
                     

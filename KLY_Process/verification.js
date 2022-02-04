@@ -1,4 +1,4 @@
-import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,BLAKE3} from '../KLY_Space/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,BLAKE3,PATH_RESOLVE} from '../KLY_Space/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
@@ -292,59 +292,111 @@ START_VERIFY_POLLING=async chain=>{
 
 MAKE_SNAPSHOT=async chain=>{
 
-    let {SNAPSHOT,STATE}=chains.get(chain),
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=chains.get(chain),
 
         canary=await metadata.get(chain+'/CANARY').catch(e=>false)
 
 
 
+    
+    //Delete old canary and VT.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
+    await SNAPSHOT.del('CANARY').then(()=>SNAPSHOT.del('VT')).catch(e=>{
 
-    await SNAPSHOT.del('CANARY').catch(e=>false)//delete old canary.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
+        LOG(`Can't delete canary or VT from snapshot on \x1b[36;1m${CHAIN_LABEL(chain)}\n\x1b[31;1m${e}`,'F')
+
+        process.emit('SIGINT',137)
+
+    })
+
+
+
+
+    //_____________________________________________________Now we can make snapshot_____________________________________________________
 
     LOG(`Start making snapshot for ${CHAIN_LABEL(chain)}`,'I')
 
     let accounts={}
 
 
-    await new Promise(
+    //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
+    if(CONFIG.CHAINS[chain].SNAPSHOTS.ALL){
         
-        resolve => STATE.createReadStream()
+        await new Promise(
         
-                        .on('data',data => accounts[data.key]=data.value)//add state of each account to snapshot dbs
-        
-                        .on('close',resolve)
-        
-
-    ).catch(
-
-        e => {
-
-            LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+            resolve => STATE.createReadStream()
             
-            process.emit('SIGINT',130)
+                            .on('data',data => accounts[data.key]=data.value)//add state of each account to snapshot dbs
+            
+                            .on('close',resolve)
+            
+    
+        ).catch(
+    
+            e => {
+    
+                LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+                
+                process.emit('SIGINT',130)
+    
+            }
+    
+        )
 
-        }
+    }else{
 
-    )
+        //Read only part of state to make snapshot for backups
+        //Set your own policy of backups with your other nodes,infrastructure etc.
+        let choosen=JSON.parse(PATH_RESOLVE(`SNAPSHOTS/separation/${Buffer.from(chain,'base64').toString('hex')}.json`)),
+        
+            promises=[]
+
+
+        Object.keys(choosen).forEach(
+            
+            addr => promises.push(STATE.get(addr).then(acc=>accounts[addr]=acc))
+            
+        )
+
+        await Promise.all(promises).catch(
+           
+            e => {
+
+                LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'F')
+                
+                process.emit('SIGINT',130)
+
+            }
+            
+        )
+
+    }
+    
 
 
     let promises=[]
 
     Object.keys(accounts).forEach(
         
-        addr => promises.push(SNAPSHOT.put(addr,accounts[addr]).catch(e=>e))
+        addr => promises.push(SNAPSHOT.put(addr,accounts[addr]))
         
     )
 
-
     //After that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
-    await Promise.all(promises).then(_=>SNAPSHOT.put('CANARY',canary)).catch(e => {
+    await Promise.all(promises)
+    
+                    .then(_=>SNAPSHOT.put('CANARY',canary))//put canary to snapshot
+                    
+                    .then(()=>SNAPSHOT.put('VT',VERIFICATION_THREAD))//...and VERIFICATION_THREAD(to get info about collapsed height,hash etc.)
+                    
+                    .catch(e => {
 
-        LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
+                        LOG(`Snapshot creation failed for ${CHAIN_LABEL(chain)}\n${e}`,'W')
         
-        process.emit('SIGINT',130)
+                        process.emit('SIGINT',130)
 
-    })
+                    })
+
+    LOG(`Snapshot was successfully created for \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m on height \x1b[36;1m${VERIFICATION_THREAD.COLLAPSED_INDEX}`,'S')
 
 },
 
@@ -689,7 +741,7 @@ verifyControllerBlock=async controllerBlock=>{
         &&
         CONFIG.CHAINS[chain].SNAPSHOTS.ENABLE
         &&
-        CONFIG.CHAINS[chain].SNAPSHOTS.RANGE%controllerBlock.i===0
+        controllerBlock.i%CONFIG.CHAINS[chain].SNAPSHOTS.RANGE===0
         &&
         await MAKE_SNAPSHOT(chain)
 
