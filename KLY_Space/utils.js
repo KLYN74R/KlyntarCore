@@ -100,9 +100,9 @@ CHAIN_LABEL=chain=>CONFIG.ALIASES[chain]||chain,
 VERIFY=(data,sig,pub)=>new Promise((resolve,reject)=>
 
     //Add mandatory prefix and postfix to pubkey
-    c.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+'MCowBQYDK2VwAyEA'+pub+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(e,res)=>
+    c.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+'MCowBQYDK2VwAyEA'+pub+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(err,res)=>
     
-        e?reject(false):resolve(res)
+        err?reject(false):resolve(res)
     
     )
 

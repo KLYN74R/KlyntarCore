@@ -163,7 +163,7 @@ export let
 
             }else{
 
-                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<hex of chain> and reload demon`,'F')
+                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<hex of chain> and reload daemon`,'F')
 
                 process.exit(138)
 

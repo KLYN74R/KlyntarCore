@@ -107,7 +107,7 @@ export let A={
         //Return ControllerBlock by index or InstantBlock by hash on appropriate chain
         let chain=Buffer.from(q.getParameter(0),'hex').toString('base64'),
             
-            type=q.getParameter(1),
+            type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
     
             id=q.getParameter(2)
         
@@ -115,9 +115,9 @@ export let A={
     
         
         //Set triggers
-        if(chains.has(chain)){
+        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS[type]){
     
-            let db=chains.get(chain)[type==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS']//depends on type of block-chose appropriate db
+            let db=chains.get(chain)[type]//depends on type of block-chose appropriate db
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
@@ -145,7 +145,7 @@ export let A={
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(chains.has(chain) && !isNaN(fromHeight)){
+        if(chains.has(chain) && CONFIG.CHAINS[chain].TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
             let chainConfig=CONFIG.CHAINS[chain],
