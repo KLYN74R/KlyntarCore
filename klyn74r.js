@@ -819,8 +819,8 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
 
-    CONFIG.TLS_ENABLED ? LOG('TLS is enabled!','CON') : LOG('TLS is disabled','CON')
-
+    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS_ENABLED?'enabled':'disabled'}`,'CON')
+    
     await CHECK_UPDATES()
 
     LOG(`Server configuration is ———> \u001b[38;5;50m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')

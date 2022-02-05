@@ -189,15 +189,22 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
 
 
 
-CHECK_UPDATES=()=>fetch(`${CONFIG.UPDATES}/${CONFIG.INFO.VERSION}`).then(r=>r.json()).then(
+CHECK_UPDATES=async()=>{
+
+    //We need to check both of them
+    //Check firstly for core update and symbiote-level update
     
-    resp => LOG(resp.msg,resp.msgColor)
+    for(let scope of ['CORE','SYMBIOTE']){
+
+        await fetch(`${CONFIG.UPDATES}/${CONFIG.INFO[`${scope}_VERSION`]}`).then(r=>r.json())
+        
+                .then(resp=>LOG(resp.msg,resp.msgColor))
+                        
+                .catch(e=>LOG(`Can't check for \u001b[38;5;202m${scope}_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${CONFIG.INFO[`${scope}_VERSION`]}\u001b[38;5;168m) ———> \u001b[38;5;50m${e}`,'CON'))
+
+    }
     
-).catch(
-    
-    e => LOG(`Can't check for updates(\u001b[38;5;50mcurrent ${CONFIG.INFO.VERSION}\u001b[38;5;168m) ———> \u001b[38;5;50m${e}`,'CON')
-    
-),
+},
 
 
 

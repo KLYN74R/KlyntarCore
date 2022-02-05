@@ -59,7 +59,8 @@
 
 
     "INFO":{
-        "VERSION":"v0.0.1-pre-alpha",
+        "CORE_VERSION":"v0.0.1-pre-alpha",
+        "SYMBIOTE_VERSION":"v0.0.1-pre-alpha",
         "NEWNEWS_EMPIRE_PUBLIC":"some.com,onemore.io,sameinterest.news",
         "CONTACT":"@:node@example.com,tg:@someuser,inst:@user",
         "DEBOUNCE_TIME":20000,
