@@ -4,7 +4,7 @@ import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
 import InstantBlock from '../KLY_Blocks/instantblock.js'
 
-import {chains,hostchains,metadata} from '../klyn74r.js'
+import {symbiotes,hostchains,metadata} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -23,7 +23,7 @@ verifyOffspringCreationTx=async(from,manifest,blockCreator,chain,nonce,sig)=>{
 
     let sender=GET_CHAIN_ACC(from,chain)
     
-    if(!(chains.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(manifest+chain+nonce,sig,from))){
+    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(manifest+chain+nonce,sig,from))){
 
         sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE
 
@@ -42,7 +42,7 @@ verifyNewsTransaction=async(from,newsHash,blockCreator,chain,nonce,sig)=>{
         
     let sender=GET_CHAIN_ACC(from,chain)
 
-    if(newsHash.length===64 && !(chains.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(newsHash+chain+nonce,sig,from))){
+    if(newsHash.length===64 && !(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(newsHash+chain+nonce,sig,from))){
 
         sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
 
@@ -61,7 +61,7 @@ verifyDelegation=async(from,newDelegate,blockCreator,chain,nonce,sig)=>{
 
     let sender=GET_CHAIN_ACC(from,chain)
 
-    if(!(chains.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && await VERIFY(newDelegate+chain+nonce,sig,from)){
+    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && await VERIFY(newDelegate+chain+nonce,sig,from)){
 
         sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
         
@@ -95,12 +95,12 @@ verifyTransaction=async(from,to,tag,amount,blockCreator,chain,nonce,sig)=>{
 
         recipient={ACCOUNT:{B:0,N:0,D:''}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
         
-        chains.get(chain).ACCOUNTS.set(to,recipient)//add to cache to collapse after all txs in ControllerBlock
+        symbiotes.get(chain).ACCOUNTS.set(to,recipient)//add to cache to collapse after all txs in ControllerBlock
     
     }
     
 
-    if(!(chains.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(to+tag+amount+chain+nonce,sig,from))){
+    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(to+tag+amount+chain+nonce,sig,from))){
 
         sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+amount
         
@@ -188,7 +188,7 @@ GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
     
                 if(await VERIFY(controllerHash,controllerBlock.sig,chain)){
 
-                    chains.get(chain).CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock)
+                    symbiotes.get(chain).CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock)
 
                     instantBlocks.forEach(
                         
@@ -196,7 +196,7 @@ GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
 
                             let hash=InstantBlock.genHash(chain,iBlock.d,iBlock.s,iBlock.c)
 
-                            controllerBlock.a?.includes(hash) && chains.get(chain).INSTANT_BLOCKS.put(hash,iBlock)
+                            controllerBlock.a?.includes(hash) && symbiotes.get(chain).INSTANT_BLOCKS.put(hash,iBlock)
 
                         }
                         
@@ -220,7 +220,7 @@ GET_FORWARD_BLOCKS=(chain,fromHeight)=>{
 
 
 //Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
-GET_CONTROLLER_BLOCK=(chain,blockId)=>chains.get(chain).CONTROLLER_BLOCKS.get(blockId).catch(e=>
+GET_CONTROLLER_BLOCK=(chain,blockId)=>symbiotes.get(chain).CONTROLLER_BLOCKS.get(blockId).catch(e=>
 
     //FOR FUTURE:
     //Request and get current height of chain from CONTROLLER(maxId will be returned)
@@ -235,7 +235,7 @@ GET_CONTROLLER_BLOCK=(chain,blockId)=>chains.get(chain).CONTROLLER_BLOCKS.get(bl
         let hash=ControllerBlock.genHash(block.c,block.a,block.i,block.p)
             
 
-        if(chains.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
+        if(symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
             BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m${BLOCK_PATTERN}│`,'S',block.c,hash,59,'\x1b[31m')
 
@@ -261,7 +261,7 @@ START_VERIFY_POLLING=async chain=>{
     if(!SIG_SIGNAL){
 
         //Try to get block
-        let verifThread=chains.get(chain).VERIFICATION_THREAD,
+        let verifThread=symbiotes.get(chain).VERIFICATION_THREAD,
             
             blockId=verifThread.COLLAPSED_INDEX+1,
         
@@ -302,7 +302,7 @@ START_VERIFY_POLLING=async chain=>{
 
 MAKE_SNAPSHOT=async chain=>{
 
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=chains.get(chain),//get appropriate dbs of symbiote
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=symbiotes.get(chain),//get appropriate dbs of symbiote
 
         canary=await metadata.get(chain+'/CANARY').catch(e=>false)
 
@@ -420,7 +420,7 @@ verifyControllerBlock=async controllerBlock=>{
     
         controllerHash=ControllerBlock.genHash(chain,controllerBlock.a,controllerBlock.i,controllerBlock.p),
 
-        chainReference=chains.get(chain)
+        chainReference=symbiotes.get(chain)
 
 
 
@@ -817,7 +817,7 @@ verifyControllerBlock=async controllerBlock=>{
 
 verifyInstantBlock=async block=>{
 
-    let hash=InstantBlock.genHash(block.n,block.d,block.s,block.c),chainData=chains.get(block.n),chainConfig=CONFIG.CHAINS[block.n]
+    let hash=InstantBlock.genHash(block.n,block.d,block.s,block.c),chainData=symbiotes.get(block.n),chainConfig=CONFIG.CHAINS[block.n]
 
     /*
   
@@ -832,7 +832,7 @@ verifyInstantBlock=async block=>{
 
     let allow=
     
-    chains.has(block.n)//if we still support this chain
+    symbiotes.has(block.n)//if we still support this chain
     &&
     block.s.length<=chainConfig.MANIFEST.INSTANT_BLOCK_STXS_MAX
     &&

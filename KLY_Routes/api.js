@@ -1,6 +1,6 @@
 import {GET_NODES,LOG,CHAIN_LABEL,BODY} from '../KLY_Space/utils.js'
 
-import {chains,WRAP_RESPONSE} from '../klyn74r.js'
+import {symbiotes,WRAP_RESPONSE} from '../klyn74r.js'
 
 
 
@@ -20,13 +20,13 @@ export let A={
 
         let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.ACCOUNTS){
+        if(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.ACCOUNTS){
     
             let data={
             
-                ...await chains.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
+                ...await symbiotes.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
             
-                COLLAPSE:chains.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
+                COLLAPSE:symbiotes.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
         
             }
 
@@ -38,7 +38,7 @@ export let A={
 
 
 
-    
+
     local:async(a,q)=>{
 
         a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true)
@@ -61,7 +61,7 @@ export let A={
 
         let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        chains.has(chain)
+        symbiotes.has(chain)
         ?
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.CHAINS[chain].TTL.NODES).end(
     
@@ -90,9 +90,9 @@ export let A={
     
         
         //Set triggers
-        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS[type]){
+        if(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS[type]){
     
-            let db=chains.get(chain)[type]//depends on type of block-chose appropriate db
+            let db=symbiotes.get(chain)[type]//depends on type of block-chose appropriate db
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
@@ -120,20 +120,20 @@ export let A={
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(chains.has(chain) && CONFIG.CHAINS[chain].TRIGGERS.MULTI && !isNaN(fromHeight)){
+        if(symbiotes.has(chain) && CONFIG.CHAINS[chain].TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
             let chainConfig=CONFIG.CHAINS[chain],
     
-                cbStorage=chains.get(chain).CONTROLLER_BLOCKS,
+                cbStorage=symbiotes.get(chain).CONTROLLER_BLOCKS,
                 
-                insStorage=chains.get(chain).INSTANT_BLOCKS,
+                insStorage=symbiotes.get(chain).INSTANT_BLOCKS,
 
                 promises=[],
 
                 response={},
 
-                verifThread=chains.get(chain).VERIFICATION_THREAD
+                verifThread=symbiotes.get(chain).VERIFICATION_THREAD
 
 
 

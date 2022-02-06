@@ -1,4 +1,4 @@
-import {chains,hostchains} from '../klyn74r.js'
+import {symbiotes,hostchains} from '../klyn74r.js'
 
 import {hash} from 'blake3-wasm'
 
@@ -165,12 +165,12 @@ HMAC=(data,sid,magic,fullHash)=>BLAKE3(data+sid+magic)===fullHash,
 GET_CHAIN_ACC=(addr,chain)=>
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
-    chains.get(chain).ACCOUNTS.get(addr)||chains.get(chain).STATE.get(addr)
+    symbiotes.get(chain).ACCOUNTS.get(addr)||symbiotes.get(chain).STATE.get(addr)
     
     .then(ACCOUNT=>
         
         //Get and push to cache
-        chains.get(chain).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
+        symbiotes.get(chain).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
     
     ).catch(e=>false),
 
@@ -540,13 +540,13 @@ BROADCAST=(route,data,chain)=>{
     */
 
 
-    chains.get(chain).NEAR.forEach((addr,index)=>
+    symbiotes.get(chain).NEAR.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&chains.get(chain).NEAR.splice(index,1)
+                value!=='1'&&symbiotes.get(chain).NEAR.splice(index,1)
                     
             ).catch(e=>{
                 
@@ -554,7 +554,7 @@ BROADCAST=(route,data,chain)=>{
                 &&
                 LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${CHAIN_LABEL(chain)}\x1b[33;1m]`,'W')
 
-                chains.get(chain).NEAR.splice(index,1)
+                symbiotes.get(chain).NEAR.splice(index,1)
 
             })
             

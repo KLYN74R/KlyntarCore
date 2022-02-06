@@ -10,7 +10,7 @@ import {verifyInstantBlock} from '../KLY_Process/verification.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import {chains,space,hostchains} from '../klyn74r.js'
+import {symbiotes,space,hostchains} from '../klyn74r.js'
 
 import c from 'crypto'
 
@@ -72,7 +72,7 @@ export let M={
                     allow=
                     
 
-                    chains.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                    symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
                     &&
                     CONFIG.CHAINS[block.c].TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
                     &&
@@ -84,7 +84,7 @@ export let M={
 
                     if(allow){
                     
-                        let controllerBlocks=chains.get(block.c).CONTROLLER_BLOCKS
+                        let controllerBlocks=symbiotes.get(block.c).CONTROLLER_BLOCKS
                         
                         controllerBlocks.get(block.i).catch(e=>{
 
@@ -167,7 +167,7 @@ export let M={
         
         
         //Reject all txs if route is off and other guards methods
-        if(!(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof obj?.c!=='string' || typeof obj.n!=='number' || typeof body.f!=='string'){
+        if(!(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof obj?.c!=='string' || typeof obj.n!=='number' || typeof body.f!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -181,7 +181,7 @@ export let M={
         //Set pointers due to type of tx('S' or 'D')
         obj.s ? (signa=obj.s,type='STXS') : (signa='',type='DTXS')
                 
-        chainMempool=chains.get(chain)['MEMPOOL_'+type]
+        chainMempool=symbiotes.get(chain)['MEMPOOL_'+type]
 
         
         /*
@@ -360,7 +360,7 @@ export let M={
         if(chainConfig&&typeof domain==='string'&&domain.length<=256){
             
             //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-            let nodes=chains.get(chain).NEAR
+            let nodes=symbiotes.get(chain).NEAR
             
             if(!(nodes.includes(domain) || chainConfig.PERMANENT_NEAR || chainConfig.MUST_SEND)){
 
@@ -398,10 +398,10 @@ export let M={
             workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
 
 
-        if(chains.has(chain) && !CONFIG.CHAINS[chain].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,chain)){
+        if(symbiotes.has(chain) && !CONFIG.CHAINS[chain].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,chain)){
 
             //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
-            let alreadyHas=await chains.get(chain).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
+            let alreadyHas=await symbiotes.get(chain).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
 
 
             //If it's literally the same proof-just send OK
@@ -414,9 +414,9 @@ export let M={
             }
 
             //If we're working higher than proof for some block we can check instantly
-            chains.get(get).VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
+            symbiotes.get(get).VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
             &&
-            await chains.get(chain).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
+            await symbiotes.get(chain).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
                 
                 workflowOk= ControllerBlock.genHash(chain,controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
                             &&
@@ -442,11 +442,11 @@ export let M={
 
                 CONFIG.CHAINS[chain].WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
                 &&
-                chains.get(chain).HOSTCHAINS_DATA
+                symbiotes.get(chain).HOSTCHAINS_DATA
                 
                     .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
 
-                    .then(()=>chains.get(chain).HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
+                    .then(()=>symbiotes.get(chain).HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
                     
                     .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
                     

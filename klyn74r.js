@@ -103,7 +103,7 @@ TODO:Реализация функционала симбиотических ц
 
 export let
 
-    chains=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
+    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
     
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     
@@ -219,7 +219,7 @@ export let
         chainConfig=CONFIG.CHAINS[controllerAddr]
 
 
-        chains.set(controllerAddr,{
+        symbiotes.set(controllerAddr,{
             
             //Create txs mempools-to add transactions on this chain.Both types-"DTXS" for default and "STXS"-with signatures
             MEMPOOL_DTXS:[],
@@ -238,7 +238,7 @@ export let
 
 
 
-        let chainRef=chains.get(controllerAddr),hexPath=Buffer.from(controllerAddr,'base64').toString('hex')
+        let chainRef=symbiotes.get(controllerAddr),hexPath=Buffer.from(controllerAddr,'base64').toString('hex')
 
 
         //Open writestream in append mode
@@ -649,8 +649,6 @@ let graceful=()=>{
 
             console.log('\n')
 
-            LOG('Node was gracefully stopped','I')
-
             let streamsPromises=[]
 
             SYMBIOTES_LOGS_STREAMS.forEach(
@@ -669,8 +667,14 @@ let graceful=()=>{
                 
             )
 
-            await Promise.all(streamsPromises).then(_=>process.exit(0))
-    
+            await Promise.all(streamsPromises).then(_=>{
+
+                LOG('Node was gracefully stopped','I')
+                
+                process.exit(0)
+
+            })
+
         }
 
     },500)
