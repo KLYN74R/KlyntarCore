@@ -292,7 +292,7 @@ START_VERIFY_POLLING=async chain=>{
 
 MAKE_SNAPSHOT=async chain=>{
 
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=chains.get(chain),
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=chains.get(chain),//get appropriate dbs of symbiote
 
         canary=await metadata.get(chain+'/CANARY').catch(e=>false)
 

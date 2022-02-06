@@ -31,6 +31,8 @@ SERVICES
 DOCS
 my_readme.md
 CIIPs
+globalvars.txt
+customRuntime.txt
 
 #Configs
 configs/chains*

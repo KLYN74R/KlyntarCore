@@ -142,7 +142,6 @@ export let GEN_BLOCK=async(chain,data)=>{
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
     if(chainRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.CHAINS[chain].VT_GT_NORMAL_DIFFERENCE < chainRef.GENERATION_THREAD.NEXT_INDEX){
 
-        
         LOG(`Block generation for \u001b[38;5;m${CHAIN_LABEL(chain)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',chain)
 
         return
@@ -464,22 +463,30 @@ RENAISSANCE=async()=>{
             &&
             fetch(CONFIG.CHAINS[chainID].CONTROLLER.ADDR+'/nodes/'+Buffer.from(chainID,'base64').toString('hex')+'/'+CONFIG.CHAINS[chainID].REGION).then(r=>r.json()).then(
                 
-                nodesArr=>{
+                async nodesArr=>{
                     
                     LOG(`Received ${nodesArr.length} addresses from ${CHAIN_LABEL(chainID)}...`,'I')
+
+                    let answers=[]
                 
                     //Ask if these nodes are available and ready to share data with us
                     nodesArr.forEach(
                         
-                        addr => fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([chainID,CONFIG.CHAINS[chainID].MY_ADDR])})
+                        addr => answers.push(
+                            
+                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([chainID,CONFIG.CHAINS[chainID].MY_ADDR])})
                         
                                     .then(res=>res.text())
                         
                                     .then(val=>val==='OK'&&chains.get(chainID).NEAR.push(addr))
                         
                                     .catch(e=>'')
+                                    
+                        )
                         
                     )
+
+                    await Promise.all(answers)
                 
                     LOG(`Total nodeset ${CHAIN_LABEL(chainID)}...\x1b[36;1m  has ${chains.get(chainID).NEAR.length} addresses`,'I')
                 
@@ -503,6 +510,7 @@ RENAISSANCE=async()=>{
     //Create each time when we run some block generation thread and there were no processes before
     //Don't paste it inside GEN_BLOCK_START not to repeat checks every call
     global.STOP_GEN_BLOCK={}
+    global.STOP_VERIFY_BLOCK={}
 
     //Creates two timers to generate both blocks separately and to control this flows with independent params
     Object.keys(CONFIG.CHAINS).forEach(controllerAddr=>{

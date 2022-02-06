@@ -31,6 +31,8 @@ SERVICES
 DOCS
 my_readme.md
 CIIPs
+globalvars.txt
+customRuntime.txt
 
 #Configs
 configs/chains*
@@ -42,3 +44,4 @@ KLY_Tests/send_tx.js
 KLY_Tests/hostchains/monitors/evm.js
 KLY_Tests/hostchains/evm_contracts/*interact*
 KLY_Tests/hostchains/connectors/
+KLY_Tests/hostchains/tokens/
