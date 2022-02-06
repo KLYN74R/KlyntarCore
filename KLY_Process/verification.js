@@ -121,10 +121,20 @@ SET_INSTANT_BLOCK=async(chainReference,chain,hash,block,rewardBox)=>{
 
     //If no-it's like SPV clients
     CONFIG.CHAINS[chain].STORE_INSTANT_BLOCKS
-    &&
-    await chainReference.INSTANT_BLOCKS.put(hash,block).catch(e=>LOG(`Can't store InstantBlock \x1b[36;1m${hash})\x1b[33;1m on\n${e}\n`,'W'))
-    
-    //Log message to inform that
+    ?
+    await chainReference.INSTANT_BLOCKS.put(hash,block).catch(
+        
+        e => LOG(`Can't store InstantBlock \x1b[36;1m${hash})\x1b[33;1m on ${chain}\n${e}\n`,'W')
+        
+    )
+    :
+    await chainReference.INSTANT_BLOCKS.del(hash).catch(
+        
+        e => LOG(`Can't delete InstantBlock \x1b[36;1m${hash})\x1b[33;1m on ${chain}\n${e}\n`,'W')
+        
+    )
+
+    //Delete useless copy from candidates
     chainReference.CANDIDATES.del(hash).catch(e=>LOG(`Can't delete candidate \x1b[36;1m${hash}\x1b[33;1m\n${e}\n`,'W'))
     
     rewardBox.set(hash,{creator:block.c,fees:0})//fees sum is 0 yet
@@ -824,7 +834,11 @@ verifyInstantBlock=async block=>{
     
     chains.has(block.n)//if we still support this chain
     &&
-    block.s.length<=chainConfig.MANIFEST.INSTANT_BLOCK_STXS_MAX&&block.d.length<=chainConfig.MANIFEST.INSTANT_BLOCK_DTXS_MAX&&!(block.s.length===0&&block.d.length===0)//check quantity of txs
+    block.s.length<=chainConfig.MANIFEST.INSTANT_BLOCK_STXS_MAX
+    &&
+    block.d.length<=chainConfig.MANIFEST.INSTANT_BLOCK_DTXS_MAX
+    &&
+    !(block.s.length===0&&block.d.length===0)//check quantity of txs
     &&
     !chainData.INSTANT_CANDIDATES.has(hash)//check if we already have this block-it will be in mapping anyway
     &&
