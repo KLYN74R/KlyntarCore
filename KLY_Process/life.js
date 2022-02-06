@@ -67,7 +67,7 @@ GET_CANDIDATES=async chain=>{
         ).catch(e=>false))
         
         //Limitation
-        if(limit++==CONFIG.CHAINS[chain].INSTANT_PORTION) break
+        if(limit++==CONFIG.CHAINS[chain].MANIFEST.INSTANT_PORTION) break
     
     }
     
@@ -95,7 +95,7 @@ GEN_BLOCK_START=async(chain,type)=>{
     
         await GEN_BLOCK(chain,type)
 
-        STOP_GEN_BLOCK[chain][type]=setTimeout(()=>GEN_BLOCK_START(chain,type),CONFIG.CHAINS[chain][type+'TIMEOUT'])
+        STOP_GEN_BLOCK[chain][type]=setTimeout(()=>GEN_BLOCK_START(chain,type),CONFIG.CHAINS[chain][type+'_BLOCK_GENERATION_TIME'])
     
         CONFIG.CHAINS[chain]['STOP_'+type]
         &&
@@ -160,7 +160,7 @@ export let GEN_BLOCK=async(chain,data)=>{
         
         //To fill ControllerBlocks for maximum
         
-        let phantomControllers=Math.ceil(chains.get(chain).INSTANT_CANDIDATES.size/CONFIG.CHAINS[chain].INSTANT_PORTION),
+        let phantomControllers=Math.ceil(chains.get(chain).INSTANT_CANDIDATES.size/CONFIG.CHAINS[chain].MANIFEST.INSTANT_PORTION),
 
             genThread=chains.get(chain).GENERATION_THREAD,
     
