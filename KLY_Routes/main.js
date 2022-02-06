@@ -44,6 +44,15 @@ export let M={
 
         let total=0,buf=Buffer.alloc(0)
 
+        //Probably you disable for all chains
+        if(!CONFIG.TRIGGERS.ALL_CONTROLLER_BLOCKS){
+            
+            a.end('Route is off')
+            
+            return
+        
+        }
+
         a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
     
             if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
@@ -54,9 +63,26 @@ export let M={
             
                 if(last){
                 
-                    let block=await PARSE_JSON(buf),hash=ControllerBlock.genHash(block.c,block.a,block.i,block.p)
+                    let block=await PARSE_JSON(buf),
                     
-                    if(chains.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'&&await VERIFY(hash,block.sig,block.c)){
+                        hash=ControllerBlock.genHash(block.c,block.a,block.i,block.p),
+
+
+                    //Check if we can accept this block
+                    allow=
+                    
+
+                    chains.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                    &&
+                    CONFIG.CHAINS[block.c].TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+                    &&
+                    await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
+                    
+                    
+
+
+
+                    if(allow){
                     
                         let controllerBlocks=chains.get(block.c).CONTROLLER_BLOCKS
                         
@@ -90,6 +116,15 @@ export let M={
 
     instantBlock:a=>{
 
+         //Probably you disable for all chains
+         if(!CONFIG.TRIGGERS.ALL_INSTANT_BLOCKS){
+            
+            a.end('Route is off')
+            
+            return
+        
+        }
+
         let total=0,buf=Buffer.alloc(0)
 
         a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
@@ -101,10 +136,12 @@ export let M={
                 total+=chunk.byteLength
             
                 if(last){
-                            
-                    !a.aborted&&a.end('OK')
 
-                    verifyInstantBlock(await PARSE_JSON(buf))
+                    let block=await PARSE_JSON(buf)
+                            
+                    !a.aborted&&a.end(CONFIG.CHAINS[block.n]?.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
+
+                    verifyInstantBlock(block)
 
                 } 
             
@@ -204,7 +241,7 @@ export let M={
 
 
     //[0,1,2] -> 0-RSA pubkey 1-signature 2-chain(controllerAddr)
-    startSpaceId:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    getSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
         let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
 
@@ -213,11 +250,11 @@ export let M={
         allow=
         
         //Check lightweight instant predicates
-        typeof body.c==='string'&&typeof body.d?.[0]==='string'&&typeof body.d[1]==='string'&&typeof body.d[2]==='string'&&CONFIG.TRIGGERS.START_SPACE_ID
+        typeof body.c==='string'&&typeof body.d?.[0]==='string'&&typeof body.d[1]==='string'&&typeof body.d[2]==='string'&&CONFIG.TRIGGERS.GET_SID
         
         &&//Also lightweight but account can be read from db,not from cache,so it might be promise.Check if address is on some chain(or entry is free) and address still don't have SID...etc
         
-        (CONFIG.START_SID_EVERYONE || await GET_CHAIN_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
+        (CONFIG.GIVE_SID_EVERYONE || await GET_CHAIN_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
         
         &&//...Check signature(SIG(RSApub+GUID)) to allow user to create account in <space>
         await VERIFY(body.d[0]+GUID,body.d[1],body.c)
@@ -255,46 +292,50 @@ export let M={
     
 
 
-    //TODO:Мб всё таки вернуть задержку во времени в рамках NewNetworks
+    //TODO:Мб всё таки вернуть задержку во времени
     //0-RSA pubkey 1-signature
-    spaceChange:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    changeSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
         let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE)
 
-        ACCOUNTS.get(body.c).then(async acc=>{
+        if(CONFIG.TRIGGERS.CHANGE_SID){
+        
+            ACCOUNTS.get(body.c).then(async acc=>{
             
-            if(acc&&await VERIFY(body.d[0]+GUID,body.d[1],body.c)){
-                
-                c.randomBytes(64,(e,r)=>{
-                
-                    if(!e){
-                        
-                        acc.S=BASE64(r)
-                        
-                        //acc.TIME=new Date().getTime()
-    
-                        ACCOUNTS.set(body.c,acc)
-    
-                        !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
-
-
-                        //For future upgrading of Space protocol
-                        //!Cloud heartbeat
-                        // if(CONFIG.INFORM_WHEN_SPACE_CHANGE){
-                
-                        //     let alertThem=Object.values(CONFIG.CHANGE_PROCEDURE)
-
-                        //     for(let i=0,l=alertThem.length;i<l;i++) SEND(alertThem[i].domain+'/csp',new MSG(b.c,alertThem[i].sid,'0'))
+                if(acc&&await VERIFY(body.d[0]+GUID,body.d[1],body.c)){
                     
-                        // }
+                    c.randomBytes(64,(e,r)=>{
+                    
+                        if(!e){
+                            
+                            acc.S=BASE64(r)
+                            
+                            //acc.TIME=new Date().getTime()
         
-                    }else !a.aborted&&a.end('Bytes generation error')
-                
-                })
-
-            }else !a.aborted&&a.end('Verification failed')
+                            ACCOUNTS.set(body.c,acc)
         
-        }).catch(e=>!a.aborted&&a.end('No such acc or DB error'))
+                            !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
+    
+    
+                            //For future upgrading of Space protocol
+                            //!Cloud heartbeat
+                            // if(CONFIG.INFORM_WHEN_SPACE_CHANGE){
+                    
+                            //     let alertThem=Object.values(CONFIG.CHANGE_PROCEDURE)
+    
+                            //     for(let i=0,l=alertThem.length;i<l;i++) SEND(alertThem[i].domain+'/csp',new MSG(b.c,alertThem[i].sid,'0'))
+                        
+                            // }
+            
+                        }else !a.aborted&&a.end('Bytes generation error')
+                    
+                    })
+    
+                }else !a.aborted&&a.end('Verification failed')
+            
+            }).catch(e=>!a.aborted&&a.end('No such acc or DB error'))
+            
+        }else !a.aborted&&a.end('Route is off.Check /info to get more info')
         
     }),
 

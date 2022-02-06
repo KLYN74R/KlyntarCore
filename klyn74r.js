@@ -888,15 +888,15 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 
 
-.post('/cb',M.controllerBlock)
+.post('/changesid',M.changeSid)
 
-.post('/sd',M.startSpaceId)
+.post('/cb',M.controllerBlock)
 
 .post('/ib',M.instantBlock)
 
 .post('/addnode',M.addNode)
 
-.post('/sc',M.spaceChange)
+.post('/getsid',M.getSid)
 
 .post('/proof',M.proof)
 

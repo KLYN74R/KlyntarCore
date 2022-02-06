@@ -30,7 +30,10 @@
     },
 
     "TRIGGERS":{     
-        "START_SPACE_ID":1
+        "GET_SID":1,
+        "CHANGE_SID":1,
+        "ALL_CONTROLLER_BLOCKS":1,
+        "ALL_INSTANT_BLOCKS":1
     },
 
 
@@ -68,7 +71,7 @@
     },
 
 
-    "START_SID_EVERYONE":true,
+    "GIVE_SID_EVERYONE":true,
     "DEFAULT_ROLES":"",
     
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys"],

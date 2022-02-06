@@ -20,7 +20,7 @@ export let A={
 
         let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.BALANCE){
+        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.ACCOUNTS){
     
             let data={
             
@@ -30,7 +30,7 @@ export let A={
         
             }
 
-            !a.aborted&&WRAP_RESPONSE(a,CONFIG.CHAINS[chain].TTL.BALANCE).end(JSON.stringify(data))
+            !a.aborted&&WRAP_RESPONSE(a,CONFIG.CHAINS[chain].TTL.ACCOUNTS).end(JSON.stringify(data))
     
         }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
 
@@ -38,32 +38,7 @@ export let A={
 
 
 
-
-    exists:async(a,q)=>{
-
-        a.onAborted(()=>a.aborted=true)
-
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        if(chains.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.EXISTS){
-    
-            let data={
-            
-                ...await chains.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
-            
-                COLLAPSE:chains.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
-        
-            }
-
-            !a.aborted&&WRAP_RESPONSE(a,CONFIG.CHAINS[chain].TTL.BALANCE).end(JSON.stringify(data))
-    
-        }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
-
-    },
-
-
-
-
     local:async(a,q)=>{
 
         a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true)
