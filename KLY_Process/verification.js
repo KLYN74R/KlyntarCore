@@ -647,11 +647,22 @@ verifyControllerBlock=async controllerBlock=>{
         
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        CONFIG.CHAINS[chain].STORE_CONTROLLER_BLOCKS
-        &&
-        chainReference.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock).catch(e=>LOG(`Failed to store ControllerBlock ${controllerBlock.i} on ${CHAIN_LABEL(chain)}\nError:${e}`,'W'))
-     
-    
+        if(CONFIG.CHAINS[chain].STORE_CONTROLLER_BLOCKS){
+            
+            //No matter if we already have this block-resave it
+
+            chainReference.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock).catch(e=>LOG(`Failed to store ControllerBlock ${controllerBlock.i} on ${CHAIN_LABEL(chain)}\nError:${e}`,'W'))
+
+        }else{
+
+            //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
+            chainReference.CONTROLLER_BLOCKS.del(controllerBlock.i).catch(
+                
+                e => LOG(`Failed to delete ControllerBlock ${controllerBlock.i} on ${CHAIN_LABEL(chain)}\nError:${e}`,'W')
+                
+            )
+
+        }
 
 
         //________________________________________________COMMIT STATE__________________________________________________    
