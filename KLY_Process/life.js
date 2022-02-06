@@ -97,7 +97,7 @@ GEN_BLOCK_START=async(chain,type)=>{
 
         STOP_GEN_BLOCK[chain][type]=setTimeout(()=>GEN_BLOCK_START(chain,type),CONFIG.CHAINS[chain][type+'_BLOCK_GENERATION_TIME'])
     
-        CONFIG.CHAINS[chain]['STOP_'+type]
+        CONFIG.CHAINS[chain]['STOP_GENERATE_BLOCK_'+type]
         &&
         clearTimeout(STOP_GEN_BLOCK[chain][type])
       
