@@ -1,0 +1,631 @@
+{
+    "CHAINS":{
+        
+        "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=":{
+            
+            "PUB":"DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=",
+            "PRV":"e4a1935e868c44c8b45eccfc4098b6e504404c9e5dac2b56ee54b6faac787ad592333b354fb171cdd38e8920c36153ec69feedbc041607db1b42ff26a306d4909695b423c157c5273d0bf27e13bc3a36",
+
+            "CONTROLLER":{
+                "ADDR":"http://localhost:7777",
+                "ME":true
+            },
+
+            "MANIFEST":{
+
+                "CONTACT":{
+                    "TELEGRAM":"@Something",
+                    "MAIL":"user@email.com"
+                },
+
+                "HIVEMIND":[
+                    "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=",
+                    "terra1gaugsj5v98efpxktu2h6u2p758c2mkryyanj0v",
+                    "GB65YDWOEWXNSZOUH3OUC3B2LBBIXQ5IILUX6P4Y55LANCUCYAAN3YS7"
+                ],
+                
+                "HOSTCHAINS":{
+                    "ltc":{
+                        "TYPE":"0",
+                        "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
+                    },
+                    "bsc":{
+                        "TYPE":"0",
+                        "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
+                    },
+                    "eth":{
+                        "TYPE":"0",
+                        "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
+                    }
+                
+                },
+
+                "FEE":2,
+
+                "CONTROLLER_FREEZE":10000,
+                "INSTANT_FREEZE":5000,
+    
+                "CONTROLLER_BLOCK_MAX_SIZE":100,
+                "INSTANT_BLOCK_DTXS_MAX":20000,
+                "INSTANT_BLOCK_STXS_MAX":10000,
+                "INSTANT_PORTION":100
+
+            },
+
+            "HC_CONFIGS":{
+                
+                "ltc":{
+
+                    "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
+                    "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
+                    "NET":"TEST",
+                    "PROVIDER_TYPE":"NODE",
+                    "URL":"http://localhost:2339/command",
+                    "CONFIRMATIONS":1,
+                    "CREDS":"VLAD",
+                    "FEE":192666
+                    
+                },
+
+                "bsc":{
+                    "URL":"https://data-seed-prebsc-1-s1.binance.org:8545/",
+                    "PROVIDER_TYPE":"API",
+                    "PUB":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+                    "PRV":"fbd0739ef27de0efa663b375ecb2ffb2ba2ac68e3825737eb6e9e39192cbb8994ae6ba5d34d7f630deaeb9be7da8bad231f3b8b460fcec68aa63a2724df4309f78431a907c3b2e728f6dad65fe93ec1e",
+                    "TO":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+                    "GAS_LIMIT":25000,
+                    "GAS_PRICE":"10",
+                    "AMOUNT":"0",
+                    "NET":"mainnet",
+                    "CHAIN_ID":97,
+                    "HARDFORK":"petersburg"
+                },
+
+                "eth":{
+                    "URL":"https://ropsten.infura.io/v3/221ec7661021452ab89a4a5fa29ebf68",
+                    "PROVIDER_TYPE":"NAAS",
+                    "PUB":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+                    "PRV":"8db9279e332ebd4e098fbba039019ca90b7a45e4c433bc1542ce9e56058eb5a66db9df0fce8ffbfec41f74440fb1a010727b0db46e2a0cba25143c485bae7002a4b4ba48137177536e1a5e2007c573ce",
+                    "TO":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+                    "GAS_LIMIT":30000,
+                    "GAS_PRICE":"100",
+                    "AMOUNT":"0",
+                    "NET":"mainnet",
+                    "CHAIN_ID":3,
+                    "HARDFORK":"london",
+                    "MAX_FEE_PER_GAS":"30",
+                    "MAX_PRIORITY_FEE_PER_GAS":"30"
+                }
+            },
+
+            "STOP_PUSH_TO_HOSTCHAINS":{
+                "ltc":false,
+                "bsc":false,
+                "eth":false
+            },
+
+            "WORKFLOW_CHECK":{
+                
+                "HOSTCHAINS":{
+                    "ltc":{
+                        "MODE":"PASSIVE",
+                        "RANGE":100,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:7777/alert"
+                    },
+                    "bsc":{
+                        "MODE":"PASSIVE",
+                        "RANGE":10,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:7777/alert"
+                    },
+                    "eth":{
+                        "MODE":"PASSIVE",
+                        "RANGE":10,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:7777/alert"
+                    }
+                }
+            },
+            
+            "VT_GT_NORMAL_DIFFERENCE":100,
+            
+            "CANDIDATES_CACHE_SIZE":100000,
+
+            "CONTROLLER_POLLING":5000,
+
+            "STOP_C":false,
+            "STOP_I":false,
+
+            "C_BLOCK_GENERATION_TIME":30000,
+            "I_BLOCK_GENERATION_TIME":10000,
+            
+            "STORE_INSTANT_BLOCKS":true,
+            "STORE_CONTROLLER_BLOCKS":true,
+            
+            "STOP_CHAIN":false,
+            
+            "BLOCK_С_INIT_DELAY":10000,
+            "BLOCK_I_INIT_DELAY":15000,
+            
+            "DTXS_MEMPOOL_SIZE":100000,
+            "STXS_MEMPOOL_SIZE":200000,
+            
+            "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
+
+            "NODES":{
+
+                "AF":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ],
+        
+                "AS":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ]
+
+            },
+
+            "PERMANENT_NEAR":[
+                "https://0.mynearpub.com:7777",
+                "https://1.mynearpub.com:7777",
+                "https://2.mynearpub.com:7777",
+                "https://3.mynearpub.com:7777",
+                "https://4.mynearpub.com:7777",
+                "https://5.mynearpub.com:7777",
+                "https://6.mynearpub.com:7777",
+                "https://7.mynearpub.com:7777",
+                "https://8.mynearpub.com:7777"
+            ],
+
+
+            "MUST_SEND":{
+
+                "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
+           
+                "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
+           
+                "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
+            
+            },
+
+
+            "NODES_PORTION":8,
+            "MAX_CONNECTIONS":15,
+
+            "MY_ADDR":"http://somenode.com:7777",
+            
+            "TTL":{
+                "BALANCE":30,
+                "NODES":600
+            },
+
+            "TRIGGERS":{
+                "NODES":1,
+                "ACCOUNTS":1,
+                "INSTANT_BLOCKS":1,
+                "CONTROLLER_BLOCKS":1,
+                "MULTI":1,
+                "TX":1
+            },
+
+            "GET_CONTROLLER":"http://localhost:7777",
+            
+            "GET_INSTANT":"http://localhost:7777",
+
+            "GET_MULTI":"http://localhost:7777",
+
+            "BLOCKS_EXPORT_PORTION":100,
+
+            "REGION":"EU",
+
+            "LOGS":{
+                "TO_FILE":true,
+                "OFFLINE":false,
+                "BLOCK":true,
+                "STORE":true
+            
+            },
+
+            "ADVANCED_BROADCAST":{
+                
+                "TXS":{
+                    "D":"ALL",
+                    "S":"CONTROLLER"
+                }
+            
+            },
+
+            
+            "SNAPSHOTS":{
+                "ENABLE":true,
+                "RANGE":100,
+                "ALL":true,
+                "SHARDS_URLS":[
+                    "https://myown.snapshots.io",
+                    "https://dead::beef",
+                    "http://192.168.1.23:9696"
+                ]
+            }
+
+        },
+
+
+
+
+        "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=":{
+             
+            "PUB":"q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=",
+            "PRV":"67e9ec01b62b0c3812a6e607a975a898c50ac153335d281d47986ca553fc3ebaf87f75f15d3e1cae7aba80a495811909095a0beb0cf7689840f9c699fced1e613de869e65a4e336bdb3e2e23dd19579d",
+
+
+            "CONTROLLER":{
+                "ADDR":"http://localhost:7777",
+                "ME":true
+            },
+
+            "MANIFEST":{
+
+                "WEB23":{
+                    "DNS_NOTE":"rBcQ6Kd6j2bJWCKR986hC9mL1iRtpayHKR"
+                },
+
+                "CONTACT":{
+                    "TELEGRAM":"@Something",
+                    "MAIL":"user@email.com"
+                },
+                
+                "HIVEMIND":[
+                    "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=",
+                    "addr1qyvffnghe5wcvqfd87mlkatqgz932j0ken9gva7xvm0acqgcjnx30ngascqj60ahld6kqsytz4yldnx2semuveklmsqs2ahj2j",
+                    "JA3KGJMXY3F5QWHJOXVXYZ5J4IELAK2RNEWUSJP7TLMUDRCCBOM72WRHGQ",
+                    "0x62F3a3c665Fc162de8C986B1Afb16649f89cc328",
+                    "0x4741c39e6096c192Db6E1375Ff32526512069dF5"
+                ],
+
+                "HOSTCHAINS":{
+                    "dash":{
+                        "TYPE":"0",
+                        "ADDRESS":"yMymNFkipvg9CMzi1SUVB2MqNHyfoyAtuf"
+                    },
+                    "xrp":{
+                        "TYPE":"0",
+                        "ADDRESS":"rBcQ6Kd6j2bJWCKR986hC9mL1iRtpayHKR"
+                    },
+                    "trx":{
+                        "TYPE":"0",
+                        "ADDRESS":"TENahJSzprBv27pDjZTuEiLnPeFJFTNXSB"
+                    }
+                    
+                },
+
+                "FEE":2,
+
+                "CONTROLLER_FREEZE":50000,
+                "INSTANT_FREEZE":5000,
+    
+                "CONTROLLER_BLOCK_MAX_SIZE":100,
+                "INSTANT_BLOCK_DTXS_MAX":20000,
+                "INSTANT_BLOCK_STXS_MAX":10000,
+                "INSTANT_PORTION":100
+    
+
+            },
+
+            "HC_CONFIGS":{
+
+                "dash":{
+
+                    "PUB":"yMymNFkipvg9CMzi1SUVB2MqNHyfoyAtuf",
+                    "PRV":"3fa44e9e52848bc0dc87a9df540e8a825d9f46561b14956b5c104439aae1684aa382f99cd2d5dc232e1c150cd8783ac0ef81d8d7ff219b19737e76710a2a8ae9",
+                    "NET":"DASH", 
+                    "PROVIDER_TYPE":"NODE",
+                    "URL":"http://localhost:8999/command",
+                    "CONFIRMATIONS":1,
+                    "CREDS":"DASH",
+                    "FEE":14000
+                },
+                "xrp":{
+                    "URL":"wss://s.altnet.rippletest.net:51233",
+                    "PUB":"rBcQ6Kd6j2bJWCKR986hC9mL1iRtpayHKR",
+                    "PRV":"4476f874305408c6692c6779be82fd9942e42879f3a07a265aa473d698380e97",
+                    "TO":"r4ZU7A5jhkgAb65txNL5M8YgCRX6xpk86n",
+                    "AMOUNT":1,
+                    "NET":"TEST",
+                    "MAX_LEDGER_VERSION_OFFSET":75
+                },
+                "trx":{
+                    "URL":"https://api.shasta.trongrid.io",
+                    "PUB":"TENahJSzprBv27pDjZTuEiLnPeFJFTNXSB",
+                    "PRV":"bc0895efeecd6e092343b749a08571726f5e0e78bbaba5cbeddc12fbfac4782fa519929b846a1fc9453c44474126b91a7b0c946c999ffddef87e1b88ed64c4d17eb45c7ffc45f526cb6ee4ecfee252d8",
+                    "TO":"TFwaEtwtaZCEyQiasC1cBMKzCNxhJftiNT",
+                    "AMOUNT":30,
+                    "NET":"TEST"
+                }
+            },
+
+            
+            "CONTROLLER_POLLING":5000,
+            "STOP_CHAIN":false,
+            
+            "STOP_PUSH_TO_HOSTCHAINS":{
+                "dash":false,
+                "xrp":false,
+                "trx":false
+            },
+            
+            "WORKFLOW_CHECK":{
+                
+                "HOSTCHAINS":{
+                    "dash":{
+                        "MODE":"PASSIVE",
+                        "RANGE":10,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"yMymNFkipvg9CMzi1SUVB2MqNHyfoyAtuf",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:10000/alert"
+                    },
+                    "xrp":{
+                        "MODE":"PASSIVE",
+                        "RANGE":10,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"rBcQ6Kd6j2bJWCKR986hC9mL1iRtpayHKR",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:10000/alert"
+                    },
+                    "trx":{
+                        "MODE":"PASSIVE",
+                        "RANGE":10,
+                        "STORE":true,
+                        "CACHE_SIZE":10000,
+                        "TARGET":"TENahJSzprBv27pDjZTuEiLnPeFJFTNXSB",
+                        "URL":"http://localhost:7777",
+                        "REPORT_TO":"http://localhost:1000/alert"
+                    }
+                }
+            },
+
+            "VT_GT_NORMAL_DIFFERENCE":100,
+            "CANDIDATES_CACHE_SIZE":100000,
+            
+
+            "STOP_GENERATE_BLOCK_C":false,
+            "STOP_GENERATE_BLOCK_I":false,
+            
+            "BLOCK_С_INIT_DELAY":3000,
+            "BLOCK_I_INIT_DELAY":1000,
+
+            "C_BLOCK_GENERATION_TIME":30000,
+            "I_BLOCK_GENERATION_TIME":5000,
+            
+            "STORE_INSTANT_BLOCKS":true,
+            "STORE_CONTROLLER_BLOCKS":true,
+    
+            "BLOCK_TO_BLOCK_CACHE_SIZE":200000,
+
+            "DTXS_MEMPOOL_SIZE":100000,
+            "STXS_MEMPOOL_SIZE":200000,
+
+            "NODES":{
+
+                "EU":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ],
+                
+                "NA":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ],
+        
+                "SA":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ],
+        
+                "OC":[
+                    "https://0.mynearpub.com:7777",
+                    "https://1.mynearpub.com:7777",
+                    "https://2.mynearpub.com:7777",
+                    "https://3.mynearpub.com:7777",
+                    "https://4.mynearpub.com:7777",
+                    "https://5.mynearpub.com:7777",
+                    "https://6.mynearpub.com:7777",
+                    "https://7.mynearpub.com:7777",
+                    "https://8.mynearpub.com:7777",
+                    "https://9.mynearpub.com:7777",
+                    "https://10.mynearpub.com:7777",
+                    "https://11.mynearpub.com:7777",
+                    "https://12.mynearpub.com:7777",
+                    "https://13.mynearpub.com:7777",
+                    "https://14.mynearpub.com:7777",
+                    "https://15.mynearpub.com:7777",
+                    "https://16.mynearpub.com:7777",
+                    "https://17.mynearpub.com:7777",
+                    "https://18.mynearpub.com:7777"
+                ]
+
+            },
+
+            "PERMANENT_NEAR":[
+                "https://1.mynearpub.com:7777",
+                "https://2.mynearpub.com:7777",
+                "https://3.mynearpub.com:7777",
+                "https://4.mynearpub.com:7777",
+                "https://5.mynearpub.com:7777",
+                "https://6.mynearpub.com:7777",
+                "https://7.mynearpub.com:7777",
+                "http://localhost:8888",
+                "http://localhost:9999"
+            ],
+
+            "MUST_SEND":{
+
+                "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
+           
+                "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
+           
+                "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
+            
+            },
+
+
+            "NODES_PORTION":10,
+            "MAX_CONNECTIONS":15,
+
+            "MY_ADDR":"http://somenode.com:7777",
+
+            "TTL":{
+                "BALANCE":30,
+                "NODES":600
+            },
+
+            "TRIGGERS":{
+                "NODES":1,
+                "ACCOUNTS":1,
+                "INSTANT_BLOCKS":1,
+                "CONTROLLER_BLOCKS":1,
+                "MULTI":1,
+                "TX":1
+            },
+
+            "GET_INSTANT":"http://localhost:7777",
+
+            "GET_CONTROLLER":"http://localhost:7777",
+
+            "GET_MULTI":"http://localhost:7777",
+            
+            "BLOCKS_EXPORT_PORTION":100,
+
+            "REGION":"EU",
+
+            "LOGS":{
+                "TO_FILE":true,
+                "OFFLINE":false,
+                "BLOCK":true,
+                "STORE":true
+            },
+
+
+            "ADVANCED_BROADCAST":{
+                
+                "TXS":{
+                    "D":"ALL",
+                    "S":"CONTROLLER"
+                }
+            
+            },
+
+            "SNAPSHOTS":{
+                "ENABLE":true,
+                "RANGE":100,
+                "ALL":true,
+                "SHARDS_URLS":[
+                    "https://myown.snapshots.io",
+                    "https://dead::beef",
+                    "http://192.168.1.23:9696"
+                ]
+            }
+    
+        }
+    
+    }
+    
+}

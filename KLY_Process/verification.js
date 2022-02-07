@@ -246,7 +246,7 @@ GET_CONTROLLER_BLOCK=(chain,blockId)=>symbiotes.get(chain).CONTROLLER_BLOCKS.get
 
         }
 
-    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}`,'W'))
+    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m\n${e}`,'W'))
 
 
 ),
@@ -283,9 +283,10 @@ START_VERIFY_POLLING=async chain=>{
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
         global[`CONTROLLER_${chain}`]=setTimeout(()=>START_VERIFY_POLLING(chain),nextBlock?0:CONFIG.CHAINS[chain].CONTROLLER_POLLING)
 
-
-
         //Probably no sense to stop polling via .clearTimeout()
+        //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
+        
+
     
     }else{
 

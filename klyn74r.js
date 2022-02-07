@@ -591,7 +591,7 @@ export let
         //We can dynamically change the time,limits,etc.
         global[stopLabel]=setTimeout(()=>FLUSH_ADVANCED_CACHE(),TTL)
 
-        //Can be dynamically stopped
+        //Can be dynamically stopped via API or script from custom collection
         global[shouldStop]&&clearTimeout(global[stopLabel])
     
     },

@@ -9,6 +9,17 @@
     "INTERFACE":"0.0.0.0",
     "PORT":7777,
     
+    "TTL":{
+        "INFO":600
+    },
+
+    "TRIGGERS":{     
+        "GET_SID":1,
+        "CHANGE_SID":1,
+        "ALL_CONTROLLER_BLOCKS":1,
+        "ALL_INSTANT_BLOCKS":1
+    },
+    
     "CONTROL_SID":"<SOME PRIVATE_KEY>",
     "CONTROL_PUB_KEY":"DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=",
     "2FA":false

@@ -25,18 +25,6 @@
     },
 
 
-    "TTL":{
-        "INFO":600
-    },
-
-    "TRIGGERS":{     
-        "GET_SID":1,
-        "CHANGE_SID":1,
-        "ALL_CONTROLLER_BLOCKS":1,
-        "ALL_INSTANT_BLOCKS":1
-    },
-
-
     "DEBOUNCE_TIME":20000,
     "DEBOUNCE_MODULUS":1000,
     
@@ -62,18 +50,27 @@
 
 
     "INFO":{
+        
         "CORE_VERSION":"v0.0.1-pre-alpha",
-        "SYMBIOTE_VERSION":"v0.0.1-pre-alpha",
+        
+        "SYMBIOTES_VERSIONS":{
+            "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=":"v0.0.1-pre-alpha",
+            "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=":"v0.0.1-pre-alpha"
+
+        },
+        
         "NEWNEWS_EMPIRE_PUBLIC":"some.com,onemore.io,sameinterest.news",
+        
         "CONTACT":"@:node@example.com,tg:@someuser,inst:@user",
+        
         "OVERRIDED_ROUTES":{
             "DEFAULT":"info=>anotherdomain.io",
             "kNULL":"cblock=>feed::babe:9999"
         },
-        "DEBOUNCE_TIME":20000,
-        "SYMBIOTES":"kNULL,CARNAGE"
+        
+        "DEBOUNCE_TIME":20000
+    
     },
-
 
     "GIVE_SID_EVERYONE":true,
     "DEFAULT_ROLES":"",
@@ -81,7 +78,7 @@
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "RUN_CUSTOM":["dummy/dummy_test.js","loggers/eth_logger.js"],
+    "RUN_CUSTOM":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js"],
 
     "UPDATES":"https://updates.klyntar.org/core"
 

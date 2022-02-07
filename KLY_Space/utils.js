@@ -193,14 +193,21 @@ CHECK_UPDATES=async()=>{
 
     //We need to check both of them
     //Check firstly for core update and symbiote-level update
-    
-    for(let scope of ['CORE','SYMBIOTE']){
-
-        await fetch(`${CONFIG.UPDATES}/${CONFIG.INFO[`${scope}_VERSION`]}`).then(r=>r.json())
+    await fetch(`${CONFIG.UPDATES}/${CONFIG.INFO.CORE_VERSION}`).then(r=>r.json())
         
-                .then(resp=>LOG(resp.msg,resp.msgColor))
+    .then(resp=>LOG(resp.msg,resp.msgColor))
                         
-                .catch(e=>LOG(`Can't check for \u001b[38;5;202m${scope}_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${CONFIG.INFO[`${scope}_VERSION`]}\u001b[38;5;168m) ———> \u001b[38;5;50m${e}`,'CON'))
+    .catch(e=>LOG(`Can't check for \u001b[38;5;202mCORE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${CONFIG.INFO.CORE_VERSION}\u001b[38;5;168m)\n\u001b[38;5;50m${e}`,'CON'))
+
+    let symbiotesVersions=CONFIG.INFO.SYMBIOTES_VERSIONS
+
+    for(let symbiote in symbiotesVersions){
+
+        await fetch(`${CONFIG.UPDATES}/${symbiotesVersions[symbiote]}`).then(r=>r.json())
+        
+                .then(resp=>LOG(`Received for ${CHAIN_LABEL(symbiote)} ———> ${resp.msg}`,resp.msgColor))
+                        
+                .catch(e=>LOG(`Can't check \u001b[38;5;202mSYMBIOTE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${CHAIN_LABEL(symbiote)} ———> \u001b[38;5;50m${e}`,'CON'))
 
     }
     
