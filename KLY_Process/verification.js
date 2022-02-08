@@ -246,7 +246,7 @@ GET_CONTROLLER_BLOCK=(chain,blockId)=>symbiotes.get(chain).CONTROLLER_BLOCKS.get
 
         }
 
-    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m\n${e}`,'W'))
+    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m ———>${e}`,'W'))
 
 
 ),
