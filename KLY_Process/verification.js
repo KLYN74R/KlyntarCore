@@ -2,9 +2,9 @@ import {VERIFY,BROADCAST,LOG,GET_CHAIN_ACC,BLOCKLOG,CHAIN_LABEL,BLAKE3,PATH_RESO
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import InstantBlock from '../KLY_Blocks/instantblock.js'
-
 import {symbiotes,hostchains,metadata} from '../klyn74r.js'
+
+import InstantBlock from '../KLY_Blocks/instantblock.js'
 
 import fetch from 'node-fetch'
 
@@ -246,7 +246,7 @@ GET_CONTROLLER_BLOCK=(chain,blockId)=>symbiotes.get(chain).CONTROLLER_BLOCKS.get
 
         }
 
-    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m ———>${e}`,'W'))
+    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m ———> ${e}`,'W'))
 
 
 ),
@@ -280,8 +280,12 @@ START_VERIFY_POLLING=async chain=>{
 
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${verifThread.COLLAPSED_INDEX+1}`,'W')
 
+
+        if(CONFIG.CHAINS[chain]['STOP_VERIFY']) return//step over initiation of another timeout and this way-stop the Verification thread
+
+
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        global[`CONTROLLER_${chain}`]=setTimeout(()=>START_VERIFY_POLLING(chain),nextBlock?0:CONFIG.CHAINS[chain].CONTROLLER_POLLING)
+        setTimeout(()=>START_VERIFY_POLLING(chain),nextBlock?0:CONFIG.CHAINS[chain].CONTROLLER_POLLING)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread

@@ -143,8 +143,10 @@
 
             "CONTROLLER_POLLING":5000,
 
-            "STOP_C":false,
-            "STOP_I":false,
+            "STOP_GENERATE_BLOCK_C":false,
+            "STOP_GENERATE_BLOCK_I":false,
+
+            "STOP_VERIFY":false,
 
             "C_BLOCK_GENERATION_TIME":30000,
             "I_BLOCK_GENERATION_TIME":10000,
@@ -437,6 +439,8 @@
 
             "STOP_GENERATE_BLOCK_C":false,
             "STOP_GENERATE_BLOCK_I":false,
+            
+            "STOP_VERIFY":false,
             
             "BLOCK_С_INIT_DELAY":3000,
             "BLOCK_I_INIT_DELAY":1000,

@@ -2,9 +2,9 @@ import {LOG,SIG,BLOCKLOG,BROADCAST,CHAIN_LABEL} from '../KLY_Space/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import InstantBlock from '../KLY_Blocks/instantblock.js'
-
 import {symbiotes,metadata,hostchains} from '../klyn74r.js'
+
+import InstantBlock from '../KLY_Blocks/instantblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -510,7 +510,7 @@ RENAISSANCE=async()=>{
     //Create each time when we run some block generation thread and there were no processes before
     //Don't paste it inside GEN_BLOCK_START not to repeat checks every call
     global.STOP_GEN_BLOCK={}
-    global.STOP_VERIFY_BLOCK={}
+
 
     //Creates two timers to generate both blocks separately and to control this flows with independent params
     Object.keys(CONFIG.CHAINS).forEach(controllerAddr=>{
@@ -520,7 +520,7 @@ RENAISSANCE=async()=>{
         if(!chainRef.STOP_CHAIN){
         
             //Start generate ControllerBlocks if you're controller(obviously)
-            !chainRef.STOP_C&&chainRef.CONTROLLER.ME&&setTimeout(()=>{
+            !chainRef.STOP_C && chainRef.CONTROLLER.ME && setTimeout(()=>{
                 
                 STOP_GEN_BLOCK[controllerAddr]={C:''}
                 
@@ -531,7 +531,7 @@ RENAISSANCE=async()=>{
 
 
             
-            !chainRef.STOP_I&&setTimeout(()=>{
+            !chainRef.STOP_I && setTimeout(()=>{
 
                 STOP_GEN_BLOCK[controllerAddr] ? STOP_GEN_BLOCK[controllerAddr]['I']='' : STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
 
