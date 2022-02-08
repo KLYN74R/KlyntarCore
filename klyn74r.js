@@ -20,6 +20,7 @@ import l from 'level'
 
 import fs from 'fs'
 
+//import VERIFIERS from './KLY_Essences/handlers/dev0/verify.js'
 
 
 
@@ -816,6 +817,7 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 
 //____________________________________________ASK FOR FINAL AGREEMENT____________________________________________
+
 
 
 

@@ -1,5 +1,7 @@
 import {symbiotes,hostchains} from '../klyn74r.js'
 
+//import VALAR from '@klyntar/valardohaeris'
+
 import {hash} from 'blake3-wasm'
 
 import readline from 'readline'
@@ -87,6 +89,7 @@ BASE64=v=>Buffer.from(v).toString('base64'),
 BLAKE3=v=>hash(v).toString('hex'),
 
 CHAIN_LABEL=chain=>CONFIG.ALIASES[chain]||chain,
+
 
 
 
