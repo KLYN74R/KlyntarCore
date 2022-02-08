@@ -17,106 +17,6 @@ let BLOCK_PATTERN=process.platform==='linux'?'——':'———',
 
 
 
-verifyOffspringCreationTx=async(from,manifest,blockCreator,chain,nonce,sig)=>{
-    
-    //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
-
-    let sender=GET_CHAIN_ACC(from,chain)
-    
-    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(manifest+chain+nonce,sig,from))){
-
-        sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE
-
-        sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)//update maximum nonce
-    
-        blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
-
-    }
-
-},
-
-
-
-
-verifyNewsTransaction=async(from,newsHash,blockCreator,chain,nonce,sig)=>{
-        
-    let sender=GET_CHAIN_ACC(from,chain)
-
-    if(newsHash.length===64 && !(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(newsHash+chain+nonce,sig,from))){
-
-        sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
-
-        sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)
-    
-        blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
-
-    }
-    
-},
-
-
-
-
-verifyDelegation=async(from,newDelegate,blockCreator,chain,nonce,sig)=>{
-
-    let sender=GET_CHAIN_ACC(from,chain)
-
-    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && await VERIFY(newDelegate+chain+nonce,sig,from)){
-
-        sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
-        
-        //Make changes only for bigger nonces.This way in async mode all nodes will have common state
-        if(sender.ACCOUNT.N<nonce){
-
-            sender.ACCOUNT.D=newDelegate
-
-            sender.ACCOUNT.N=nonce
-
-        }
-    
-        blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
-
-    }
-
-},
-
-
-
-
-verifyTransaction=async(from,to,tag,amount,blockCreator,chain,nonce,sig)=>{
-
-    let sender=GET_CHAIN_ACC(from,chain),
-    
-        recipient=await GET_CHAIN_ACC(to,chain)
-
-
-        
-    if(!recipient){
-
-        recipient={ACCOUNT:{B:0,N:0,D:''}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-        
-        symbiotes.get(chain).ACCOUNTS.set(to,recipient)//add to cache to collapse after all txs in ControllerBlock
-    
-    }
-    
-
-    if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(to+tag+amount+chain+nonce,sig,from))){
-
-        sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+amount
-        
-        recipient.ACCOUNT.B+=amount
-
-        sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)
-    
-        blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
-
-    }
-
-},
-
-
-
-
 SET_INSTANT_BLOCK=async(chainReference,chain,hash,block,rewardBox)=>{
 
     //If no-it's like SPV clients
@@ -448,7 +348,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         let rewardBox=new Map(),//To split fees
         
-            txsToSift=new Map(),//mapping(hash=>{defaultTxs,securedTxs})
+            eventsToSift=new Map(),//mapping(hash=>{defaultEvents,securedEvents})
             
             getBlocksPromises=[]
         
@@ -469,7 +369,7 @@ verifyControllerBlock=async controllerBlock=>{
             */
             getBlocksPromises.push(chainReference.CANDIDATES.get(controllerBlock.a[i]).then(instantBlock=>
 
-                txsToSift.set(controllerBlock.a[i],{d:instantBlock.d,s:instantBlock.s})
+                eventsToSift.set(controllerBlock.a[i],{d:instantBlock.d,s:instantBlock.s})
                 &&
                 SET_INSTANT_BLOCK(chainReference,chain,controllerBlock.a[i],instantBlock,rewardBox)
             
@@ -485,7 +385,7 @@ verifyControllerBlock=async controllerBlock=>{
                     //Check hash and if OK-sift transactions from inside,otherwise-occur exceprion to ask block from another sources
                     InstantBlock.genHash(chain,instant.d,instant.s,instant.c)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
                     ?
-                    txsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})&&SET_INSTANT_BLOCK(chainReference,chain,controllerBlock.a[i],instant,rewardBox)
+                    eventsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})&&SET_INSTANT_BLOCK(chainReference,chain,controllerBlock.a[i],instant,rewardBox)
                     :
                     new Error()
 
@@ -508,7 +408,7 @@ verifyControllerBlock=async controllerBlock=>{
                             &&
                             await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
                             &&
-                            txsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})
+                            eventsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})
                             &&
                             (await SET_INSTANT_BLOCK(chainReference,chain,controllerBlock.a[i],instant,rewardBox),breakPoint=true)
                             
@@ -518,7 +418,7 @@ verifyControllerBlock=async controllerBlock=>{
                    
                     
 
-                    !txsToSift.has(controllerBlock.a[i])
+                    !eventsToSift.has(controllerBlock.a[i])
                     &&                        
                     LOG(`Unfortunately,can't get InstantBlock \x1b[36;1m${controllerBlock.a[i]}\x1b[31;1m on \x1b[36;1m${CHAIN_LABEL(chain)}`,'F')
                     
@@ -533,7 +433,7 @@ verifyControllerBlock=async controllerBlock=>{
         await Promise.all(getBlocksPromises.splice(0)) 
 
 
-        if(txsToSift.size!==controllerBlock.a.length){
+        if(eventsToSift.size!==controllerBlock.a.length){
 
             LOG(`Going to ask for InstantBlocks later for \x1b[36;1m${CHAIN_LABEL(chain)}`,'W')
 
@@ -548,11 +448,11 @@ verifyControllerBlock=async controllerBlock=>{
         let sendersAccounts=[]
         
         //Go through each transaction("d" and "s" type),get accounts of senders from state by creating promise and push to array for faster resolve
-        txsToSift.forEach(txsSet=>
+        eventsToSift.forEach(eventsSet=>
             
             ['d','s'].forEach(type=>
              
-                txsSet[type].forEach(tx=>sendersAccounts.push(GET_CHAIN_ACC(tx.c,chain)))
+                eventsSet[type].forEach(event=>sendersAccounts.push(GET_CHAIN_ACC(event.c,chain)))
                 
             )
         
@@ -569,28 +469,28 @@ verifyControllerBlock=async controllerBlock=>{
         //______________________________________CALCULATE TOTAL FEES AND AMOUNTS________________________________________
 
 
-        txsToSift.forEach(txsSet=>
+        eventsToSift.forEach(eventsSet=>
             
-            //We have "d"(default,without signature) and "s"(secured,with signature) txs buffers
+            //We have "d"(default,without signature) and "s"(secured,with signature) events buffers
             ['d','s'].forEach(type=>
                 
-                txsSet[type].forEach(tx=>{
+                eventsSet[type].forEach(event=>{
 
                     //O(1),coz it's set
-                    if(!chainReference.BLACKLIST.has(tx.c)){
+                    if(!chainReference.BLACKLIST.has(event.c)){
                         
-                        let acc=GET_CHAIN_ACC(tx.c,chain),
+                        let acc=GET_CHAIN_ACC(event.c,chain),
                         
-                            spend=CONFIG.CHAINS[chain].MANIFEST.FEE+( tx.a  ||  tx.m&&CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE  ||  0 );
+                            spend=CONFIG.CHAINS[chain].MANIFEST.FEE + (symbiotes.get(chain).SPENDERS[event.t](event,chain)?.()||0)
 
 
                             
                         //If no such address-it's signal that transaction can't be accepted
                         if(!acc) return
                  
-                        (tx.n<=acc.ACCOUNT.N||acc.NS.has(tx.n)) ? acc.ND.add(tx.n) : acc.NS.add(tx.n);
+                        (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
         
-                        (acc.OUT-=spend)<0 && chainReference.BLACKLIST.add(tx.c)
+                        (acc.OUT-=spend)<0 && chainReference.BLACKLIST.add(event.c)
 
                     }
 
@@ -603,38 +503,29 @@ verifyControllerBlock=async controllerBlock=>{
 
 
 
-        //________________________________________START TO PERFORM TRANSACTIONS_________________________________________
+        //___________________________________________START TO PERFORM EVENTS____________________________________________
 
         
-        let txsPromises=[]
+        let eventsPromises=[]
 
 
-        txsToSift.forEach((txsSet,hash)=>{
+        eventsToSift.forEach((eventsSet,hash)=>{
 
-            ['d','s'].forEach(txType=>
+            ['d','s'].forEach(eventType=>
                 
-                txsSet[txType].forEach(obj=>{
+                eventsSet[eventType].forEach(event=>
                     
-                    let sig = txType==='s' && obj.s
+                    chainReference.VERIFIERS[event.t] && eventsPromises.push(chainReference.VERIFIERS[event.t](event,rewardBox.get(hash),chain))
 
-                    //Sequence depends on priority and frequency-the highest frequency have transaction address<->address
-                    if(obj.a) txsPromises.push(verifyTransaction(obj.c,obj.r,obj.t,obj.a,rewardBox.get(hash),chain,obj.n,sig))
-                    
-                    else if(obj.h) txsPromises.push(verifyNewsTransaction(obj.c,obj.h,rewardBox.get(hash),chain,obj.n,sig))
-                
-                    else if(obj.d) txsPromises.push(verifyDelegation(obj.c,obj.d,rewardBox.get(hash),chain,obj.n,sig))
-                    
-                    else if(obj.m) txsPromises.push(verifyOffspringCreationTx(obj.c,obj.m,rewardBox.get(hash),chain,obj.n,sig))    
-                
                     //Stress test.DELETE
                     //txsPromises.push(VERIFY('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','4ViaOoL3HF5lamTh0ZjGbLVg+59dfk5cebJGKRDtRf29l0hIbS5PHfUNt2GCUdHS+AFqs1ZU+l6cpMYkSbw3Aw==','J+tMlJexrc5bwof9oIpKiRxQy84VmZhMfdIJa53GSY4='))
-                })
+                )
                 
             )
         
         })
         
-        await Promise.all(txsPromises.splice(0))
+        await Promise.all(eventsPromises.splice(0))
 
         LOG(`BLACKLIST size ———> \x1b[36;1m${chainReference.BLACKLIST.size}`,'W')
 
@@ -652,7 +543,7 @@ verifyControllerBlock=async controllerBlock=>{
         
             let acc=GET_CHAIN_ACC(reference.creator,chain),
                 
-                toInstant=reference.fees*0.8//80% of block to generator
+                toInstant=reference.fees*CONFIG.CHAINS[chain].MANIFEST.GENERATOR_FEE//% of block to generator
                 
             acc.ACCOUNT.B+=toInstant
 

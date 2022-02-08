@@ -49,13 +49,11 @@ export default {
 
 
 
-    TX:async event=>{
+    TX:async (event,blockCreator,chain)=>{
 
-        let {from,to,tag,amount,blockCreator,chain,nonce,sig}=event
-
-        let sender=GET_CHAIN_ACC(from,chain),
+        let sender=GET_CHAIN_ACC(event.c,chain),
         
-            recipient=await GET_CHAIN_ACC(to,chain)
+            recipient=await GET_CHAIN_ACC(event.p.to,chain)
     
     
             
@@ -63,18 +61,18 @@ export default {
     
             recipient={ACCOUNT:{B:0,N:0,D:''}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             
-            symbiotes.get(chain).ACCOUNTS.set(to,recipient)//add to cache to collapse after all txs in ControllerBlock
+            symbiotes.get(chain).ACCOUNTS.set(event.p.to,recipient)//add to cache to collapse after all txs in ControllerBlock
         
         }
         
     
-        if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(to+tag+amount+chain+nonce,sig,from))){
+        if(!(symbiotes.get(chain).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(JSON.stringify(event.p)+chain+event.n,event.s,event.c))){
     
-            sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+amount
+            sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+event.p.a
             
-            recipient.ACCOUNT.B+=amount
+            recipient.ACCOUNT.B+=event.p.a
     
-            sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
             blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
     
@@ -84,17 +82,15 @@ export default {
 
 
     
-    NEWSTX:async event=>{
+    NEWSTX:async (event,blockCreator,chain)=>{
 
-        let {from,newsHash,blockCreator,chain,nonce,sig}=event
-        
-        let sender=GET_CHAIN_ACC(from,chain)
+        let sender=GET_CHAIN_ACC(event.c,chain)
     
-        if(newsHash.length===64 && !(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(newsHash+chain+nonce,sig,from))){
+        if(event.p.length===64 && !(symbiotes.get(chain).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(event.p+chain+event.n,event.s,event.c))){
     
             sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
     
-            sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
             blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
     
@@ -105,19 +101,17 @@ export default {
 
 
 
-    OFFSPRING:async event=>{
-
-        let {from,manifest,blockCreator,chain,nonce,sig}=event
+    OFFSPRING:async (event,blockCreator,chain)=>{
     
         //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
     
-        let sender=GET_CHAIN_ACC(from,chain)
+        let sender=GET_CHAIN_ACC(event.c,chain)
         
-        if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(manifest+chain+nonce,sig,from))){
+        if(!(symbiotes.get(chain).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(event.p+chain+event.n,event.s,event.c))){
     
             sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE+CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE
     
-            sender.ACCOUNT.N<nonce&&(sender.ACCOUNT.N=nonce)//update maximum nonce
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)//update maximum nonce
         
             blockCreator.fees+=CONFIG.CHAINS[chain].MANIFEST.FEE
     
@@ -128,22 +122,20 @@ export default {
 
 
 
-    DELEGATION:async event=>{
+    DELEGATION:async (event,blockCreator,chain)=>{
 
-        let {from,newDelegate,blockCreator,chain,nonce,sig}=event
+        let sender=GET_CHAIN_ACC(event.c,chain)
 
-        let sender=GET_CHAIN_ACC(from,chain)
-
-        if(!(symbiotes.get(chain).BLACKLIST.has(from)||sender.ND.has(nonce)) && await VERIFY(newDelegate+chain+nonce,sig,from)){
+        if(!(symbiotes.get(chain).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+chain+event.n,event.s,event.c)){
 
             sender.ACCOUNT.B-=CONFIG.CHAINS[chain].MANIFEST.FEE
         
             //Make changes only for bigger nonces.This way in async mode all nodes will have common state
-            if(sender.ACCOUNT.N<nonce){
+            if(sender.ACCOUNT.N<event.n){
 
-                sender.ACCOUNT.D=newDelegate
+                sender.ACCOUNT.D=event.p
 
-                sender.ACCOUNT.N=nonce
+                sender.ACCOUNT.N=event.n
 
             }
     
@@ -157,14 +149,14 @@ export default {
 
 
     //Unimplemented
-    ACC_APPROVE:async event=>{},
+    ACC_APPROVE:async (event,blockCreator,chain)=>{},
 
-    QUANTUMSWAP:async event=>{},
+    QUANTUMSWAP:async (event,blockCreator,chain)=>{},
 
-    SERVICE_DEPLOY:async events=>{},
+    SERVICE_DEPLOY:async (event,blockCreator,chain)=>{},
 
-    CONVEYOR_DEPLOY:async events=>{},
+    CONVEYOR_DEPLOY:async (event,blockCreator,chain)=>{},
 
-    
+
 
 }

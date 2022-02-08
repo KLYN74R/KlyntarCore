@@ -18,6 +18,9 @@
     "NORMALIZERS_PREFIXES":{
         "0":"dev0"
     },
+    "SPENDERS_PREFIXES":{
+        "0":"dev0"
+    },
 
     "CACHES":{
     

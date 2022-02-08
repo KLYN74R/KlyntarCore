@@ -22,12 +22,12 @@
 @via https://patorjk.com/software/taag/   STYLE:ANSI Shadow
 
 
-███╗   ██╗ ██████╗ ██████╗ ███╗   ███╗ █████╗ ██╗     ██╗███████╗███████╗██████╗ ███████╗
-████╗  ██║██╔═══██╗██╔══██╗████╗ ████║██╔══██╗██║     ██║╚══███╔╝██╔════╝██╔══██╗██╔════╝
-██╔██╗ ██║██║   ██║██████╔╝██╔████╔██║███████║██║     ██║  ███╔╝ █████╗  ██████╔╝███████╗
-██║╚██╗██║██║   ██║██╔══██╗██║╚██╔╝██║██╔══██║██║     ██║ ███╔╝  ██╔══╝  ██╔══██╗╚════██║
-██║ ╚████║╚██████╔╝██║  ██║██║ ╚═╝ ██║██║  ██║███████╗██║███████╗███████╗██║  ██║███████║
-╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚══════╝
+███████╗██████╗ ███████╗███╗   ██╗██████╗ ███████╗██████╗ 
+██╔════╝██╔══██╗██╔════╝████╗  ██║██╔══██╗██╔════╝██╔══██╗
+███████╗██████╔╝█████╗  ██╔██╗ ██║██║  ██║█████╗  ██████╔╝
+╚════██║██╔═══╝ ██╔══╝  ██║╚██╗██║██║  ██║██╔══╝  ██╔══██╗
+███████║██║     ███████╗██║ ╚████║██████╔╝███████╗██║  ██║
+╚══════╝╚═╝     ╚══════╝╚═╝  ╚═══╝╚═════╝ ╚══════╝╚═╝  ╚═╝
 
 
 
@@ -35,28 +35,22 @@
 
 
 
+
 export default {
     
-    TX:async event=>typeof event.p?.a==='number'&&typeof event.p.r==='string'&&event.p.a>0 ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    TX:event=>event.p.a,
 
-    //payload is a single string(hash)
-    NEWSTX:async event=>typeof event.p==='string' && event.p.length===64 ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
-
-    OFFSPRING:async event=>typeof event.p==='string' ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
-
-    DELEGATION:async event=>typeof event.p==='string' ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    OFFSPRING:(_event,chain)=>CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE,
 
     //Unimplemented
-    OWNERSHIP_APPROVE:async event=>{},
+    // OWNERSHIP_APPROVE:async event=>{},
 
-    QUANTUMSWAP:async event=>{},
+    // QUANTUMSWAP:async event=>{},
 
-    SERVICE_DEPLOY:async event=>{},
+    // SERVICE_DEPLOY:async event=>{},
 
-    CONVEYOR_DEPLOY:async event=>{},
+    // CONVEYOR_DEPLOY:async event=>{},
 
-    VERSION_CHANGE:async event=>{},
-
+    // VERSION_CHANGE:async event=>{},
 
 }
-

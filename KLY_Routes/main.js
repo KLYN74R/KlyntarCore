@@ -156,7 +156,7 @@ export let M={
 
     //Format of body : MSG{d:['chain',EVENT],f:'fullHash'}
     //There is no 'c'(creator) field-we get it from tx
-    tx:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    event:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
         let body=await BODY(v,CONFIG.PAYLOAD_SIZE),
         

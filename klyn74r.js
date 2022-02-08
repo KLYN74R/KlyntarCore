@@ -254,7 +254,9 @@ export let
 
         chainRef.VERIFIERS=(await import(`./KLY_Essences/handlers/${CONFIG.VERIFIERS_PREFIXES[chainConfig.MANIFEST.VERIFIERS]}/verify.js`)).default
 
-        chainRef.NORMALIZERS=(await import(`./KLY_Essences/handlers/${CONFIG.NORMALIZERS_PREFIXES[chainConfig.MANIFEST.NORMALIZERS]}/normalize.js`)).default
+        chainRef.NORMALIZERS=(await import(`./KLY_Essences/handlers/${CONFIG.NORMALIZERS_PREFIXES[chainConfig.NORMALIZERS]}/normalize.js`)).default
+
+        chainRef.SPENDERS=(await import(`./KLY_Essences/handlers/${CONFIG.SPENDERS_PREFIXES[chainConfig.MANIFEST.SPENDERS]}/spend.js`)).default
 
 
         //______________________________________Prepare databases and storages___________________________________________
@@ -912,7 +914,7 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 .post('/proof',M.proof)
 
-.post('/tx',M.tx)
+.post('/event',M.event)
 
 
 

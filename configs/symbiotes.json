@@ -44,13 +44,15 @@
 
                 "CONTROLLER_FREEZE":10000,
                 "INSTANT_FREEZE":5000,
+
+                "GENERATOR_FEE":0.8,
     
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "INSTANT_BLOCK_DTXS_MAX":20000,
                 "INSTANT_BLOCK_STXS_MAX":10000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"0",
-                "NORMALIZERS":"0"
+                "SPENDERS":"0"
 
             },
 
@@ -101,9 +103,9 @@
             },
 
             "STOP_PUSH_TO_HOSTCHAINS":{
-                "ltc":false,
-                "bsc":false,
-                "eth":false
+                "ltc":true,
+                "bsc":true,
+                "eth":true
             },
 
             "WORKFLOW_CHECK":{
@@ -237,6 +239,7 @@
             
             },
 
+            "NORMALIZERS":"0",
 
             "NODES_PORTION":8,
             "MAX_CONNECTIONS":15,
@@ -352,12 +355,14 @@
                 "CONTROLLER_FREEZE":50000,
                 "INSTANT_FREEZE":5000,
     
+                "GENERATOR_FEE":0.8,
+
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "INSTANT_BLOCK_DTXS_MAX":20000,
                 "INSTANT_BLOCK_STXS_MAX":10000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"0",
-                "NORMALIZERS":"0"
+                "SPENDERS":"0"
     
             },
 
@@ -398,9 +403,9 @@
             "STOP_CHAIN":false,
             
             "STOP_PUSH_TO_HOSTCHAINS":{
-                "dash":false,
-                "xrp":false,
-                "trx":false
+                "dash":true,
+                "xrp":true,
+                "trx":true
             },
             
             "WORKFLOW_CHECK":{
@@ -573,7 +578,7 @@
             
             },
 
-
+            "NORMALIZERS":"0",
             "NODES_PORTION":10,
             "MAX_CONNECTIONS":15,
 
