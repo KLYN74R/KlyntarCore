@@ -149,7 +149,7 @@ SIG=(data,prv)=>new Promise((resolve,reject)=>
 
 
 
-/**# Quick chek to interact with node
+/**# Quick check to interact with node
  * @param {string} data UTF-8 data(JSON mostly)
  * @param {string} sid 64 bytes SpaceId in Base64
  * @param {string} magic Uft-8 unique data

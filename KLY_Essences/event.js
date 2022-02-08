@@ -10,7 +10,7 @@ export default class{
 
         this.p=payload
 
-        //this.s=SIG(this.r+tag+amount+chain+nonce,prv)
+        //this.s=SIG(eventType+nonce+JSON.stringify(payload),prv)
         
     }
 }

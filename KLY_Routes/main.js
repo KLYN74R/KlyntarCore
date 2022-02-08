@@ -154,8 +154,7 @@ export let M={
     
     
 
-    //Duck typin' in b.d     --->     d-delegation     n-newstx     a-default tx     i-become controller
-    //Format of body : MSG{d:['chain',TX_OBJ],f:'fullHash'}
+    //Format of body : MSG{d:['chain',EVENT],f:'fullHash'}
     //There is no 'c'(creator) field-we get it from tx
     tx:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
@@ -163,27 +162,25 @@ export let M={
         
             chain=body.d?.[0],
             
-            obj=body.d?.[1]
+            event=body.d?.[1]
         
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof obj?.c!=='string' || typeof obj.n!=='number' || typeof body.f!=='string'){
+        if(!(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof body.f!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
             return
+
         }
 
-
-        //Shortcuts aka pointers
-        let chainMempool,type,signa
-
         //Set pointers due to type of tx('S' or 'D')
-        obj.s ? (signa=obj.s,type='STXS') : (signa='',type='DTXS')
-                
-        chainMempool=symbiotes.get(chain)['MEMPOOL_'+type]
+        let type=event.s?'STXS':'DTXS',
+
+            chainMempool=symbiotes.get(chain)['MEMPOOL_'+type]
 
         
+
         /*
         
             ...and do such "lightweight" verification here to prevent db bloating
@@ -195,31 +192,21 @@ export let M={
         */
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
-        if(chainMempool.length<CONFIG.CHAINS[chain][type+'_MEMPOOL_SIZE']){
+        //Also check if we have normalizer for this type of event
+        if(chainMempool.length<CONFIG.CHAINS[chain][type+'_MEMPOOL_SIZE'] && symbiotes.get(chain).NORMALIZERS[event.t]){
 
-            let strData
+            let normalized=await symbiotes.get(chain).NORMALIZERS[event.t](event)
 
-            if(typeof obj.a==='number'&&typeof obj.r==='string'&&typeof obj.t==='string'&&obj.a>0) strData=obj.r+obj.t+obj.a,obj={c:obj.c,r:obj.r,a:obj.a,t:obj.t,n:obj.n}
-            
-            else if(typeof obj.h==='string'&&obj.h.length===64) strData=obj.h,  obj={c:obj.c,h:obj.h,n:obj.n}
-            
-            else if(typeof obj.d==='string') strData=obj.d,  obj={c:obj.c,d:obj.d,n:obj.n}
-            
-            else if(typeof obj.m==='string') strData=obj.m,  obj={c:obj.c,m:obj.m,n:obj.n}
-            
-
-            if(signa!=='') obj.s=signa
-
-            if(strData&&await ACC_CONTROL(obj.c,strData+chain+obj.n,body.f,1)){
+            if(normalized&&await ACC_CONTROL(JSON.stringify(normalized)+chain,body.f,1)){
     
                 !a.aborted&&a.end('OK')
 
-                chainMempool.push(obj)
+                chainMempool.push(event)
                             
             }else !a.aborted&&a.end('Post overview failed')
 
 
-        }else !a.aborted&&a.end('Mempool is fullfilled')
+        }else !a.aborted&&a.end('Mempool is fullfilled or no such normalizer')
     
     }),
 
@@ -314,17 +301,7 @@ export let M={
                             ACCOUNTS.set(body.c,acc)
         
                             !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
-    
-    
-                            //For future upgrading of Space protocol
-                            //!Cloud heartbeat
-                            // if(CONFIG.INFORM_WHEN_SPACE_CHANGE){
-                    
-                            //     let alertThem=Object.values(CONFIG.CHANGE_PROCEDURE)
-    
-                            //     for(let i=0,l=alertThem.length;i<l;i++) SEND(alertThem[i].domain+'/csp',new MSG(b.c,alertThem[i].sid,'0'))
-                        
-                            // }
+
             
                         }else !a.aborted&&a.end('Bytes generation error')
                     
