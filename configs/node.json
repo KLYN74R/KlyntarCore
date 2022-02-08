@@ -12,6 +12,12 @@
         "1":"connectors/contracts"
     },
 
+    "VERIFIERS_PREFIXES":{
+        "0":"dev0"
+    },
+    "NORMALIZERS_PREFIXES":{
+        "0":"dev0"
+    },
 
     "CACHES":{
     

@@ -20,8 +20,6 @@ import l from 'level'
 
 import fs from 'fs'
 
-//import VERIFIERS from './KLY_Essences/handlers/dev0/verify.js'
-
 
 
 
@@ -235,7 +233,7 @@ export let
             NEAR:[]
 
         })
-        
+
 
 
 
@@ -249,6 +247,14 @@ export let
         !fs.existsSync(PATH_RESOLVE(`C/${hexPath}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${hexPath}`))
 
 
+
+
+        //__________________________Load functionality to verify/normalize/transform events_____________________________
+
+
+        chainRef.VERIFIERS=(await import(`./KLY_Essences/handlers/${CONFIG.VERIFIERS_PREFIXES[chainConfig.MANIFEST.VERIFIERS]}/verify.js`)).default
+
+        chainRef.NORMALIZERS=(await import(`./KLY_Essences/handlers/${CONFIG.NORMALIZERS_PREFIXES[chainConfig.MANIFEST.NORMALIZERS]}/normalize.js`)).default
 
 
         //______________________________________Prepare databases and storages___________________________________________

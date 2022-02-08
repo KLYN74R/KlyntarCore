@@ -48,7 +48,9 @@
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "INSTANT_BLOCK_DTXS_MAX":20000,
                 "INSTANT_BLOCK_STXS_MAX":10000,
-                "INSTANT_PORTION":100
+                "INSTANT_PORTION":100,
+                "VERIFIERS":"0",
+                "NORMALIZERS":"0"
 
             },
 
@@ -353,9 +355,10 @@
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "INSTANT_BLOCK_DTXS_MAX":20000,
                 "INSTANT_BLOCK_STXS_MAX":10000,
-                "INSTANT_PORTION":100
+                "INSTANT_PORTION":100,
+                "VERIFIERS":"0",
+                "NORMALIZERS":"0"
     
-
             },
 
             "HC_CONFIGS":{
