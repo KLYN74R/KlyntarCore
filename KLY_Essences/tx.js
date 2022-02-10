@@ -11,6 +11,6 @@ export default class{
         this.t=tag
     
         this.n=nonce
-        //this.s=SIG(this.r+tag+amount+chain+nonce,prv)
+        //this.s=SIG(this.r+tag+amount+symbiote+nonce,prv)
     }
 }

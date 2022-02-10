@@ -40,7 +40,7 @@ export default {
     
     TX:event=>event.p.a,
 
-    OFFSPRING:(_event,chain)=>CONFIG.CHAINS[chain].MANIFEST.CONTROLLER_FREEZE,
+    OFFSPRING:(_event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE,
 
     //Unimplemented
     // OWNERSHIP_APPROVE:async event=>{},

@@ -1,4 +1,4 @@
-import {GET_NODES,LOG,CHAIN_LABEL,BODY} from '../KLY_Space/utils.js'
+import {GET_NODES,LOG,SYMBIOTE_ALIAS,BODY} from '../KLY_Space/utils.js'
 
 import {symbiotes,WRAP_RESPONSE} from '../klyn74r.js'
 
@@ -18,19 +18,19 @@ export let A={
 
         a.onAborted(()=>a.aborted=true)
 
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
+        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        if(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.ACCOUNTS){
+        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.ACCOUNTS){
     
             let data={
             
-                ...await symbiotes.get(chain).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
+                ...await symbiotes.get(symbiote).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
             
-                COLLAPSE:symbiotes.get(chain).VERIFICATION_THREAD.COLLAPSED_INDEX
+                COLLAPSE:symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX
         
             }
 
-            !a.aborted&&WRAP_RESPONSE(a,CONFIG.CHAINS[chain].TTL.ACCOUNTS).end(JSON.stringify(data))
+            !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTES[symbiote].TTL.ACCOUNTS).end(JSON.stringify(data))
     
         }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
 
@@ -59,17 +59,17 @@ export let A={
 
     nodes:(a,q)=>{
 
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64')
+        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64')
     
-        symbiotes.has(chain)
+        symbiotes.has(symbiote)
         ?
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.CHAINS[chain].TTL.NODES).end(
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTES[symbiote].TTL.NODES).end(
     
-            CONFIG.CHAINS[chain].TRIGGERS.NODES&&JSON.stringify(GET_NODES(chain,q.getParameter(1)))
+            CONFIG.SYMBIOTES[symbiote].TRIGGERS.NODES&&JSON.stringify(GET_NODES(symbiote,q.getParameter(1)))
     
         )
         :
-        !a.aborted&&a.end('Chain not supported')
+        !a.aborted&&a.end('Symbiote not supported')
     
     },
 
@@ -79,8 +79,8 @@ export let A={
 
     block:(a,q)=>{
 
-        //Return ControllerBlock by index or InstantBlock by hash on appropriate chain
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64'),
+        //Return ControllerBlock by index or InstantBlock by hash on appropriate symbiote
+        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64'),
             
             type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
     
@@ -90,9 +90,9 @@ export let A={
     
         
         //Set triggers
-        if(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS[type]){
+        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS[type]){
     
-            let db=symbiotes.get(chain)[type]//depends on type of block-chose appropriate db
+            let db=symbiotes.get(symbiote)[type]//depends on type of block-chose appropriate db
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
@@ -103,7 +103,7 @@ export let A={
             ).catch(e=>a.end(''))
     
     
-        }else !a.aborted && a.end('Chain not supported')
+        }else !a.aborted && a.end('Symbiote not supported')
     
     },
 
@@ -115,29 +115,29 @@ export let A={
         a.onAborted(()=>a.aborted=true)
 
         
-        let chain=Buffer.from(q.getParameter(0),'hex').toString('base64'),
+        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64'),
         
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(symbiotes.has(chain) && CONFIG.CHAINS[chain].TRIGGERS.MULTI && !isNaN(fromHeight)){
+        if(symbiotes.has(symbiote) && CONFIG.SYMBIOTES[symbiote].TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
-            let chainConfig=CONFIG.CHAINS[chain],
+            let symbioteConfig=CONFIG.SYMBIOTES[symbiote],
     
-                cbStorage=symbiotes.get(chain).CONTROLLER_BLOCKS,
+                cbStorage=symbiotes.get(symbiote).CONTROLLER_BLOCKS,
                 
-                insStorage=symbiotes.get(chain).INSTANT_BLOCKS,
+                insStorage=symbiotes.get(symbiote).INSTANT_BLOCKS,
 
                 promises=[],
 
                 response={},
 
-                verifThread=symbiotes.get(chain).VERIFICATION_THREAD
+                verifThread=symbiotes.get(symbiote).VERIFICATION_THREAD
 
 
 
-            for(let max=fromHeight+chainConfig.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
+            for(let max=fromHeight+symbioteConfig.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
 
                 //This is the signal that this node haven't process this height yet and even didn't have forward loading 
                 if(fromHeight>verifThread.COLLAPSED_INDEX && !(await cbStorage.get(fromHeight).catch(e=>false))) break
@@ -154,7 +154,7 @@ export let A={
                     
                 ).catch(
                     
-                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on chain \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
+                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
                     
                 ))
 
@@ -177,7 +177,7 @@ export let A={
                             
                         ).catch(
 
-                            e => LOG(`InstantBlock ${iBlockHash} on chain ${CHAIN_LABEL(chain)} not found, load please if you need\n${e}`,'W')
+                            e => LOG(`InstantBlock ${iBlockHash} on symbiote ${SYMBIOTE_ALIAS(symbiote)} not found, load please if you need\n${e}`,'W')
                             
                         )) 
                         
@@ -192,7 +192,7 @@ export let A={
             !a.aborted && a.end(JSON.stringify(response))
 
     
-        }else !a.aborted && a.end(JSON.stringify({e:'Chain not supported'}))
+        }else !a.aborted && a.end(JSON.stringify({e:'Symbiote not supported'}))
     
     },
 

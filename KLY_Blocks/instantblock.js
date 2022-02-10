@@ -2,20 +2,20 @@ import {BLAKE3} from '../KLY_Space/utils.js'
 
 export default class InstantBlock{
     
-    constructor(chain,deflt,secured){
+    constructor(symbiote,deflt,secured){
         
-        this.c=CONFIG.CHAINS[chain].PUB
+        this.c=CONFIG.SYMBIOTES[symbiote].PUB
         
         this.d=deflt//delegs,controllerStart,txs,hashes of newstxs,news to save in blockchain in full form...
         
         this.s=secured//sdelegs,stxs...
         
-        this.n=chain//need to forward block when we receive it
+        this.n=symbiote//need to forward block when we receive it
         
         this.sig=''
     
     }
     
-    static genHash=(chain,deflt,secur,creator)=>BLAKE3( JSON.stringify(deflt) + JSON.stringify(secur) + chain + creator)
+    static genHash=(symbiote,default_txs,secured_txs,creator)=>BLAKE3( JSON.stringify(default_txs) + JSON.stringify(secured_txs) + symbiote + creator)
 
 }

@@ -73,11 +73,11 @@ let {TransactionInstruction,Transaction,Keypair} = Web3
 
 let connections=new Map()
 
-Object.keys(CONFIG.CHAINS).forEach(
+Object.keys(CONFIG.SYMBIOTES).forEach(
      
     symbiote => {
  
-        let {URL,COMMITMENT}=CONFIG.CHAINS[symbiote].HC_CONFIGS.sol
+        let {URL,COMMITMENT}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol
          
         if(configs) connections.set(symbiote,new Web3.Connection(URL,COMMITMENT))
  
@@ -91,9 +91,9 @@ Object.keys(CONFIG.CHAINS).forEach(
 export default {
 
 
-    checkTx:(hostChainSig,blockIndex,klyntarHash,chainId)=>
+    checkTx:(hostChainSig,blockIndex,klyntarHash,symbioteId)=>
     
-        connections.get(chainId).getTransaction(hostChainSig).then(tx=>{
+        connections.get(symbioteId).getTransaction(hostChainSig).then(tx=>{
         
             //In default case we'll have track as the first instruction of tx
             let [index,hash]=Buffer.from(Base58.decode(tx.transaction.message.instructions[0].data)).toString('utf-8').split('_')
@@ -105,10 +105,10 @@ export default {
 
 
 
-    sendTx:(chainId,blockIndex,klyntarHash)=>{
+    sendTx:(symbiote,blockIndex,klyntarHash)=>{
 
         //PRV-private key in Base64
-        let {PRV,PROGRAM,COMMITMENT}=CONFIG.CHAINS[chainId].HC_CONFIGS.sol,
+        let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol,
 
             account=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))),
 
@@ -127,7 +127,7 @@ export default {
 
         return Web3.sendAndConfirmTransaction(
             
-            connections.get(chainId),
+            connections.get(symbiote),
             
             new Transaction().add(instruction), [account], {skipPreflight:true,commitment:COMMITMENT}
             
@@ -151,7 +151,7 @@ export default {
 
     getBalance:async symbiote=>{
 
-        let {PRV}=CONFIG.CHAINS[symbiote].HC_CONFIGS.sol,
+        let {PRV}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol,
 
             pub=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
 

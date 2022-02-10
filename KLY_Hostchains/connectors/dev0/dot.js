@@ -17,11 +17,11 @@
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
 
     },
 
-    sendTx:async(chainId,paylaod)=>{
+    sendTx:async(symbiote,paylaod)=>{
         
     },
 

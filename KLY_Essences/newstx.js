@@ -9,6 +9,6 @@ export default class{
         this.t=tag
     
         this.n=nonce
-        //this.s=SIG(newshash+chain+nonce,prv)
+        //this.s=SIG(newshash+symbiote+nonce,prv)
     }
 }

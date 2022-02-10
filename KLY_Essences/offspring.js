@@ -9,6 +9,6 @@ export default class{
         this.t=tag
     
         this.n=nonce
-        //this.s=SIG(this.m+chain+nonce,prv)
+        //this.s=SIG(this.m+symbiote+nonce,prv)
     }
 }

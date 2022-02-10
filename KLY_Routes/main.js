@@ -1,8 +1,8 @@
 import{
 
-    BASE64,VERIFY,ENCRYPT,BODY,SAFE_ADD,GET_CHAIN_ACC,
+    BASE64,VERIFY,ENCRYPT,BODY,SAFE_ADD,GET_SYMBIOTE_ACC,
 
-    PARSE_JSON,BLOCKLOG,ACC_CONTROL,BROADCAST,CHAIN_LABEL,LOG,PATH_RESOLVE,SEND_REPORT
+    PARSE_JSON,BLOCKLOG,ACC_CONTROL,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
 
 } from '../KLY_Space/utils.js'
 
@@ -44,7 +44,7 @@ export let M={
 
         let total=0,buf=Buffer.alloc(0)
 
-        //Probably you disable for all chains
+        //Probably you disable for all symbiotes
         if(!CONFIG.TRIGGERS.ALL_CONTROLLER_BLOCKS){
             
             a.end('Route is off')
@@ -74,7 +74,7 @@ export let M={
 
                     symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
                     &&
-                    CONFIG.CHAINS[block.c].TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+                    CONFIG.SYMBIOTES[block.c].TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
                     &&
                     await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
                     
@@ -116,7 +116,7 @@ export let M={
 
     instantBlock:a=>{
 
-         //Probably you disable for all chains
+         //Probably you disable for all symbiotes
          if(!CONFIG.TRIGGERS.ALL_INSTANT_BLOCKS){
             
             a.end('Route is off')
@@ -139,7 +139,7 @@ export let M={
 
                     let block=await PARSE_JSON(buf)
                             
-                    !a.aborted&&a.end(CONFIG.CHAINS[block.n]?.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
+                    !a.aborted&&a.end(CONFIG.SYMBIOTES[block.n]?.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
 
                     verifyInstantBlock(block)
 
@@ -154,19 +154,19 @@ export let M={
     
     
 
-    //Format of body : MSG{d:['chain',EVENT],f:'fullHash'}
+    //Format of body : MSG{d:['symbiote',EVENT],f:'fullHash'}
     //There is no 'c'(creator) field-we get it from tx
     event:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
         let body=await BODY(v,CONFIG.PAYLOAD_SIZE),
         
-            chain=body.d?.[0],
+            symbiote=body.d?.[0],
             
             event=body.d?.[1]
         
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(chain)&&CONFIG.CHAINS[chain].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof body.f!=='string'){
+        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof body.f!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -177,7 +177,7 @@ export let M={
         //Set pointers due to type of tx('S' or 'D')
         let type=event.s?'STXS':'DTXS',
 
-            chainMempool=symbiotes.get(chain)['MEMPOOL_'+type]
+            symbioteMempool=symbiotes.get(symbiote)['MEMPOOL_'+type]
 
         
 
@@ -193,15 +193,15 @@ export let M={
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         //Also check if we have normalizer for this type of event
-        if(chainMempool.length<CONFIG.CHAINS[chain][type+'_MEMPOOL_SIZE'] && symbiotes.get(chain).NORMALIZERS[event.t]){
+        if(symbioteMempool.length<CONFIG.SYMBIOTES[symbiote][type+'_MEMPOOL_SIZE'] && symbiotes.get(symbiote).NORMALIZERS[event.t]){
 
-            let normalized=await symbiotes.get(chain).NORMALIZERS[event.t](event)
+            let normalized=await symbiotes.get(symbiote).NORMALIZERS[event.t](event)
 
-            if(normalized&&await ACC_CONTROL(JSON.stringify(normalized)+chain,body.f,1)){
+            if(normalized&&await ACC_CONTROL(JSON.stringify(normalized)+symbiote,body.f,1)){
     
                 !a.aborted&&a.end('OK')
 
-                chainMempool.push(event)
+                symbioteMempool.push(event)
                             
             }else !a.aborted&&a.end('Post overview failed')
 
@@ -226,7 +226,7 @@ export let M={
 
 
 
-    //[0,1,2] -> 0-RSA pubkey 1-signature 2-chain(controllerAddr)
+    //[0,1,2] -> 0-RSA pubkey 1-signature 2-symbiote(controllerAddr)
     getSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
         let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
@@ -238,9 +238,9 @@ export let M={
         //Check lightweight instant predicates
         typeof body.c==='string'&&typeof body.d?.[0]==='string'&&typeof body.d[1]==='string'&&typeof body.d[2]==='string'&&CONFIG.TRIGGERS.GET_SID
         
-        &&//Also lightweight but account can be read from db,not from cache,so it might be promise.Check if address is on some chain(or entry is free) and address still don't have SID...etc
+        &&//Also lightweight but account can be read from db,not from cache,so it might be promise.Check if address is on some symbiote(or entry is free) and address still don't have SID...etc
         
-        (CONFIG.GIVE_SID_EVERYONE || await GET_CHAIN_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
+        (CONFIG.GIVE_SID_EVERYONE || await GET_SYMBIOTE_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
         
         &&//...Check signature(SIG(RSApub+GUID)) to allow user to create account in <space>
         await VERIFY(body.d[0]+GUID,body.d[1],body.c)
@@ -327,21 +327,21 @@ export let M={
 
 
 
-    //[chainID,hostToAdd(initiator's valid and resolved host)]
+    //[symbioteID,hostToAdd(initiator's valid and resolved host)]
     addNode:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        let [chain,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),chainConfig=CONFIG.CHAINS[chain]
+        let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTES[symbiote]
         
 
-        if(chainConfig&&typeof domain==='string'&&domain.length<=256){
+        if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
             
             //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-            let nodes=symbiotes.get(chain).NEAR
+            let nodes=symbiotes.get(symbiote).NEAR
             
-            if(!(nodes.includes(domain) || chainConfig.PERMANENT_NEAR || chainConfig.MUST_SEND)){
+            if(!(nodes.includes(domain) || symbioteConfig.PERMANENT_NEAR || symbioteConfig.MUST_SEND)){
 
                 
-                nodes.length<chainConfig.MAX_CONNECTIONS
+                nodes.length<symbioteConfig.MAX_CONNECTIONS
                 ?
                 nodes.push(domain)
                 :
@@ -369,15 +369,15 @@ export let M={
         
         */
 
-        let {chain,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG}=await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG}=await BODY(v,CONFIG.PAYLOAD_SIZE),
         
             workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
 
 
-        if(symbiotes.has(chain) && !CONFIG.CHAINS[chain].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,chain)){
+        if(symbiotes.has(symbiote) && !CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
 
             //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
-            let alreadyHas=await symbiotes.get(chain).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
+            let alreadyHas=await symbiotes.get(symbiote).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
 
 
             //If it's literally the same proof-just send OK
@@ -392,15 +392,15 @@ export let M={
             //If we're working higher than proof for some block we can check instantly
             symbiotes.get(get).VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
             &&
-            await symbiotes.get(chain).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
+            await symbiotes.get(symbiote).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
                 
-                workflowOk= ControllerBlock.genHash(chain,controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
+                workflowOk= ControllerBlock.genHash(symbiote,controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
                             &&
-                            await hostchains.get(chain).get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,chain).catch(
+                            await hostchains.get(symbiote).get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
                                 
                                 e => {
                                     
-                                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${e}`,'W')
+                                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${e}`,'W')
                                     
                                     return -1
                                 
@@ -409,44 +409,44 @@ export let M={
             ).catch(e=>
                 
                 //You also don't have ability to compare this if you don't have block locally
-                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
+                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
                     
             )    
 
             //False only if proof is failed
             if(workflowOk){
 
-                CONFIG.CHAINS[chain].WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
+                CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
                 &&
-                symbiotes.get(chain).HOSTCHAINS_DATA
+                symbiotes.get(symbiote).HOSTCHAINS_DATA
                 
                     .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
 
-                    .then(()=>symbiotes.get(chain).HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
+                    .then(()=>symbiotes.get(symbiote).HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
                     
-                    .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
+                    .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
                     
-                    .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+                    .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
 
 
             }else if(workflowOk!==-1){
                 
                 LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
 
-                LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
+                LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
                 
                 //Further logic.For example-send report to another host to call some trigger
-                SEND_REPORT(chain,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
+                SEND_REPORT(symbiote,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
 
             }
             
 
             !a.aborted&&a.end('OK')
 
-            Promise.all(BROADCAST('/proof',{chain,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},chain))
+            Promise.all(BROADCAST('/proof',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
 
 
-        }else !a.aborted&&a.end('Chain not supported or wrong signature')
+        }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
     
     })
 

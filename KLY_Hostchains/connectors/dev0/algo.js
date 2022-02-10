@@ -41,11 +41,11 @@ Testnet txs pool:[
 export default {
 
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,chainId)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
 
     },
 
-    sendTx:(chainId,blockIndex,klyntarHash)=>{
+    sendTx:(symbiote,blockIndex,klyntarHash)=>{
         
     },
 

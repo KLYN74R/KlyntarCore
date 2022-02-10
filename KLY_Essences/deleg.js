@@ -10,7 +10,7 @@ export default class{
     
         this.n=nonce
         
-        //this.s=SIG(delegate+chain+nonce,prv)
+        //this.s=SIG(delegate+symbiote+nonce,prv)
     
     }
 }

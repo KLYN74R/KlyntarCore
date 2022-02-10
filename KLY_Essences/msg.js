@@ -1,5 +1,4 @@
 //For communications User -> Node
-//Chain independent
 import {BLAKE3} from '../KLY_Space/utils.js'
 
 export default class{

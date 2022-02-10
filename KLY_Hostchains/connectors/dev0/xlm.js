@@ -35,7 +35,7 @@ export default {
 
     },
 
-    sendTx:(chainId,blockIndex,klyntarHash)=>{
+    sendTx:(symbiote,blockIndex,klyntarHash)=>{
         
     },
 

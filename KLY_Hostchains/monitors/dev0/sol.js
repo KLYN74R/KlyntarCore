@@ -58,19 +58,19 @@ let {PublicKey,Connection}=Web3,
 
     let unique=[]
 
-    Object.keys(CONFIG.CHAINS).forEach(
+    Object.keys(CONFIG.SYMBIOTES).forEach(
     
-        chain => {
+        symbiote => {
             
-            let {URL,TARGET,COMMITMENT} = CONFIG.CHAINS[chain].WORKFLOW_CHECK.HOSTCHAINS.sol
+            let {URL,TARGET,COMMITMENT} = CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS.sol
     
             //Let's use only unique sources
             if(!unique.includes(URL)){
     
-                monitors.set(chain,new Connection(URL,COMMITMENT))
+                monitors.set(symbiote,new Connection(URL,COMMITMENT))
 
                 //Set default responder
-                monitors.get(chain).onLogs(new PublicKey(TARGET),logs=>{
+                monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
     
                     console.log('Logs on Controller',logs)
                  
@@ -79,7 +79,7 @@ let {PublicKey,Connection}=Web3,
             }else{
 
                  //Set default responder
-                 monitors.get(chain).onLogs(new PublicKey(TARGET),logs=>{
+                 monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
     
                     console.log('Logs on Controller',logs)
                  

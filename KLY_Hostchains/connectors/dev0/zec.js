@@ -18,11 +18,11 @@
 export default {
 
 
-    checkTx:(chainId,txHash)=>{
+    checkTx:(symbiote,txHash)=>{
 
     },
 
-    sendTx:(chainId,blockIndex,klyntarHash)=>{
+    sendTx:(symbiote,blockIndex,klyntarHash)=>{
         
     },
 

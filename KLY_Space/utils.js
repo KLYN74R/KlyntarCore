@@ -88,7 +88,7 @@ BASE64=v=>Buffer.from(v).toString('base64'),
 
 BLAKE3=v=>hash(v).toString('hex'),
 
-CHAIN_LABEL=chain=>CONFIG.ALIASES[chain]||chain,
+SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
 
 
 
@@ -162,18 +162,18 @@ HMAC=(data,sid,magic,fullHash)=>BLAKE3(data+sid+magic)===fullHash,
 
 
 
-/**@return Chain level data.Used when we check blocks
+/**@return Symbiote level data.Used when we check blocks
  * Here we read from cache or get account from state,push to cache and return
 */
-GET_CHAIN_ACC=(addr,chain)=>
+GET_SYMBIOTE_ACC=(addr,symbiote)=>
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
-    symbiotes.get(chain).ACCOUNTS.get(addr)||symbiotes.get(chain).STATE.get(addr)
+    symbiotes.get(symbiote).ACCOUNTS.get(addr)||symbiotes.get(symbiote).STATE.get(addr)
     
     .then(ACCOUNT=>
         
         //Get and push to cache
-        symbiotes.get(chain).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
+        symbiotes.get(symbiote).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
     
     ).catch(e=>false),
 
@@ -208,9 +208,9 @@ CHECK_UPDATES=async()=>{
 
         await fetch(`${CONFIG.UPDATES}/${symbiotesVersions[symbiote]}`).then(r=>r.json())
         
-                .then(resp=>LOG(`Received for ${CHAIN_LABEL(symbiote)} ———> ${resp.msg}`,resp.msgColor))
+                .then(resp=>LOG(`Received for ${SYMBIOTE_ALIAS(symbiote)} ———> ${resp.msg}`,resp.msgColor))
                         
-                .catch(e=>LOG(`Can't check \u001b[38;5;202mSYMBIOTE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${CHAIN_LABEL(symbiote)} ———> \u001b[38;5;50m${e}`,'CON'))
+                .catch(e=>LOG(`Can't check \u001b[38;5;202mSYMBIOTE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;168m ———> \u001b[38;5;50m${e}`,'CON'))
 
     }
     
@@ -284,36 +284,36 @@ ACC_CONTROL=(creator,strData,fullHash,add,role,getAcc)=>
 
 
 
-SEND=(url,ob,callback)=>fetch(url,{method:'POST',body:JSON.stringify(ob)}).then(r=>r.text()).then(callback),
+SEND=(url,payload,callback)=>fetch(url,{method:'POST',body:JSON.stringify(payload)}).then(r=>r.text()).then(callback),
 
 
 
 
 //Segregate console and "in-file" logs can be occured by directing stdin to some "nnlog" file to handle logs
 //Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
-LOG=(msg,msgColor,chain)=>{
+LOG=(msg,msgColor,symbiote)=>{
 
     CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[msgColor],msg,COLORS.C)
 
-    if(chain) CONFIG.CHAINS[chain].LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(chain).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
+    if(symbiote) CONFIG.SYMBIOTES[symbiote].LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(symbiote).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 
 },
 
 
 
 
-//Function just for pretty output about information on chains
-BLOCKLOG=(msg,type,chain,hash,spaces,color)=>{
+//Function just for pretty output about information on symbiote
+BLOCKLOG=(msg,type,symbiote,hash,spaces,color)=>{
 
-    if(CONFIG.CHAINS[chain].LOGS.BLOCK){
+    if(CONFIG.SYMBIOTES[symbiote].LOGS.BLOCK){
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
 
-        chain=CHAIN_LABEL(chain)
+        symbiote=SYMBIOTE_ALIAS(symbiote)
 
         console.log(' '.repeat(spaces),color,'_'.repeat(74))
 
-        console.log(' '.repeat(spaces),'│\x1b[33m  CHAIN:\x1b[36;1m',chain,COLORS.C,' '.repeat(19)+`${color}│`)
+        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',symbiote,COLORS.C,' '.repeat(16)+`${color}│`)
     
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│`)
     
@@ -328,9 +328,9 @@ BLOCKLOG=(msg,type,chain,hash,spaces,color)=>{
 
 
 
-DECRYPT_KEYS=async(chain,spinner)=>{
+DECRYPT_KEYS=async(symbiote,spinner)=>{
 
-    let chainRef=CONFIG.CHAINS[chain],
+    let symbioteRef=CONFIG.SYMBIOTES[symbiote],
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
@@ -338,13 +338,13 @@ DECRYPT_KEYS=async(chain,spinner)=>{
     //Stop loading
     spinner.stop()
 
-    LOG(`Working on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[36;1m as \x1b[32;1m${chainRef.CONTROLLER.ME?'Controller':'Instant generator'}`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${symbioteRef.CONTROLLER.ME?'Controller':'Instant generator'}`,'I')
        
 
     
     let HEX_SEED=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${CHAIN_LABEL(chain)}\x1b[0m in memory of process ———> \x1b[31m`,resolve))
+        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve))
         
 
     //Get 32 bytes SHA256(Password)
@@ -365,24 +365,24 @@ DECRYPT_KEYS=async(chain,spinner)=>{
 
     let decipher = c.createDecipheriv('aes-256-cbc',HEX_SEED,IV)
     
-    global.PRIVATE_KEYS.set(chain,decipher.update(chainRef.PRV,'hex','utf8')+decipher.final('utf8'))
+    global.PRIVATE_KEYS.set(symbiote,decipher.update(symbioteRef.PRV,'hex','utf8')+decipher.final('utf8'))
 
 
 
     //____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAINS_______________________________________
 
 
-    chainRef.CONTROLLER.ME
+    symbioteRef.CONTROLLER.ME
     &&
-    Object.keys(chainRef.HC_CONFIGS).forEach(ticker=>{
+    Object.keys(symbioteRef.HC_CONFIGS).forEach(ticker=>{
         
-        let decipher = c.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(chainRef.HC_CONFIGS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
+        let decipher = c.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.HC_CONFIGS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
-        if(CONFIG.EVM.includes(ticker)) hostchains.get(chain).get(ticker).PRV=Buffer.from(privateKey,'hex')
+        if(CONFIG.EVM.includes(ticker)) hostchains.get(symbiote).get(ticker).PRV=Buffer.from(privateKey,'hex')
         
-        else chainRef.HC_CONFIGS[ticker].PRV=privateKey
+        else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
         
 
 
@@ -397,9 +397,9 @@ DECRYPT_KEYS=async(chain,spinner)=>{
 
 
 
-GET_NODES=(chain,region)=>{
+GET_NODES=(symbiote,region)=>{
 
-    let nodes=CONFIG.CHAINS[chain].NODES[region]//define "IN SCOPE"(due to region and chain)
+    let nodes=CONFIG.SYMBIOTES[symbiote].NODES[region]//define "IN SCOPE"(due to region and symbiote)
 
     //Default Phisher_Yeits algorithm
 
@@ -409,7 +409,7 @@ GET_NODES=(chain,region)=>{
         
             arrSize = nodes.length,
         
-            min = arrSize - CONFIG.CHAINS[chain].NODES_PORTION, temp, index
+            min = arrSize - CONFIG.SYMBIOTES[symbiote].NODES_PORTION, temp, index
 
 
         while (arrSize-- > min) {
@@ -436,16 +436,16 @@ GET_NODES=(chain,region)=>{
 
 //Receient must support HTTPS
 //*UPD:Sign with our pubkey to avoid certifications 
-SEND_REPORT=(chain,alertInfo)=>
+SEND_REPORT=(symbiote,alertInfo)=>
 
-    fetch(CONFIG.CHAINS[chain].WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
+    fetch(CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
 
         method:'POST',
         body:JSON.stringify(alertInfo)
     
     }).then(()=>{}).catch(e=>
         
-        LOG(`No response from report mananger\n CASE \n Chain:\x1b[36;1m${CHAIN_LABEL(chain)}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
+        LOG(`No response from report mananger\n CASE \n Symbiote:\x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
         
     )
 
@@ -459,7 +459,7 @@ SEND_REPORT=(chain,alertInfo)=>
  *
  * 
  *
- * Near contains addresses which tracked the same chains or at least one chain from your list of chains
+ * Near contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
  * We need NEAR just to exchange with blocks(at least in current pre-alpha release)
  * Non static list which changes permanently and received each time we ask Controller
  * In future(with providing voting with CONTROLLER and other stuff) it will be one more kind of interaction
@@ -491,20 +491,20 @@ SEND_REPORT=(chain,alertInfo)=>
  * It's just for better efficiency
  * 
  */
-BROADCAST=(route,data,chain)=>{
+BROADCAST=(route,data,symbiote)=>{
 
-    let promises=[],chainConfig=CONFIG.CHAINS[chain]
+    let promises=[],symbioteConfig=CONFIG.SYMBIOTES[symbiote]
 
 
     //First of all-send to important destination points
-    Object.keys(chainConfig.MUST_SEND).forEach(addr=>
+    Object.keys(symbioteConfig.MUST_SEND).forEach(addr=>
         
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            SIG(data,PRIVATE_KEYS.get(chain)).then(sig=>
+            SIG(data,PRIVATE_KEYS.get(symbiote)).then(sig=>
 
-                fetch(chainConfig.MUST_SEND[addr]+route,{
+                fetch(symbioteConfig.MUST_SEND[addr]+route,{
                 
                     method:'POST',
                     
@@ -512,7 +512,7 @@ BROADCAST=(route,data,chain)=>{
                 
                 }).catch(e=>
                     
-                    chainConfig.LOGS.OFFLINE
+                    symbioteConfig.LOGS.OFFLINE
                     &&
                     LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
                     
@@ -526,13 +526,13 @@ BROADCAST=(route,data,chain)=>{
 
 
 
-    chainConfig.PERMANENT_NEAR.forEach(addr=>
+    symbioteConfig.PERMANENT_NEAR.forEach(addr=>
     
         fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
         
         .catch(e=>
             
-            chainConfig.LOGS.OFFLINE
+            symbioteConfig.LOGS.OFFLINE
             &&
             LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mPERMANENT_NEAR\u001b[38;5;3m]`,'W')
             
@@ -545,26 +545,26 @@ BROADCAST=(route,data,chain)=>{
     Finally-send resource to NEAR nodes
     If response isn't equal 1-delete node from list,
     coz it's signal that node does no more support this
-    chain(or at current time),has wrong payload size settings etc,so no sense to spend network resources on this node
+    symbiote(or at current time),has wrong payload size settings etc,so no sense to spend network resources on this node
     
     */
 
 
-    symbiotes.get(chain).NEAR.forEach((addr,index)=>
+    symbiotes.get(symbiote).NEAR.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&symbiotes.get(chain).NEAR.splice(index,1)
+                value!=='1'&&symbiotes.get(symbiote).NEAR.splice(index,1)
                     
             ).catch(e=>{
                 
-                chainConfig.LOGS.OFFLINE
+                symbioteConfig.LOGS.OFFLINE
                 &&
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${CHAIN_LABEL(chain)}\x1b[33;1m]`,'W')
+                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${SYMBIOTE_ALIAS(symbiote)}\x1b[33;1m]`,'W')
 
-                symbiotes.get(chain).NEAR.splice(index,1)
+                symbiotes.get(symbiote).NEAR.splice(index,1)
 
             })
             
