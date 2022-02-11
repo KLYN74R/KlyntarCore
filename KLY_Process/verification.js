@@ -94,7 +94,7 @@ GET_FORWARD_BLOCKS=(symbiote,fromHeight)=>{
                         
                         iBlock => {
 
-                            let hash=InstantBlock.genHash(symbiote,iBlock.d,iBlock.s,iBlock.c)
+                            let hash=InstantBlock.genHash(iBlock.c,iBlock.e,symbiote)
 
                             controllerBlock.a?.includes(hash) && symbiotes.get(symbiote).INSTANT_BLOCKS.put(hash,iBlock)
 
@@ -329,11 +329,11 @@ verifyControllerBlock=async controllerBlock=>{
 
 
 
-    /*  Maximum 100 InstantBlocks per 1 ControllerBlock
+    /*  Maximum 100 InstantBlocks per 1 ControllerBlock(set in configs)
         
-        We have maximum N*K transactions where N-number of InstantBlocks and K-number of transactions
+        We have maximum N*K events where N-number of InstantBlocks and K-number of events
 
-        It's better to take 100 blocks from different creators with 100 txs instead of 10 blocks with 1000 txs-this we'll accept from bigger range of creators
+        It's better to take 100 blocks from different creators with 100 events instead of 10 blocks with 1000 events-this we'll accept from bigger range of creators
     */
 
    
@@ -369,7 +369,7 @@ verifyControllerBlock=async controllerBlock=>{
             */
             getBlocksPromises.push(symbioteReference.CANDIDATES.get(controllerBlock.a[i]).then(instantBlock=>
 
-                eventsToSift.set(controllerBlock.a[i],{d:instantBlock.d,s:instantBlock.s})
+                eventsToSift.set(controllerBlock.a[i],instantBlock.e)
                 &&
                 SET_INSTANT_BLOCK(symbioteReference,symbiote,controllerBlock.a[i],instantBlock,rewardBox)
             
@@ -382,10 +382,10 @@ verifyControllerBlock=async controllerBlock=>{
                
                 fetch(CONFIG.SYMBIOTES[symbiote].GET_INSTANT+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
-                    //Check hash and if OK-sift transactions from inside,otherwise-occur exceprion to ask block from another sources
-                    InstantBlock.genHash(symbiote,instant.d,instant.s,instant.c)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
+                    //Check hash and if OK-sift events from inside,otherwise-occur exception to ask block from another sources
+                    InstantBlock.genHash(instant.c,instant.e,symbiote)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
                     ?
-                    eventsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})&&SET_INSTANT_BLOCK(symbioteReference,symbiote,controllerBlock.a[i],instant,rewardBox)
+                    eventsToSift.set(controllerBlock.a[i],instant.e)&&SET_INSTANT_BLOCK(symbioteReference,symbiote,controllerBlock.a[i],instant,rewardBox)
                     :
                     new Error()
 
@@ -404,11 +404,11 @@ verifyControllerBlock=async controllerBlock=>{
 
                         await fetch(permNear[j]+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
-                            InstantBlock.genHash(symbiote,instant.d,instant.s,instant.c)===controllerBlock.a[i]
+                            InstantBlock.genHash(instant.c,instant.e,symbiote)===controllerBlock.a[i]
                             &&
                             await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
                             &&
-                            eventsToSift.set(controllerBlock.a[i],{d:instant.d,s:instant.s})
+                            eventsToSift.set(controllerBlock.a[i],instant.e)
                             &&
                             (await SET_INSTANT_BLOCK(symbioteReference,symbiote,controllerBlock.a[i],instant,rewardBox),breakPoint=true)
                             
@@ -447,15 +447,11 @@ verifyControllerBlock=async controllerBlock=>{
         
         let sendersAccounts=[]
         
-        //Go through each transaction("d" and "s" type),get accounts of senders from state by creating promise and push to array for faster resolve
+        //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
         eventsToSift.forEach(eventsSet=>
-            
-            ['d','s'].forEach(type=>
              
-                eventsSet[type].forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c,symbiote)))
+            eventsSet.forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c,symbiote)))
                 
-            )
-        
         )
 
         //Push accounts of creators of InstantBlock
@@ -471,32 +467,28 @@ verifyControllerBlock=async controllerBlock=>{
 
         eventsToSift.forEach(eventsSet=>
             
-            //We have "d"(default,without signature) and "s"(secured,with signature) events buffers
-            ['d','s'].forEach(type=>
-                
-                eventsSet[type].forEach(event=>{
+            eventsSet.forEach(event=>{
 
-                    //O(1),coz it's set
-                    if(!symbioteReference.BLACKLIST.has(event.c)){
+                //O(1),coz it's set
+                if(!symbioteReference.BLACKLIST.has(event.c)){
                         
-                        let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
+                    let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
                         
-                            spend=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE + (symbiotes.get(symbiote).SPENDERS[event.t](event,symbiote)?.()||0)
+                        spend=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE + (symbiotes.get(symbiote).SPENDERS[event.t](event,symbiote)?.()||0)
 
 
                             
-                        //If no such address-it's signal that transaction can't be accepted
-                        if(!acc) return
+                    //If no such address-it's signal that transaction can't be accepted
+                    if(!acc) return
                  
-                        (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
+                    (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
         
-                        (acc.OUT-=spend)<0 && symbioteReference.BLACKLIST.add(event.c)
+                    (acc.OUT-=spend)<0 && symbioteReference.BLACKLIST.add(event.c)
 
-                    }
+                }
 
-                })
+            })
                 
-            )
             
         )
 
@@ -510,19 +502,15 @@ verifyControllerBlock=async controllerBlock=>{
 
 
         eventsToSift.forEach((eventsSet,hash)=>{
-
-            ['d','s'].forEach(eventType=>
-                
-                eventsSet[eventType].forEach(event=>
+    
+            eventsSet.forEach(event=>
                     
-                    symbioteReference.VERIFIERS[event.t] && eventsPromises.push(symbioteReference.VERIFIERS[event.t](event,rewardBox.get(hash),symbiote))
+                symbioteReference.VERIFIERS[event.t] && eventsPromises.push(symbioteReference.VERIFIERS[event.t](event,rewardBox.get(hash),symbiote))
 
-                    //Stress test.DELETE
-                    //txsPromises.push(VERIFY('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','4ViaOoL3HF5lamTh0ZjGbLVg+59dfk5cebJGKRDtRf29l0hIbS5PHfUNt2GCUdHS+AFqs1ZU+l6cpMYkSbw3Aw==','J+tMlJexrc5bwof9oIpKiRxQy84VmZhMfdIJa53GSY4='))
-                )
-                
+                //Stress test.DELETE
+                //txsPromises.push(VERIFY('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','4ViaOoL3HF5lamTh0ZjGbLVg+59dfk5cebJGKRDtRf29l0hIbS5PHfUNt2GCUdHS+AFqs1ZU+l6cpMYkSbw3Aw==','J+tMlJexrc5bwof9oIpKiRxQy84VmZhMfdIJa53GSY4='))
             )
-        
+                        
         })
         
         await Promise.all(eventsPromises.splice(0))
@@ -713,7 +701,12 @@ verifyControllerBlock=async controllerBlock=>{
 
 verifyInstantBlock=async block=>{
 
-    let hash=InstantBlock.genHash(block.n,block.d,block.s,block.c),symbioteData=symbiotes.get(block.n),symbioteConfig=CONFIG.SYMBIOTES[block.n]
+    let hash=InstantBlock.genHash(block.c,block.e,block.s),
+    
+        symbioteData=symbiotes.get(block.s),
+        
+        symbioteConfig=CONFIG.SYMBIOTES[block.s]
+
 
     /*
   
@@ -728,13 +721,11 @@ verifyInstantBlock=async block=>{
 
     let allow=
     
-    symbiotes.has(block.n)//if we still support this symbiote
+    symbiotes.has(block.s)//if we still support this symbiote
     &&
-    block.s.length<=symbioteConfig.MANIFEST.INSTANT_BLOCK_STXS_MAX
+    block.e.length<=symbioteConfig.MANIFEST.EVENTS_LIMIT_PER_BLOCK
     &&
-    block.d.length<=symbioteConfig.MANIFEST.INSTANT_BLOCK_DTXS_MAX
-    &&
-    !(block.s.length===0&&block.d.length===0)//check quantity of txs
+    block.e.length!==0//filter empty blocks
     &&
     !symbioteData.INSTANT_CANDIDATES.has(hash)//check if we already have this block-it will be in mapping anyway
     &&
@@ -755,15 +746,15 @@ verifyInstantBlock=async block=>{
         
         .then(()=>{
 
-            Promise.all(BROADCAST('/ib',block,block.n))//share with the network
+            Promise.all(BROADCAST('/ib',block,block.s))//share with the network
             
             symbioteData.INSTANT_CANDIDATES.set(hash,block.c)
         
-            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m${BLOCK_PATTERN}│`,'S',block.n,hash,56,'\x1b[31m')
+            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m${BLOCK_PATTERN}│`,'S',block.s,hash,56,'\x1b[31m')
             
         })
         
-        .catch(e=>LOG(`Problem with adding candidate block \x1b[36;1m${hash}...\x1b[33;1m from \x1b[36;1m${block.n}... \x1b[33;1m ———> ${e.message}`,'W'))
+        .catch(e=>LOG(`Problem with adding candidate block \x1b[36;1m${hash}...\x1b[33;1m from \x1b[36;1m${block.s}... \x1b[33;1m ———> ${e.message}`,'W'))
 
     }
 

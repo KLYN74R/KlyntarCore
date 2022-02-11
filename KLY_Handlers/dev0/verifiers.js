@@ -61,12 +61,12 @@ export default {
     
             recipient={ACCOUNT:{B:0,N:0,D:''}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             
-            symbiotes.get(symbiote).ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all txs in ControllerBlock
+            symbiotes.get(symbiote).ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of ControllerBlock
         
         }
         
     
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(JSON.stringify(event.p)+symbiote+event.n,event.s,event.c))){
+        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+event.p.a
             
@@ -86,7 +86,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
     
-        if(event.p.length===64 && !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(event.p+symbiote+event.n,event.s,event.c))){
+        if(event.p.length===64 && !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+symbiote+event.n,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
     
@@ -107,7 +107,7 @@ export default {
     
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
         
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && (sender.ACCOUNT.D===blockCreator.creator || await VERIFY(event.p+symbiote+event.n,event.s,event.c))){
+        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+symbiote+event.n,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
     

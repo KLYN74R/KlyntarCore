@@ -1,4 +1,4 @@
-import {ACC_CONTROL,SAFE_ADD} from '../KLY_Space/utils.js'
+import {SAFE_ADD} from '../KLY_Space/utils.js'
 
 import {contracts} from '../klyn74r.js'
 
@@ -25,8 +25,7 @@ export let C={
                     let body=await PARSE_JSON(buf)
         
                     typeof body.c==='string'&&typeof body.d==='string'&&typeof body.f==='string'
-                    &&
-                    await ACC_CONTROL(body.c,body.d,body.f,1,1)
+                    //add verification
                     ?
                     contracts.get(body.c).then(ctr=>{
                         

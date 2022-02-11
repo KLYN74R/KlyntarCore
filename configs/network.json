@@ -15,7 +15,6 @@
 
     "TRIGGERS":{     
         "GET_SID":1,
-        "CHANGE_SID":1,
         "ALL_CONTROLLER_BLOCKS":1,
         "ALL_INSTANT_BLOCKS":1
     },

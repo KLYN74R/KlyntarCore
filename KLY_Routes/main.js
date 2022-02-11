@@ -2,7 +2,7 @@ import{
 
     BASE64,VERIFY,ENCRYPT,BODY,SAFE_ADD,GET_SYMBIOTE_ACC,
 
-    PARSE_JSON,BLOCKLOG,ACC_CONTROL,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
+    PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
 
 } from '../KLY_Space/utils.js'
 
@@ -166,7 +166,7 @@ export let M={
         
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof body.f!=='string'){
+        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string' || typeof body.f!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -174,10 +174,7 @@ export let M={
 
         }
 
-        //Set pointers due to type of tx('S' or 'D')
-        let type=event.s?'STXS':'DTXS',
-
-            symbioteMempool=symbiotes.get(symbiote)['MEMPOOL_'+type]
+        let symbioteMempool=symbiotes.get(symbiote).MEMPOOL
 
         
 
@@ -193,11 +190,11 @@ export let M={
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         //Also check if we have normalizer for this type of event
-        if(symbioteMempool.length<CONFIG.SYMBIOTES[symbiote][type+'_MEMPOOL_SIZE'] && symbiotes.get(symbiote).NORMALIZERS[event.t]){
+        if(symbioteMempool.length<CONFIG.SYMBIOTES[symbiote].EVENTS_MEMPOOL_SIZE && symbiotes.get(symbiote).FILTERS[event.t]){
 
-            let normalized=await symbiotes.get(symbiote).NORMALIZERS[event.t](event)
+            let filtered=await symbiotes.get(symbiote).FILTERS[event.t](event)
 
-            if(normalized&&await ACC_CONTROL(JSON.stringify(normalized)+symbiote,body.f,1)){
+            if(filtered){
     
                 !a.aborted&&a.end('OK')
 
@@ -206,11 +203,11 @@ export let M={
             }else !a.aborted&&a.end('Post overview failed')
 
 
-        }else !a.aborted&&a.end('Mempool is fullfilled or no such normalizer')
+        }else !a.aborted&&a.end('Mempool is fullfilled or no such filter')
     
     }),
 
-
+    
 
 
 
@@ -226,7 +223,7 @@ export let M={
 
 
 
-    //[0,1,2] -> 0-RSA pubkey 1-signature 2-symbiote(controllerAddr)
+    //[0,1] -> 0-signature 1-symbiote(controllerAddr)
     getSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
         
         let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
@@ -273,46 +270,6 @@ export let M={
 
         }else !a.aborted&&a.end('Verification failed')
                 
-    }),
-
-    
-
-
-    //TODO:Мб всё таки вернуть задержку во времени
-    //0-RSA pubkey 1-signature
-    changeSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-        
-        let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE)
-
-        if(CONFIG.TRIGGERS.CHANGE_SID){
-        
-            ACCOUNTS.get(body.c).then(async acc=>{
-            
-                if(acc&&await VERIFY(body.d[0]+GUID,body.d[1],body.c)){
-                    
-                    c.randomBytes(64,(e,r)=>{
-                    
-                        if(!e){
-                            
-                            acc.S=BASE64(r)
-                            
-                            //acc.TIME=new Date().getTime()
-        
-                            ACCOUNTS.set(body.c,acc)
-        
-                            !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
-
-            
-                        }else !a.aborted&&a.end('Bytes generation error')
-                    
-                    })
-    
-                }else !a.aborted&&a.end('Verification failed')
-            
-            }).catch(e=>!a.aborted&&a.end('No such acc or DB error'))
-            
-        }else !a.aborted&&a.end('Route is off.Check /info to get more info')
-        
     }),
 
 

@@ -48,8 +48,7 @@
                 "GENERATOR_FEE":0.8,
     
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
-                "INSTANT_BLOCK_DTXS_MAX":20000,
-                "INSTANT_BLOCK_STXS_MAX":10000,
+                "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"0",
                 "SPENDERS":"0"
@@ -163,8 +162,7 @@
             "BLOCK_С_INIT_DELAY":10000,
             "BLOCK_I_INIT_DELAY":15000,
             
-            "DTXS_MEMPOOL_SIZE":100000,
-            "STXS_MEMPOOL_SIZE":200000,
+            "EVENTS_MEMPOOL_SIZE":300000,
             
             "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
@@ -239,7 +237,7 @@
             
             },
 
-            "NORMALIZERS":"0",
+            "FILTERS":"0",
 
             "NODES_PORTION":8,
             "MAX_CONNECTIONS":15,
@@ -358,8 +356,7 @@
                 "GENERATOR_FEE":0.8,
 
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
-                "INSTANT_BLOCK_DTXS_MAX":20000,
-                "INSTANT_BLOCK_STXS_MAX":10000,
+                "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"0",
                 "SPENDERS":"0"
@@ -461,9 +458,8 @@
     
             "BLOCK_TO_BLOCK_CACHE_SIZE":200000,
 
-            "DTXS_MEMPOOL_SIZE":100000,
-            "STXS_MEMPOOL_SIZE":200000,
-
+            "EVENTS_MEMPOOL_SIZE":300000,
+            
             "NODES":{
 
                 "EU":[
@@ -578,7 +574,7 @@
             
             },
 
-            "NORMALIZERS":"0",
+            "FILTERS":"0",
             "NODES_PORTION":10,
             "MAX_CONNECTIONS":15,
 

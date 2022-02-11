@@ -23,13 +23,7 @@ let BLOCK_PATTERN=process.platform==='linux'?'——':'———',
 
 
 //TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
-GET_TXS=symbiote=>
-
-    ['D','S'].map(type=>
-        
-        symbiotes.get(symbiote)[`MEMPOOL_${type}TXS`].splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST[`INSTANT_BLOCK_${type}TXS_MAX`])
-        
-    ),
+GET_TXS=symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
 
@@ -327,12 +321,10 @@ export let GEN_BLOCK=async(symbiote,data)=>{
     }
     else{
 
-        let txs=await GET_TXS(symbiote)
         
         //______________________________TEST__________________________________
         
-        block=new InstantBlock(symbiote,...txs)
-        
+        let block=new InstantBlock(symbiote,await GET_TXS(symbiote))
 
         //_____________________________DELELTE________________________________
 
@@ -401,7 +393,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         //_______________________________________________DELELTE________________________________
 
         
-        hash=InstantBlock.genHash(symbiote,block.d,block.s,block.c)
+        hash=InstantBlock.genHash(block.c,block.e,symbiote)
 
         block.sig=await SIG(hash,PRIVATE_KEYS.get(symbiote))
             

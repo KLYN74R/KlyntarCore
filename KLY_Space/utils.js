@@ -105,7 +105,7 @@ SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
 VERIFY=(data,sig,pub)=>new Promise((resolve,reject)=>
 
     //Add mandatory prefix and postfix to pubkey
-    crypto.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from(Base58.decode('GfHq2tTVk9z4eXgy'+pub)).toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(err,res)=>
+    c.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from(Base58.decode('GfHq2tTVk9z4eXgy'+pub)).toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(err,res)=>
 
         err?reject(false):resolve(res)
 
@@ -248,39 +248,6 @@ PRIVIL=/[MEIUT]/,
 MINION=/M/,
 EMPIRE=/E/,
 INV2=/I/,
-
-
-
-
-/**
- * ___________________________________________________________ADVANCED,ALU-like,operations of verification___________________________________________________________
- * 
- * 
- * @param {string} creator Address(Ed25519 public key)
- * @param {string} strData UTF-8 data
- * @param {string} fullHash BLAKE3 fullhash of MSG
- * @param {number} add Number of points to change nonce
- * @param {string} role to check role of account via RegExp
- * @param {(string|number|boolean|null|undefined)} getAcc Flag to return account if we need
- * 
- *  */
-ACC_CONTROL=(creator,strData,fullHash,add,role,getAcc)=>
-
-    ACCOUNTS.get(creator).then(acc=>{
-        
-        //if(acc?.S?.length===1) return //Due to time
-        
-        if(acc&&HMAC(strData,acc.S,GUID+acc.N,fullHash))
-        {    
-
-            acc.N+=add//increase nonce
-
-            ACCOUNTS.set(creator,acc)
-
-            return (!role||role.test(acc.R)) && (!getAcc||acc)
-        }
-    
-    }),
 
 
 

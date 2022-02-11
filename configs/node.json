@@ -15,7 +15,7 @@
     "VERIFIERS_PREFIXES":{
         "0":"dev0"
     },
-    "NORMALIZERS_PREFIXES":{
+    "FILTERS_PREFIXES":{
         "0":"dev0"
     },
     "SPENDERS_PREFIXES":{

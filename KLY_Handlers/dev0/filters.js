@@ -33,18 +33,18 @@
 
 */
 
-
+import {VERIFY} from '../../KLY_Space/utils.js'
 
 export default {
     
-    TX:async event=>typeof event.p?.a==='number'&&typeof event.p.r==='string'&&event.p.a>0 ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    TX:async event=>typeof event.p?.a==='number'&&typeof event.p.r==='string'&&event.p.a>0 && await VERIFY(JSON.stringify(event.p),event.s,event.c)? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false,
 
     //payload is a single string(hash)
-    NEWSTX:async event=>typeof event.p==='string' && event.p.length===64 ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    NEWSTX:async event=>typeof event.p==='string' && event.p.length===64 && await VERIFY(JSON.stringify(event.p),event.s,event.c)? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false,
 
-    OFFSPRING:async event=>typeof event.p==='string' ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    OFFSPRING:async event=>typeof event.p==='string' && await VERIFY(JSON.stringify(event.p),event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false,
 
-    DELEGATION:async event=>typeof event.p==='string' ? {c:event.c,t:event.t,n:event.n,p:event.p} : false,
+    DELEGATION:async event=>typeof event.p==='string' && await VERIFY(JSON.stringify(event.p),event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false,
 
     //Unimplemented
     OWNERSHIP_APPROVE:async event=>{},

@@ -220,9 +220,7 @@ export let
 
         symbiotes.set(controllerAddr,{
             
-            //Create txs mempools-to add transactions on this symbiote.Both types-"DTXS" for default and "STXS"-with signatures
-            MEMPOOL_DTXS:[],
-            MEMPOOL_STXS:[],
+            MEMPOOL:[],
             
             //Finally-create mapping to optimize processes while we check blocks-not to read/write to db many times
             ACCOUNTS:new Map(),// ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
@@ -249,14 +247,14 @@ export let
 
 
 
-        //__________________________Load functionality to verify/normalize/transform events_____________________________
+        //___________________________Load functionality to verify/filter/transform events_______________________________
 
 
-        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${CONFIG.VERIFIERS_PREFIXES[symbioteConfig.MANIFEST.VERIFIERS]}/verify.js`)).default
+        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${CONFIG.VERIFIERS_PREFIXES[symbioteConfig.MANIFEST.VERIFIERS]}/verifiers.js`)).default
 
-        symbioteRef.NORMALIZERS=(await import(`./KLY_Handlers/${CONFIG.NORMALIZERS_PREFIXES[symbioteConfig.NORMALIZERS]}/normalize.js`)).default
+        symbioteRef.FILTERS=(await import(`./KLY_Handlers/${CONFIG.FILTERS_PREFIXES[symbioteConfig.FILTERS]}/filters.js`)).default
 
-        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${CONFIG.SPENDERS_PREFIXES[symbioteConfig.MANIFEST.SPENDERS]}/spend.js`)).default
+        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${CONFIG.SPENDERS_PREFIXES[symbioteConfig.MANIFEST.SPENDERS]}/spenders.js`)).default
 
 
         //______________________________________Prepare databases and storages___________________________________________
@@ -354,7 +352,6 @@ export let
                 previous=await symbioteRef.CONTROLLER_BLOCKS.get(symbioteRef.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
 
         
-
             if(nextIsPresent || !(symbioteRef.GENERATION_THREAD.NEXT_INDEX===0 || symbioteRef.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + controllerAddr + previous.i + previous.p))){
             
                 initSpinner.stop()
