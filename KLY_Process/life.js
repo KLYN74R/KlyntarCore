@@ -339,7 +339,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         //TEST DATA TO FILL THE BLOCK
 
         // try{
-        // if(chain=='CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz'){
+        // if(chain=='RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL'){
 
         //     let KEYPAIR={
 

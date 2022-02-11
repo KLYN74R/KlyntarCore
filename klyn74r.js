@@ -102,7 +102,7 @@ TODO:Реализация функционала симбиотических ц
 
 export let
 
-    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
+    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
     
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     

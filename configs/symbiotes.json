@@ -1,9 +1,9 @@
 {
     "SYMBIOTES":{
         
-        "r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o":{
+        "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":{
             
-            "PUB":"r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o",
+            "PUB":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
             "PRV":"e4a1935e868c44c8b45eccfc4098b6e504404c9e5dac2b56ee54b6faac787ad592333b354fb171cdd38e8920c36153ec69feedbc041607db1b42ff26a306d4909695b423c157c5273d0bf27e13bc3a36",
 
             "CONTROLLER":{
@@ -19,7 +19,7 @@
                 },
 
                 "HIVEMIND":[
-                    "CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz",
+                    "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
                     "terra1gaugsj5v98efpxktu2h6u2p758c2mkryyanj0v",
                     "GB65YDWOEWXNSZOUH3OUC3B2LBBIXQ5IILUX6P4Y55LANCUCYAAN3YS7"
                 ],
@@ -304,9 +304,9 @@
 
 
 
-        "CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz":{
+        "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL":{
              
-            "PUB":"CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz",
+            "PUB":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
             "PRV":"67e9ec01b62b0c3812a6e607a975a898c50ac153335d281d47986ca553fc3ebaf87f75f15d3e1cae7aba80a495811909095a0beb0cf7689840f9c699fced1e613de869e65a4e336bdb3e2e23dd19579d",
 
 
@@ -327,7 +327,7 @@
                 },
                 
                 "HIVEMIND":[
-                    "r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o",
+                    "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
                     "addr1qyvffnghe5wcvqfd87mlkatqgz932j0ken9gva7xvm0acqgcjnx30ngascqj60ahld6kqsytz4yldnx2semuveklmsqs2ahj2j",
                     "JA3KGJMXY3F5QWHJOXVXYZ5J4IELAK2RNEWUSJP7TLMUDRCCBOM72WRHGQ",
                     "0x62F3a3c665Fc162de8C986B1Afb16649f89cc328",
