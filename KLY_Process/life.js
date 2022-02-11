@@ -114,7 +114,7 @@ GEN_BLOCK_START=async(symbiote,type)=>{
 
 
 
-LOAD_STATE=async symbiote=>{
+RUN_POLLING=async symbiote=>{
 
     LOG(`Local state collapsed on \x1b[36;1m${symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}`,'S')
 
@@ -339,7 +339,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         //TEST DATA TO FILL THE BLOCK
 
         // try{
-        // if(chain=='q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs='){
+        // if(chain=='CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz'){
 
         //     let KEYPAIR={
 
@@ -445,7 +445,7 @@ RENAISSANCE=async()=>{
         promises.push(
 
             //Controller doesn't need to load state coz without him there are no progress in chain.At least-in the first versions
-            LOAD_STATE(symbioteID).then(()=>
+            RUN_POLLING(symbioteID).then(()=>
             
             /*
             
@@ -461,7 +461,7 @@ RENAISSANCE=async()=>{
             */
             !CONFIG.SYMBIOTES[symbioteID].CONTROLLER.ME
             &&
-            fetch(CONFIG.SYMBIOTES[symbioteID].CONTROLLER.ADDR+'/nodes/'+Buffer.from(symbioteID,'base64').toString('hex')+'/'+CONFIG.SYMBIOTES[symbioteID].REGION).then(r=>r.json()).then(
+            fetch(CONFIG.SYMBIOTES[symbioteID].CONTROLLER.ADDR+'/nodes/'+symbioteID+'/'+CONFIG.SYMBIOTES[symbioteID].REGION).then(r=>r.json()).then(
                 
                 async nodesArr=>{
                     

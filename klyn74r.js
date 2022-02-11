@@ -102,7 +102,7 @@ TODO:Реализация функционала симбиотических ц
 
 export let
 
-    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
+    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
     
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     
@@ -118,11 +118,11 @@ export let
         //Reset verification breakpoint
         await symbioteRef.STATE.clear()
 
-        let promises=[],symbyHex=Buffer.from(symbiote,'base64').toString('hex')
+        let promises=[]
 
 
         //Try to load from snapshot
-        if(fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbyHex}`))){
+        if(fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
 
             //Try to load snapshot metadata to use as last collapsed
             let canary=await symbioteRef.SNAPSHOT.get('CANARY').catch(e=>false),
@@ -162,7 +162,7 @@ export let
 
             }else{
 
-                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<hex of symbioteID> and reload daemon`,'F')
+                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<symbioteID> and reload daemon`,'F')
 
                 process.exit(138)
 
@@ -175,10 +175,10 @@ export let
             symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
             //Load all the configs
-            fs.readdirSync(PATH_RESOLVE(`GENESIS/${symbyHex}`)).forEach(file=>{
+            fs.readdirSync(PATH_RESOLVE(`GENESIS/${symbiote}`)).forEach(file=>{
     
                 //Load genesis state or data from backups(not to load state from the beginning)
-                let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${symbyHex}/${file}.json`)))
+                let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${symbiote}/${file}.json`)))
             
                 Object.keys(genesis).forEach(
                 
@@ -237,14 +237,14 @@ export let
 
 
 
-        let symbioteRef=symbiotes.get(controllerAddr),hexPath=Buffer.from(controllerAddr,'base64').toString('hex')
+        let symbioteRef=symbiotes.get(controllerAddr)
 
 
         //Open writestream in append mode
-        SYMBIOTES_LOGS_STREAMS.set(controllerAddr,fs.createWriteStream(PATH_RESOLVE(`LOGS/${hexPath}.txt`),{flags:'a+'}))
+        SYMBIOTES_LOGS_STREAMS.set(controllerAddr,fs.createWriteStream(PATH_RESOLVE(`LOGS/${controllerAddr}.txt`),{flags:'a+'}))
 
         //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-        !fs.existsSync(PATH_RESOLVE(`C/${hexPath}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${hexPath}`))
+        !fs.existsSync(PATH_RESOLVE(`C/${controllerAddr}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${controllerAddr}`))
 
 
 
@@ -252,11 +252,11 @@ export let
         //__________________________Load functionality to verify/normalize/transform events_____________________________
 
 
-        symbioteRef.VERIFIERS=(await import(`./KLY_Essences/handlers/${CONFIG.VERIFIERS_PREFIXES[symbioteConfig.MANIFEST.VERIFIERS]}/verify.js`)).default
+        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${CONFIG.VERIFIERS_PREFIXES[symbioteConfig.MANIFEST.VERIFIERS]}/verify.js`)).default
 
-        symbioteRef.NORMALIZERS=(await import(`./KLY_Essences/handlers/${CONFIG.NORMALIZERS_PREFIXES[symbioteConfig.NORMALIZERS]}/normalize.js`)).default
+        symbioteRef.NORMALIZERS=(await import(`./KLY_Handlers/${CONFIG.NORMALIZERS_PREFIXES[symbioteConfig.NORMALIZERS]}/normalize.js`)).default
 
-        symbioteRef.SPENDERS=(await import(`./KLY_Essences/handlers/${CONFIG.SPENDERS_PREFIXES[symbioteConfig.MANIFEST.SPENDERS]}/spend.js`)).default
+        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${CONFIG.SPENDERS_PREFIXES[symbioteConfig.MANIFEST.SPENDERS]}/spend.js`)).default
 
 
         //______________________________________Prepare databases and storages___________________________________________
@@ -265,15 +265,15 @@ export let
 
 
         //Create subdirs due to rational solutions
-        symbioteRef.CONTROLLER_BLOCKS=l(PATH_RESOLVE(`C/${hexPath}/CONTROLLER_BLOCKS`),{valueEncoding:'json'})//For Controller's blocks(key is index)
+        symbioteRef.CONTROLLER_BLOCKS=l(PATH_RESOLVE(`C/${controllerAddr}/CONTROLLER_BLOCKS`),{valueEncoding:'json'})//For Controller's blocks(key is index)
         
-        symbioteRef.INSTANT_BLOCKS=l(PATH_RESOLVE(`C/${hexPath}/INSTANT_BLOCKS`),{valueEncoding:'json'})//For Instant(key is hash)
+        symbioteRef.INSTANT_BLOCKS=l(PATH_RESOLVE(`C/${controllerAddr}/INSTANT_BLOCKS`),{valueEncoding:'json'})//For Instant(key is hash)
         
-        symbioteRef.HOSTCHAINS_DATA=l(PATH_RESOLVE(`C/${hexPath}/HOSTCHAINS_DATA`),{valueEncoding:'json'})//To store external flow of commits for ControllerBlocks
+        symbioteRef.HOSTCHAINS_DATA=l(PATH_RESOLVE(`C/${controllerAddr}/HOSTCHAINS_DATA`),{valueEncoding:'json'})//To store external flow of commits for ControllerBlocks
         
-        symbioteRef.CANDIDATES=l(PATH_RESOLVE(`C/${hexPath}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
+        symbioteRef.CANDIDATES=l(PATH_RESOLVE(`C/${controllerAddr}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
         
-        symbioteRef.STATE=l(PATH_RESOLVE(`C/${hexPath}/STATE`),{valueEncoding:'json'})//State of accounts
+        symbioteRef.STATE=l(PATH_RESOLVE(`C/${controllerAddr}/STATE`),{valueEncoding:'json'})//State of accounts
         
         /*
             Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web23.Read more on our sources
@@ -289,20 +289,20 @@ export let
             Usernames(Twitter in this case) @jack => bc1qsmljf8cmfhul2tuzcljc2ylxrqhwf7qxpstj2a
 
         */
-        symbioteRef.ALIASES=l(PATH_RESOLVE(`C/${hexPath}/ALIASES`),{valueEncoding:'json'})
+        symbioteRef.ALIASES=l(PATH_RESOLVE(`C/${controllerAddr}/ALIASES`),{valueEncoding:'json'})
 
 
         //Metadata
-        symbioteRef.SERVICES=l(PATH_RESOLVE(`C/${hexPath}/SERVICES`),{valueEncoding:'json'})
+        symbioteRef.SERVICES=l(PATH_RESOLVE(`C/${controllerAddr}/SERVICES`),{valueEncoding:'json'})
 
-        symbioteRef.CONVEYORS=l(PATH_RESOLVE(`C/${hexPath}/CONVEYORS`),{valueEncoding:'json'})
+        symbioteRef.CONVEYORS=l(PATH_RESOLVE(`C/${controllerAddr}/CONVEYORS`),{valueEncoding:'json'})
 
 
 
 
 
         //...and separate dir for snapshots
-        symbioteRef.SNAPSHOT=l(PATH_RESOLVE(`SNAPSHOTS/${hexPath}`),{valueEncoding:'json'})
+        symbioteRef.SNAPSHOT=l(PATH_RESOLVE(`SNAPSHOTS/${controllerAddr}`),{valueEncoding:'json'})
 
 
 
@@ -942,7 +942,6 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 .get('/block/:symbiote/:type/:id',A.block)
 
-//Send address in hex format.Use Buffer.from('<YOUR ADDRESS>','base64').toString('hex')
 .get('/local/:address',A.local)
 
 .post('/alert',A.alert)

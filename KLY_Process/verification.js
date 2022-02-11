@@ -56,7 +56,7 @@ export let
 
 GET_FORWARD_BLOCKS=(symbiote,fromHeight)=>{
 
-    fetch(CONFIG.SYMBIOTES[symbiote].GET_MULTI+`/multiplicity/${Buffer.from(symbiote,'base64').toString('hex')}/`+fromHeight)
+    fetch(CONFIG.SYMBIOTES[symbiote].GET_MULTI+`/multiplicity/${symbiote}/`+fromHeight)
 
     .then(r=>r.json()).then(blocksSet=>{
 
@@ -126,7 +126,7 @@ GET_CONTROLLER_BLOCK=(symbiote,blockId)=>symbiotes.get(symbiote).CONTROLLER_BLOC
     //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
     //Then we ask for block with <blockId> and asynchronously request the other blocks
     
-    fetch(CONFIG.SYMBIOTES[symbiote].GET_CONTROLLER+`/block/${Buffer.from(symbiote,'base64').toString('hex')}/c/`+blockId)
+    fetch(CONFIG.SYMBIOTES[symbiote].GET_CONTROLLER+`/block/${symbiote}/c/`+blockId)
 
     .then(r=>r.json()).then(block=>{
 
@@ -261,7 +261,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
         //Read only part of state to make snapshot for backups
         //Set your own policy of backups with your other nodes,infrastructure etc.
-        let choosen=JSON.parse(PATH_RESOLVE(`SNAPSHOTS/separation/${Buffer.from(symbiote,'base64').toString('hex')}.json`)),
+        let choosen=JSON.parse(PATH_RESOLVE(`SNAPSHOTS/separation/${symbiote}.json`)),
         
             promises=[]
 
@@ -380,7 +380,7 @@ verifyControllerBlock=async controllerBlock=>{
                   █▄.If no block locally-get from some reliable source,we defined in config file(cloud,CDN,some cluster-something which are fast,reliable and has ~100% uptime)
                 */
                
-                fetch(CONFIG.SYMBIOTES[symbiote].GET_INSTANT+`/block/${Buffer.from(symbiote,'base64').toString('hex')}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                fetch(CONFIG.SYMBIOTES[symbiote].GET_INSTANT+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
                     //Check hash and if OK-sift transactions from inside,otherwise-occur exceprion to ask block from another sources
                     InstantBlock.genHash(symbiote,instant.d,instant.s,instant.c)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
@@ -402,7 +402,7 @@ verifyControllerBlock=async controllerBlock=>{
                     
                         if(breakPoint) break//no more ense to ask the rest nodes if we get block
 
-                        await fetch(permNear[j]+`/block/${Buffer.from(symbiote,'base64').toString('hex')}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                        await fetch(permNear[j]+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
                             InstantBlock.genHash(symbiote,instant.d,instant.s,instant.c)===controllerBlock.a[i]
                             &&

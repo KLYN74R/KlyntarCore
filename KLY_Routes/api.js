@@ -18,13 +18,13 @@ export let A={
 
         a.onAborted(()=>a.aborted=true)
 
-        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64')
+        let symbiote=q.getParameter(0)
     
         if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.ACCOUNTS){
     
             let data={
             
-                ...await symbiotes.get(symbiote).STATE.get(Buffer.from(q.getParameter(1),'hex').toString('base64')).catch(e=>''),
+                ...await symbiotes.get(symbiote).STATE.get(q.getParameter(1)).catch(e=>''),
             
                 COLLAPSE:symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX
         
@@ -43,7 +43,7 @@ export let A={
 
         a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true)
     
-        let localNonce=(await ACCOUNTS.get(Buffer.from(q.getParameter(0),'hex').toString('base64'))).N+''
+        let localNonce=(await ACCOUNTS.get(q.getParameter(0))).N+''
         
         !a.aborted&&a.end(localNonce)
         
@@ -59,7 +59,7 @@ export let A={
 
     nodes:(a,q)=>{
 
-        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64')
+        let symbiote=q.getParameter(0)
     
         symbiotes.has(symbiote)
         ?
@@ -80,7 +80,7 @@ export let A={
     block:(a,q)=>{
 
         //Return ControllerBlock by index or InstantBlock by hash on appropriate symbiote
-        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64'),
+        let symbiote=q.getParameter(0),
             
             type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
     
@@ -115,7 +115,7 @@ export let A={
         a.onAborted(()=>a.aborted=true)
 
         
-        let symbiote=Buffer.from(q.getParameter(0),'hex').toString('base64'),
+        let symbiote=q.getParameter(0),
         
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     

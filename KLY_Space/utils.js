@@ -8,6 +8,8 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
+import Base58 from 'base-58'
+
 import c from 'crypto'
 
 import fs from 'fs'
@@ -103,14 +105,13 @@ SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
 VERIFY=(data,sig,pub)=>new Promise((resolve,reject)=>
 
     //Add mandatory prefix and postfix to pubkey
-    c.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+'MCowBQYDK2VwAyEA'+pub+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(err,res)=>
-    
+    crypto.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from(Base58.decode('GfHq2tTVk9z4eXgy'+pub)).toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(sig,'base64'),(err,res)=>
+
         err?reject(false):resolve(res)
-    
+
     )
 
 ).catch(e=>false),
-
 
 
 

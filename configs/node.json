@@ -1,7 +1,7 @@
 {
     "ALIASES":{
-        "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=":"\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@\u001b[0m\u001b[30;1mkNULL\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@@\u001b[0m",
-        "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=":"\u001b[38;5;124m≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈|\u001b[37mCARNAGE\u001b[38;5;124m|≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈\u001b[0m",
+        "CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz":"\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@\u001b[0m\u001b[30;1mkNULL\u001b[0m\u001b[31m@@@@@@@@@@@@@@@@@@@@\u001b[0m",
+        "r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o":"\u001b[38;5;124m≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈|\u001b[37mCARNAGE\u001b[38;5;124m|≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈\u001b[0m",
         "TESTNET":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
     },
 
@@ -63,8 +63,8 @@
         "CORE_VERSION":"v1.0.0-pre-alpha",
         
         "SYMBIOTES_VERSIONS":{
-            "q0Bl2spIOIBhA5pviv6B69RdBcZls7iy+y4Wc3tgSVs=":"v0.0.1-pre-alpha",
-            "DJBTwMSwyw/Zv3ct3cO83qFc6xWfWmd6+Rpfmy1rJho=":"v0.0.1-pre-alpha"
+            "CXVfsHNvpuFc6FoHA5D3gfiemLkcyNzNYXuJSgaUQVAz":"v0.0.1-pre-alpha",
+            "r3Y6Fri92GNLp4K9o8dkF9fAHrrd8VEoyktf5XTcW1o":"v0.0.1-pre-alpha"
 
         },
         

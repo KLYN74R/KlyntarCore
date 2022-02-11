@@ -38,8 +38,8 @@
 
 
 
-import {GET_SYMBIOTE_ACC,VERIFY} from '../../../KLY_Space/utils.js'
-import {symbiotes} from '../../../klyn74r.js'
+import {GET_SYMBIOTE_ACC,VERIFY} from '../../KLY_Space/utils.js'
+import {symbiotes} from '../../klyn74r.js'
 
 
 
@@ -53,7 +53,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote),
         
-            recipient=await GET_SYMBIOTE_ACC(event.p.to,symbiote)
+            recipient=await GET_SYMBIOTE_ACC(event.p.r,symbiote)
     
     
             
@@ -61,7 +61,7 @@ export default {
     
             recipient={ACCOUNT:{B:0,N:0,D:''}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             
-            symbiotes.get(symbiote).ACCOUNTS.set(event.p.to,recipient)//add to cache to collapse after all txs in ControllerBlock
+            symbiotes.get(symbiote).ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all txs in ControllerBlock
         
         }
         
