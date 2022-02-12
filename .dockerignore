@@ -33,6 +33,7 @@ my_readme.md
 CIIPs
 globalvars.txt
 customRuntime.txt
+*.exe
 
 #Configs
 configs/symbiotes*

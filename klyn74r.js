@@ -780,6 +780,15 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
 
+    
+    //Info about runned services
+    console.log('\n\n')
+
+    Object.keys(CONFIG.SERVICES).forEach(
+        
+        servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+        
+    )
 
 
     await new Promise(resolve=>
@@ -799,6 +808,17 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
         await import(`./KLY_Custom/${scriptPath}`).catch(
             
             e => LOG(`Some error has been occured in process of module \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
+            
+        )
+
+    }
+    
+
+    for(let servicePath in CONFIG.SERVICES){
+
+        await import(`./KLY_Services/${servicePath}/entry.js`).catch(
+            
+            e => LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
             
         )
 

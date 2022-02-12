@@ -1,6 +1,6 @@
 <div align="center">
 
-# 😈 Place for services 😇
+# 😈 Place for your services 😇
 
 </div>
 
