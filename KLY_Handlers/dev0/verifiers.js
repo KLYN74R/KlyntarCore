@@ -66,7 +66,7 @@ export default {
         }
         
     
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n,event.s,event.c)){
+        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+event.p.a
             
@@ -86,7 +86,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
     
-        if(event.p.length===64 && !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+symbiote+event.n,event.s,event.c)){
+        if(event.p.length===64 && !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
     
@@ -107,7 +107,7 @@ export default {
     
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
         
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+symbiote+event.n,event.s,event.c)){
+        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
     
@@ -126,7 +126,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
 
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(event.p+symbiote+event.n,event.s,event.c)){
+        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
 
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
         

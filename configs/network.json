@@ -13,8 +13,7 @@
         "INFO":600
     },
 
-    "TRIGGERS":{     
-        "GET_SID":1,
+    "TRIGGERS":{
         "ALL_CONTROLLER_BLOCKS":1,
         "ALL_INSTANT_BLOCKS":1
     },

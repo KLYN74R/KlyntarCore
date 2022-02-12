@@ -21,29 +21,12 @@
     "SPENDERS_PREFIXES":{
         "0":"dev0"
     },
-
-    "CACHES":{
-    
-        "ACCOUNTS":{
-            "SIZE":1000000,
-            "TTL":900000,
-            "FLUSH_LIMIT":50000,
-            "DELAY":240000
-        }
-
-    },
-
-
-    "DEBOUNCE_TIME":20000,
-    "DEBOUNCE_MODULUS":1000,
     
     "PAYLOAD_SIZE":1000,
     "EXTENDED_PAYLOAD_SIZE":10000,
     "MAX_PAYLOAD_SIZE":10000000,
 
     "DAEMON_LOGS":true,
-
-    "CONTRACTS_PER_ADDRESS":3,
     
     "CHANGE_PROCEDURE":[
         {
@@ -80,9 +63,6 @@
         "DEBOUNCE_TIME":20000
     
     },
-
-    "GIVE_SID_EVERYONE":true,
-    "DEFAULT_ROLES":"",
     
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
     "BITFORKS":["btc","ltc","doge","dash"],

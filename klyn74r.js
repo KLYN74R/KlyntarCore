@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
-import {BASE64,SYMBIOTE_ALIAS,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Space/utils.js'
-
-import AdvancedCache from './KLY_Essences/advancedcache.js'
+import {SYMBIOTE_ALIAS,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Space/utils.js'
 
 import {RENAISSANCE} from './KLY_Process/life.js'
 
@@ -11,8 +9,6 @@ import chalkAnimation from 'chalk-animation'
 import UWS from 'uWebSockets.js'
 
 import readline from 'readline'
-
-import c from 'crypto'
 
 import ora from 'ora'
 
@@ -107,8 +103,6 @@ export let
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     
     metadata=l(PATH_RESOLVE('M/METADATA'),{valueEncoding:'json'}),//For symbiotes metadata flows e.g. generation flow,verification flow,staging etc.
-       
-    space=l(PATH_RESOLVE('M/SPACE'),{valueEncoding:'json'}),//To store zero level data of accounts i.e SpaceID,Roles flags,private nonce etc and data on different symbiotes
 
     
 
@@ -563,48 +557,6 @@ export let
 
 
 
-    FLUSH_ADVANCED_CACHE=()=>{
-
-        //Do not pass params via arguments due to make labels shorter+not to make mistakes with values and references
-        let cache=ACCOUNTS,
-            
-            shouldStop='CLEAR_TIMEOUT_ACCOUNTS_CACHE',
-            
-            stopLabel='STOP_FLUSH_ACCOUNTS_CACHE',
-            
-            {FLUSH_LIMIT,TTL}=CONFIG.CACHES.ACCOUNTS
-
-
-
-        LOG('Going to flush accounts cache...','I')
-  
-        //Go through slice(from the beginning(least used) to <FLUSH_LIMIT>) of accounts in cache
-        for(let i=0,l=Math.min(cache.cache.size,FLUSH_LIMIT);i<l;i++){
-    
-            let oldKey=cache.cache.keys().next().value,
-                
-                data=cache.cache.get(oldKey)
-    
-            //Immediately add key(address) to stoplist to prevent access and race condition while account's state are going to be written and commited(with current nonce etc.)
-            cache.stoplist.add(oldKey)
-                
-            cache.cache.delete(oldKey)
-            
-            cache.db.put(oldKey,data).then(()=>cache.stoplist.delete(oldKey))
-        
-        }
-    
-        //We can dynamically change the time,limits,etc.
-        global[stopLabel]=setTimeout(()=>FLUSH_ADVANCED_CACHE(),TTL)
-
-        //Can be dynamically stopped via API or script from custom collection
-        global[shouldStop]&&clearTimeout(global[stopLabel])
-    
-    },
-
-
-
-
     WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl)
 
 
@@ -706,9 +658,6 @@ process.on('SIGHUP',graceful)
 
 global.PRIVATE_KEYS=new Map()
 
-global.ACCOUNTS=new AdvancedCache(CONFIG.CACHES.ACCOUNTS.SIZE,space)//quick access to accounts in different symbiotes and to fetch zero level data
-
-
 global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
@@ -802,21 +751,13 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     
     //.forEach has inner scope,but we need await on top frame level
     for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_CHAIN&&await PREPARE_SYMBIOTE(controllers[i])
-
-
-
-
-    
-    global.GUID=BASE64(c.randomBytes(64))
-
-    LOG(`Updated \x1b[36;1mGUID\x1b[32;1m is ———> \x1b[36;1m${GUID}`,'S')
     
 
 
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
-    global.INFO=JSON.stringify({GUID,...CONFIG.INFO})
+    global.INFO=JSON.stringify(CONFIG.INFO)
     
 
 
@@ -869,12 +810,6 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     await RENAISSANCE()
 
 
-    //...and start this stuff.Note-if TTL is 0-there won't be any auto flush.Also,there is ability to start this process further,in runtime,so let it be
-    CONFIG.CACHES.ACCOUNTS.TTL!==0
-    &&
-    setTimeout(()=>FLUSH_ADVANCED_CACHE(),CONFIG.CACHES.ACCOUNTS.DELAY)
-
-
 
 
 //_______________________________________________GET SERVER ROUTES______________________________________________
@@ -899,15 +834,12 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 
 
-.post('/changesid',M.changeSid)
 
 .post('/cb',M.controllerBlock)
 
 .post('/ib',M.instantBlock)
 
 .post('/addnode',M.addNode)
-
-.post('/getsid',M.getSid)
 
 .post('/proof',M.proof)
 
@@ -938,8 +870,6 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 .get('/nodes/:symbiote/:region',A.nodes)
 
 .get('/block/:symbiote/:type/:id',A.block)
-
-.get('/local/:address',A.local)
 
 .post('/alert',A.alert)
 

@@ -4,10 +4,6 @@
  * 
  */
 
-import {LOG,VERIFY,HMAC} from '../KLY_Space/utils.js'
-
-
-let SELF_2FA=async(str,fullHash,sig)=>HMAC(std,CONFIG.CONTROL_SID,W.nonce,fullHash)&&(!CONFIG.DOUBLE_FA || await VERIFY(str,sig,CONFIG.CONTROL_PUB_KEY))
 
 
 //CONTROL_SID

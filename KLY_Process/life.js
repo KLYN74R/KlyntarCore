@@ -23,7 +23,7 @@ let BLOCK_PATTERN=process.platform==='linux'?'——':'———',
 
 
 //TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
-GET_TXS=symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+GET_TXS = symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
 

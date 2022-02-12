@@ -1,8 +1,6 @@
 import{
 
-    BASE64,VERIFY,ENCRYPT,BODY,SAFE_ADD,GET_SYMBIOTE_ACC,
-
-    PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
+    VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
 
 } from '../KLY_Space/utils.js'
 
@@ -10,9 +8,7 @@ import {verifyInstantBlock} from '../KLY_Process/verification.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import {symbiotes,space,hostchains} from '../klyn74r.js'
-
-import c from 'crypto'
+import {symbiotes,hostchains} from '../klyn74r.js'
 
 import fs from 'fs'
 
@@ -154,19 +150,14 @@ export let M={
     
     
 
-    //Format of body : MSG{d:['symbiote',EVENT],f:'fullHash'}
+    //Format of body : {symbiote,body}
     //There is no 'c'(creator) field-we get it from tx
     event:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-        let body=await BODY(v,CONFIG.PAYLOAD_SIZE),
-        
-            symbiote=body.d?.[0],
-            
-            event=body.d?.[1]
-        
+        let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string' || typeof body.f!=='string'){
+        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -192,7 +183,7 @@ export let M={
         //Also check if we have normalizer for this type of event
         if(symbioteMempool.length<CONFIG.SYMBIOTES[symbiote].EVENTS_MEMPOOL_SIZE && symbiotes.get(symbiote).FILTERS[event.t]){
 
-            let filtered=await symbiotes.get(symbiote).FILTERS[event.t](event)
+            let filtered=await symbiotes.get(symbiote).FILTERS[event.t](symbiote,event)
 
             if(filtered){
     
@@ -207,76 +198,7 @@ export let M={
     
     }),
 
-    
 
-
-
-
-
-
-//________________________________________________________________SPACE__________________________________________________________________________
-
-
-
-
-
-
-
-
-    //[0,1] -> 0-signature 1-symbiote(controllerAddr)
-    getSid:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-        
-        let body=await BODY(v,CONFIG.EXTENDED_PAYLOAD_SIZE),
-
-        //_________________________________Let's check permission for initial SpaceID generation_________________________________
-
-        allow=
-        
-        //Check lightweight instant predicates
-        typeof body.c==='string'&&typeof body.d?.[0]==='string'&&typeof body.d[1]==='string'&&typeof body.d[2]==='string'&&CONFIG.TRIGGERS.GET_SID
-        
-        &&//Also lightweight but account can be read from db,not from cache,so it might be promise.Check if address is on some symbiote(or entry is free) and address still don't have SID...etc
-        
-        (CONFIG.GIVE_SID_EVERYONE || await GET_SYMBIOTE_ACC(body.c,body.d[2])) && !(ACCOUNTS.cache.has(body.c) || await ACCOUNTS.db.get(body.c).catch(e=>false))
-        
-        &&//...Check signature(SIG(RSApub+GUID)) to allow user to create account in <space>
-        await VERIFY(body.d[0]+GUID,body.d[1],body.c)
-
-
-
-
-        if(allow){
-
-            //Create one hidden class and set default vals
-            let acc={S:'',R:CONFIG.DEFAULT_ROLES,N:1}//Note:Due to  <N % by CONFIG.DEBOUNCE_MODULUS> start with 1,not 0,for instant start
-
-            c.randomBytes(64,(e,r)=>{
-                
-                if(!e){
-                    
-                    acc.S=BASE64(r)//64 byte entropy SpaceId(SID) for communications Address(you) <-> Node
-                    
-                    //acc.TIME=new Date().getTime()
-
-                    //ACCOUNTS.set(b.c,acc)
-
-                    space.put(body.c,acc).catch(e=>'')
-
-                    !a.aborted&&a.end(ENCRYPT(acc.S,body.d[0]))
-    
-                }else !a.aborted&&a.end('Bytes generation failed')
-            
-            })
-
-        }else !a.aborted&&a.end('Verification failed')
-                
-    }),
-
-
-
-
-
-    
 
 
 //_____________________________________________________________AUXILARIES________________________________________________________________________

@@ -45,49 +45,6 @@ COLORS = {
 
 PATH_RESOLVE=path=>__dirname+'/'+path,//path is relative to this root scope */KLYNTARCORE
 
-
-
-GEN_RSA_PAIR=()=>new Promise((resolve,reject)=>{
-    
-    c.generateKeyPair('rsa',
-    
-    {
-        modulusLength: 4096,
-        publicKeyEncoding:{type:'spki',format:'pem'},
-        privateKeyEncoding: {type:'pkcs8',format:'pem'}
-    },
-    
-    (err, publicKey, privateKey)=> err ? reject(err) : resolve({publicKey,privateKey}))
-
-}).catch(e=>(LOG(`Some error with generation pair \x1b[36;1m${e}`,'F'))),//handle reject here not to repeat in each occur
-
-
-
-
-/**# Encrypt RSA-4096
- * @param {string} msg UTF-8 default string
- * @param {string} pub 4096 RSA pubKey
- * 
- * @returns {string} Ciphertext in Base64
- * */
-//!Probably add Promise wrap
-ENCRYPT=(msg,pub)=>c.publicEncrypt(pub,Buffer.from(msg,'utf8')).toString('base64'),
-
-
-
-
-/**# Decrypt RSA-4096
- * @param {string} encMsg Base64 ciphertext
- * @param {string} prv 4096 RSA privateKey
- * @returns {string} UTF-8 plaintext
- * */
-DECRYPT=(encMsg,prv)=>c.privateDecrypt(prv,Buffer.from(encMsg,'base64')).toString('utf-8'),
-
-
-
-
-BASE64=v=>Buffer.from(v).toString('base64'),
-
 BLAKE3=v=>hash(v).toString('hex'),
 
 SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
@@ -147,18 +104,6 @@ SIG=(data,prv)=>new Promise((resolve,reject)=>
 
 ).catch(e=>''),
 
-
-
-
-/**# Quick check to interact with node
- * @param {string} data UTF-8 data(JSON mostly)
- * @param {string} sid 64 bytes SpaceId in Base64
- * @param {string} magic Uft-8 unique data
- * @param {string} fullhash Blake3 32 bytes hash
- * 
- * @returns {boolean}
- * */
-HMAC=(data,sid,magic,fullHash)=>BLAKE3(data+sid+magic)===fullHash,
 
 
 
@@ -239,15 +184,6 @@ SAFE_ADD=(buffer,chunk,a)=>new Promise(r=>r( Buffer.concat([ buffer, Buffer.from
         LOG(`Overflow while accept data from ${Buffer.from(a.getRemoteAddressAsText()).toString('utf-8')}`,'F')
     
     }),
-
-
-
-
-//Roles
-PRIVIL=/[MEIUT]/,
-MINION=/M/,
-EMPIRE=/E/,
-INV2=/I/,
 
 
 

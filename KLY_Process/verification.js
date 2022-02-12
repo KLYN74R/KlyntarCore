@@ -474,7 +474,7 @@ verifyControllerBlock=async controllerBlock=>{
                         
                     let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
                         
-                        spend=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE + (symbiotes.get(symbiote).SPENDERS[event.t](event,symbiote)?.()||0)
+                        spend=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE + (symbiotes.get(symbiote).SPENDERS[event.t]?.(event,symbiote)||0)
 
 
                             
