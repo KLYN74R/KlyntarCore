@@ -79,10 +79,12 @@ export default {
         
     ,
 
+    ALIAS:async (symbiote,event)=>{},
 
+    UNOBTANIUM:async (symbiote,event)=>{},
     
     //Unimplemented
-    OWNERSHIP_APPROVE:async (symbiote,event)=>{},
+    RL_OWNSHIP_APPRV:async (symbiote,event)=>{},
 
     QUANTUMSWAP:async (symbiote,event)=>{},
 

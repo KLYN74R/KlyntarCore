@@ -26,15 +26,15 @@
                 
                 "HOSTCHAINS":{
                     "ltc":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
                     },
                     "bsc":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
                     },
                     "eth":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
                     }
                 
@@ -50,8 +50,8 @@
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
-                "VERIFIERS":"0",
-                "SPENDERS":"0"
+                "VERIFIERS":"dev0",
+                "SPENDERS":"dev0"
 
             },
 
@@ -102,9 +102,9 @@
             },
 
             "STOP_PUSH_TO_HOSTCHAINS":{
-                "ltc":true,
-                "bsc":true,
-                "eth":true
+                "ltc":false,
+                "bsc":false,
+                "eth":false
             },
 
             "WORKFLOW_CHECK":{
@@ -237,7 +237,7 @@
             
             },
 
-            "FILTERS":"0",
+            "FILTERS":"dev0",
 
             "NODES_PORTION":8,
             "MAX_CONNECTIONS":15,
@@ -295,6 +295,14 @@
                     "https://dead::beef",
                     "http://192.168.1.23:9696"
                 ]
+            },
+
+            "TRUSTED_SOURCES":{
+                "VERIFIERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                "FILTERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                "SPENDERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                "VERIFY_CONTAINERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
             }
 
         },
@@ -334,15 +342,15 @@
 
                 "HOSTCHAINS":{
                     "dash":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"yMymNFkipvg9CMzi1SUVB2MqNHyfoyAtuf"
                     },
                     "xrp":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"rBcQ6Kd6j2bJWCKR986hC9mL1iRtpayHKR"
                     },
                     "trx":{
-                        "TYPE":"0",
+                        "TYPE":"dev0",
                         "ADDRESS":"TENahJSzprBv27pDjZTuEiLnPeFJFTNXSB"
                     }
                     
@@ -358,8 +366,8 @@
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
-                "VERIFIERS":"0",
-                "SPENDERS":"0"
+                "VERIFIERS":"dev0",
+                "SPENDERS":"dev0"
     
             },
 
@@ -400,9 +408,9 @@
             "STOP_WORK":false,
             
             "STOP_PUSH_TO_HOSTCHAINS":{
-                "dash":true,
-                "xrp":true,
-                "trx":true
+                "dash":false,
+                "xrp":false,
+                "trx":false
             },
             
             "WORKFLOW_CHECK":{
@@ -574,7 +582,7 @@
             
             },
 
-            "FILTERS":"0",
+            "FILTERS":"dev0",
             "NODES_PORTION":10,
             "MAX_CONNECTIONS":15,
 
@@ -630,6 +638,15 @@
                     "https://dead::beef",
                     "http://192.168.1.23:9696"
                 ]
+            },
+
+
+            "TRUSTED_SOURCES":{
+                "VERIFIERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                "FILTERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                "SPENDERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                "VERIFY_SERVICES":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                "VERIFY_CONTAINERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL"
             }
     
         }

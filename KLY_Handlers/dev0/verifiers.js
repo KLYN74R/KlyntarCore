@@ -145,11 +145,20 @@ export default {
 
     },
 
+    ALIAS:async (event,blockCreator,symbiote)=>{
 
+        
+
+    },
+
+
+    UNOBTANIUM:async (event,blockCreator,symbiote)=>{
+
+    },
 
 
     //Unimplemented
-    ACC_APPROVE:async (event,blockCreator,symbiote)=>{},
+    RL_OWNSHIP_APPRV:async(event,blockCreator,symbiote)=>{},
 
     QUANTUMSWAP:async (event,blockCreator,symbiote)=>{},
 

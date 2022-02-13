@@ -1,6 +1,4 @@
 {
-    "GALAXY":0,
-    "ROLE":"CORE",
     "TLS_ENABLED":false,
     "TLS_CONFIGS":{
         "key_file_name":"security/cert.key",
@@ -16,9 +14,6 @@
     "TRIGGERS":{
         "ALL_CONTROLLER_BLOCKS":1,
         "ALL_INSTANT_BLOCKS":1
-    },
+    }
     
-    "CONTROL_SID":"<SOME PRIVATE_KEY>",
-    "CONTROL_PUB_KEY":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-    "2FA":false
 }

@@ -55,36 +55,86 @@ TODO:Реализация функционала симбиотических ц
 !TODO:Ограничить время TCP сессии для fetch(через Promise.any и один из промисов таймер на заданое кол-во секунд)
 
 
+                                            
+
+
+                                .do-"""""'-o..                         
+                             .o""            ""..                       
+                           ,,''                 ``b.                   
+                          d'                      ``b                   
+                         d`d:                       `b.                 
+                        ,,dP                         `Y.               
+                       d`88                           `8.               
+ ooooooooooooooooood888`88'                            `88888888888bo, 
+d"""    `""""""""""""Y:d8P                              8,          `b 
+8                    P,88b                             ,`8           8 
+8                   ::d888,                           ,8:8.          8                              ██████╗ ███████╗██╗   ██╗███████╗██╗      ██████╗ ██████╗ ███████╗██████╗ 
+:                   dY88888                           `' ::          8                              ██╔══██╗██╔════╝██║   ██║██╔════╝██║     ██╔═══██╗██╔══██╗██╔════╝██╔══██╗ 
+:                   8:8888                               `b          8                              ██║  ██║█████╗  ██║   ██║█████╗  ██║     ██║   ██║██████╔╝█████╗  ██║  ██║    
+:                   Pd88P',...                     ,d888o.8          8                              ██║  ██║██╔══╝  ╚██╗ ██╔╝██╔══╝  ██║     ██║   ██║██╔═══╝ ██╔══╝  ██║  ██║  
+:                   :88'dd888888o.                d8888`88:          8                              ██████╔╝███████╗ ╚████╔╝ ███████╗███████╗╚██████╔╝██║     ███████╗██████╔╝   
+:                  ,:Y:d8888888888b             ,d88888:88:          8                              ╚═════╝ ╚══════╝  ╚═══╝  ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═════╝
+:                  :::b88d888888888b.          ,d888888bY8b          8                              
+                    b:P8;888888888888.        ,88888888888P          8                              
+                    8:b88888888888888:        888888888888'          8                              
+                    8:8.8888888888888:        Y8888888888P           8                              ███████╗ ██████╗ ██████╗     ██████╗ ███████╗ ██████╗ ██████╗ ██╗     ███████╗     
+,                   YP88d8888888888P'          ""888888"Y            8                              ██╔════╝██╔═══██╗██╔══██╗    ██╔══██╗██╔════╝██╔═══██╗██╔══██╗██║     ██╔════╝  
+:                   :bY8888P"""""''                     :            8                              █████╗  ██║   ██║██████╔╝    ██████╔╝█████╗  ██║   ██║██████╔╝██║     █████╗  
+:                    8'8888'                            d            8                              ██╔══╝  ██║   ██║██╔══██╗    ██╔═══╝ ██╔══╝  ██║   ██║██╔═══╝ ██║     ██╔══╝    
+:                    :bY888,                           ,P            8                              ██║     ╚██████╔╝██║  ██║    ██║     ███████╗╚██████╔╝██║     ███████╗███████╗   
+:                     Y,8888           d.  ,-         ,8'            8                              ╚═╝      ╚═════╝ ╚═╝  ╚═╝    ╚═╝     ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚══════╝
+:                     `8)888:           '            ,P'             8                              
+:                      `88888.          ,...        ,P               8                              
+:                       `Y8888,       ,888888o     ,P                8                              ██████╗ ██╗   ██╗    ██╗  ██╗██╗  ██╗   ██╗███╗   ██╗████████╗ █████╗ ██████╗     ████████╗███████╗ █████╗ ███╗   ███╗
+:                         Y888b      ,88888888    ,P'                8                              ██╔══██╗╚██╗ ██╔╝    ██║ ██╔╝██║  ╚██╗ ██╔╝████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗    ╚══██╔══╝██╔════╝██╔══██╗████╗ ████║
+:                          `888b    ,888888888   ,,'                 8                              ██████╔╝ ╚████╔╝     █████╔╝ ██║   ╚████╔╝ ██╔██╗ ██║   ██║   ███████║██████╔╝       ██║   █████╗  ███████║██╔████╔██║
+:                           `Y88b  dPY888888OP   :'                  8                              ██╔══██╗  ╚██╔╝      ██╔═██╗ ██║    ╚██╔╝  ██║╚██╗██║   ██║   ██╔══██║██╔══██╗       ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║
+:                             :88.,'.   `' `8P-"b.                   8                              ██████╔╝   ██║       ██║  ██╗███████╗██║   ██║ ╚████║   ██║   ██║  ██║██║  ██║       ██║   ███████╗██║  ██║██║ ╚═╝ ██║
+:.                             )8P,   ,b '  -   ``b                  8                              ╚═════╝    ╚═╝       ╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝       ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝
+::                            :':   d,'d`b, .  - ,db                 8                              
+::                            `b. dP' d8':      d88'                 8                              
+::                             '8P" d8P' 8 -  d88P'                  8                              
+::                            d,' ,d8'  ''  dd88'                    8                              
+::                           d'   8P'  d' dd88'8                     8                              
+ :                          ,:   `'   d:ddO8P' `b.                   8                              
+ :                  ,dooood88: ,    ,d8888""    ```b.                8                              
+ :               .o8"'""""""Y8.b    8 `"''    .o'  `"""ob.           8                              
+ :              dP'         `8:     K       dP''        "`Yo.        8                              
+ :             dP            88     8b.   ,d'              ``b       8                              
+ :             8.            8P     8""'  `"                 :.      8                              ██╗   ██╗   ██████╗  
+ :            :8:           :8'    ,:                        ::      8                              ██║   ██║  ██╔════╝ 
+ :            :8:           d:    d'                         ::      8                              ██║   ██║  ██║   
+ :            :8:          dP   ,,'                          ::      8                              ╚██╗ ██╔╝  ██║ 
+ :            `8:     :b  dP   ,,                            ::      8                               ╚████╔╝██╗╚██████╗██╗     
+ :            ,8b     :8 dP   ,,                             d       8                                ╚═══╝ ╚═╝ ╚═════╝╚═╝ 
+ :            :8P     :8dP    d'                       d     8       8 
+ :            :8:     d8P    d'                      d88    :P       8 
+ :            d8'    ,88'   ,P                     ,d888    d'       8 
+ :            88     dP'   ,P                      d8888b   8        8 
+ '           ,8:   ,dP'    8.                     d8''88'  :8        8 
+             :8   d8P'    d88b                   d"'  88   :8        8 
+             d: ,d8P'    ,8P""".                      88   :P        8 
+             8 ,88P'     d'                           88   ::        8 
+            ,8 d8P       8                            88   ::        8 
+            d: 8P       ,:  -hrr-                    :88   ::        8 
+            8',8:,d     d'                           :8:   ::        8 
+           ,8,8P'8'    ,8                            :8'   ::        8 
+           :8`' d'     d'                            :8    ::        8 
+           `8  ,P     :8                             :8:   ::        8 
+            8, `      d8.                            :8:   8:        8 
+            :8       d88:                            d8:   8         8 
+ ,          `8,     d8888                            88b   8         8 
+ :           88   ,d::888                            888   Y:        8 
+ :           YK,oo8P :888                            888.  `b        8 
+ :           `8888P  :888:                          ,888:   Y,       8 
+ :            ``'"   `888b                          :888:   `b       8 
+ :                    8888                           888:    ::      8 
+ :                    8888:                          888b     Y.     8, 
+ :                    8888b                          :888     `b     8: 
+ :                    88888.                         `888,     Y     8: 
+ ``ob...............--"""""'----------------------`""""""""'"""`'"""""
+
 */
-
-//*В CLI максимально просто и очевидно,ошибок нет.Изменения проводить через Web.В зависимости,от типа изменяемого параметра-применять либо сразу либо через некоторую advanced функцию
-//!Сказать что сначала планировал в целях безопасности локально проводить изменения(напрямую через touch-файлы(аля локальных файл-хук) или же локальные интерфейсы и тд)
-//!Однако через веб лучше всего(+само собой уже включает интерфейсы машины) и к тому же если мы стремимся к терминальной безопасности... 
-//*В зависимости от настроек-принимать от RAW либо только с подписью (UNKNOWN_RAW_SUPPLIER) если это недоверенный узел чтоб уменьшить риск ложных блоков в цепочке RAW -> Our node -> Controller & Rest of network
-//*Или же TRUSTED_RAW_SUPPLIER для приема любых транзакций(например это может быть наш же узел либо другой контейнер или сервер в другом регионе)
-
-
-
-//*Запись себе сразу блоков,работа над функциями верификации с учетом цепочки.Но как-то через параметры идти,бо нам если что проверять транзакции при слиянии других цепочек
-//*Решено-проверять просто что создатель Instant блока лежит в той же цепочке что и Controller и адрес который участвует в транзакции
-//Подумать что с теми модулями что на будущее
-//Решить наконец-то с синхронизацией
-
-//Следущее-в зависимости от того,что мы за узел-по разному вести себя в функции проверки Instant блоков
-
-//!Взаимодействие по Web-сначала по SpaceID(отдельному),потом открытие сессии и уже по ключам и подписям мб
-//!Подумать что делать с nonce при отмене транзакции
-  //Например глобальний можно оставить(ничего не делать с ним),а приватный уменьшить на некоторый N(в качестве "наказания")
-  
-  
-//!Мб сделать кэш в CANCEL и verification.js(функции 2)
-//! Пройтись по всем global.* и проверить-типы,правильность использования и тд.Выписать форматы даных которые принимаються/отправляються по всех роутах и функциональной части для документации и более легкого использования
-//!Пройтись по тем местам,где возможна динамическая замена(там где импорт/экспорт/прием/отправка и тд) и проверить безопасно ли их менять
-
-
-//?Так же будет полезно при контейнеризации и масштабировании
-
-//*Чистка цепочки будет поэлементной.Хочешь-удаляй блоки,но состояние храни и тд
 
 
 
@@ -244,11 +294,11 @@ export let
         //___________________________Load functionality to verify/filter/transform events_______________________________
 
 
-        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${CONFIG.VERIFIERS_PREFIXES[symbioteConfig.MANIFEST.VERIFIERS]}/verifiers.js`)).default
+        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.VERIFIERS}/verifiers.js`)).default
 
-        symbioteRef.FILTERS=(await import(`./KLY_Handlers/${CONFIG.FILTERS_PREFIXES[symbioteConfig.FILTERS]}/filters.js`)).default
+        symbioteRef.FILTERS=(await import(`./KLY_Handlers/${symbioteConfig.FILTERS}/filters.js`)).default
 
-        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${CONFIG.SPENDERS_PREFIXES[symbioteConfig.MANIFEST.SPENDERS]}/spenders.js`)).default
+        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.SPENDERS}/spenders.js`)).default
 
 
         //______________________________________Prepare databases and storages___________________________________________
@@ -459,17 +509,17 @@ export let
         for(let i=0,l=tickers.length;i<l;i++){
 
             
-            let way=CONFIG.TYPES_PREFIXES[symbioteConfig.MANIFEST.HOSTCHAINS[tickers[i]].TYPE]
+            let way=symbioteConfig.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
 
 
             //Depending on TYPE load appropriate module
             if(CONFIG.EVM.includes(tickers[i])){
             
-                EvmHostChain=(await import(`./KLY_Hostchains/${way}/evm.js`)).default
+                EvmHostChain=(await import(`./KLY_Hostchains/connectors/${way}/evm.js`)).default
                 
                 hostchainmap.set(tickers[i],new EvmHostChain(controllerAddr,tickers[i]))
 
-            }else hostchainmap.set(tickers[i],(await import(`./KLY_Hostchains/${way}/${tickers[i]}.js`)).default)
+            }else hostchainmap.set(tickers[i],(await import(`./KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
 
 
 
@@ -662,7 +712,6 @@ global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
 
-
 global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 
@@ -783,12 +832,26 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     
     //Info about runned services
     console.log('\n\n')
+    
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
 
     Object.keys(CONFIG.SERVICES).forEach(
         
         servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
         
     )
+    
+    console.log('\n\n')
+
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+
+    Object.keys(CONFIG.CONVEYORS).forEach(
+        
+        convPath => LOG(`Conveyor \x1b[36;1m${convPath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.CONVEYORS[convPath]}\u001b[38;5;168m)`,'CON')
+        
+    )
+
+
 
 
     await new Promise(resolve=>
@@ -798,7 +861,6 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
         .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
         
     ).then(answer=>answer!=='YES'&& process.exit(126))
-
 
 
     //Run custom modules
@@ -819,6 +881,18 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
         await import(`./KLY_Services/${servicePath}/entry.js`).catch(
             
             e => LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
+            
+        )
+
+    }
+
+
+    
+    for(let convPath in CONFIG.CONVEYORS){
+
+        await import(`./KLY_Conveyors/${convPath}/entry.js`).catch(
+            
+            e => LOG(`Some error has been occured in process of conveyor \u001b[38;5;50m${convPath}\x1b[31;1m load\n${e}\n`,'F')
             
         )
 

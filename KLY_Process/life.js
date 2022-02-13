@@ -161,6 +161,11 @@ export let GEN_BLOCK=async(symbiote,data)=>{
             promises=[]//to push blocks to storage
 
 
+        
+        //If nothing to generate-then no sense to generate block,so return
+        if(phantomControllers===0) return 
+
+
 
         for(let i=0;i<phantomControllers;i++){
 
@@ -252,8 +257,6 @@ export let GEN_BLOCK=async(symbiote,data)=>{
                                 Promise.all(BROADCAST('/proof',{...control,symbiote,ticker},symbiote))
                             
     
-    
-    
                                 let index=symbiotes.get(symbiote).GENERATION_THREAD.NEXT_INDEX-1,
     
                                     symbioticHash=await hostchain.sendTx(symbiote,index,genThread.PREV_HASH).catch(e=>{
@@ -290,10 +293,9 @@ export let GEN_BLOCK=async(symbiote,data)=>{
                                                 .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
     
     
-                            
-                                    LOG(`Balance of controller on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance(symbiote)}`,'I')
-    
                                 }
+
+                                LOG(`Balance of controller on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance(symbiote)}`,'I')
                         
                             }
     
