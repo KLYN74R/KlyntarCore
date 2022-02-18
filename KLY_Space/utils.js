@@ -68,7 +68,8 @@ VERIFY=(data,sig,pub)=>new Promise((resolve,reject)=>
 
     )
 
-).catch(e=>false),
+).catch(e=>false),//no log message coz in case of tons of wrong signatures we don't need to spam our logs streams
+
 
 
 
@@ -127,7 +128,7 @@ GET_SYMBIOTE_ACC=(addr,symbiote)=>
 
 
 //Advanced function which also check limits(useful in routes where we accept relatively small data chunks not to paste payload size checker in each handler)
-BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.from(bytes)))).catch(e=>false),
+BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.from(bytes)))).catch(e=>false),//...no error message to prevent spam to logs streams
 
 
 

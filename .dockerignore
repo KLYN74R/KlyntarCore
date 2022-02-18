@@ -3,12 +3,11 @@ build
 .vscode
 .idea
 node_modules
-dynconfigs.txt
 LOGS/
 
 
 #Hello legend
-useful.txt
+DEVELOPMENT/useful.txt
 
 #Images collection for docs
 images/RELEASES
@@ -29,11 +28,10 @@ tr.js
 RELEASES
 SERVICES
 DOCS
-my_readme.md
+DEVELOPMENT
 CIIPs
-globalvars.txt
-customRuntime.txt
 *.exe
+*.pdb
 
 #Configs
 configs/symbiotes*
@@ -45,6 +43,6 @@ KEYSTORE/
 KLY_Tests/test_evm*
 KLY_Tests/send_tx.js
 KLY_Tests/hostchains/monitors/evm.js
-KLY_Tests/hostchains/evm_contracts/*interact*
+KLY_Tests/hostchains/contracts/*.js
 KLY_Tests/hostchains/connectors/
 KLY_Tests/hostchains/tokens/

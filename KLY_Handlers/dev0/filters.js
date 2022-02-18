@@ -88,7 +88,13 @@ export default {
 
     QUANTUMSWAP:async (symbiote,event)=>{},
 
-    SERVICE_DEPLOY:async (symbiote,event)=>{},
+    SERVICE_DEPLOY:async(symbiote,event)=>
+    
+        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        &&
+        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+    
+    ,
 
     CONVEYOR_DEPLOY:async (symbiote,event)=>{},
 

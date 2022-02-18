@@ -2,11 +2,11 @@ import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS} from '../KLY_Space/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import {symbiotes,metadata,hostchains} from '../klyn74r.js'
-
 import InstantBlock from '../KLY_Blocks/instantblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
+
+import {symbiotes,hostchains} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -210,7 +210,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         await Promise.all(promises).then(arr=>
             
             
-            metadata.put(symbiote+'/GT',genThread).then(()=>
+            symbiotes.get(symbiote).METADATA.put('GT',genThread).then(()=>
 
                 new Promise(resolve=>{
 
@@ -327,6 +327,8 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         //______________________________TEST__________________________________
         
         let block=new InstantBlock(symbiote,await GET_TXS(symbiote))
+
+        if (block.e.length===0) return//no sense to produce empty blocks
 
         //_____________________________DELELTE________________________________
 

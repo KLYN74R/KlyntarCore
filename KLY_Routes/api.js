@@ -9,7 +9,7 @@ import {symbiotes,WRAP_RESPONSE} from '../klyn74r.js'
 
 
 
-export let A={
+export default {
 
 
 

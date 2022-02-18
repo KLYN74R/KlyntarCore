@@ -2,9 +2,9 @@ import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PAT
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
-import {symbiotes,hostchains,metadata} from '../klyn74r.js'
-
 import InstantBlock from '../KLY_Blocks/instantblock.js'
+
+import {symbiotes,hostchains} from '../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -207,9 +207,15 @@ START_VERIFY_POLLING=async symbiote=>{
 
 MAKE_SNAPSHOT=async symbiote=>{
 
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=symbiotes.get(symbiote),//get appropriate dbs of symbiote
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD,METADATA}=symbiotes.get(symbiote),//get appropriate dbs of symbiote
 
-        canary=await metadata.get(symbiote+'/CANARY').catch(e=>false)
+        canary=await METADATA.get('CANARY').catch(e=>{
+            
+            LOG(`Can't load canary for snapshot of \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
+
+            return false
+        
+        })
 
 
 
@@ -442,7 +448,9 @@ verifyControllerBlock=async controllerBlock=>{
         }
         
 
-        //________________________________________GET ACCOUNTS AND MODIFY THEM__________________________________________
+
+
+        //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
         
         let sendersAccounts=[]
@@ -471,14 +479,20 @@ verifyControllerBlock=async controllerBlock=>{
 
                 //O(1),coz it's set
                 if(!symbioteReference.BLACKLIST.has(event.c)){
+
+                    //Add new type of event
+                    !symbioteReference.EVENTS_STATE.has(event.t) && symbioteReference.EVENTS_STATE.set(event.t,[])
+
+
                         
                     let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
                         
-                        spend=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE + (symbiotes.get(symbiote).SPENDERS[event.t]?.(event,symbiote)||0)
+                        spend=symbioteReference.SPENDERS[event.t]?.(event,symbiote) || CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE//provide ability to add extra fees(or oppositely-make free) to events
+
 
 
                             
-                    //If no such address-it's signal that transaction can't be accepted
+                    //If no such address-it's a signal that transaction can't be accepted
                     if(!acc) return
                  
                     (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
@@ -489,7 +503,6 @@ verifyControllerBlock=async controllerBlock=>{
 
             })
                 
-            
         )
 
 
@@ -504,8 +517,11 @@ verifyControllerBlock=async controllerBlock=>{
         eventsToSift.forEach((eventsSet,hash)=>{
     
             eventsSet.forEach(event=>
-                    
-                symbioteReference.VERIFIERS[event.t] && eventsPromises.push(symbioteReference.VERIFIERS[event.t](event,rewardBox.get(hash),symbiote))
+                
+                //If verifier to such event exsist-then verify it!
+                symbioteReference.VERIFIERS[event.t]
+                &&
+                eventsPromises.push(symbioteReference.VERIFIERS[event.t](event,rewardBox.get(hash),symbiote))
 
                 //Stress test.DELETE
                 //txsPromises.push(VERIFY('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','4ViaOoL3HF5lamTh0ZjGbLVg+59dfk5cebJGKRDtRf29l0hIbS5PHfUNt2GCUdHS+AFqs1ZU+l6cpMYkSbw3Aw==','J+tMlJexrc5bwof9oIpKiRxQy84VmZhMfdIJa53GSY4='))
@@ -561,10 +577,10 @@ verifyControllerBlock=async controllerBlock=>{
 
         //________________________________________________COMMIT STATE__________________________________________________    
 
-        symbioteReference.VERIFICATION_THREAD.DATA={}//prepare clear staging data
+        symbioteReference.VERIFICATION_THREAD.DATA={}//prepare empty staging data
 
 
-        let promises=[],snapshot=symbioteReference.VERIFICATION_THREAD.DATA
+        let promises=[],snapshot={ACCOUNTS:{}}
         
 
 
@@ -577,7 +593,7 @@ verifyControllerBlock=async controllerBlock=>{
 
                 promises.push(symbioteReference.STATE.put(addr,acc.ACCOUNT))
 
-                snapshot[addr]=acc.ACCOUNT       
+                snapshot.ACCOUNTS[addr]=acc.ACCOUNT
 
             })
             
@@ -589,7 +605,7 @@ verifyControllerBlock=async controllerBlock=>{
 
                 promises.push(symbioteReference.STATE.put(addr,acc.ACCOUNT))
             
-                snapshot[addr]=acc.ACCOUNT
+                snapshot.ACCOUNTS[addr]=acc.ACCOUNT
 
 
 
@@ -605,6 +621,14 @@ verifyControllerBlock=async controllerBlock=>{
         }
 
 
+        //Create for each type of events which occured changes
+        symbioteReference.EVENTS_STATE.forEach(
+            
+            (eventsSet,eventType)=>snapshot[eventType]=eventsSet
+        
+        )
+
+
 
 
         symbioteReference.VERIFICATION_THREAD.COLLAPSED_INDEX=controllerBlock.i
@@ -615,9 +639,12 @@ verifyControllerBlock=async controllerBlock=>{
 
 
         //Make commit to staging area
-        await metadata.put(symbiote+'/VT',symbioteReference.VERIFICATION_THREAD)
+        await symbioteReference.METADATA.put('VT',symbioteReference.VERIFICATION_THREAD)
 
 
+
+        
+        symbiotes.get(symbiote).EVENTS_STATE.clear()
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         symbioteReference.BLACKLIST.clear()
@@ -630,7 +657,7 @@ verifyControllerBlock=async controllerBlock=>{
 
         await Promise.all(promises.splice(0)).then(()=>
             
-            metadata.put(symbiote+'/CANARY',symbioteReference.VERIFICATION_THREAD.CHECKSUM)//canary is the signal that current height is verified and you can continue from this point
+            symbioteReference.METADATA.put('CANARY',symbioteReference.VERIFICATION_THREAD.CHECKSUM)//canary is the signal that current height is verified and you can continue from this point
 
         ).catch(e=>{
             

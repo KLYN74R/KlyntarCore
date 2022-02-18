@@ -7,7 +7,7 @@ import {integrity} from '../klyn74r.js'
 
 
 
-export let I={
+export default {
 
 /*Here may be everything-proofs of profies(signatures),integrity of state of news of nodes near
 ______________________________________Available prefixes______________________________________

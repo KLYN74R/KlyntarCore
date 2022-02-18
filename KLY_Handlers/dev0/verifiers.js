@@ -38,8 +38,18 @@
 
 
 
-import {GET_SYMBIOTE_ACC,VERIFY} from '../../KLY_Space/utils.js'
+import {BLAKE3,GET_SYMBIOTE_ACC,LOG,SYMBIOTE_ALIAS,VERIFY} from '../../KLY_Space/utils.js'
+
 import {symbiotes} from '../../klyn74r.js'
+
+
+
+
+let MAIN_VERIFY=async(symbiote,event,sender)=>
+
+    !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n))
+    &&
+    await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)
 
 
 
@@ -66,7 +76,7 @@ export default {
         }
         
     
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
+        if(await MAIN_VERIFY(symbiote,event,sender)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+event.p.a
             
@@ -86,7 +96,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
     
-        if(event.p.length===64 && !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
+        if(event.p.length===64 && await MAIN_VERIFY(symbiote,event,sender)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
     
@@ -107,7 +117,7 @@ export default {
     
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
         
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
+        if(await MAIN_VERIFY(symbiote,event,sender)){
     
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
     
@@ -126,7 +136,7 @@ export default {
 
         let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
 
-        if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n)) && await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)){
+        if(await MAIN_VERIFY(symbiote,event,sender)){
 
             sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
         
@@ -145,11 +155,51 @@ export default {
 
     },
 
+
+
+
+    //Common mechanisms as with delegation
+    //It's because we perform operations asynchronously
+    SERVICE_DEPLOY:async (event,blockCreator,symbiote)=>{
+        
+        let sender=GET_SYMBIOTE_ACC(event.c,symbiote),
+        
+            payloadJson=JSON.stringify(event.p),
+
+            payloadHash=BLAKE3(payloadJson),
+
+            noSuchService=!(await symbiotes.get(symbiote).SERVICES.get(payloadHash).catch(e=>false))
+
+
+
+
+        if(await MAIN_VERIFY(symbiote,event,sender) && noSuchService){
+
+            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+payloadJson.length*0.01
+        
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
+            
+
+            //Store service manifest
+            //!Add to stage zone before
+            symbiotes.get(symbiote).EVENTS_STATE.push({key:payloadHash,value:event.p})
+
+            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+        
+        }
+        
+    },
+
+
+
+
     ALIAS:async (event,blockCreator,symbiote)=>{
 
         
 
     },
+
+
 
 
     UNOBTANIUM:async (event,blockCreator,symbiote)=>{
@@ -161,8 +211,6 @@ export default {
     RL_OWNSHIP_APPRV:async(event,blockCreator,symbiote)=>{},
 
     QUANTUMSWAP:async (event,blockCreator,symbiote)=>{},
-
-    SERVICE_DEPLOY:async (event,blockCreator,symbiote)=>{},
 
     CONVEYOR_DEPLOY:async (event,blockCreator,symbiote)=>{},
 

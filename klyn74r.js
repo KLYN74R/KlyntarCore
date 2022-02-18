@@ -152,9 +152,7 @@ export let
     
     hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
     
-    metadata=l(PATH_RESOLVE('M/METADATA'),{valueEncoding:'json'}),//For symbiotes metadata flows e.g. generation flow,verification flow,staging etc.
 
-    
 
 
     RELOAD_STATE=async(symbiote,symbioteRef)=>{
@@ -243,14 +241,14 @@ export let
 
     
 
-    PREPARE_SYMBIOTE=async controllerAddr=>{
+    PREPARE_SYMBIOTE=async symbioteId=>{
 
 
         //Loading spinner
 
         let initSpinner = ora({
             color:'red',
-            prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(controllerAddr)}\x1b[0m`
+            prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[0m`
         }).start(),
 
         
@@ -259,15 +257,18 @@ export let
         //____________________________________________Prepare structures_________________________________________________
 
 
-        symbioteConfig=CONFIG.SYMBIOTES[controllerAddr]
+        symbioteConfig=CONFIG.SYMBIOTES[symbioteId]
 
 
-        symbiotes.set(controllerAddr,{
+        //Contains default set of properties for major part of potential use-cases on symbiote
+        symbiotes.set(symbioteId,{
             
             MEMPOOL:[],
             
-            //Finally-create mapping to optimize processes while we check blocks-not to read/write to db many times
+            //Сreate mapping to optimize processes while we check blocks-not to read/write to db many times
             ACCOUNTS:new Map(),// ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
+
+            EVENTS_STATE:new Map(),// EVENT_TYPE(on symbiote) => { EVENT_ID_1 : STATE_TO_COMMIT_1, EVENT_ID_2 : STATE_TO_COMMIT_2, ...}
 
             BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another ControllerBlock
 
@@ -279,43 +280,47 @@ export let
 
 
 
-        let symbioteRef=symbiotes.get(controllerAddr)
+        let symbioteRef=symbiotes.get(symbioteId)
 
 
         //Open writestream in append mode
-        SYMBIOTES_LOGS_STREAMS.set(controllerAddr,fs.createWriteStream(PATH_RESOLVE(`LOGS/${controllerAddr}.txt`),{flags:'a+'}))
+        SYMBIOTES_LOGS_STREAMS.set(symbioteId,fs.createWriteStream(PATH_RESOLVE(`LOGS/${symbioteId}.txt`),{flags:'a+'}))
 
         //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-        !fs.existsSync(PATH_RESOLVE(`C/${controllerAddr}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${controllerAddr}`))
+        !fs.existsSync(PATH_RESOLVE(`C/${symbioteId}`)) && fs.mkdirSync(PATH_RESOLVE(`C/${symbioteId}`))
 
-
+        !fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}`)) && fs.mkdirSync(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}`))
 
 
         //___________________________Load functionality to verify/filter/transform events_______________________________
 
 
+        //Importnat and must be the same for symbiote at appropriate chunks of time
         symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.VERIFIERS}/verifiers.js`)).default
-
-        symbioteRef.FILTERS=(await import(`./KLY_Handlers/${symbioteConfig.FILTERS}/filters.js`)).default
 
         symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.SPENDERS}/spenders.js`)).default
 
 
+        //Might be individual for each node
+        symbioteRef.FILTERS=(await import(`./KLY_Handlers/${symbioteConfig.FILTERS}/filters.js`)).default
+
+
         //______________________________________Prepare databases and storages___________________________________________
 
-
+        
+        symbioteRef.METADATA=l(PATH_RESOLVE(`C/${controllerAddr}/METADATA`),{valueEncoding:'json'})//important dir-cointains canaries,pointer to VERIFICATION_THREAD and GENERATION_THREADS
 
 
         //Create subdirs due to rational solutions
-        symbioteRef.CONTROLLER_BLOCKS=l(PATH_RESOLVE(`C/${controllerAddr}/CONTROLLER_BLOCKS`),{valueEncoding:'json'})//For Controller's blocks(key is index)
+        symbioteRef.CONTROLLER_BLOCKS=l(PATH_RESOLVE(`C/${symbioteId}/CONTROLLER_BLOCKS`),{valueEncoding:'json'})//For Controller's blocks(key is index)
         
-        symbioteRef.INSTANT_BLOCKS=l(PATH_RESOLVE(`C/${controllerAddr}/INSTANT_BLOCKS`),{valueEncoding:'json'})//For Instant(key is hash)
+        symbioteRef.INSTANT_BLOCKS=l(PATH_RESOLVE(`C/${symbioteId}/INSTANT_BLOCKS`),{valueEncoding:'json'})//For Instant(key is hash)
         
-        symbioteRef.HOSTCHAINS_DATA=l(PATH_RESOLVE(`C/${controllerAddr}/HOSTCHAINS_DATA`),{valueEncoding:'json'})//To store external flow of commits for ControllerBlocks
+        symbioteRef.HOSTCHAINS_DATA=l(PATH_RESOLVE(`C/${symbioteId}/HOSTCHAINS_DATA`),{valueEncoding:'json'})//To store external flow of commits for ControllerBlocks
         
-        symbioteRef.CANDIDATES=l(PATH_RESOLVE(`C/${controllerAddr}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
+        symbioteRef.CANDIDATES=l(PATH_RESOLVE(`C/${symbioteId}/CANDIDATES`),{valueEncoding:'json'})//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
         
-        symbioteRef.STATE=l(PATH_RESOLVE(`C/${controllerAddr}/STATE`),{valueEncoding:'json'})//State of accounts
+        symbioteRef.STATE=l(PATH_RESOLVE(`C/${symbioteId}/STATE`),{valueEncoding:'json'})//State of symbiote
         
         /*
             Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web23.Read more on our sources
@@ -331,33 +336,38 @@ export let
             Usernames(Twitter in this case) @jack => bc1qsmljf8cmfhul2tuzcljc2ylxrqhwf7qxpstj2a
 
         */
-        symbioteRef.ALIASES=l(PATH_RESOLVE(`C/${controllerAddr}/ALIASES`),{valueEncoding:'json'})
+        symbioteRef.ALIASES=l(PATH_RESOLVE(`C/${symbioteId}/ALIASES`),{valueEncoding:'json'})
 
 
         //Metadata
-        symbioteRef.SERVICES=l(PATH_RESOLVE(`C/${controllerAddr}/SERVICES`),{valueEncoding:'json'})
-
-        symbioteRef.CONVEYORS=l(PATH_RESOLVE(`C/${controllerAddr}/CONVEYORS`),{valueEncoding:'json'})
+        symbioteRef.SERVICES=l(PATH_RESOLVE(`C/${symbioteId}/SERVICES`),{valueEncoding:'json'})
 
 
 
 
 
-        //...and separate dir for snapshots
-        symbioteRef.SNAPSHOT=l(PATH_RESOLVE(`SNAPSHOTS/${controllerAddr}`),{valueEncoding:'json'})
+        //...and separate dirs for snapshots
+        CONFIG.SYMBIOTES[symbioteId].
+        symbioteRef.SNAPSHOT={
+
+            STATE:l(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}`),{valueEncoding:'json'}),
+
+            ALIASES:l(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}`),{valueEncoding:'json'}),
+
+        }
 
 
 
         
         //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
 
-        symbioteRef.VERIFICATION_THREAD = await metadata.get(controllerAddr+'/VT').catch(e=>
+        symbioteRef.VERIFICATION_THREAD = await symbioteRef.METADATA.get('VT').catch(e=>
             
             e.notFound
             ?
             {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}//initial
             :
-            (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${controllerAddr}\nError:${e}`,'F'),process.exit(124))
+            (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${symbioteId}\nError:${e}`,'F'),process.exit(124))
                         
         )
 
@@ -377,7 +387,7 @@ export let
         //Due to phantom blocks,we'll generate blocks faster than state become verified,that's why we need two extra properties
         if(symbioteConfig.CONTROLLER.ME){
 
-            symbioteRef.GENERATION_THREAD = await metadata.get(controllerAddr+'/GT').catch(e=>
+            symbioteRef.GENERATION_THREAD = await symbioteRef.METADATA.get('GT').catch(e=>
             
                 e.notFound
                 ?
@@ -386,7 +396,7 @@ export let
                     NEXT_INDEX:0//So the first block will be with index 0
                 }
                 :
-                (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${controllerAddr}\nError:${e}`,'F'),process.exit(125))
+                (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${symbioteId}\nError:${e}`,'F'),process.exit(125))
                             
             )
 
@@ -396,11 +406,11 @@ export let
                 previous=await symbioteRef.CONTROLLER_BLOCKS.get(symbioteRef.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
 
         
-            if(nextIsPresent || !(symbioteRef.GENERATION_THREAD.NEXT_INDEX===0 || symbioteRef.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + controllerAddr + previous.i + previous.p))){
+            if(nextIsPresent || !(symbioteRef.GENERATION_THREAD.NEXT_INDEX===0 || symbioteRef.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + symbioteId + previous.i + previous.p))){
             
                 initSpinner.stop()
 
-                LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS(controllerAddr)}`,'F')
+                LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}`,'F')
                 
                 process.exit(125)
 
@@ -415,7 +425,7 @@ export let
         //If we just start verification thread, there is no sense to do following logic
         if(symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1){
 
-            await metadata.get(controllerAddr+'/CANARY').then(async canary=>{
+            await symbioteRef.METADATA.get('CANARY').then(async canary=>{
 
                 let verifThread=symbioteRef.VERIFICATION_THREAD
     
@@ -427,7 +437,7 @@ export let
 
                         initSpinner.stop()
     
-                        LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS(controllerAddr)}`,'I')
+                        LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}`,'I')
                         
                         let promises=[]
     
@@ -439,7 +449,7 @@ export let
 
                         await Promise.all(promises).catch(e=>{
 
-                            LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS(controllerAddr)}\x1b[31;1m\n${e}`,'F')
+                            LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[31;1m\n${e}`,'F')
 
                             process.exit(133)
 
@@ -451,22 +461,22 @@ export let
 
                     initSpinner.stop()
     
-                    LOG(`Problems with staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS(controllerAddr)}`,'W')
+                    LOG(`Problems with staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}`,'W')
 
-                    await RELOAD_STATE(controllerAddr,symbioteRef)
+                    await RELOAD_STATE(symbioteId,symbioteRef)
 
                 }
     
-            }).catch(async e=>{
+            }).catch(async err=>{
     
                 initSpinner.stop()
 
                 LOG(fs.readFileSync(PATH_RESOLVE('images/events/canaryDied.txt')).toString(),'CD')
     
-                LOG(`Problems with canary on \x1b[36;1m${SYMBIOTE_ALIAS(controllerAddr)}\n${e}`,'W')
+                LOG(`Problems with canary on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}\n${err}`,'W')
     
                 //Reset verification breakpoint
-                await RELOAD_STATE(controllerAddr,symbioteRef)
+                await RELOAD_STATE(symbioteId,symbioteRef)
     
             })    
 
@@ -476,7 +486,7 @@ export let
             symbioteRef.STATE.clear()
 
             //Load data from genesis state(initial values)
-            await RELOAD_STATE(controllerAddr,symbioteRef)
+            await RELOAD_STATE(symbioteId,symbioteRef)
 
         }
  
@@ -517,13 +527,13 @@ export let
             
                 EvmHostChain=(await import(`./KLY_Hostchains/connectors/${way}/evm.js`)).default
                 
-                hostchainmap.set(tickers[i],new EvmHostChain(controllerAddr,tickers[i]))
+                hostchainmap.set(tickers[i],new EvmHostChain(symbioteId,tickers[i]))
 
             }else hostchainmap.set(tickers[i],(await import(`./KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
 
 
 
-            hostchains.set(controllerAddr,hostchainmap)
+            hostchains.set(symbioteId,hostchainmap)
 
             //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
             
@@ -538,10 +548,10 @@ export let
         //___________________Decrypt all private keys(for Klyntar and hostchains) to memory of process___________________
 
 
-        await DECRYPT_KEYS(controllerAddr,initSpinner).then(()=>
+        await DECRYPT_KEYS(symbioteId,initSpinner).then(()=>
         
             //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
-            LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS(controllerAddr)}\x1b[32;1m was decrypted successfully`,'S')        
+            LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[32;1m was decrypted successfully`,'S')        
         
         ).catch(e=>{
         
@@ -568,7 +578,7 @@ export let
                 }).start()
 
 
-                let balance=await hostchains.get(controllerAddr).get(tickers[i]).getBalance(controllerAddr)
+                let balance=await hostchains.get(symbioteId).get(tickers[i]).getBalance(symbioteId)
 
                 spinner.stop()
 
@@ -584,7 +594,7 @@ export let
 
             }
 
-            LOG(`Canary is \x1b[32;1m<OK> \x1b[36;1mon \x1b[32;1m${SYMBIOTE_ALIAS(controllerAddr)}`,'I')
+            LOG(`Canary is \x1b[32;1m<OK> \x1b[36;1mon \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}`,'I')
 
 
             //Ask to approve current set of hostchains
@@ -593,14 +603,14 @@ export let
         
                 readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
                 
-                .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+                .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                     
             ).then(answer=>answer!=='YES'&& process.exit(126))
 
   
         }
         
-        SIG_PROCESS[controllerAddr]={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation
+        SIG_PROCESS[symbioteId]={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation
 
     },
 
@@ -685,7 +695,7 @@ let graceful=()=>{
 
         }
 
-    },500)
+    },200)
 
 }
 
@@ -706,13 +716,13 @@ process.on('SIGHUP',graceful)
 
 
 
+global.SYMBIOTES_LOGS_STREAMS=new Map()
+
 global.PRIVATE_KEYS=new Map()
 
 global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
-
-global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 
 
@@ -843,7 +853,7 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
     
     console.log('\n\n')
 
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/conveyors.txt')).toString(),'CD')
 
     Object.keys(CONFIG.CONVEYORS).forEach(
         
@@ -858,7 +868,7 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
         
         readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
     
-        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Print \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
         
     ).then(answer=>answer!=='YES'&& process.exit(126))
 
@@ -912,9 +922,11 @@ global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 
 //Load route modules
-let {W}=await import('./KLY_Routes/control.js'),
-    {M}=await import('./KLY_Routes/main.js'),
-    {A}=await import('./KLY_Routes/api.js')
+let CONTROL=(await import('./KLY_Routes/control.js')).default,
+    
+    MAIN=(await import('./KLY_Routes/main.js')).default,
+    
+    API=(await import('./KLY_Routes/api.js')).default
 
 
 
@@ -929,15 +941,15 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 
 
-.post('/cb',M.controllerBlock)
+.post('/cb',MAIN.controllerBlock)
 
-.post('/ib',M.instantBlock)
+.post('/ib',MAIN.instantBlock)
 
-.post('/addnode',M.addNode)
+.post('/addnode',MAIN.addNode)
 
-.post('/proof',M.proof)
+.post('/proof',MAIN.proof)
 
-.post('/event',M.event)
+.post('/event',MAIN.event)
 
 
 
@@ -947,7 +959,7 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 //.post('/change',W.change)
 
-.post('/con',W.config)
+.post('/con',CONTROL.config)
 
 //.post('/view',W.view)
 
@@ -957,17 +969,17 @@ UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
 
 
 
-.get('/multiplicity/:symbiote/:fromHeigth',A.multiplicity)
+.get('/multiplicity/:symbiote/:fromHeigth',API.multiplicity)
 
-.get('/account/:symbiote/:address',A.acccount)
+.get('/account/:symbiote/:address',API.acccount)
 
-.get('/nodes/:symbiote/:region',A.nodes)
+.get('/nodes/:symbiote/:region',API.nodes)
 
-.get('/block/:symbiote/:type/:id',A.block)
+.get('/block/:symbiote/:type/:id',API.block)
 
-.post('/alert',A.alert)
+.post('/alert',API.alert)
 
-.get('/i',A.info)
+.get('/i',API.info)
 
 
 

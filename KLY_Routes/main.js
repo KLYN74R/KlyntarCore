@@ -22,7 +22,7 @@ let BLOCK_PATTERN=process.platform==='linux'?'——':'———'
 
 
 
-export let M={
+export default {
 
 
 
@@ -256,7 +256,13 @@ export let M={
         if(symbiotes.has(symbiote) && !CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
 
             //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
-            let alreadyHas=await symbiotes.get(symbiote).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>false)
+            let alreadyHas=await symbiotes.get(symbiote).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
+
+                LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
+
+                return false
+
+            })
 
 
             //If it's literally the same proof-just send OK

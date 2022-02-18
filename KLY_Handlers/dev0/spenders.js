@@ -37,20 +37,20 @@
 
 export default {
     
-    TX:event=>event.p.a,
+    TX:event=>event.p.a+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    OFFSPRING:(_event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE,
+    OFFSPRING:(_event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    ALIAS:(event,_symbiote)=>event.p.length*0.001,
+    ALIAS:(event,_symbiote)=>event.p.length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    UNOBTANIUM:(event,_symbiote)=>event.p.length*0.001,
+    UNOBTANIUM:(event,_symbiote)=>JSON.stringify(event.p).length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
     //Unimplemented
     RL_OWNSHIP_APPRV:(_event,symbiote)=>{},
 
     QUANTUMSWAP:async event=>{},
 
-    SERVICE_DEPLOY:async event=>{},
+    SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
     CONVEYOR_DEPLOY:async event=>{},
 

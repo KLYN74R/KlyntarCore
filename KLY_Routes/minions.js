@@ -3,7 +3,7 @@ import {ACC_CONTROL,BODY,MINION} from '../KLY_Space/utils.js'
 
 
 
-export let Z={
+export default{
 
 
 //Сюда про запросы на другие узлы,проверку Integrity и тд

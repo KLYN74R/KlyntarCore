@@ -290,6 +290,7 @@
                 "ENABLE":true,
                 "RANGE":50,
                 "ALL":true,
+                "DBS":["ALIASES","STATE","SERVICES"],
                 "SHARDS_URLS":[
                     "https://myown.snapshots.io",
                     "https://dead::beef",
@@ -297,12 +298,15 @@
                 ]
             },
 
-            "TRUSTED_SOURCES":{
-                "VERIFIERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                "FILTERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                "SPENDERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                "VERIFY_CONTAINERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
+            "ON_FLIGHT_UPDATES":{
+
+                "TRUSTED_SOURCES":{
+                    "VERIFIERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                    "FILTERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                    "SPENDERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                    "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
+                }
+
             }
 
         },
@@ -633,6 +637,7 @@
                 "ENABLE":true,
                 "RANGE":50,
                 "ALL":true,
+                "DBS":["ALIASES","STATE","SERVICES"],
                 "SHARDS_URLS":[
                     "https://myown.snapshots.io",
                     "https://dead::beef",
@@ -641,12 +646,15 @@
             },
 
 
-            "TRUSTED_SOURCES":{
-                "VERIFIERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                "FILTERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                "SPENDERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                "VERIFY_SERVICES":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                "VERIFY_CONTAINERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL"
+            "ON_FLIGHT_UPDATES":{
+                
+                "TRUSTED_SOURCES":{
+                    "VERIFIERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                    "FILTERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                    "SPENDERS":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+                    "VERIFY_SERVICES":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL"
+                }
+            
             }
     
         }

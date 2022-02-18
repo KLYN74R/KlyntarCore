@@ -1,6 +1,5 @@
-
-import {LOG} from '../../KLY_Space/utils.js'
-
+import {LOG} from '../CommonResources/utils.js'
 
 
-LOG('Dummy example of Litecoin API for Hermes','CD')
+
+LOG('Dummy example of Litecoin Hermes provider','CD')

@@ -8,7 +8,7 @@
 
 //CONTROL_SID
 //CONTROL_PRV_KEY
-export let W={
+export default {
 
     nonce:0,
 

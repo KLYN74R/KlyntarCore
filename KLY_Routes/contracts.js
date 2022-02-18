@@ -5,7 +5,7 @@ import {contracts} from '../klyn74r.js'
 
 
 
-export let C={
+export default {
     
     //Only this one function available for ordinary users(the others can be called by node owner)
     contracts:a=>{
