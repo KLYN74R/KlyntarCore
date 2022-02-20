@@ -35,6 +35,7 @@ CIIPs
 
 #Configs
 configs/symbiotes*
+configs/decrypted*
 KEYSTORE/
 
 

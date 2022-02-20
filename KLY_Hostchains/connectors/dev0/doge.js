@@ -45,7 +45,7 @@
 
 
 
-import {LOG} from '../../../KLY_Space/utils.js'
+import {LOG} from '../../../KLY_Utils/utils.js'
 
 import bitdoge from 'bitcore-doge-lib'
 

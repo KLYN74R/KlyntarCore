@@ -37,7 +37,7 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
-import {VERIFY} from '../../KLY_Space/utils.js'
+import {VERIFY} from '../../KLY_Utils/utils.js'
 
 export default {
     

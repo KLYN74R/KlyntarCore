@@ -2,7 +2,7 @@ import{
 
     VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
 
-} from '../KLY_Space/utils.js'
+} from '../KLY_Utils/utils.js'
 
 import {verifyInstantBlock} from '../KLY_Process/verification.js'
 

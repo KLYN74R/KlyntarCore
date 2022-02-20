@@ -17,6 +17,7 @@
     },
 
     "WSS":{
+        "ENABLE":true,
         "PORT":9999,
         "HOST":"0.0.0.0"
     }

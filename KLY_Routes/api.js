@@ -1,4 +1,4 @@
-import {GET_NODES,LOG,SYMBIOTE_ALIAS,BODY} from '../KLY_Space/utils.js'
+import {GET_NODES,LOG,SYMBIOTE_ALIAS,BODY} from '../KLY_Utils/utils.js'
 
 import {symbiotes,WRAP_RESPONSE} from '../klyn74r.js'
 

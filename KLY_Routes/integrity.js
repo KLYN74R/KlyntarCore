@@ -1,4 +1,4 @@
-import {BODY,BLAKE3} from '../KLY_Space/utils.js'
+import {BODY,BLAKE3} from '../KLY_Utils/utils.js'
 
 import {integrity} from '../klyn74r.js'
 

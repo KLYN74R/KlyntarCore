@@ -51,7 +51,9 @@
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"dev0",
-                "SPENDERS":"dev0"
+                "SPENDERS":"dev0",
+
+                "DIMENSIONS":["EVM"]
 
             },
 
@@ -288,7 +290,7 @@
             
             "SNAPSHOTS":{
                 "ENABLE":true,
-                "RANGE":50,
+                "RANGE":5,
                 "ALL":true,
                 "DBS":["ALIASES","STATE","SERVICES"],
                 "SHARDS_URLS":[
@@ -371,7 +373,9 @@
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
                 "VERIFIERS":"dev0",
-                "SPENDERS":"dev0"
+                "SPENDERS":"dev0",
+
+                "DIMENSIONS":["EVM"]
     
             },
 
@@ -635,7 +639,7 @@
 
             "SNAPSHOTS":{
                 "ENABLE":true,
-                "RANGE":50,
+                "RANGE":5,
                 "ALL":true,
                 "DBS":["ALIASES","STATE","SERVICES"],
                 "SHARDS_URLS":[

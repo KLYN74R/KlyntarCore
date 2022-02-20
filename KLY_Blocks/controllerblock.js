@@ -1,4 +1,4 @@
-import {BLAKE3} from '../KLY_Space/utils.js'
+import {BLAKE3} from '../KLY_Utils/utils.js'
 import {symbiotes} from '../klyn74r.js'
 
 export default class ControllerBlock{

@@ -1,4 +1,4 @@
-import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PATH_RESOLVE} from '../KLY_Space/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PATH_RESOLVE} from '../KLY_Utils/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
@@ -207,8 +207,10 @@ START_VERIFY_POLLING=async symbiote=>{
 
 MAKE_SNAPSHOT=async symbiote=>{
 
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD,METADATA}=symbiotes.get(symbiote),//get appropriate dbs of symbiote
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD,METADATA}=symbiotes.get(symbiote),//get appropriate dbs & descriptors of symbiote
 
+
+        //Get current height canary
         canary=await METADATA.get('CANARY').catch(e=>{
             
             LOG(`Can't load canary for snapshot of \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
@@ -221,7 +223,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
     
     //Delete old canary and VT.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
-    await SNAPSHOT.del('CANARY').then(()=>SNAPSHOT.del('VT')).catch(e=>{
+    await SNAPSHOT.METADATA.del('CANARY').then(()=>SNAPSHOT.METADATA.del('VT')).catch(e=>{
 
         LOG(`Can't delete canary or VT from snapshot on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\n\x1b[31;1m${e}`,'F')
 
@@ -236,7 +238,9 @@ MAKE_SNAPSHOT=async symbiote=>{
 
     LOG(`Start making snapshot for ${SYMBIOTE_ALIAS(symbiote)}`,'I')
 
-    let accounts={}
+    
+    //Init in-memory caches
+    let records={},promises=[]
 
 
     //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
@@ -246,7 +250,7 @@ MAKE_SNAPSHOT=async symbiote=>{
         
             resolve => STATE.createReadStream()
             
-                            .on('data',data => accounts[data.key]=data.value)//add state of each account to snapshot dbs
+                            .on('data',data=>records[data.key]=data.value)//add state of each account to snapshot dbs
             
                             .on('close',resolve)
             
@@ -255,7 +259,7 @@ MAKE_SNAPSHOT=async symbiote=>{
     
             e => {
     
-                LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
+                LOG(`Snapshot creation failed on state copying stage for ${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
                 
                 process.emit('SIGINT',130)
     
@@ -269,45 +273,41 @@ MAKE_SNAPSHOT=async symbiote=>{
         //Set your own policy of backups with your other nodes,infrastructure etc.
         let choosen=JSON.parse(PATH_RESOLVE(`SNAPSHOTS/separation/${symbiote}.json`)),
         
-            promises=[]
+            getPromises=[]
 
 
-        Object.keys(choosen).forEach(
+        choosen.forEach(
             
-            addr => promises.push(STATE.get(addr).then(acc=>accounts[addr]=acc))
-            
-        )
-
-        await Promise.all(promises).catch(
-           
-            e => {
-
-                LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'F')
-                
-                process.emit('SIGINT',130)
-
-            }
+            recordId => getPromises.push(STATE.get(recordId).then(acc=>records[recordId]=acc))
             
         )
+
+
+        await Promise.all(getPromises.splice(0)).catch( e => {
+    
+            LOG(`Snapshot creation failed on getting choosen records for ${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
+            
+            process.emit('SIGINT',130)
+
+        })
+        
 
     }
     
 
+    let write=[]
 
-    let promises=[]
+    Object.keys(records).forEach(id=>write.push(STATE.put(id,records[id])))
 
-    Object.keys(accounts).forEach(
-        
-        addr => promises.push(SNAPSHOT.put(addr,accounts[addr]))
-        
-    )
+
+
 
     //After that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
-    await Promise.all(promises)
+    await Promise.all(write)
     
-                    .then(_=>SNAPSHOT.put('CANARY',canary))//put canary to snapshot
+                    .then(_=>SNAPSHOT.METADATA.put('CANARY',canary))//put canary to snapshot
                     
-                    .then(()=>SNAPSHOT.put('VT',VERIFICATION_THREAD))//...and VERIFICATION_THREAD(to get info about collapsed height,hash etc.)
+                    .then(()=>SNAPSHOT.METADATA.put('VT',VERIFICATION_THREAD))//...and VERIFICATION_THREAD(to get info about collapsed height,hash etc.)
                     
                     .catch(e => {
 
@@ -318,6 +318,9 @@ MAKE_SNAPSHOT=async symbiote=>{
                     })
 
     LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[32;1m on height \x1b[36;1m${VERIFICATION_THREAD.COLLAPSED_INDEX}`,'S')
+
+
+
 
 },
 
@@ -452,7 +455,7 @@ verifyControllerBlock=async controllerBlock=>{
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
-        
+
         let sendersAccounts=[]
         
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
@@ -480,11 +483,7 @@ verifyControllerBlock=async controllerBlock=>{
                 //O(1),coz it's set
                 if(!symbioteReference.BLACKLIST.has(event.c)){
 
-                    //Add new type of event
-                    !symbioteReference.EVENTS_STATE.has(event.t) && symbioteReference.EVENTS_STATE.set(event.t,[])
-
-
-                        
+                    
                     let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
                         
                         spend=symbioteReference.SPENDERS[event.t]?.(event,symbiote) || CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE//provide ability to add extra fees(or oppositely-make free) to events
@@ -494,10 +493,12 @@ verifyControllerBlock=async controllerBlock=>{
                             
                     //If no such address-it's a signal that transaction can't be accepted
                     if(!acc) return
+
+                    console.log('Acc is ',acc);
                  
                     (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
         
-                    (acc.OUT-=spend)<0 && symbioteReference.BLACKLIST.add(event.c)
+                    if((acc.OUT-=spend)<0 || !symbioteReference.SPENDERS[event.t]) symbioteReference.BLACKLIST.add(event.c)
 
                 }
 
@@ -580,7 +581,7 @@ verifyControllerBlock=async controllerBlock=>{
         symbioteReference.VERIFICATION_THREAD.DATA={}//prepare empty staging data
 
 
-        let promises=[],snapshot={ACCOUNTS:{}}
+        let promises=[],snapshot={ACCOUNTS:{},EVENTS:{}}
         
 
 
@@ -621,10 +622,19 @@ verifyControllerBlock=async controllerBlock=>{
         }
 
 
+        
         //Create for each type of events which occured changes
         symbioteReference.EVENTS_STATE.forEach(
             
-            (eventsSet,eventType)=>snapshot[eventType]=eventsSet
+            (eventChanges,eventId)=>{
+
+                //Add to snapshot for durability
+                snapshot.EVENTS[eventId]=eventChanges
+
+                //...and definitely to state
+                promises.push(symbioteReference.STATE.put(eventId,eventChanges))
+
+            }
         
         )
 
@@ -635,6 +645,9 @@ verifyControllerBlock=async controllerBlock=>{
                 
         symbioteReference.VERIFICATION_THREAD.COLLAPSED_HASH=controllerHash
 
+        symbioteReference.VERIFICATION_THREAD.DATA=snapshot
+
+
         symbioteReference.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
 
 
@@ -644,7 +657,7 @@ verifyControllerBlock=async controllerBlock=>{
 
 
         
-        symbiotes.get(symbiote).EVENTS_STATE.clear()
+        symbioteReference.EVENTS_STATE.clear()
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         symbioteReference.BLACKLIST.clear()

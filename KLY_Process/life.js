@@ -1,4 +1,4 @@
-import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS} from '../KLY_Space/utils.js'
+import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS} from '../KLY_Utils/utils.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 
@@ -328,7 +328,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         
         let block=new InstantBlock(symbiote,await GET_TXS(symbiote))
 
-        if (block.e.length===0) return//no sense to produce empty blocks
+        //if (block.e.length===0) return//no sense to produce empty blocks
 
         //_____________________________DELELTE________________________________
 

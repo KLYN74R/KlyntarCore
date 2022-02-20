@@ -43,7 +43,7 @@
 
 
 
-import {LOG} from '../../../KLY_Space/utils.js'
+import {LOG} from '../../../KLY_Utils/utils.js'
 
 import dashcore from '@dashevo/dashcore-lib'
 

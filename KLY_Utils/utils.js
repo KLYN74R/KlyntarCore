@@ -109,8 +109,10 @@ SIG=(data,prv)=>new Promise((resolve,reject)=>
 
 
 
-/**@return Symbiote level data.Used when we check blocks
- * Here we read from cache or get account from state,push to cache and return
+/**# Event initiator account
+ * 
+ * Symbiote level data.Used when we check blocks
+ * Here we read from cache or get data about event initiator from state,push to cache and return
 */
 GET_SYMBIOTE_ACC=(addr,symbiote)=>
 
@@ -120,7 +122,7 @@ GET_SYMBIOTE_ACC=(addr,symbiote)=>
     .then(ACCOUNT=>
         
         //Get and push to cache
-        symbiotes.get(symbiote).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
+        ACCOUNT.T==='A' && symbiotes.get(symbiote).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
     
     ).catch(e=>false),
 
@@ -167,7 +169,7 @@ CHECK_UPDATES=async()=>{
 
 
 /**
- *   Add chunk to buffer and prevent buffer overflow cases 
+ *   ## Add chunk to buffer and prevent buffer overflow cases 
  *
  *   Without "a" node will continue accept chunks,the only point is that all chanks will throw error which will be handled by .catch
  *   With "a" we'll immediately close connection
