@@ -7,22 +7,16 @@
 //______________________________________________ SERVER ______________________________________________
 
 
-import {LOG} from '../../KLY_Utils/utils.js'
-
 import uWS from 'uWebSockets.js'
 
 
-if(CONFIG.WSS.ENABLE){
+let connections=[]
 
 
-
-
-    let {PORT,HOST,CERT,KEY}=CONFIG.WSS
-
-    uWS.App({
+let app = uWS.App({
   
-        key_file_name: KEY,
-        cert_file_name: CERT
+        key_file_name: '',
+        cert_file_name: ''
 
     }).ws('/*',{
   
@@ -31,16 +25,23 @@ if(CONFIG.WSS.ENABLE){
         maxPayloadLength: 16 * 1024 * 1024,
         idleTimeout: 10,
   
-        open:_=>LOG('A socket connected!','I'),
+        open:ws=>{
+
+            console.log(`A socket connected! ${Buffer.from(ws.getRemoteAddress()).toString('utf-8')}`,'I')
+            
+            connections.push(ws)
+
+            ws.subscribe('AAA')
+
+        },
  
         message: (ws, message, isBinary) => {
         
             /* Ok is false if backpressure was built up, wait for drain */
-            LOG(`WS server received ping => ${Buffer.from(message).toString('utf8')}`,'I')
+            console.log(`WS server received ping => ${Buffer.from(message).toString('utf8')} from ${ws.getRemoteAddressAsText()}`,'I')
             
             let ok = ws.send('PONG -> '+message,isBinary);
             
-            console.log('OK ',ok)
         
         },
     
@@ -49,19 +50,16 @@ if(CONFIG.WSS.ENABLE){
         close: (ws, code, message) => console.log('WebSocket closed')
 
 
-    }).any('/*',res=>{
+    }).listen(9999,token=>console.log(token?`WSS available on \u001b[38;5;3m${'0.0.0.0'}:${9999}`:'Failed to listen to combination of \u001b[38;5;3mHOST:PORT','I'))
+
+
+// setInterval(()=>{
     
-      res.end('Nothing to see here!');
+//     app.publish('AAA',JSON.stringify({block:'AAA'}))
+    
+//     console.log(`Total subs for AAA`,app.numSubscribers('AAA'))
 
-    }).listen(PORT,token=>LOG(token?`WSS available on \u001b[38;5;3m${HOST}:${PORT}`:'Failed to listen to combination of \u001b[38;5;3mHOST:PORT','I'))
-
-
-
-}
-
-
-
-
+// },3000)
 
 
 

@@ -682,11 +682,11 @@ verifyControllerBlock=async controllerBlock=>{
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
 
-        controllerBlock.i!==0
+        controllerBlock.i!==0//no sense to snaphost if no blocks yet
         &&
-        CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ENABLE
+        CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
         &&
-        controllerBlock.i%CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.RANGE===0
+        controllerBlock.i%CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
         &&
         await MAKE_SNAPSHOT(symbiote)
 

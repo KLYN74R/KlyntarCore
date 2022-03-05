@@ -1,25 +1,73 @@
 {
-    "TLS_ENABLED":false,
-    "TLS_CONFIGS":{
-        "key_file_name":"security/cert.key",
-        "cert_file_name":"security/cert.pem"
-    },
+
     "INTERFACE":"0.0.0.0",
     "PORT":7777,
+
+    "TLS":{
+
+        "ENABLED":true,
+
+        "CONFIGS":{
+
+            "key_file_name":"security/cert.key",
+   
+            "cert_file_name":"security/cert.pem"
+
+        }
+    },
+    
+
+    "PROXY":{
+        "TYPE":"HTTPS",
+        "URL":"https://some.proxy:8080"
+    },
     
     "TTL":{
         "INFO":600
     },
 
     "TRIGGERS":{
+        
         "ALL_CONTROLLER_BLOCKS":1,
-        "ALL_INSTANT_BLOCKS":1
+        
+        "ALL_INSTANT_BLOCKS":1,
+        
+        "CONFIG":1,
+      
+        "INFO":1
+    
     },
 
     "WSS":{
+        
         "ENABLE":true,
+        
         "PORT":9999,
-        "HOST":"0.0.0.0"
+        
+        "HOST":"0.0.0.0",
+        
+        "MAX_PAYLOAD_SIZE":16777216
+    
+    },
+
+  
+    "TOR":{
+        
+        "ENABLE":true,
+        
+        "URL":"socks5h://localhost:9150"
+    
+    },
+
+    
+    "I2P":{
+        
+        "ENABLE":false,
+        
+        "PORT":9150,
+        
+        "URL":"socklocalhost"
+    
     }
     
 }

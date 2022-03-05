@@ -1,6 +1,6 @@
 {
-    "GALAXY":0,
-    "ROLE":"CORE",
+    "GALAXY":"Milky Way",
+    "ROLE":"BASIC",
     "CONTROL_SID":"<SOME PRIVATE_KEY>",
     "CONTROL_PUB_KEY":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
     "2FA":false,
@@ -11,7 +11,13 @@
         "TESTNET":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
     },
 
-    "ANIMATION_DURATION":1000,
+    "PRELUDE":{
+
+        "ANIMATION_DURATION":1000,
+        "NO_SPINNERS":false,
+        "OPTIMISTIC":false,
+        "BALANCE_VIEW":true
+    },
     
     "PAYLOAD_SIZE":1000,
     "EXTENDED_PAYLOAD_SIZE":10000,

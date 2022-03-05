@@ -32,11 +32,18 @@ DEVELOPMENT
 CIIPs
 *.exe
 *.pdb
+*.wasm
+*.key
+*.pem
+
+
+
 
 #Configs
 configs/symbiotes*
 configs/decrypted*
 KEYSTORE/
+decrypted.json
 
 
 

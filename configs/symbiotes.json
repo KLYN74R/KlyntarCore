@@ -53,7 +53,7 @@
                 "VERIFIERS":"dev0",
                 "SPENDERS":"dev0",
 
-                "DIMENSIONS":["EVM"]
+                "NO_WAY_HOME":["EVM"]
 
             },
 
@@ -292,7 +292,6 @@
                 "ENABLE":true,
                 "RANGE":5,
                 "ALL":true,
-                "DBS":["ALIASES","STATE","SERVICES"],
                 "SHARDS_URLS":[
                     "https://myown.snapshots.io",
                     "https://dead::beef",
@@ -375,7 +374,7 @@
                 "VERIFIERS":"dev0",
                 "SPENDERS":"dev0",
 
-                "DIMENSIONS":["EVM"]
+                "NO_WAY_HOME":["EVM"]
     
             },
 

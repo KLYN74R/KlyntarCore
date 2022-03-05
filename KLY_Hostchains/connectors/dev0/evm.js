@@ -121,6 +121,7 @@ export default class {
     
         
             //Broadcast the transaction
+            //UPD:Probably,get hash instantly via tx.hash().toString('hex')
             this.web3.eth.sendSignedTransaction(raw,(err,txHash)=>err?reject(err):resolve(txHash)).catch(e=>reject(false))
     
         }).catch(e=>reject(e))

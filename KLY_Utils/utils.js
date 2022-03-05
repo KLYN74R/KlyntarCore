@@ -237,13 +237,52 @@ BLOCKLOG=(msg,type,symbiote,hash,spaces,color)=>{
 
 DECRYPT_KEYS=async(symbiote,spinner)=>{
 
+    
+    if(CONFIG.PRELUDE.OPTIMISTIC){
+
+        spinner?.stop()
+
+        let keys=JSON.parse(fs.readFileSync(PATH_RESOLVE('decrypted.json')))
+        
+
+
+        
+        Object.keys(keys).forEach(symbiote=>{
+
+            let symbioteConfig=CONFIG.SYMBIOTES[symbiote]
+
+            //Main key
+            global.PRIVATE_KEYS.set(symbiote,keys[symbiote].kly)
+
+            
+            Object.keys(symbioteConfig.MANIFEST.HOSTCHAINS).forEach(
+                
+                ticker => {
+
+                    if(CONFIG.EVM.includes(ticker)) hostchains.get(symbiote).get(ticker).PRV=Buffer.from(keys[symbiote][ticker],'hex')
+        
+                    else symbioteConfig.HC_CONFIGS[ticker].PRV=keys[symbiote][ticker]
+        
+                }
+
+            )            
+            
+
+        })
+
+
+        return
+      
+    }
+
+
     let symbioteRef=CONFIG.SYMBIOTES[symbiote],
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
     
     //Stop loading
-    spinner.stop()
+    spinner?.stop()
 
     LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${symbioteRef.CONTROLLER.ME?'Controller':'Instant generator'} \x1b[32;1m(\x1b[36;1m${symbiote}\x1b[32;1m)`,'I')
        

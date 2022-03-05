@@ -175,9 +175,7 @@ export let
 
 
 
-            //Means that you have local copy of full snapshot           
-            console.log(canary===snapshotVT.CHECKSUM)
-            console.log(snapshotIsOk)
+            //Means that you have local copy of full snapshot
             if(CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL&&snapshotIsOk&&canary===snapshotVT.CHECKSUM){
 
                 symbioteRef.VERIFICATION_THREAD=snapshotVT
@@ -248,19 +246,25 @@ export let
 
 
         //Loading spinner
+        let initSpinner
 
-        let initSpinner = ora({
-            color:'red',
-            prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[0m`
-        }).start(),
+        if(!CONFIG.PRELUDE.NO_SPINNERS){
 
+            initSpinner = ora({
+                color:'red',
+                prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[0m`
+            }).start()
+
+            
+        }
         
+
 
 
         //____________________________________________Prepare structures_________________________________________________
 
 
-        symbioteConfig=CONFIG.SYMBIOTES[symbioteId]
+        let symbioteConfig=CONFIG.SYMBIOTES[symbioteId]
 
 
         //Contains default set of properties for major part of potential use-cases on symbiote
@@ -437,7 +441,7 @@ export let
         
             if(nextIsPresent || !(symbioteRef.GENERATION_THREAD.NEXT_INDEX===0 || symbioteRef.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + symbioteId + previous.i + previous.p))){
             
-                initSpinner.stop()
+                initSpinner?.stop()
 
                 LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}`,'F')
                 
@@ -464,7 +468,7 @@ export let
                     //This is the signal that we should rewrite state changes from the staging zone
                     if(canary!==verifThread.CHECKSUM){
 
-                        initSpinner.stop()
+                        initSpinner?.stop()
     
                         LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}`,'I')
                         
@@ -493,7 +497,7 @@ export let
                     
                 }else{
 
-                    initSpinner.stop()
+                    initSpinner?.stop()
     
                     LOG(`Problems with staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}`,'W')
 
@@ -503,7 +507,7 @@ export let
     
             }).catch(async err=>{
     
-                initSpinner.stop()
+                initSpinner?.stop()
 
                 LOG(fs.readFileSync(PATH_RESOLVE('images/events/canaryDied.txt')).toString(),'CD')
     
@@ -606,15 +610,21 @@ export let
             
             for(let i=0,l=tickers.length;i<l;i++){
 
-                let spinner = ora({
-                    color:'red',
-                    prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
-                }).start()
+                let balance
 
+                if(CONFIG.PRELUDE.BALANCE_VIEW){
 
-                let balance=await hostchains.get(symbioteId).get(tickers[i]).getBalance(symbioteId)
+                    let spinner = ora({
+                        color:'red',
+                        prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
+                    }).start()
+    
+                    balance = await hostchains.get(symbioteId).get(tickers[i]).getBalance(symbioteId)
 
-                spinner.stop()
+                    spinner.stop()
+
+                }
+
 
                 LOG(`Balance of controller on hostchain \x1b[32;1m${
                     
@@ -622,7 +632,7 @@ export let
                 
                 }\x1b[36;1m is \x1b[32;1m${
                     
-                    balance
+                    CONFIG.PRELUDE.BALANCE_VIEW?balance:'<disabled>'
                 
                 }   \x1b[36;1m[${symbioteConfig.STOP_PUSH_TO_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
@@ -643,7 +653,8 @@ export let
 
 
             //Ask to approve current set of hostchains
-            
+            !CONFIG.PRELUDE.OPTIMISTIC
+            &&        
             await new Promise(resolve=>
         
                 readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
@@ -720,7 +731,7 @@ let graceful=()=>{
                     
                     new Promise( resolve => stream.close( e => {
 
-                        LOG(`Klyntar logging was stopped for ${SYMBIOTE_ALIAS(symbiote)} ${e?'\n'+e:''}`,'I')
+                        LOG(`Logging was stopped for ${SYMBIOTE_ALIAS(symbiote)} ${e?'\n'+e:''}`,'I')
 
                         resolve()
                     
@@ -734,7 +745,7 @@ let graceful=()=>{
 
             LOG('Server stopped','I')
 
-            UWS.us_listen_socket_close(UWS_DESC)
+            global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
 
 
@@ -827,7 +838,7 @@ global.SIG_PROCESS={}
         
         let animation=chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
     
-        setTimeout(()=>{ animation.stop() ; r() },CONFIG.ANIMATION_DURATION)
+        setTimeout(()=>{ animation.stop() ; r() },CONFIG.PRELUDE.ANIMATION_DURATION)
     
     })
     
@@ -846,7 +857,7 @@ global.SIG_PROCESS={}
     
     
 
-    LOG(`System info \x1b[31m${['node@'+process.version,process.platform].join('\x1b[36m / \x1b[31m')}`,'I')
+    LOG(`System info \x1b[31m${['node@'+process.version,`platform:${process.platform}`,`core:${CONFIG.INFO.CORE_VERSION}`,`role:${CONFIG.ROLE}`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
     
@@ -886,7 +897,7 @@ global.SIG_PROCESS={}
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
 
-    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS_ENABLED?'enabled':'disabled'}`,'CON')
+    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
     
     await CHECK_UPDATES()
 
@@ -919,7 +930,8 @@ global.SIG_PROCESS={}
 
 
 
-
+    !CONFIG.PRELUDE.OPTIMISTIC
+    &&
     await new Promise(resolve=>
         
         readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
@@ -992,7 +1004,7 @@ let CONTROL=(await import('./KLY_Routes/control.js')).default,
 //...And only after that we start routes
 
 
-UWS[CONFIG.TLS_ENABLED?'SSLApp':'App'](CONFIG.TLS_CONFIGS)
+UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
 
 
 

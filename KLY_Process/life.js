@@ -112,7 +112,6 @@ RUN_POLLING=async symbiote=>{
 
     LOG(`Local state collapsed on \x1b[36;1m${symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}`,'S')
 
- 
     START_VERIFY_POLLING(symbiote)
 
 }
@@ -328,6 +327,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         
         let block=new InstantBlock(symbiote,await GET_TXS(symbiote))
 
+        //!DELETE
         //if (block.e.length===0) return//no sense to produce empty blocks
 
         //_____________________________DELELTE________________________________
