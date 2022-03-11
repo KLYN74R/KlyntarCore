@@ -157,7 +157,7 @@ server.listen(
 
 // (async () => {
 
-//   const proxyAgent = new SocksProxyAgent('socks5://Vlad:Cher@127.0.0.1:9150')
+//   const proxyAgent = new SocksProxyAgent('socks5h://Vlad:Cher@127.0.0.1:9150')
   
 //   //console.log(proxyAgent)
 //   //http://rutordeepkpafpudl22pbbhzm4llbgncunvgcc66kax55sc4mp4kxcid.onion
@@ -172,7 +172,7 @@ server.listen(
 
 // import http from 'http'
 
-// const agent = new SocksProxyAgent('socks5://127.0.0.1:9150');
+// const agent = new SocksProxyAgent('socks5h://127.0.0.1:9150');
 
 // http.get('http://apow7mjfryruh65chtdydfmqfpj5btws7nbocgtaovhvezgccyjazpqd.onion/', {
 //   agent

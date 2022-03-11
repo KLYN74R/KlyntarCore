@@ -5,7 +5,7 @@
 
     "TLS":{
 
-        "ENABLED":true,
+        "ENABLED":false,
 
         "CONFIGS":{
 
@@ -18,8 +18,8 @@
     
 
     "PROXY":{
-        "TYPE":"HTTPS",
-        "URL":"https://some.proxy:8080"
+        "TYPE":"HTTP/HTTPS",
+        "URL":"http://LOGIN:PASSWORD@some.proxy:8080"
     },
     
     "TTL":{
@@ -64,9 +64,16 @@
         
         "ENABLE":false,
         
-        "PORT":9150,
+        "URL":"http://localhost:4444"
+    
+    },
+
+
+    "ZERONET":{
         
-        "URL":"socklocalhost"
+        "ENABLE":false,
+        
+        "URL":"http://localhost:4444"
     
     }
     

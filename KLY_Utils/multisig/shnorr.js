@@ -1,4 +1,4 @@
-
+import randomBytes from 'random-bytes'
 
 import schnorr from 'bip-schnorr'
 
@@ -6,14 +6,11 @@ import BigInteger from 'bigi'
 
 
 
-// const Buffer = require('safe-buffer').Buffer; 
+let randomBuffer = len => Buffer.from(randomBytes.sync(len)),
 
-import randomBytes from 'random-bytes'
-
-const randomBuffer = (len) => Buffer.from(randomBytes.sync(len));
-
-const convert = schnorr.convert;
-const muSig = schnorr.muSig;
+    convert = schnorr.convert,
+    
+    muSig = schnorr.muSig
 
 
 // data known to every participant
@@ -189,11 +186,22 @@ let PRV='add2b25e2d356bec3770305391cbc80cab3a40057ad836bcb49ef3eed74a3fee'
 let PAIR = {
 
     publicKey:'199f601609f0be3edae6951edb811637fbdea960b054152df39a4f12f9bd2655',
-    privateKey: 'aee0a1f7afebf9d2a5a80c0c98a31c709681cce195cbcd06342b517970c0be10'
+    privateKey:'aee0a1f7afebf9d2a5a80c0c98a31c709681cce195cbcd06342b517970c0be10'
 
 }
 
   
+
+
+// import secp256k1 from 'bcrypto/lib/secp256k1.js'
+
+
+// const key = secp256k1.privateKeyGenerate();
+// const pub = secp256k1.publicKeyCreate(key, true);
+
+
+// console.log('Private ',key)
+// console.log('Public ',pub)
 
 
 let q=schnorr.sign(PAIR.privateKey,Buffer.from('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','hex'))

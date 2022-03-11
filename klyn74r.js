@@ -16,6 +16,8 @@ import l from 'level'
 
 import fs from 'fs'
 
+import os from 'os'
+
 
 
 
@@ -857,7 +859,8 @@ global.SIG_PROCESS={}
     
     
 
-    LOG(`System info \x1b[31m${['node@'+process.version,`platform:${process.platform}`,`core:${CONFIG.INFO.CORE_VERSION}`,`role:${CONFIG.ROLE}`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
+    
+    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${os.cpus().length}`,`core:${CONFIG.INFO.CORE_VERSION}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
     

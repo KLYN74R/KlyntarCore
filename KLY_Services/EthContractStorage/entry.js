@@ -8,7 +8,7 @@ import {LOG} from '../CommonResources/utils.js'
 LOG('Dummy example of ETH storage service','CD')
 
 
-
+//For example-use SLED or other DBs
 exec(PATH_RESOLVE(`KLY_Services/EthContractStorage/storage`), (err, stdout, stderr) => {
     
     //Node couldn"t execute the command  

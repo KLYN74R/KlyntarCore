@@ -51,7 +51,7 @@
         "CONTACT":"@:node@example.com,tg:@someuser,inst:@user",
         
         "OVERRIDED_ROUTES":{
-            "DEFAULT":"info=>anotherdomain.io",
+            "DEFAULT":"info=>anotherdomain.io,con=>localhost:7999",
             "kNULL":"cblock=>feed::babe:9999"
         },
         
@@ -64,6 +64,30 @@
 
     "RUN_CUSTOM":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev/wss.js"],
 
-    "UPDATES":"https://updates.klyntar.org/core"
+    "UPDATES":"https://updates.klyntar.org/core",
+
+
+    "REGISTRIES":{
+
+        "NODE.JS":[
+            
+            "https://localhost:4873"
+        
+        ],
+        "PYTHON":[
+
+
+        ],
+        "RUST":[
+
+
+        ],
+        "DOCKER":[
+            
+            "https://localhost:5000"
+            
+        ]
+
+    }
 
 }

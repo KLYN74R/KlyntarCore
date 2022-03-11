@@ -35,7 +35,8 @@ CIIPs
 *.wasm
 *.key
 *.pem
-
+*.dll
+*.so
 
 
 
