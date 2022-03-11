@@ -1,3 +1,18 @@
+/*
+
+
+
+
+
+
+                Links:
+
+https://github.com/LoCCS/bliss/search?q=entropy
+https://github.com/LoCCS/bliss
+
+
+*/
+
 package main
 
 import (
@@ -8,12 +23,14 @@ import (
 
         "encoding/hex"
 
+        "math/rand"
+
         "strconv"
 
+        "time"
+
         "C"
-
 )
-
 
 
 
@@ -21,21 +38,20 @@ import (
 //export generate
 func generate() *C.char {
 
-    seed := make([]byte,sampler.SHA_512_DIGEST_LENGTH)
+    rand.Seed(time.Now().UnixNano());
 
-    for i := 0; i < len(seed); i++ {
-            seed[i] = byte(i % 8)
-    }
-    
-	entropy, _ := sampler.NewEntropy(seed);
-    
-	prv, _ := bliss.GeneratePrivateKey(0,entropy);
-    
-	pub := prv.PublicKey();
-	
+    seed := make([]byte,sampler.SHA_512_DIGEST_LENGTH);
+
+    rand.Read(seed);
+
+    entropy, _ := sampler.NewEntropy(seed);
+
+    prv, _ := bliss.GeneratePrivateKey(0,entropy);
+
+    pub := prv.PublicKey();
 
 
-	return C.CString(hex.EncodeToString(pub.Encode())+":"+hex.EncodeToString(seed))
+    return C.CString(hex.EncodeToString(pub.Encode())+":"+hex.EncodeToString(seed))
 
 }
 
@@ -46,7 +62,7 @@ func generate() *C.char {
 func sign(message *C.char,seedStr *C.char) *C.char{
 
 
-	//Decode msg an seed => entropy => privateKey
+    //Decode msg an seed => entropy => privateKey
     msg := []byte(C.GoString(message));
 
     sid,_:=hex.DecodeString(C.GoString(seedStr));
@@ -58,8 +74,8 @@ func sign(message *C.char,seedStr *C.char) *C.char{
     key, _ := bliss.GeneratePrivateKey(0, entropy);
 
 
-	//Gen signature
-	sig, _ := key.Sign(msg,entropy);
+    //Gen signature
+    sig, _ := key.Sign(msg,entropy);
 
     return C.CString(hex.EncodeToString(sig.Encode()))
 
@@ -71,7 +87,7 @@ func sign(message *C.char,seedStr *C.char) *C.char{
 //export verify
 func verify(message *C.char,pubKey *C.char,sig *C.char) *C.char {
 
-	//Decode msg an publicKey
+    //Decode msg an publicKey
     msg := []byte(C.GoString(message));
 
     pk,_:=hex.DecodeString(C.GoString(pubKey));
@@ -79,18 +95,15 @@ func verify(message *C.char,pubKey *C.char,sig *C.char) *C.char {
     publicKey, _:=bliss.DecodePublicKey(pk);
 
 
-	//Decode signature
+    //Decode signature
     sg,_:=hex.DecodeString(C.GoString(sig));
 
     signature, _:=bliss.DecodeSignature(sg);
 
-    
-	//verification itself	
-	_, err := publicKey.Verify(msg,signature);
 
-	return C.CString(strconv.FormatBool(err == nil))
+    //Verification itself
+    _, err := publicKey.Verify(msg,signature);
+
+    return C.CString(strconv.FormatBool(err == nil))
 
 }
-
-
-func main() {}
