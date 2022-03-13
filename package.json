@@ -83,7 +83,7 @@
     "stellar-sdk": "^9.0.1",
     "tiny-secp256k1": "^2.1.1",
     "tronweb": "^4.0.0",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v19.2.0",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.3.0",
     "web3": "^1.4.0"
   },
   "devDependencies": {

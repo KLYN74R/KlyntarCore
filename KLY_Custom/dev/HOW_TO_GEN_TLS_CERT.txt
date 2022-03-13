@@ -1,0 +1,6 @@
+                                        Run in your terminal
+
+
+//Simplest way
+//This generates self signed TLS key and cert
+openssl req -x509 -newkey rsa:4096 -nodes -sha256 -subj '/CN=localhost' -keyout rsa4096-key.pem -out rsa4096-cert.pem

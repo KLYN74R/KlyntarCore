@@ -103,25 +103,6 @@ server.listen(
 );
 
 
-// var options = {
-//     key: fs.readFileSync('security/cert.key'),
-//     cert: fs.readFileSync('security/cert.pem'),
-//     ca: fs.readFileSync("security/cert.pem")
-//   //   rejectUnauthorized: false
-//   };
-
-// https.createServer(options,server).listen(
-//         {
-//             host: "0.0.0.0",
-//             port: 8080,
-//         },
-//         () => {
-//             console.log("Server listening on 0.0.0.0:8080");
-//         }
-//     );
-    
-
-
 
 
 //__________________________________________________________________________ CONNECT _________________________________________________________________________
