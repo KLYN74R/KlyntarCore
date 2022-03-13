@@ -2,7 +2,7 @@ import http2 from 'http2'
 import fs from 'fs'
 
 
-const client = http2.connect('https://localhost:8443', {
+const client = http2.connect('https://localhost:7979', {
 
     //To use self signed TLS certificates
     ca: fs.readFileSync('KLY_Custom/dev/security/rsa4096-cert.pem'),

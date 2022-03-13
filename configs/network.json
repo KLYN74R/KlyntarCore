@@ -1,6 +1,6 @@
 {
 
-    "INTERFACE":"0.0.0.0",
+    "INTERFACE":"::",
     "PORT":7777,
 
     "TLS":{
@@ -38,19 +38,7 @@
     
     },
 
-    "WSS":{
-        
-        "ENABLE":true,
-        
-        "PORT":9999,
-        
-        "HOST":"0.0.0.0",
-        
-        "MAX_PAYLOAD_SIZE":16777216
     
-    },
-
-  
     "TOR":{
         
         "ENABLE":true,

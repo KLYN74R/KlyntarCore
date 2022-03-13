@@ -1,3 +1,5 @@
+//https://github.com/theturtle32/WebSocket-Node
+
 import WS from 'websocket'
 import fs from 'fs'
 
@@ -13,7 +15,7 @@ var client = new WebSocketClient({
         //With TLS
         ca:fs.readFileSync('KLY_Custom/dev/security/rsa4096-cert.pem'),
 
-            //For mTLS
+        //For mTLS
         key:fs.readFileSync('KLY_Custom/dev/security/localkey.pem'),
         cert:fs.readFileSync('KLY_Custom/dev/security/localcert.pem')
     
