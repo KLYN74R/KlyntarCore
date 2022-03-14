@@ -1,3 +1,5 @@
+#https://misc.flogisoft.com/bash/tip_colors_and_formatting
+
 #!/bin/bash
 
 echo -e "\e[42mBuilding addons process started\e[49m"
