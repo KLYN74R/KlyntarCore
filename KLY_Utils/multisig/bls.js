@@ -88,21 +88,49 @@ const publicKeys = privateKeys.map(bls.getPublicKey);
 // ================================================ M/N signatures ======================================================
 
 //Imagine that we have one pubkey created by 3 different actors(A,B,C)
-const aggPubMax = bls.aggregatePublicKeys(publicKeys);
-console.log('Max aggregation(3/3)',aggPubMax)
+// const aggPubMax = bls.aggregatePublicKeys(publicKeys);
+// console.log('Max aggregation(3/3)',Base58.encode(aggPubMax))
 
 
-const _2_3Pub = bls.aggregatePublicKeys(publicKeys.slice(2));
-console.log('M/N aggregation(2/3)',aggPubMax);
 
-//const signatures2 = await Promise.all(privateKeys.map(p=>bls.sign(message,p)));
+// //But we want to make 2/3 payment
+// const _2_3Pub = bls.aggregatePublicKeys(publicKeys.slice(1));
+// console.log('M/N aggregation(2/3)',Base58.encode(_2_3Pub));
 
-//signatures2.splice(2)
 
-//const aggPubKey2 = bls.aggregatePublicKeys(publicKeys);
+// //Generate common 2/3 signature
+// const signatures_2_3 = bls.aggregateSignatures(await Promise.all(privateKeys.slice(1).map(p=>bls.sign(message,p))));
 
-//const aggSignature2 = bls.aggregateSignatures(signatures2);
+// console.log('M/N aggregation(2/3) signa',signatures_2_3);
 
-//const isValid2 = await bls.verify(aggSignature2,message,aggPubKey2);
 
-//console.log({ aggPubKey2:Base58.encode(aggPubKey2), aggSignature2, isValid2 });
+
+// //Send array of pubkeys of initial N keys + array of current M signers + aggregated signature
+
+// const isValid2 = await bls.verify(signatures_2_3,message,_2_3Pub);
+
+// console.log('Is valid ',isValid2)
+
+
+
+// ================================================ Aggregation order ======================================================
+
+const ord0 = bls.aggregatePublicKeys(publicKeys);
+
+console.log('Order 0',Base58.encode(ord0))
+
+
+
+const privateKeysOrder1 = [
+    '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+    '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5',
+    'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c'
+]
+ 
+const publicKeysOrder1 = privateKeysOrder1.map(bls.getPublicKey);
+
+
+const ord1 = bls.aggregatePublicKeys(publicKeysOrder1);
+
+console.log('Order 1',Base58.encode(ord1))
+
