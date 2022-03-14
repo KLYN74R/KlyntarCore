@@ -107,3 +107,6 @@ func verify(message *C.char,pubKey *C.char,sig *C.char) *C.char {
     return C.CString(strconv.FormatBool(err == nil))
 
 }
+
+
+func main(){}
