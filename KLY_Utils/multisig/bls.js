@@ -6,16 +6,19 @@ import Base58 from 'base-58'
 
 // =========================== Default data ===========================
 
-const message = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-const messages = ['d2', '0d98', '05caf3'];
+// const message = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+// const messages = ['d2', '0d98', '05caf3'];
 
-const privateKeys = [
-    '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
-    'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
-    '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
-]
+
+
+// const privateKeys = [
+//     '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+//     'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
+//     '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
+// ]
  
-const publicKeys = privateKeys.map(bls.getPublicKey);
+// const publicKeys = privateKeys.map(bls.getPublicKey);
+
 
 
 
@@ -117,9 +120,7 @@ const publicKeys = privateKeys.map(bls.getPublicKey);
 
 const ord0 = bls.aggregatePublicKeys(publicKeys);
 
-console.log('Order 0',Base58.encode(ord0))
-
-
+// console.log('Order 0',Base58.encode(ord0))
 
 const privateKeysOrder1 = [
     '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
@@ -132,5 +133,76 @@ const publicKeysOrder1 = privateKeysOrder1.map(bls.getPublicKey);
 
 const ord1 = bls.aggregatePublicKeys(publicKeysOrder1);
 
-console.log('Order 1',Base58.encode(ord1))
+// console.log('Order 1',Base58.encode(ord1))
 
+
+
+// ================================================ EXPORT section ======================================================
+
+import crypto from 'crypto'
+
+
+
+export default {
+
+    generatePrivateKey:()=>new Promise((resolve,reject)=>
+        
+        crypto.randomBytes(32,(e,buf)=>
+
+            e ? reject(e) : resolve(buf.toString('hex'))
+
+        )
+
+    ),
+
+    derivePubKey:privateKey=>Base58.encode(bls.getPublicKey(Buffer.from(privateKey,'hex'))),
+    
+    //async
+    singleSig:(msg,privateKey)=>bls.sign(
+        
+        Buffer.from(msg,'utf-8').toString('hex'),Buffer.from(privateKey,'hex')
+        
+        
+        
+    ).then(b=>Buffer.from(b,'utf-8').toString('base64')),
+
+    
+    singleVerify:(msg,pubKey,data)=>bls.verify(Buffer.from(data,'base64'),Buffer.from(msg,'utf-8').toString('hex'),Base58.decode(pubKey)),
+
+
+// const signatures2 = await Promise.all(privateKeys.map(p=>bls.sign(message,p)));
+// const aggPubKey2 = bls.aggregatePublicKeys(publicKeys);
+// const aggSignature2 = bls.aggregateSignatures(signatures2);
+// const isValid2 = await bls.verify(aggSignature2, message, aggPubKey2);
+
+// console.log({ aggPubKey2:Base58.encode(aggPubKey2), aggSignature2, isValid2 });
+
+
+    generate_N_N_signature:(pubKeys,data)=>{
+
+        
+
+    },
+
+    generate_M_N_signature:(pubKeys,data)=>{
+
+        
+
+    },
+
+
+    verify_N_N_signature:(pubKeys,data,aggregatedSigna)=>{
+
+        
+
+    },
+
+
+    verify_M_N_signature:(pubKeysObj,data,aggregatedSigna)=>{
+
+        
+
+    },
+
+
+}

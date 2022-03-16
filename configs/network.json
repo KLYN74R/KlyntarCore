@@ -63,6 +63,14 @@
         
         "URL":"http://localhost:4444"
     
+    },
+
+    "IPFS":{
+        
+        "ENABLE":false,
+        
+        "URL":"http://localhost:4333"
+    
     }
     
 }
