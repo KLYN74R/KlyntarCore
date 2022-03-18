@@ -1,19 +1,19 @@
 {
    "targets":[
         {
-           "target_name": "CRYSTAL",
-           "sources": ["crystal.cc"],
+           "target_name": "DILITHIUM",
+           "sources": ["dilithium.cc"],
 
             "conditions":[
                 ["OS=='linux'", {
-                    "libraries": [ "<!(pwd)/crystal.so" ]
+                    "libraries": [ "<!(pwd)/dilithium.so" ]
                 }],
             
                 ["OS=='mac'", {
-                    "libraries": [ "<!(pwd)/crystal.so" ]
+                    "libraries": [ "<!(pwd)/dilithium.so" ]
                 }],
                 ["OS=='win'", {
-                    "libraries": [ "<!(pwd)/crystal.dll" ]
+                    "libraries": [ "<!(pwd)/dilithium.dll" ]
                 }]
           
             ], 
