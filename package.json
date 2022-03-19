@@ -68,6 +68,7 @@
     "level": "^7.0.0",
     "litecore-lib": "^0.13.22",
     "node-fetch": "^3.2.2",
+    "node-seal": "^4.6.4",
     "ntru": "^3.2.2",
     "ora": "^6.0.1",
     "qtumcore-lib": "^0.0.1",

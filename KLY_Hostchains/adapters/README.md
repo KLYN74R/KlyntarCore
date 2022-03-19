@@ -13,7 +13,7 @@
 </span>
 
 There are also some examples.</br>
-You can use adapters as middleware between source and <b>KLYNTAR</b> node to perform some custom logic and modify data to appropriate formats for connectors.</br>
+You can use adapters as middleware between the source and <b>KLYNTAR</b> infrastructure(node,cluster,conveyor,etc.) to perform some custom logic and modify data to appropriate formats for connectors.</br>
 To prevent misunderstandings create directory for your another adapter with the same name as connector</br>
 
 For example, if you have your own versions of connectors for Solana,XRP and RSK in directory <b>KLY_Hostchains/connectors/custom_MY_OWN_COLLECTION</b>,then you</br>
@@ -32,7 +32,7 @@ KLY_Hostchains
 │   │   
 │   │   README.md
 │   │   
-│   └───custom_MY_OWN_COLLECTION(kind of root directory for such pack)
+│   └───custom_MY_OWN_COLLECTION(kind of root directory for this pack)
 │   │    │   
 │   │    │───Solana(all files together)
 │   │    │   └───configs.json
@@ -43,13 +43,13 @@ KLY_Hostchains
 │   │    │───XRP   
 │   │    │   └───listener.rs(use different languages)
 │   │    │   └───bot.js
-│   │    │   └───Configs.toml
+│   │    │   └───Cargo.toml
 │   │    │   └───...
 │   │    │ 
 │   │    │───RSK
 │   │         └───...
 │   │
-│   └───dev0(developers examples of adapters)
+│   └───dev0(developers' examples of adapters)
 │        └───...
 │
 └───connectors

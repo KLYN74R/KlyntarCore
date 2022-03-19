@@ -1,10 +1,6 @@
 /*
 
 
-
-
-
-
                 Links:
 
 https://github.com/LoCCS/bliss/search?q=entropy
@@ -35,8 +31,8 @@ import (
 
 
 
-//export generate
-func generate() *C.char {
+//export genBLISS
+func genBLISS() *C.char {
 
     rand.Seed(time.Now().UnixNano());
 
@@ -58,8 +54,8 @@ func generate() *C.char {
 
 
 
-//export sign
-func sign(message *C.char,seedStr *C.char) *C.char{
+//export signBLISS
+func signBLISS(message *C.char,seedStr *C.char) *C.char{
 
 
     //Decode msg an seed => entropy => privateKey
@@ -84,8 +80,8 @@ func sign(message *C.char,seedStr *C.char) *C.char{
 
 
 
-//export verify
-func verify(message *C.char,pubKey *C.char,sig *C.char) *C.char {
+//export verifyBLISS
+func verifyBLISS(message *C.char,pubKey *C.char,sig *C.char) *C.char {
 
     //Decode msg an publicKey
     msg := []byte(C.GoString(message));

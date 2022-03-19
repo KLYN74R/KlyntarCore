@@ -19,8 +19,8 @@ var modename string = "Dilithium2"; // Dilithium2-AES Dilithium3 Dilithium3-AES 
 var mode = dilithium.ModeByName(modename);
 
 
-//export generate
-func generate() *C.char {
+//export genDIL
+func genDIL() *C.char {
 
 	pk, sk, _ := mode.GenerateKey(nil);
 
@@ -29,8 +29,8 @@ func generate() *C.char {
 }
 
 
-//export sign
-func sign(message *C.char,privKey *C.char) *C.char{
+//export signDIL
+func signDIL(message *C.char,privKey *C.char) *C.char{
         
         privateKey, _:=hex.DecodeString(C.GoString(privKey));
 
@@ -41,8 +41,8 @@ func sign(message *C.char,privKey *C.char) *C.char{
 }
 
 
-//export verify
-func verify(message *C.char,pubKey *C.char,sig *C.char) *C.char {
+//export verifyDIL
+func verifyDIL(message *C.char,pubKey *C.char,sig *C.char) *C.char {
 
 	msg := []byte(C.GoString(message));
 
