@@ -1,49 +1,119 @@
 package main
 
 import (
-    "bytes"
-    "crypto/rand"
-    "fmt"
-    "github.com/cloudflare/circl/dh/sidh"
+	
+	"github.com/cloudflare/circl/dh/sidh"
+    
+	"encoding/hex"
+
+	"crypto/rand"
+
+	"C"
 
 )
 
-func main() {
 
 
+//export genSIKE
+func genSIKE() *C.char{
+	
+    prv := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
+    pub := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
 
-    prvA := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
-    pubA := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+    prv.Generate(rand.Reader)
+    prv.GeneratePublicKey(pub)
 
-    prvB := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
-    pubB := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+	prvKeyBytes := make([]byte,prv.Size())
+	pubKeyBytes := make([]byte,pub.Size())
 
-    prvA.Generate(rand.Reader)
-    prvA.GeneratePublicKey(pubA)
+	prv.Export(prvKeyBytes)
+	pub.Export(pubKeyBytes)
 
-    prvB.Generate(rand.Reader)
-    prvB.GeneratePublicKey(pubB)
-
-    fmt.Printf("Alice private: %x\nAlice public: %x\n", *prvA, *pubA)
-    fmt.Printf("Bob private: %x\nBob public: %x\n", *prvB, *pubB)
-
-
-    var kem = sidh.NewSike503(rand.Reader)
-
-    ct := make([]byte, kem.CiphertextSize())
-    ssE := make([]byte, kem.SharedSecretSize())
-    ssD := make([]byte, kem.SharedSecretSize())
-
-    kem.Encapsulate(ct, ssE, pubB)
-
-    kem.Decapsulate(ssD, prvB, pubB, ct)
-    fmt.Printf("%t\n", bytes.Equal(ssE, ssD))
-
-
-    kem.Encapsulate(ct, ssE, pubA)
-    kem.Decapsulate(ssD, prvA, pubA, ct)
-
-
-    fmt.Printf("\nAlice shared: %x\nBob shared: %x \nEqual: %t\n", ssE,ssD,bytes.Equal(ssE, ssD))
+	return C.CString(hex.EncodeToString(pubKeyBytes)+":"+hex.EncodeToString(prvKeyBytes))	
 
 }
+
+
+
+
+//export encSIKE
+func encSIKE(friendPubHex *C.char,myPrivateHex *C.char)*C.char{
+
+	//________________ IMPORT MY CREDENTIALS _____________________
+
+	myPrv := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
+    myPub := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+
+	//Prepare buffer to import private key
+	prvKeyBytes,_:=hex.DecodeString(C.GoString(myPrivateHex))
+
+	myPrv.Import(prvKeyBytes)
+	myPrv.GeneratePublicKey(myPub)
+
+	//______________ RECOVER FRIEND'S PUBKEY ____________________
+
+    friendPub := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+
+	friendPubKeyBytes,_:=hex.DecodeString(C.GoString(friendPubHex))
+
+	friendPub.Import(friendPubKeyBytes)
+
+
+	//_________ PREPARATION TO GET COMMON SECRET ________________
+
+	// Initialize internal KEM structures
+	var kem = sidh.NewSike503(rand.Reader)
+
+	//Prepare empty buffers
+    cipherText := make([]byte, kem.CiphertextSize())
+    secret := make([]byte, kem.SharedSecretSize())
+
+
+    kem.Encapsulate(cipherText,secret,friendPub)
+
+	return C.CString(hex.EncodeToString(secret)+":"+hex.EncodeToString(cipherText))
+
+}
+
+
+
+//export decSIKE
+func decSIKE(friendPubHex *C.char,myPrivateHex *C.char,cipherTextHex *C.char)*C.char{
+
+	//________________ IMPORT MY CREDENTIALS _____________________
+
+	myPrv := sidh.NewPrivateKey(sidh.Fp503, sidh.KeyVariantSike)
+    myPub := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+
+	//Prepare buffer to import private key
+	prvKeyBytes,_:=hex.DecodeString(C.GoString(myPrivateHex))
+
+	myPrv.Import(prvKeyBytes)
+	myPrv.GeneratePublicKey(myPub)
+
+	//______________ RECOVER FRIEND'S PUBKEY ____________________
+
+    friendPub := sidh.NewPublicKey(sidh.Fp503, sidh.KeyVariantSike)
+
+	friendPubKeyBytes,_:=hex.DecodeString(C.GoString(friendPubHex))
+
+	friendPub.Import(friendPubKeyBytes)
+
+
+	//_________ PREPARATION TO GET COMMON SECRET ________________
+
+	// Initialize internal KEM structures
+	var kem = sidh.NewSike503(rand.Reader)
+
+	//Prepare empty buffers
+    cipherText,_:=hex.DecodeString(C.GoString(cipherTextHex))
+
+    secret := make([]byte, kem.SharedSecretSize())
+
+    kem.Decapsulate(secret,myPrv,myPub,cipherText)
+
+	return C.CString(hex.EncodeToString(secret))
+
+}
+
+func main() {}

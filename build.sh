@@ -7,7 +7,7 @@
 #           Install all dependencies              #
 ###################################################
 
-cd KLY_Addons
+cd BUNDLE
 
 echo -e "\e[43mFetching dependencies ...\e[49m"
 
@@ -17,7 +17,7 @@ echo -e "\e[42mBuilding addons process started\e[49m"
 
 
 ###################################################
-#      Build dll/so for PQC signature schemes     #
+#          Build dll/so for PQC schemes           #
 ###################################################
 
 
@@ -37,4 +37,10 @@ go build -buildmode=c-shared -o bliss.so bliss.go
 
 node-gyp configure build
 
-cat banner.txt
+if [ $? -eq 0 ]; then
+     cat success.txt
+else
+     cat fail.txt
+fi
+
+cd ..

@@ -410,6 +410,71 @@ void get_CSIDH(const FunctionCallbackInfo<Value>& args){
 
 }
 
+
+//_______________________________________________________SIKE_______________________________________________________
+
+
+void gen_SIKE(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+    
+    char* result = genSIKE();
+  
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+  
+}
+
+
+
+void enc_SIKE(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+    
+    String::Utf8Value friendPubHex(isolate,args[0]);
+
+    String::Utf8Value myPrivHex(isolate,args[1]);
+
+
+    
+    char * friendPub = const_cast<char *>(ToCString(friendPubHex));
+
+    char * myPriv = const_cast<char *>(ToCString(myPrivHex));
+
+
+
+    char* result = encSIKE(friendPub,myPriv);
+    
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+void dec_SIKE(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+    
+    String::Utf8Value friendPubHex(isolate,args[0]);
+
+    String::Utf8Value myPrivHex(isolate,args[1]);
+
+    String::Utf8Value cipherHex(isolate,args[1]);
+
+    
+    char * friendPub = const_cast<char *>(ToCString(friendPubHex));
+
+    char * myPriv = const_cast<char *>(ToCString(myPrivHex));
+
+    char * cipherText = const_cast<char *>(ToCString(cipherHex));
+
+
+
+    char* result = decSIKE(friendPub,myPriv,cipherText);
+    
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+
 /*
 ██ ███    ██ ██ ████████ 
 ██ ████   ██ ██    ██    
@@ -451,6 +516,16 @@ void Initialize(Local<Object> exports){
   NODE_SET_METHOD(exports,"gen_CSIDH",gen_CSIDH);
   
   NODE_SET_METHOD(exports,"get_CSIDH",gen_CSIDH);
+
+
+    
+  //SIKE
+  NODE_SET_METHOD(exports,"gen_SIKE",gen_SIKE);
+
+  NODE_SET_METHOD(exports,"enc_SIKE",enc_SIKE);
+
+  NODE_SET_METHOD(exports,"dec_SIKE",dec_SIKE);
+
 
 }
 
