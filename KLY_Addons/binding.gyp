@@ -15,8 +15,7 @@
                         "<!(pwd)/sidh.so",
                         "<!(pwd)/sike.so",
                         "<!(pwd)/csidh.so",
-                        "<!(pwd)/bliss.so",
-                        "<!(pwd)/sss.so"
+                        "<!(pwd)/bliss.so"
                         
                     ]
 
@@ -31,8 +30,7 @@
                         "<!(pwd)/sidh.so",
                         "<!(pwd)/sike.so",
                         "<!(pwd)/csidh.so",
-                        "<!(pwd)/bliss.so",
-                        "<!(pwd)/sss.so"
+                        "<!(pwd)/bliss.so"
                         
                     ]
 
@@ -45,7 +43,6 @@
                         '<!(pwd)/sike.dll',
                         '<!(pwd)/csidh.dll',
                         '<!(pwd)/bliss.dll',
-                        '<!(pwd)/sss.dll'
                     ]
 
                 }]

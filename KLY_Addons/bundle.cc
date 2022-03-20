@@ -78,7 +78,7 @@ Developed by @Vlad@ Chernenko
 #include "sha256.h"
 
 //Secret share functions
-#include "sss.h"
+//#include "sss.h"
 
 
 
@@ -474,6 +474,56 @@ void dec_SIKE(const FunctionCallbackInfo<Value>& args){
 }
 
 
+//_______________________________________________________SIDH_______________________________________________________
+
+
+void gen_SIDH(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+
+    String::Utf8Value keyType(isolate,args[0]);
+
+    char * keyTyp = const_cast<char *>(ToCString(keyType));
+
+
+
+    char* result = genSIDH(keyTyp);
+
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+
+void get_SIDH(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+
+    String::Utf8Value myKeyType(isolate,args[0]);
+
+    String::Utf8Value friendPubHex(isolate,args[1]);
+
+    String::Utf8Value myPrivHex(isolate,args[2]);
+
+
+    char * keyTyp = const_cast<char *>(ToCString(myKeyType));
+
+    char * friendPub = const_cast<char *>(ToCString(friendPubHex));
+
+    char * myPriv = const_cast<char *>(ToCString(myPrivHex));
+
+
+
+    char* result = getSIDH(keyTyp,friendPub,myPriv);
+
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+
+
+
 
 /*
 ██ ███    ██ ██ ████████ 
@@ -525,6 +575,12 @@ void Initialize(Local<Object> exports){
   NODE_SET_METHOD(exports,"enc_SIKE",enc_SIKE);
 
   NODE_SET_METHOD(exports,"dec_SIKE",dec_SIKE);
+
+
+  //SIDH
+  NODE_SET_METHOD(exports,"gen_SIDH",gen_SIDH);
+
+  NODE_SET_METHOD(exports,"get_SIDH",get_SIDH);
 
 
 }
