@@ -7,7 +7,7 @@
 #           Install all dependencies              #
 ###################################################
 
-cd BUNDLE
+cd KLY_Addons
 
 echo -e "\e[43mFetching dependencies ...\e[49m"
 
@@ -21,14 +21,17 @@ echo -e "\e[42mBuilding addons process started\e[49m"
 ###################################################
 
 
+go build -buildmode=c-shared -o dilithium.so dilithium.go
+
 go build -buildmode=c-shared -o csidh.so csidh.go
 
 go build -buildmode=c-shared -o kyber.so kyber.go
 
-go build -buildmode=c-shared -o dilithium.so dilithium.go
-
 go build -buildmode=c-shared -o bliss.so bliss.go
 
+go build --buildmode c-shared -o sike.so sike.go
+
+go build --buildmode=c-shared -o sidh.so sidh.go
 
 
 #################################

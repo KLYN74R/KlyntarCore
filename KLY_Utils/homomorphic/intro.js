@@ -86,7 +86,7 @@ const operand0 = Int32Array.from([1, -10, 3, 4, 5,99,64064])
 
 const operand1 = Int32Array.from([10, 7, -3, 24, 1005,777,122])
 
-
+let anotherOp=Int32Array.from([3, 3, -3, 7, 7,3,7])
 
 
 //Encode the Array
@@ -96,13 +96,17 @@ const encodedOperand1 = encoder.encode(operand1)
 
 console.log('Plain ',encodedOperand0)
 
-
+const encodedOperandAnother = encoder.encode(anotherOp)
 
 
 // Encrypt the PlainText
 const cipherText0 = encryptor.encrypt(encodedOperand0)
 
 const cipherText1 = encryptor.encrypt(encodedOperand1)
+
+const anotherCipher = encryptor.encrypt(encodedOperandAnother)
+
+
 
 let cipherString=cipherText0.saveArray()
 
@@ -116,6 +120,8 @@ console.log('Cipher ',cipherString)
 //evaluator.add(cipherText0,cipherText1,cipherText0) // Op (A), Op (B), Op (Dest)
 
 evaluator.sub(cipherText0,cipherText1,cipherText0)
+
+evaluator.sub(cipherText0,anotherCipher,cipherText0)
 
 
 

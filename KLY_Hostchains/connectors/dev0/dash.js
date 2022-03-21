@@ -147,7 +147,6 @@ export default {
             .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
 
             .sign(PRV)// Sign transaction with your private key
-            
 
             
         return fetch(URL,{method:'POST',body:JSON.stringify({
