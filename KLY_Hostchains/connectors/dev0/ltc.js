@@ -43,7 +43,7 @@
 
 import {LOG} from '../../../KLY_Utils/utils.js'
 
-import bitlite from 'litecore-lib'
+import bitlite from 'litecore-lib-v5'//'litecore-lib'
 
 import fetch from 'node-fetch'
 

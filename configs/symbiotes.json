@@ -154,8 +154,8 @@
 
             "STOP_VERIFY":false,
 
-            "C_BLOCK_GENERATION_TIME":30000,
-            "I_BLOCK_GENERATION_TIME":10000,
+            "C_BLOCK_GENERATION_TIME":10000,
+            "I_BLOCK_GENERATION_TIME":5000,
             
             "STORE_INSTANT_BLOCKS":true,
             "STORE_CONTROLLER_BLOCKS":true,

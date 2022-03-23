@@ -1,16 +1,13 @@
-import {LOG} from '../../../KLY_Utils/utils.js'
-
-import {Transaction} from 'ethereumjs-tx'
-
-import Common from 'ethereumjs-common'
-
 import pkg from '@ethereumjs/tx'
 
+const {FeeMarketEIP1559Transaction,Transaction} = pkg
+
+
+import {LOG} from '../../../KLY_Utils/utils.js'
+
+import Common from '@ethereumjs/common'
+
 import Web3 from 'web3'
-
-const {FeeMarketEIP1559Transaction} = pkg
-
-
 
 
 export default class {
@@ -39,7 +36,7 @@ export default class {
             
             this.MAX_PRIORITY_FEE_PER_GAS=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS[ticker].MAX_PRIORITY_FEE_PER_GAS
 
-        }else this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID},HARDFORK)
+        }else this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK},HARDFORK)
         
     }
 
@@ -76,6 +73,7 @@ export default class {
 
                 // Build a transaction
                 const rawTx = {
+                    "from"                  :   this.PUB,
                     "to"                    :   this.TO,
                     "gasLimit"              :   web3Utils.toHex(this.GAS_LIMIT),
                     "maxFeePerGas"          :   web3Utils.toHex(web3Utils.toWei( this.MAX_FEE_PER_GAS , 'gwei' ) ),
@@ -98,6 +96,7 @@ export default class {
 
                 let txObject = {
             
+                    from:this.PUB,
                     nonce: this.web3.utils.toHex(txCount),
                     to: this.TO,
                     value: this.web3.utils.toHex(this.web3.utils.toWei(this.AMOUNT, 'ether')),
@@ -109,7 +108,8 @@ export default class {
             
                 }
         
-        
+                console.log('This common is ',this.COMMON)
+
                 tx = new Transaction(txObject,{common:this.COMMON})
         
                 //Sign the transaction

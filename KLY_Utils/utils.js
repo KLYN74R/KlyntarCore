@@ -1,6 +1,6 @@
-import {symbiotes,hostchains} from '../klyn74r.js'
+//import VALAR from '@klyntar/valardohaeris/algorand/vd.js'
 
-//import VALAR from '@klyntar/valardohaeris'
+import {symbiotes,hostchains} from '../klyn74r.js'
 
 import {hash} from 'blake3-wasm'
 

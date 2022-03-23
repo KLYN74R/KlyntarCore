@@ -66,6 +66,7 @@
 
     "UPDATES":"https://updates.klyntar.org/core",
 
+    "THREADS":12,
 
     "REGISTRIES":{
 

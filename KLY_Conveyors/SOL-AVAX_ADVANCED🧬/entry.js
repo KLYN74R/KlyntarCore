@@ -1,6 +1,6 @@
 let COLORS = {
     
-    CD:`\u001b[38;5;50m`,//Canary died
+    CD:`\u001b[38;5;50m`
    
 },
 
