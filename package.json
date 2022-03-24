@@ -5,9 +5,10 @@
   "main": "klyn74r.js",
   "type": "module",
   "scripts": {
-    "INIT": "npm ci --only=production && node klyn74r.js",
-    "BUILD": "cd ./KLY_Addons && node-gyp configure build",
-    "test": "node tr.js"
+    "init": "npm ci --only=production && node klyn74r.js",
+    "build": "cd ./KLY_Addons && node-gyp configure build",
+    "test": "node tr.js",
+    "postinstall":"node ./npm_scripts/script.js"
   },
   "bin": {
     "klyntar": "klyn74r.js"
