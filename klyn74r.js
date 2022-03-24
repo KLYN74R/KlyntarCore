@@ -879,7 +879,7 @@ global.SIG_PROCESS={}
 
     
     //.forEach has inner scope,but we need await on top frame level
-    for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_CHAIN  &&  await PREPARE_SYMBIOTE(controllers[i])
+    for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_WORK  &&  await PREPARE_SYMBIOTE(controllers[i])
     
 
 
