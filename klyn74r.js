@@ -948,6 +948,7 @@ global.SIG_PROCESS={}
     //To load them one by one,use top level await,so we need "for...of"
     for(let scriptPath of CONFIG.RUN_CUSTOM){
 
+        //Tag:ExecMap
         await import(`./KLY_Custom/${scriptPath}`).catch(
             
             e => LOG(`Some error has been occured in process of module \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
@@ -959,6 +960,7 @@ global.SIG_PROCESS={}
 
     for(let servicePath in CONFIG.SERVICES){
 
+        //Tag:ExecMap
         await import(`./KLY_Services/${servicePath}/entry.js`).catch(
             
             e => LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
@@ -971,6 +973,7 @@ global.SIG_PROCESS={}
     
     for(let convPath in CONFIG.CONVEYORS){
 
+        //Tag:ExecMap
         await import(`./KLY_Conveyors/${convPath}/entry.js`).catch(
             
             e => LOG(`Some error has been occured in process of conveyor \u001b[38;5;50m${convPath}\x1b[31;1m load\n${e}\n`,'F')
@@ -1006,7 +1009,7 @@ let CONTROL=(await import('./KLY_Routes/control.js')).default,
 
 //...And only after that we start routes
 
-
+//Tag:ExecMap
 UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
 
 

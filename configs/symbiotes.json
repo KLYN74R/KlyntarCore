@@ -413,7 +413,7 @@
 
             
             "CONTROLLER_POLLING":5000,
-            "STOP_WORK":true,
+            "STOP_WORK":false,
             
             "STOP_PUSH_TO_HOSTCHAINS":{
                 "dash":false,

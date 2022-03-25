@@ -82,7 +82,7 @@ GET_CANDIDATES=async symbiote=>{
 
 
 
-
+//Tag:ExecMap
 GEN_BLOCK_START=async(symbiote,type)=>{
 
     if(!SIG_SIGNAL){
@@ -108,6 +108,7 @@ GEN_BLOCK_START=async(symbiote,type)=>{
 
 
 
+//Tag:ExecMap - run verification workflow for symbiote
 RUN_POLLING=async symbiote=>{
 
     LOG(`Local state collapsed on \x1b[36;1m${symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}`,'S')
@@ -126,9 +127,9 @@ RUN_POLLING=async symbiote=>{
 
 export let GEN_BLOCK=async(symbiote,data)=>{
 
-    let block,hash,route,
+    let hash,route,
     
-    symbioteRef=symbiotes.get(symbiote)
+        symbioteRef=symbiotes.get(symbiote)
 
     
     
@@ -170,12 +171,12 @@ export let GEN_BLOCK=async(symbiote,data)=>{
 
             let arr=await GET_CANDIDATES(symbiote),
             
-                block=new ControllerBlock(symbiote,arr)
+                conBlockCandidate=new ControllerBlock(symbiote,arr)
             
 
-            hash=ControllerBlock.genHash(symbiote,block.a,block.i,genThread.PREV_HASH)
+            hash=ControllerBlock.genHash(symbiote,conBlockCandidate.a,conBlockCandidate.i,genThread.PREV_HASH)
     
-            block.sig=await SIG(hash,PRIVATE_KEYS.get(symbiote))
+            conBlockCandidate.sig=await SIG(hash,PRIVATE_KEYS.get(symbiote))
 
             route='/cb'
             
@@ -188,9 +189,9 @@ export let GEN_BLOCK=async(symbiote,data)=>{
  
 
 
-            promises.push(symbiotes.get(symbiote).CONTROLLER_BLOCKS.put(block.i,block).then(()=>block).catch(e=>{
+            promises.push(symbiotes.get(symbiote).CONTROLLER_BLOCKS.put(conBlockCandidate.i,conBlockCandidate).then(()=>conBlockCandidate).catch(e=>{
                 
-                LOG(`Failed to store block ${block.i} on ${SYMBIOTE_ALIAS(symbiote)}`,'F')
+                LOG(`Failed to store block ${conBlockCandidate.i} on ${SYMBIOTE_ALIAS(symbiote)}`,'F')
 
                 process.emit('SIGINT',122)
             
@@ -325,7 +326,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         
         //______________________________TEST__________________________________
         
-        let block=new InstantBlock(symbiote,await GET_TXS(symbiote))
+        let insBlockCandidate=new InstantBlock(symbiote,await GET_TXS(symbiote))
 
         //!DELETE
         //if (block.e.length===0) return//no sense to produce empty blocks
@@ -397,9 +398,9 @@ export let GEN_BLOCK=async(symbiote,data)=>{
         //_______________________________________________DELELTE________________________________
 
         
-        hash=InstantBlock.genHash(block.c,block.e,symbiote)
+        hash=InstantBlock.genHash(insBlockCandidate.c,insBlockCandidate.e,symbiote)
 
-        block.sig=await SIG(hash,PRIVATE_KEYS.get(symbiote))
+        insBlockCandidate.sig=await SIG(hash,PRIVATE_KEYS.get(symbiote))
             
         route='/ib'
 
@@ -408,9 +409,9 @@ export let GEN_BLOCK=async(symbiote,data)=>{
 
         BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m generated ${BLOCK_PATTERN}│`,'S',symbiote,hash,56,'\x1b[32m')
 
-        await symbiotes.get(symbiote).CANDIDATES.put(hash,block)
+        await symbiotes.get(symbiote).CANDIDATES.put(hash,insBlockCandidate)
 
-        Promise.all(BROADCAST(route,block,symbiote))
+        Promise.all(BROADCAST(route,insBlockCandidate,symbiote))
 
         //These blocks also will be included
         symbiotes.get(symbiote).INSTANT_CANDIDATES.set(hash,CONFIG.SYMBIOTES[symbiote].PUB)
@@ -520,6 +521,7 @@ RENAISSANCE=async()=>{
                 
                 STOP_GEN_BLOCK[controllerAddr]={C:''}
                 
+                //Tag:ExecMap - run generation workflow for ControllerBlocks
                 GEN_BLOCK_START(controllerAddr,'C')
             
             },symbioteRef.BLOCK_С_INIT_DELAY)
@@ -531,6 +533,7 @@ RENAISSANCE=async()=>{
 
                 STOP_GEN_BLOCK[controllerAddr] ? STOP_GEN_BLOCK[controllerAddr]['I']='' : STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
 
+                //Tag:ExecMap - run generation workflow for InstantBlocks
                 GEN_BLOCK_START(controllerAddr,'I')
 
             },symbioteRef.BLOCK_I_INIT_DELAY)
