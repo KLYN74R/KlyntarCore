@@ -172,7 +172,7 @@ export let
 
 
         //Try to load from snapshot
-        if(fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
+        if(symbioteRef.GENERATION_THREAD.NEXT_INDEX!==0 && fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
 
             //Try to load snapshot metadata to use as last collapsed
             let canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
@@ -229,7 +229,7 @@ export let
             fs.readdirSync(PATH_RESOLVE(`GENESIS/${symbiote}`)).forEach(file=>{
     
                 //Load genesis state or data from backups(not to load state from the beginning)
-                let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${symbiote}/${file}.json`)))
+                let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${symbiote}/${file}`)))
             
                 Object.keys(genesis).forEach(
                 

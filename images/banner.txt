@@ -18,7 +18,7 @@
       .  :  .  .  .-:.":.::.\             ..:/                                      Basic configuration
  .      -.   . . . .: .:::.:.\.           .:/                                         v1.0.0pre-alpha
 .   .   .  :      : ....::_:..:\   ___.  :/                               
-   .   .  .   .:. .. .  .: :.:.:\       :/                                    REMEMBER:To infinity and beyond!                                      
+   .   .  .   .:. .. .  .: :.:.:\       :/                                    REMEMBER:To infinity and beyond!
      +   .   .   : . ::. :.:. .:.|\  .:/|                                     
      .         +   .  .  ...:: ..|  --.:|                                                                             
 .      . . .   .  .  . ... :..:.."(  ..)"                                                                                

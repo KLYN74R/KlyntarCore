@@ -15,25 +15,27 @@ apt install nano sudo git curl wget build-essential libreadline-dev libncursesw5
 #╚═╝        ╚═╝      ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
                                                      
 
-wget -c https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
+if ! python --version | grep -q 'Python 3.10\|Python 3.9\|Python 3.8'
+then
+    wget -c https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
+    
+    tar -Jxvf Python-3.10.0.tar.xz
+    
+    cd Python-3.10.0
+    
+    ./configure --enable-optimizations
+    
+    
+    make altinstall
+    
+    update-alternatives --install /usr/bin/python python /usr/local/bin/python3.10 1
+    update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.10 1
+    
+    #Finally-delete useless
+    cd ..
+    rm -r Python-3.10.0  Python-3.10.0.tar.xz
 
-tar -Jxvf Python-3.10.0.tar.xz
-
-cd Python-3.10.0
-
-./configure --enable-optimizations
-
-
-make altinstall
-
-update-alternatives --install /usr/bin/python python /usr/local/bin/python3.10 1
-update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.10 1
-
-
-
-#Finally-delete useless
-cd ..
-rm -r Python-3.10.0  Python-3.10.0.tar.xz
+fi
 
 
 
@@ -44,21 +46,27 @@ rm -r Python-3.10.0  Python-3.10.0.tar.xz
 #██║ ╚████║╚██████╔╝██████╔╝███████╗╚█████╔╝███████║
 #╚═╝  ╚═══╝ ╚═════╝ ╚═════╝ ╚══════╝ ╚════╝ ╚══════╝
 
+if ! node -v | grep -q "v17."
+then
 
-#Add public recursive DNS
-echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    #Add public recursive DNS
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
 
 
 
-apt install software-properties-common -y
+    apt install software-properties-common -y
 
-curl -sL https://deb.nodesource.com/setup_17.x | bash - 
+    curl -sL https://deb.nodesource.com/setup_17.x | bash - 
 
-apt update
+    apt update
 
-# #Install npm and node
-apt install -y nodejs
+    # #Install npm and node
+    apt install -y nodejs
+
+fi
+
+
 
 #But we'll use advanced npm - pnpm
 npm install pnpm -g
@@ -75,23 +83,30 @@ npm install node-gyp -g
 # ╚═════╝  ╚═════╝ 
 # https://go.dev/doc/install
 
-#Fetch archive
-wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
 
-#Unpack
-rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
+if ! go version | grep -q 'go version go1.1'
+then
+
+    go version go1.18 linux/amd64
+
+    #Fetch archive
+    wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
+
+    #Unpack
+    rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz
 
 
-#Add vars to PATH
-echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
-echo 'export GO111MODULE="auto"' >> ~/.bashrc
+    #Add vars to PATH
+    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+    echo 'export GO111MODULE="auto"' >> ~/.bashrc
 
-source ~/.bashrc
+    source ~/.bashrc
 
 
-#Don't need archive anymore
-rm go1.18.linux-amd64.tar.gz
+    #Don't need archive anymore
+    rm go1.18.linux-amd64.tar.gz
 
+fi
 
 #Run building addons script
 ./build.sh
