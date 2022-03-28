@@ -42,7 +42,6 @@ CIIPs
 
 #Configs
 configs/symbiotes*
-configs/decrypted*
 KEYSTORE/
 decrypted.json
 

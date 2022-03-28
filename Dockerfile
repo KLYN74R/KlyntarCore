@@ -6,12 +6,7 @@ WORKDIR /root/KLYNTAR
 COPY package*.json ./
 COPY . .
 
-RUN chmod 777 setup.sh build.sh \
-
-    && ./setup.sh \
-    && npm ci --only=production \
-    && npm link \
-    && chmod +x klyn74r.js
+RUN chmod 777 setup.sh build.sh && ./setup.sh && pnpm ci --only=production && pnpm link && chmod +x klyn74r.js && pnpm install
 
 ENV NODE_ENV production
 
