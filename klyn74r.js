@@ -2,9 +2,13 @@
 
 import {SYMBIOTE_ALIAS,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Utils/utils.js'
 
+import{parentPort,isMainThread}from'worker_threads'
+
 import {RENAISSANCE} from './KLY_Process/life.js'
 
 import chalkAnimation from 'chalk-animation'
+
+import {spawn} from 'child_process'
 
 import UWS from 'uWebSockets.js'
 
@@ -17,6 +21,8 @@ import l from 'level'
 import fs from 'fs'
 
 import os from 'os'
+
+
 
 
 
@@ -876,12 +882,12 @@ global.SIG_PROCESS={}
     let controllers=Object.keys(CONFIG.SYMBIOTES)
 
 
-
+    //!DELETE
+    console.log(process.argv)
     
     //.forEach has inner scope,but we need await on top frame level
     for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_WORK  &&  await PREPARE_SYMBIOTE(controllers[i])
     
-
 
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
@@ -904,7 +910,7 @@ global.SIG_PROCESS={}
     
     await CHECK_UPDATES()
 
-    LOG(`Server configuration is ———> \u001b[38;5;50m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'CON')
+    LOG(`Server configuration is ———> \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 
     LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 

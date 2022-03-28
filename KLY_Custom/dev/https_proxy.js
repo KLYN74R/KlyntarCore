@@ -18,7 +18,14 @@ server.on("connection", (clientToProxySocket) => {
 
         console.log('Received data ',data.toString())
         
-        let authSuccess = Buffer.from(data.toString()?.split("Proxy-Authorization: Basic ")[1]?.split("\r\n")[0],'base64')?.toString('utf-8')==='Vlad:Cher'
+        let authSuccess
+        try{
+            authSuccess = Buffer.from(data?.toString()?.split("Proxy-Authorization: Basic ")?.[1]?.split("\r\n")[0],'base64')?.toString('utf-8')==='Vlad:Cher'
+        }
+        
+        catch(e){
+            console.log(`Handled error ${e}`)
+        }
 
         console.log(authSuccess)
 
@@ -75,7 +82,19 @@ server.on("connection", (clientToProxySocket) => {
             console.log("Client to proxy error");
             console.log(err)
         });
+
+
+        //Test for HTTPQS
+        proxyToServerSocket.on('data',data => {
+
+            //console.log(`Piped data from proxy ${Buffer.from(data).toString('base64')}`);
+
+
+        });
+    
+
     });
+
 });
 
 server.on("error", (err) => {

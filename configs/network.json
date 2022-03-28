@@ -43,7 +43,9 @@
         
         "ENABLE":true,
         
-        "URL":"socks5h://localhost:9150"
+        "URL":"socks5h://localhost:5666",
+
+        "MAN":"https://manpages.debian.org/experimental/tor/torrc.5.en.html"
     
     },
 

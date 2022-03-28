@@ -550,9 +550,10 @@ void Initialize(Local<Object> exports){
     
   NODE_SET_METHOD(exports,"verify_BLISS",verify_BLISS);
 
-  //SHA256
-  NODE_SET_METHOD(exports,"sha256",SHA256);
-
+  //CSIDH
+  NODE_SET_METHOD(exports,"gen_CSIDH",gen_CSIDH);
+  
+  NODE_SET_METHOD(exports,"get_CSIDH",get_CSIDH);
 
   //KYBER(512)
   NODE_SET_METHOD(exports,"gen_KYBER",gen_KYBER);
@@ -562,13 +563,10 @@ void Initialize(Local<Object> exports){
   NODE_SET_METHOD(exports,"gen_KYBER_SharedRecepient",get_KYBER_SharedRecepient);
 
 
-  //CSIDH
-  NODE_SET_METHOD(exports,"gen_CSIDH",gen_CSIDH);
-  
-  NODE_SET_METHOD(exports,"get_CSIDH",gen_CSIDH);
+  //SHA256
+  NODE_SET_METHOD(exports,"sha256",SHA256);
 
 
-    
   //SIKE
   NODE_SET_METHOD(exports,"gen_SIKE",gen_SIKE);
 
