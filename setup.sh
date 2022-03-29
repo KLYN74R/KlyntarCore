@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 #Traditionally
 apt update && apt upgrade
@@ -18,19 +18,19 @@ apt install nano sudo git curl wget build-essential libreadline-dev libncursesw5
 if ! python --version | grep -q 'Python 3.10\|Python 3.9\|Python 3.8'
 then
     wget -c https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tar.xz
-    
+
     tar -Jxvf Python-3.10.0.tar.xz
-    
+
     cd Python-3.10.0
-    
+
     ./configure --enable-optimizations
-    
-    
+
+
     make altinstall
-    
+
     update-alternatives --install /usr/bin/python python /usr/local/bin/python3.10 1
     update-alternatives --install /usr/bin/pip pip /usr/local/bin/pip3.10 1
-    
+
     #Finally-delete useless
     cd ..
     rm -r Python-3.10.0  Python-3.10.0.tar.xz

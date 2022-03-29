@@ -254,7 +254,6 @@ export let
 
     PREPARE_SYMBIOTE=async symbioteId=>{
 
-
         //Loading spinner
         let initSpinner
 
@@ -595,6 +594,7 @@ export let
 
         //___________________Decrypt all private keys(for Klyntar and hostchains) to memory of process___________________
 
+        
 
         await DECRYPT_KEYS(symbioteId,initSpinner).then(()=>
         
@@ -884,8 +884,7 @@ global.SIG_PROCESS={}
     let controllers=Object.keys(CONFIG.SYMBIOTES)
 
 
-    //!DELETE
-    console.log(process.argv)
+
     
     //.forEach has inner scope,but we need await on top frame level
     for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_WORK  &&  await PREPARE_SYMBIOTE(controllers[i])

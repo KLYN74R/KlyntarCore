@@ -275,22 +275,23 @@ DECRYPT_KEYS=async(symbiote,spinner)=>{
       
     }
 
+    //Stop loading
+    spinner?.stop()
 
     let symbioteRef=CONFIG.SYMBIOTES[symbiote],
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
-    
-    //Stop loading
-    spinner?.stop()
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${symbioteRef.CONTROLLER.ME?'Controller':'Instant generator'} \x1b[32;1m(\x1b[36;1m${symbiote}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${symbioteRef.CONTROLLER.ME?'Controller':'Instant generator'} \x1b[32;1m(\x1b[36;1m${symbioteRef.PUB}\x1b[32;1m)`,'I')
        
 
     
     let HEX_SEED=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve))
+        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
+        
+    )
         
 
     //Get 32 bytes SHA256(Password)
