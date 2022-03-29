@@ -168,11 +168,13 @@ export let
         //Reset verification breakpoint
         await symbioteRef.STATE.clear()
 
-        let promises=[]
+        let promises=[],
 
+            itsNotInitStart=symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1 && symbioteRef.GENERATION_THREAD.NEXT_INDEX!==0
 
+            
         //Try to load from snapshot
-        if(symbioteRef.GENERATION_THREAD.NEXT_INDEX!==0 && fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
+        if( itsNotInitStart && fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
 
             //Try to load snapshot metadata to use as last collapsed
             let canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
@@ -233,7 +235,7 @@ export let
             
                 Object.keys(genesis).forEach(
                 
-                    address => promises.push(symbioteRef.STATE.put(address,genesis[address].B))
+                    address => promises.push(symbioteRef.STATE.put(address,genesis[address]))
                     
                 )
     

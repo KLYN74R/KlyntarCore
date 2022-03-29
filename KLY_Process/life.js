@@ -125,7 +125,7 @@ RUN_POLLING=async symbiote=>{
 
 
 
-export let GEN_BLOCK=async(symbiote,data)=>{
+export let GEN_BLOCK=async(symbiote,blockType)=>{
 
     let hash,route,
     
@@ -134,7 +134,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
     
     
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTES[symbiote].VT_GT_NORMAL_DIFFERENCE < symbioteRef.GENERATION_THREAD.NEXT_INDEX){
+    if(blockType==='C' && symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTES[symbiote].VT_GT_NORMAL_DIFFERENCE < symbioteRef.GENERATION_THREAD.NEXT_INDEX){
 
         LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',symbiote)
 
@@ -144,7 +144,7 @@ export let GEN_BLOCK=async(symbiote,data)=>{
 
 
 
-    if(data==='C'){
+    if(blockType==='C'){
 
 
 
@@ -517,7 +517,7 @@ RENAISSANCE=async()=>{
         if(!symbioteRef.STOP_WORK){
         
             //Start generate ControllerBlocks if you're controller(obviously)
-            !symbioteRef.STOP_C && symbioteRef.CONTROLLER.ME && setTimeout(()=>{
+            !symbioteRef.STOP_GENERATE_BLOCK_C && symbioteRef.CONTROLLER.ME && setTimeout(()=>{
                 
                 STOP_GEN_BLOCK[controllerAddr]={C:''}
                 
@@ -529,7 +529,7 @@ RENAISSANCE=async()=>{
 
 
             
-            !symbioteRef.STOP_I && setTimeout(()=>{
+            !symbioteRef.STOP_GENERATE_BLOCK_I && setTimeout(()=>{
 
                 STOP_GEN_BLOCK[controllerAddr] ? STOP_GEN_BLOCK[controllerAddr]['I']='' : STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
 
