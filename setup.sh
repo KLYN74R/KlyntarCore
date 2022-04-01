@@ -83,8 +83,9 @@ npm install node-gyp -g
 # ╚═════╝  ╚═════╝ 
 # https://go.dev/doc/install
 
+KLY_GO_VERSION=`go version`
 
-if ! go version | grep -q 'go version go1.1'
+if ! $KLY_GO_VERSION | grep 'go1.1' -q
 then
 
     #Fetch archive
@@ -117,22 +118,16 @@ fi
 #██║  ██║██║     ╚██████╔╝███████╗███████╗╚██████╔╝
 #╚═╝  ╚═╝╚═╝      ╚═════╝ ╚══════╝╚══════╝ ╚═════╝ 
 
-#Install Apollo
-git clone https://github.com/KLYN74R/Apollo.git ~/APOLLO
+#Install Apollo to the project directory
+git clone https://github.com/KLYN74R/Apollo.git APOLLO
 
-cd ~/APOLLO
+cd APOLLO
 
 pnpm install
 
 npm link
 
-cd ~/KLYNTAR
-
-
-
-
-
-
+cd ..
 
 
 
