@@ -87,8 +87,6 @@ npm install node-gyp -g
 if ! go version | grep -q 'go version go1.1'
 then
 
-    go version go1.18 linux/amd64
-
     #Fetch archive
     wget https://go.dev/dl/go1.18.linux-amd64.tar.gz
 
@@ -98,7 +96,7 @@ then
 
     #Add vars to PATH
     echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
-    echo 'export GO111MODULE="auto"' >> ~/.bashrc
+    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
 
     source ~/.bashrc
 
@@ -107,6 +105,36 @@ then
     rm go1.18.linux-amd64.tar.gz
 
 fi
+
+
+
+
+
+# █████╗ ██████╗  ██████╗ ██╗     ██╗      ██████╗ 
+#██╔══██╗██╔══██╗██╔═══██╗██║     ██║     ██╔═══██╗
+#███████║██████╔╝██║   ██║██║     ██║     ██║   ██║
+#██╔══██║██╔═══╝ ██║   ██║██║     ██║     ██║   ██║
+#██║  ██║██║     ╚██████╔╝███████╗███████╗╚██████╔╝
+#╚═╝  ╚═╝╚═╝      ╚═════╝ ╚══════╝╚══════╝ ╚═════╝ 
+
+#Install Apollo
+git clone https://github.com/KLYN74R/Apollo.git ~/APOLLO
+
+cd ~/APOLLO
+
+pnpm install
+
+npm link
+
+cd ~/KLYNTAR
+
+
+
+
+
+
+
+
 
 #Run building addons script
 ./build.sh

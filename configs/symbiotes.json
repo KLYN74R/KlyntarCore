@@ -41,19 +41,17 @@
                 
                 },
 
-                "FEE":2,
-
-                "CONTROLLER_FREEZE":10000,
-                "INSTANT_FREEZE":5000,
-
-                "GENERATOR_FEE":0.8,
-    
-                "CONTROLLER_BLOCK_MAX_SIZE":100,
-                "EVENTS_LIMIT_PER_BLOCK":30000,
-                "INSTANT_PORTION":100,
                 "VERIFIERS":"dev0",
                 "SPENDERS":"dev0",
 
+                "FEE":2,
+                "CONTROLLER_FREEZE":10000,
+                "INSTANT_FREEZE":5000,
+                "GENERATOR_FEE":0.8,
+                "CONTROLLER_BLOCK_MAX_SIZE":100,
+                "EVENTS_LIMIT_PER_BLOCK":30000,
+                "INSTANT_PORTION":100,
+                
                 "NO_WAY_HOME":["EVM"]
 
             },
@@ -362,18 +360,16 @@
                     
                 },
 
-                "FEE":2,
+                "VERIFIERS":"dev0",
+                "SPENDERS":"dev0",
 
+                "FEE":2,
                 "CONTROLLER_FREEZE":50000,
                 "INSTANT_FREEZE":5000,
-    
                 "GENERATOR_FEE":0.8,
-
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
-                "VERIFIERS":"dev0",
-                "SPENDERS":"dev0",
 
                 "NO_WAY_HOME":["EVM"]
     

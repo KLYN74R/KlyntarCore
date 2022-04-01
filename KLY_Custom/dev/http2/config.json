@@ -1,8 +1,8 @@
 {
     "PORT":7979,
     "HOST":"::",
-    "TLS_KEY":"KLY_Custom/dev/security/rsa4096-key.pem",
-    "TLS_CERT":"KLY_Custom/dev/security/rsa4096-cert.pem",
+    "TLS_KEY":"KLY_Custom/dev/security/cert.key",
+    "TLS_CERT":"KLY_Custom/dev/security/cert.pem",
     "mTLS":false,
     "mTLS_CA":"KLY_Custom/dev/security/localcert.pem"
 }

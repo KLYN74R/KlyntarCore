@@ -12,11 +12,11 @@
     },
 
     "PRELUDE":{
-
+        "DECRYPTED":false,
         "ANIMATION_DURATION":1000,
         "NO_SPINNERS":false,
-        "OPTIMISTIC":false,
-        "BALANCE_VIEW":true
+        "OPTIMISTIC":true,
+        "BALANCE_VIEW":false
     },
     
     "PAYLOAD_SIZE":1000,

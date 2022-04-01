@@ -345,9 +345,18 @@ verifyControllerBlock=async controllerBlock=>{
         It's better to take 100 blocks from different creators with 100 events instead of 10 blocks with 1000 events-this we'll accept from bigger range of creators
     */
 
+    let overviewOk=
+    
+        controllerBlock.a?.length<=CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_BLOCK_MAX_SIZE
+        &&
+        symbioteReference.VERIFICATION_THREAD.COLLAPSED_HASH === controllerBlock.p
+        &&
+        await VERIFY(controllerHash,controllerBlock.sig,symbiote)
    
+
+
     //block.a.length<=100.At least this limit is only for first times
-    if(await VERIFY(controllerHash,controllerBlock.sig,symbiote) && symbioteReference.VERIFICATION_THREAD.COLLAPSED_HASH === controllerBlock.p){
+    if(overviewOk){
 
 
 
@@ -771,7 +780,7 @@ verifyInstantBlock=async block=>{
     &&
     !await symbioteData.CANDIDATES.get(hash).catch(e=>symbioteData.INSTANT_BLOCKS.get(hash).catch(e=>false))//check if we don't have this block
     &&
-    await symbioteData.STATE.get(block.c).then(acc=>acc.B>=CONFIG.SYMBIOTES[block.c].MANIFEST.INSTANT_FREEZE).catch(e=>false)//check if address still has stake(doesn't matter that we can be far away from our collapsed state to real)
+    await symbioteData.STATE.get(block.c).then(acc=>acc.B>=symbioteConfig.MANIFEST.INSTANT_FREEZE).catch(e=>false)//check if address still has stake(doesn't matter that we can be far away from our collapsed state to real)
     &&
     await VERIFY(hash,block.sig,block.c)//...finally-check signature
 

@@ -238,7 +238,7 @@ BLOCKLOG=(msg,type,symbiote,hash,spaces,color)=>{
 DECRYPT_KEYS=async(symbiote,spinner)=>{
 
     
-    if(CONFIG.PRELUDE.OPTIMISTIC){
+    if(CONFIG.PRELUDE.DECRYPTED){
 
         spinner?.stop()
 

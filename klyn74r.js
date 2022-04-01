@@ -1074,7 +1074,7 @@ UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
 
     if(descriptor){
 
-        LOG(`Node started on ———> \x1b[36;1m${CONFIG.INTERFACE}:${CONFIG.PORT}`,'S')
+        LOG(`Node started on ———> \x1b[36;1m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'S')
 
         global.UWS_DESC=descriptor
         
