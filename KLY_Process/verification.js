@@ -240,7 +240,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
     
     //Init in-memory caches
-    let records={},promises=[]
+    let records={}
 
 
     //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
@@ -297,7 +297,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
     let write=[]
 
-    Object.keys(records).forEach(id=>write.push(STATE.put(id,records[id])))
+    Object.keys(records).forEach(id=>write.push(SNAPSHOT.STATE.put(id,records[id])))
 
 
 

@@ -162,7 +162,6 @@ export let
     
 
 
-
     RELOAD_STATE=async(symbiote,symbioteRef)=>{
 
         //Reset verification breakpoint
@@ -170,59 +169,50 @@ export let
 
         let promises=[],
 
+            //Try to load snapshot metadata to use as last collapsed
+            canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
+
+            snapshotVT=await symbioteRef.SNAPSHOT.METADATA.get('VT').catch(e=>false),
+
+            snapshotIsOk=snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH),
+
             itsNotInitStart=symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1 && symbioteRef.GENERATION_THREAD.NEXT_INDEX!==0
 
-            
-        //Try to load from snapshot
-        if( itsNotInitStart && fs.existsSync(PATH_RESOLVE(`SNAPSHOTS/${symbiote}`))){
 
-            //Try to load snapshot metadata to use as last collapsed
-            let canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
+        //Means that you have local copy of full snapshot
+        if(itsNotInitStart && CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL&&snapshotIsOk&&canary===snapshotVT.CHECKSUM){
 
-                snapshotVT=await symbioteRef.SNAPSHOT.METADATA.get('VT').catch(e=>false),
+            symbioteRef.VERIFICATION_THREAD=snapshotVT
 
-                snapshotIsOk=snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH)
+            let accs={},promises=[]
 
-
-
-            //Means that you have local copy of full snapshot
-            if(CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL&&snapshotIsOk&&canary===snapshotVT.CHECKSUM){
-
-                symbioteRef.VERIFICATION_THREAD=snapshotVT
-
-                let accs={},promises=[]
-
-                await new Promise(
+            await new Promise(
                     
-                    resolve => symbioteRef.SNAPSHOT.STATE.createReadStream()
+                resolve => symbioteRef.SNAPSHOT.STATE.createReadStream()
                     
-                                        .on('data',data=>accs[data.key]=data.value)
+                                    .on('data',data=>accs[data.key]=data.value)
                                         
-                                        .on('close',resolve)
+                                    .on('close',resolve)
                     
-                )
+            )
 
-                Object.keys(accs).forEach(addr=>promises.push(symbioteRef.STATE.put(addr,accs[addr])))
+            Object.keys(accs).forEach(addr=>promises.push(symbioteRef.STATE.put(addr,accs[addr])))
 
-                await Promise.all(promises).catch(e=>{
+            await Promise.all(promises).catch(e=>{
 
-                    LOG(`Problems with loading state from snaphot to state db \n${e}`,'F')
-
-                    process.exit(138)
-                    
-                })
-
-
-            }else{
-
-                LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false\x1b[31;1m or problems with canary or VT.Try to delete SNAPSHOTS/<symbioteID> and reload daemon`,'F')
+                LOG(`Problems with loading state from snaphot to state db \n${e}`,'F')
 
                 process.exit(138)
+                    
+            })
 
-            }
+            LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false / problems with canary or VT / initial start\x1b[31;1m.We'll start sync process from the genesis state`,'F')
+           
 
         }else{
 
+            LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false / problems with canary or VT / initial start\x1b[31;1m.We'll start sync process from the genesis state`,'F')
+           
             //Otherwise start rescan form height=0
             
             symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
@@ -240,18 +230,15 @@ export let
                 )
     
             })
-    
-            await Promise.all(promises)
-            
 
         }
-
-
+        
     },
 
 
-    
 
+
+    
     PREPARE_SYMBIOTE=async symbioteId=>{
 
         //Loading spinner
@@ -529,6 +516,8 @@ export let
 
         }else {
 
+            initSpinner?.stop()
+            
             //Clear previous state to avoid mistakes
             symbioteRef.STATE.clear()
 
@@ -617,7 +606,6 @@ export let
         //TODO:Add more advanced info    
         if(symbioteConfig.CONTROLLER.ME){
 
-            
             for(let i=0,l=tickers.length;i<l;i++){
 
                 let balance
@@ -633,18 +621,17 @@ export let
 
                     spinner.stop()
 
+                    LOG(`Balance of controller on hostchain \x1b[32;1m${
+                    
+                        tickers[i]
+                    
+                    }\x1b[36;1m is \x1b[32;1m${
+                        
+                        CONFIG.PRELUDE.BALANCE_VIEW?balance:'<disabled>'
+                    
+                    }   \x1b[36;1m[${symbioteConfig.STOP_PUSH_TO_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
+
                 }
-
-
-                LOG(`Balance of controller on hostchain \x1b[32;1m${
-                    
-                    tickers[i]
-                
-                }\x1b[36;1m is \x1b[32;1m${
-                    
-                    CONFIG.PRELUDE.BALANCE_VIEW?balance:'<disabled>'
-                
-                }   \x1b[36;1m[${symbioteConfig.STOP_PUSH_TO_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
             }
 
