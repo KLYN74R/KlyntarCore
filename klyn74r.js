@@ -168,53 +168,70 @@ export let
         await symbioteRef.STATE.clear()
 
         let promises=[],
+        
+
 
             //Try to load snapshot metadata to use as last collapsed
             canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
 
             snapshotVT=await symbioteRef.SNAPSHOT.METADATA.get('VT').catch(e=>false),
+        
+            //Snapshot will never be OK if it's empty
+            snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH)//snapshot itself must be OK
+                           &&
+                           canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
+                           &&
+                           CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
 
-            snapshotIsOk=snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH),
+            
+           
+        //Try to load from snapshot
+        //If it was initial run-then we'll start from genesis state
+        // If it's integrity problem - then we check if snapshot is OK-then we can load data from snapshot
+        //In case when snapshot is NOT ok - go to else branch and start sync from the genesis
+        
+        if( snapshotIsOk ){
 
-            itsNotInitStart=symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1 && symbioteRef.GENERATION_THREAD.NEXT_INDEX!==0
-
-
-        //Means that you have local copy of full snapshot
-        if(itsNotInitStart && CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL&&snapshotIsOk&&canary===snapshotVT.CHECKSUM){
 
             symbioteRef.VERIFICATION_THREAD=snapshotVT
 
             let accs={},promises=[]
 
             await new Promise(
-                    
+                
                 resolve => symbioteRef.SNAPSHOT.STATE.createReadStream()
-                    
+                
                                     .on('data',data=>accs[data.key]=data.value)
-                                        
+                                    
                                     .on('close',resolve)
-                    
+                
             )
 
             Object.keys(accs).forEach(addr=>promises.push(symbioteRef.STATE.put(addr,accs[addr])))
 
-            await Promise.all(promises).catch(e=>{
+            await Promise.all(promises)
+            
+                .then(()=>symbioteRef.METADATA.put('CANARY',canary))
 
-                LOG(`Problems with loading state from snaphot to state db \n${e}`,'F')
+                .then(()=>symbioteRef.METADATA.put('VT',snapshotVT))
 
-                process.exit(138)
-                    
-            })
+                .catch(e=>{
 
-            LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false / problems with canary or VT / initial start\x1b[31;1m.We'll start sync process from the genesis state`,'F')
-           
+                    LOG(`Problems with loading state from snapshot to state db \n${e}`,'F')
 
+                    process.exit(138)
+                
+                })
+
+
+            LOG(`Successfully recreated state from snapshot`,'I')
+
+        
         }else{
 
-            LOG(`Impossible to load state from snapshot.Probably \x1b[36;1mSNAPSHOTS.ALL=false / problems with canary or VT / initial start\x1b[31;1m.We'll start sync process from the genesis state`,'F')
-           
             //Otherwise start rescan form height=0
-            
+            symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && (!CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME || symbioteRef.GENERATION_THREAD.NEXT_INDEX==0) ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+
             symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
             //Load all the configs
@@ -230,11 +247,13 @@ export let
                 )
     
             })
-
+    
+            await Promise.all(promises)
+            
         }
-        
-    },
 
+
+    },
 
 
 
@@ -517,7 +536,7 @@ export let
         }else {
 
             initSpinner?.stop()
-            
+
             //Clear previous state to avoid mistakes
             symbioteRef.STATE.clear()
 
