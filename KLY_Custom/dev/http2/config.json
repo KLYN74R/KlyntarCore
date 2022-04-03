@@ -1,8 +1,8 @@
 {
     "PORT":7979,
     "HOST":"::",
-    "TLS_KEY":"KLY_Custom/dev/security/cert.key",
-    "TLS_CERT":"KLY_Custom/dev/security/cert.pem",
+    "TLS_KEY":"KLY_Custom/dev/security/ip.key",
+    "TLS_CERT":"KLY_Custom/dev/security/ip.crt",
     "mTLS":false,
     "mTLS_CA":"KLY_Custom/dev/security/localcert.pem"
 }

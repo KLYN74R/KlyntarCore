@@ -2,10 +2,10 @@ import http2 from 'http2'
 import fs from 'fs'
 
 
-const client = http2.connect('https://localhost:7979', {
+const client = http2.connect('https://127.0.0.1:7979', {
 
     //To use self signed TLS certificates
-    ca: fs.readFileSync('./KLY_Custom/dev/security/rsa4096-cert.pem'),
+    ca: fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Custom/dev/security/ip.crt'),
   
     //For mTLS
     //key:fs.readFileSync('KLY_Custom/dev/security/localkey.pem'),
