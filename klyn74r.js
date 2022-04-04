@@ -717,6 +717,20 @@ fs.readdirSync(PATH_RESOLVE('configs')).forEach(file=>
 )
 
 
+//To allow you to run multiple KLYNTAR instances
+process.argv.slice(2).forEach(
+    
+    overrideJson => {
+
+        let obj=JSON.parse(fs.readFileSync(overrideJson))
+
+        Object.assign(CONFIG,obj)
+
+    }
+    
+)
+
+
 //*********************** SET HANDLERS ON USEFUL SIGNALS ************************
 
 
