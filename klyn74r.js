@@ -2,13 +2,9 @@
 
 import {SYMBIOTE_ALIAS,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Utils/utils.js'
 
-import{parentPort,isMainThread}from'worker_threads'
-
 import {RENAISSANCE} from './KLY_Process/life.js'
 
 import chalkAnimation from 'chalk-animation'
-
-import {spawn} from 'child_process'
 
 import UWS from 'uWebSockets.js'
 
@@ -24,6 +20,7 @@ import os from 'os'
 
 
 
+process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
 
 
