@@ -1,25 +1,13 @@
+import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
+import {LOG} from '../CommonResources/utils.js'
 import {spawn} from 'child_process'
 
-import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
+
+let service = spawn('node',[PATH_RESOLVE(`KLY_Services/LitecoinHermesProvider/serv.js`)])
 
 
-const ls2 = spawn('node',[PATH_RESOLVE(`KLY_Services/LitecoinHermesProvider/serv.js`)])
+service.stdout.on('data',data=>LOG({data:data+'',pid:service.pid},'CD'))
 
-
-ls2.stdout.on('data',data=>{
-  console.log(`${data}`);
-});
-
-
-ls2.stderr.on('data',data=>
-
-    console.error(`stderr: ${data}`)
-
-)
-
-
-ls2.on('close',code=>
-
-    console.log(`child process exited with code ${code}`)
-
-)
+service.stderr.on('error',data=>LOG({data:data+'',pid:service.pid},'CD'))
+  
+service.on('close',data=>LOG({data:data+'',pid:service.pid},'CD'))

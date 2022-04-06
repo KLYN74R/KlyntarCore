@@ -5,11 +5,11 @@ import fs from 'fs'
 const client = http2.connect('https://127.0.0.1:7979', {
 
     //To use self signed TLS certificates
-    ca: fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Custom/dev/security/ip.crt'),
+    ca: fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev/security/ip.crt'),
   
     //For mTLS
-    //key:fs.readFileSync('KLY_Custom/dev/security/localkey.pem'),
-    //cert:fs.readFileSync('KLY_Custom/dev/security/localcert.pem')
+    //key:fs.readFileSync('KLY_Plugins/dev/security/localkey.pem'),
+    //cert:fs.readFileSync('KLY_Plugins/dev/security/localcert.pem')
 
 });
 

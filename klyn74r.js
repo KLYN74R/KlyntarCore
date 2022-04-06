@@ -973,7 +973,7 @@ global.SIG_PROCESS={}
     for(let scriptPath of CONFIG.RUN_CUSTOM){
 
         //Tag:ExecMap
-        await import(`./KLY_Custom/${scriptPath}`).catch(
+        await import(`./KLY_Plugins/${scriptPath}`).catch(
             
             e => LOG(`Some error has been occured in process of module \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
             

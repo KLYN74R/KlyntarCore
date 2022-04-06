@@ -13,11 +13,11 @@ var client = new WebSocketClient({
     tlsOptions:{
     
         //With TLS
-        ca:fs.readFileSync('KLY_Custom/dev/security/rsa4096-cert.pem'),
+        ca:fs.readFileSync('KLY_Plugins/dev/security/rsa4096-cert.pem'),
 
         //For mTLS
-        key:fs.readFileSync('KLY_Custom/dev/security/localkey.pem'),
-        cert:fs.readFileSync('KLY_Custom/dev/security/localcert.pem')
+        key:fs.readFileSync('KLY_Plugins/dev/security/localkey.pem'),
+        cert:fs.readFileSync('KLY_Plugins/dev/security/localcert.pem')
     
     }
 

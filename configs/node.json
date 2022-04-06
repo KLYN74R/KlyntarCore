@@ -66,16 +66,6 @@
 
     "UPDATES":"https://updates.klyntar.org/core",
 
-    "THREADS":12,
-
-    "EXEC_MAP":{
-
-        "LitecoinHermesProvider":{},
-        "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":{},
-        "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL":{}
-
-    },
-
     "REGISTRIES":{
 
         "NODE.JS":[

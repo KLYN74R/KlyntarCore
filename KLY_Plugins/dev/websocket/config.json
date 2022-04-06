@@ -3,11 +3,11 @@
     "PORT":9999,
     "HOST":"::",
 
-    "TLS_KEY":"KLY_Custom/dev/security/rsa4096-key.pem",
-    "TLS_CERT":"KLY_Custom/dev/security/rsa4096-cert.pem",
+    "TLS_KEY":"KLY_Plugins/dev/security/rsa4096-key.pem",
+    "TLS_CERT":"KLY_Plugins/dev/security/rsa4096-cert.pem",
 
     "mTLS":false,
-    "mTLS_CA":"KLY_Custom/dev/security/localcert.pem",
+    "mTLS_CA":"KLY_Plugins/dev/security/localcert.pem",
 
     "KEEP_ALIVE_INTERVAL":20000,
     "KEEP_ALIVE":true,

@@ -1,22 +1,17 @@
 import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
-import {exec} from 'child_process'
-
 import {LOG} from '../CommonResources/utils.js'
+import { spawn } from 'child_process'
 
 
 
-LOG('Dummy example of ETH storage service','CD')
 
 
-//For example-use SLED or other DBs
-exec(PATH_RESOLVE(`KLY_Services/EthContractStorage/storage`), (err, stdout, stderr) => {
-    
-    //Node couldn"t execute the command  
-    if (err) console.log(err)
+let service = spawn(PATH_RESOLVE(`KLY_Services/EthContractStorage/storage`))
 
-    //The *entire* stdout and stderr (buffered)
-    console.log(`${stdout}`)
-    console.log(`${stderr}`)
 
-})
 
+service.stdout.on('data',data=>LOG({data:data+'',pid:service.pid},'CD'))
+
+service.stderr.on('error',data=>LOG({data:data+'',pid:service.pid},'CD'))
+  
+service.on('close',data=>LOG({data:data+'',pid:service.pid},'CD'))

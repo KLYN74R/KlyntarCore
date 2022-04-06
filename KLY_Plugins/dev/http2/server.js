@@ -4,7 +4,7 @@ import fs from 'fs'
 
 
 
-let configs=JSON.parse(fs.readFileSync('KLY_Custom/dev/http2/config.json'))
+let configs=JSON.parse(fs.readFileSync('KLY_Plugins/dev/http2/config.json'))
 
 
 const server = http2.createSecureServer({

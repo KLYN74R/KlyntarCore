@@ -200,7 +200,7 @@ SEND=(url,payload,callback)=>fetch(url,{method:'POST',body:JSON.stringify(payloa
 //Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
 LOG=(msg,msgColor,symbiote)=>{
 
-    CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[msgColor],msg,COLORS.C)
+    CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 
     if(symbiote) CONFIG.SYMBIOTES[symbiote].LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(symbiote).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 

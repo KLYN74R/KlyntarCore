@@ -108,7 +108,7 @@ GEN_BLOCK_START=async(symbiote,type)=>{
 
 
 
-//Tag:ExecMap - run verification workflow for symbiote
+
 RUN_POLLING=async symbiote=>{
 
     LOG(`Local state collapsed on \x1b[36;1m${symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}`,'S')

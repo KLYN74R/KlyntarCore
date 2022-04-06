@@ -1,7 +1,7 @@
 import {LOG} from '../CommonResources/utils.js'
 
 
-LOG('🔥Dummy example of service!🔥','CD')
+LOG({data:'🔥Dummy example of service!🔥',pid:process.pid},'CD')
 
 
-setInterval(()=>LOG('Test message from MyFirst service','CD'),5000)
+setInterval(()=>LOG({data:'Test message from MyFirst service',pid:process.pid},'CD'),5000)
