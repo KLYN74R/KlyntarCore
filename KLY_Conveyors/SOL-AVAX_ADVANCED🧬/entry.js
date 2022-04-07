@@ -8,7 +8,7 @@ let COLORS = {
 
 LOG=(msg,msgColor)=>{
 
-    console.log(`\u001b[38;5;196m`,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[msgColor],msg,`\u001b[0m`)
+    console.log(`\u001b[38;5;196m`,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,`\u001b[0m`)
 
 }
 

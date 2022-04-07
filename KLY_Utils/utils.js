@@ -289,7 +289,7 @@ DECRYPT_KEYS=async(symbiote,spinner)=>{
     
     let HEX_SEED=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
+        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
         
     )
         

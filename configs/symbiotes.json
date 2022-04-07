@@ -270,7 +270,10 @@
             "REGION":"EU",
 
             "LOGS":{
+                
                 "TO_FILE":true,
+                
+                
                 "OFFLINE":false,
                 "BLOCK":true,
                 "STORE":true
