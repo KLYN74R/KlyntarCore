@@ -264,7 +264,7 @@ export let
 
             initSpinner = ora({
                 color:'red',
-                prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[0m`
+                prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[0m`
             }).start()
 
             
@@ -930,7 +930,7 @@ global.SIG_PROCESS={}
 
     LOG(`Server configuration is ———> \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 
-    LOG(`Custom runned modules(${CONFIG.RUN_CUSTOM.length}) are ———> \u001b[38;5;50m${CONFIG.RUN_CUSTOM.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
+    LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are ———> \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
 
     
@@ -970,7 +970,7 @@ global.SIG_PROCESS={}
 
     //Run custom modules
     //To load them one by one,use top level await,so we need "for...of"
-    for(let scriptPath of CONFIG.RUN_CUSTOM){
+    for(let scriptPath of CONFIG.PLUGINS){
 
         //Tag:ExecMap
         await import(`./KLY_Plugins/${scriptPath}`).catch(
