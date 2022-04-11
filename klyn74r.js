@@ -975,7 +975,7 @@ global.SIG_PROCESS={}
         //Tag:ExecMap
         await import(`./KLY_Plugins/${scriptPath}`).catch(
             
-            e => LOG(`Some error has been occured in process of module \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
+            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
             
         )
 
