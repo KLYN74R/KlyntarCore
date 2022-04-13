@@ -944,17 +944,6 @@ global.SIG_PROCESS={}
         servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
         
     )
-    
-    console.log('\n\n')
-
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/conveyors.txt')).toString(),'CD')
-
-    Object.keys(CONFIG.CONVEYORS).forEach(
-        
-        convPath => LOG(`Conveyor \x1b[36;1m${convPath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.CONVEYORS[convPath]}\u001b[38;5;168m)`,'CON')
-        
-    )
-
 
 
     !CONFIG.PRELUDE.OPTIMISTIC
@@ -992,20 +981,6 @@ global.SIG_PROCESS={}
         )
 
     }
-
-
-    
-    for(let convPath in CONFIG.CONVEYORS){
-
-        //Tag:ExecMap
-        await import(`./KLY_Conveyors/${convPath}/entry.js`).catch(
-            
-            e => LOG(`Some error has been occured in process of conveyor \u001b[38;5;50m${convPath}\x1b[31;1m load\n${e}\n`,'F')
-            
-        )
-
-    }
-    
 
 
     //Get urgent state and go on!
