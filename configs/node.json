@@ -55,7 +55,37 @@
             "kNULL":"cblock=>feed::babe:9999"
         },
         
-        "DEBOUNCE_TIME":20000
+        "DEBOUNCE_TIME":20000,
+
+        "SERVICES":{
+            "MyFirst":"Initial dummy test service (JS)",
+            "EthContractStorage":"External storage for NFT on ETH contract (Rust)",
+            "LitecoinHermesProvider":"Provide API about Litecoin network (JS+litecoin daemon locally)"
+        },
+
+        "SRV_ACCEPT_RULES":{
+
+            "TRUSTED_SOURCES":[
+                "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq",
+                "0x2c258D6A862A3776F544e6d97169dEefA5531748",
+                "XQI3G3EH6MYSIGCENSZW6STSIOWX5RJELZCIHGB3IN2357Y4VEADBCSX54"            
+            ],
+    
+            "PREF_FORMATS":[
+                "container/docker",
+                "js"
+            ],
+    
+            "KEYWORDS":["web3","defi","bridge","tor","control"],
+    
+            "CHAINS":[
+                "XQI3G3EH6MYSIGCENSZW6STSIOWX5RJELZCIHGB3IN2357Y4VEADBCSX54",
+                "495366896e5752f2d439cf94fd5d0d21839c9ab02966df845c2571e2042ee80f",
+                "495366896e5752f2d439cf94fd5d0d21839c9ab02966df845c2571e2042ee80f:0x2c258D6A862A3776F544e6d97169dEefA5531748"
+            ]
+    
+        }
+        
     
     },
     

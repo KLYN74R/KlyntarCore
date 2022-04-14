@@ -1,7 +1,5 @@
 import {SAFE_ADD} from '../KLY_Utils/utils.js'
 
-import {contracts} from '../klyn74r.js'
-
 
 
 

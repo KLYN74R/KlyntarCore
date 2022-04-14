@@ -999,7 +999,9 @@ let CONTROL=(await import('./KLY_Routes/control.js')).default,
     
     MAIN=(await import('./KLY_Routes/main.js')).default,
     
-    API=(await import('./KLY_Routes/api.js')).default
+    API=(await import('./KLY_Routes/api.js')).default,
+
+    SERVICES=(await import('./KLY_Routes/services.js')).default
 
 
 
@@ -1056,6 +1058,8 @@ UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
 
 
 
+
+//_____________________________________________________SERVICES____________________________________________________
 
 
 
