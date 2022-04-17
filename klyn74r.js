@@ -962,7 +962,7 @@ global.SIG_PROCESS={}
     for(let scriptPath of CONFIG.PLUGINS){
 
         //Tag:ExecMap
-        await import(`./KLY_Plugins/${scriptPath}`).catch(
+        import(`./KLY_Plugins/${scriptPath}`).catch(
             
             e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
             
@@ -974,9 +974,20 @@ global.SIG_PROCESS={}
     for(let servicePath in CONFIG.SERVICES){
 
         //Tag:ExecMap
-        await import(`./KLY_Services/${servicePath}/entry.js`).catch(
+        import(`./KLY_Services/${servicePath}/entry.js`).catch(
             
             e => LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
+            
+        )
+
+    }
+
+    for(let servicePath in CONFIG.EXTERNAL_SERVICES){
+
+        //Tag:ExecMap
+        import(`./KLY_ExternalServices/${servicePath}/entry.js`).catch(
+            
+            e => LOG(`Some error has been occured in process of external service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
             
         )
 
