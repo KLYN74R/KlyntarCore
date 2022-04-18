@@ -1,4 +1,8 @@
-import {SAFE_ADD} from '../KLY_Utils/utils.js'
+import {SAFE_ADD,PARSE_JSON,PATH_RESOLVE} from '../KLY_Utils/utils.js'
+import fs from 'fs'
+
+
+
 
 
 
@@ -6,7 +10,7 @@ import {SAFE_ADD} from '../KLY_Utils/utils.js'
 export default {
     
     //Only this one function available for ordinary users(the others can be called by node owner)
-    accept:a=>{
+    services:a=>{
         
         let total=0,buf=Buffer.alloc(0)
         
@@ -20,9 +24,20 @@ export default {
                 
                 if(last){
                     
+                    console.log('BUF ',buf)
+
                     let body=await PARSE_JSON(buf)
-        
-                   
+
+                    console.log('Received payload ',body)
+
+                    fs.writeFile(PATH_RESOLVE(`KLY_ExternalServices/${body.title}`),Buffer.from(body.payload,'hex'),(err)=>{
+
+                        console.log(err)
+
+                        a.end('pingback')
+
+                    })
+
                 }
         
             }

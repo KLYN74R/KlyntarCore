@@ -885,7 +885,7 @@ global.SIG_PROCESS={}
     
 
     
-    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${os.cpus().length}`,`core:${CONFIG.INFO.CORE_VERSION}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
+    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`core:${CONFIG.INFO.CORE_VERSION}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
     
@@ -944,6 +944,16 @@ global.SIG_PROCESS={}
         servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
         
     )
+
+
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+
+    Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
+        
+        servicePath => LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+        
+    )
+
 
 
     !CONFIG.PRELUDE.OPTIMISTIC

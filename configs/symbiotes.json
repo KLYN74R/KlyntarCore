@@ -310,7 +310,9 @@
                     "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
                 }
 
-            }
+            },
+
+            "MAX_SPACE":10000000000
 
         },
 
@@ -658,7 +660,9 @@
                     "VERIFY_SERVICES":"RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL"
                 }
             
-            }
+            },
+
+            "MAX_SPACE":10000000000
     
         }
     
