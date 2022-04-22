@@ -218,7 +218,7 @@ LOG=(msg,msgColor,symbiote)=>{
 
 
 //Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,type,symbiote,hash,spaces,color)=>{
+BLOCKLOG=(msg,type,symbiote,hash,spaces,color,height)=>{
 
     if(CONFIG.SYMBIOTES[symbiote].LOGS.BLOCK){
 
@@ -230,7 +230,7 @@ BLOCKLOG=(msg,type,symbiote,hash,spaces,color)=>{
 
         console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',symbiote,COLORS.C,' '.repeat(16)+`${color}│`)
     
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│`)
+        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│ ${height?'I:'+height:''}`)
     
         console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,`${color}│`)
 

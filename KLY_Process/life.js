@@ -180,7 +180,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
 
             route='/cb'
             
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ${BLOCK_PATTERN}│\x1b[36;1m`,'S',symbiote,hash,59,'\x1b[32m')
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ${BLOCK_PATTERN}│\x1b[36;1m`,'S',symbiote,hash,59,'\x1b[32m',conBlockCandidate.i)
 
             
             genThread.PREV_HASH=hash

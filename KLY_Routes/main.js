@@ -84,7 +84,7 @@ export default {
                         
                         controllerBlocks.get(block.i).catch(e=>{
 
-                            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m${BLOCK_PATTERN}│`,'S',block.c,hash,59,'\x1b[31m')
+                            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m${BLOCK_PATTERN}│`,'S',block.c,hash,59,'\x1b[31m',block.i)
                             
                             //Store it locally-we'll work with this block later
                             controllerBlocks.put(block.i,block).then(()=>

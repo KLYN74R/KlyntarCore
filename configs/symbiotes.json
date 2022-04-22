@@ -41,6 +41,7 @@
                 
                 },
 
+                "WORKFLOW":"dev0",
                 "VERIFIERS":"dev0",
                 "SPENDERS":"dev0",
 
@@ -52,7 +53,7 @@
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
                 
-                "NO_WAY_HOME":["EVM"]
+                "DOPPELGANGERS":["EVM"]
 
             },
 
@@ -365,6 +366,7 @@
                     
                 },
 
+                "WORKFLOW":"dev0",
                 "VERIFIERS":"dev0",
                 "SPENDERS":"dev0",
 
@@ -376,7 +378,7 @@
                 "EVENTS_LIMIT_PER_BLOCK":30000,
                 "INSTANT_PORTION":100,
 
-                "NO_WAY_HOME":["EVM"]
+                "DOPPELGANGERS":["EVM"]
     
             },
 
