@@ -52,13 +52,5 @@ export default {
 
     SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    CONVEYOR_DEPLOY:async event=>{},
-
-    VERSION_CHANGE:async event=>{},
-
-    EVM_TX:async event=>{},
-
-    EVM_CTR_DEP:async event=>{}
-
-
+    VERSION_CHANGE:async event=>{}
 }

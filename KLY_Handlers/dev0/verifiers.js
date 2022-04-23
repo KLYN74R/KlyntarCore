@@ -191,22 +191,11 @@ export default {
     },
 
 
-    EVM_TX:async (event,blockCreator,symbiote)=>{
-
-    },
-
-    EVM_CTR_DEP:async (event,blockCreator,symbiote)=>{
-
-    },
-
-
     ALIAS:async (event,blockCreator,symbiote)=>{
 
         
 
     },
-
-
 
 
     UNOBTANIUM:async (event,blockCreator,symbiote)=>{
@@ -217,10 +206,7 @@ export default {
     //Unimplemented
     RL_OWNSHIP_APPRV:async(event,blockCreator,symbiote)=>{},
 
-    QUANTUMSWAP:async (event,blockCreator,symbiote)=>{},
-
-    CONVEYOR_DEPLOY:async (event,blockCreator,symbiote)=>{},
-
+    QUANTUMSWAP:async (event,blockCreator,symbiote)=>{}
 
 
 }

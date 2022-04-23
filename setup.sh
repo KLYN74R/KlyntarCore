@@ -96,7 +96,7 @@ then
 
 
     #Add vars to PATH
-    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+    echo 'export GO111MODULE="auto"' >> ~/.bashrc
     echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
 
     source ~/.bashrc

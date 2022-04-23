@@ -96,8 +96,6 @@ export default {
     
     ,
 
-    CONVEYOR_DEPLOY:async (symbiote,event)=>{},
-
     VERSION_CHANGE:async (symbiote,event)=>{},
 
 

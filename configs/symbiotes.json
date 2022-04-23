@@ -21,8 +21,8 @@
 
                 "HIVEMIND":[
                     "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                    "terra1gaugsj5v98efpxktu2h6u2p758c2mkryyanj0v",
-                    "GB65YDWOEWXNSZOUH3OUC3B2LBBIXQ5IILUX6P4Y55LANCUCYAAN3YS7"
+                    "Fq1RMpFoZtTjAtaMpDGurjRBes14S6MgQBhZgFckErsh",
+                    "UJU2Fw4FbUjQxfad8LnpMN6129FEaovU3vzp3HQ5YiX8"
                 ],
                 
                 "HOSTCHAINS":{
@@ -306,8 +306,8 @@
 
                 "TRUSTED_SOURCES":{
                     "VERIFIERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                    "FILTERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                    "SPENDERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                    "FILTERS":"KTFi9BFSQKMC6iyFfXMM9334Z3jYa1sCoPrBWt4tgixQ",
+                    "SPENDERS":"UJU2Fw4FbUjQxfad8LnpMN6129FEaovU3vzp3HQ5YiX8",
                     "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
                 }
 
@@ -344,10 +344,9 @@
                 
                 "HIVEMIND":[
                     "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                    "addr1qyvffnghe5wcvqfd87mlkatqgz932j0ken9gva7xvm0acqgcjnx30ngascqj60ahld6kqsytz4yldnx2semuveklmsqs2ahj2j",
-                    "JA3KGJMXY3F5QWHJOXVXYZ5J4IELAK2RNEWUSJP7TLMUDRCCBOM72WRHGQ",
-                    "0x62F3a3c665Fc162de8C986B1Afb16649f89cc328",
-                    "0x4741c39e6096c192Db6E1375Ff32526512069dF5"
+                    "L3SRM3bUSnpiEDqqkTP9cuH4EUi4a72gZw2XNjHDTE3Y",
+                    "TCtVqYMEUtfyx4cC7CjoCxooKMMtJUqyghqeLGCzA8xL",
+                    "UJU2Fw4FbUjQxfad8LnpMN6129FEaovU3vzp3HQ5YiX8"
                 ],
 
                 "HOSTCHAINS":{
