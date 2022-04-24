@@ -3,6 +3,10 @@
     "INTERFACE":"::",
     "PORT":7777,
 
+    "PAYLOAD_SIZE":1000,
+    "EXTENDED_PAYLOAD_SIZE":10000,
+    "MAX_PAYLOAD_SIZE":10000000,
+    
     "TLS":{
 
         "ENABLED":false,

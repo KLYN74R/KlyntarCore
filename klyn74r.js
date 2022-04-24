@@ -318,10 +318,13 @@ export let
 
 
         //Importnat and must be the same for symbiote at appropriate chunks of time
-        symbioteRef.VERIFIERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.VERIFIERS}/verifiers.js`)).default
-
-        symbioteRef.SPENDERS=(await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.SPENDERS}/spenders.js`)).default
-
+        await import(`./KLY_Handlers/${symbioteConfig.MANIFEST.VERIFIERS}/verifiers.js`).then(mod=>{
+        
+            symbioteRef.VERIFIERS=mod.VERIFIERS
+            
+            symbioteRef.SPENDERS=mod.SPENDERS    
+            
+        })
 
         //Might be individual for each node
         symbioteRef.FILTERS=(await import(`./KLY_Handlers/${symbioteConfig.FILTERS}/filters.js`)).default;

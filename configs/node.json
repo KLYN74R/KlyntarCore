@@ -18,10 +18,6 @@
         "OPTIMISTIC":true,
         "BALANCE_VIEW":false
     },
-    
-    "PAYLOAD_SIZE":1000,
-    "EXTENDED_PAYLOAD_SIZE":10000,
-    "MAX_PAYLOAD_SIZE":10000000,
 
     "DAEMON_LOGS":true,
     
@@ -99,31 +95,8 @@
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "PLUGINS":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev/websocket/server.js"],
+    "PLUGINS":["dev/docker/service_runner.js","dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev/websocket/server.js"],
 
-    "UPDATES":"https://updates.klyntar.org/core",
-
-    "REGISTRIES":{
-
-        "NODE.JS":[
-            
-            "https://localhost:4873"
-        
-        ],
-        "PYTHON":[
-
-
-        ],
-        "RUST":[
-
-
-        ],
-        "DOCKER":[
-            
-            "https://localhost:5000"
-            
-        ]
-
-    }
+    "UPDATES":"https://updates.klyntar.org/core"
 
 }

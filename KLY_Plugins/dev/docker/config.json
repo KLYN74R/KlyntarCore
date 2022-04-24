@@ -1,0 +1,62 @@
+{
+    "TRUSTED_HUBS":{
+        "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq":{},
+        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4":{},
+        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK":{}       
+    },
+
+    "PREFER_FORMATS":[
+        "container(docker)/[nodejs]",
+        "[container(vagrant),host]/[nodejs,rust]",
+        "host/c",
+        "[host,dockerfile]/java"
+    ],
+
+    "KEYWORDS":["web3","defi","bridge","tor","control","storage","api"],
+
+    "PREFER_CHAINS":{
+    
+        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK":{
+            "MIN_FREEZE":0
+        },
+        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4":{},
+        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4:LvjcXxRbXbKnHSgaJrDWLx7vo8yR3BwpkBXApKukoaGX":{}
+    },
+    
+    "PREFER_HOSTCHAINS":{
+    
+        "btc":{
+            "MIN_FREEZE":0
+        },
+        "algo":{},
+        "sol":{}
+    },
+    
+    "DORMITORY":{
+        
+    },
+
+    "REGISTRIES":{
+
+        "NODE.JS":[
+            
+            "https://localhost:4873"
+        
+        ],
+        "PYTHON":[
+
+
+        ],
+        "RUST":[
+
+
+        ],
+        "DOCKER":[
+            
+            "https://localhost:5000"
+            
+        ]
+
+    }
+    
+}

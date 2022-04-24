@@ -38,7 +38,7 @@
 
 
 
-import {BLAKE3,GET_SYMBIOTE_ACC,LOG,SYMBIOTE_ALIAS,VERIFY} from '../../KLY_Utils/utils.js'
+import {BLAKE3,GET_SYMBIOTE_ACC,VERIFY} from '../../KLY_Utils/utils.js'
 
 import {symbiotes} from '../../klyn74r.js'
 
@@ -53,8 +53,29 @@ let MAIN_VERIFY=async(symbiote,event,sender)=>
 
 
 
+export let SPENDERS = {
+    
+    TX:(event,symbiote)=>event.p.a+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-export default {
+    OFFSPRING:(_event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+
+    ALIAS:(event,symbiote)=>event.p.length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+
+    UNOBTANIUM:(event,symbiote)=>JSON.stringify(event.p).length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+
+    //Unimplemented
+    RL_OWNSHIP_APPRV:(_event,symbiote)=>{},
+
+    QUANTUMSWAP:async event=>{},
+
+    SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+
+    VERSION_CHANGE:async event=>{}
+}
+
+
+
+export let VERIFIERS = {
 
 
 
