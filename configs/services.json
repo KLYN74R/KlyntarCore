@@ -12,6 +12,8 @@
         "T7r8Uw9ErFWSC5irfQTbf2RhpSWcMD74noq8CydSwy8h":"",
         "storage_checker@1.0.5":""
         
-    }
+    },
+
+    "RUNNER":"dev/andromeda/runner.js"
     
 }

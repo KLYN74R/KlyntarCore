@@ -949,7 +949,7 @@ global.SIG_PROCESS={}
     )
 
 
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/external.txt')).toString(),'CD')
 
     Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
         
