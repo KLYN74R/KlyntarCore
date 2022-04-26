@@ -1,5 +1,5 @@
-import {PATH_RESOLVE,BROADCAST} from '../../../KLY_Utils/utils.js'
-import {LOG} from '../../../KLY_Services/CommonResources/utils.js'
+import {PATH_RESOLVE,BROADCAST} from '../../KLY_Utils/utils.js'
+import {LOG} from '../../KLY_Services/CommonResources/utils.js'
 import {spawn} from 'child_process'
 import fs from 'fs'
 
@@ -55,7 +55,7 @@ this.dec_storage?           //does
 
 */
 
-let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev/andromeda/configs.json'))
+let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev@andromeda/configs.json'))
 
 
 export default async service=>{

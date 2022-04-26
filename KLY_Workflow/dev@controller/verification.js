@@ -1,10 +1,10 @@
-import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PATH_RESOLVE} from '../KLY_Utils/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PATH_RESOLVE,DECRYPT_KEYS} from '../../KLY_Utils/utils.js'
 
-import ControllerBlock from '../KLY_Blocks/controllerblock.js'
+import ControllerBlock from '../../KLY_Blocks/controllerblock.js'
 
-import InstantBlock from '../KLY_Blocks/instantblock.js'
+import InstantBlock from '../../KLY_Blocks/instantblock.js'
 
-import {symbiotes,hostchains} from '../klyn74r.js'
+import {symbiotes,hostchains} from '../../klyn74r.js'
 
 import fetch from 'node-fetch'
 

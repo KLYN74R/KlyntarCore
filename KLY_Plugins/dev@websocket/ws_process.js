@@ -1,6 +1,6 @@
 import {spawn} from 'child_process'
 
-import {PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
+import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 
 const ls2 = spawn('node',[PATH_RESOLVE(`KLY_Plugins/dev/websocket/server.js`)]);
 

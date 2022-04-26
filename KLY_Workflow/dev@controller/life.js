@@ -1,12 +1,12 @@
-import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS} from '../KLY_Utils/utils.js'
+import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS} from '../../KLY_Utils/utils.js'
 
-import ControllerBlock from '../KLY_Blocks/controllerblock.js'
+import ControllerBlock from '../../KLY_Blocks/controllerblock.js'
 
-import InstantBlock from '../KLY_Blocks/instantblock.js'
+import InstantBlock from '../../KLY_Blocks/instantblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
-import {symbiotes,hostchains} from '../klyn74r.js'
+import {symbiotes,hostchains} from '../../klyn74r.js'
 
 import fetch from 'node-fetch'
 

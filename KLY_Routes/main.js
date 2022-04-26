@@ -4,7 +4,7 @@ import{
 
 } from '../KLY_Utils/utils.js'
 
-import {verifyInstantBlock} from '../KLY_Process/verification.js'
+import {verifyInstantBlock} from '../KLY_Workflow/dev@controller/verification.js'
 
 import ControllerBlock from '../KLY_Blocks/controllerblock.js'
 

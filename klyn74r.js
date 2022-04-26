@@ -2,7 +2,7 @@
 
 import {SYMBIOTE_ALIAS,LOG,DECRYPT_KEYS,BLAKE3,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Utils/utils.js'
 
-import {RENAISSANCE} from './KLY_Process/life.js'
+import {RENAISSANCE} from './KLY_Workflow/dev@controller/life.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -1085,6 +1085,8 @@ UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
 
 //_____________________________________________________SERVICES____________________________________________________
 
+
+.post('/service',SERVICES.services)
 
 
 
