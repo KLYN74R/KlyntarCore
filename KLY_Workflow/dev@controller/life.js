@@ -587,7 +587,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
 
     //Importnat and must be the same for symbiote at appropriate chunks of time
-    await import(`../../KLY_Handlers/${symbioteConfig.MANIFEST.VERIFIERS}/verifiers.js`).then(mod=>{
+    await import(`./verifiers.js`).then(mod=>{
     
         symbioteRef.VERIFIERS=mod.VERIFIERS
         
@@ -596,7 +596,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     })
 
     //Might be individual for each node
-    symbioteRef.FILTERS=(await import(`../../KLY_Handlers/${symbioteConfig.FILTERS}/filters.js`)).default;
+    symbioteRef.FILTERS=(await import(`./filters.js`)).default;
 
 
     //______________________________________Prepare databases and storages___________________________________________
