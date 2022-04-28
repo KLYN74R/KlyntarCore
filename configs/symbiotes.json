@@ -41,7 +41,7 @@
                 
                 },
 
-                "WORKFLOW":"dev0",
+                "WORKFLOW":"dev@controller",
                 "VERIFIERS":"dev0",
 
                 "FEE":2,
@@ -364,7 +364,7 @@
                     
                 },
 
-                "WORKFLOW":"dev0",
+                "WORKFLOW":"dev@controller",
                 "VERIFIERS":"dev0",
 
                 "FEE":2,

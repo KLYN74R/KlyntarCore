@@ -149,17 +149,10 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
 
 
 
+//On-flight updates soon
 CHECK_UPDATES=async()=>{
 
-    //We need to check both of them
-    //Check firstly for core update and symbiote-level update
-    await fetch(`${CONFIG.UPDATES}/${CONFIG.INFO.CORE_VERSION}`).then(r=>r.json())
-        
-    .then(resp=>LOG(resp.msg,resp.msgColor))
-                        
-    .catch(e=>LOG(`Can't check for \u001b[38;5;202mCORE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${CONFIG.INFO.CORE_VERSION}\u001b[38;5;168m)\n\u001b[38;5;50m${e}`,'CON'))
-
-    let symbiotesVersions=CONFIG.INFO.SYMBIOTES_VERSIONS
+    let symbiotesVersions=CONFIG.INFO.SYMBIOTES_WORKFLOW
 
     for(let symbiote in symbiotesVersions){
 
@@ -167,7 +160,7 @@ CHECK_UPDATES=async()=>{
         
                 .then(resp=>LOG(`Received for ${SYMBIOTE_ALIAS(symbiote)} ———> ${resp.msg}`,resp.msgColor))
                         
-                .catch(e=>LOG(`Can't check \u001b[38;5;202mSYMBIOTE_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;168m ———> \u001b[38;5;50m${e}`,'CON'))
+                .catch(e=>LOG(`Can't check \u001b[38;5;202mWORKFLOW_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;168m ———> \u001b[38;5;50m${e}`,'CON'))
 
     }
     

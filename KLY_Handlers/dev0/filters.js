@@ -96,7 +96,7 @@ export default {
     
     ,
 
-    VERSION_CHANGE:async (symbiote,event)=>{},
+    WORKFLOW_CHANGE:async (symbiote,event)=>{},
 
 
 }

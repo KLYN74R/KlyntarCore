@@ -33,12 +33,12 @@
 
 
     "INFO":{
-        
-        "CORE_VERSION":"v1.0.0-pre-alpha",
-        
-        "SYMBIOTES_VERSIONS":{
-            "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL":"v0.0.1-pre-alpha",
-            "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":"v0.0.1-pre-alpha"
+                
+        "SYMBIOTES_WORKFLOW":{
+            
+            "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL":"dev0#833aa49045ff481525d66ed2d6a6e7c939027863c22732e3f8f672aa2b4ad937",
+                
+            "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":"dev0#833aa49045ff481525d66ed2d6a6e7c939027863c22732e3f8f672aa2b4ad937"
 
         },
         

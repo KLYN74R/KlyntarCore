@@ -70,7 +70,7 @@ export let SPENDERS = {
 
     SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    VERSION_CHANGE:async event=>{}
+    WORKFLOW_CHANGE:async event=>{}
 }
 
 
