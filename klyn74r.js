@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
-
 import {RENAISSANCE,PREPARE_SYMBIOTE} from './KLY_Workflow/dev@controller/life.js'
+
+import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -65,6 +65,10 @@ process.env.SNAPSHOTS_PATH ||= PATH_RESOLVE('SNAPSHOTS')
 
 
 
+
+//______SET MODE_________
+
+process.env.MODE||='main'
 
 /*
 
