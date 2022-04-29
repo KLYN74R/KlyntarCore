@@ -1,4 +1,4 @@
-import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3,PATH_RESOLVE,DECRYPT_KEYS} from '../../KLY_Utils/utils.js'
+import {VERIFY,BROADCAST,LOG,GET_SYMBIOTE_ACC,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import ControllerBlock from '../../KLY_Blocks/controllerblock.js'
 
@@ -271,7 +271,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
         //Read only part of state to make snapshot for backups
         //Set your own policy of backups with your other nodes,infrastructure etc.
-        let choosen=JSON.parse(PATH_RESOLVE(`SNAPSHOTS/separation/${symbiote}.json`)),
+        let choosen=JSON.parse(process.env.SNAPSHOTS_PATH+`/separation/${symbiote}.json`),
         
             getPromises=[]
 

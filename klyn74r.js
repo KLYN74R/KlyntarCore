@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,CHECK_UPDATES} from './KLY_Utils/utils.js'
+import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import {RENAISSANCE,PREPARE_SYMBIOTE} from './KLY_Workflow/dev@controller/life.js'
 
@@ -16,13 +16,10 @@ import os from 'os'
 
 
 
-process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
-
-
-
 /*
 
 _______________OBLIGATORY PATH RESOLUTION_______________
+
 
 
 ✔️Sets the absolute path over relative one
@@ -42,6 +39,31 @@ global.__dirname = await import('path').then(async mod=>
     )
 
 )
+
+
+//______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
+
+process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
+
+
+//PATHs
+
+//Data of symbiotes
+process.env.CHAINDATA_PATH ||= PATH_RESOLVE('C')
+
+//Directory with configs
+process.env.CONFIGS_PATH ||= PATH_RESOLVE('configs')
+
+//Directory which holds subdirs with files for GENESIS data for symbiotes
+process.env.GENESIS_PATH ||= PATH_RESOLVE('GENESIS')
+
+//Directory which holds subdirs with log streams
+process.env.LOGS_PATH ||= PATH_RESOLVE('LOGS')
+
+//Directory with snapshots of state for symbiotes
+process.env.SNAPSHOTS_PATH ||= PATH_RESOLVE('SNAPSHOTS')
+
+
 
 
 /*
@@ -174,9 +196,9 @@ global.CONFIG={}
 
 
 //Load all the configs
-fs.readdirSync(PATH_RESOLVE('configs')).forEach(file=>
+fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
-    Object.assign(CONFIG,JSON.parse(fs.readFileSync(PATH_RESOLVE(`configs/${file}`))))
+    Object.assign(CONFIG,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
     
 )
 
@@ -286,13 +308,13 @@ global.SIG_PROCESS={}
 
 
 //Location for symbiotes
-!fs.existsSync(PATH_RESOLVE('C')) && fs.mkdirSync(PATH_RESOLVE('C'));
+!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
 
 //For logs streams
-!fs.existsSync(PATH_RESOLVE(`LOGS`)) && fs.mkdirSync(PATH_RESOLVE(`LOGS`));
+!fs.existsSync(process.env.LOGS_PATH) && fs.mkdirSync(process.env.LOGS_PATH);
 
 //And for snapshots
-!fs.existsSync(PATH_RESOLVE(`SNAPSHOTS`)) && fs.mkdirSync(PATH_RESOLVE(`SNAPSHOTS`));
+!fs.existsSync(process.env.SNAPSHOTS_PATH) && fs.mkdirSync(process.env.SNAPSHOTS_PATH);
 
 
 
@@ -392,8 +414,6 @@ global.SIG_PROCESS={}
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
 
     LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
-    
-    await CHECK_UPDATES()
 
     LOG(`Server configuration is ———> \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 

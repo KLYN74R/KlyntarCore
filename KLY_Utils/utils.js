@@ -150,21 +150,6 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
 
 
 //On-flight updates soon
-CHECK_UPDATES=async()=>{
-
-    let symbiotesVersions=CONFIG.INFO.SYMBIOTES_WORKFLOW
-
-    for(let symbiote in symbiotesVersions){
-
-        await fetch(`${CONFIG.UPDATES}/${symbiotesVersions[symbiote]}`).then(r=>r.json())
-        
-                .then(resp=>LOG(`Received for ${SYMBIOTE_ALIAS(symbiote)} ———> ${resp.msg}`,resp.msgColor))
-                        
-                .catch(e=>LOG(`Can't check \u001b[38;5;202mWORKFLOW_VERSION\u001b[38;5;168m updates(\u001b[38;5;50mcurrent ${symbiotesVersions[symbiote]}\u001b[38;5;168m) for ${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;168m ———> \u001b[38;5;50m${e}`,'CON'))
-
-    }
-    
-},
 
 
 

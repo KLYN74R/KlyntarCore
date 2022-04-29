@@ -501,10 +501,10 @@ RELOAD_STATE=async(symbiote,symbioteRef)=>{
         symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
         //Load all the configs
-        fs.readdirSync(PATH_RESOLVE(`GENESIS/${symbiote}`)).forEach(file=>{
+        fs.readdirSync(process.env.GENESIS_PATH+`/${symbiote}`).forEach(file=>{
 
             //Load genesis state or data from backups(not to load state from the beginning)
-            let genesis=JSON.parse(fs.readFileSync(PATH_RESOLVE(`GENESIS/${symbiote}/${file}`)))
+            let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${symbiote}/${file}`))
         
             Object.keys(genesis).forEach(
             
@@ -570,15 +570,14 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     let symbioteRef=symbiotes.get(symbioteId)
 
-
     //Open writestream in append mode
-    SYMBIOTES_LOGS_STREAMS.set(symbioteId,fs.createWriteStream(PATH_RESOLVE(`LOGS/${symbioteId}.txt`),{flags:'a+'}));
+    SYMBIOTES_LOGS_STREAMS.set(symbioteId,fs.createWriteStream(process.env.LOGS_PATH+`/${symbioteId}.txt`),{flags:'a+'});
 
     
     //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-    ['C','SNAPSHOTS'].forEach(
+    [process.env.CHAINDATA_PATH,process.env.SNAPSHOTS_PATH].forEach(
         
-        name => !fs.existsSync(PATH_RESOLVE(`${name}/${symbioteId}`)) && fs.mkdirSync(PATH_RESOLVE(`${name}/${symbioteId}`))
+        name => !fs.existsSync(`${name}/${symbioteId}`) && fs.mkdirSync(`${name}/${symbioteId}`)
         
     )
     
@@ -618,11 +617,11 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     
     ].forEach(
         
-        dbName => symbioteRef[dbName]=l(PATH_RESOLVE(`C/${symbioteId}/${dbName}`),{valueEncoding:'json'})
+        dbName => symbioteRef[dbName]=l(process.env.CHAINDATA_PATH+`/${symbioteId}/${dbName}`,{valueEncoding:'json'})
         
     )
 
-
+    
     /*
     
         ___________________________________________________State of symbiote___________________________________________________
@@ -658,18 +657,17 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     */
 
 
-    symbioteRef.STATE=l(PATH_RESOLVE(`C/${symbioteId}/STATE`),{valueEncoding:'json'})
+    symbioteRef.STATE=l(process.env.CHAINDATA_PATH+`/${symbioteId}/STATE`,{valueEncoding:'json'})
     
-
-
+   
 
     //...and separate dirs for state and metadata snapshots
 
     symbioteRef.SNAPSHOT={
 
-        METADATA:l(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}/METADATA`),{valueEncoding:'json'}),
+        METADATA:l(process.env.SNAPSHOTS_PATH+`/${symbioteId}/METADATA`,{valueEncoding:'json'}),
 
-        STATE:l(PATH_RESOLVE(`SNAPSHOTS/${symbioteId}/STATE`),{valueEncoding:'json'})
+        STATE:l(process.env.SNAPSHOTS_PATH+`/${symbioteId}/STATE`,{valueEncoding:'json'})
 
     }
 

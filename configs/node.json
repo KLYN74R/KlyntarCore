@@ -33,14 +33,6 @@
 
 
     "INFO":{
-                
-        "SYMBIOTES_WORKFLOW":{
-            
-            "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL":"dev0#833aa49045ff481525d66ed2d6a6e7c939027863c22732e3f8f672aa2b4ad937",
-                
-            "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":"dev0#833aa49045ff481525d66ed2d6a6e7c939027863c22732e3f8f672aa2b4ad937"
-
-        },
         
         "NEWNEWS_EMPIRE_PUBLIC":"some.com,onemore.io,sameinterest.news",
         
@@ -95,8 +87,6 @@
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "PLUGINS":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev@websocket/server.js"],
-
-    "UPDATES":"https://updates.klyntar.org/core"
+    "PLUGINS":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev@websocket/server.js"]
 
 }
