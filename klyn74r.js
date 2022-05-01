@@ -48,11 +48,14 @@ import chalkAnimation from 'chalk-animation'
 
 import UWS from 'uWebSockets.js'
 
+import {isAbsolute} from 'path'
+
 import readline from 'readline'
 
 import fs from 'fs'
 
 import os from 'os'
+
 
 
 
@@ -80,19 +83,20 @@ global.__dirname = await import('path').then(async mod=>
 
 )
 
-
 //______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
+
+
+
 
 process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
 
 
 
-//______SET MODE_________
+//____________________SET MODE__________________________
 
 //All symbiotes are runned in a single instance as mainnets
 process.env.KLY_MODE||='main'
-
 
 
 if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
@@ -103,8 +107,19 @@ if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
 
 }
 
+//GLOBAL_DIR must be an absolute path
+if(process.env.GLOBAL_DIR && (!isAbsolute(process.env.GLOBAL_DIR) || process.env.GLOBAL_DIR.endsWith('/') || process.env.GLOBAL_DIR.endsWith('\\'))){
+
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to GLOBAL_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
+
+    process.exit(1)
+
+}
 
 
+
+
+//____________________DEFINE PATHS_______________________
 
 //All content bellow are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
 [
@@ -123,13 +138,17 @@ if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
 
     if(process.env.KLY_MODE==='main'){
       
-
         if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
         
-        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE(scope)
-        
+        else process.env[`${scope}_PATH`] = PATH_RESOLVE(scope)  
 
-    }else process.env[`${scope}_PATH`] = PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available only in ANTIVENOM separate directory
+    }else{
+
+        if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
+
+        process.env[`${scope}_PATH`] = PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available only in ANTIVENOM separate directory
+
+    }
 
 })
 
@@ -373,13 +392,11 @@ global.SIG_PROCESS={}
 //Location for symbiotes
 !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
 
-
+//And for snapshots
+!fs.existsSync(process.env.SNAPSHOTS_PATH) && fs.mkdirSync(process.env.SNAPSHOTS_PATH);
 
 //For logs streams
 !fs.existsSync(process.env.LOGS_PATH) && fs.mkdirSync(process.env.LOGS_PATH);
-
-//And for snapshots
-!fs.existsSync(process.env.SNAPSHOTS_PATH) && fs.mkdirSync(process.env.SNAPSHOTS_PATH);
 
 
 
