@@ -17,7 +17,7 @@ images/SITES
 
 #Databases
 M
-C
+CHAINDATA
 !GENESIS/README.md
 SNAPSHOTS/
 
@@ -41,7 +41,7 @@ CIIPs
 
 
 #Configs
-configs/symbiotes*
+CONFIGS/symbiotes*
 KEYSTORE/
 decrypted.json
 
@@ -54,3 +54,7 @@ KLY_Tests/hostchains/monitors/evm.js
 KLY_Tests/hostchains/contracts/*.js
 KLY_Tests/hostchains/connectors/
 KLY_Tests/hostchains/tokens/
+
+
+#AntiVenom testnet data
+ANTIVENOM/

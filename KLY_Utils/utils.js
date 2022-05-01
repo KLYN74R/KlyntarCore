@@ -24,6 +24,7 @@ import fs from 'fs'
 
 //       ADDONS = require('../KLY_Addons/build/Release/BUNDLE');
 
+process.env.KLY_MODE||='main'
 
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
@@ -37,7 +38,7 @@ export let
 
 COLORS = {
     C:'\x1b[0m',
-    T:'\u001b[38;5;23m', // for time view
+    T:`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`, // for time view
     F:'\x1b[31;1m', // red(error,no collapse,problems with sequence,etc.)
     S:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
     W:'\u001b[38;5;3m', // yellow(non critical warnings)

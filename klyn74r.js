@@ -1,5 +1,45 @@
 #!/usr/bin/env node
 
+
+
+
+
+
+
+
+/**
+ * 
+ * 
+ * 
+ * 
+ * 
+ *                                                               ██╗  ██╗██╗  ██╗   ██╗███╗   ██╗████████╗ █████╗ ██████╗ 
+ *                                                               ██║ ██╔╝██║  ╚██╗ ██╔╝████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗
+ *                                                               █████╔╝ ██║   ╚████╔╝ ██╔██╗ ██║   ██║   ███████║██████╔╝
+ *                                                               ██╔═██╗ ██║    ╚██╔╝  ██║╚██╗██║   ██║   ██╔══██║██╔══██╗
+ *                                                               ██║  ██╗███████╗██║   ██║ ╚████║   ██║   ██║  ██║██║  ██║
+ *                                                               ╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝
+ * 
+ * 
+ * 
+ *                                                               Developed on Earth,Milky Way(Sagittarius A*) by humanity
+ * 
+ * 
+ *                                                                          Date: ~66.5 ml after Chicxulub
+ * 
+ * 
+ *                                                                          Dev:Vlad Chernenko(@V14D4RT3M)
+ * 
+ * 
+ *                                                       ⟒10⏚19⎎12⟒33⏃☊0⟒⟒⏚401⎅671⏚⏃23⟒38899⎎⎅387847183☊⎅6⏚8308⏃☊72⎅511⏃⏚
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
+
 import {RENAISSANCE,PREPARE_SYMBIOTE} from './KLY_Workflow/dev@controller/life.js'
 
 import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
@@ -46,29 +86,55 @@ global.__dirname = await import('path').then(async mod=>
 process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
 
-//PATHs
-
-//Data of symbiotes
-process.env.CHAINDATA_PATH ||= PATH_RESOLVE('C')
-
-//Directory with configs
-process.env.CONFIGS_PATH ||= PATH_RESOLVE('configs')
-
-//Directory which holds subdirs with files for GENESIS data for symbiotes
-process.env.GENESIS_PATH ||= PATH_RESOLVE('GENESIS')
-
-//Directory which holds subdirs with log streams
-process.env.LOGS_PATH ||= PATH_RESOLVE('LOGS')
-
-//Directory with snapshots of state for symbiotes
-process.env.SNAPSHOTS_PATH ||= PATH_RESOLVE('SNAPSHOTS')
-
-
 
 
 //______SET MODE_________
 
-process.env.MODE||='main'
+//All symbiotes are runned in a single instance as mainnets
+process.env.KLY_MODE||='main'
+
+
+
+if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
+
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'test' for AntiVenom testnet or 'main' for your symbiotes)\x1b[0m`)
+
+    process.exit(1)
+
+}
+
+
+
+
+//All content bellow are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
+[
+
+    'CHAINDATA',//Data of symbiotes
+    
+    'GENESIS',//Directory which holds subdirs with files for GENESIS data for symbiotes
+
+    'CONFIGS',//Directory with configs
+
+    'LOGS',//Directory which holds subdirs with log streams.
+
+    'SNAPSHOTS'//Directory with snapshots of state for symbiotes
+
+].forEach(scope=>{
+
+    if(process.env.KLY_MODE==='main'){
+      
+
+        if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
+        
+        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE(scope)
+        
+
+    }else process.env[`${scope}_PATH`] = PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available only in ANTIVENOM separate directory
+
+})
+
+
+
 
 /*
 
@@ -207,18 +273,11 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 )
 
 
-//To allow you to run multiple KLYNTAR instances
-process.argv.slice(2).forEach(
-    
-    overrideJson => {
+//Disable some functions
+if(process.env.KLY_MODE==='test'){
 
-        let obj=JSON.parse(fs.readFileSync(overrideJson))
 
-        Object.assign(CONFIG,obj)
-
-    }
-    
-)
+}
 
 
 //*********************** SET HANDLERS ON USEFUL SIGNALS ************************
@@ -314,6 +373,8 @@ global.SIG_PROCESS={}
 //Location for symbiotes
 !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
 
+
+
 //For logs streams
 !fs.existsSync(process.env.LOGS_PATH) && fs.mkdirSync(process.env.LOGS_PATH);
 
@@ -364,18 +425,44 @@ global.SIG_PROCESS={}
     
     
     process.stdout.write('\x1Bc')
+
+    if(process.env.KLY_MODE==='main'){
+
+        //Read banner
+        console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
     
-    //Read banner
-    console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
+        //...and add extra colors & changes)
+        .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
+        .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
+        .replace('@ Powered by Klyntar @','@ Powered by \u001b[7m\u001b[31;5;219mKlyntar\x1b[0m \x1b[36;1m@')
+        .replaceAll('≈','\x1b[31m≈\x1b[36m')
+        .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
     
-    //...and add extra colors & changes)
-    .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
-    .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
-    .replace('@ Powered by Klyntar @','@ Powered by \u001b[7m\u001b[31;5;219mKlyntar\x1b[0m \x1b[36;1m@')
-    .replaceAll('≈','\x1b[31m≈\x1b[36m')
-    .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
+    }else{
+
+        //else show the testnet banner
+
+         //Read banner
+        console.log('\u001b[37m'+fs.readFileSync(PATH_RESOLVE('images/testmode_banner.txt')).toString()
     
+        //...and add extra colors & changes)
+        .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
+        .replace('REMEMBER:To infinity and beyond!','\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m')
+        .replace('@ Powered by Klyntar @','\u001b[38;5;87m@ Powered by \u001b[7m\u001b[38;5;202mKlyntar\x1b[0m \u001b[38;5;87m@')
     
+        .replaceAll('≈','\x1b[31m≈\u001b[37m')
+    
+        .replaceAll('█','\u001b[38;5;202m█\u001b[37m')
+
+        .replaceAll('═','\u001b[38;5;87m═\u001b[37m')
+        .replaceAll('╝','\u001b[38;5;87m╝\u001b[37m')
+        .replaceAll('╚','\u001b[38;5;87m╚\u001b[37m')
+    
+        .replaceAll('#','\u001b[38;5;202m#\u001b[37m')+'\x1b[0m\n')
+    
+
+
+    }
 
     
     LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
