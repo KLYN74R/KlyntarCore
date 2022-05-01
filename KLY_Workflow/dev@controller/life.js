@@ -956,7 +956,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
 
 
-RENAISSANCE=async()=>{
+RENAISSANCE=async symbioteID=>{
 
 
     
@@ -967,10 +967,8 @@ RENAISSANCE=async()=>{
 
     let promises=[]
 
-    
-    Object.keys(CONFIG.SYMBIOTES).forEach(symbioteID=>
 
-        !CONFIG.SYMBIOTES[symbioteID].STOP_WORK
+    !CONFIG.SYMBIOTES[symbioteID].STOP_WORK
         &&
         promises.push(
 
@@ -1025,8 +1023,6 @@ RENAISSANCE=async()=>{
             ).catch(e=>LOG(`Controller of \x1b[36;1m${SYMBIOTE_ALIAS(symbioteID)}\x1b[31;1m is offline or some error has been occured\n${e}\n`,'F'))
         
         ))
-        
-    )
 
 
     await Promise.all(promises.splice(0))
@@ -1037,25 +1033,19 @@ RENAISSANCE=async()=>{
 //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
 
-    //Create each time when we run some block generation thread and there were no processes before
-    //Don't paste it inside GEN_BLOCK_START not to repeat checks every call
-    global.STOP_GEN_BLOCK={}
 
 
-    //Creates two timers to generate both blocks separately and to control this flows with independent params
-    Object.keys(CONFIG.SYMBIOTES).forEach(controllerAddr=>{
-        
-        let symbioteRef=CONFIG.SYMBIOTES[controllerAddr]
+    let symbioteRef=CONFIG.SYMBIOTES[symbioteID]
 
         if(!symbioteRef.STOP_WORK){
         
             //Start generate ControllerBlocks if you're controller(obviously)
             !symbioteRef.STOP_GENERATE_BLOCK_C && symbioteRef.CONTROLLER.ME && setTimeout(()=>{
                 
-                STOP_GEN_BLOCK[controllerAddr]={C:''}
+                STOP_GEN_BLOCK[symbioteID]={C:''}
                 
                 //Tag:ExecMap - run generation workflow for ControllerBlocks
-                GEN_BLOCK_START(controllerAddr,'C')
+                GEN_BLOCK_START(symbioteID,'C')
             
             },symbioteRef.BLOCK_С_INIT_DELAY)
 
@@ -1064,15 +1054,14 @@ RENAISSANCE=async()=>{
             
             !symbioteRef.STOP_GENERATE_BLOCK_I && setTimeout(()=>{
 
-                STOP_GEN_BLOCK[controllerAddr] ? STOP_GEN_BLOCK[controllerAddr]['I']='' : STOP_GEN_BLOCK[controllerAddr]={C:'',I:''}
+                STOP_GEN_BLOCK[symbioteID] ? STOP_GEN_BLOCK[symbioteID]['I']='' : STOP_GEN_BLOCK[symbioteID]={C:'',I:''}
 
                 //Tag:ExecMap - run generation workflow for InstantBlocks
-                GEN_BLOCK_START(controllerAddr,'I')
+                GEN_BLOCK_START(symbioteID,'I')
 
             },symbioteRef.BLOCK_I_INIT_DELAY)
 
         }
 
-    })
     
 }

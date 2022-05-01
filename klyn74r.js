@@ -1,12 +1,5 @@
 #!/usr/bin/env node
 
-
-
-
-
-
-
-
 /**
  * 
  * 
@@ -39,8 +32,6 @@
  * 
  * 
  */
-
-import {RENAISSANCE,PREPARE_SYMBIOTE} from './KLY_Workflow/dev@controller/life.js'
 
 import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
@@ -292,11 +283,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 )
 
 
-//Disable some functions
-if(process.env.KLY_MODE==='test'){
-
-
-}
 
 
 //*********************** SET HANDLERS ON USEFUL SIGNALS ************************
@@ -386,6 +372,7 @@ global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
 
+global.STOP_GEN_BLOCK={}
 
 
 
@@ -495,13 +482,27 @@ global.SIG_PROCESS={}
 
 
     //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    let controllers=Object.keys(CONFIG.SYMBIOTES)
+    let symbiChains=Object.keys(CONFIG.SYMBIOTES),
+    
+        rennaisances=new Map()
 
 
 
     
     //.forEach has inner scope,but we need await on top frame level
-    for(let i=0;i<controllers.length;i++) !CONFIG.SYMBIOTES[controllers[i]].STOP_WORK  &&  await PREPARE_SYMBIOTE(controllers[i])
+    for(let i=0;i<symbiChains.length;i++){
+
+        if(!CONFIG.SYMBIOTES[symbiChains[i]].STOP_WORK){
+
+            let {RENAISSANCE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflow/${CONFIG.SYMBIOTES[symbiChains[i]].MANIFEST.WORKFLOW}/life.js`)
+
+            await PREPARE_SYMBIOTE(symbiChains[i])
+
+            rennaisances.set(symbiChains[i],RENAISSANCE)
+
+        }
+
+    }
     
 
 
@@ -599,9 +600,15 @@ global.SIG_PROCESS={}
     }
 
 
-    //Get urgent state and go on!
-    await RENAISSANCE()
 
+    
+    //Get urgent state and go on!
+    rennaisances.forEach(
+        
+        (startSymbiote,symbioteID) => startSymbiote(symbioteID)
+        
+    )
+ 
 
 
 
