@@ -128,16 +128,18 @@ if(process.env.GLOBAL_DIR && (!isAbsolute(process.env.GLOBAL_DIR) || process.env
 ].forEach(scope=>{
 
     if(process.env.KLY_MODE==='main'){
-      
+    
+        //If GLOBAL_DIR is setted-it will be a location for all the subdirs above(CHAINDATA,GENESIS,etc.)
         if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
-        
-        else process.env[`${scope}_PATH`] = PATH_RESOLVE(scope)  
+
+        //If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
+        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE(scope)  
 
     }else{
 
         if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
 
-        process.env[`${scope}_PATH`] = PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available only in ANTIVENOM separate directory
+        process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available in ANTIVENOM separate directory
 
     }
 
@@ -601,7 +603,7 @@ global.STOP_GEN_BLOCK={}
 
 
 
-    
+
     //Get urgent state and go on!
     rennaisances.forEach(
         
