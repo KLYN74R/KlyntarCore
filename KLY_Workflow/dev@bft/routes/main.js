@@ -4,11 +4,11 @@ import{
 
 } from '../../../KLY_Utils/utils.js'
 
+import {verifyInstantBlock} from '../verification.js'
+
 import ControllerBlock from '../../../KLY_Blocks/controllerblock.js'
 
 import {symbiotes,hostchains} from '../../../klyn74r.js'
-
-import {verifyInstantBlock} from '../verification.js'
 
 import fs from 'fs'
 

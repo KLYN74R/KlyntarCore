@@ -871,7 +871,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     
 
-    await DECRYPT_KEYS(symbioteId,initSpinner,symbioteConfig.CONTROLLER.ME?'Controller':'Instant generator').then(()=>
+    await DECRYPT_KEYS(symbioteId,initSpinner).then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
         LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbioteId)}\x1b[32;1m was decrypted successfully`,'S')        
