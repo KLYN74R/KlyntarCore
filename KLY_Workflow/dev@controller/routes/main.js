@@ -2,13 +2,13 @@ import{
 
     VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
 
-} from '../KLY_Utils/utils.js'
+} from '../../../KLY_Utils/utils.js'
 
-import {verifyInstantBlock} from '../KLY_Workflow/dev@controller/verification.js'
+import {verifyInstantBlock} from '../verification.js'
 
-import ControllerBlock from '../KLY_Blocks/controllerblock.js'
+import ControllerBlock from '../../../KLY_Blocks/controllerblock.js'
 
-import {symbiotes,hostchains} from '../klyn74r.js'
+import {symbiotes,hostchains} from '../../../klyn74r.js'
 
 import fs from 'fs'
 
@@ -24,11 +24,7 @@ let BLOCK_PATTERN=process.platform==='linux'?'——':'———'
 
 
 
-export default {
-
-
-
-
+let MAIN = {
 
 
 
@@ -338,3 +334,20 @@ export default {
     })
 
 }
+
+
+
+
+
+UWS_SERVER
+
+.post('/cb',MAIN.controllerBlock)
+
+.post('/ib',MAIN.instantBlock)
+
+.post('/addnode',MAIN.addNode)
+
+.post('/proof',MAIN.proof)
+
+.post('/event',MAIN.event)
+

@@ -1,17 +1,9 @@
-import {GET_NODES,LOG,SYMBIOTE_ALIAS,BODY} from '../KLY_Utils/utils.js'
+import {GET_NODES,LOG,SYMBIOTE_ALIAS,BODY} from '../../../KLY_Utils/utils.js'
 
-import {symbiotes,WRAP_RESPONSE} from '../klyn74r.js'
-
-
+import {symbiotes,WRAP_RESPONSE} from '../../../klyn74r.js'
 
 
-
-
-
-
-export default {
-
-
+let API = {
 
 
     acccount:async(a,q)=>{
@@ -193,3 +185,20 @@ export default {
     })
 
 }
+
+
+
+
+UWS_SERVER
+
+.get('/multiplicity/:symbiote/:fromHeigth',API.multiplicity)
+
+.get('/account/:symbiote/:address',API.acccount)
+
+.get('/block/:symbiote/:type/:id',API.block)
+
+.get('/nodes/:symbiote/:region',API.nodes)
+
+.post('/alert',API.alert)
+
+.get('/i',API.info)

@@ -1,6 +1,4 @@
-//CONTROL_SID
-//CONTROL_PRV_KEY
-export default {
+let CONTROL = {
 
     nonce:0,
 
@@ -15,3 +13,7 @@ export default {
 
 }
     
+
+UWS_SERVER
+
+.post('/con',CONTROL.config)

@@ -619,81 +619,7 @@ global.STOP_GEN_BLOCK={}
 
 
 
-//Load route modules
-let CONTROL=(await import('./KLY_Routes/control.js')).default,
-    
-    MAIN=(await import('./KLY_Routes/main.js')).default,
-    
-    API=(await import('./KLY_Routes/api.js')).default,
-
-    SERVICES=(await import('./KLY_Routes/services.js')).default
-
-
-
-
-//_____________________________________________________MAIN_____________________________________________________
-
-//...And only after that we start routes
-
-//Tag:ExecMap
-UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
-
-
-
-
-.post('/cb',MAIN.controllerBlock)
-
-.post('/ib',MAIN.instantBlock)
-
-.post('/addnode',MAIN.addNode)
-
-.post('/proof',MAIN.proof)
-
-.post('/event',MAIN.event)
-
-
-
-
-//_____________________________________________________CONTROL_____________________________________________________
-
-
-//.post('/change',W.change)
-
-.post('/con',CONTROL.config)
-
-//.post('/view',W.view)
-
-
-//_______________________________________________________API_______________________________________________________
-
-
-
-
-.get('/multiplicity/:symbiote/:fromHeigth',API.multiplicity)
-
-.get('/account/:symbiote/:address',API.acccount)
-
-.get('/block/:symbiote/:type/:id',API.block)
-
-.get('/nodes/:symbiote/:region',API.nodes)
-
-.post('/alert',API.alert)
-
-.get('/i',API.info)
-
-
-
-
-//_____________________________________________________SERVICES____________________________________________________
-
-
-.post('/service',SERVICES.services)
-
-
-
-
-.listen(CONFIG.INTERFACE,CONFIG.PORT,descriptor=>{
-
+global.UWS_SERVER=UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS).listen(CONFIG.INTERFACE,CONFIG.PORT,descriptor=>{
 
     if(descriptor){
 
@@ -704,10 +630,12 @@ UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS)
     }
     else LOG('Oops,some problems with server module','F')
 
-
-
 })
 
+
+
+//Call general code to start import routes
+import(`./KLY_Workflow/dev@controller/routes.js`)
 
 
 
