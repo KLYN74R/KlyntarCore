@@ -51,7 +51,7 @@ this.symbiotes?             //array of symbiotes if service rely on them
 
 this.hostchains?            //hostchains to interact with
 
-this.dec_storage?           //does 
+this.dec_storage?           //does this service hosted somewhere in decentralized space
 
 */
 
