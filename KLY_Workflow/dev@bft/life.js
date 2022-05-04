@@ -878,7 +878,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     
     ).catch(e=>{
     
-        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via REPL\n${e}`,'F')
+        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${e}`,'F')
  
         process.exit(100)
 

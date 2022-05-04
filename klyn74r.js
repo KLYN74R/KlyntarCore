@@ -305,7 +305,7 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(Object.keys(SIG_PROCESS).every(symbiote => Object.values(SIG_PROCESS[symbiote]).every(x=>x))){
+        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.keys(SIG_PROCESS).every(symbiote => Object.values(SIG_PROCESS[symbiote]).every(x=>x))){
 
             console.log('\n')
 
@@ -365,7 +365,7 @@ process.on('SIGHUP',graceful)
 
 
 
-
+//Define general global object
 global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 global.PRIVATE_KEYS=new Map()
@@ -373,8 +373,6 @@ global.PRIVATE_KEYS=new Map()
 global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
-
-global.STOP_GEN_BLOCK={}
 
 
 

@@ -160,6 +160,8 @@ START_VERIFY_POLLING=async symbiote=>{
     //This option will stop workflow of verification for each symbiote
     if(!SIG_SIGNAL){
 
+        IN_PROCESS.GENERATE=true
+
         //Try to get block
         let verifThread=symbiotes.get(symbiote).VERIFICATION_THREAD,
             
@@ -190,6 +192,7 @@ START_VERIFY_POLLING=async symbiote=>{
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
         
+        IN_PROCESS.GENERATE=false
 
     
     }else{

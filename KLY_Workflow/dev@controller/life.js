@@ -17,7 +17,11 @@ import l from 'level'
 import fs from 'fs'
 
 
+//______________________________________________________________VARIABLES POOL___________________________________________________________________
 
+global.STOP_GEN_BLOCK={}
+
+global.IN_PROCESS={VERIFY:false,GENERATE:false}
 
 //________________________________________________________________INTERNAL_______________________________________________________________________
 
@@ -92,6 +96,8 @@ GET_CANDIDATES=async symbiote=>{
 GEN_BLOCK_START=async(symbiote,type)=>{
 
     if(!SIG_SIGNAL){
+
+        IN_PROCESS.GENERATE=true
     
         await GEN_BLOCK(symbiote,type)
 
@@ -108,6 +114,9 @@ GEN_BLOCK_START=async(symbiote,type)=>{
         SIG_PROCESS[symbiote].GENERATE=true
 
     }
+
+    //leave function
+    IN_PROCESS.GENERATE=false
     
 },
 
@@ -878,7 +887,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     
     ).catch(e=>{
     
-        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via REPL\n${e}`,'F')
+        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${e}`,'F')
  
         process.exit(100)
 
