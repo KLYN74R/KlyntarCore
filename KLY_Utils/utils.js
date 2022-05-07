@@ -2,6 +2,8 @@
 
 import {symbiotes,hostchains} from '../klyn74r.js'
 
+import {SocksProxyAgent} from 'socks-proxy-agent'
+
 import { createRequire } from 'module'
 
 import {hash} from 'blake3-wasm'
@@ -232,7 +234,6 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
         let keys=JSON.parse(fs.readFileSync(PATH_RESOLVE('decrypted.json')))
         
 
-
         
         Object.keys(keys).forEach(symbiote=>{
 
@@ -241,7 +242,8 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
             //Main key
             global.PRIVATE_KEYS.set(symbiote,keys[symbiote].kly)
 
-            
+           
+            //...and decrypt for hostchains(if you role on appropriate workflow require it)
             Object.keys(symbioteConfig.MANIFEST.HOSTCHAINS).forEach(
                 
                 ticker => {
@@ -254,9 +256,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
 
             )            
             
-
         })
-
 
         return
       
@@ -270,7 +270,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.PUB} / ${symbioteRef.MANIFEST.WORKFLOW}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW} / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
        
 
     

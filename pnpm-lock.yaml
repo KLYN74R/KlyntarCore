@@ -95,7 +95,7 @@ devDependencies:
   '@zilliqa-js/util': 3.3.4
   '@zilliqa-js/zilliqa': 3.3.4
   https-proxy-agent: 5.0.0
-  socks-proxy-agent: 6.2.0-beta.0
+  socks-proxy-agent: 6.2.0
   tweetnacl: 1.0.3
 
 packages:
@@ -2498,11 +2498,6 @@ packages:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
     dev: false
-
-  /cacheable-lookup/6.0.4:
-    resolution: {integrity: sha512-mbcDEZCkv2CZF4G01kr8eBd/5agkt9oCqz75tJMSIsquvRZ2sL6Hi5zGVKi/0OSC9oO1GHfJ2AV0ZIOY9vye0A==}
-    engines: {node: '>=10.6.0'}
-    dev: true
 
   /cacheable-request/6.1.0:
     resolution: {integrity: sha512-Oj3cAGPCqOZX7Rz64Uny2GYAZNliQSqfbePrgAQ1wKAihYmCUnraBtJtKcGR4xz7wF+LoJC+ssFZvv5BgF9Igg==}
@@ -6257,12 +6252,11 @@ packages:
     engines: {node: '>= 6.0.0', npm: '>= 3.0.0'}
     dev: true
 
-  /socks-proxy-agent/6.2.0-beta.0:
-    resolution: {integrity: sha512-vJVDGsyaBh7cP8BfynQV1sSqiZ045FkNTyaWLz1g4Ut3sCIuO52sxK0ix8yvqf5n0teDyY1Pw4NRclRiuGTV+w==}
+  /socks-proxy-agent/6.2.0:
+    resolution: {integrity: sha512-wWqJhjb32Q6GsrUqzuFkukxb/zzide5quXYcMVpIjxalDBBYy2nqKCFQ/9+Ie4dvOYSQdOk3hUlZSdzZOd3zMQ==}
     engines: {node: '>= 10'}
     dependencies:
       agent-base: 6.0.2
-      cacheable-lookup: 6.0.4
       debug: 4.3.4
       socks: 2.6.2
     transitivePeerDependencies:

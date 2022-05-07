@@ -53,7 +53,7 @@ GET_CANDIDATES=async symbiote=>{
         
         symbiotes.get(symbiote).INSTANT_CANDIDATES.delete(hash)
         
-        //Get account of InstantBlock creator and check if he still has STAKE
+        //Get account of InstantBlock creator and check if he still has a stake and ability to generate block
         promises.push(state.get(creator).then(acc=>
             
             //If enough on balance-then pass hash.Otherwise-delete block from candidates and return "undefined" 

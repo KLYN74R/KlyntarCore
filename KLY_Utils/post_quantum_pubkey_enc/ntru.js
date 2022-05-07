@@ -13,7 +13,9 @@ The default parameter set is EES743EP1 (roughly 256-bit strength, as per NTRU's 
 
 import ntru from 'ntru'
 
-let keys=await ntru.keyPair()
+
+
+let keys=await ntru.keyPair('hello')
 
 console.log(keys)
 
