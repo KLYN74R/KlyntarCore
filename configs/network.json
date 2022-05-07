@@ -19,16 +19,6 @@
 
         }
     },
-    
-
-    "PROXY":{
-        "TYPE":"HTTP/HTTPS",
-        "URL":"http://LOGIN:PASSWORD@some.proxy:8080"
-    },
-    
-    "TTL":{
-        "INFO":600
-    },
 
     "TRIGGERS":{
         
@@ -40,43 +30,6 @@
       
         "INFO":1
     
-    },
-
-    
-    "TOR":{
-        
-        "ENABLE":true,
-        
-        "URL":"socks5h://localhost:5666",
-
-        "MAN":"https://manpages.debian.org/experimental/tor/torrc.5.en.html"
-    
-    },
-
-    
-    "I2P":{
-        
-        "ENABLE":false,
-        
-        "URL":"http://localhost:4444"
-    
-    },
-
-
-    "ZERONET":{
-        
-        "ENABLE":false,
-        
-        "URL":"http://localhost:4444"
-    
-    },
-
-    "IPFS":{
-        
-        "ENABLE":false,
-        
-        "URL":"http://localhost:8080"
-    
     }
-    
+       
 }

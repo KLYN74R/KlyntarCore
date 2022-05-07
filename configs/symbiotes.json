@@ -249,11 +249,13 @@
             "MY_ADDR":"http://somenode.com:7777",
             
             "TTL":{
+                "INFO":600,
                 "BALANCE":30,
                 "NODES":600
             },
 
             "TRIGGERS":{
+                "INFO":1,
                 "NODES":1,
                 "ACCOUNTS":1,
                 "INSTANT_BLOCKS":1,
@@ -603,11 +605,13 @@
             "MY_ADDR":"http://somenode.com:7777",
 
             "TTL":{
+                "INFO":600,
                 "BALANCE":30,
                 "NODES":600
             },
 
             "TRIGGERS":{
+                "INFO":1,
                 "NODES":1,
                 "ACCOUNTS":1,
                 "INSTANT_BLOCKS":1,

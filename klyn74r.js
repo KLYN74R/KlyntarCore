@@ -600,8 +600,7 @@ global.SIG_PROCESS={}
     }
 
 
-
-
+    
     //Get urgent state and go on!
     rennaisances.forEach(
         

@@ -2,8 +2,6 @@
 
 import {symbiotes,hostchains} from '../klyn74r.js'
 
-import {SocksProxyAgent} from 'socks-proxy-agent'
-
 import { createRequire } from 'module'
 
 import {hash} from 'blake3-wasm'
@@ -19,7 +17,6 @@ import c from 'crypto'
 import fs from 'fs'
 
 
-
 //Fix to load addons. For node v17.9.0 it's still impossible to load addons to ESM environment
 //See https://stackoverflow.com/a/66527729/18521368
 // const require = createRequire(import.meta.url),
@@ -27,6 +24,9 @@ import fs from 'fs'
 //       ADDONS = require('../KLY_Addons/build/Release/BUNDLE');
 
 process.env.KLY_MODE||='main'
+
+
+
 
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
