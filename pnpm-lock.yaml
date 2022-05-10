@@ -26,6 +26,7 @@ specifiers:
   bitcore-lib: ^8.25.10
   bitcore-lib-cash: ^8.25.10
   blake3-wasm: ^2.1.5
+  bls-wasm: ^0.4.8
   chalk-animation: ^1.6.0
   cli-spinners: ^2.6.1
   eslint: ^8.11.0
@@ -72,6 +73,7 @@ dependencies:
   bitcore-lib: 8.25.25
   bitcore-lib-cash: 8.25.25
   blake3-wasm: 2.1.5
+  bls-wasm: 0.4.8
   chalk-animation: 1.6.0
   cli-spinners: 2.6.1
   eslint: 8.11.0
@@ -2257,6 +2259,10 @@ packages:
 
   /bls-signatures/0.2.5:
     resolution: {integrity: sha512-5TzQNCtR4zWE4lM08EOMIT8l3b4h8g5LNKu50fUYP1PnupaLGSLklAcTto4lnH7VXpyhsar+74L9wNJII4E/4Q==}
+    dev: false
+
+  /bls-wasm/0.4.8:
+    resolution: {integrity: sha512-UF0cHgtK5fBr+MFek8KGNWFePcDKe7izQxyMWpJECpn0WW2iSlgr9iNJrvIczVx87ALWQWZqxoTkGImnOaJJtA==}
     dev: false
 
   /bluebird/3.7.2:
