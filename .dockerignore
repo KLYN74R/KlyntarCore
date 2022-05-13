@@ -37,7 +37,7 @@ CIIPs
 *.pem
 *.dll
 *.so
-
+*.h
 
 
 #Configs

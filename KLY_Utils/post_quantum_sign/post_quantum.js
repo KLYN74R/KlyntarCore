@@ -1,8 +1,5 @@
 import {hash} from 'blake3-wasm'
 
-import sphincs from 'sphincs'
-
-
 let BLAKE3=v=>hash(v).toString('hex'),
 
     getRandomArbitrary=(min, max)=>Math.random() * (max - min) + min
@@ -146,27 +143,6 @@ export default {
     BIBA:{
 
         
-
-    },
-    
-    XMSS:{},
-    
-    FALCON:{},
-    
-    SPHINCS:{
-
-        generate:async()=>{
-
-            let kp=await sphincs.keyPair()
-
-            return {publicKey:Buffer.from(kp.publicKey).toString('base64'),privateKey:Buffer.from(kp.privateKey).toString('base64')}
-
-        },
-
-        sign:async(privateKey,data)=>Buffer.from(await sphincs.signDetached(new Uint8Array(Buffer.from(data,'utf-8')),new Uint8Array(Buffer.from(privateKey,'base64')))).toString('base64'),
-
-
-        verify:(signature,data,pubKey)=>sphincs.verifyDetached(new Uint8Array(Buffer.from(signature,'base64')),new Uint8Array(Buffer.from(data,'utf-8')),new Uint8Array(Buffer.from(pubKey,'base64'))).catch(e=>false)
 
     }
 

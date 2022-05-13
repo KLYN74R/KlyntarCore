@@ -61,7 +61,6 @@
     "ripple-lib": "^1.10.0",
     "secp256k1": "^4.0.2",
     "sotez": "^10.0.0",
-    "sphincs": "^2.4.1",
     "stellar-sdk": "^9.0.1",
     "tronweb": "^4.0.0",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.3.0",

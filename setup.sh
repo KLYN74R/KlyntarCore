@@ -132,4 +132,4 @@ cd ..
 
 
 #Run building addons script
-./build.sh
+./build_addons.sh
