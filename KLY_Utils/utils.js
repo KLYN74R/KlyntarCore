@@ -20,9 +20,11 @@ import fs from 'fs'
 //Fix to load addons. For node v17.9.0 it's still impossible to load addons to ESM environment
 //See https://stackoverflow.com/a/66527729/18521368
 
+export let ADDONS
+
 if(process.platform==='linux'){
 
-    var require = createRequire(import.meta.url),
+    var require = createRequire(import.meta.url)
 
     ADDONS = require('../KLY_Addons/build/Release/BUNDLE');
   

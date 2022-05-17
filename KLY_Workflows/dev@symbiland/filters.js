@@ -98,6 +98,11 @@ export default {
 
     WORKFLOW_CHANGE:async (symbiote,event)=>{},
 
+    MULTISIG:async (symbiote,event)=>{},
+
+    SERVICE_COMMIT:async (symbiote,event)=>{},
+
+    PQC_TX:async (symbiote,event)=>{},
 
 }
 

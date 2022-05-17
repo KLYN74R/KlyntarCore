@@ -74,6 +74,11 @@
             
         ]
 
-    }
+    },
+
+    "CONTAINERS":[
+        "group1-WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq-node",
+        "group1-JeVZcdi8TQZaX6TKhtSKLCzMQMRCx5JjsQTiGbAaLPXW-rust.node.go.python"
+    ]
     
 }

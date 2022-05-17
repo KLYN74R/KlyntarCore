@@ -1,7 +1,7 @@
-// import {PATH_RESOLVE,BROADCAST} from '../../KLY_Utils/utils.js'
-// import {LOG} from '../../KLY_Services/CommonResources/utils.js'
-// import {spawn} from 'child_process'
-// import fs from 'fs'
+import {PATH_RESOLVE,BROADCAST} from '../../KLY_Utils/utils.js'
+import {LOG} from '../../KLY_Services/CommonResources/utils.js'
+import {spawn} from 'child_process'
+import fs from 'fs'
 
 
 /*
@@ -55,34 +55,49 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 
 */
 
-// let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev@andromeda/configs.json'))
+let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev@andromeda/configs.json'))
 
 
-// export default async service=>{
+export default async service=>{
 
-//     if(typeof service.title==='string' && service.desc.length<RUNNER_CONFIGS.DESC_MAX_LEN){
+    if(typeof service.title==='string' && service.desc.length<RUNNER_CONFIGS.DESC_MAX_LEN){
 
-//         LOG({data:`Received new service \x1b[31;1m${service.desc}\x1b[0m`,pid:process.pid},'CD')
-
-//     }
-
-    
-//}
-
-
-import {exec} from "child_process"
-
-exec("docker exec jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx echo DADAD >> hello.txt", (err, stdout, stderr) => {
-    
-    //Node couldn"t execute the command  
-    if (err) {
-
-        console.log(err)
+        LOG({data:`Received new service \x1b[31;1m${service.desc}\x1b[0m`,pid:process.pid},'CD')
 
     }
 
-    //The *entire* stdout and stderr (buffered)
-    console.log(`H => ${stdout}`)
-    console.log(`E => ${stderr}`)
+    
+}
 
-})
+
+/*
+
+
+___________________________________________________________________ LINKS POOL ___________________________________________________________________
+
+https://gist.github.com/styblope/dc55e0ad2a9848f2cc3307d4819d819fs - for Linux
+
+
+
+
+
+
+*/
+
+
+// import {exec} from "child_process"
+
+// exec("docker exec jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx echo DADAD >> hello.txt", (err, stdout, stderr) => {
+    
+//     //Node couldn"t execute the command  
+//     if (err) {
+
+//         console.log(err)
+
+//     }
+
+//     //The *entire* stdout and stderr (buffered)
+//     console.log(`H => ${stdout}`)
+//     console.log(`E => ${stderr}`)
+
+// })

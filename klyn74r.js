@@ -494,7 +494,7 @@ global.SIG_PROCESS={}
 
         if(!CONFIG.SYMBIOTES[symbiChains[i]].STOP_WORK){
 
-            let {RENAISSANCE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflow/${CONFIG.SYMBIOTES[symbiChains[i]].MANIFEST.WORKFLOW}/life.js`)
+            let {RENAISSANCE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTES[symbiChains[i]].MANIFEST.WORKFLOW}/life.js`)
 
             await PREPARE_SYMBIOTE(symbiChains[i])
 
@@ -632,7 +632,7 @@ global.UWS_SERVER=UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS).lis
 
 
 //Call general code to start import routes
-import(`./KLY_Workflow/dev@controller/routes.js`)
+import(`./KLY_Workflows/dev@controller/routes.js`)
 
 
 

@@ -29,6 +29,7 @@ specifiers:
   bls-wasm: ^0.4.8
   chalk-animation: ^1.6.0
   cli-spinners: ^2.6.1
+  dockerode: ^3.3.1
   eslint: ^8.11.0
   https-proxy-agent: ^5.0.0
   level: ^7.0.0
@@ -75,6 +76,7 @@ dependencies:
   bls-wasm: 0.4.8
   chalk-animation: 1.6.0
   cli-spinners: 2.6.1
+  dockerode: 3.3.1
   eslint: 8.11.0
   level: 7.0.1
   litecore-lib: 0.13.22
@@ -2219,7 +2221,6 @@ packages:
       inherits: 2.0.4
       readable-stream: 3.6.0
     dev: false
-    optional: true
 
   /bl/5.0.0:
     resolution: {integrity: sha512-8vxFNZ0pflFfi0WXA3WQXlj6CaMEwsmh63I1CNp0q+wWv8sD0ARx1KovSQd0l2GkwrMIOyedq0EF1FxI+RCZLQ==}
@@ -2490,6 +2491,12 @@ packages:
     requiresBuild: true
     dependencies:
       node-gyp-build: 4.3.0
+
+  /buildcheck/0.0.3:
+    resolution: {integrity: sha512-pziaA+p/wdVImfcbsZLNF32EiWyujlQLwolMqUQE8xpKNOH7KmZQaY8sXN7DGOEzPAElo9QTaeNRfGnf3iOJbA==}
+    engines: {node: '>=10.0.0'}
+    dev: false
+    optional: true
 
   /bytebuffer/5.0.1:
     resolution: {integrity: sha1-WC7qSxqHO20CCkjVjfhfC7ps/d0=}
@@ -2770,6 +2777,16 @@ packages:
       object-assign: 4.1.1
       vary: 1.1.2
     dev: false
+
+  /cpu-features/0.0.4:
+    resolution: {integrity: sha512-fKiZ/zp1mUwQbnzb9IghXtHtDoTMtNeb8oYGx6kX2SYfhnG0HNdBEBIzB9b5KlXu5DQPhfy3mInbBxFcgwAr3A==}
+    engines: {node: '>=10.0.0'}
+    requiresBuild: true
+    dependencies:
+      buildcheck: 0.0.3
+      nan: 2.15.0
+    dev: false
+    optional: true
 
   /crc-32/1.2.1:
     resolution: {integrity: sha512-Dn/xm/1vFFgs3nfrpEVScHoIslO9NZRITWGz/1E/St6u4xw99vfZzVkW0OSnzx2h9egej9xwMCEut6sqwokM/w==}
@@ -3062,6 +3079,28 @@ packages:
       bn.js: 4.12.0
       miller-rabin: 4.0.1
       randombytes: 2.1.0
+    dev: false
+
+  /docker-modem/3.0.3:
+    resolution: {integrity: sha512-Tgkn2a+yiNP9FoZgMa/D9Wk+D2Db///0KOyKSYZRJa8w4+DzKyzQMkczKSdR/adQ0x46BOpeNkoyEOKjPhCzjw==}
+    engines: {node: '>= 8.0'}
+    dependencies:
+      debug: 4.3.4
+      readable-stream: 3.6.0
+      split-ca: 1.0.1
+      ssh2: 1.10.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
+  /dockerode/3.3.1:
+    resolution: {integrity: sha512-AS2mr8Lp122aa5n6d99HkuTNdRV1wkkhHwBdcnY6V0+28D3DSYwhxAk85/mM9XwD3RMliTxyr63iuvn5ZblFYQ==}
+    engines: {node: '>= 8.0'}
+    dependencies:
+      docker-modem: 3.0.3
+      tar-fs: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
     dev: false
 
   /doctrine/3.0.0:
@@ -3863,7 +3902,6 @@ packages:
   /fs-constants/1.0.0:
     resolution: {integrity: sha512-y6OAwoSIf7FyjMIv94u+b5rdheZEjzR63GTyZJm5qh4Bi+2YgwLCcI/fPFZkL5PSixOt6ZNKm+w+Hfp/Bciwow==}
     dev: false
-    optional: true
 
   /fs-extra/4.0.3:
     resolution: {integrity: sha512-q6rbdDd1o2mAnQreO7YADIxf/Whx4AHBiRf6d+/cVT8h44ss+lHgxf1FemcqDnQt9X3ct4McHr+JMGlYSsK7Cg==}
@@ -5086,7 +5124,6 @@ packages:
   /mkdirp-classic/0.5.3:
     resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
     dev: false
-    optional: true
 
   /mkdirp-promise/5.0.1:
     resolution: {integrity: sha1-6bj2jlUsaKnBcTuEiD96HdA5uKE=}
@@ -6336,10 +6373,26 @@ packages:
     resolution: {integrity: sha512-Ctl2BrFiM0X3MANYgj3CkygxhRmr9mi6xhejbdO960nF6EDJApTYpn0BQnDKlnNBULKiCN1n3w9EBkHK8ZWg+g==}
     dev: false
 
+  /split-ca/1.0.1:
+    resolution: {integrity: sha1-bIOv82kvphJW4M0ZfgXp3hV2kaY=}
+    dev: false
+
   /split2/2.2.0:
     resolution: {integrity: sha512-RAb22TG39LhI31MbreBgIuKiIKhVsawfTgEGqKHTK87aG+ul/PB8Sqoi3I7kVdRWiCfrKxK3uo4/YUkpNvhPbw==}
     dependencies:
       through2: 2.0.5
+    dev: false
+
+  /ssh2/1.10.0:
+    resolution: {integrity: sha512-OnKAAmf4j8wCRrXXZv3Tp5lCZkLJZtgZbn45ELiShCg27djDQ3XFGvIzuGsIsf4hdHslP+VdhA9BhUQdTdfd9w==}
+    engines: {node: '>=10.16.0'}
+    requiresBuild: true
+    dependencies:
+      asn1: 0.2.6
+      bcrypt-pbkdf: 1.0.2
+    optionalDependencies:
+      cpu-features: 0.0.4
+      nan: 2.15.0
     dev: false
 
   /sshpk/1.17.0:
@@ -6611,6 +6664,15 @@ packages:
       xhr-request: 1.1.0
     dev: false
 
+  /tar-fs/2.0.1:
+    resolution: {integrity: sha512-6tzWDMeroL87uF/+lin46k+Q+46rAJ0SyPGz7OW7wTgblI273hsBqk2C1j0/xNadNLKDTUL9BukSjB7cwgmlPA==}
+    dependencies:
+      chownr: 1.1.4
+      mkdirp-classic: 0.5.3
+      pump: 3.0.0
+      tar-stream: 2.2.0
+    dev: false
+
   /tar-fs/2.1.1:
     resolution: {integrity: sha512-V0r2Y9scmbDRLCNex/+hYzvp/zyYjvFbHPNgVTKfQvVrb6guiE/fxP+XblDNR011utopbkex2nM4dHNV6GDsng==}
     dependencies:
@@ -6631,7 +6693,6 @@ packages:
       inherits: 2.0.4
       readable-stream: 3.6.0
     dev: false
-    optional: true
 
   /tar/4.4.19:
     resolution: {integrity: sha512-a20gEsvHnWe0ygBY8JbxoM4w3SJdhc7ZAuxkLqh+nvNQN2IOt0B5lLgM490X5Hl8FF0dl0tOf2ewFYAlIFgzVA==}

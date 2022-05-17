@@ -1,57 +1,65 @@
-import vm from 'vm'
-
-//_________________________________ CONTEXT CREATING _________________________________
-
-const x = 1;
-
-const context = { x: 2 };
-vm.createContext(context); // Contextify the object.
-
-//_________________________________ SNIPPET EXECUTION _________________________________
-const code = `x += 40;
-
-var y = 17;
-
-y+=10;
-
-`;
-// `x` and `y` are global variables in the context.
-// Initially, x has the value 2 because that is the value of context.x.
-vm.runInContext(code,context);
+import Docker from 'dockerode'
 
 
-console.log(context.x); // 42
-console.log(context.y); // 17
+let docker = new Docker({protocol:'http', host: 'localhost', port: 2375})
+
+// var docker1 = new Docker(); //defaults to above if env variables are not used
+// var docker2 = new Docker({host: 'http://192.168.1.10', port: 3000});
+//var docker = new Docker({protocol:'http', host: 'localhost', port: 2375});
+// var docker4 = new Docker({host: '127.0.0.1', port: 3000}); //defaults to http
+
+//docker.listContainers().then(console.log)
 
 
-//_________________________________ FUNCTION EXECUTION _________________________________
 
-let script=new vm.Script(`
 
-    function add(a, b) {
+//Получение изменений контейнера
+// docker.getContainer('jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx').changes().then(console.log)//.exec({Cmd:['date'], AttachStdin: false, AttachStdout: true},(e,r)=>console.log(r))
 
-        let q=10
+//Получить общую инфу по Докеру
+//console.log(docker.info().then(console.log))
 
-        for(let i=0;i<10;i++) q++
+//Детальная инфа по версии
+//console.log(docker.version().then(console.log))
 
-        return a + b + q;
 
-    }
+
+//console.log(docker.getContainer('jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx').exec('echo DADAD >> fromhost.txt').then(console.log))
+//docker.getContainer('jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx').exec({Cmd: ['shasum', '-'], AttachStdin: true, AttachStdout: true})
+
+
+let options = {
+      Cmd: ["echo", "'foo'"], AttachStdin: true, AttachStdout: true
+    };
+var container = docker.getContainer('jdmhe8o5stjixmzzmpwjswusj1gecavpss9wsvept1xx');
+
+/**
+ * Get env list from running container
+ * @param container
+ */
+ function runExec(container) {
+
+    var options = {
+      Cmd: ['bash', '-c', 'echo test $VAR && timeout 3s node /root/server.js'],
+      Env: ['VAR=ttslkfjsdalkfj'],
+      AttachStdout: true,
+      AttachStderr: true
+    };
   
-    x = add(1,2);
+    container.exec(options, function(err, exec) {
+      if (err) return;
+      exec.start(function(err, stream) {
+        if (err) return;
+  
+        container.modem.demuxStream(stream, process.stdout, process.stderr);
+  
+        exec.inspect(function(err, data) {
+          if (err) return;
+          console.log(data);
+        });
+      });
+    });
+  }
 
-    let w=30;
 
-    for(let i=0;i<10;i++) x+=w
-
-`)
-
-//_________________________________ CONTEXT CREATING _________________________________
-
-script.runInContext(context)
-
-console.log(context.x); // 42
-console.log(context.y); // 17
-
-// console.log(x); // 1; y is not defined.
-
+container.start().then(()=>runExec(container))

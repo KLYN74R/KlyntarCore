@@ -38,7 +38,7 @@
 
 
 
-import {BLAKE3,GET_SYMBIOTE_ACC,VERIFY} from '../../KLY_Utils/utils.js'
+import {BLAKE3,GET_SYMBIOTE_ACC,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import {symbiotes} from '../../klyn74r.js'
 
@@ -63,14 +63,23 @@ export let SPENDERS = {
 
     UNOBTANIUM:(event,symbiote)=>JSON.stringify(event.p).length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    //Unimplemented
+    //_______________________________________Unimplemented section_______________________________________
+
     RL_OWNSHIP_APPRV:(_event,symbiote)=>{},
 
     QUANTUMSWAP:async event=>{},
 
     SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
-    WORKFLOW_CHANGE:async event=>{}
+    WORKFLOW_CHANGE:async event=>{},
+
+    MULTISIG:async (symbiote,event)=>{},
+
+    SERVICE_COMMIT:async (symbiote,event)=>{},
+
+    PQC_TX:async (symbiote,event)=>{},
+
+
 }
 
 
@@ -227,7 +236,15 @@ export let VERIFIERS = {
     //Unimplemented
     RL_OWNSHIP_APPRV:async(event,blockCreator,symbiote)=>{},
 
-    QUANTUMSWAP:async (event,blockCreator,symbiote)=>{}
+    QUANTUMSWAP:async (event,blockCreator,symbiote)=>{},
+    
+    MULTISIG:async (symbiote,event)=>{},
+
+    SERVICE_COMMIT:async (symbiote,event)=>{},
+
+    //We'll use BLISS due to less pubkey size
+    PQC_TX:async (symbiote,event)=>{},
+
 
 
 }
