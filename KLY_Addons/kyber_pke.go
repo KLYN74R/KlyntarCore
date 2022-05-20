@@ -1,17 +1,15 @@
 package main
 
 import (
-	
-	kyber512 "github.com/cloudflare/circl/pke/kyber/kyber512"//we will use 512
+	kyber512 "github.com/cloudflare/circl/pke/kyber/kyber512" //we will use 512
 
 	"encoding/hex"
+
 	"C"
 )
 
-
-
-//export genKYBER_PKE 
-func genKYBER_PKE() {
+//export genKYBER_PKE
+func genKYBER_PKE() *C.char {
 
 	pubKey, privKey, _ := kyber512.GenerateKey(nil)
 
@@ -23,47 +21,57 @@ func genKYBER_PKE() {
 	pubKey.Pack(pubBuf)
 	privKey.Pack(privBuf)
 
-	return C.CString(hex.EncodeToString(pubKey)+":"+hex.EncodeToString(privKey))
+	return C.CString(hex.EncodeToString(pubBuf) + ":" + hex.EncodeToString(privBuf))
 
 }
 
 //export genKYBER_PKE_ENCRYPT
-func genKYBER_PKE_ENCRYPT() {
+func genKYBER_PKE_ENCRYPT(hexPubKey *C.char, hexPlainText *C.char) *C.char {
 
-}
+	//______________________________ Prepare public key ______________________________
 
-//export genKYBER_PKE_DECRYPT
-func genKYBER_PKE_DECRYPT() {
+	pubKeyBuffer, _ := hex.DecodeString(C.GoString(hexPubKey))
 
-}
+	pubKey := kyber512.PublicKey{} //create empty
 
+	pubKey.Unpack(pubKeyBuffer) //unpack bytes
 
-	pubKey, privKey, _ := kyber512.GenerateKey(nil)
+	//_______________________________ Prepare buffers ________________________________
 
-	pubBuf := make([]byte, kyber512.PublicKeySize)
+	plainBuf, _ := hex.DecodeString(C.GoString(hexPlainText)) //Up to 32 bytes(kyber512.PlaintextSize) payload
 
-	privBuf := make([]byte, kyber512.PrivateKeySize)
-
-	pubKey.Pack(pubBuf)
-	privKey.Pack(privBuf)
-
-	// fmt.Println("Pub ", hex.EncodeToString(pubBuf))
-	// fmt.Println("\n\n Prv ", hex.EncodeToString(privBuf))
-
-	//////////////////////////////////// ENCRYPTION TEST ///////////////////////////
-
-	plainBuf := make([]byte, kyber512.PlaintextSize)
-	plainBuf[0] = 13
 	seedBuf := make([]byte, kyber512.EncryptionSeedSize)
+
+	//Prepare buffer for cipherText
 	ct := make([]byte, kyber512.CiphertextSize)
 
 	pubKey.EncryptTo(ct, plainBuf, seedBuf)
 
-	// fmt.Println("\n\n Encrypted via PubKey ", hex.EncodeToString(ct))
+	return C.CString(hex.EncodeToString(ct))
 
-	//////////////////////////////////// DECRYPTION TEST ///////////////////////////
+}
 
-	privKey.DecryptTo(plainBuf, ct)
-	// fmt.Println("\n\n Decrypted via PrivKey ", hex.EncodeToString(plainBuf))
+//export genKYBER_PKE_DECRYPT
+func genKYBER_PKE_DECRYPT(hexPrivateKey *C.char, hexCipherText *C.char) *C.char {
+
+	//______________________________ Prepare prviate key ______________________________
+
+	privateKeyBuffer, _ := hex.DecodeString(C.GoString(hexPrivateKey))
+
+	privKey := kyber512.PrivateKey{} //create empty
+
+	privKey.Unpack(privateKeyBuffer) //unpack bytes
+
+	//_______________________________ Prepare buffers ________________________________
+
+	plainBuf := make([]byte, kyber512.PlaintextSize) // 32bytes buffer
+
+	cipherTextBuffer, _ := hex.DecodeString(C.GoString(hexCipherText))
+
+	privKey.DecryptTo(plainBuf, cipherTextBuffer)
+
+	return C.CString(hex.EncodeToString(plainBuf))
+
+}
 
 func main() {}
