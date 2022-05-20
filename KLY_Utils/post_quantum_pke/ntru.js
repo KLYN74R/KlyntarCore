@@ -21,7 +21,7 @@ console.log(keys)
 
 console.log(ntru)
 
-let text=Buffer.from('datbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','utf8')
+let text=Buffer.from('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaq','utf8')
 let encrypted=await ntru.encrypt(text,keys.publicKey)
 
 console.log(encrypted)

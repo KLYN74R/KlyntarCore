@@ -2,7 +2,7 @@ package main
 
 import (
 	
-	kyber512 "github.com/cloudflare/circl/pke/kyber/kyber512"
+	kyber512 "github.com/cloudflare/circl/pke/kyber/kyber512"//we will use 512
 
 	"encoding/hex"
 	"C"
