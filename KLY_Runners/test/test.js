@@ -1,7 +1,4 @@
-import Docker from 'dockerode'
 
-
-let docker = new Docker({protocol:'http', host: 'localhost', port: 2375})
 
 // var docker1 = new Docker(); //defaults to above if env variables are not used
 // var docker2 = new Docker({host: 'http://192.168.1.10', port: 3000});

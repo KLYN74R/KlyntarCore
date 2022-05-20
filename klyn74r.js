@@ -150,18 +150,7 @@ if(process.env.GLOBAL_DIR && (!isAbsolute(process.env.GLOBAL_DIR) || process.env
 
 /*
 
-
-TODO:Над процессом принятия и обработки блока + при включении
-TODO:Реализация функционала симбиотических цепочек(отправка+проверка)
-
-+TODO:Работать над приемом и распространением блоков
-*TODO:Provide async formatting ratings due to fair addresses and liars
-!TODO:Что делать с цепочками которые только-только появились
-!TODO:Ограничить время TCP сессии для fetch(через Promise.any и один из промисов таймер на заданое кол-во секунд)
-
-
-                                            
-
+                                        
 
                                 .do-"""""'-o..                         
                              .o""            ""..                       

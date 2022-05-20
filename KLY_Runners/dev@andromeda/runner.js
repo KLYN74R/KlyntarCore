@@ -1,7 +1,10 @@
 import {PATH_RESOLVE,BROADCAST} from '../../KLY_Utils/utils.js'
 import {LOG} from '../../KLY_Services/CommonResources/utils.js'
-import {spawn} from 'child_process'
+//import {spawn} from 'child_process'
+import Docker from 'dockerode'
 import fs from 'fs'
+
+
 
 
 /*
@@ -56,6 +59,11 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 */
 
 let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev@andromeda/configs.json'))
+
+let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)
+
+docker.listContainers().then(console.log)
+
 
 
 export default async service=>{

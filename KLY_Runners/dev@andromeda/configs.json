@@ -1,5 +1,12 @@
 {
+    "DOCKER_CONFIGS":{
+        
+        "protocol":"http",
+        "host":"localhost",
+        "port":2375
     
+    },
+
     "DESC_MAX_LEN":200,
     "REDIRECTION_DEPTH":3,
 
