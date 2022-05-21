@@ -7,31 +7,33 @@
 
             "conditions":[
                 ["OS=='linux'", {
-                    
-                    "libraries": [ 
-                        
+
+                    "libraries": [
+
                         "<!(pwd)/dilithium.so",
                         "<!(pwd)/kyber.so",
                         "<!(pwd)/sidh.so",
                         "<!(pwd)/sike.so",
                         "<!(pwd)/csidh.so",
-                        "<!(pwd)/bliss.so"
-                        
+                        "<!(pwd)/bliss.so",
+                        "<!(pwd)/kyber_pke.so",
+
                     ]
 
                 }],
-            
+
                 ["OS=='mac'", {
-                     
-                    "libraries": [ 
-                        
+
+                    "libraries": [
+
                         "<!(pwd)/dilithium.so",
                         "<!(pwd)/kyber.so",
                         "<!(pwd)/sidh.so",
                         "<!(pwd)/sike.so",
                         "<!(pwd)/csidh.so",
-                        "<!(pwd)/bliss.so"
-                        
+                        "<!(pwd)/bliss.so",
+                        "<!(pwd)/kyber_pke.so",
+
                     ]
 
                 }],
@@ -43,14 +45,15 @@
                         '<!(pwd)/sike.dll',
                         '<!(pwd)/csidh.dll',
                         '<!(pwd)/bliss.dll',
+                        "<!(pwd)/kyber_pke.dll",
                     ]
 
                 }]
-          
-            ], 
+
+            ],
 
         }
-   
+
     ]
 
 }

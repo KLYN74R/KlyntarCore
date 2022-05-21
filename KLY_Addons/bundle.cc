@@ -77,6 +77,9 @@ Developed by @Vlad@ Chernenko
 //Hash functions
 #include "sha256.h"
 
+//Public Key Encryption
+#include "kyber_pke.h"
+
 //Secret share functions
 //#include "sss.h"
 
@@ -117,6 +120,87 @@ const char* ToCString(const String::Utf8Value& value){
 
 
 //___________________________________________________INITIALIZATION_________________________________________________________
+
+
+
+/*
+
+██████  ██    ██ ██████  ██   ██ ███████ ██    ██     ███████ ███    ██  ██████ ██████  ██    ██ ██████  ████████ ██  ██████  ███    ██ 
+██   ██ ██    ██ ██   ██ ██  ██  ██       ██  ██      ██      ████   ██ ██      ██   ██  ██  ██  ██   ██    ██    ██ ██    ██ ████   ██ 
+██████  ██    ██ ██████  █████   █████     ████       █████   ██ ██  ██ ██      ██████    ████   ██████     ██    ██ ██    ██ ██ ██  ██ 
+██      ██    ██ ██   ██ ██  ██  ██         ██        ██      ██  ██ ██ ██      ██   ██    ██    ██         ██    ██ ██    ██ ██  ██ ██ 
+██       ██████  ██████  ██   ██ ███████    ██        ███████ ██   ████  ██████ ██   ██    ██    ██         ██    ██  ██████  ██   ████ 
+
+
+*/
+
+void generate_KYBER_PKE(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+
+    char* result = genKYBER_PKE();
+
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+
+void generate_KYBER_PKE_ENCRYPT(const FunctionCallbackInfo<Value>& args){
+
+    Isolate* isolate = args.GetIsolate();
+
+
+    String::Utf8Value hexPubKey(isolate,args[0]);
+
+    String::Utf8Value msg(isolate,args[1]);
+
+
+
+    char * pubKey = const_cast<char *>(ToCString(hexPubKey));
+
+    char * message = const_cast<char *>(ToCString(msg));
+
+    char* result = genKYBER_PKE_ENCRYPT(pubKey,message);
+
+
+
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+void generate_KYBER_PKE_DECRYPT(const FunctionCallbackInfo<Value>& args){
+
+
+
+    Isolate* isolate = args.GetIsolate();
+
+
+    String::Utf8Value hexPrivKey(isolate,args[0]);
+
+    String::Utf8Value encMsg(isolate,args[1]);
+
+
+
+    char * privKey = const_cast<char *>(ToCString(hexPrivKey));
+
+    char * encMessage = const_cast<char *>(ToCString(encMsg));
+
+    char* result = genKYBER_PKE_DECRYPT(privKey,encMessage);
+
+
+
+    args.GetReturnValue().Set(String::NewFromUtf8(isolate,result,NewStringType::kNormal).ToLocalChecked());
+
+}
+
+
+
+
+
+
+
 
 
 /*

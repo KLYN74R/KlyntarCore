@@ -10,7 +10,7 @@
     "DESC_MAX_LEN":200,
     "REDIRECTION_DEPTH":3,
 
-    "SEND_TO_STATIC":[
+    "STATIC_NODES":[
         "https://someklyntarpool.io",
         "htts://api-klyntar.coinbase.com"
     ],
@@ -57,7 +57,17 @@
         
     },
     
-    "ALLOWED_STORAGE":["github.com","gitlab.com","crates.io","npmjs.com"],
+    "ALLOWED_STORAGE":[
+        "github.com",
+        "gitlab.com",
+        "pkg.go.dev",
+        "crates.io",
+        "npmjs.com",
+        "rubygems.org",
+        "getcomposer.org",
+        "www.nuget.org",
+        "hackage.haskell.org"
+    ],
 
 
     "REGISTRIES":{
