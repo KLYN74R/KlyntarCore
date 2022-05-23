@@ -33,6 +33,8 @@ go build --buildmode c-shared -o sike.so sike.go
 
 go build --buildmode=c-shared -o sidh.so sidh.go
 
+go build --buildmode c-shared -o kyber_pke.so kyber_pke.go
+
 
 #################################
 #   Build addons via node-gyp   #
