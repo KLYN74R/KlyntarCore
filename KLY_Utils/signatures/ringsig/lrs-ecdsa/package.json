@@ -1,0 +1,32 @@
+{
+    "name": "lrs-ecdsa",
+    "version": "0.1.0",
+    "description": "ECDSA Linkable Ring Signatures",
+    "main": "./dist/index.js",
+    "scripts": {
+      "prepublishOnly": "npm run compile",
+      "clean": "rm -fR dist",
+      "build": "./node_modules/typescript/bin/tsc",
+      "watch": "./node_modules/typescript/bin/tsc -w -p .",
+      "test": "./node_modules/mocha/bin/mocha --timeout 120000 -r ts-node/register test/*.ts"
+    },
+    "dependencies": {
+      "bn.js": "^4.4.0",
+      "buffer": "^5.2.1",
+      "elliptic": "6.3.3",
+      "ethers": "4.0.28",
+      "randombytes": "^2.1.0",
+      "sha3": "^2.0.0"
+    },
+    "keywords": [
+      "lrs",
+      "linkable",
+      "ring",
+      "signatures",
+      "ecdsa",
+      "curve",
+      "secp256k1"
+    ],
+    "license": "MIT"
+  }
+  
