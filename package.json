@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "init": "npm ci --only=production && node klyn74r.js",
-    "build": "cd KLY_Utils/signatures/ringsig/lrs-ecdsa && pnpm install && pnpm add tsc -g && tsc && cd ../../../../ && pnpm install",
+    "build": "cd KLY_Utils/signatures/ringsig/lrs-ecdsa && pnpm install && pnpm install typescript -g && tsc && cd ../../../../ && pnpm install",
     "test": "node tr.js",
     "postinstall": "node ./npm_scripts/script.js"
   },
