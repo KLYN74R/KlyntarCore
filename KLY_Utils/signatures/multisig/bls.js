@@ -118,20 +118,20 @@ import Base58 from 'base-58'
 
 // ================================================ Aggregation order ======================================================
 
-const ord0 = bls.aggregatePublicKeys(publicKeys);
+// const ord0 = bls.aggregatePublicKeys(publicKeys);
 
-// console.log('Order 0',Base58.encode(ord0))
+// // console.log('Order 0',Base58.encode(ord0))
 
-const privateKeysOrder1 = [
-    '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
-    '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5',
-    'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c'
-]
+// const privateKeysOrder1 = [
+//     '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+//     '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5',
+//     'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c'
+// ]
  
-const publicKeysOrder1 = privateKeysOrder1.map(bls.getPublicKey);
+// const publicKeysOrder1 = privateKeysOrder1.map(bls.getPublicKey);
 
 
-const ord1 = bls.aggregatePublicKeys(publicKeysOrder1);
+// const ord1 = bls.aggregatePublicKeys(publicKeysOrder1);
 
 // console.log('Order 1',Base58.encode(ord1))
 
@@ -143,7 +143,7 @@ import crypto from 'crypto'
 
 
 
-export default {
+export let TEST = {
 
     generatePrivateKey:()=>new Promise((resolve,reject)=>
         
@@ -206,3 +206,17 @@ export default {
 
 
 }
+
+
+
+let privateKey=await TEST.generatePrivateKey()
+let publicKey=await TEST.derivePubKey(privateKey)
+
+console.log(privateKey)
+console.log(`Your 48 bytes base58 encoded pubkey => `,publicKey)
+
+let signa=await TEST.singleSig('Hello Klyntar',privateKey)
+
+console.log(`Single signa is `,Buffer.from(signa,'base64').length)
+
+console.log('Signle verify ',await TEST.singleVerify('Hello Klyntar',publicKey,signa))
