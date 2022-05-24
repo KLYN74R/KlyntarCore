@@ -30,6 +30,7 @@ SERVICES
 DOCS
 DEVELOPMENT
 CIIPs
+dist
 *.exe
 *.pdb
 *.wasm
@@ -44,6 +45,7 @@ CIIPs
 CONFIGS/symbiotes*
 KEYSTORE/
 decrypted.json
+
 
 
 #The Hell
