@@ -123,7 +123,7 @@ git clone https://github.com/KLYN74R/Apollo.git APOLLO
 
 cd APOLLO
 
-pnpm install
+pnpm run build
 
 npm link
 
