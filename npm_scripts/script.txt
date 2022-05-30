@@ -8,17 +8,17 @@
     |  K  |             ╚█║████╔╝    ╚███╔███╔╝███████╗███████╗███████╗╚██████╗╚██████╔╝██║ ╚═╝ ██║███████╗    ╚█║████╔╝
     |  L  |
     |  Y  |
-    |  N  |                                     #########################################
-    |  T  |                                     #      Made on Earth for Universe       #
-    |  A  |                                     #########################################
+    |  N  |                                         #########################################
+    |  T  |                                         #      Made on Earth for Universe       #
+    |  A  |                                         #########################################
     |  R  |                                                   
-    |     |                                                  by KlyntarTeam
+    |     |                                                     by KlyntarTeam
     |     |                                               
-   /|##!##|\                                           https://github.com/KLYN74R  
+   /|##!##|\                                              https://github.com/KLYN74R  
   / |##!##| \
  /  |##!##|  \                                            
 |  / ^ | ^ \  |
-| /  ( | )  \ |                             [STATUS]: Dependencies were successfully installed
+| /  ( | )  \ |                                [STATUS]: Dependencies were successfully installed
 |/   ( | )   \|
     ((   ))
    ((  :  ))
