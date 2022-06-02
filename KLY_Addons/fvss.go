@@ -58,7 +58,7 @@ func main() {
 
 	scheme, _ := sharing.NewFeldman(t, n, testCurve)
 
-	secret := testCurve.Scalar.Hash([]byte(msg))
+	secret :=make([]byte,32)//testCurve.Scalar.Hash([]byte(msg))
 
 	fmt.Printf("=== Feldman Verifiable Secret Shares ===\n")
 	fmt.Printf("Curve: %s\n", testCurve.Name)
