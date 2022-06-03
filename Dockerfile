@@ -6,8 +6,8 @@ WORKDIR /root/KLYNTAR
 COPY package*.json ./
 COPY . .
 
-RUN chmod 777 setup.sh build_addons.sh klyn74r.js && ./setup.sh && pnpm run build
-
 ENV NODE_ENV production
+
+RUN pnpm run build
 
 EXPOSE 7777 8888 9999
