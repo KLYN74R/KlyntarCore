@@ -6,8 +6,9 @@ WORKDIR /root/KLYNTAR
 COPY package*.json ./
 COPY . .
 
-ENV NODE_ENV production
-
 RUN pnpm run build
 
-EXPOSE 7777 8888 9999
+ENV NODE_ENV production
+
+
+#EXPOSE 7777 8888 9999
