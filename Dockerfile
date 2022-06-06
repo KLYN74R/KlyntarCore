@@ -1,4 +1,4 @@
-FROM klyntar/all_in_one@sha256:cef57179678b7aef8e8eb4f7acf85551cc18c65f21e99fbc4fd375311f049834
+FROM klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219feae220930dac1c1981cfe7
 
 #Move to own location
 WORKDIR /root/KLYNTAR
