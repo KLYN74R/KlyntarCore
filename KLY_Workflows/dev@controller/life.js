@@ -27,13 +27,8 @@ global.IN_PROCESS={VERIFY:false,GENERATE:false}
 
 
 
-
-let BLOCK_PATTERN=process.platform==='linux'?'——':'———',
-
-
-
 //TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
-GET_TXS = symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+let GET_TXS = symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
 
@@ -194,7 +189,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
 
             route='/cb'
             
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ${BLOCK_PATTERN}│\x1b[36;1m`,'S',symbiote,hash,59,'\x1b[32m',conBlockCandidate)
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ———│\x1b[36;1m`,'S',symbiote,hash,59,'\x1b[32m',conBlockCandidate)
 
             
             genThread.PREV_HASH=hash
@@ -421,7 +416,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         //____________________________________TEST_____________________________
 
 
-        BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m generated ${BLOCK_PATTERN}│`,'S',symbiote,hash,56,'\x1b[32m',insBlockCandidate)
+        BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m generated ———│`,'S',symbiote,hash,56,'\x1b[32m',insBlockCandidate)
 
         await symbiotes.get(symbiote).CANDIDATES.put(hash,insBlockCandidate)
 
