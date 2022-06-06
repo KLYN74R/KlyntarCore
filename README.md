@@ -1,24 +1,15 @@
-<p align="center">
-  <a href="" rel="noopener">
- <img src="./images/LogoV2.svg" alt="Project logo"></a>
-</p>
-<h3 align="center"><b>Klyntar</b></h3>
 
 <div align="center">
+<a href="" rel="noopener">
+<img src="./images/KLYNTAR.jpg" alt="Project logo"></a>
 
-[![Hackathon](https://img.shields.io/badge/hackathon-name-orange.svg)](http://hackathon.url.com)
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/pulls)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
-
-</div>
 
 ---
 
-<p align="center" >👽<b> Decentralized symbiotic platform for everyone in Universe!</b> 🤖
-    <br> 
-</p>
+<p align="center" >👽<b> Decentralized symbiotic platform for everyone in Universe!</b> 🤖</p>
+<img src="https://forthebadge.com/images/badges/built-with-love.svg"/>
+
+</div>
 
 ## 📝 Table of Contents
 
