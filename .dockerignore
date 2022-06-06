@@ -19,8 +19,8 @@ images/SITES
 M
 CHAINDATA
 !GENESIS/README.md
-SNAPSHOTS/
-
+SNAPSHOTS
+GENESIS
 
 
 #Workflow
@@ -43,7 +43,7 @@ dist
 
 #Configs
 CONFIGS/symbiotes*
-KEYSTORE/
+KEYSTORE
 decrypted.json
 
 
