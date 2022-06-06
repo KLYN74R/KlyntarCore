@@ -1,6 +1,6 @@
 <p align="center">
   <a href="" rel="noopener">
- <img src="./images/SITES/LogoV2.svg" alt="Project logo"></a>
+ <img src="./images/LogoV2.svg" alt="Project logo"></a>
 </p>
 <h3 align="center"><b>Klyntar</b></h3>
 
@@ -22,16 +22,18 @@
 
 ## 📝 Table of Contents
 
-- [Problem Statement](#problem_statement)
-- [Idea / Solution](#idea)
-- [Dependencies / Limitations](#limitations)
-- [Future Scope](#future_scope)
-- [Setting up a local environment](#getting_started)
-- [Usage](#usage)
-- [Technology Stack](#tech_stack)
-- [Contributing](../CONTRIBUTING.md)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgments)
+- [📝 Table of Contents](#-table-of-contents)
+- [😈 Problem Statement <a name = "problem_statement"></a>](#-problem-statement-)
+- [💡 Idea / Solution <a name = "idea"></a>](#-idea--solution-)
+- [⛓️ Dependencies / Limitations <a name = "limitations"></a>](#️-dependencies--limitations-)
+- [🚀 Future Scope <a name = "future_scope"></a>](#-future-scope-)
+- [⚡ Getting Started <a name = "getting_started"></a>](#-getting-started-)
+  - [Prerequisites](#prerequisites)
+  - [Installing](#installing)
+- [🎈 Usage <a name="usage"></a>](#-usage-)
+- [⛏️ Built With <a name = "tech_stack"></a>](#️-built-with-)
+- [✍️ Authors <a name = "authors"></a>](#️-authors-)
+- [🎉 Acknowledgments <a name = "acknowledgments"></a>](#-acknowledgments-)
 
 ## 😈 Problem Statement <a name = "problem_statement"></a>
 
