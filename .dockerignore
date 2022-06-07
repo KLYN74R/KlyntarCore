@@ -4,6 +4,7 @@ build
 .idea
 node_modules
 LOGS/
+.log
 
 
 #Hello legend
