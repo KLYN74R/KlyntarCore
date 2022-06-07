@@ -1,0 +1,19 @@
+{
+    "SERVICES":{
+
+        "MyFirst":"Initial dummy test service (JS)",
+        "EthContractStorage":"External storage for NFT on ETH contract (Rust)",
+        "LitecoinHermesProvider":"Provide API about Litecoin network (JS+litecoin daemon locally)"
+    
+    },
+
+    "EXTERNAL_SERVICES":{
+      
+        "T7r8Uw9ErFWSC5irfQTbf2RhpSWcMD74noq8CydSwy8h":"",
+        "storage_checker@1.0.5":""
+        
+    },
+
+    "RUNNER":"dev@andromeda/runner.js"
+    
+}

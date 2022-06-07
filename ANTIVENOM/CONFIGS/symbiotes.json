@@ -7,7 +7,7 @@
             "PRV":"e4a1935e868c44c8b45eccfc4098b6e504404c9e5dac2b56ee54b6faac787ad592333b354fb171cdd38e8920c36153ec69feedbc041607db1b42ff26a306d4909695b423c157c5273d0bf27e13bc3a36",
 
             "CONTROLLER":{
-                "ADDR":"http://localhost:7777",
+                "ADDR":"http://localhost:11111",
                 "ME":true
             },
 
@@ -21,24 +21,21 @@
 
                 "HIVEMIND":[
                     "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                    "Fq1RMpFoZtTjAtaMpDGurjRBes14S6MgQBhZgFckErsh",
-                    "UJU2Fw4FbUjQxfad8LnpMN6129FEaovU3vzp3HQ5YiX8"
+                    "NTma18DvP6VhoWJ427urWCJhNYq2zsr17dzF7mZrEgPr",
+                    "G1axah5Ciidjo7HuHHvXJPzq3mpNHr3QRiQgiUrVYZ5P"
                 ],
                 
                 "HOSTCHAINS":{
                     "ltc":{
                         "TYPE":"dev0",
-                        "HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
                         "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
                     },
                     "bsc":{
                         "TYPE":"dev0",
-                        "HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
                         "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
                     },
                     "eth":{
                         "TYPE":"dev0",
-                        "HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
                         "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
                     }
                 
@@ -106,9 +103,9 @@
             },
 
             "STOP_PUSH_TO_HOSTCHAINS":{
-                "ltc":false,
-                "bsc":false,
-                "eth":false
+                "ltc":true,
+                "bsc":true,
+                "eth":true
             },
 
             "WORKFLOW_CHECK":{
@@ -155,8 +152,8 @@
 
             "STOP_VERIFY":false,
 
-            "C_BLOCK_GENERATION_TIME":10000,
-            "I_BLOCK_GENERATION_TIME":5000,
+            "C_BLOCK_GENERATION_TIME":3000,
+            "I_BLOCK_GENERATION_TIME":2000,
             
             "STORE_INSTANT_BLOCKS":true,
             "STORE_CONTROLLER_BLOCKS":true,
@@ -219,6 +216,7 @@
             },
 
             "PERMANENT_NEAR":[
+                "http://localhost:4444",
                 "https://0.mynearpub.com:7777",
                 "https://1.mynearpub.com:7777",
                 "https://2.mynearpub.com:7777",
@@ -241,12 +239,10 @@
             
             },
 
-            "FILTERS":"dev0",
-
             "NODES_PORTION":8,
             "MAX_CONNECTIONS":15,
 
-            "MY_ADDR":"http://someinterface:7331",
+            "MY_ADDR":"http://somenode.com:7777",
             
             "TTL":{
                 "INFO":600,
@@ -264,21 +260,18 @@
                 "TX":1
             },
 
-            "GET_CONTROLLER":"http://localhost:7777",
+            "GET_CONTROLLER":"http://localhost:11111",
             
-            "GET_INSTANT":"http://localhost:7777",
+            "GET_INSTANT":"http://localhost:11111",
 
-            "GET_MULTI":"http://localhost:7777",
+            "GET_MULTI":"http://localhost:11111",
 
             "BLOCKS_EXPORT_PORTION":100,
 
             "REGION":"EU",
 
             "LOGS":{
-                
                 "TO_FILE":true,
-                
-                
                 "OFFLINE":false,
                 "BLOCK":true,
                 "STORE":true
@@ -297,7 +290,7 @@
             
             "SNAPSHOTS":{
                 "ENABLE":true,
-                "RANGE":5,
+                "RANGE":2,
                 "ALL":true,
                 "SHARDS_URLS":[
                     "https://myown.snapshots.io",
@@ -310,8 +303,8 @@
 
                 "TRUSTED_SOURCES":{
                     "VERIFIERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
-                    "FILTERS":"KTFi9BFSQKMC6iyFfXMM9334Z3jYa1sCoPrBWt4tgixQ",
-                    "SPENDERS":"UJU2Fw4FbUjQxfad8LnpMN6129FEaovU3vzp3HQ5YiX8",
+                    "FILTERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+                    "SPENDERS":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
                     "VERIFY_SERVICES":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9"
                 }
 
@@ -320,5 +313,7 @@
             "MAX_SPACE":10000000000
 
         }
+    
     }
+
 }

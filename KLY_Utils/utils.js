@@ -1,5 +1,3 @@
-//import VALAR from '@klyntar/valardohaeris/algorand/vd.js'
-
 import {symbiotes,hostchains} from '../klyn74r.js'
 
 import { createRequire } from 'module'

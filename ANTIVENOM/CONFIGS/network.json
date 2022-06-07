@@ -1,12 +1,13 @@
 {
 
     "INTERFACE":"::",
-    "PORT":7331,
+    "PORT":11111,
 
     "PAYLOAD_SIZE":1000,
     "EXTENDED_PAYLOAD_SIZE":10000,
     "MAX_PAYLOAD_SIZE":10000000,
-    
+
+
     "TLS":{
 
         "ENABLED":false,
@@ -19,6 +20,10 @@
 
         }
     },
+    
+    "TTL":{
+        "INFO":600
+    },
 
     "TRIGGERS":{
         
@@ -28,8 +33,10 @@
         
         "CONFIG":1,
       
-        "INFO":1
+        "INFO":1,
+
+        "ALL_CHAINS_SERVICES":1
     
     }
-       
+    
 }
