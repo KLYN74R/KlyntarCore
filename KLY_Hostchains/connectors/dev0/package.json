@@ -1,0 +1,38 @@
+{
+  "name": "dev0",
+  "version": "1.0.0",
+  "description": "",
+  "type":"module",
+  "main": "ada.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@dashevo/dashcore-lib": "^0.19.30",
+    "@ethereumjs/common": "^2.6.2",
+    "@ethereumjs/tx": "^3.5.0",
+    "@harmony-js/account": "^0.1.57",
+    "@harmony-js/crypto": "^0.1.56",
+    "@polkadot/api": "^6.10.3",
+    "@solana/spl-token": "^0.1.8",
+    "@solana/web3.js": "^1.24.0",
+    "@terra-money/terra.js": "^3.0.2",
+    "@zilliqa-js/crypto": "^3.3.4",
+    "algosdk": "^1.12.0",
+    "arweave": "^1.10.18",
+    "avalanche": "^3.9.2",
+    "bitcoinjs-lib": "^6.0.0",
+    "bitcore-doge-lib": "^8.25.8",
+    "bitcore-lib": "^8.25.10",
+    "bitcore-lib-cash": "^8.25.10",
+    "litecore-lib-v5": "^0.15.0",
+    "ripple-lib": "^1.10.0",
+    "sotez": "^10.0.0",
+    "stellar-sdk": "^9.0.1",
+    "tronweb": "^4.0.0",
+    "web3": "^1.4.0"
+  }
+}
