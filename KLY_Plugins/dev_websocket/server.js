@@ -1,12 +1,12 @@
 //https://github.com/theturtle32/WebSocket-Node
 
+import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 import WS from 'websocket'
 import https from 'https'
 import fs from 'fs'
 
 
-
-let configs=JSON.parse(fs.readFileSync('KLY_Plugins/dev/http2/config.json'))
+let configs=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev_websocket/config.json')))
 
 
 let WebSocketServer = WS.server;
@@ -14,15 +14,15 @@ let WebSocketServer = WS.server;
 
 let server = https.createServer({
   
-    key: fs.readFileSync(configs.TLS_KEY),
+    key: fs.readFileSync(PATH_RESOLVE(configs.TLS_KEY)),
   
-    cert: fs.readFileSync(configs.TLS_CERT),
+    cert: fs.readFileSync(PATH_RESOLVE(configs.TLS_CERT)),
   
     //Test mTLS
     requestCert:configs.mTLS,
     
     //This is necessary only if the client uses a self-signed certificate.
-    ca: [ fs.readFileSync(configs.mTLS_CA) ]
+    ca: [ fs.readFileSync(PATH_RESOLVE(configs.mTLS_CA)) ]
 
 
 },(request, response)=>{

@@ -1,16 +1,12 @@
 {
-  "name": "dev_andromeda",
+  "name": "dev_controller",
   "version": "1.0.0",
   "description": "",
-  "type":"module",
-  "main": "runner.js",
+  "main": "filters.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "dockerode": "^3.3.2"
-  }
+  "license": "ISC"
 }

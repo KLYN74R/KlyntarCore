@@ -20,6 +20,10 @@
         }
     },
 
+    "TTL":{
+        "INFO":600
+    },
+
     "TRIGGERS":{
         
         "ALL_CONTROLLER_BLOCKS":1,
