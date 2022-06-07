@@ -37,7 +37,7 @@ import {SocksProxyAgent} from 'socks-proxy-agent'
 //import HttpsProxyAgent from 'https-proxy-agent'
 
 
-let conf=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev@nets_gateway/configs.json')))
+let conf=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev_nets_gateway/configs.json')))
 
 let agent
 

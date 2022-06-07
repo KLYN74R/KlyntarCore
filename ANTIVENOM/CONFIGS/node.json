@@ -59,7 +59,7 @@
 
         "SRV_ACCEPT_RULES":{
 
-            "RUNNER":"dev@andromeda#56c61dab4f1cec5f2a150661d2750d63808e913303674bfac714224d20edfa2e",
+            "RUNNER":"dev_andromeda#56c61dab4f1cec5f2a150661d2750d63808e913303674bfac714224d20edfa2e",
 
             "TRUSTED_SOURCES":[
                 "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq",
@@ -97,7 +97,7 @@
     
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "PLUGINS":["dev@router/gateway.js","dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev@websocket/server.js"],
+    "PLUGINS":["dev_router/gateway.js","dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js","dev_websocket/server.js"],
 
     "UPDATES":"https://updates.klyntar.org/"
 

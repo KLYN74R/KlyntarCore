@@ -57,7 +57,7 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 
 */
 
-let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev@andromeda/configs.json'))
+let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json'))
 
 let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)//https://www.npmjs.com/package/dockerode - use to check the configs 
 

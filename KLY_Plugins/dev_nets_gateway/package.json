@@ -1,0 +1,15 @@
+{
+  "name": "dev_nets_gateway",
+  "version": "1.0.0",
+  "description": "",
+  "main": "gateway.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socks-proxy-agent": "^7.0.0"
+  }
+}
