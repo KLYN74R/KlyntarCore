@@ -24,7 +24,6 @@
   },
   "homepage": "https://github.com/klyntar/KLYNTAR#readme",
   "dependencies": {
-    
     "@noble/bls12-381": "^1.2.0",
     "base-58": "^0.0.1",
     "bigi": "^1.4.2",
@@ -41,11 +40,5 @@
     "secp256k1": "^4.0.2",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.3.0"
   },
-  "devDependencies": {
-    "@zilliqa-js/util": "^3.3.4",
-    "@zilliqa-js/zilliqa": "^3.3.4",
-    "https-proxy-agent": "^5.0.0",
-    "socks-proxy-agent": "*",
-    "tweetnacl": "^1.0.3"
-  }
+  "devDependencies": {}
 }

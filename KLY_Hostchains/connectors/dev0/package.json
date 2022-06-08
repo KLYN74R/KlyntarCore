@@ -2,7 +2,7 @@
   "name": "dev0",
   "version": "1.0.0",
   "description": "",
-  "type":"module",
+  "type": "module",
   "main": "ada.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -28,6 +28,8 @@
     "bitcore-doge-lib": "^8.25.8",
     "bitcore-lib": "^8.25.10",
     "bitcore-lib-cash": "^8.25.10",
+    "ethereumjs-common": "^1.5.2",
+    "ethereumjs-tx": "^2.1.2",
     "litecore-lib-v5": "^0.15.0",
     "ripple-lib": "^1.10.0",
     "sotez": "^10.0.0",

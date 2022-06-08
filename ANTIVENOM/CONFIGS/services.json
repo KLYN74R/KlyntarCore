@@ -2,7 +2,6 @@
     "SERVICES":{
 
         "MyFirst":"Initial dummy test service (JS)",
-        "EthContractStorage":"External storage for NFT on ETH contract (Rust)",
         "LitecoinHermesProvider":"Provide API about Litecoin network (JS+litecoin daemon locally)"
     
     },

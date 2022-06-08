@@ -1,13 +1,19 @@
 import pkg from '@ethereumjs/tx'
-
-const {FeeMarketEIP1559Transaction,Transaction} = pkg
+const {FeeMarketEIP1559Transaction} = pkg
 
 
 import {LOG} from '../../../KLY_Utils/utils.js'
 
 import Common from '@ethereumjs/common'
-
 import Web3 from 'web3'
+
+
+
+//Backward compability.They're deprecated but used in many other EVM chains
+import {Transaction as OldLibTransaction} from 'ethereumjs-tx' 
+import OldLibCommon from 'ethereumjs-common'
+
+
 
 
 export default class {
@@ -36,7 +42,7 @@ export default class {
             
             this.MAX_PRIORITY_FEE_PER_GAS=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS[ticker].MAX_PRIORITY_FEE_PER_GAS
 
-        }else this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK},HARDFORK)
+        }else this.COMMON=OldLibCommon.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK},HARDFORK)
         
     }
 
@@ -107,10 +113,8 @@ export default class {
                     data:'0x'+Buffer.from(blockIndex+'_'+klyntarHash,'utf8').toString('hex')
             
                 }
-        
-                console.log('This common is ',this.COMMON)
 
-                tx = new Transaction(txObject,{common:this.COMMON})
+                tx = new OldLibTransaction(txObject,{common:this.COMMON})
         
                 //Sign the transaction
                 tx.sign(this.PRV)
