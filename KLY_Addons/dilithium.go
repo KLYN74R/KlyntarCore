@@ -14,7 +14,7 @@ import (
 )
 
 
-var modename string = "Dilithium2"; // Dilithium2-AES Dilithium3 Dilithium3-AES Dilithium5 Dilithium5-AES
+var modename string = "Dilithium5"; // Dilithium2-AES Dilithium3 Dilithium3-AES Dilithium5 Dilithium5-AES
 
 var mode = dilithium.ModeByName(modename);
 
