@@ -132,7 +132,7 @@ GET_CONTROLLER_BLOCK=(symbiote,blockId)=>symbiotes.get(symbiote).CONTROLLER_BLOC
 
         if(symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m———│`,'S',block.c,hash,59,'\x1b[31m',block.i)
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',block.c,hash,59,'\x1b[31m',block.i)
 
             //Try to instantly and asynchronously load more blocks if it's possible
             GET_FORWARD_BLOCKS(symbiote,blockId+1)
@@ -795,7 +795,7 @@ verifyInstantBlock=async block=>{
             
             symbioteData.INSTANT_CANDIDATES.set(hash,block.c)
         
-            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m———│`,'S',block.s,hash,56,'\x1b[31m')
+            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.s,hash,56,'\x1b[31m')
             
         })
         
