@@ -537,7 +537,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`BLACKLIST size ———> \x1b[36;1m${symbioteReference.BLACKLIST.size}`,'W')
+        LOG(`BLACKLIST size(\u001b[38;5;177m${controllerBlock.i}\x1b[32;1m ### \u001b[38;5;177m${controllerHash}\u001b[38;5;3m) ———> \x1b[36;1m${symbioteReference.BLACKLIST.size}`,'W')
 
         
 
