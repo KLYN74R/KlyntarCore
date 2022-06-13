@@ -22,6 +22,11 @@
 Source https://gitlab.com/vocdoni/lrs-ecdsa/
 
 
+
+Public key => Address
+import publicKeyToAddress from 'ethereum-public-key-to-address';
+console.log(publicKeyToAddress('0x04fdb05804ddd0d419ec8a234a63e9e0d6edd2e45c03cba186cce9eb5263ece145a362e01f4065c92134c4ce148aace40dbf26bf18089f5d82e5ec49314663f1b1'))
+
 */
 
 

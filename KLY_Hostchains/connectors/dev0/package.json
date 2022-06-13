@@ -36,5 +36,8 @@
     "stellar-sdk": "^9.0.1",
     "tronweb": "^4.0.0",
     "web3": "^1.4.0"
+  },
+  "devDependencies": {
+    "ethereum-public-key-to-address": "^0.0.5"
   }
 }
