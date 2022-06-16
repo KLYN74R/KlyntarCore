@@ -43,7 +43,7 @@ export default {
 
 
   /**
-   * ## Adds an array of verification vectors together to produce the groups verification vector
+   * Adds an array of verification vectors together to produce the groups verification vector
    * @param {Array} pubKeysIn - an array of signers who take part in this signing
    * @param {Array} pubKeysOut - the rest of addresses which are in general pubkey,but don't take part in this round
    * @param {String} originalGroupPub  - aggregated general(master) pubkey which includes all previously reminded addresses
@@ -53,7 +53,7 @@ export default {
    * @param {Number} n - total number of signers
    * 
    */
-    verify_M_N_signature:(pubKeysIn,pubKeysOut,originalGroupPub,data,aggregatedSignaIn,m,n)=>{
+    verify_M_N_signature:async(pubKeysIn,pubKeysOut,originalGroupPub,data,aggregatedSignaIn,m,n)=>{
 
         //0.Get aggregated key of pubkeys who has signed this data
         let signersIn=bls.aggregatePublicKeys(pubKeysIn),
@@ -65,11 +65,11 @@ export default {
             verifiedSignature=await bls.verify(aggregatedSignaIn,data,signersIn)
 
 
-            return verifiedSignature && generalPubKey === originalGroupPub
-            && 
-            (!m || pubKeysIn.length+pubKeysOut.length === n && pubKeysIn.length === m)//if m and n are undefined-we don't interest in number of participants
+        return verifiedSignature && generalPubKey === originalGroupPub
+                                 && 
+                                 (!m || pubKeysIn.length+pubKeysOut.length === n && pubKeysIn.length === m)//if m and n are undefined-we don't interest in number of participants
     
-    },
+    }
 
 
 }
