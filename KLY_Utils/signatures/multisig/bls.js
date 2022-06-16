@@ -67,7 +67,7 @@ export default {
 
             return verifiedSignature && generalPubKey === originalGroupPub
             && 
-            (m || pubKeysIn.length+pubKeysOut.length === n && pubKeysIn.length === m)//if m and n are undefined-we don't interest in number of participants
+            (!m || pubKeysIn.length+pubKeysOut.length === n && pubKeysIn.length === m)//if m and n are undefined-we don't interest in number of participants
     
     },
 
