@@ -360,11 +360,11 @@ klyntar
 
 Since you are using default configuration, there is default keypair, workflow and so on. To continue decrypt your private key with the password <code>qwerty</code>
 
-<br/>
-
 ### <b>Tip</b>
 
 Now you have locally runned symbiote AntiVenom. Your node is a single one and works as <b>Controller</b> for <b>dev_controller</b> workflow. Soon we'll show who to make your network more advanced by adding <b>InstantGenerators</b>, changing workflows, make your network semi-public, join your symbiote to external AntiVenom testnets, make your AntiVenom network in TOR network(via hidden services) and other cool features!
+
+<br/>
 
 <div align="center">
 
