@@ -13,22 +13,26 @@
 - [Intro](#intro)
 - [WhoAmI](#who_am_i)
 - [How to build](#build)
-- [Running kNULL](#knull)
 - [Running AntiVenom(testnet)](#testnet)
+- [Running kNULL](#kNULL)
 - [Mutations](#mutations)
 - [Contributions](#contrib)
 - [Links](#links)
 
 <br/><br/>
 
-<div name="short_info"></div>
+<div name="intro"></div>
 
 ## ⚡ Intro 
 <br/>
 
+<div align="center">
+
 # <b>KLYNTAR</b> - symbiotic blockchain platform which takes the best from other projects, add new cool features and breaks into the industry
 
-Working on KLYNTAR, we've been trying to make a project so powerful to wonder you as in your 8 y.o when you've got to know Santa doesn't exsist 🎅. This project isn't another shitcoin, 10<sup>th</sup> generation of memecoins, scam NFT project or so on. We want to resurrect the time of useful projects by creating cool stuff for our industry like <b>Unobtanium</b>, <b>KLYNTAR Services</b>, <b>Hivemind</b>, <b>symbiotes</b> and much more!
+</div>
+
+Working on KLYNTAR, we've been trying to make a project so powerful to wonder you as in your 8 y.o when you've got to know Santa doesn't exsist 🎅. This project isn't another shitcoin, 10<sup>th</sup> generation of memecoins, scam NFT project or so on. We want to resurrect the time of useful projects by creating cool stuff for our industry like <b>Unobtanium</b>, <b>KLYNTAR Services</b>, <b>Hivemind</b>, <b>SpookyAction</b>, <b>symbiotes</b> and much more!
 
 <br/>
 <div align="center">
@@ -41,11 +45,37 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 
 ## This project can involve literally everyone:
 
-- Developers will find here abilites to create decentralized services on any language they want and using latest & most reliable technologies. Our powerful community will devolope plugins to customize your infrastructure and improve workflows, create best practises, will work on our Cryptoland, improve security of runners & containers by adding cybersec stuff and so on! 
+- Developers will find here abilites to create decentralized services on any language they want and using latest & most reliable technologies like powerful set of crypto algorithms(Cryptoland), tons of offchain work, cross & multichain interactions, and so on. Our strong community will devolope plugins to customize your infrastructure and improve workflows, create best practises, will work on our Cryptoland, improve security of runners & containers by adding cybersec stuff and so on! 
 - Enterprise players will have an ability to build & control clusters of nodes,runners and run symbiotes
 - Resources owners can use probably the most advanced staking system using <b>Unobtanium</b> - a KLYNTAR unified resource which includes your mined Bitcoin blocks, combination of tokens on Avalanche, validators place on Polkadot and so on!
 - Everyone who has server & laptop & any other machine will make our empire more powerful. The installation processes are minified to several commands in pre-build Docker images, so we also save your health & nervous system & time
+- It you are miner, journalist, sportsmen, crypto-geek - welcome to KLYNTAR where everything you own can be useful
 - ...and...read our other docs 😀
+
+<br/><br/>
+
+<div name="who_am_i"></div>
+
+## 🎭 WhoAmI
+
+<br/>
+
+The <b>@KlyntarTeam</b> consists of primarly young players. We love our industry and last years have been working on Klyntar & other projects which will become the part of KLY ecosystem in future:
+
+<br/>
+
+- <b>Vlad Chernenko (CTO,CEO,Co-Founder)</b>  
+  
+  It's me) .../add more info soon/
+
+- <b>Ivan Ushkov(CFO,COO,Co-Founder)</b>
+  
+  Ivan is .../add more info soon/
+
+- <b>KLY Community</b> 
+  
+  Join our community and let's make the future brighter
+
 
 <br/><br/>
 
@@ -56,7 +86,9 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 <br/>
 
 <p>
-As you've seen, KLYNTAR is in symbiotic relationship with other blockchains. By running different nodes of other projects, working with tools required by them, the most auful & irritating problem was problem with initial setup - misconfigs, old docs, semver mistakes, nightly versions and so on. That's why, we've prepared docker images to allow you to be sure that you'll 100% have succesful setup. Recommended to be used to run KLY nodes & clusters, Apollo and so on.It's for better experience not to force you to waste time for finding misconfigs, dependencies problems and so on. Build & run fast and let's start 🚀
+As you've seen, KLYNTAR is in symbiotic relationship with other blockchains. By running different nodes of other projects, working with tools required by them, the most auful & irritating problem was problem with initial setup - misconfigs, old docs, semver mistakes, nightly versions and so on. That's why, we've prepared docker images to allow you to be sure that you'll have 100% succesful setup. Recommended to be used to run KLY nodes & clusters, Apollo and so on.It's for better experience not to force you to waste time for finding misconfigs, dependencies problems and so on. Build & run quickly and let's start 🚀
+
+<br/>
 
 ### <b>NOTE</b>
 We assume that you have Docker on the board. You can install Docker for Linux & Windows & Mac <a href="https://docs.docker.com/engine/install/">here</a>
@@ -93,15 +125,15 @@ docker pull klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219f
 
 ### <b>Run container</b>
 
-<p>We recomend you to make available for container several ports</p>
+<p>We recomend you to expose several ports for container</p>
 
-Honestly,you can choose another port,but use this as a good manner
+Honestly,you can choose other ports,but use these ones as a good manner
 
-- 7331 - mainnet/kNULL default port for initial symbiote kNull. It's reversed 1337 :)  
+- <b>7331</b> - mainnet/kNULL default port for initial symbiote kNULL <b> Easter egg:It's reversed 1337 :) </b> 
   
-- 9691 - default Apollo UI server port  
+- <b>9691</b> - default Apollo UI server port <b>Easter egg:it's reversed 1969-the Apollo-11 mission and the first moon landing</b>
   
-- 11111 - local testnet(ANTIVENOM)
+- <b>11111</b> - local testnet(ANTIVENOM)
 
 <br/><br/>
 
@@ -112,7 +144,7 @@ This setup is the most default & simple way. If you need,you can manually run co
 
 
 ```shell
-docker run -dtp 7331:7331, 9691:9691 , 11111:11111 --name klyntar0 klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219feae220930dac1c1981cfe7
+docker run -dtp 7331:7331 -p 9691:9691 -p 11111:11111 --name klyntar0 klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219feae220930dac1c1981cfe7
 ```
 
 <br/><br/>
@@ -146,11 +178,6 @@ pnpm run build
 
 ```
 
-
-<!-- CHANGE -->
-<!-- CHANGE -->
-<!-- CHANGE -->
-<!-- CHANGE -->
 <div align="center">
 
   ## <b>Now take a rest and see the building process. It may take some minutes,but you're free from self-install tons of libs,dependencies and walking among dirs</b>
@@ -158,30 +185,96 @@ pnpm run build
   <img src="https://i.pinimg.com/originals/d0/63/09/d063096ba4e07795c1bdf98572cb79a8.gif" style="height:200px;width:auto;">
 
 
-<br/>
+<br/><br/>
+</div>
+
+> <b>⚠ ATTENTION:</b>  
+As we said before,this setup is the most default way for quick start. In a nutshell, KLYNTAR go through the dirs and runs Typescript compiler, set access rights(700 by default for root user) for build scripts, build addons via Go compiler and run <code>npm link</code> to make possible to run <code>klyntar</code> as binary from <code>PATH</code> (by creating symlink to Node.js dir)
+
+<br/><br/>
+
+<div align="center">
 
 ### The signs that build was succesful are messages to console like this
 <br/>
-  <!-- Change -->
-  <img src="https://2131090630-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FphIHWZY173DpNXBbDjVg%2Fuploads%2FdewG1SQftz0ndvmG4fNa%2Fimage.png?alt=media&token=ad2710a7-0fd1-43cb-ad80-62e78badb989">
+
+  <img src="https://user-images.githubusercontent.com/53381472/174610940-55ed92b8-bba3-4057-921e-2f1809c332d4.jpg">
 
 <br/>
 
-### ...and this
-<br/>
-  <!-- Change -->
-<img src="https://2131090630-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FphIHWZY173DpNXBbDjVg%2Fuploads%2FL3RavrjoA7nktQKFfV3i%2Fphoto_2022-06-04_11-55-04.jpg?alt=media&token=6363785e-a243-4f98-80ca-5ee83b97da87">
+### ...and after building Go addons
 <br/>
 
-### Now try to run. You should see the following
-<br/>
-  <!-- Change -->
-<img src="https://user-images.githubusercontent.com/53381472/174460136-49cbf58b-fe08-4952-81b2-3b6e13d96444.jpg">
+  <img src="https://user-images.githubusercontent.com/53381472/174610936-3df6ea44-25fc-441d-8cc3-0f3dd414edf5.jpg">
+
 <br/>
 
 </div>
 
+### <b>...One more thing</b>
 
+Insofar as KLYNTAR has many chains (known as <b>symbiotes</b>) which symbiotically linked with the <b>hostchains</b> (Bitcoin,Ethereum,Avalanche,Solana,Dogecoin,XRP and other chains), we need <b>connectors</b> to allow symbiotes to interact with hostchains(e.g. reading contract state, getting blocks, write to hostchains and so on)
+
+<br/><br/>
+
+- ### <b>kNULL</b> - our initial symbiote runned by KlyntarTeam will use <a href="https://github.com/KLYN74R/KlyntarCore/tree/main/KLY_Hostchains/connectors/dev0"> <b>dev0</b> </a> pack with connectors. The initial set of hostchains will become public soon.
+
+- ### <b>AntiVenom</b> - the alias for testnet by default configuration(<a href="https://github.com/KLYN74R/KlyntarCore/blob/main/ANTIVENOM/CONFIGS/symbiotes.json"><b></a> ANTIVENOM/CONFIGS/symbiotes.json</b>) have disabled connection with the hostchains(or their testnets) but anyway, as far you can enable it, you should have installed dependecies for packs with connectors
+
+```js
+
+//Somewhere inside symbiotes.json
+
+   "STOP_HOSTCHAINS":{
+                
+        "ltc":true,
+        "bsc":true,
+        "eth":true
+    
+    }
+
+
+```
+
+<br/>
+
+Finally, go to dev0 directory and install node modules
+
+```shell
+
+# In KlyntarCore directory
+
+cd KLY_Hostchains/connectors/dev0
+
+pnpm install
+
+```
+<br/><br/>
+
+<div align="center">
+
+# 🚀🚀🚀Success,now your KLYNTAR is ready to start 🚀🚀🚀
+
+</div>
+
+
+
+
+<br/><br/>
+
+<div name="testnet"></div>
+
+## ☄️ Running AntiVenom(testnet)
+
+Coming soon
+
+<br/><br/>
+
+<div name="kNULL"></div>
+
+## 🧬 Running kNULL
+
+Coming soon
 
 <br/><br/>
 

@@ -237,7 +237,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
                     Object.keys(CONFIG.SYMBIOTES[symbiote].MANIFEST.HOSTCHAINS).forEach(async ticker=>{
     
                         //TODO:Add more advanced logic
-                        if(!CONFIG.SYMBIOTES[symbiote].STOP_PUSH_TO_HOSTCHAINS[ticker]){
+                        if(!CONFIG.SYMBIOTES[symbiote].STOP_HOSTCHAINS[ticker]){
     
                             let control=symbiotes.get(symbiote).HOSTCHAINS_WORKFLOW[ticker],
                         
@@ -919,7 +919,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                     
                     CONFIG.PRELUDE.BALANCE_VIEW?balance:'<disabled>'
                 
-                }   \x1b[36;1m[${symbioteConfig.STOP_PUSH_TO_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
+                }   \x1b[36;1m[${symbioteConfig.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
             }
 

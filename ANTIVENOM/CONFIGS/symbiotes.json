@@ -102,7 +102,7 @@
                 }
             },
 
-            "STOP_PUSH_TO_HOSTCHAINS":{
+            "STOP_HOSTCHAINS":{
                 "ltc":true,
                 "bsc":true,
                 "eth":true
