@@ -60,17 +60,17 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 
 <br/>
 
-The <b>@KlyntarTeam</b> consists of primarly young players. We love our industry and last years have been working on Klyntar & other projects which will become the part of KLY ecosystem in future:
+The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of primarly young players. We love our industry and last years have been working on Klyntar & other projects which will become the part of KLY ecosystem in future:
 
 <br/>
 
 - <b>Vlad Chernenko (CTO,CEO,Co-Founder)</b>  
   
-  It's me) .../add more info soon/
-
+  It's me) .../add more info soon/ 
+    
 - <b>Ivan Ushkov(CFO,COO,Co-Founder)</b>
   
-  Ivan is .../add more info soon/
+  Ivan is .../add more info soon/  
 
 - <b>KLY Community</b> 
   
@@ -138,7 +138,8 @@ Honestly,you can choose other ports,but use these ones as a good manner
 <br/><br/>
 
 > <b>⚠ ATTENTION:</b>  
-This setup is the most default & simple way. If you need,you can manually run container with more advanced steps e.g. by using volumes,set user and so on
+>   
+> This setup is the most default & simple way. If you need,you can manually run container with more advanced steps e.g. by using volumes,set user and so on
 
 <br/><br/>
 
@@ -189,7 +190,8 @@ pnpm run build
 </div>
 
 > <b>⚠ ATTENTION:</b>  
-As we said before,this setup is the most default way for quick start. In a nutshell, KLYNTAR go through the dirs and runs Typescript compiler, set access rights(700 by default for root user) for build scripts, build addons via Go compiler and run <code>npm link</code> to make possible to run <code>klyntar</code> as binary from <code>PATH</code> (by creating symlink to Node.js dir)
+> 
+> As we said before,this setup is the most default way for quick start. In a nutshell, KLYNTAR go through the dirs and runs Typescript compiler, set access rights(700 by default for root user) for build scripts, build addons via Go compiler and run <code>npm link</code> to make possible to run <code>klyntar</code> as binary from <code>PATH</code> (by creating symlink to Node.js dir)
 
 <br/><br/>
 
@@ -217,9 +219,11 @@ Insofar as KLYNTAR has many chains (known as <b>symbiotes</b>) which symbiotical
 
 <br/><br/>
 
-- ### <b>kNULL</b> - our initial symbiote runned by KlyntarTeam will use <a href="https://github.com/KLYN74R/KlyntarCore/tree/main/KLY_Hostchains/connectors/dev0"> <b>dev0</b> </a> pack with connectors. The initial set of hostchains will become public soon.
+- ### <b>kNULL</b>
+  Our initial symbiote runned by KlyntarTeam will use <a href="https://github.com/KLYN74R/KlyntarCore/tree/main/KLY_Hostchains/connectors/dev0"> <b>dev0</b> </a> pack with connectors. The initial set of hostchains will become public soon.
 
-- ### <b>AntiVenom</b> - the alias for testnet by default configuration(<a href="https://github.com/KLYN74R/KlyntarCore/blob/main/ANTIVENOM/CONFIGS/symbiotes.json"><b></a> ANTIVENOM/CONFIGS/symbiotes.json</b>) have disabled connection with the hostchains(or their testnets) but anyway, as far you can enable it, you should have installed dependecies for packs with connectors
+- ### <b>AntiVenom</b>
+  The alias for testnet by default configuration(<a href="https://github.com/KLYN74R/KlyntarCore/blob/main/ANTIVENOM/CONFIGS/symbiotes.json"><b></a> ANTIVENOM/CONFIGS/symbiotes.json</b>) have disabled connection with the hostchains(or their testnets) but anyway, as far you can enable it, you should have installed dependecies for packs with connectors
 
 ```js
 
@@ -253,7 +257,7 @@ pnpm install
 
 <div align="center">
 
-# 🚀🚀🚀Success,now your KLYNTAR is ready to start 🚀🚀🚀
+# 🚀Success,now your KLYNTAR is ready to start 🚀
 
 </div>
 
