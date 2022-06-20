@@ -15,9 +15,9 @@
 - [How to build](#build)
 - [Running AntiVenom(testnet)](#testnet)
 - [Running kNULL](#kNULL)
-- [Mutations](#mutations)
-- [Contributions](#contrib)
-- [Links](#links)
+- [Summart](#summary)
+- [Advice](#advice)
+- [Docs](#docs)
 
 <br/><br/>
 
@@ -422,7 +422,7 @@ klyntar
 
 <br/><br/>
 
-<div name="Summary"></div>
+<div name="summary"></div>
 
 ## ⚙️ <b>Summary</b>
 <br/>
