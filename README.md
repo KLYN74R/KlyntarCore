@@ -23,7 +23,7 @@
 
 <div name="intro"></div>
 
-## ⚡ Intro 
+## ⚡ <b>Intro</b> 
 <br/>
 
 <div align="center">
@@ -56,7 +56,7 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 
 <div name="who_am_i"></div>
 
-## 🎭 WhoAmI
+## 🎭 <b>WhoAmI</b>
 
 <br/>
 
@@ -81,7 +81,7 @@ The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of
 
 <div name="build"></div>
 
-## 🏗️ How to build
+## 🏗️ <b>How to build</b>
 
 <br/>
 
@@ -215,7 +215,7 @@ pnpm run build
 
 ### <b>...One more thing</b>
 
-Insofar as KLYNTAR has many chains (known as <b>symbiotes</b>) which symbiotically linked with the <b>hostchains</b> (Bitcoin,Ethereum,Avalanche,Solana,Dogecoin,XRP and other chains), we need <b>connectors</b> to allow symbiotes to interact with hostchains(e.g. reading contract state, getting blocks, write to hostchains and so on)
+Insofar as KLYNTAR has many chains ( known as <b>symbiotes</b>) which symbiotically linked with the <b>hostchains</b> (Bitcoin,Ethereum,Avalanche,Solana,Dogecoin,XRP and other chains), we need <b>connectors</b> to allow symbiotes to interact with hostchains(e.g. reading contract state, getting blocks, write to hostchains and so on)
 
 <br/><br/>
 
@@ -268,200 +268,194 @@ pnpm install
 
 <div name="testnet"></div>
 
-## ☄️ Running AntiVenom(testnet)
+## ☄️ <b>Running AntiVenom(testnet)</b>
 
 <br/>
 
-We assume that before to start you want to run at least local testnet to check how it works,to get used to the interface and so on. For this, you can instantly run AntiVenom locally. The testnet directory is KlyntarCore/ANTIVENOM and has the following structure:
+We assume that before to start some symbiote, you want to run at least local testnet to check how it works,to get used to the interface and so on. For this, you can instantly run AntiVenom locally. The testnet directory is <b>KlyntarCore/ANTIVENOM</b> and has the following structure:
 
 
 ```
 KlyntarCore
 │     
 │   
-└───ANTIVENOM (default testnet directory)
+└───ANTIVENOM (default testnet directory if you don't override it via env variable)
 │   │   
 │   │   
 │   └───CHAINDATA(will be created after the daemon run in testnet mode)
 │   │    │
-│   │    │───Wvzv9zGXJL4FngTKACPPDpHgCjE2k22jB9EnjmZr81Bi 
-│   │    │   │
-│   │    │   │───CANDIDATES
-│   │    │   │───CONTROLLER_BLOCKS
-│   │    │   │───HOSTCHAINS_DATA
-│   │    │   │───INSTANT_BLOCKS
-│   │    │   │───METADATA
-│   │    │   └───STATE
-│   │    │
-│   │    │
-│   │    │
-│   │    
+│   │    └───Wvzv9zGXJL4FngTKACPPDpHgCjE2k22jB9EnjmZr81Bi 
+│   │       │
+│   │       │───CANDIDATES
+│   │       │───CONTROLLER_BLOCKS
+│   │       │───HOSTCHAINS_DATA
+│   │       │───INSTANT_BLOCKS
+│   │       │───METADATA
+│   │       └───STATE
+│   │        
 │   └───CONFIGS
-│   │    │
 │   │    │
 │   │    │───network.json
 │   │    │───node.json
 │   │    │───services.json
 │   │    └───symbiotes.json
 │   │
-│   └───your_custom_module
-│        │   
-│        │───cli(directory for files to improve CLI)
-│        │    │   
-│        │    └───init.js
-│        │
-│        └───ui(directory for files to improve UI)
-│            │
-│            │───routes.js
-│            │───templates(.ejs files)
-│            │     └─...
-│            │───configs.json
-│            └───...
-│
-│
-└───KLY_ServicesAPI
-    └───...
+│   └───GENESIS
+│   │ 
+│   └───LOGS
+│   │ 
+│   └───SNAPSHOTS
 
 ```
 
+### <b>Recomendation</b>
+
+To run any symbiote you need two directories - <b>CONFIGS</b> and <b>GENESIS</b>. You can find them on our site or on sites/resources of someone who runs other symbiotes.Let's create a separate directory for our local testnet AntiVenom with the default values.
+
+```shell
+
+# In ~/KlyntarCore
+
+mkdir -p ANTIVENOM_0
+
+cd ANTIVENOM
+
+cp -r CONFIGS GENESIS ../ANTIVENOM_0
+
+```
+Now, you can set some environment variables to set the path for this directory and other values. Find out more on our resources, but now we need only env for path
+
+
+```shell
+
+export SYMBIOTE_DIR=~/KlyntarCore/ANTIVENOM_0
+
+```
+
+Now set mode
+
+```shell
+
+export KLY_MODE=test
+
+```
+Finally run
+
+```shell
+
+klyntar
+
+```
+
+<div align="center">
+
+## You should see the following
+
+
+<img src="https://user-images.githubusercontent.com/53381472/174685058-ae9d42e3-c37c-483b-b462-2ec45230fca9.jpg"/>
+
+</div>
+
+<br/>
+
+Since you are using default configuration, there is default keypair, workflow and so on. To continue decrypt your private key with the password <code>qwerty</code>
+
+<br/>
+
+### <b>Tip</b>
+
+Now you have locally runned symbiote AntiVenom. Your node is a single one and works as <b>Controller</b> for <b>dev_controller</b> workflow. Soon we'll show who to make your network more advanced by adding <b>InstantGenerators</b>, changing workflows, make your network semi-public, join your symbiote to external AntiVenom testnets, make your AntiVenom network in TOR network(via hidden services) and other cool features!
+
+<div align="center">
+
+## KLYNTAR - your provider to new generation of crypto projects
+
+</div>
+
+
+### <b>Advice</b>
+
+Find out more about advanced options,configs,flags and so on our resources
 
 <br/><br/>
 
 <div name="kNULL"></div>
 
-## 🧬 Running kNULL
+## 🧬 <b>Running kNULL</b>
 
-Coming soon
+The installation process for symbiotes are the same as for testnet, but you should firstly modify configs and generate keypair. Then, open another terminal and create a separate dir
+
+```shell
+
+mkdir ~/KlyntarCore/kNULL
+
+```
+
+Then, discover manifest for your symbiote(in this case kNULL) and paste to <code>symbiotes.json</code>. Load manifest <a href="https://github.com/KLYN74R/SymbiotesManifests/kNULL.json">here</a>.
+Also,load GENESIS <a href="https://klyntar.org/manifests/kNULL.json">here</a>.
+
+
+```shell
+
+export SYMBIOTE_DIR=~/KlyntarCore/kNULL
+
+```
+
+Now run
+
+```shell
+
+klyntar
+
+```
 
 <br/><br/>
 
-<div name="modularity"></div>
+<div align="center">
 
-## ⚙️ Modularity
+# 🔥Cool,now your the part of KLYNTAR🔥
+## The part of family
+
+### The part of hivemind
+
+</div>
+
+<br/><br/>
+
+<div name="Summary"></div>
+
+## ⚙️ <b>Summary</b>
 <br/>
 <p>
 
-Working with different "hacking" tools,I've get the experience of so called 'best practises' of how to build real powerful tool. That's why, Apollo(as KLYNTAR) will be very modular. Just now,you have three ways to improve Apollo behaviour by loading modules to KLY_Modules, KLY_ServicesAPI and KLY_WorkflowsAPI
+KLYNTAR can do literally everything. Described here is less than 0.001% of potential. Soon you'll get to know about another features like:
 
-<br/>
-
-### <b>KLY_Modules</b>
-
-Directory for your external modules. This might be extra useful commands. Might be written by you or any other 3rd party. Must contain 2 directories <b>cli</b>(contains everything for commands in CLI) and <b>ui</b>(directory with everything for UI in browser). Soon we'll make a tutorial of HOWTO write modules for Apollo.
-
-Each directory-is typically Git repository to allow you to easily update different modules independently if you need and swap versions. Moreover,soon you'll also have an amazing ability to verify authors cryptographically - via code signing. By having hash of repository you can verify authority and be sure that code is original using different crypto features like multisig or post-quantum cryptography,social staking and so on. We describe it in <a href="https://mastering.klyntar.org/beginning/basic-security#additional-features">Basic Security</a> in our MasteringKlyntar book.
-
-<br/><br/>
-
-- CLI part
-
-In CLI extra modules looks like ordinary commands. To allow your users to differ them, please, give them original prefix or make a single command with repository name and hide commands to subcommands 
-
-- UI part
-
-If module also has a UI part(which is often the case), then you'll have ability to visit:
-
-```shell
-
-http(s)://<your_interface>:<port>/modules
-
-```
-
-to find there the entry point to your module.
-
-<br/>
-
-#### <b>Summarizing this,your directories tree on these levels should look like this</b>
+- Interactions with the hostchains, services, mutualism
+- How to make your AntiVenom more advanced by making it semi-public, by adding tons of plugins and so on
+- How to use Cryptoland with cool crypto features like VRF, multi & threshold & linkable ring signatures, post quantum cryptography and so on
+- How to run clusters
+- How to create workflows and this way-change the consensus
+- How to take part in social consensus & voting
+- How to use Unobtanium - your united resources from other blockchains e.g. bitcoin mined blocks, frozen stakes on Polygon, miner on Helium and so on
 
 
-```
-Apollo
-│     
-│   
-└───KLY_Modules
-│   │   
-│   │
-│   │   
-│   └───init(default module,the entry point for the other)
-│   │    │   
-│   │    │───cli(directory for files to improve CLI)
-│   │    │   │
-│   │    │   └───init.js 
-│   │    │
-│   │    └───ui(directory for files to improve UI)
-│   │        │
-│   │        │───routes.js
-│   │        │───templates(.ejs files)
-│   │        │     └─...
-│   │        │───configs.json
-│   │        └───...
-│   │   
-│   │
-│   └───your_custom_module
-│        │   
-│        │───cli(directory for files to improve CLI)
-│        │    │   
-│        │    └───init.js
-│        │
-│        └───ui(directory for files to improve UI)
-│            │
-│            │───routes.js
-│            │───templates(.ejs files)
-│            │     └─...
-│            │───configs.json
-│            └───...
-│
-│
-└───KLY_ServicesAPI
-    └───...
-
-```
-
-To update the repository with module go to appropriate directory <b>KLY_Modules/<your_module></b> and pull changes
 
 <br/><br/>
 
-### <b>KLY_ServicesAPI</b>
 
-<br/>
+<div align="center">
 
-> <b>ServiceAPI</b> - directory with API repositories to interact with the scope of service runned on Klyntar. Imagine if all smart contracts on ETH will have a unique design in your wallet, separate page with all available features specific to contract. Since we have wider power, we also have so complicated way to improve abilities of your Apollo instance.
+# <b>It's just beginning</b>
 
-<br/>
+</div>
 
-
-The same principle works for the services API. Each subdirectory - it's a repository. To check available services API go to
-
-```shell
-
-http(s)://<your_interface>:<port>/services
-
-```
-
-<br/><br/>
-
-### <b>KLY_WorkflowsAPI</b>
-
-<br/>
-
-> <b>WorkflowsAPI</b> - directory with API repositories to interact with symbiotes on Klyntar. Insofar as they can use different workflows(thanksfully to <a href="https://mastering.klyntar.org/beginning/mutations">Mutations principle</a>),we need to make possible to use appropriate algorithms,build right events to send to symbiotes and use other specific features like traffic over TOR or threshold signatures. Imagine if you'll have ability to control your Bitcoin, Solana, Avalanche, Cosmos assets(native coins,tokens,etc.), execute smart contracts, make delegations using only one instrument. Yes,this is what Apollo do.
-
-<br/>
-
-The same principle as for services API. Each subdirectory - it's a repository in this directory. To check your symbiotes and how to interact with them go to
-
-```shell
-
-http(s)://<your_interface>:<port>/symbiotes
-
-```
 
 
 <br/><br/>
 
 <div name="advice"></div>
 
-## 🤓 Advice
+## 🤓 <b>Advice</b>
 <br/>
 <p>
 Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help newbies to make our community more powerful.We're happy to involve new members to KLY community 😊
@@ -532,7 +526,7 @@ Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help ne
 
 <div name="docs"></div>
 
-## 📚Docs
+## 📚<b>Docs</b>
 
 Read the docs here to find out more
 
