@@ -413,7 +413,7 @@ klyntar
 
 <div align="center">
 
-# 🔥Cool,now your the part of KLYNTAR🔥
+# 🔥Cool,now you are the part of KLYNTAR🔥
 ## The part of family
 
 ### The part of hivemind
