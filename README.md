@@ -15,7 +15,7 @@
 - [How to build](#build)
 - [Running AntiVenom(testnet)](#testnet)
 - [Running kNULL](#kNULL)
-- [Summart](#summary)
+- [Summary](#summary)
 - [Advice](#advice)
 - [Docs](#docs)
 
