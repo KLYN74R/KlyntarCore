@@ -32,7 +32,7 @@
 
 </div>
 
-Working on KLYNTAR, we've been trying to make a project so powerful to wonder you as in your 8 y.o when you've got to know Santa doesn't exsist 🎅. This project isn't another shitcoin, 10<sup>th</sup> generation of memecoins, scam NFT project or so on. We want to resurrect the time of useful projects by creating cool stuff for our industry like <b>Unobtanium</b>, <b>KLYNTAR Services</b>, <b>Hivemind</b>, <b>SpookyAction</b>, <b>symbiotes</b> and much more!
+Working on KLYNTAR, we've been trying to make a project so powerful to wonder you as in your 8 y.o. when you've got to know Santa doesn't exsist 🎅. This project isn't another shitcoin, 10<sup>th</sup> generation of memecoins, scam NFT project or so on. We want to resurrect the time of useful projects by creating cool stuff for our industry like <b>Unobtanium</b>, <b>KLYNTAR Services</b>, <b>Hivemind</b>, <b>SpookyAction</b>, <b>symbiotes</b> and much more! Symbiosis with other projects(chains) will give you ability to use the best and so loved functions from other cryptos. The sense is to join them in one super organizm and make a revolution in cryptoindustry!
 
 <br/>
 <div align="center">
@@ -64,7 +64,7 @@ The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of
 
 <br/>
 
-- <b>Vlad Chernenko (CTO,CEO,Co-Founder)</b>  
+- <b>Vlad Chernenko(CTO,CEO,Co-Founder)</b>  
   
   It's me) .../add more info soon/ 
     
@@ -133,7 +133,7 @@ Honestly,you can choose other ports,but use these ones as a good manner
   
 - <b>9691</b> - default Apollo UI server port <b>Easter egg:it's reversed 1969-the Apollo-11 mission and the first moon landing</b>
   
-- <b>11111</b> - local testnet(ANTIVENOM)
+- <b>11111</b> - local testnet(AntiVenom)
 
 <br/><br/>
 
@@ -185,8 +185,8 @@ pnpm run build
 
   <img src="https://i.pinimg.com/originals/d0/63/09/d063096ba4e07795c1bdf98572cb79a8.gif" style="height:200px;width:auto;">
 
+<br/>
 
-<br/><br/>
 </div>
 
 > <b>⚠ ATTENTION:</b>  
@@ -223,7 +223,7 @@ Insofar as KLYNTAR has many chains (known as <b>symbiotes</b>) which symbiotical
   Our initial symbiote runned by KlyntarTeam will use <a href="https://github.com/KLYN74R/KlyntarCore/tree/main/KLY_Hostchains/connectors/dev0"> <b>dev0</b> </a> pack with connectors. The initial set of hostchains will become public soon.
 
 - ### <b>AntiVenom</b>
-  The alias for testnet by default configuration(<a href="https://github.com/KLYN74R/KlyntarCore/blob/main/ANTIVENOM/CONFIGS/symbiotes.json"><b></a> ANTIVENOM/CONFIGS/symbiotes.json</b>) have disabled connection with the hostchains(or their testnets) but anyway, as far you can enable it, you should have installed dependecies for packs with connectors
+  The alias for testnet by default configuration(<a href="https://github.com/KLYN74R/KlyntarCore/blob/main/ANTIVENOM/CONFIGS/symbiotes.json"><b></a>ANTIVENOM/CONFIGS/symbiotes.json</b>) have disabled connection with the hostchains(or their testnets) but anyway, as far you can enable it, you should have installed dependecies for packs with connectors
 
 ```js
 
@@ -270,7 +270,60 @@ pnpm install
 
 ## ☄️ Running AntiVenom(testnet)
 
-Coming soon
+<br/>
+
+We assume that before to start you want to run at least local testnet to check how it works,to get used to the interface and so on. For this, you can instantly run AntiVenom locally. The testnet directory is KlyntarCore/ANTIVENOM and has the following structure:
+
+
+```
+KlyntarCore
+│     
+│   
+└───ANTIVENOM (default testnet directory)
+│   │   
+│   │   
+│   └───CHAINDATA(will be created after the daemon run in testnet mode)
+│   │    │
+│   │    │───Wvzv9zGXJL4FngTKACPPDpHgCjE2k22jB9EnjmZr81Bi 
+│   │    │   │
+│   │    │   │───CANDIDATES
+│   │    │   │───CONTROLLER_BLOCKS
+│   │    │   │───HOSTCHAINS_DATA
+│   │    │   │───INSTANT_BLOCKS
+│   │    │   │───METADATA
+│   │    │   └───STATE
+│   │    │
+│   │    │
+│   │    │
+│   │    
+│   └───CONFIGS
+│   │    │
+│   │    │
+│   │    │───network.json
+│   │    │───node.json
+│   │    │───services.json
+│   │    └───symbiotes.json
+│   │
+│   └───your_custom_module
+│        │   
+│        │───cli(directory for files to improve CLI)
+│        │    │   
+│        │    └───init.js
+│        │
+│        └───ui(directory for files to improve UI)
+│            │
+│            │───routes.js
+│            │───templates(.ejs files)
+│            │     └─...
+│            │───configs.json
+│            └───...
+│
+│
+└───KLY_ServicesAPI
+    └───...
+
+```
+
 
 <br/><br/>
 

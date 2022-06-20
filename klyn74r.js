@@ -98,10 +98,10 @@ if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
 
 }
 
-//GLOBAL_DIR must be an absolute path
-if(process.env.GLOBAL_DIR && (!isAbsolute(process.env.GLOBAL_DIR) || process.env.GLOBAL_DIR.endsWith('/') || process.env.GLOBAL_DIR.endsWith('\\'))){
+//SYMBIOTE_DIR must be an absolute path
+if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\'))){
 
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to GLOBAL_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
 
     process.exit(1)
 
@@ -129,15 +129,15 @@ if(process.env.GLOBAL_DIR && (!isAbsolute(process.env.GLOBAL_DIR) || process.env
 
     if(process.env.KLY_MODE==='main'){
     
-        //If GLOBAL_DIR is setted-it will be a location for all the subdirs above(CHAINDATA,GENESIS,etc.)
-        if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
+        //If SYMBIOTE_DIR is setted-it will be a location for all the subdirs above(CHAINDATA,GENESIS,etc.)
+        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
 
         //If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
         else process.env[`${scope}_PATH`] ||= PATH_RESOLVE(scope)  
 
     }else{
 
-        if(process.env.GLOBAL_DIR) process.env[`${scope}_PATH`]=process.env.GLOBAL_DIR+`/${scope}`
+        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
 
         process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available in ANTIVENOM separate directory
 
