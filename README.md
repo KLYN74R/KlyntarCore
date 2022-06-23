@@ -95,7 +95,7 @@ We assume that you have Docker on the board. You can install Docker for Linux & 
 
 ```shell
 
-johndoe@klyntar:~# docker -v
+johndoe@klyntar:~$ docker -v
 Docker version 20.10.14, build a224086
 
 ```
