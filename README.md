@@ -528,7 +528,7 @@ Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help ne
 
 ## 📚<b>Docs</b>
 
-Read the docs here to find out more
+Read the docs here to find out more. For example, how to use plugins, prepare & change configs, run on a host machine, how to start a KLY Service and so on!
 
 <br/>
 

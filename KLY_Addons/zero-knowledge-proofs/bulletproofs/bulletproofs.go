@@ -22,7 +22,7 @@ func main() {
 
 	curve := curves.ED25519()
 	n := 8
-	v_val := 220
+	v_val := 320
 	argCount := len(os.Args[1:])
 	if argCount > 0 {
 		n, _ = strconv.Atoi(os.Args[1])
