@@ -71,6 +71,8 @@ export let SPENDERS = {
 
     SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
 
+    CONTRACT_DEPLOY:async (symbiote,event)=>{},
+
     WORKFLOW_CHANGE:async event=>{},
 
     MULTISIG:async (symbiote,event)=>{},
@@ -221,6 +223,10 @@ export let VERIFIERS = {
         }
         
     },
+
+    
+
+    CONTRACT_DEPLOY:async (event,blockCreator,symbiote)=>{},
 
 
     ALIAS:async (event,blockCreator,symbiote)=>{

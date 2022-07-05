@@ -96,6 +96,8 @@ export default {
     
     ,
 
+    CONTRACT_DEPLOY:async (symbiote,event)=>{},
+
     WORKFLOW_CHANGE:async (symbiote,event)=>{},
 
     MULTISIG:async (symbiote,event)=>{},
