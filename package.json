@@ -1,7 +1,7 @@
 {
   "name": "klyntar",
   "version": "1.0.0",
-  "description": "Klyntar core for everything in endless space!",
+  "description": "KLYNTAR core for everything in endless space!",
   "main": "klyn74r.js",
   "type": "module",
   "scripts": {

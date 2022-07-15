@@ -871,7 +871,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
 
 
-    //___________________Decrypt all private keys(for Klyntar and hostchains) to memory of process___________________
+    //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
 
     
 

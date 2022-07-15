@@ -286,7 +286,7 @@ let graceful=()=>{
 
     console.log('\n')
 
-    LOG('Klyntar stop has been initiated.Keep waiting...','I')
+    LOG('KLYNTAR stop has been initiated.Keep waiting...','I')
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
     
@@ -427,7 +427,7 @@ global.SIG_PROCESS={}
         //...and add extra colors & changes)
         .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
         .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
-        .replace('@ Powered by Klyntar @','@ Powered by \u001b[7m\u001b[31;5;219mKlyntar\x1b[0m \x1b[36;1m@')
+        .replace('@ Powered by KLYNTAR @','@ Powered by \u001b[7m\u001b[31;5;219mKLYNTAR\x1b[0m \x1b[36;1m@')
         .replaceAll('≈','\x1b[31m≈\x1b[36m')
         .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
     
@@ -441,7 +441,7 @@ global.SIG_PROCESS={}
         //...and add extra colors & changes)
         .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
         .replace('REMEMBER:To infinity and beyond!','\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m')
-        .replace('@ Powered by Klyntar @','\u001b[38;5;87m@ Powered by \u001b[7m\u001b[38;5;202mKlyntar\x1b[0m \u001b[38;5;87m@')
+        .replace('@ Powered by KLYNTAR @','\u001b[38;5;87m@ Powered by \u001b[7m\u001b[38;5;202mKLYNTAR\x1b[0m \u001b[38;5;87m@')
     
         .replaceAll('≈','\x1b[31m≈\u001b[37m')
     

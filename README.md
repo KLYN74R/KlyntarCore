@@ -60,7 +60,7 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 
 <br/>
 
-The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of primarly young players. We love our industry and last years have been working on Klyntar & other projects which will become the part of KLY ecosystem in future:
+The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of primarly young players. We love our industry and last years have been working on KLYNTAR & other projects which will become the part of KLY ecosystem in future:
 
 <br/>
 

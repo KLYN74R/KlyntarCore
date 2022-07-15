@@ -649,7 +649,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
         
                 Single emoji refers to address and domain:❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
 
-                Combo:🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by Klyntar)
+                Combo:🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by KLYNTAR)
         
                 Emoji ref to special signature type🌌 => aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(Root of hashes tree mapped to conveyor set of addresses protected by hash-based post quantum signatures)
 
@@ -875,7 +875,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
 
 
-    //___________________Decrypt all private keys(for Klyntar and hostchains) to memory of process___________________
+    //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
 
     
 
