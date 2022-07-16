@@ -900,7 +900,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
             let balance
 
-            if(CONFIG.PRELUDE.BALANCE_VIEW){
+            if(CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].BALANCE_VIEW){
 
                 let spinner = ora({
                     color:'red',
@@ -917,7 +917,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                 
                 }\x1b[36;1m is \x1b[32;1m${
                     
-                    CONFIG.PRELUDE.BALANCE_VIEW?balance:'<disabled>'
+                    CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].BALANCE_VIEW?balance:'<disabled>'
                 
                 }   \x1b[36;1m[${symbioteConfig.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 

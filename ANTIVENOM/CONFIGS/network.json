@@ -19,24 +19,6 @@
             "cert_file_name":"security/cert.pem"
 
         }
-    },
-    
-    "TTL":{
-        "INFO":600
-    },
-
-    "TRIGGERS":{
-        
-        "ALL_CONTROLLER_BLOCKS":1,
-        
-        "ALL_INSTANT_BLOCKS":1,
-        
-        "CONFIG":1,
-      
-        "INFO":1,
-
-        "ALL_CHAINS_SERVICES":1
-    
     }
     
 }

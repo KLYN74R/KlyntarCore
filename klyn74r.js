@@ -476,6 +476,8 @@ global.SIG_PROCESS={}
         rennaisances=new Map()
 
 
+    //Define global variable to know the SYMBIOTE_ID for this instance
+    global.CURRENT_SYMBIOTE_ID=symbiChains[0]
 
     
     //.forEach has inner scope,but we need await on top frame level

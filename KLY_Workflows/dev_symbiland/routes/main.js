@@ -37,7 +37,7 @@ let MAIN = {
         let total=0,buf=Buffer.alloc(0)
 
         //Probably you disable for all symbiotes
-        if(!CONFIG.TRIGGERS.ALL_CONTROLLER_BLOCKS){
+        if(!CONFIG.SYMBIOTES[global.CURRENT_SYMBIOTE_ID].TRIGGERS.CONTROLLER_BLOCKS){
             
             a.end('Route is off')
             
@@ -109,7 +109,7 @@ let MAIN = {
     instantBlock:a=>{
 
          //Probably you disable for all symbiotes
-         if(!CONFIG.TRIGGERS.ALL_INSTANT_BLOCKS){
+         if(!CONFIG.SYMBIOTES[global.CURRENT_SYMBIOTE_ID].TRIGGERS.INSTANT_BLOCKS){
             
             a.end('Route is off')
             

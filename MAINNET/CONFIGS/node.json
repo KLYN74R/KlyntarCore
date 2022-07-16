@@ -15,22 +15,10 @@
         "DECRYPTED":false,
         "ANIMATION_DURATION":1000,
         "NO_SPINNERS":false,
-        "OPTIMISTIC":true,
-        "BALANCE_VIEW":false
+        "OPTIMISTIC":true
     },
 
     "DAEMON_LOGS":true,
-    
-    "CHANGE_PROCEDURE":[
-        {
-            "2dtMmYHpLLb25l5LUktwFvIgQ5dhK54X4Mw0sEhdyAc=SomeAddr":{
-                "domain":"https://example.com",
-                "sid":"someSID"
-            }
-        
-        }
-    ],
-
 
     "INFO":{
 

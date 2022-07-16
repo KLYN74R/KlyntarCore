@@ -2,6 +2,9 @@
     "SYMBIOTES":{
         
         "FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9":{
+
+            "STOP_WORK":false,
+
             
             "PUB":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
             "PRV":"e4a1935e868c44c8b45eccfc4098b6e504404c9e5dac2b56ee54b6faac787ad592333b354fb171cdd38e8920c36153ec69feedbc041607db1b42ff26a306d4909695b423c157c5273d0bf27e13bc3a36",
@@ -12,6 +15,9 @@
             },
 
             "MANIFEST":{
+
+                "WORKFLOW":"dev_controller",
+                "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
 
                 "CONTACT":{
                     "TELEGRAM":"@Something",
@@ -40,18 +46,13 @@
                     }
                 
                 },
-
-                "WORKFLOW":"dev_controller",
-                "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
                 
                 "CONTROLLER_FREEZE":10000,
                 "INSTANT_FREEZE":5000,
                 "GENERATOR_FEE":0.8,
                 "CONTROLLER_BLOCK_MAX_SIZE":100,
                 "EVENTS_LIMIT_PER_BLOCK":30000,
-                "INSTANT_PORTION":100,
-                
-                "DOPPELGANGERS":["EVM"]
+                "INSTANT_PORTION":100
 
             },
 
@@ -139,6 +140,8 @@
                     }
                 }
             },
+
+            "BALANCE_VIEW":false,
             
             "VT_GT_NORMAL_DIFFERENCE":100,
             
@@ -156,8 +159,6 @@
             
             "STORE_INSTANT_BLOCKS":true,
             "STORE_CONTROLLER_BLOCKS":true,
-            
-            "STOP_WORK":false,
             
             "BLOCK_С_INIT_DELAY":10000,
             "BLOCK_I_INIT_DELAY":15000,
