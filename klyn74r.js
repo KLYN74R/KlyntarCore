@@ -86,7 +86,7 @@ process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.
 
 //____________________SET MODE__________________________
 
-//All symbiotes are runned in a single instance as mainnets
+//All symbiotes are runned in a single instance as mainnets by default
 process.env.KLY_MODE||='main'
 
 
@@ -133,7 +133,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
         if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
 
         //If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
-        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE(scope)  
+        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE('MAINNET/'+scope)  
 
     }else{
 
