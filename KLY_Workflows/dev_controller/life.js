@@ -1,8 +1,8 @@
 import {LOG,SIG,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,DECRYPT_KEYS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import ControllerBlock from '../../KLY_Blocks/controllerblock.js'
+import ControllerBlock from './blocks/controllerblock.js'
 
-import InstantBlock from '../../KLY_Blocks/instantblock.js'
+import InstantBlock from './blocks/instantblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 

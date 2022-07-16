@@ -4,7 +4,7 @@ import{
 
 } from '../../../KLY_Utils/utils.js'
 
-import ControllerBlock from '../../../KLY_Blocks/controllerblock.js'
+import ControllerBlock from '../blocks/controllerblock.js'
 
 import {symbiotes,hostchains} from '../../../klyn74r.js'
 

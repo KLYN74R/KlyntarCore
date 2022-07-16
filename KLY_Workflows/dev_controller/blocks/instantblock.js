@@ -1,4 +1,4 @@
-import {BLAKE3} from '../KLY_Utils/utils.js'
+import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
 export default class InstantBlock{
     
