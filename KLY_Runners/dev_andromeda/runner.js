@@ -61,7 +61,7 @@ let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/confi
 
 let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)//https://www.npmjs.com/package/dockerode - use to check the configs 
 
-docker.listContainers().then(console.log)
+// docker.listContainers().then(console.log)
 
 
 
