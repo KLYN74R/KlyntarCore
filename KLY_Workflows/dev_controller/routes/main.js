@@ -151,6 +151,9 @@ let MAIN = {
     event:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
         let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
+
+        console.log('SYMBIOTE ',symbiote)
+        console.log('EVENT ',event)
         
         //Reject all txs if route is off and other guards methods
         if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){

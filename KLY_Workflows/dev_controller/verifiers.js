@@ -55,13 +55,13 @@ let MAIN_VERIFY=async(symbiote,event,sender)=>
 
 export let SPENDERS = {
     
-    TX:(event,symbiote)=>event.p.a+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+    TX:event=>event.p.a+event.f,
 
-    OFFSPRING:(_event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+    OFFSPRING:(event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE+event.f,
 
-    ALIAS:(event,symbiote)=>event.p.length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+    ALIAS:event=>event.p.length*0.001+event.f,
 
-    UNOBTANIUM:(event,symbiote)=>JSON.stringify(event.p).length*0.001+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+    UNOBTANIUM:event=>JSON.stringify(event.p).length*0.001+event.f,
 
     //_______________________________________Unimplemented section_______________________________________
 
@@ -69,7 +69,7 @@ export let SPENDERS = {
 
     QUANTUMSWAP:async event=>{},
 
-    SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE,
+    SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+event.f,
 
     CONTRACT_DEPLOY:async (symbiote,event)=>{},
 
@@ -112,13 +112,13 @@ export let VERIFIERS = {
     
         if(await MAIN_VERIFY(symbiote,event,sender)){
     
-            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+event.p.a
+            sender.ACCOUNT.B-=event.f+event.p.a
             
             recipient.ACCOUNT.B+=event.p.a
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            blockCreator.fees+=event.f
     
         }
     
@@ -132,11 +132,11 @@ export let VERIFIERS = {
     
         if(event.p.length===64 && await MAIN_VERIFY(symbiote,event,sender)){
     
-            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            sender.ACCOUNT.B-=event.f
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            blockCreator.fees+=event.f
     
         }
         
@@ -153,11 +153,11 @@ export let VERIFIERS = {
         
         if(await MAIN_VERIFY(symbiote,event,sender)){
     
-            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
+            sender.ACCOUNT.B-=event.f+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)//update maximum nonce
         
-            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            blockCreator.fees+=event.f
     
         }
     
@@ -172,7 +172,7 @@ export let VERIFIERS = {
 
         if(await MAIN_VERIFY(symbiote,event,sender)){
 
-            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            sender.ACCOUNT.B-=event.f
         
             //Make changes only for bigger nonces.This way in async mode all nodes will have common state
             if(sender.ACCOUNT.N<event.n){
@@ -183,7 +183,7 @@ export let VERIFIERS = {
 
             }
     
-            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            blockCreator.fees+=event.f
 
         }
 
@@ -209,7 +209,7 @@ export let VERIFIERS = {
 
         if(await MAIN_VERIFY(symbiote,event,sender) && noSuchService){
 
-            sender.ACCOUNT.B-=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE+payloadJson.length*0.01
+            sender.ACCOUNT.B-=event.f+payloadJson.length*0.01
         
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
             
@@ -218,7 +218,7 @@ export let VERIFIERS = {
             //!Add to stage zone before
             symbiotes.get(symbiote).EVENTS_STATE.put(payloadHash,event.p)
 
-            blockCreator.fees+=CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE
+            blockCreator.fees+=event.f
         
         }
         

@@ -493,13 +493,15 @@ verifyControllerBlock=async controllerBlock=>{
                     
                     let acc=GET_SYMBIOTE_ACC(event.c,symbiote),
                         
-                        spend=symbioteReference.SPENDERS[event.t]?.(event,symbiote) || CONFIG.SYMBIOTES[symbiote].MANIFEST.FEE//provide ability to add extra fees(or oppositely-make free) to events
+                        spend=symbioteReference.SPENDERS[event.t]?.(event,symbiote) || 1
 
 
 
                             
                     //If no such address-it's a signal that transaction can't be accepted
-                    if(!acc) return
+                    if(!acc) return;
+
+                    console.log(acc);
                  
                     (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
         
