@@ -19,59 +19,6 @@
     },
 
     "DAEMON_LOGS":true,
-
-    "INFO":{
-
-        "THIS_DATA_REAL":false,
-        
-        "NEWNEWS_EMPIRE_PUBLIC":"some.com,onemore.io,sameinterest.news",
-        
-        "CONTACT":"@:node@example.com,tg:@someuser,inst:@user",
-        
-        "OVERRIDED_ROUTES":{
-            "DEFAULT":"info=>anotherdomain.io,con=>localhost:7999",
-            "kNULL":"cblock=>feed::babe:9999"
-        },
-        
-        "DEBOUNCE_TIME":20000,
-
-        "SERVICES":{
-            "MyFirst":"Initial dummy test service (JS)",
-            "EthContractStorage":"External storage for NFT on ETH contract (Rust)",
-            "LitecoinHermesProvider":"Provide API about Litecoin network (JS+litecoin daemon locally)"
-        },
-
-        "SRV_ACCEPT_RULES":{
-
-            "TRUSTED_SOURCES":[
-                "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq",
-                "N5U8MUYcVgi5AMWAXCHWMVL7vxiodQqU5ePFeHBqgoix",
-                "TCtVqYMEUtfyx4cC7CjoCxooKMMtJUqyghqeLGCzA8xL"            
-            ],
-    
-            "PREF_FORMATS":[
-                "container/docker",
-                "JS",
-                "C",
-                "container/rust"
-            ],
-    
-            "KEYWORDS":["web3","defi","bridge","tor","control","storage","api"],
-    
-            "CHAINS":[
-                "L3SRM3bUSnpiEDqqkTP9cuH4EUi4a72gZw2XNjHDTE3Y",
-                "KTFi9BFSQKMC6iyFfXMM9334Z3jYa1sCoPrBWt4tgixQ",
-                "Fq1RMpFoZtTjAtaMpDGurjRBes14S6MgQBhZgFckErsh"
-            ],
-    
-            
-            "DORMITORY":{
-                
-            }
-    
-        }
-    
-    },
     
     "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
     "BITFORKS":["btc","ltc","doge","dash"],

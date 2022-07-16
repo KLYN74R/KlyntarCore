@@ -1,7 +1,9 @@
 export default class{
     
-    constructor(sender,eventType,nonce,fee,payload){
+    constructor(version,sender,eventType,nonce,fee,payload){
     
+        this.v=version
+
         this.c=sender
 
         this.t=eventType
