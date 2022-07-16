@@ -31,7 +31,7 @@ let API = {
 
 
     
-    info:a=>WRAP_RESPONSE(a,CONFIG.TTL.INFO).end(INFO),
+    info:a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].TTL.INFO).end(INFO),
 
 
 

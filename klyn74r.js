@@ -499,7 +499,7 @@ global.SIG_PROCESS={}
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
-    global.INFO=JSON.stringify(CONFIG.INFO)
+    global.INFO=JSON.stringify(CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].INFO)
     
 
 
