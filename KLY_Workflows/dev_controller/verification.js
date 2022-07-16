@@ -500,8 +500,6 @@ verifyControllerBlock=async controllerBlock=>{
                             
                     //If no such address-it's a signal that transaction can't be accepted
                     if(!acc) return;
-
-                    console.log(acc);
                  
                     (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
         
