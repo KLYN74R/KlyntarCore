@@ -1,0 +1,4 @@
+https://www.assemblyscript.org/compiler.html
+https://www.assemblyscript.org/examples.html
+
+https://wasmbyexample.dev/home.en-us.html
