@@ -65,7 +65,7 @@ payload={
 },
 
 
-WORKFLOW_VERSION = 1,
+WORKFLOW_VERSION = "0.1.0",
 FEE=5,
 PAYLOAD_TYPE='TX',
 
