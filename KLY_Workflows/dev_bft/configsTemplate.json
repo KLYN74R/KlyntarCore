@@ -7,6 +7,10 @@
         "ME":true
     },
 
+    "INFO":{},
+
+    "STOP_WORK":false,
+
     "MANIFEST":{
 
         "CONTACT":{
@@ -152,8 +156,6 @@
             
     "STORE_INSTANT_BLOCKS":true,
     "STORE_CONTROLLER_BLOCKS":true,
-            
-    "STOP_WORK":false,
             
     "BLOCK_С_INIT_DELAY":10000,
     "BLOCK_I_INIT_DELAY":15000,

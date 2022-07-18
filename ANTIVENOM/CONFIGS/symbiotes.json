@@ -13,6 +13,13 @@
                 "ME":true
             },
 
+            "INFO":{
+                "IS_THIS_DATA_REAL":false,
+                "CONTACT":{
+                    "MAIL":"hello@exmple.com"
+                }
+            },
+
             "MANIFEST":{
 
                 "WORKFLOW":"dev_controller",
