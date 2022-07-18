@@ -644,7 +644,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
             *Examples:
 
-            0)Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web23.Read more on our sources https://klyntar.org
+            0)Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web1337.Read more on our sources https://klyntar.org
     
         
                 Single emoji refers to address and domain:❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
