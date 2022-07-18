@@ -1,12 +1,12 @@
 import{
 
-    VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,BROADCAST,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,SEND_REPORT
+    VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE
 
 } from '../../../KLY_Utils/utils.js'
 
-import ControllerBlock from '../blocks/controllerblock.js'
+import {symbiotes,hostchains,SEND_REPORT,BROADCAST} from '../utils.js'
 
-import {symbiotes,hostchains} from '../../../klyn74r.js'
+import ControllerBlock from '../blocks/controllerblock.js'
 
 import {verifyInstantBlock} from '../verification.js'
 

@@ -38,18 +38,22 @@
 
 
 
-import {BLAKE3,GET_SYMBIOTE_ACC,VERIFY} from '../../KLY_Utils/utils.js'
+import {BLAKE3,VERIFY} from '../../KLY_Utils/utils.js'
 
-import {symbiotes} from '../../klyn74r.js'
-
-
+import {symbiotes,GET_SYMBIOTE_ACC} from './utils.js'
 
 
-let MAIN_VERIFY=async(symbiote,event,sender)=>
 
-    !(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n))
-    &&
-    await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)
+
+let MAIN_VERIFY=async(symbiote,event,sender)=>{
+
+    if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n))){
+
+        return VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)
+
+    }
+
+}
 
 
 
@@ -85,6 +89,11 @@ export let SPENDERS = {
 
 
 }
+
+
+
+
+
 
 
 

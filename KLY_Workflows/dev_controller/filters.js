@@ -36,16 +36,15 @@
 
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
-
 import {VERIFY} from '../../KLY_Utils/utils.js'
 
 export default {
     
     TX:async(symbiote,event)=>
-        
+
         typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
         &&
-        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c)//check urgent nonce to prevent spam
+        await VERIFY(symbiote+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)//check urgent nonce to prevent spam
         ?
         {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
         :
@@ -58,7 +57,7 @@ export default {
     
         typeof event.p==='string' && event.p.length===64
         &&
-        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+        await VERIFY(symbiote+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
         
     ,
 
@@ -67,7 +66,7 @@ export default {
     
         typeof event.p==='string'
         && 
-        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+        await VERIFY(symbiote+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
         
     ,
 
@@ -75,7 +74,7 @@ export default {
     
         typeof event.p==='string'
         &&
-        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+        await VERIFY(symbiote+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
         
     ,
 
@@ -92,8 +91,8 @@ export default {
     
         typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
         &&
-        await VERIFY(JSON.stringify(event.p)+symbiote+event.n+event.t,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-    
+        await VERIFY(symbiote+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+        
     ,
 
     CONTRACT_DEPLOY:async (symbiote,event)=>{},

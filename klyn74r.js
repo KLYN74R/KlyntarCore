@@ -240,22 +240,6 @@ d"""    `""""""""""""Y:d8P                              8,          `b
 
 //Check the Roadmap,documentation,official sources,etc. to get more | Смотрите Roadmap проекта,документацию,официальные источники и тд. чтобы узнать больше
 
-export let
-
-    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9)=>{BLOCKS:DB_INSTANCE,STATE:DB_INSTANCE,...})
-    
-    hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
-
-    WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl)
-
-
-
-
-
-
-
-
-
 
 
     

@@ -1,4 +1,6 @@
 {
+    "VERSION":0,
+
     "PUB":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
     "PRV":"e4a1935e868c44c8b45eccfc4098b6e504404c9e5dac2b56ee54b6faac787ad592333b354fb171cdd38e8920c36153ec69feedbc041607db1b42ff26a306d4909695b423c157c5273d0bf27e13bc3a36",
 
@@ -7,7 +9,10 @@
         "ME":true
     },
 
-    "INFO":{},
+    "INFO":{
+        "MAIL":"hello@example.com",
+        "TELEGRAM":"@youraddress"
+    },
 
     "STOP_WORK":false,
 
@@ -226,6 +231,7 @@
     ],
         
     "MUST_SEND":{
+
         "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
     
         "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",

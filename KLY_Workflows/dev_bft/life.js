@@ -6,7 +6,7 @@ import InstantBlock from './blocks/instantblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
-import {symbiotes,hostchains} from '../../klyn74r.js'
+import {symbiotes,hostchains} from './utils.js'
 
 import fetch from 'node-fetch'
 
