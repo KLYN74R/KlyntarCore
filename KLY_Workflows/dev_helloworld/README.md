@@ -3,9 +3,9 @@
 
 Hello everyone! This this the "HelloWorld" workflow example. Follow changes here to understand how to write custom workflows and use them for KLYNTAR symbiotes
 
-<br/>
+<br/><br/>
 
-## Requirements
+## <b>Requirements</b>
 
 Although you're free in your ideas & inventions you should follow some rules, use global variables and so on
 
@@ -150,3 +150,49 @@ These funciton used on the top level of core in <code>klyn74r.js</code>
 
 
 </ul>
+
+<br/><br/>
+
+## <b>How to test this workflow</b>
+
+The same way as the others 😀
+
+<br/>
+
+1. Create separate dir
+   
+```bash
+
+mkdir -p /some/path
+
+export SYMBIOTE_DIR=/some/path
+
+```
+
+2. Let's try in testnet mode
+
+```bash
+
+export KLY_MODE=test
+
+```
+3. Copy the  the <code>CONFIGS</code> and <code>GENESIS</code> to <code>/some/path</code> and modify configs options you need
+
+4. Run the symbiote. By default, it will output <code>"Hello World from dev_helloworld !!!"</code> every 3 seconds
+
+<br/><br/>
+
+## <b>Recomendations to write a good workflow</b>
+
+<br/>
+
+<ol>
+
+<li>Follow best practises to make your workflow super powerfull</li>
+<li>Make it maximum customizable - let other users set own values as many as possible</li>
+<li>Test new workflow locally</li>
+<li>Set handlers for system signals to safely stop the instance</li>
+<li>Make it easy to use connectors</li>
+<li>Try to make your workflow async as much as possible</li>
+
+</ol>
