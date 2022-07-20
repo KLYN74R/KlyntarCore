@@ -1,0 +1,12 @@
+{
+    "SERVICES":{
+    
+    },
+
+    "EXTERNAL_SERVICES":{
+        
+    },
+
+    "RUNNER":"dev_andromeda/runner.js"
+    
+}

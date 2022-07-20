@@ -1,0 +1,24 @@
+{
+
+    "INTERFACE":"::",
+    "PORT":11111,
+
+    "PAYLOAD_SIZE":1000,
+    "EXTENDED_PAYLOAD_SIZE":10000,
+    "MAX_PAYLOAD_SIZE":10000000,
+
+
+    "TLS":{
+
+        "ENABLED":false,
+
+        "CONFIGS":{
+
+            "key_file_name":"security/cert.key",
+   
+            "cert_file_name":"security/cert.pem"
+
+        }
+    }
+    
+}

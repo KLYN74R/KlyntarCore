@@ -1,0 +1,22 @@
+{
+    "SYMBIOTES":{
+        
+        "8mE7DCV9dQvbkrBLaf3a7NAAaT66aCUXEwNdewsWwa4p":{
+            
+            "TITLE":"THIS_IS_A_HELLO_WORLD_WORKFLOW",
+            "COMMENT":"Here workflow developer define the list of options for workflow. It might be keypair, server settings(for routes), hostchains set, rules to interact with them, some specific options and so on",
+
+            "VERSION":"0.1.0",
+            "PUB":"8mE7DCV9dQvbkrBLaf3a7NAAaT66aCUXEwNdewsWwa4p",
+            "PRV":"MC4CAQAwBQYDK2VwBCIEIN1cZ2sg+9zMhUwRwIT4UfDXsziqycdQkieqv33yVY3G",
+
+            "MANIFEST":{
+                "WORKFLOW":"dev_helloworld",
+                "WORKFLOW_HASH":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+    
+        }
+
+    }
+
+}

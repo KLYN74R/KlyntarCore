@@ -3,10 +3,13 @@
 
 Hello everyone! This this the "HelloWorld" workflow example. Follow changes here to understand how to write custom workflows and use them for KLYNTAR symbiotes
 
+<br/>
 
 ## Requirements
 
 Although you're free in your ideas & inventions you should follow some rules, use global variables and so on
+
+<br/>
 
 Here is the list
 
@@ -24,7 +27,14 @@ Definitely your node should interact with other nodes / offchain services and so
 
 KLY_Workflow
 │     
+└───dev_controller
+    └───routes   
+│       └───main.js
+│       └───configs.json
+│       └───server.js
+│           
 │   
+│
 └───dev_controller
 │   │   
 │   └───routes
@@ -52,5 +62,37 @@ This file has the following structure
 
 ```
 
+<li>Create file <code>life.js</code>and export functions <code>RENAISSANCE</code> and <code>PREPARE_SYMBIOTE</code></li>
+
+<br/>
+
+File <code>dev_helloworld/life.js</code>
+
+```js
+
+export let PREPARE_SYMBIOTE = symbioteID => {
+
+    console.log('************ IMITATION OF PREPARATIONS************')
+    console.log('You can skip if you don`t need')
+    console.log('************ IMITATION OF RENAISSANCE************')
+
+}
+
+
+
+export let RENAISSANCE = symbioteID => {
+
+    console.log('************ IMITATION OF RENAISSANCE************')
+    console.log('You can skip if you don`t need')
+    console.log('************ IMITATION OF RENAISSANCE************')
+
+}
+
+```
+
+These funciton used on the top level of core in <code>klyn74r.js</code>
+
+
+<li>Define special varibles to correctly process system signals <code>SIGTERM</code>,<code>SIGINT</code> and <code>SIGHUP</code></li>
 
 </ul>
