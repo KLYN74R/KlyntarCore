@@ -180,6 +180,18 @@ export KLY_MODE=test
 
 4. Run the symbiote. By default, it will output <code>"Hello World from dev_helloworld !!!"</code> every 3 seconds
 
+5.Result
+
+<img src="./assets/0.jpg">
+
+Log stream in console
+
+<img src="./assets/1.jpg">
+
+And finally press <kbd>Ctrl+C</kbd> to terminate the instance
+<br/>
+<img src="./assets/2.jpg">
+
 <br/><br/>
 
 ## <b>Recomendations to write a good workflow</b>
