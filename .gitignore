@@ -60,3 +60,7 @@ KLY_Tests/hostchains/tokens/
 #AntiVenom testnet data
 !ANTIVENOM/CONFIGS
 !ANTIVENOM/GENESIS
+
+
+#Custom workflow example dir
+!HELLO_WORLD_DIR/GENESIS

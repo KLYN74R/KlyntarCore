@@ -260,80 +260,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 
 
-//*********************** SET HANDLERS ON USEFUL SIGNALS ************************
-
-
-let graceful=()=>{
-    
-    SIG_SIGNAL=true
-
-
-    console.log('\n')
-
-    LOG('KLYNTAR stop has been initiated.Keep waiting...','I')
-    
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
-    
-    //Probably stop logs on this step
-    setInterval(async()=>{
-
-        //Each subprocess in each symbiote must be stopped
-        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.keys(SIG_PROCESS).every(symbiote => Object.values(SIG_PROCESS[symbiote]).every(x=>x))){
-
-            console.log('\n')
-
-            let streamsPromises=[]
-
-            SYMBIOTES_LOGS_STREAMS.forEach(
-                
-                (stream,symbiote) => streamsPromises.push(
-                    
-                    new Promise( resolve => stream.close( e => {
-
-                        LOG(`Logging was stopped for ${SYMBIOTE_ALIAS(symbiote)} ${e?'\n'+e:''}`,'I')
-
-                        resolve()
-                    
-                    }))
-                    
-                )
-                
-            )
-
-
-
-            LOG('Server stopped','I')
-
-            global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
-
-
-
-            await Promise.all(streamsPromises).then(_=>{
-
-                LOG('Node was gracefully stopped','I')
-                
-                process.exit(0)
-
-            })
-
-        }
-
-    },200)
-
-}
-
-
-
-//Define listeners on typical signals to safely stop the node
-process.on('SIGTERM',graceful)
-process.on('SIGINT',graceful)
-process.on('SIGHUP',graceful)
-
-
-//************************ END SUB ************************
-
-
-
 //________________________________________________SHARED RESOURCES______________________________________________
 
 
@@ -342,11 +268,6 @@ process.on('SIGHUP',graceful)
 global.SYMBIOTES_LOGS_STREAMS=new Map()
 
 global.PRIVATE_KEYS=new Map()
-
-global.SIG_SIGNAL=false
-
-global.SIG_PROCESS={}
-
 
 
 //Location for symbiotes
@@ -443,10 +364,8 @@ global.SIG_PROCESS={}
 
     
     LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
+    
 
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
-    
-    
 
 
 //_____________________________________________ADVANCED PREPARATIONS____________________________________________
@@ -464,6 +383,12 @@ global.SIG_PROCESS={}
     global.CURRENT_SYMBIOTE_ID=symbiChains[0]
 
     
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
+    LOG(`Symbiote info ===> ${SYMBIOTE_ALIAS(CURRENT_SYMBIOTE_ID)} / ${CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].MANIFEST.WORKFLOW}@${CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].VERSION} / ${CURRENT_SYMBIOTE_ID}`,'I')
+    console.log()
+    console.log()
+
+
     //.forEach has inner scope,but we need await on top frame level
     for(let i=0;i<symbiChains.length;i++){
 

@@ -24,6 +24,6 @@
     
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "PLUGINS":["dummy/dummy_test.js","loggers/eth_logger.js","backup_service(CPP_VERSION)@v0.0.26/loader.js"]
+    "PLUGINS":[]
 
 }
