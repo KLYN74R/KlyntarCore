@@ -77,7 +77,7 @@ SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
 VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
        
     //Add mandatory prefix and postfix to pubkey
-    crypto.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from('302a300506032b6570032100'+Buffer.from(Base58.decode(pubKey)).toString('hex'),'hex').toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(signature,'base64'),(err,res)=>
+    cryptoModule.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from('302a300506032b6570032100'+Buffer.from(Base58.decode(pubKey)).toString('hex'),'hex').toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(signature,'base64'),(err,res)=>
 
         err?reject(false):resolve(res)
 
