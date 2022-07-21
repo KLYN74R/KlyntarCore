@@ -435,21 +435,28 @@ global.PRIVATE_KEYS=new Map()
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
 
-    Object.keys(CONFIG.SERVICES).forEach(
+    if(Object.keys(CONFIG.SERVICES).length){
+
+        Object.keys(CONFIG.SERVICES).forEach(
         
-        servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
-        
-    )
+            servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+            
+        )
+    
+    }else LOG('No services will be runned','I')
 
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/external.txt')).toString(),'CD')
 
-    Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
-        
-        servicePath => LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
-        
-    )
+    if(Object.keys(CONFIG.SERVICES).length){
 
+        Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
+        
+            servicePath => LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+        
+        )
+
+    }else LOG('No services will be runned','I')
 
 
     !CONFIG.PRELUDE.OPTIMISTIC
