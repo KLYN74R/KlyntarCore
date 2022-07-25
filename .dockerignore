@@ -60,7 +60,73 @@ KLY_Tests/hostchains/tokens/
 #AntiVenom testnet data
 !ANTIVENOM/CONFIGS
 !ANTIVENOM/GENESIS
+#Always
+build
+.vscode
+.idea
+node_modules
+LOGS/
+.log
 
+
+#Hello legend
+DEVELOPMENT/useful.txt
+
+#Images collection for docs
+images/RELEASES
+images/SYMBIOTES
+images/SITES
+
+
+#Databases
+M
+CHAINDATA
+!GENESIS/README.md
+SNAPSHOTS
+GENESIS
+
+
+#Workflow
+tr.js
+RELEASES
+SERVICES
+DOCS
+DEVELOPMENT
+CIIPs
+dist
+*.exe
+*.pdb
+*.wasm
+*.key
+*.pem
+*.dll
+*.so
+*.h
+
+
+#Configs
+CONFIGS/symbiotes*
+KEYSTORE
+decrypted.json
+
+
+
+#The Hell
+KLY_Tests/test_evm*
+KLY_Tests/hostchains/monitors/evm.js
+KLY_Tests/hostchains/contracts/*.js
+KLY_Tests/hostchains/connectors/
+KLY_Tests/hostchains/tokens/
+
+
+#AntiVenom testnet data
+!ANTIVENOM/CONFIGS
+!ANTIVENOM/GENESIS
+ANTIVENOM_*
+
+
+#Custom workflow example dir
+!HELLO_WORLD_DIR/GENESIS
 
 #Custom workflow example dir
 !HELLO_WORLD_DIR/GENESIS

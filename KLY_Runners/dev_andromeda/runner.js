@@ -58,7 +58,7 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 
 */
 
-let RUNNER_CONFIGS=fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json'))
+let RUNNER_CONFIGS=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json')))
 
 let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)//https://www.npmjs.com/package/dockerode - use to check the configs 
 
@@ -80,23 +80,18 @@ export default async service=>{
 
 //____________________________________________________________ RUNNING SERVICES ____________________________________________________________
 
-
-//Info about runned services
-console.log('\n\n')
     
 
-//__________________________________________________________ RUN OWN SERVICES__________________________________________________________
-
-
+let servicesToRun=RUNNER_CONFIGS.SERVICES_TO_RUN
 
 
 UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
 
-if(Object.keys(CONFIG.SERVICES).length){
+if(Object.keys(servicesToRun).length){
 
-    Object.keys(CONFIG.SERVICES).forEach(
+    Object.keys(servicesToRun).forEach(
         
-        servicePath => UTIL_LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+        servicePath => UTIL_LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${servicesToRun[servicePath]}\u001b[38;5;168m)`,'CON')
             
     )
     
@@ -104,22 +99,7 @@ if(Object.keys(CONFIG.SERVICES).length){
 
 
 
-
-UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/external.txt')).toString(),'CD')
-
-if(Object.keys(CONFIG.SERVICES).length){
-
-    Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
-        
-        servicePath => UTIL_LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
-        
-    )
-
-}else UTIL_LOG('No services will be runned','I')
-
-
-
-for(let servicePath in CONFIG.SERVICES){
+for(let servicePath in servicesToRun){
 
     //Tag:ExecMap
     import(`../../KLY_Services/${servicePath}/entry.js`).catch(
@@ -130,16 +110,6 @@ for(let servicePath in CONFIG.SERVICES){
 
 }
 
-for(let servicePath in CONFIG.EXTERNAL_SERVICES){
-
-    //Tag:ExecMap
-    import(`../../KLY_ExternalServices/${servicePath}/entry.js`).catch(
-        
-        e => UTIL_LOG(`Some error has been occured in process of external service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
-        
-    )
-
-}
 
 
 
