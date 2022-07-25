@@ -429,36 +429,6 @@ global.PRIVATE_KEYS=new Map()
     LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are ———> \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
 
-    
-    //Info about runned services
-    console.log('\n\n')
-    
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
-
-    if(Object.keys(CONFIG.SERVICES).length){
-
-        Object.keys(CONFIG.SERVICES).forEach(
-        
-            servicePath => LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
-            
-        )
-    
-    }else LOG('No services will be runned','I')
-
-
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/external.txt')).toString(),'CD')
-
-    if(Object.keys(CONFIG.SERVICES).length){
-
-        Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
-        
-            servicePath => LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
-        
-        )
-
-    }else LOG('No services will be runned','I')
-
-
     !CONFIG.PRELUDE.OPTIMISTIC
     &&
     await new Promise(resolve=>
@@ -483,30 +453,6 @@ global.PRIVATE_KEYS=new Map()
 
     }
     
-
-    for(let servicePath in CONFIG.SERVICES){
-
-        //Tag:ExecMap
-        import(`./KLY_Services/${servicePath}/entry.js`).catch(
-            
-            e => LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
-            
-        )
-
-    }
-
-    for(let servicePath in CONFIG.EXTERNAL_SERVICES){
-
-        //Tag:ExecMap
-        import(`./KLY_ExternalServices/${servicePath}/entry.js`).catch(
-            
-            e => LOG(`Some error has been occured in process of external service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
-            
-        )
-
-    }
-
-
     
     //Get urgent state and go on!
     rennaisances.forEach(

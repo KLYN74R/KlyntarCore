@@ -1,4 +1,5 @@
 import {LOG} from '../../KLY_Services/CommonResources/utils.js'
+import {LOG as UTIL_LOG} from '../../KLY_Utils/utils.js'
 import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 import Docker from 'dockerode'
 import fs from 'fs'
@@ -75,6 +76,72 @@ export default async service=>{
 
     
 }
+
+
+//____________________________________________________________ RUNNING SERVICES ____________________________________________________________
+
+
+//Info about runned services
+console.log('\n\n')
+    
+
+//__________________________________________________________ RUN OWN SERVICES__________________________________________________________
+
+
+
+
+UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+
+if(Object.keys(CONFIG.SERVICES).length){
+
+    Object.keys(CONFIG.SERVICES).forEach(
+        
+        servicePath => UTIL_LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+            
+    )
+    
+}else UTIL_LOG('No services will be runned','I')
+
+
+
+
+UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/external.txt')).toString(),'CD')
+
+if(Object.keys(CONFIG.SERVICES).length){
+
+    Object.keys(CONFIG.EXTERNAL_SERVICES).forEach(
+        
+        servicePath => UTIL_LOG(`External service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${CONFIG.EXTERNAL_SERVICES[servicePath]}\u001b[38;5;168m)`,'CON')
+        
+    )
+
+}else UTIL_LOG('No services will be runned','I')
+
+
+
+for(let servicePath in CONFIG.SERVICES){
+
+    //Tag:ExecMap
+    import(`../../KLY_Services/${servicePath}/entry.js`).catch(
+        
+        e => UTIL_LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
+        
+    )
+
+}
+
+for(let servicePath in CONFIG.EXTERNAL_SERVICES){
+
+    //Tag:ExecMap
+    import(`../../KLY_ExternalServices/${servicePath}/entry.js`).catch(
+        
+        e => UTIL_LOG(`Some error has been occured in process of external service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
+        
+    )
+
+}
+
+
 
 
 /*
