@@ -35,6 +35,11 @@ global.SIG_SIGNAL=false
 
 global.SIG_PROCESS={}
 
+//Define general global object
+global.SYMBIOTES_LOGS_STREAMS=new Map()
+
+global.PRIVATE_KEYS=new Map()
+
 
 let graceful=()=>{
     
@@ -120,7 +125,7 @@ process.on('SIGHUP',graceful)
 
 
 //TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
-let GET_TXS = symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTES[symbiote].MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+let GET_TXS = symbiote => symbiotes.get(symbiote).MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
 
@@ -144,7 +149,7 @@ GET_CANDIDATES=async symbiote=>{
         promises.push(state.get(creator).then(acc=>
             
             //If enough on balance-then pass hash.Otherwise-delete block from candidates and return "undefined" 
-            acc.B>=CONFIG.SYMBIOTES[symbiote].MANIFEST.INSTANT_FREEZE
+            acc.B>=CONFIG.SYMBIOTE.MANIFEST.INSTANT_FREEZE
             ?
             hash
             :
@@ -158,7 +163,7 @@ GET_CANDIDATES=async symbiote=>{
         ).catch(e=>false))
         
         //Limitation
-        if(limit++==CONFIG.SYMBIOTES[symbiote].MANIFEST.INSTANT_PORTION) break
+        if(limit++==CONFIG.SYMBIOTE.MANIFEST.INSTANT_PORTION) break
     
     }
     
@@ -188,9 +193,9 @@ GEN_BLOCK_START=async(symbiote,type)=>{
     
         await GEN_BLOCK(symbiote,type)
 
-        STOP_GEN_BLOCK[symbiote][type]=setTimeout(()=>GEN_BLOCK_START(symbiote,type),CONFIG.SYMBIOTES[symbiote][type+'_BLOCK_GENERATION_TIME'])
+        STOP_GEN_BLOCK[symbiote][type]=setTimeout(()=>GEN_BLOCK_START(symbiote,type),CONFIG.SYMBIOTE[type+'_BLOCK_GENERATION_TIME'])
     
-        CONFIG.SYMBIOTES[symbiote]['STOP_GENERATE_BLOCK_'+type]
+        CONFIG.SYMBIOTE['STOP_GENERATE_BLOCK_'+type]
         &&
         clearTimeout(STOP_GEN_BLOCK[symbiote][type])
       
@@ -239,7 +244,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
     
     
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(blockType==='C' && symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTES[symbiote].VT_GT_NORMAL_DIFFERENCE < symbioteRef.GENERATION_THREAD.NEXT_INDEX){
+    if(blockType==='C' && symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < symbioteRef.GENERATION_THREAD.NEXT_INDEX){
 
         LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',symbiote)
 
@@ -259,7 +264,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         
         //To fill ControllerBlocks for maximum
         
-        let phantomControllers=Math.ceil(symbiotes.get(symbiote).INSTANT_CANDIDATES.size/CONFIG.SYMBIOTES[symbiote].MANIFEST.INSTANT_PORTION),
+        let phantomControllers=Math.ceil(symbiotes.get(symbiote).INSTANT_CANDIDATES.size/CONFIG.SYMBIOTE.MANIFEST.INSTANT_PORTION),
 
             genThread=symbiotes.get(symbiote).GENERATION_THREAD,
     
@@ -330,10 +335,10 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
                     //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
     
                     //Push to hostchains due to appropriate symbiote
-                    Object.keys(CONFIG.SYMBIOTES[symbiote].MANIFEST.HOSTCHAINS).forEach(async ticker=>{
+                    Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
     
                         //TODO:Add more advanced logic
-                        if(!CONFIG.SYMBIOTES[symbiote].STOP_HOSTCHAINS[ticker]){
+                        if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
                             let control=symbiotes.get(symbiote).HOSTCHAINS_WORKFLOW[ticker],
                         
@@ -452,7 +457,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         Promise.all(BROADCAST(route,insBlockCandidate,symbiote))
 
         //These blocks also will be included
-        symbiotes.get(symbiote).INSTANT_CANDIDATES.set(hash,CONFIG.SYMBIOTES[symbiote].PUB)
+        symbiotes.get(symbiote).INSTANT_CANDIDATES.set(hash,CONFIG.SYMBIOTE.PUB)
         
     }
 
@@ -480,7 +485,7 @@ RELOAD_STATE=async(symbiote,symbioteRef)=>{
                        &&
                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
                        &&
-                       CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
+                       CONFIG.SYMBIOTE.SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
 
         
        
@@ -529,15 +534,15 @@ RELOAD_STATE=async(symbiote,symbioteRef)=>{
     }else{
 
         //Otherwise start rescan form height=0
-        symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && (!CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME || symbioteRef.GENERATION_THREAD.NEXT_INDEX==0) ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+        symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && (!CONFIG.SYMBIOTE.CONTROLLER.ME || symbioteRef.GENERATION_THREAD.NEXT_INDEX==0) ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
 
         symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
         //Load all the configs
-        fs.readdirSync(process.env.GENESIS_PATH+`/${symbiote}`).forEach(file=>{
+        fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
 
             //Load genesis state or data from backups(not to load state from the beginning)
-            let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${symbiote}/${file}`))
+            let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
         
             Object.keys(genesis).forEach(
             
@@ -578,7 +583,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     //____________________________________________Prepare structures_________________________________________________
 
 
-    let symbioteConfig=CONFIG.SYMBIOTES[symbioteId]
+    let symbioteConfig=CONFIG.SYMBIOTE
 
 
     //Contains default set of properties for major part of potential use-cases on symbiote
@@ -610,7 +615,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
     [process.env.CHAINDATA_PATH,process.env.SNAPSHOTS_PATH].forEach(
         
-        name => !fs.existsSync(`${name}/${symbioteId}`) && fs.mkdirSync(`${name}/${symbioteId}`)
+        name => !fs.existsSync(`${name}`) && fs.mkdirSync(`${name}`)
         
     )
     
@@ -650,7 +655,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     
     ].forEach(
         
-        dbName => symbioteRef[dbName]=l(process.env.CHAINDATA_PATH+`/${symbioteId}/${dbName}`,{valueEncoding:'json'})
+        dbName => symbioteRef[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
         
     )
 
@@ -690,7 +695,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     */
 
 
-    symbioteRef.STATE=l(process.env.CHAINDATA_PATH+`/${symbioteId}/STATE`,{valueEncoding:'json'})
+    symbioteRef.STATE=l(process.env.CHAINDATA_PATH+`/STATE`,{valueEncoding:'json'})
     
    
 
@@ -698,9 +703,9 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     symbioteRef.SNAPSHOT={
 
-        METADATA:l(process.env.SNAPSHOTS_PATH+`/${symbioteId}/METADATA`,{valueEncoding:'json'}),
+        METADATA:l(process.env.SNAPSHOTS_PATH+`/METADATA`,{valueEncoding:'json'}),
 
-        STATE:l(process.env.SNAPSHOTS_PATH+`/${symbioteId}/STATE`,{valueEncoding:'json'})
+        STATE:l(process.env.SNAPSHOTS_PATH+`/STATE`,{valueEncoding:'json'})
 
     }
 
@@ -929,7 +934,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
             let balance
 
-            if(CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].BALANCE_VIEW){
+            if(CONFIG.SYMBIOTE.BALANCE_VIEW){
 
                 let spinner = ora({
                     color:'red',
@@ -946,7 +951,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                 
                 }\x1b[36;1m is \x1b[32;1m${
                     
-                    CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].BALANCE_VIEW?balance:'<disabled>'
+                    CONFIG.SYMBIOTE.BALANCE_VIEW?balance:'<disabled>'
                 
                 }   \x1b[36;1m[${symbioteConfig.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
@@ -1001,7 +1006,7 @@ RENAISSANCE=async symbioteID=>{
     let promises=[]
 
 
-    !CONFIG.SYMBIOTES[symbioteID].STOP_WORK
+    !CONFIG.SYMBIOTE.STOP_WORK
         &&
         promises.push(
 
@@ -1020,9 +1025,9 @@ RENAISSANCE=async symbioteID=>{
             Format defined by Controller and become public for Instant generators and other members to let them to find the best&fastest options
 
             */
-            !CONFIG.SYMBIOTES[symbioteID].CONTROLLER.ME
+            !CONFIG.SYMBIOTE.CONTROLLER.ME
             &&
-            fetch(CONFIG.SYMBIOTES[symbioteID].CONTROLLER.ADDR+'/nodes/'+symbioteID+'/'+CONFIG.SYMBIOTES[symbioteID].REGION).then(r=>r.json()).then(
+            fetch(CONFIG.SYMBIOTE.CONTROLLER.ADDR+'/nodes/'+symbioteID+'/'+CONFIG.SYMBIOTE.REGION).then(r=>r.json()).then(
                 
                 async nodesArr=>{
                     
@@ -1035,7 +1040,7 @@ RENAISSANCE=async symbioteID=>{
                         
                         addr => answers.push(
                             
-                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([symbioteID,CONFIG.SYMBIOTES[symbioteID].MY_ADDR])})
+                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([symbioteID,CONFIG.SYMBIOTE.MY_ADDR])})
                         
                                     .then(res=>res.text())
                         
@@ -1068,7 +1073,7 @@ RENAISSANCE=async symbioteID=>{
 
 
 
-    let symbioteRef=CONFIG.SYMBIOTES[symbioteID]
+    let symbioteRef=CONFIG.SYMBIOTE
 
         if(!symbioteRef.STOP_WORK){
         

@@ -15,7 +15,7 @@ import fetch from 'node-fetch'
 let SET_INSTANT_BLOCK=async(symbiReference,symbiote,hash,block,rewardBox)=>{
 
     //If no-it's like SPV clients
-    CONFIG.SYMBIOTES[symbiote].STORE_INSTANT_BLOCKS
+    CONFIG.SYMBIOTE.STORE_INSTANT_BLOCKS
     ?
     await symbiReference.INSTANT_BLOCKS.put(hash,block).catch(
         
@@ -51,7 +51,7 @@ export let
 
 GET_FORWARD_BLOCKS=(symbiote,fromHeight)=>{
 
-    fetch(CONFIG.SYMBIOTES[symbiote].GET_MULTI+`/multiplicity/${symbiote}/`+fromHeight)
+    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${symbiote}/`+fromHeight)
 
     .then(r=>r.json()).then(blocksSet=>{
 
@@ -121,7 +121,7 @@ GET_CONTROLLER_BLOCK=(symbiote,blockId)=>symbiotes.get(symbiote).CONTROLLER_BLOC
     //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
     //Then we ask for block with <blockId> and asynchronously request the other blocks
     
-    fetch(CONFIG.SYMBIOTES[symbiote].GET_CONTROLLER+`/block/${symbiote}/c/`+blockId)
+    fetch(CONFIG.SYMBIOTE.GET_CONTROLLER+`/block/${symbiote}/c/`+blockId)
 
     .then(r=>r.json()).then(block=>{
 
@@ -178,11 +178,11 @@ START_VERIFY_POLLING=async symbiote=>{
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${verifThread.COLLAPSED_INDEX+1}`,'W')
 
 
-        if(CONFIG.SYMBIOTES[symbiote]['STOP_VERIFY']) return//step over initiation of another timeout and this way-stop the Verification thread
+        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
 
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(()=>START_VERIFY_POLLING(symbiote),nextBlock?0:CONFIG.SYMBIOTES[symbiote].CONTROLLER_POLLING)
+        setTimeout(()=>START_VERIFY_POLLING(symbiote),nextBlock?0:CONFIG.SYMBIOTE.CONTROLLER_POLLING)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
@@ -242,7 +242,7 @@ MAKE_SNAPSHOT=async symbiote=>{
 
 
     //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
-    if(CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ALL){
+    if(CONFIG.SYMBIOTE.SNAPSHOTS.ALL){
         
         await new Promise(
         
@@ -345,7 +345,7 @@ verifyControllerBlock=async controllerBlock=>{
 
     let overviewOk=
     
-        controllerBlock.a?.length<=CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_BLOCK_MAX_SIZE
+        controllerBlock.a?.length<=CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_BLOCK_MAX_SIZE
         &&
         symbioteReference.VERIFICATION_THREAD.COLLAPSED_HASH === controllerBlock.p
         &&
@@ -396,7 +396,7 @@ verifyControllerBlock=async controllerBlock=>{
                   █▄.If no block locally-get from some reliable source,we defined in config file(cloud,CDN,some cluster-something which are fast,reliable and has ~100% uptime)
                 */
                
-                fetch(CONFIG.SYMBIOTES[symbiote].GET_INSTANT+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/${symbiote}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
                     //Check hash and if OK-sift events from inside,otherwise-occur exception to ask block from another sources
                     InstantBlock.genHash(instant.c,instant.e,symbiote)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
@@ -410,7 +410,7 @@ verifyControllerBlock=async controllerBlock=>{
                     LOG(`No InstantBlock for \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m even from GET_INSTANT service`,'W')
                     
                     //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или PERMANENT_NEAR напрямую
-                    let permNear=CONFIG.SYMBIOTES[symbiote].PERMANENT_NEAR,breakPoint=false
+                    let permNear=CONFIG.SYMBIOTE.PERMANENT_NEAR,breakPoint=false
 
                     
                     
@@ -553,7 +553,7 @@ verifyControllerBlock=async controllerBlock=>{
         
             let acc=GET_SYMBIOTE_ACC(reference.creator,symbiote),
                 
-                toInstant=reference.fees*CONFIG.SYMBIOTES[symbiote].MANIFEST.GENERATOR_FEE//% of block to generator
+                toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
                 
             acc.ACCOUNT.B+=toInstant
 
@@ -563,7 +563,7 @@ verifyControllerBlock=async controllerBlock=>{
         
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(CONFIG.SYMBIOTES[symbiote].STORE_CONTROLLER_BLOCKS){
+        if(CONFIG.SYMBIOTE.STORE_CONTROLLER_BLOCKS){
             
             //No matter if we already have this block-resave it
 
@@ -593,7 +593,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         //Commit state
         //Use caching(such primitive for the first time)
-        if(symbioteReference.ACCOUNTS.size>=CONFIG.SYMBIOTES[symbiote].BLOCK_TO_BLOCK_CACHE_SIZE){
+        if(symbioteReference.ACCOUNTS.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE){
 
             symbioteReference.ACCOUNTS.forEach((acc,addr)=>{
 
@@ -689,9 +689,9 @@ verifyControllerBlock=async controllerBlock=>{
 
         controllerBlock.i!==0//no sense to snaphost if no blocks yet
         &&
-        CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
+        CONFIG.SYMBIOTE.SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
         &&
-        controllerBlock.i%CONFIG.SYMBIOTES[symbiote].SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
+        controllerBlock.i%CONFIG.SYMBIOTE.SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
         &&
         await MAKE_SNAPSHOT(symbiote)
 
@@ -702,9 +702,9 @@ verifyControllerBlock=async controllerBlock=>{
 
 
         //Controller shouldn't check
-        if(!CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME){
+        if(!CONFIG.SYMBIOTE.CONTROLLER.ME){
 
-            let workflow=CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS
+            let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
             //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
             
             Object.keys(workflow).forEach(ticker=>
@@ -750,7 +750,7 @@ verifyInstantBlock=async block=>{
     
         symbioteData=symbiotes.get(block.s),
         
-        symbioteConfig=CONFIG.SYMBIOTES[block.s]
+        symbioteConfig=CONFIG.SYMBIOTE
 
 
     /*

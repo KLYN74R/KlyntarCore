@@ -16,7 +16,7 @@ export let COLORS = {
 
 //Segregate console and "in-file" logs can be occured by directing stdin to some "nnlog" file to handle logs
 //Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
-export let LOG=(msg,msgColor,symbiote)=>{
+export let LOG=(msg,msgColor)=>{
 
     CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 

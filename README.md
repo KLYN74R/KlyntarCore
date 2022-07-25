@@ -284,14 +284,12 @@ KlyntarCore
 │   │   
 │   └───CHAINDATA(will be created after the daemon run in testnet mode)
 │   │    │
-│   │    └───Wvzv9zGXJL4FngTKACPPDpHgCjE2k22jB9EnjmZr81Bi 
-│   │       │
-│   │       │───CANDIDATES
-│   │       │───CONTROLLER_BLOCKS
-│   │       │───HOSTCHAINS_DATA
-│   │       │───INSTANT_BLOCKS
-│   │       │───METADATA
-│   │       └───STATE
+│   │    │───CANDIDATES
+│   │    │───CONTROLLER_BLOCKS
+│   │    │───HOSTCHAINS_DATA
+│   │    │───INSTANT_BLOCKS
+│   │    │───METADATA
+│   │    └───STATE
 │   │        
 │   └───CONFIGS
 │   │    │

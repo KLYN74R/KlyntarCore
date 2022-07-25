@@ -36,41 +36,13 @@ let graceful=()=>{
 
             console.log('\n')
 
-            let streamsPromises=[]
-
-
-            //Close logs streams
-            SYMBIOTES_LOGS_STREAMS.forEach(
-                
-                (stream,symbiote) => streamsPromises.push(
-                    
-                    new Promise( resolve => stream.close( e => {
-
-                        LOG(`Logging was stopped for ${SYMBIOTE_ALIAS(symbiote)} ${e?'\n'+e:''}`,'I')
-
-                        resolve()
-                    
-                    }))
-                    
-                )
-                
-            )
-
-
-
             LOG('Server stopped','I')
 
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
-
-
-            await Promise.all(streamsPromises).then(_=>{
-
-                LOG('Node was gracefully stopped','I')
+            LOG('Node was gracefully stopped','I')
                 
-                process.exit(0)
-
-            })
+            process.exit(0)
 
         }
 

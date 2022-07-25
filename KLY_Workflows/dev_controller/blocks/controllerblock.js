@@ -5,7 +5,7 @@ export default class ControllerBlock{
     
     constructor(symbiote,instantBlocksArr){
         
-        this.c=CONFIG.SYMBIOTES[symbiote].PUB
+        this.c=CONFIG.SYMBIOTE.PUB
         
         this.a=instantBlocksArr//array of InstantBlocks' hashes
         

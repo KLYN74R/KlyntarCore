@@ -59,7 +59,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 //*UPD:Sign with our pubkey to avoid certifications 
 SEND_REPORT=(symbiote,alertInfo)=>
 
-    fetch(CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
+    fetch(CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
 
         method:'POST',
         body:JSON.stringify(alertInfo)
@@ -79,7 +79,7 @@ SEND_REPORT=(symbiote,alertInfo)=>
     
 GET_NODES=(symbiote,region)=>{
 
-        let nodes=CONFIG.SYMBIOTES[symbiote].NODES[region]//define "IN SCOPE"(due to region and symbiote)
+        let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
     
         //Default Phisher_Yeits algorithm
     
@@ -89,7 +89,7 @@ GET_NODES=(symbiote,region)=>{
             
                 arrSize = nodes.length,
             
-                min = arrSize - CONFIG.SYMBIOTES[symbiote].NODES_PORTION, temp, index
+                min = arrSize - CONFIG.SYMBIOTE.NODES_PORTION, temp, index
     
     
             while (arrSize-- > min) {
@@ -160,7 +160,7 @@ GET_NODES=(symbiote,region)=>{
  */
  BROADCAST=(route,data,symbiote)=>{
 
-    let promises=[],symbioteConfig=CONFIG.SYMBIOTES[symbiote]
+    let promises=[],symbioteConfig=CONFIG.SYMBIOTE
 
 
     //First of all-send to important destination points
@@ -262,7 +262,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
         
         Object.keys(keys).forEach(symbiote=>{
 
-            let symbioteConfig=CONFIG.SYMBIOTES[symbiote]
+            let symbioteConfig=CONFIG.SYMBIOTE
 
             //Main key
             global.PRIVATE_KEYS.set(symbiote,keys[symbiote].kly)
@@ -290,7 +290,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
     //Stop loading
     spinner?.stop()
 
-    let symbioteRef=CONFIG.SYMBIOTES[symbiote],
+    let symbioteRef=CONFIG.SYMBIOTE,
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 

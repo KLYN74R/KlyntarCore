@@ -61,7 +61,7 @@ export let SPENDERS = {
     
     TX:event=>event.p.a+event.f,
 
-    OFFSPRING:(event,symbiote)=>CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE+event.f,
+    OFFSPRING:(event,symbiote)=>CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE+event.f,
 
     ALIAS:event=>event.p.length*0.001+event.f,
 
@@ -162,7 +162,7 @@ export let VERIFIERS = {
         
         if(await MAIN_VERIFY(symbiote,event,sender)){
     
-            sender.ACCOUNT.B-=event.f+CONFIG.SYMBIOTES[symbiote].MANIFEST.CONTROLLER_FREEZE
+            sender.ACCOUNT.B-=event.f+CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)//update maximum nonce
         

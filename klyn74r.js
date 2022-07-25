@@ -263,13 +263,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 //________________________________________________SHARED RESOURCES______________________________________________
 
 
-
-//Define general global object
-global.SYMBIOTES_LOGS_STREAMS=new Map()
-
-global.PRIVATE_KEYS=new Map()
-
-
 //Location for symbiotes
 !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
 
@@ -373,42 +366,31 @@ global.PRIVATE_KEYS=new Map()
 
 
 
-    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    let symbiChains=Object.keys(CONFIG.SYMBIOTES),
-    
-        rennaisances=new Map()
-
-
-    //Define global variable to know the SYMBIOTE_ID for this instance
-    global.CURRENT_SYMBIOTE_ID=symbiChains[0]
-
+    let START_SYMBIOTE
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
-    LOG(`Symbiote info ===> ${SYMBIOTE_ALIAS(CURRENT_SYMBIOTE_ID)} / ${CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].MANIFEST.WORKFLOW}@${CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].VERSION} / ${CURRENT_SYMBIOTE_ID}`,'I')
+    LOG(`Symbiote info ===> ${SYMBIOTE_ALIAS(CURRENT_SYMBIOTE_ID)} / ${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}@${CONFIG.SYMBIOTE.VERSION}`,'I')
     console.log()
     console.log()
 
 
-    //.forEach has inner scope,but we need await on top frame level
-    for(let i=0;i<symbiChains.length;i++){
+    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
+    if(!CONFIG.SYMBIOTE.STOP_WORK){
 
-        if(!CONFIG.SYMBIOTES[symbiChains[i]].STOP_WORK){
+        let {RUN_SYMBIOTE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
 
-            let {RENAISSANCE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTES[symbiChains[i]].MANIFEST.WORKFLOW}/life.js`)
+        await PREPARE_SYMBIOTE()
 
-            await PREPARE_SYMBIOTE(symbiChains[i])
-
-            rennaisances.set(symbiChains[i],RENAISSANCE)
-
-        }
-
+        START_SYMBIOTE=RUN_SYMBIOTE
+        
     }
+
     
 
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
-    global.INFO=JSON.stringify(CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].INFO)
+    global.INFO=JSON.stringify(CONFIG.SYMBIOTE.INFO)
     
 
 

@@ -55,10 +55,10 @@ import fetch from 'node-fetch'
 export default {
 
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
 
 
-        let {URL,CONFIRMATIONS,CREDS}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.dash
+        let {URL,CONFIRMATIONS,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.dash
 
 
         return fetch(URL,{method:'POST',body:JSON.stringify({
@@ -98,10 +98,10 @@ export default {
 
 
 
-    sendTx:async(symbiote,blockIndex,klyntarHash)=>{
+    sendTx:async(blockIndex,klyntarHash)=>{
 
         
-        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.dash,
+        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.dash,
             
             inputs=[],
             
@@ -169,10 +169,10 @@ export default {
     },
 
 
-    getBalance:symbiote=>{
+    getBalance:()=>{
 
 
-        let {URL,PUB,CREDS}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.dash
+        let {URL,PUB,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.dash
 
         return fetch(URL,{method:'POST',body:JSON.stringify({
 

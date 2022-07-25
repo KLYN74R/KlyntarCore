@@ -4,7 +4,7 @@ export default class InstantBlock{
     
     constructor(symbiote,eventsSet){
         
-        this.c=CONFIG.SYMBIOTES[symbiote].PUB
+        this.c=CONFIG.SYMBIOTE.PUB
 
         this.e=eventsSet
                 

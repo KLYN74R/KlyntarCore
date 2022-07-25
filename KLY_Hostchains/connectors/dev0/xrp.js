@@ -50,35 +50,27 @@ import{RippleAPI} from 'ripple-lib'
  * 
  * 
  */
-let connections=new Map()
+let connection,
 
-Object.keys(CONFIG.SYMBIOTES).forEach(
-    
-    symbiote => {
-
-        let server=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.xrp?.URL
+    server=CONFIG.SYMBIOTE.HC_CONFIGS.xrp?.URL
         
-        if(server) connections.set(symbiote,new RippleAPI({server}))
-
-    }
-    
-)
+if(server) connection=new RippleAPI({server})
 
 
 
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>
+    checkTx:(hostChainHash,blockIndex,klyntarHash)=>
 
-        connections.get(symbiote).connect().then(()=>
+        connection.connect().then(()=>
         
-            connections.get(symbiote).getTransaction(hostChainHash).then(async tx=>{
+            connection.getTransaction(hostChainHash).then(async tx=>{
             
                 //Testnet mode
                 if(tx.outcome.result==='tesSUCCESS'){
                 
-                    await connections.get(symbiote).disconnect()
+                    await connection.disconnect()
 
                     let data=tx.specification.memos[0].data.split('_')
                 
@@ -95,20 +87,20 @@ export default {
 
 
     
-    sendTx:async(symbiote,blockIndex,klyntarHash)=>
+    sendTx:async(blockIndex,klyntarHash)=>
 
-        connections.get(symbiote).connect().then(async()=>{
+        connection.connect().then(async()=>{
 
             
-            let {PUB,PRV,AMOUNT,TO,MAX_LEDGER_VERSION_OFFSET} = CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.xrp,
+            let {PUB,PRV,AMOUNT,TO,MAX_LEDGER_VERSION_OFFSET} = CONFIG.SYMBIOTE.HC_CONFIGS.xrp,
 
             
                 //0st script in config means MEMO transaction
-                preparedTx = await connections.get(symbiote).prepareTransaction({
+                preparedTx = await connection.prepareTransaction({
 
                     "TransactionType": "Payment",
                     "Account": PUB,
-                    "Amount": connections.get(symbiote).xrpToDrops(AMOUNT),
+                    "Amount": connection.xrpToDrops(AMOUNT),
                     "Destination":TO,//Choose another our address
                     "Memos": [
                         {
@@ -122,7 +114,7 @@ export default {
         
         
                 //Sign the transaction
-                signed = connections.get(symbiote).sign(preparedTx.txJSON,PRV),
+                signed = connection.sign(preparedTx.txJSON,PRV),
         
                 txID = signed.id,
         
@@ -130,9 +122,9 @@ export default {
         
             
                 //Final operations
-                _result = await connections.get(symbiote).submit(tx_blob)
+                _result = await connection.submit(tx_blob)
         
-            await connections.get(symbiote).disconnect()
+            await connection.disconnect()
 
             return txID//[txID,result.resultCode]       
 
@@ -147,15 +139,15 @@ export default {
     },
 
 
-    getBalance:async symbiote=>{
+    getBalance:async()=>{
 
-        let balance=await connections.get(symbiote).connect().then(()=>
+        let balance=await connection.connect().then(()=>
       
-            connections.get(symbiote).getAccountInfo(CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.xrp.PUB).then(acc=>acc.xrpBalance)
+            connection.getAccountInfo(CONFIG.SYMBIOTE.HC_CONFIGS.xrp.PUB).then(acc=>acc.xrpBalance)
         
         ).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
-        await connections.get(symbiote).disconnect()
+        await connection.disconnect()
 
         return balance
 

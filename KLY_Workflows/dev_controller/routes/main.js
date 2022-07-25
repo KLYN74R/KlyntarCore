@@ -37,7 +37,7 @@ let MAIN = {
         let total=0,buf=Buffer.alloc(0)
 
         //Probably you disable for all symbiotes
-        if(!CONFIG.SYMBIOTES[global.CURRENT_SYMBIOTE_ID].TRIGGERS.CONTROLLER_BLOCKS){
+        if(!CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS){
             
             a.end('Route is off')
             
@@ -66,7 +66,7 @@ let MAIN = {
 
                     symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
                     &&
-                    CONFIG.SYMBIOTES[block.c].TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+                    CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
                     &&
                     await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
                     
@@ -109,7 +109,7 @@ let MAIN = {
     instantBlock:a=>{
 
          //Probably you disable for all symbiotes
-         if(!CONFIG.SYMBIOTES[global.CURRENT_SYMBIOTE_ID].TRIGGERS.INSTANT_BLOCKS){
+         if(!CONFIG.SYMBIOTE.TRIGGERS.INSTANT_BLOCKS){
             
             a.end('Route is off')
             
@@ -131,7 +131,7 @@ let MAIN = {
 
                     let block=await PARSE_JSON(buf)
                             
-                    !a.aborted&&a.end(CONFIG.SYMBIOTES[block.n]?.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
+                    !a.aborted&&a.end(CONFIG.SYMBIOTE.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
 
                     verifyInstantBlock(block)
 
@@ -153,7 +153,7 @@ let MAIN = {
         let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
+        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -177,7 +177,7 @@ let MAIN = {
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         //Also check if we have normalizer for this type of event
-        if(symbioteMempool.length<CONFIG.SYMBIOTES[symbiote].EVENTS_MEMPOOL_SIZE && symbiotes.get(symbiote).FILTERS[event.t]){
+        if(symbioteMempool.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && symbiotes.get(symbiote).FILTERS[event.t]){
 
             let filtered=await symbiotes.get(symbiote).FILTERS[event.t](symbiote,event)
 
@@ -205,7 +205,7 @@ let MAIN = {
     //[symbioteID,hostToAdd(initiator's valid and resolved host)]
     addNode:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTES[symbiote]
+        let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
         
 
         if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
@@ -249,7 +249,7 @@ let MAIN = {
             workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
 
 
-        if(symbiotes.has(symbiote) && !CONFIG.SYMBIOTES[symbiote].CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
+        if(symbiotes.has(symbiote) && !CONFIG.SYMBIOTE.CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
 
             //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
             let alreadyHas=await symbiotes.get(symbiote).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
@@ -297,7 +297,7 @@ let MAIN = {
             //False only if proof is failed
             if(workflowOk){
 
-                CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
+                CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
                 &&
                 symbiotes.get(symbiote).HOSTCHAINS_DATA
                 

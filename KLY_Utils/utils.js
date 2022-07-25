@@ -173,7 +173,7 @@ LOG=(msg,msgColor,symbiote)=>{
 
     CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 
-    if(symbiote) CONFIG.SYMBIOTES[symbiote].LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(symbiote).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
+    if(symbiote) CONFIG.SYMBIOTE.LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(symbiote).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 
 },
 
@@ -183,7 +183,7 @@ LOG=(msg,msgColor,symbiote)=>{
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,type,symbiote,hash,spaces,color,block)=>{
 
-    if(CONFIG.SYMBIOTES[symbiote].LOGS.BLOCK){
+    if(CONFIG.SYMBIOTE.LOGS.BLOCK){
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
 

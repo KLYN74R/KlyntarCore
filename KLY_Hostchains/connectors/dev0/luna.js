@@ -51,28 +51,21 @@ import {LOG} from '../../../KLY_Utils/utils.js'
  * 
  * 
  */
-let connections=new Map()
+let connection,
 
-Object.keys(CONFIG.SYMBIOTES).forEach(
-     
-    symbiote => {
- 
-        let {URL,CHAIN_ID}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.luna
+    {URL,CHAIN_ID}=CONFIG.SYMBIOTE.HC_CONFIGS.luna
          
-        if(configs) connections.set(symbiote,new LCDClient({URL,chainID:CHAIN_ID}))
- 
-    }
-     
-)
+if(configs) connection=new LCDClient({URL,chainID:CHAIN_ID})
+
 
 
 
 export default {
 
 
-    checkTx:async(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
+    checkTx:async(hostChainHash,blockIndex,klyntarHash)=>{
       
-        let tx=await connections.get(symbiote).tx.txInfo(hostChainHash).then(data=>data.tx).catch(e=>false)
+        let tx=await connection.tx.txInfo(hostChainHash).then(data=>data.tx).catch(e=>false)
 
         if(tx){
 
@@ -88,13 +81,13 @@ export default {
 
     sendTx:(symbiote,blockIndex,klyntarHash)=>{
 
-        let {MNEMONIC,TO,AMOUNT}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.luna,
+        let {MNEMONIC,TO,AMOUNT}=CONFIG.SYMBIOTE.HC_CONFIGS.luna,
 
             account=new MnemonicKey({mnemonic:MNEMONIC}),
 
             send = new MsgSend(account.accAddress,TO,{uluna:AMOUNT}),
 
-            terra=connections.get(symbiote),
+            terra=connection,
 
             wallet=terra.wallet(account)
 
@@ -122,5 +115,5 @@ export default {
     },
 
     
-    getBalance:async symbiote=>connections.get(symbiote).bank.balance(symbiote).then(bal=>bal[0].toAmino()[0].amount/10**6)
+    getBalance:async()=>connection.bank.balance(symbiote).then(bal=>bal[0].toAmino()[0].amount/10**6)
 }

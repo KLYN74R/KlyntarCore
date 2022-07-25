@@ -54,41 +54,33 @@ let {PublicKey,Connection}=Web3,
 
 
 
-{
+// {
 
-    let unique=[]
+//     let unique=[]
 
-    Object.keys(CONFIG.SYMBIOTES).forEach(
+//     let {URL,TARGET,COMMITMENT} = CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS.sol
     
-        symbiote => {
-            
-            let {URL,TARGET,COMMITMENT} = CONFIG.SYMBIOTES[symbiote].WORKFLOW_CHECK.HOSTCHAINS.sol
-    
-            //Let's use only unique sources
-            if(!unique.includes(URL)){
-    
-                monitors.set(symbiote,new Connection(URL,COMMITMENT))
+//     //Let's use only unique sources
+//     if(!unique.includes(URL)){
 
-                //Set default responder
-                monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
-    
-                    console.log('Logs on Controller',logs)
-                 
-                })
-    
-            }else{
+//         monitors.set(symbiote,new Connection(URL,COMMITMENT))
 
-                 //Set default responder
-                 monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
-    
-                    console.log('Logs on Controller',logs)
-                 
-                })
+//         //Set default responder
+//         monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
 
-            }
-    
-        }
-        
-    )
+//             console.log('Logs on Controller',logs)
+         
+//         })
 
-}
+//     }else{
+
+//          //Set default responder
+//          monitors.get(symbiote).onLogs(new PublicKey(TARGET),logs=>{
+
+//             console.log('Logs on Controller',logs)
+         
+//         })
+
+//     }
+
+// }

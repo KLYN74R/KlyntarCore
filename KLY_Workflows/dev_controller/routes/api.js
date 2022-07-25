@@ -14,7 +14,7 @@ let API = {
 
         let symbiote=q.getParameter(0)
     
-        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS.ACCOUNTS){
+        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS.ACCOUNTS){
     
             let data={
             
@@ -24,7 +24,7 @@ let API = {
         
             }
 
-            !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTES[symbiote].TTL.ACCOUNTS).end(JSON.stringify(data))
+            !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.ACCOUNTS).end(JSON.stringify(data))
     
         }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
 
@@ -33,7 +33,7 @@ let API = {
 
 
     
-    info:a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].TTL.INFO).end(INFO),
+    info:a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 
 
@@ -44,9 +44,9 @@ let API = {
     
         symbiotes.has(symbiote)
         ?
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTES[symbiote].TTL.NODES).end(
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.NODES).end(
     
-            CONFIG.SYMBIOTES[symbiote].TRIGGERS.NODES&&JSON.stringify(GET_NODES(symbiote,q.getParameter(1)))
+            CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(symbiote,q.getParameter(1)))
     
         )
         :
@@ -71,7 +71,7 @@ let API = {
     
         
         //Set triggers
-        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTES[symbiote].TRIGGERS[type]){
+        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
     
             let db=symbiotes.get(symbiote)[type]//depends on type of block-chose appropriate db
     
@@ -101,10 +101,10 @@ let API = {
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(symbiotes.has(symbiote) && CONFIG.SYMBIOTES[symbiote].TRIGGERS.MULTI && !isNaN(fromHeight)){
+        if(symbiotes.has(symbiote) && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
-            let symbioteConfig=CONFIG.SYMBIOTES[symbiote],
+            let symbioteConfig=CONFIG.SYMBIOTE,
     
                 cbStorage=symbiotes.get(symbiote).CONTROLLER_BLOCKS,
                 

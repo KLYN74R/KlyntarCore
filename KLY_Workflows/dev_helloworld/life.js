@@ -21,6 +21,6 @@ export let RENAISSANCE = symbioteID => {
     console.log('You can skip if you don`t need')
     console.log('************ IMITATION OF RENAISSANCE************')
 
-    setInterval(()=>LOG('Hello World from dev_helloworld !!!','S',CURRENT_SYMBIOTE_ID),CONFIG.SYMBIOTES[CURRENT_SYMBIOTE_ID].HELLO_WORLD_TIMEOUT)
+    setInterval(()=>LOG('Hello World from dev_helloworld !!!','S',CURRENT_SYMBIOTE_ID),CONFIG.SYMBIOTE.HELLO_WORLD_TIMEOUT)
 
 }

@@ -43,9 +43,9 @@ import TronWeb from 'tronweb'
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
+    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
 
-        let {URL,PRV}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.trx,
+        let {URL,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,
         
             HttpProvider = TronWeb.providers.HttpProvider,
             
@@ -74,9 +74,9 @@ export default {
 
 
     
-    sendTx:async(symbiote,blockIndex,klyntarHash)=>{
+    sendTx:async(blockIndex,klyntarHash)=>{
 
-        let {PRV,AMOUNT,TO,URL} = CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.trx,
+        let {PRV,AMOUNT,TO,URL} = CONFIG.SYMBIOTE.HC_CONFIGS.trx,
                     
 
 
@@ -113,9 +113,9 @@ export default {
 
     },
 
-    getBalance:symbiote=>{
+    getBalance:()=>{
 
-        let {URL,PUB,PRV}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.trx,
+        let {URL,PUB,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,
 
             HttpProvider = TronWeb.providers.HttpProvider,
             

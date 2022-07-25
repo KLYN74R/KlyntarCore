@@ -71,19 +71,12 @@ let {TransactionInstruction,Transaction,Keypair} = Web3
  * 
  */
 
-let connections=new Map()
+let connection,
 
-Object.keys(CONFIG.SYMBIOTES).forEach(
-     
-    symbiote => {
- 
-        let {URL,COMMITMENT}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol
+    {URL,COMMITMENT}=CONFIG.SYMBIOTE.HC_CONFIGS.sol
          
-        if(configs) connections.set(symbiote,new Web3.Connection(URL,COMMITMENT))
- 
-    }
-     
-)
+
+if(configs) connection=new Web3.Connection(URL,COMMITMENT)
 
 
 
@@ -91,9 +84,9 @@ Object.keys(CONFIG.SYMBIOTES).forEach(
 export default {
 
 
-    checkTx:(hostChainSig,blockIndex,klyntarHash,symbioteId)=>
+    checkTx:(hostChainSig,blockIndex,klyntarHash)=>
     
-        connections.get(symbioteId).getTransaction(hostChainSig).then(tx=>{
+        connection.getTransaction(hostChainSig).then(tx=>{
         
             //In default case we'll have track as the first instruction of tx
             let [index,hash]=Buffer.from(Base58.decode(tx.transaction.message.instructions[0].data)).toString('utf-8').split('_')
@@ -105,10 +98,10 @@ export default {
 
 
 
-    sendTx:(symbiote,blockIndex,klyntarHash)=>{
+    sendTx:(blockIndex,klyntarHash)=>{
 
         //PRV-private key in Base64
-        let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol,
+        let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTE.HC_CONFIGS.sol,
 
             account=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))),
 
@@ -127,7 +120,7 @@ export default {
 
         return Web3.sendAndConfirmTransaction(
             
-            connections.get(symbiote),
+            connection,
             
             new Transaction().add(instruction), [account], {skipPreflight:true,commitment:COMMITMENT}
             
@@ -149,13 +142,13 @@ export default {
 
 
 
-    getBalance:async symbiote=>{
+    getBalance:async()=>{
 
-        let {PRV}=CONFIG.SYMBIOTES[symbiote].HC_CONFIGS.sol,
+        let {PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.sol,
 
             pub=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
 
-        return connections.get(pub).then(lamparts=>lamparts/10**9).catch(e=>{
+        return connection.then(lamparts=>lamparts/10**9).catch(e=>{
             
             LOG(`Some error has been occured in SOL \x1b[36;1m${e}`,'W')
             
