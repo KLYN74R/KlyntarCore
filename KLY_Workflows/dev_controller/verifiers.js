@@ -40,16 +40,16 @@
 
 import {BLAKE3,VERIFY} from '../../KLY_Utils/utils.js'
 
-import {symbiotes,GET_SYMBIOTE_ACC} from './utils.js'
+import {GET_SYMBIOTE_ACC} from './utils.js'
 
 
 
 
-let MAIN_VERIFY=async(symbiote,event,sender)=>{
+let MAIN_VERIFY=async(event,senderStorageObject)=>{
 
-    if(!(symbiotes.get(symbiote).BLACKLIST.has(event.c)||sender.ND.has(event.n))){
+    if(!(SYMBIOTE_META.BLACKLIST.has(event.c)||senderStorageObject.ND.has(event.n))){
 
-        return VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)
+        return VERIFY(CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)
 
     }
 
@@ -61,7 +61,7 @@ export let SPENDERS = {
     
     TX:event=>event.p.a+event.f,
 
-    OFFSPRING:(event,symbiote)=>CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE+event.f,
+    OFFSPRING:event=>CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE+event.f,
 
     ALIAS:event=>event.p.length*0.001+event.f,
 
@@ -75,17 +75,17 @@ export let SPENDERS = {
 
     SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+event.f,
 
-    CONTRACT_DEPLOY:async (symbiote,event)=>{},
+    CONTRACT_DEPLOY:async event=>{},
 
     WORKFLOW_CHANGE:async event=>{},
 
-    MULTISIG:async (symbiote,event)=>{},
+    MULTISIG:async event=>{},
 
-    THRESHOLD:async (symbiote,event)=>{},
+    THRESHOLD:async event=>{},
 
-    SERVICE_COMMIT:async (symbiote,event)=>{},
+    SERVICE_COMMIT:async event=>{},
 
-    PQC_TX:async (symbiote,event)=>{},
+    PQC_TX:async event=>{},
 
 
 }
@@ -102,11 +102,11 @@ export let VERIFIERS = {
 
 
 
-    TX:async (event,blockCreator,symbiote)=>{
+    TX:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c,symbiote),
+        let sender=GET_SYMBIOTE_ACC(event.c),
         
-            recipient=await GET_SYMBIOTE_ACC(event.p.r,symbiote)
+            recipient=await GET_SYMBIOTE_ACC(event.p.r)
     
     
             
@@ -114,12 +114,12 @@ export let VERIFIERS = {
     
             recipient={ACCOUNT:{B:0,N:0,D:'',T:'A'}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             
-            symbiotes.get(symbiote).ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of ControllerBlock
+            SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of ControllerBlock
         
         }
         
     
-        if(await MAIN_VERIFY(symbiote,event,sender)){
+        if(await MAIN_VERIFY(event,sender)){
     
             sender.ACCOUNT.B-=event.f+event.p.a
             
@@ -135,11 +135,11 @@ export let VERIFIERS = {
 
 
     
-    NEWSTX:async (event,blockCreator,symbiote)=>{
+    NEWSTX:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
+        let sender=GET_SYMBIOTE_ACC(event.c)
     
-        if(event.p.length===64 && await MAIN_VERIFY(symbiote,event,sender)){
+        if(event.p.length===64 && await MAIN_VERIFY(event,sender)){
     
             sender.ACCOUNT.B-=event.f
     
@@ -154,13 +154,13 @@ export let VERIFIERS = {
 
 
 
-    OFFSPRING:async (event,blockCreator,symbiote)=>{
+    OFFSPRING:async (event,blockCreator)=>{
     
         //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
     
-        let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
+        let sender=GET_SYMBIOTE_ACC(event.c)
         
-        if(await MAIN_VERIFY(symbiote,event,sender)){
+        if(await MAIN_VERIFY(event,sender)){
     
             sender.ACCOUNT.B-=event.f+CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE
     
@@ -175,11 +175,11 @@ export let VERIFIERS = {
 
 
 
-    DELEGATION:async (event,blockCreator,symbiote)=>{
+    DELEGATION:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c,symbiote)
+        let sender=GET_SYMBIOTE_ACC(event.c)
 
-        if(await MAIN_VERIFY(symbiote,event,sender)){
+        if(await MAIN_VERIFY(event,sender)){
 
             sender.ACCOUNT.B-=event.f
         
@@ -203,20 +203,20 @@ export let VERIFIERS = {
 
     //Common mechanisms as with delegation
     //It's because we perform operations asynchronously
-    SERVICE_DEPLOY:async (event,blockCreator,symbiote)=>{
+    SERVICE_DEPLOY:async (event,blockCreator)=>{
         
-        let sender=GET_SYMBIOTE_ACC(event.c,symbiote),
+        let sender=GET_SYMBIOTE_ACC(event.c),
         
             payloadJson=JSON.stringify(event.p),
 
             payloadHash=BLAKE3(payloadJson),
 
-            noSuchService=!(await symbiotes.get(symbiote).STATE.get(payloadHash).catch(e=>false))
+            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(e=>false))
 
 
 
 
-        if(await MAIN_VERIFY(symbiote,event,sender) && noSuchService){
+        if(await MAIN_VERIFY(event,sender) && noSuchService){
 
             sender.ACCOUNT.B-=event.f+payloadJson.length*0.01
         
@@ -225,7 +225,7 @@ export let VERIFIERS = {
 
             //Store service manifest
             //!Add to stage zone before
-            symbiotes.get(symbiote).EVENTS_STATE.put(payloadHash,event.p)
+            SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
 
             blockCreator.fees+=event.f
         

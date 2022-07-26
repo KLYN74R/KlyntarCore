@@ -1,9 +1,8 @@
 {
     "SYMBIOTE":{
-        
-        "2CfkMCWs49dRzd1AXjKgv3Z4HCGqPH7tGzEAsKkrGyzA":{
 
             "VERSION":"0.1.0",
+            "SYMBIOTE_ID":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
             
             "STOP_WORK":false,
 
@@ -11,6 +10,7 @@
             "PRV":"e4a1935e868c44c8b45eccfc4098b6e55197481e09c64f4d3577b361c828f0c5ff76c1a1f190032d75e61d57f8e0d60e0c2053bc76e75a0cad4c3cc27a3d4bbb155b8652839feb918e01cc4bb13355f1",
 
             "CONTROLLER":{
+                "PUBKEY":"2CfkMCWs49dRzd1AXjKgv3Z4HCGqPH7tGzEAsKkrGyzA",
                 "ADDR":"http://localhost:11111",
                 "ME":true
             },
@@ -324,5 +324,3 @@
         }
     
     }
-
-}

@@ -62,7 +62,7 @@ PATH_RESOLVE=path=>__dirname+'/'+path,//path is relative to this root scope */KL
 
 BLAKE3=v=>hash(v).toString('hex'),
 
-SYMBIOTE_ALIAS=symbiote=>CONFIG.ALIASES[symbiote]||symbiote,
+SYMBIOTE_ALIAS=()=>CONFIG.ALIASES[CONFIG.SYMBIOTE.SYMBIOTE_ID]||CONFIG.SYMBIOTE.SYMBIOTE_ID,
 
 
 
@@ -173,7 +173,7 @@ LOG=(msg,msgColor,symbiote)=>{
 
     CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 
-    if(symbiote) CONFIG.SYMBIOTE.LOGS.TO_FILE && SYMBIOTES_LOGS_STREAMS.get(symbiote).write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
+    if(symbiote) CONFIG.SYMBIOTE.LOGS.TO_FILE && SYMBIOTE_LOGS_STREAM.write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 
 },
 
@@ -187,7 +187,7 @@ BLOCKLOG=(msg,type,symbiote,hash,spaces,color,block)=>{
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
 
-        symbiote=SYMBIOTE_ALIAS(symbiote)
+        symbiote=SYMBIOTE_ALIAS()
 
         console.log(' '.repeat(spaces),color,'_'.repeat(74))
 

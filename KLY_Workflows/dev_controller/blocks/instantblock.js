@@ -2,18 +2,16 @@ import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
 export default class InstantBlock{
     
-    constructor(symbiote,eventsSet){
+    constructor(eventsSet){
         
         this.c=CONFIG.SYMBIOTE.PUB
 
         this.e=eventsSet
-                
-        this.s=symbiote//need to forward block when we receive it
         
         this.sig=''
     
     }
     
-    static genHash=(creator,eventsSet,symbiote)=>BLAKE3( creator + JSON.stringify(eventsSet) + symbiote)
+    static genHash=(creator,eventsSet)=>BLAKE3( creator + JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
 }

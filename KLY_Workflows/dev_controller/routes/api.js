@@ -1,6 +1,6 @@
-import {LOG,SYMBIOTE_ALIAS,BODY} from '../../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS} from '../../../KLY_Utils/utils.js'
 
-import {symbiotes,WRAP_RESPONSE,GET_NODES} from '../utils.js'
+import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 
 
 
@@ -11,16 +11,14 @@ let API = {
     acccount:async(a,q)=>{
 
         a.onAborted(()=>a.aborted=true)
-
-        let symbiote=q.getParameter(0)
     
-        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS.ACCOUNTS){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.ACCOUNTS){
     
             let data={
             
-                ...await symbiotes.get(symbiote).STATE.get(q.getParameter(1)).catch(e=>''),
+                ...await SYMBIOTE_META.STATE.get(q.getParameter(1)).catch(e=>''),
             
-                COLLAPSE:symbiotes.get(symbiote).VERIFICATION_THREAD.COLLAPSED_INDEX
+                COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX
         
             }
 
@@ -39,14 +37,12 @@ let API = {
 
 
     nodes:(a,q)=>{
-
-        let symbiote=q.getParameter(0)
     
-        symbiotes.has(symbiote)
+        CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
         ?
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.NODES).end(
     
-            CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(symbiote,q.getParameter(1)))
+            CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
     
         )
         :
@@ -57,13 +53,11 @@ let API = {
 
 
 
-
+    // 0 - symbioteID , 1 - type of block(Instant or Controller), 2 - BlockId(index for ControllerBlock and hash for InstantBlock)
     block:(a,q)=>{
 
         //Return ControllerBlock by index or InstantBlock by hash on appropriate symbiote
-        let symbiote=q.getParameter(0),
-            
-            type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
+        let type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
     
             id=q.getParameter(2)
         
@@ -71,9 +65,9 @@ let API = {
     
         
         //Set triggers
-        if(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
     
-            let db=symbiotes.get(symbiote)[type]//depends on type of block-chose appropriate db
+            let db=SYMBIOTE_META[type]//depends on type of block-chose appropriate db
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
@@ -90,31 +84,31 @@ let API = {
 
 
 
-
+    //0 - symbioteID, 1 - height from which you should export block
     multiplicity:async(a,q)=>{
 
         a.onAborted(()=>a.aborted=true)
 
         
-        let symbiote=q.getParameter(0),
+        let symbioteID=q.getParameter(0),
         
             fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
     
     
-        if(symbiotes.has(symbiote) && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
             let symbioteConfig=CONFIG.SYMBIOTE,
     
-                cbStorage=symbiotes.get(symbiote).CONTROLLER_BLOCKS,
+                cbStorage=SYMBIOTE_META.CONTROLLER_BLOCKS,
                 
-                insStorage=symbiotes.get(symbiote).INSTANT_BLOCKS,
+                insStorage=SYMBIOTE_META.INSTANT_BLOCKS,
 
                 promises=[],
 
                 response={},
 
-                verifThread=symbiotes.get(symbiote).VERIFICATION_THREAD
+                verifThread=SYMBIOTE_META.VERIFICATION_THREAD
 
 
 
@@ -135,7 +129,7 @@ let API = {
                     
                 ).catch(
                     
-                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
+                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
                     
                 ))
 
@@ -158,7 +152,7 @@ let API = {
                             
                         ).catch(
 
-                            e => LOG(`InstantBlock ${iBlockHash} on symbiote ${SYMBIOTE_ALIAS(symbiote)} not found, load please if you need\n${e}`,'W')
+                            e => LOG(`InstantBlock ${iBlockHash} on symbiote ${SYMBIOTE_ALIAS()} not found, load please if you need\n${e}`,'W')
                             
                         )) 
                         
@@ -178,10 +172,12 @@ let API = {
     },
 
 
+    
+    //Coming soon
     alert:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
-        let body=await BODY(v,CONFIG.PAYLOAD_SIZE)
+        //Unimplemented
 
 
     })

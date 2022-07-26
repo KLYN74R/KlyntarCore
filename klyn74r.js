@@ -33,7 +33,7 @@
  * 
  */
 
-import {SYMBIOTE_ALIAS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
+import {LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -365,29 +365,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 
 
-
-    let START_SYMBIOTE
-    
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
-    LOG(`Symbiote info ===> ${SYMBIOTE_ALIAS(CURRENT_SYMBIOTE_ID)} / ${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}@${CONFIG.SYMBIOTE.VERSION}`,'I')
-    console.log()
-    console.log()
-
-
-    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    if(!CONFIG.SYMBIOTE.STOP_WORK){
-
-        let {RUN_SYMBIOTE,PREPARE_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
-
-        await PREPARE_SYMBIOTE()
-
-        START_SYMBIOTE=RUN_SYMBIOTE
-        
-    }
-
-    
-
-
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
     global.INFO=JSON.stringify(CONFIG.SYMBIOTE.INFO)
@@ -435,13 +412,21 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
     }
     
+
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
+    console.log()
+    console.log()
+
+    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
+    if(!CONFIG.SYMBIOTE.STOP_WORK){
+
+        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
+
+        RUN_SYMBIOTE()
+        
+    }
+
     
-    //Get urgent state and go on!
-    rennaisances.forEach(
-        
-        (startSymbiote,symbioteID) => startSymbiote(symbioteID)
-        
-    )
  
 
 

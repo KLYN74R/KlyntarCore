@@ -1,4 +1,4 @@
-import {LOG,PATH_RESOLVE,SIG,SYMBIOTE_ALIAS,COLORS} from "../../KLY_Utils/utils.js"
+import {LOG,SIG,SYMBIOTE_ALIAS,COLORS} from "../../KLY_Utils/utils.js"
 
 import cryptoModule from 'crypto'
 
@@ -9,15 +9,8 @@ import fetch from 'node-fetch'
 
 
 
-export let
-
-    symbiotes=new Map(),//Mapping(CONTROLLER_ADDRESS(ex.FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9)=>Mapping instace on workflow level)
-    
-    hostchains=new Map(),//To integrate with other explorers,daemons,API,gateways,NaaS etc.
-
-
-
-
+//Mapping to work with hostchains
+global.HOSTCHAINS = new Map()
 
 
 
@@ -27,15 +20,15 @@ export let
 * Symbiote level data.Used when we check blocks
 * Here we read from cache or get data about event initiator from state,push to cache and return
 */
-GET_SYMBIOTE_ACC=(addr,symbiote)=>
+export let GET_SYMBIOTE_ACC = addr =>
 
    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
-   symbiotes.get(symbiote).ACCOUNTS.get(addr)||symbiotes.get(symbiote).STATE.get(addr)
+   SYMBIOTE_META.ACCOUNTS.get(addr)||SYMBIOTE_META.STATE.get(addr)
    
    .then(ACCOUNT=>
        
        //Get and push to cache
-       ACCOUNT.T==='A' && symbiotes.get(symbiote).ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
+       ACCOUNT.T==='A' && SYMBIOTE_META.ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
    
    ).catch(e=>false),
 
@@ -57,7 +50,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 //Recepient must support HTTPS
 //*UPD:Sign with our pubkey to avoid certifications 
-SEND_REPORT=(symbiote,alertInfo)=>
+SEND_REPORT = alertInfo =>
 
     fetch(CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
 
@@ -66,7 +59,7 @@ SEND_REPORT=(symbiote,alertInfo)=>
     
     }).then(()=>{}).catch(e=>
         
-        LOG(`No response from report mananger\n CASE \n Symbiote:\x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
+        LOG(`No response from report mananger\n CASE \n Symbiote:\x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
         
     ),
 
@@ -77,7 +70,7 @@ SEND_REPORT=(symbiote,alertInfo)=>
 
 
     
-GET_NODES=(symbiote,region)=>{
+GET_NODES=region=>{
 
         let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
     
@@ -158,20 +151,20 @@ GET_NODES=(symbiote,region)=>{
  * It's just for better efficiency
  * 
  */
- BROADCAST=(route,data,symbiote)=>{
+ BROADCAST=(route,data)=>{
 
-    let promises=[],symbioteConfig=CONFIG.SYMBIOTE
+    let promises=[]
 
 
     //First of all-send to important destination points
-    Object.keys(symbioteConfig.MUST_SEND).forEach(addr=>
+    Object.keys(CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
         
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            SIG(data,PRIVATE_KEYS.get(symbiote)).then(sig=>
+            SIG(data,PRIVATE_KEY).then(sig=>
 
-                fetch(symbioteConfig.MUST_SEND[addr]+route,{
+                fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 
                     method:'POST',
                     
@@ -179,7 +172,7 @@ GET_NODES=(symbiote,region)=>{
                 
                 }).catch(e=>
                     
-                    symbioteConfig.LOGS.OFFLINE
+                    CONFIG.SYMBIOTE.LOGS.OFFLINE
                     &&
                     LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
                     
@@ -193,13 +186,13 @@ GET_NODES=(symbiote,region)=>{
 
 
 
-    symbioteConfig.PERMANENT_NEAR.forEach(addr=>
+    CONFIG.SYMBIOTE.PERMANENT_NEAR.forEach(addr=>
     
         fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
         
-        .catch(e=>
+        .catch(_=>
             
-            symbioteConfig.LOGS.OFFLINE
+            CONFIG.SYMBIOTE.LOGS.OFFLINE
             &&
             LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mPERMANENT_NEAR\u001b[38;5;3m]`,'W')
             
@@ -217,21 +210,21 @@ GET_NODES=(symbiote,region)=>{
     */
 
 
-    symbiotes.get(symbiote).NEAR.forEach((addr,index)=>
+    SYMBIOTE_META.NEAR.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&symbiotes.get(symbiote).NEAR.splice(index,1)
+                value!=='1'&&SYMBIOTE_META.NEAR.splice(index,1)
                     
-            ).catch(e=>{
+            ).catch(_=>{
                 
-                symbioteConfig.LOGS.OFFLINE
+                CONFIG.SYMBIOTE.LOGS.OFFLINE
                 &&
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${SYMBIOTE_ALIAS(symbiote)}\x1b[33;1m]`,'W')
+                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
 
-                symbiotes.get(symbiote).NEAR.splice(index,1)
+                SYMBIOTE_META.NEAR.splice(index,1)
 
             })
             
@@ -249,39 +242,34 @@ GET_NODES=(symbiote,region)=>{
 
 
 
-DECRYPT_KEYS=async(symbiote,spinner,role)=>{
+
+DECRYPT_KEYS=async(spinner,role)=>{
 
     
     if(CONFIG.PRELUDE.DECRYPTED){
 
         spinner?.stop()
 
-        let keys=JSON.parse(fs.readFileSync(PATH_RESOLVE('decrypted.json')))
         
-
+        // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
+        let keys=JSON.parse(fs.readFileSync(CONFIG.DECRYPTED_KEYS_PATH))//use full path
         
-        Object.keys(keys).forEach(symbiote=>{
+        //Main key
+        global.PRIVATE_KEY=keys.kly
 
-            let symbioteConfig=CONFIG.SYMBIOTE
-
-            //Main key
-            global.PRIVATE_KEYS.set(symbiote,keys[symbiote].kly)
-
-           
-            //...and decrypt for hostchains(if you role on appropriate workflow require it)
-            Object.keys(symbioteConfig.MANIFEST.HOSTCHAINS).forEach(
-                
-                ticker => {
-
-                    if(CONFIG.EVM.includes(ticker)) hostchains.get(symbiote).get(ticker).PRV=Buffer.from(keys[symbiote][ticker],'hex')
-        
-                    else symbioteConfig.HC_CONFIGS[ticker].PRV=keys[symbiote][ticker]
-        
-                }
-
-            )            
+        //...and decrypt for hostchains(if you role on appropriate workflow require it)
+        Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(
             
-        })
+            ticker => {
+                
+                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+    
+                else CONFIG.SYMBIOTE.HC_CONFIGS[ticker].PRV=keys[ticker]
+    
+            
+            }
+        
+        )
 
         return
       
@@ -295,13 +283,13 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
        
 
     
     let HEX_SEED=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
+        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
         
     )
         
@@ -324,7 +312,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
 
     let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV)
     
-    global.PRIVATE_KEYS.set(symbiote,decipher.update(symbioteRef.PRV,'hex','utf8')+decipher.final('utf8'))
+    global.PRIVATE_KEY=decipher.update(symbioteRef.PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
@@ -339,7 +327,7 @@ DECRYPT_KEYS=async(symbiote,spinner,role)=>{
 
 
 
-        if(CONFIG.EVM.includes(ticker)) hostchains.get(symbiote).get(ticker).PRV=Buffer.from(privateKey,'hex')
+        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
         else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
         

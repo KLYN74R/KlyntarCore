@@ -11,7 +11,7 @@ global.STOP_GEN_BLOCK={}
 
 global.IN_PROCESS={VERIFY:false,GENERATE:false}
 
-global.SIG_SIGNAL=false
+global.SYSTEM_SIGNAL_ACCEPTED=false
 
 global.SIG_PROCESS={}
 
@@ -19,7 +19,7 @@ global.SIG_PROCESS={}
 //And function to export
 let graceful=()=>{
     
-    SIG_SIGNAL=true
+    SYSTEM_SIGNAL_ACCEPTED=true
 
 
     console.log('\n')
@@ -32,7 +32,7 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.keys(SIG_PROCESS).every(symbiote => Object.values(SIG_PROCESS[symbiote]).every(x=>x))){
+        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
 

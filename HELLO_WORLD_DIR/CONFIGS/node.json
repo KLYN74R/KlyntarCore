@@ -24,6 +24,10 @@
     
     "BITFORKS":["btc","ltc","doge","dash"],
 
-    "PLUGINS":[]
+    "PLUGINS":[],
+
+    "RUNNER":"dev_andromeda/runner.js",
+
+    "DECRYPTED_KEYS_PATH":""
 
 }

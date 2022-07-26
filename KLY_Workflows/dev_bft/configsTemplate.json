@@ -49,7 +49,7 @@
         "WORKFLOW":"dev_bft",
         "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
         "VALIDATOR_STAKE":10000,
-        "VALIDATOR_REWARD":0.8,
+        "VALIDATOR_REWARD_PERCENTAGE":0.5,
         "EVENTS_LIMIT_PER_BLOCK":30000
     },
 

@@ -4,7 +4,7 @@ import{
 
 } from '../../../KLY_Utils/utils.js'
 
-import {symbiotes,hostchains,SEND_REPORT,BROADCAST} from '../utils.js'
+import {SEND_REPORT,BROADCAST} from '../utils.js'
 
 import ControllerBlock from '../blocks/controllerblock.js'
 
@@ -57,14 +57,14 @@ let MAIN = {
                 
                     let block=await PARSE_JSON(buf),
                     
-                        hash=ControllerBlock.genHash(block.c,block.a,block.i,block.p),
+                        hash=ControllerBlock.genHash(block.a,block.i,block.p),
 
 
                     //Check if we can accept this block
                     allow=
                     
 
-                    symbiotes.has(block.c)&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                    CONFIG.SYMBIOTE.CONTROLLER.PUBKEY===block.c&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
                     &&
                     CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
                     &&
@@ -76,7 +76,7 @@ let MAIN = {
 
                     if(allow){
                     
-                        let controllerBlocks=symbiotes.get(block.c).CONTROLLER_BLOCKS
+                        let controllerBlocks=SYMBIOTE_META.CONTROLLER_BLOCKS
                         
                         controllerBlocks.get(block.i).catch(e=>{
 
@@ -153,7 +153,7 @@ let MAIN = {
         let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
         
         //Reject all txs if route is off and other guards methods
-        if(!(symbiotes.has(symbiote)&&CONFIG.SYMBIOTE.TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
+        if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
             
             !a.aborted&&a.end('Overview failed')
             
@@ -161,7 +161,7 @@ let MAIN = {
 
         }
 
-        let symbioteMempool=symbiotes.get(symbiote).MEMPOOL
+        let symbioteMempool=SYMBIOTE_META.MEMPOOL
 
         
 
@@ -177,9 +177,9 @@ let MAIN = {
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         //Also check if we have normalizer for this type of event
-        if(symbioteMempool.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && symbiotes.get(symbiote).FILTERS[event.t]){
+        if(symbioteMempool.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
 
-            let filtered=await symbiotes.get(symbiote).FILTERS[event.t](symbiote,event)
+            let filtered=await SYMBIOTE_META.FILTERS[event.t](symbiote,event)
 
             if(filtered){
     
@@ -205,13 +205,13 @@ let MAIN = {
     //[symbioteID,hostToAdd(initiator's valid and resolved host)]
     addNode:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
+        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
         
 
         if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
             
             //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-            let nodes=symbiotes.get(symbiote).NEAR
+            let nodes=SYMBIOTE_META.NEAR
             
             if(!(nodes.includes(domain) || symbioteConfig.PERMANENT_NEAR || symbioteConfig.MUST_SEND)){
 
@@ -249,12 +249,12 @@ let MAIN = {
             workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
 
 
-        if(symbiotes.has(symbiote) && !CONFIG.SYMBIOTE.CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && !CONFIG.SYMBIOTE.CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
 
             //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
-            let alreadyHas=await symbiotes.get(symbiote).HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
+            let alreadyHas=await SYMBIOTE_META.HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
 
-                LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\n${e}`,'W')
+                LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'W')
 
                 return false
 
@@ -271,17 +271,17 @@ let MAIN = {
             }
 
             //If we're working higher than proof for some block we can check instantly
-            symbiotes.get(get).VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
+            SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
             &&
-            await symbiotes.get(symbiote).CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
+            await SYMBIOTE_META.CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
                 
-                workflowOk= ControllerBlock.genHash(symbiote,controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
+                workflowOk= ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
                             &&
-                            await hostchains.get(symbiote).get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
+                            await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
                                 
-                                e => {
+                                error => {
                                     
-                                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${e}`,'W')
+                                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${error}`,'W')
                                     
                                     return -1
                                 
@@ -290,7 +290,7 @@ let MAIN = {
             ).catch(e=>
                 
                 //You also don't have ability to compare this if you don't have block locally
-                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
+                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
                     
             )    
 
@@ -299,22 +299,22 @@ let MAIN = {
 
                 CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
                 &&
-                symbiotes.get(symbiote).HOSTCHAINS_DATA
+                SYMBIOTE_META.HOSTCHAINS_DATA
                 
                     .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
 
-                    .then(()=>symbiotes.get(symbiote).HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
+                    .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
                     
-                    .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
+                    .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
                     
-                    .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+                    .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
 
 
             }else if(workflowOk!==-1){
                 
                 LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
 
-                LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS(symbiote)}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
+                LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
                 
                 //Further logic.For example-send report to another host to call some trigger
                 SEND_REPORT(symbiote,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
