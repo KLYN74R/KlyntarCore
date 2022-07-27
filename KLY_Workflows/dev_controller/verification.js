@@ -51,7 +51,7 @@ export let
 
 GET_FORWARD_BLOCKS = fromHeight => {
 
-    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/`+fromHeight)
+    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`)
 
     .then(r=>r.json()).then(blocksSet=>{
 
@@ -121,7 +121,7 @@ GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).c
     //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
     //Then we ask for block with <blockId> and asynchronously request the other blocks
     
-    fetch(CONFIG.SYMBIOTE.GET_CONTROLLER+`/block/c/`+blockId)
+    fetch(CONFIG.SYMBIOTE.GET_CONTROLLER+`/block/c/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
 
     .then(r=>r.json()).then(block=>{
 
@@ -132,7 +132,7 @@ GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).c
 
         if(block.c===CONFIG.SYMBIOTE.CONTROLLER.PUBKEY&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',block.c,hash,59,'\x1b[31m',block.i)
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,59,'\x1b[31m',block.i)
 
             //Try to instantly and asynchronously load more blocks if it's possible
             GET_FORWARD_BLOCKS(blockId+1)
@@ -155,7 +155,7 @@ START_VERIFY_POLLING=async()=>{
     //This option will stop workflow of verification for each symbiote
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        IN_PROCESS.GENERATE=true
+        THREADS_STILL_WORKS.GENERATION=true
 
         //Try to get block
         let verifThread=SYMBIOTE_META.VERIFICATION_THREAD,
@@ -187,7 +187,7 @@ START_VERIFY_POLLING=async()=>{
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
         
-        IN_PROCESS.GENERATE=false
+        THREADS_STILL_WORKS.GENERATION=false
 
     
     }else{
@@ -328,6 +328,8 @@ MAKE_SNAPSHOT=async()=>{
 verifyControllerBlock=async controllerBlock=>{
 
 
+
+
     let symbiote=controllerBlock.c,
     
         controllerHash=ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)
@@ -349,6 +351,7 @@ verifyControllerBlock=async controllerBlock=>{
         &&
         await VERIFY(controllerHash,controllerBlock.sig,CONFIG.SYMBIOTE.CONTROLLER.PUBKEY)
    
+
 
 
     //block.a.length<=100.At least this limit is only for first times
@@ -394,7 +397,7 @@ verifyControllerBlock=async controllerBlock=>{
                   █▄.If no block locally-get from some reliable source,we defined in config file(cloud,CDN,some cluster-something which are fast,reliable and has ~100% uptime)
                 */
                
-                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
                     //Check hash and if OK-sift events from inside,otherwise-occur exception to ask block from another sources
                     InstantBlock.genHash(instant.c,instant.e)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
@@ -416,7 +419,7 @@ verifyControllerBlock=async controllerBlock=>{
                     
                         if(breakPoint) break//no more ense to ask the rest nodes if we get block
 
-                        await fetch(permNear[j]+`/block/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                        await fetch(permNear[j]+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
 
                             InstantBlock.genHash(instant.c,instant.e)===controllerBlock.a[i]
                             &&
@@ -793,7 +796,7 @@ verifyInstantBlock=async block=>{
             
             symbioteData.INSTANT_CANDIDATES.set(hash,block.c)
         
-            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.s,hash,56,'\x1b[31m')
+            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,56,'\x1b[31m')
             
         })
         

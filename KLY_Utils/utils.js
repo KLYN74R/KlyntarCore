@@ -181,17 +181,15 @@ LOG=(msg,msgColor,symbiote)=>{
 
 
 //Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,type,symbiote,hash,spaces,color,block)=>{
+BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
     if(CONFIG.SYMBIOTE.LOGS.BLOCK){
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
 
-        symbiote=SYMBIOTE_ALIAS()
-
         console.log(' '.repeat(spaces),color,'_'.repeat(74))
 
-        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',symbiote,COLORS.C,' '.repeat(16)+`${color}│`)
+        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(16)+`${color}│`)
 
         let verbose=''
 

@@ -32,7 +32,7 @@ import fs from 'fs'
 //To stop/start block generation
 global.STOP_GEN_BLOCK={}
 
-global.IN_PROCESS={VERIFY:false,GENERATE:false}
+global.THREADS_STILL_WORKS={VERIFICATION:false,GENERATION:false}
 
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
@@ -64,11 +64,11 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.values(SIG_PROCESS[symbiote]).every(x=>x)){
+        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS[symbiote]).every(x=>x)){
 
             console.log('\n')
 
-            let streamsPromises=[]
+
 
 
             //Close logs streams
@@ -85,14 +85,9 @@ let graceful=()=>{
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
 
-
-            await Promise.all(streamsPromises).then(_=>{
-
-                LOG('Node was gracefully stopped','I')
+            LOG('Node was gracefully stopped','I')
                 
-                process.exit(0)
-
-            })
+            process.exit(0)
 
         }
 
@@ -183,37 +178,37 @@ GET_CANDIDATES=async()=>{
 
 
 //Tag:ExecMap
-GEN_BLOCK_START=async(symbiote,type)=>{
+GEN_BLOCK_START=async blockType=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        IN_PROCESS.GENERATE=true
+        THREADS_STILL_WORKS.GENERATION=true
     
-        await GEN_BLOCK(symbiote,type)
+        await GEN_BLOCK(blockType)
 
-        STOP_GEN_BLOCK[type]=setTimeout(()=>GEN_BLOCK_START(symbiote,type),CONFIG.SYMBIOTE[type+'_BLOCK_GENERATION_TIME'])
+        STOP_GEN_BLOCK[blockType]=setTimeout(()=>GEN_BLOCK_START(blockType),CONFIG.SYMBIOTE[blockType+'_BLOCK_GENERATION_TIME'])
     
-        CONFIG.SYMBIOTE['STOP_GENERATE_BLOCK_'+type]
+        CONFIG.SYMBIOTE['STOP_GENERATE_BLOCK_'+blockType]
         &&
-        clearTimeout(STOP_GEN_BLOCK[type])
+        clearTimeout(STOP_GEN_BLOCK[blockType])
       
     }else{
 
-        LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',symbiote)
+        LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         SIG_PROCESS.GENERATE=true
 
     }
 
     //leave function
-    IN_PROCESS.GENERATE=false
+    THREADS_STILL_WORKS.GENERATION=false
     
 },
 
 
 
 
-RUN_POLLING=async symbiote=>{
+RUN_POLLING=async()=>{
 
     LOG(`Local state collapsed on \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'S')
 
@@ -233,18 +228,14 @@ RUN_POLLING=async symbiote=>{
 
 
 
-export let GEN_BLOCK=async(symbiote,blockType)=>{
+export let GEN_BLOCK = async blockType => {
 
-    let hash,route,
-    
-        symbioteRef=SYMBIOTE_META
-
-    
+    let hash,route
     
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(blockType==='C' && symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < symbioteRef.GENERATION_THREAD.NEXT_INDEX){
+    if(blockType==='C' && SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
-        LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',symbiote)
+        LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         return
 
@@ -252,8 +243,8 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
 
 
 
-    if(blockType==='C'){
 
+    if(blockType==='C'){
 
 
 
@@ -263,8 +254,6 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         //To fill ControllerBlocks for maximum
         
         let phantomControllers=Math.ceil(SYMBIOTE_META.INSTANT_CANDIDATES.size/CONFIG.SYMBIOTE.MANIFEST.INSTANT_PORTION),
-
-            genThread=SYMBIOTE_META.GENERATION_THREAD,
     
             promises=[]//to push blocks to storage
 
@@ -277,29 +266,27 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
 
         for(let i=0;i<phantomControllers;i++){
 
-            let arr=await GET_CANDIDATES(symbiote),
+            let arr=await GET_CANDIDATES()
             
-                conBlockCandidate=new ControllerBlock(arr)
-            
-
-            hash=ControllerBlock.genHash(conBlockCandidate.a,conBlockCandidate.i,genThread.PREV_HASH)
+            let conBlockCandidate=new ControllerBlock(arr)
+                        
+            hash=ControllerBlock.genHash(conBlockCandidate.a,conBlockCandidate.i,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH)
     
             conBlockCandidate.sig=await SIG(hash,PRIVATE_KEY)
 
             route='/cb'
             
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',symbiote,hash,59,'\x1b[32m',conBlockCandidate)
-
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,59,'\x1b[32m',conBlockCandidate)
             
-            genThread.PREV_HASH=hash
+
+            SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
  
-            genThread.NEXT_INDEX++
+            SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
  
 
-
-            promises.push(SYMBIOTE_META.CONTROLLER_BLOCKS.put(conBlockCandidate.i,conBlockCandidate).then(()=>conBlockCandidate).catch(e=>{
+            promises.push(SYMBIOTE_META.CONTROLLER_BLOCKS.put(conBlockCandidate.i,conBlockCandidate).then(()=>conBlockCandidate).catch(error=>{
                 
-                LOG(`Failed to store block ${conBlockCandidate.i} on ${SYMBIOTE_ALIAS()}`,'F')
+                LOG(`Failed to store block ${conBlockCandidate.i} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
 
                 process.emit('SIGINT',122)
             
@@ -318,14 +305,14 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         await Promise.all(promises).then(arr=>
             
             
-            SYMBIOTE_META.METADATA.put('GT',genThread).then(()=>
+            SYMBIOTE_META.METADATA.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
 
                 new Promise(resolve=>{
 
                     //And here we should broadcast blocks
                     arr.forEach(block=>
                     
-                        Promise.all(BROADCAST(route,block,symbiote))
+                        Promise.all(BROADCAST(route,block))
                     
                     )
 
@@ -343,7 +330,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
                                 hostchain=HOSTCHAIN.get(ticker),
     
                                 //If previous push is still not accepted-then no sense to push new symbiote update
-                                isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH,symbiote).catch(e=>false)
+                                isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
                         
                             
 
@@ -362,12 +349,12 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
                                 //If accpted-we can share to the rest
                                 isAlreadyAccepted
                                 &&
-                                Promise.all(BROADCAST('/proof',{...control,symbiote,ticker},symbiote))
+                                Promise.all(BROADCAST('/proof',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
                             
     
                                 let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
     
-                                    symbioticHash=await hostchain.sendTx(symbiote,index,genThread.PREV_HASH).catch(e=>{
+                                    symbioticHash=await hostchain.sendTx(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
                                         
                                         LOG(`Error on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m with push to \x1b[36;1m${ticker} \n${e}`,'W')
                                     
@@ -381,7 +368,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
                                     LOG(`Commit on ${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m for block \x1b[36;1m${index}\x1b[32;1m is \x1b[36;1m${symbioticHash}`,'S')
     
                                     //Commit localy that we have send it
-                                    control.KLYNTAR_HASH=genThread.PREV_HASH
+                                    control.KLYNTAR_HASH=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
                             
                                     control.INDEX=index
                             
@@ -403,7 +390,7 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
     
                                 }
 
-                                LOG(`Balance of controller on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance(symbiote)}`,'I')
+                                LOG(`Balance of controller on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance()}`,'I')
                         
                             }
     
@@ -448,11 +435,11 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
         //____________________________________TEST_____________________________
 
 
-        BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m generated ——│`,'S',symbiote,hash,56,'\x1b[32m',insBlockCandidate)
+        BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m generated ——│`,'S',hash,56,'\x1b[32m',insBlockCandidate)
 
         await SYMBIOTE_META.CANDIDATES.put(hash,insBlockCandidate)
 
-        Promise.all(BROADCAST(route,insBlockCandidate,symbiote))
+        Promise.all(BROADCAST(route,insBlockCandidate))
 
         //These blocks also will be included
         SYMBIOTE_META.INSTANT_CANDIDATES.set(hash,CONFIG.SYMBIOTE.PUB)
@@ -464,19 +451,19 @@ export let GEN_BLOCK=async(symbiote,blockType)=>{
 
 
 
-RELOAD_STATE = async symbioteRef => {
+RELOAD_STATE = async() => {
 
     //Reset verification breakpoint
-    await symbioteRef.STATE.clear()
+    await SYMBIOTE_META.STATE.clear()
 
     let promises=[],
     
 
 
         //Try to load snapshot metadata to use as last collapsed
-        canary=await symbioteRef.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
+        canary=await SYMBIOTE_META.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
 
-        snapshotVT=await symbioteRef.SNAPSHOT.METADATA.get('VT').catch(e=>false),
+        snapshotVT=await SYMBIOTE_META.SNAPSHOT.METADATA.get('VT').catch(e=>false),
     
         //Snapshot will never be OK if it's empty
         snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH)//snapshot itself must be OK
@@ -495,13 +482,13 @@ RELOAD_STATE = async symbioteRef => {
     if( snapshotIsOk ){
 
 
-        symbioteRef.VERIFICATION_THREAD=snapshotVT
+        SYMBIOTE_META.VERIFICATION_THREAD=snapshotVT
 
         let accs={},promises=[]
 
         await new Promise(
             
-            resolve => symbioteRef.SNAPSHOT.STATE.createReadStream()
+            resolve => SYMBIOTE_META.SNAPSHOT.STATE.createReadStream()
             
                                 .on('data',data=>accs[data.key]=data.value)
                                 
@@ -509,13 +496,13 @@ RELOAD_STATE = async symbioteRef => {
             
         )
 
-        Object.keys(accs).forEach(addr=>promises.push(symbioteRef.STATE.put(addr,accs[addr])))
+        Object.keys(accs).forEach(addr=>promises.push(SYMBIOTE_META.STATE.put(addr,accs[addr])))
 
         await Promise.all(promises)
         
-            .then(()=>symbioteRef.METADATA.put('CANARY',canary))
+            .then(()=>SYMBIOTE_META.METADATA.put('CANARY',canary))
 
-            .then(()=>symbioteRef.METADATA.put('VT',snapshotVT))
+            .then(()=>SYMBIOTE_META.METADATA.put('VT',snapshotVT))
 
             .catch(e=>{
 
@@ -532,9 +519,9 @@ RELOAD_STATE = async symbioteRef => {
     }else{
 
         //Otherwise start rescan form height=0
-        symbioteRef.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && (!CONFIG.SYMBIOTE.CONTROLLER.ME || symbioteRef.GENERATION_THREAD.NEXT_INDEX==0) ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && (!CONFIG.SYMBIOTE.CONTROLLER.ME || SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0) ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
 
-        symbioteRef.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
 
         //Load all the configs
         fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
@@ -544,7 +531,7 @@ RELOAD_STATE = async symbioteRef => {
         
             Object.keys(genesis).forEach(
             
-                address => promises.push(symbioteRef.STATE.put(address,genesis[address]))
+                address => promises.push(SYMBIOTE_META.STATE.put(address,genesis[address]))
                 
             )
 
@@ -560,7 +547,7 @@ RELOAD_STATE = async symbioteRef => {
 
 
 
-PREPARE_SYMBIOTE=async symbioteId=>{
+PREPARE_SYMBIOTE=async()=>{
 
     //Loading spinner
     let initSpinner
@@ -577,11 +564,8 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     
 
 
-
     //____________________________________________Prepare structures_________________________________________________
 
-
-    let symbioteConfig=CONFIG.SYMBIOTE
 
 
     //Contains default set of properties for major part of potential use-cases on symbiote
@@ -605,7 +589,9 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     
     //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-    [process.env.CHAINDATA_PATH,process.env.SNAPSHOTS_PATH].forEach(
+    let pathes=[process.env.CHAINDATA_PATH,process.env.SNAPSHOTS_PATH]
+    
+    pathes.forEach(
         
         name => !fs.existsSync(`${name}`) && fs.mkdirSync(`${name}`)
         
@@ -712,7 +698,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
         ?
         {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}//initial
         :
-        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${symbioteId}\nError:${e}`,'F'),process.exit(124))
+        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(124))
                     
     )
 
@@ -730,7 +716,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     //These options only for Controller
     //Due to phantom blocks,we'll generate blocks faster than state become verified,that's why we need two extra properties
-    if(symbioteConfig.CONTROLLER.ME){
+    if(CONFIG.SYMBIOTE.CONTROLLER.ME){
 
         SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.METADATA.get('GT').catch(e=>
         
@@ -741,7 +727,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                 NEXT_INDEX:0//So the first block will be with index 0
             }
             :
-            (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${symbioteId}\nError:${e}`,'F'),process.exit(125))
+            (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(125))
                         
         )
 
@@ -749,9 +735,11 @@ PREPARE_SYMBIOTE=async symbioteId=>{
         let nextIsPresent = await SYMBIOTE_META.CONTROLLER_BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
 
             previous=await SYMBIOTE_META.CONTROLLER_BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
-
     
-        if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + symbioteId + previous.i + previous.p))){
+
+
+
+        if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
         
             initSpinner?.stop()
 
@@ -782,7 +770,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
                     initSpinner?.stop()
 
-                    LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS(symbioteId)}`,'I')
+                    LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
                     
                     let promises=[];
 
@@ -813,7 +801,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
                 LOG(`Problems with staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'W')
 
-                await RELOAD_STATE(symbioteId,SYMBIOTE_META)
+                await RELOAD_STATE()
 
             }
 
@@ -826,7 +814,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
             LOG(`Problems with canary on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${err}`,'W')
 
             //Reset verification breakpoint
-            await RELOAD_STATE(symbioteId,SYMBIOTE_META)
+            await RELOAD_STATE()
 
         })    
 
@@ -838,7 +826,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
         SYMBIOTE_META.STATE.clear()
 
         //Load data from genesis state(initial values)
-        await RELOAD_STATE(symbioteId,SYMBIOTE_META)
+        await RELOAD_STATE()
 
     }
 
@@ -860,7 +848,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     //...and push template to global HOSTCHAINS_DATA object to control the flow
 
 
-    let tickers=Object.keys(symbioteConfig.MANIFEST.HOSTCHAINS),EvmHostChain,hostchainmap=new Map()
+    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChain
 
 
     SYMBIOTE_META.HOSTCHAINS_WORKFLOW={}
@@ -871,7 +859,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     for(let i=0,l=tickers.length;i<l;i++){
 
         
-        let way=symbioteConfig.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
+        let way=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
 
 
         //Depending on TYPE load appropriate module
@@ -879,9 +867,9 @@ PREPARE_SYMBIOTE=async symbioteId=>{
         
             EvmHostChain=(await import(`../../KLY_Hostchains/connectors/${way}/evm.js`)).default
             
-            hostchainmap.set(tickers[i],new EvmHostChain(symbioteId,tickers[i]))
+            HOSTCHAINS.set(tickers[i],new EvmHostChain(tickers[i]))
 
-        }else hostchainmap.set(tickers[i],(await import(`../../KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
+        }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
 
 
         //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
@@ -898,7 +886,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
     
 
-    await DECRYPT_KEYS(symbioteId,initSpinner,symbioteConfig.CONTROLLER.ME?'Controller':'Instant generator').then(()=>
+    await DECRYPT_KEYS(initSpinner,CONFIG.SYMBIOTE.CONTROLLER.ME?'Controller':'Instant generator').then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
         LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m was decrypted successfully`,'S')        
@@ -917,7 +905,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
     //___________________________________________Load data from hostchains___________________________________________
 
     //TODO:Add more advanced info    
-    if(symbioteConfig.CONTROLLER.ME){
+    if(CONFIG.SYMBIOTE.CONTROLLER.ME){
 
         for(let i=0,l=tickers.length;i<l;i++){
 
@@ -930,7 +918,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                     prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
                 }).start()
 
-                balance = await HOSTCHAINS.get(tickers[i]).getBalance(symbioteId)
+                balance = await HOSTCHAINS.get(tickers[i]).getBalance()
 
                 spinner.stop()
 
@@ -942,7 +930,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
                     
                     CONFIG.SYMBIOTE.BALANCE_VIEW?balance:'<disabled>'
                 
-                }   \x1b[36;1m[${symbioteConfig.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
+                }   \x1b[36;1m[${CONFIG.SYMBIOTE.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
 
             }
 
@@ -983,7 +971,7 @@ PREPARE_SYMBIOTE=async symbioteId=>{
 
 
 
-RUN_SYMBIOTE=async symbioteID=>{
+RUN_SYMBIOTE=async()=>{
 
 
     await PREPARE_SYMBIOTE()
@@ -991,17 +979,15 @@ RUN_SYMBIOTE=async symbioteID=>{
 //_____________________________________________________Connect with CONTROLLER & NODES___________________________________________________________
 
 
-
-
     let promises=[]
 
 
-    !CONFIG.SYMBIOTE.STOP_WORK
-        &&
+    if(!CONFIG.SYMBIOTE.STOP_WORK){
+        
         promises.push(
 
             //Controller doesn't need to load state coz without him there are no progress in chain.At least-in the first versions
-            RUN_POLLING(symbioteID).then(()=>
+            RUN_POLLING().then(()=>
             
             /*
             
@@ -1017,7 +1003,7 @@ RUN_SYMBIOTE=async symbioteID=>{
             */
             !CONFIG.SYMBIOTE.CONTROLLER.ME
             &&
-            fetch(CONFIG.SYMBIOTE.CONTROLLER.ADDR+'/nodes/'+symbioteID+'/'+CONFIG.SYMBIOTE.REGION).then(r=>r.json()).then(
+            fetch(CONFIG.SYMBIOTE.CONTROLLER.ADDR+'/nodes/'+CONFIG.SYMBIOTE.SYMBIOTE_ID+'/'+CONFIG.SYMBIOTE.REGION).then(r=>r.json()).then(
                 
                 async nodesArr=>{
                     
@@ -1030,7 +1016,7 @@ RUN_SYMBIOTE=async symbioteID=>{
                         
                         addr => answers.push(
                             
-                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([symbioteID,CONFIG.SYMBIOTE.MY_ADDR])})
+                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_ADDR])})
                         
                                     .then(res=>res.text())
                         
@@ -1051,7 +1037,8 @@ RUN_SYMBIOTE=async symbioteID=>{
             ).catch(e=>LOG(`Controller of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m is offline or some error has been occured\n${e}\n`,'F'))
         
         ))
-
+            
+    }
 
     await Promise.all(promises.splice(0))
 
@@ -1063,30 +1050,29 @@ RUN_SYMBIOTE=async symbioteID=>{
 
 
 
-    let symbioteRef=CONFIG.SYMBIOTE
 
-        if(!symbioteRef.STOP_WORK){
+        if(!CONFIG.SYMBIOTE.STOP_WORK){
         
             //Start generate ControllerBlocks if you're controller(obviously)
-            !symbioteRef.STOP_GENERATE_BLOCK_C && symbioteRef.CONTROLLER.ME && setTimeout(()=>{
+            !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCK_C && CONFIG.SYMBIOTE.CONTROLLER.ME && setTimeout(()=>{
                 
                 STOP_GEN_BLOCK={C:''}
                 
-                GEN_BLOCK_START(symbioteID,'C')
+                GEN_BLOCK_START('C')
             
-            },symbioteRef.BLOCK_С_INIT_DELAY)
+            },CONFIG.SYMBIOTE.BLOCK_С_INIT_DELAY)
 
 
 
             
-            !symbioteRef.STOP_GENERATE_BLOCK_I && setTimeout(()=>{
+            !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCK_I && setTimeout(()=>{
 
                 STOP_GEN_BLOCK ? STOP_GEN_BLOCK['I']='' : STOP_GEN_BLOCK={C:'',I:''}
 
                 //Tag:ExecMap - run generation workflow for InstantBlocks
-                GEN_BLOCK_START(symbioteID,'I')
+                GEN_BLOCK_START('I')
 
-            },symbioteRef.BLOCK_I_INIT_DELAY)
+            },CONFIG.SYMBIOTE.BLOCK_I_INIT_DELAY)
 
         }
 

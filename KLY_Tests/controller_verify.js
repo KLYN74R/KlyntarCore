@@ -187,8 +187,6 @@ vNTX2=async(from,newsHash,blockCreator,nonce)=>{
 
 verifyControllerBlock=async controllerBlock=>{
 
-    console.log('START VERIFY')
-
 
     let chain=controllerBlock.c
 
@@ -196,9 +194,9 @@ verifyControllerBlock=async controllerBlock=>{
     if(await VERIFY(controllerHash,controllerBlock.sig,chain)){
 
 
-
         let sendersAccounts=[],txsToSift=new Map(),rewardBox=new Map()
 
+        
         txsToSift.set(hash,{d:instantBlock.d,s:instantBlock.s})
 
         rewardBox.set(hash,{creator:instantBlock.c,fees:0})

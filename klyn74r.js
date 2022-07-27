@@ -383,9 +383,9 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
     LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
 
-    LOG(`Server configuration is ———> \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
+    LOG(`Server configuration is \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 
-    LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are ———> \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
+    LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
 
     !CONFIG.PRELUDE.OPTIMISTIC
@@ -398,6 +398,18 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
         
     ).then(answer=>answer!=='YES'&& process.exit(126))
 
+
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
+
+
+    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
+    if(!CONFIG.SYMBIOTE.STOP_WORK){
+
+        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
+
+        await RUN_SYMBIOTE()
+        
+    }
 
     //Run custom modules
     //To load them one by one,use top level await,so we need "for...of"
@@ -413,23 +425,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     }
     
 
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
-    console.log()
-    console.log()
-
-    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    if(!CONFIG.SYMBIOTE.STOP_WORK){
-
-        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
-
-        RUN_SYMBIOTE()
-        
-    }
-
     
- 
-
-
 
 //_______________________________________________GET SERVER ROUTES______________________________________________
 

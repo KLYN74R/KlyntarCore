@@ -9,7 +9,7 @@ import fs from 'fs'
 //Define global vars
 global.STOP_GEN_BLOCK={}
 
-global.IN_PROCESS={VERIFY:false,GENERATE:false}
+global.THREADS_STILL_WORKS={VERIFY:false,GENERATE:false}
 
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
@@ -32,7 +32,7 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(!IN_PROCESS.GENERATE && !IN_PROCESS.VERIFY || Object.values(SIG_PROCESS).every(x=>x)){
+        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
 

@@ -8,6 +8,7 @@ import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 let API = {
 
 
+    // 0 - symbioteID, 1 - account
     acccount:async(a,q)=>{
 
         a.onAborted(()=>a.aborted=true)
@@ -35,7 +36,7 @@ let API = {
 
 
 
-
+    // 0 - symbioteID, 1 - preffered region(close to another node)
     nodes:(a,q)=>{
     
         CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
