@@ -127,7 +127,7 @@ GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).c
 
         //FOR FUTURE:ASK another blocks for future process optimization here
 
-        let hash=ControllerBlock.genHash(block.a,block.i,block.p)
+        let hash=ControllerBlock.genHash(block.a,block.i,block.p,CONFIG.SYMBIOTE.SYMBIOTE_ID)
             
 
         if(block.c===CONFIG.SYMBIOTE.CONTROLLER.PUBKEY&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
@@ -148,7 +148,7 @@ GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).c
 
 
 
-//Tag:ExecMap - run verification workflow for symbiote
+
 START_VERIFY_POLLING=async()=>{
 
 
@@ -332,7 +332,7 @@ verifyControllerBlock=async controllerBlock=>{
 
     let symbiote=controllerBlock.c,
     
-        controllerHash=ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)
+        controllerHash=ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p,CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
 
 
@@ -365,7 +365,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         let rewardBox=new Map(),//To split fees
         
-            eventsToSift=new Map(),//mapping(hash=>{defaultEvents,securedEvents})
+            eventsToSift=new Map(),
             
             getBlocksPromises=[]
         
@@ -410,8 +410,8 @@ verifyControllerBlock=async controllerBlock=>{
                     
                     LOG(`No InstantBlock for \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m even from GET_INSTANT service`,'W')
                     
-                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или PERMANENT_NEAR напрямую
-                    let permNear=CONFIG.SYMBIOTE.PERMANENT_NEAR,breakPoint=false
+                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или BOOTSTRAP_NODES напрямую
+                    let permNear=CONFIG.SYMBIOTE.BOOTSTRAP_NODES,breakPoint=false
 
                     
                     

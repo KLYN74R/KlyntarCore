@@ -2,11 +2,9 @@ import {LOG,SIG,BLOCKLOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Uti
 
 import {BROADCAST,DECRYPT_KEYS} from './utils.js'
 
-import ControllerBlock from './blocks/block.js'
+import Block from './essences/block.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
-
-import InstantBlock from './blocks/instantblock.js'
 
 import UWS from 'uWebSockets.js'
 
@@ -177,7 +175,7 @@ GET_CANDIDATES=async()=>{
 
 
 
-//Tag:ExecMap
+
 GEN_BLOCK_START=async blockType=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
@@ -268,9 +266,9 @@ export let GEN_BLOCK = async blockType => {
 
             let arr=await GET_CANDIDATES()
             
-            let conBlockCandidate=new ControllerBlock(arr)
+            let conBlockCandidate=new Block(arr)
                         
-            hash=ControllerBlock.genHash(conBlockCandidate.a,conBlockCandidate.i,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH)
+            hash=Block.genHash(conBlockCandidate.a,conBlockCandidate.i,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH)
     
             conBlockCandidate.sig=await SIG(hash,PRIVATE_KEY)
 
@@ -623,13 +621,9 @@ PREPARE_SYMBIOTE=async()=>{
     [
         'METADATA',//important dir-cointains canaries,pointer to VERIFICATION_THREAD and GENERATION_THREADS
     
-        'CONTROLLER_BLOCKS',//For Controller's blocks(key is index)
-        
-        'INSTANT_BLOCKS',//For Instant(key is hash)
+        'BLOCKS',//For blocks(key is index)
         
         'HOSTCHAINS_DATA',//To store external flow of commits for ControllerBlocks
-        
-        'CANDIDATES'//For candidates(key is a hash(coz it's also InstantBlocks,but yet not included to chain))
     
     ].forEach(
         
@@ -832,20 +826,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.INSTANT_CANDIDATES=new Map()//mapping(hash=>creator)
-
-
-    //Clear,to not store OUT-OF-CHAIN blocks
-    //*UPD:Node operators should run cleaning time by time
-    //chainRef.CANDIDATES.clear()
-
-    
-
-
     //__________________________________Load modules to work with hostchains_________________________________________
-
-
-    //...and push template to global HOSTCHAINS_DATA object to control the flow
 
 
     let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChain
@@ -875,7 +856,15 @@ PREPARE_SYMBIOTE=async()=>{
         //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
         
         //Load canary
-        SYMBIOTE_META.HOSTCHAINS_WORKFLOW[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(tickers[i]).catch(e=>(  {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  ))
+        SYMBIOTE_META.HOSTCHAINS_WORKFLOW[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
+            
+            tickers[i]
+            
+        ).catch(e=>(  
+            
+            {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  
+            
+        ))
 
     }
 
@@ -886,7 +875,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     
 
-    await DECRYPT_KEYS(initSpinner,CONFIG.SYMBIOTE.CONTROLLER.ME?'Controller':'Instant generator').then(()=>
+    await DECRYPT_KEYS(initSpinner).then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
         LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m was decrypted successfully`,'S')        
@@ -1069,7 +1058,6 @@ RUN_SYMBIOTE=async()=>{
 
                 STOP_GEN_BLOCK ? STOP_GEN_BLOCK['I']='' : STOP_GEN_BLOCK={C:'',I:''}
 
-                //Tag:ExecMap - run generation workflow for InstantBlocks
                 GEN_BLOCK_START('I')
 
             },CONFIG.SYMBIOTE.BLOCK_I_INIT_DELAY)

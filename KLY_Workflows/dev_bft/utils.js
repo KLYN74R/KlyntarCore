@@ -49,7 +49,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 
 //Recepient must support HTTPS
-//*UPD:Sign with our pubkey to avoid certifications 
+//*UPD:Sign with our pubkey to avoid certifications
 SEND_REPORT = alertInfo =>
 
     fetch(CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
@@ -72,35 +72,35 @@ SEND_REPORT = alertInfo =>
     
 GET_NODES=region=>{
 
-        let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
+    let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
     
-        //Default Phisher_Yeits algorithm
+    //Default Phisher_Yeits algorithm
     
-        if(nodes){
+    if(nodes){
             
-            let shuffled = nodes.slice(0),
+        let shuffled = nodes.slice(0),
             
-                arrSize = nodes.length,
+            arrSize = nodes.length,
             
-                min = arrSize - CONFIG.SYMBIOTE.NODES_PORTION, temp, index
+            min = arrSize - CONFIG.SYMBIOTE.NODES_PORTION, temp, index
     
     
-            while (arrSize-- > min) {
+        while (arrSize-- > min) {
     
-                index = Math.floor((arrSize + 1) * Math.random())
+            index = Math.floor((arrSize + 1) * Math.random())
             
-                //Destructurisation doesn't work,so use temporary variable
-                temp = shuffled[index]
+            //Destructurisation doesn't work,so use temporary variable
+            temp = shuffled[index]
             
-                shuffled[index] = shuffled[arrSize]
+            shuffled[index] = shuffled[arrSize]
             
-                shuffled[arrSize] = temp
+            shuffled[arrSize] = temp
     
-            }
+        }
         
-            return shuffled.slice(min)
+        return shuffled.slice(min)
         
-        }else return []
+    }else return []
         
 },
 
@@ -126,17 +126,14 @@ GET_NODES=region=>{
  * 
  * Also,some auths methods will be added
  * 
- *
- * _____________________________________________________'PERMANENT_NEAR'____________________________________________________
- * 
  * 
  * 
  * This is static list which you set to be sure that you'll receive data
- * It might be your another node,nodes of some organisations or sites,node of some pool or your friends' nodes etc.
+ * It might be your another node,nodes of some organizations or sites,node of some pool or your friends' nodes etc.
  * 
  * 
  * 
- *  _______________________________________________________'MUST_SEND'_______________________________________________________
+ *  _______________________________________________________'STATIC_NODES'_______________________________________________________
  * 
  * There is no "online" property coz it's implies that big_providers like crypto exchanges,famous explorers,etc.
  * have high percentage of uptime or highload tolerant infrastructure thus available 365/24/7(best case)
@@ -156,15 +153,15 @@ GET_NODES=region=>{
     let promises=[]
 
 
-    //First of all-send to important destination points
-    Object.keys(CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
+    //First of all-send to important destination points - it might be lightweight retranslators, CDNs and so on
+    Object.keys(CONFIG.SYMBIOTE.STATIC_NODES).forEach(addr=>
         
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
             SIG(data,PRIVATE_KEY).then(sig=>
 
-                fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
+                fetch(CONFIG.SYMBIOTE.STATIC_NODES[addr]+route,{
                 
                     method:'POST',
                     
@@ -174,7 +171,7 @@ GET_NODES=region=>{
                     
                     CONFIG.SYMBIOTE.LOGS.OFFLINE
                     &&
-                    LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
+                    LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mSTATIC_NODES\u001b[38;5;3m]`,'W')
                     
                 )
 
@@ -186,19 +183,6 @@ GET_NODES=region=>{
 
 
 
-    CONFIG.SYMBIOTE.PERMANENT_NEAR.forEach(addr=>
-    
-        fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
-        
-        .catch(_=>
-            
-            CONFIG.SYMBIOTE.LOGS.OFFLINE
-            &&
-            LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mPERMANENT_NEAR\u001b[38;5;3m]`,'W')
-            
-        )
-
-    )
 
     /*
     
@@ -243,7 +227,7 @@ GET_NODES=region=>{
 
 
 
-DECRYPT_KEYS=async(spinner,role)=>{
+DECRYPT_KEYS=async spinner=>{
 
     
     if(CONFIG.PRELUDE.DECRYPTED){
@@ -283,7 +267,7 @@ DECRYPT_KEYS=async(spinner,role)=>{
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
        
 
     

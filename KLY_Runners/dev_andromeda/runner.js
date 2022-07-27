@@ -101,7 +101,6 @@ if(Object.keys(servicesToRun).length){
 
 for(let servicePath in servicesToRun){
 
-    //Tag:ExecMap
     import(`../../KLY_Services/${servicePath}/entry.js`).catch(
         
         e => UTIL_LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')

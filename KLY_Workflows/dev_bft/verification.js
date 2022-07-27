@@ -1,40 +1,10 @@
 import {VERIFY,LOG,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,GET_SYMBIOTE_ACC} from './utils.js'
+import {GET_SYMBIOTE_ACC} from './utils.js'
 
-import ControllerBlock from './blocks/block.js'
-
-import InstantBlock from './blocks/instantblock.js'
+import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
-
-
-
-
-//TODO:Provide async formatting ratings due to fair addresses and liars
-let SET_INSTANT_BLOCK=async(symbioteMetaData,hash,block,rewardBox)=>{
-
-    //If no-it's like SPV clients
-    CONFIG.SYMBIOTE.STORE_INSTANT_BLOCKS
-    ?
-    await symbioteMetaData.INSTANT_BLOCKS.put(hash,block).catch(
-        
-        error => LOG(`Can't store InstantBlock \x1b[36;1m${hash})\x1b[33;1m on ${SYMBIOTE_ALIAS()}\n${error}\n`,'W')
-        
-    )
-    :
-    await symbioteMetaData.INSTANT_BLOCKS.del(hash).catch(
-        
-        error => LOG(`Can't delete InstantBlock \x1b[36;1m${hash})\x1b[33;1m on ${SYMBIOTE_ALIAS()}\n${error}\n`,'W')
-        
-    )
-
-    //Delete useless copy from candidates
-    symbioteMetaData.CANDIDATES.del(hash).catch(e=>LOG(`Can't delete candidate \x1b[36;1m${hash}\x1b[33;1m\n${e}\n`,'W'))
-    
-    rewardBox.set(hash,{creator:block.c,fees:0})//fees sum is 0 yet
-
-}
 
 
 
@@ -55,47 +25,17 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
     .then(r=>r.json()).then(blocksSet=>{
 
-        /*
-
-        Receive set in format:
-            
-            {
-                ...
-
-                45(index):{
-                    c:<ControllerBLock object with index 45>
-                    i:[<InstantBlock 0>,<InstantBlock 1>,<InstantBlock 2>,...]
-                }
-                
-                ...
-
-            }
-        
-        */
-
         Object.keys(blocksSet).forEach(
             
             async blockIndex => {
 
-                let {c:controllerBlock,i:instantBlocks}=blocksSet[blockIndex],
+                let block=blocksSet[blockIndex],
 
-                    controllerHash=ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)
+                    blockHash=Block.genHash(block.e,block.i,block.p)
     
-                if(await VERIFY(controllerHash,controllerBlock.sig,CONFIG.SYMBIOTE.CONTROLLER.PUBKEY)){
+                if(await VERIFY(blockHash,block.sig,block.c)){
 
-                    SYMBIOTE_META.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock)
-
-                    instantBlocks.forEach(
-                        
-                        iBlock => {
-
-                            let hash=InstantBlock.genHash(iBlock.c,iBlock.e)
-
-                            controllerBlock.a?.includes(hash) && SYMBIOTE_META.INSTANT_BLOCKS.put(hash,iBlock)
-
-                        }
-                        
-                    )
+                    SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block)
 
                 }
 
@@ -115,24 +55,23 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
 
 //Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
-GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).catch(e=>
+GET_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).catch(e=>
 
     //FOR FUTURE:
     //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
     //Then we ask for block with <blockId> and asynchronously request the other blocks
     
-    fetch(CONFIG.SYMBIOTE.GET_CONTROLLER+`/block/c/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
+    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
 
     .then(r=>r.json()).then(block=>{
 
         //FOR FUTURE:ASK another blocks for future process optimization here
 
-        let hash=ControllerBlock.genHash(block.a,block.i,block.p)
+        let hash=Block.genHash(block.e,block.i,block.p)
             
+        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
-        if(block.c===CONFIG.SYMBIOTE.CONTROLLER.PUBKEY&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
-
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,59,'\x1b[31m',block.i)
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,59,'\x1b[31m',block.i)
 
             //Try to instantly and asynchronously load more blocks if it's possible
             GET_FORWARD_BLOCKS(blockId+1)
@@ -141,14 +80,14 @@ GET_CONTROLLER_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).c
 
         }
 
-    }).catch(e=>LOG(`No ControllerBlock \x1b[36;1m${blockId}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${e}`,'W'))
+    }).catch(e=>LOG(`No block \x1b[36;1m${blockId}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${e}`,'W'))
 
 
 ),
 
 
 
-//Tag:ExecMap - run verification workflow for symbiote
+
 START_VERIFY_POLLING=async()=>{
 
 
@@ -162,16 +101,16 @@ START_VERIFY_POLLING=async()=>{
             
             blockId=verifThread.COLLAPSED_INDEX+1,
         
-            block=await GET_CONTROLLER_BLOCK(blockId), nextBlock
+            block=await GET_BLOCK(blockId), nextBlock
     
 
             
         if(block){
 
-            await verifyControllerBlock(block)
+            await verifyBlock(block)
 
             //Signal that verification was successful
-            if(blockId===verifThread.COLLAPSED_INDEX) nextBlock=await GET_CONTROLLER_BLOCK(verifThread.COLLAPSED_INDEX+1)
+            if(blockId===verifThread.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(verifThread.COLLAPSED_INDEX+1)
 
         }
 
@@ -325,14 +264,14 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
-verifyControllerBlock=async controllerBlock=>{
+verifyBlock=async block=>{
 
 
 
 
-    let symbiote=controllerBlock.c,
+    let symbiote=block.c,
     
-        controllerHash=ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)
+        blockHash=Block.genHash(block.e,block.i,block.p)
 
 
 
@@ -345,11 +284,11 @@ verifyControllerBlock=async controllerBlock=>{
 
     let overviewOk=
     
-        controllerBlock.a?.length<=CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_BLOCK_MAX_SIZE
+        block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK
         &&
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === controllerBlock.p
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p
         &&
-        await VERIFY(controllerHash,controllerBlock.sig,CONFIG.SYMBIOTE.CONTROLLER.PUBKEY)
+        await VERIFY(blockHash,block.sig,block.c)
    
 
 
@@ -365,7 +304,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         let rewardBox=new Map(),//To split fees
         
-            eventsToSift=new Map(),//mapping(hash=>{defaultEvents,securedEvents})
+            eventsToSift=new Map(),
             
             getBlocksPromises=[]
         
@@ -376,7 +315,7 @@ verifyControllerBlock=async controllerBlock=>{
             █▀█
             █▄█.Zirst of all,get all InstantBlocks,move to INSTANT_BLOCKS db and delete from candidates
         */
-        for(let i=0,l=controllerBlock.a.length;i<l;i++){
+        for(let i=0,l=block.a.length;i<l;i++){
             
             /*
             
@@ -384,11 +323,11 @@ verifyControllerBlock=async controllerBlock=>{
               ░█.Try to get it from local storage-we assume that block was delivered to our node earlier
             
             */
-            getBlocksPromises.push(SYMBIOTE_META.CANDIDATES.get(controllerBlock.a[i]).then(instantBlock=>
+            getBlocksPromises.push(SYMBIOTE_META.CANDIDATES.get(block.a[i]).then(instantBlock=>
 
-                eventsToSift.set(controllerBlock.a[i],instantBlock.e)
+                eventsToSift.set(block.a[i],instantBlock.e)
                 &&
-                SET_INSTANT_BLOCK(SYMBIOTE_META,controllerBlock.a[i],instantBlock,rewardBox)
+                SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instantBlock,rewardBox)
             
             ).catch(e=>
                 
@@ -397,12 +336,12 @@ verifyControllerBlock=async controllerBlock=>{
                   █▄.If no block locally-get from some reliable source,we defined in config file(cloud,CDN,some cluster-something which are fast,reliable and has ~100% uptime)
                 */
                
-                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+block.a[i]).then(r=>r.json()).then(async instant=>
 
                     //Check hash and if OK-sift events from inside,otherwise-occur exception to ask block from another sources
-                    InstantBlock.genHash(instant.c,instant.e)===controllerBlock.a[i]&&await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
+                    InstantBlock.genHash(instant.c,instant.e)===block.a[i]&&await VERIFY(block.a[i],instant.sig,instant.c)
                     ?
-                    eventsToSift.set(controllerBlock.a[i],instant.e)&&SET_INSTANT_BLOCK(SYMBIOTE_META,controllerBlock.a[i],instant,rewardBox)
+                    eventsToSift.set(block.a[i],instant.e)&&SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instant,rewardBox)
                     :
                     new Error()
 
@@ -410,8 +349,8 @@ verifyControllerBlock=async controllerBlock=>{
                     
                     LOG(`No InstantBlock for \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m even from GET_INSTANT service`,'W')
                     
-                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или PERMANENT_NEAR напрямую
-                    let permNear=CONFIG.SYMBIOTE.PERMANENT_NEAR,breakPoint=false
+                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или BOOTSTRAP_NODES напрямую
+                    let permNear=CONFIG.SYMBIOTE.BOOTSTRAP_NODES,breakPoint=false
 
                     
                     
@@ -419,15 +358,15 @@ verifyControllerBlock=async controllerBlock=>{
                     
                         if(breakPoint) break//no more ense to ask the rest nodes if we get block
 
-                        await fetch(permNear[j]+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+controllerBlock.a[i]).then(r=>r.json()).then(async instant=>
+                        await fetch(permNear[j]+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+block.a[i]).then(r=>r.json()).then(async instant=>
 
-                            InstantBlock.genHash(instant.c,instant.e)===controllerBlock.a[i]
+                            InstantBlock.genHash(instant.c,instant.e)===block.a[i]
                             &&
-                            await VERIFY(controllerBlock.a[i],instant.sig,instant.c)
+                            await VERIFY(block.a[i],instant.sig,instant.c)
                             &&
-                            eventsToSift.set(controllerBlock.a[i],instant.e)
+                            eventsToSift.set(block.a[i],instant.e)
                             &&
-                            (await SET_INSTANT_BLOCK(SYMBIOTE_META,controllerBlock.a[i],instant,rewardBox),breakPoint=true)
+                            (await SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instant,rewardBox),breakPoint=true)
                             
                         ).catch(e=>'')
                     
@@ -435,9 +374,9 @@ verifyControllerBlock=async controllerBlock=>{
                    
                     
 
-                    !eventsToSift.has(controllerBlock.a[i])
+                    !eventsToSift.has(block.a[i])
                     &&                        
-                    LOG(`Unfortunately,can't get InstantBlock \x1b[36;1m${controllerBlock.a[i]}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
+                    LOG(`Unfortunately,can't get InstantBlock \x1b[36;1m${block.a[i]}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
                     
                 
                 })
@@ -450,7 +389,7 @@ verifyControllerBlock=async controllerBlock=>{
         await Promise.all(getBlocksPromises.splice(0)) 
 
 
-        if(eventsToSift.size!==controllerBlock.a.length){
+        if(eventsToSift.size!==block.a.length){
 
             LOG(`Going to ask for InstantBlocks later for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'W')
 
@@ -538,7 +477,7 @@ verifyControllerBlock=async controllerBlock=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`BLACKLIST size(\u001b[38;5;177m${controllerBlock.i}\x1b[32;1m ### \u001b[38;5;177m${controllerHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`BLACKLIST size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
 
@@ -568,14 +507,14 @@ verifyControllerBlock=async controllerBlock=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.CONTROLLER_BLOCKS.put(controllerBlock.i,controllerBlock).catch(e=>LOG(`Failed to store ControllerBlock ${controllerBlock.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
 
         }else{
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.CONTROLLER_BLOCKS.del(controllerBlock.i).catch(
+            SYMBIOTE_META.CONTROLLER_BLOCKS.del(block.i).catch(
                 
-                e => LOG(`Failed to delete ControllerBlock ${controllerBlock.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
+                e => LOG(`Failed to delete ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
                 
             )
 
@@ -647,14 +586,14 @@ verifyControllerBlock=async controllerBlock=>{
 
 
 
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX=controllerBlock.i
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX=block.i
                 
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH=controllerHash
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH=blockHash
 
         SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
 
 
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+controllerBlock.i+controllerHash)//like in network packages
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+block.i+blockHash)//like in network packages
 
 
         //Make commit to staging area
@@ -688,11 +627,11 @@ verifyControllerBlock=async controllerBlock=>{
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
 
-        controllerBlock.i!==0//no sense to snaphost if no blocks yet
+        block.i!==0//no sense to snaphost if no blocks yet
         &&
         CONFIG.SYMBIOTE.SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
         &&
-        controllerBlock.i%CONFIG.SYMBIOTE.SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
+        block.i%CONFIG.SYMBIOTE.SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
         &&
         await MAKE_SNAPSHOT()
 
@@ -712,95 +651,27 @@ verifyControllerBlock=async controllerBlock=>{
     
                 workflow[ticker].STORE
                 &&
-                SYMBIOTE_META.HOSTCHAINS_DATA.get(controllerBlock.i+ticker).then(async proof=>{
+                SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
 
-                    let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
+                    let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
                         
-                    if(proof.KLYNTAR_HASH===controllerHash && response!=-1 && response){
+                    if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
     
-                        LOG(`Proof for block \x1b[36;1m${controllerBlock.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
+                        LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
     
                     }else{
     
-                        LOG(`Can't write proof for block \x1b[36;1m${controllerBlock.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
+                        LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
     
                         //...send report
     
                     }
                     
-                }).catch(e=>LOG(`No proofs for block \x1b[36;1m${controllerBlock.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+                }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
                 
             )
 
         }
-
-    }
-
-},
-
-
-
-
-
-
-
-
-verifyInstantBlock=async block=>{
-
-    let hash=InstantBlock.genHash(block.c,block.e),
-    
-        symbioteData=SYMBIOTE_META,
-        
-        symbioteConfig=CONFIG.SYMBIOTE
-
-
-    /*
-  
-        Check if this address can produce InstantBlocks-we need to make "quick" verification
-        Deep inspection will be when this block will be included to ControllerBlock
-        
-        NOTE:Even if option <STORE_INSTANT_BLOCKS> is false we store this block(if overview below is ok) to candidates
-        coz we'll need this block later,while perform ControllerBLock
-    
-    */
-
-
-    let allow=
-    
-    CONFIG.SYMBIOTE.SYMBIOTE_ID===block.s//if we still support this symbiote
-    &&
-    block.e.length<=symbioteConfig.MANIFEST.EVENTS_LIMIT_PER_BLOCK
-    &&
-    block.e.length!==0//filter empty blocks
-    &&
-    !symbioteData.INSTANT_CANDIDATES.has(hash)//check if we already have this block-it will be in mapping anyway
-    &&
-    symbioteConfig.CANDIDATES_CACHE_SIZE>symbioteData.INSTANT_CANDIDATES.size//check if cache size is allow us to push this block to temporary storage
-    &&
-    !await symbioteData.CANDIDATES.get(hash).catch(e=>symbioteData.INSTANT_BLOCKS.get(hash).catch(e=>false))//check if we don't have this block
-    &&
-    await symbioteData.STATE.get(block.c).then(acc=>acc.B>=symbioteConfig.MANIFEST.INSTANT_FREEZE).catch(e=>false)//check if address still has stake(doesn't matter that we can be far away from our collapsed state to real)
-    &&
-    await VERIFY(hash,block.sig,block.c)//...finally-check signature
-
-
-    
-
-    if(allow){
-        
-        symbioteData.CANDIDATES.put(hash,block)
-        
-        .then(()=>{
-
-            Promise.all(BROADCAST('/ib',block,block.s))//share with the network
-            
-            symbioteData.INSTANT_CANDIDATES.set(hash,block.c)
-        
-            BLOCKLOG(`New \x1b[36;1m\x1b[44;1mInstantBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,56,'\x1b[31m')
-            
-        })
-        
-        .catch(e=>LOG(`Problem with adding candidate block \x1b[36;1m${hash}...\x1b[33;1m from \x1b[36;1m${block.s}... \x1b[33;1m ———> ${e.message}`,'W'))
 
     }
 

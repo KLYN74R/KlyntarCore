@@ -2,21 +2,15 @@
     "VERSION":"0.1.0",
     "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 
-    "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-    "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
-
-    "BOOTSTRAP_NODES":[
-        "http://localhost:22222",
-        "http://localhost:33333",
-        "http://localhost:44444"
-    ],
-
     "INFO":{
         "MAIL":"hello@example.com",
         "TELEGRAM":"@youraddress"
     },
 
     "STOP_WORK":false,
+
+    "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+    "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
 
     "MANIFEST":{
 
@@ -144,7 +138,14 @@
         }
     },
     
-    "AWAIT_FOR_AFK":120000,
+    "AWAIT_FOR_AFK_VALIDATOR":120000,
+
+    "BOOTSTRAP_NODES":[
+        "http://localhost:22222",
+        "http://localhost:33333",
+        "http://localhost:44444"
+    ],
+
     
     "VT_GT_NORMAL_DIFFERENCE":100,
             
@@ -207,7 +208,7 @@
 
     },
 
-    "PERMANENT_NEAR":[
+    "BOOTSTRAP_NODES":[
         "http://localhost:4444",
         "https://0.mynearpub.com:7777",
         "https://1.mynearpub.com:7777",
@@ -250,7 +251,7 @@
         "TX":1
     },
 
-    "GET_BLOCKS":"http://localhost:6666",
+    "GET_BLOCKS_URI":"http://localhost:6666",
     "REGION":"EU",
 
     "LOGS":{

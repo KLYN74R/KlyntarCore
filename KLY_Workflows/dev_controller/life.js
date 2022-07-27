@@ -177,7 +177,7 @@ GET_CANDIDATES=async()=>{
 
 
 
-//Tag:ExecMap
+
 GEN_BLOCK_START=async blockType=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
@@ -1069,7 +1069,6 @@ RUN_SYMBIOTE=async()=>{
 
                 STOP_GEN_BLOCK ? STOP_GEN_BLOCK['I']='' : STOP_GEN_BLOCK={C:'',I:''}
 
-                //Tag:ExecMap - run generation workflow for InstantBlocks
                 GEN_BLOCK_START('I')
 
             },CONFIG.SYMBIOTE.BLOCK_I_INIT_DELAY)

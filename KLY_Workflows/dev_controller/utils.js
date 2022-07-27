@@ -127,12 +127,12 @@ GET_NODES=region=>{
  * Also,some auths methods will be added
  * 
  *
- * _____________________________________________________'PERMANENT_NEAR'____________________________________________________
+ * _____________________________________________________'BOOTSTRAP_NODES'____________________________________________________
  * 
  * 
  * 
  * This is static list which you set to be sure that you'll receive data
- * It might be your another node,nodes of some organisations or sites,node of some pool or your friends' nodes etc.
+ * It might be your another node,nodes of some organizations or sites,node of some pool or your friends' nodes etc.
  * 
  * 
  * 
@@ -186,7 +186,7 @@ GET_NODES=region=>{
 
 
 
-    CONFIG.SYMBIOTE.PERMANENT_NEAR.forEach(addr=>
+    CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
     
         fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
         
@@ -194,7 +194,7 @@ GET_NODES=region=>{
             
             CONFIG.SYMBIOTE.LOGS.OFFLINE
             &&
-            LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mPERMANENT_NEAR\u001b[38;5;3m]`,'W')
+            LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
             
         )
 

@@ -32,6 +32,16 @@ true/false - if you want to stop your symbiote
 
 Workflow version
 
+<li><code>SYMBIOTE_ID</code></li>
+
+Identifier of symbiote.Usually,it's BLAKE3 hash of manifest
+
+```js
+
+let SYMBIOTE_ID = BLAKE3(MANIFEST)
+
+```
+
 <li><code>INFO</code></li>
 
 Miscellaneous data like email, Telegram, site of symbiote. It might be controlled by DAO,some organization and so on. Might be empty({}). Has no format requirements - use everything you want
@@ -118,7 +128,7 @@ This file has the following structure
 
 ```
 
-<li>Create file <code>life.js</code> and export functions <code>RENAISSANCE</code> and <code>PREPARE_SYMBIOTE</code></li>
+<li>Create file <code>life.js</code> and export function <code>RUN_SYMBIOTE</code></li>
 
 <br/>
 
@@ -126,7 +136,7 @@ File <code>dev_helloworld/life.js</code>
 
 ```js
 
-export let PREPARE_SYMBIOTE = symbioteID => {
+export let RUN_SYMBIOTE = () => {
 
     console.log('************ IMITATION OF PREPARATIONS************')
     console.log('You can skip if you don`t need')
@@ -134,19 +144,9 @@ export let PREPARE_SYMBIOTE = symbioteID => {
 
 }
 
-
-
-export let RENAISSANCE = symbioteID => {
-
-    console.log('************ IMITATION OF RENAISSANCE************')
-    console.log('You can skip if you don`t need')
-    console.log('************ IMITATION OF RENAISSANCE************')
-
-}
-
 ```
 
-These funciton used on the top level of core in <code>klyn74r.js</code>
+This funciton used on the top level of core in <code>klyn74r.js</code>
 
 
 </ul>

@@ -219,7 +219,7 @@
 
     },
 
-    "PERMANENT_NEAR":[
+    "BOOTSTRAP_NODES":[
         "http://localhost:4444",
         "https://0.mynearpub.com:7777",
         "https://1.mynearpub.com:7777",

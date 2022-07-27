@@ -415,7 +415,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     //To load them one by one,use top level await,so we need "for...of"
     for(let scriptPath of CONFIG.PLUGINS){
 
-        //Tag:ExecMap
         import(`./KLY_Plugins/${scriptPath}`).catch(
             
             e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')

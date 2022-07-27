@@ -213,7 +213,7 @@ let MAIN = {
             //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
             let nodes=SYMBIOTE_META.NEAR
             
-            if(!(nodes.includes(domain) || symbioteConfig.PERMANENT_NEAR || symbioteConfig.MUST_SEND)){
+            if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
 
                 
                 nodes.length<symbioteConfig.MAX_CONNECTIONS
