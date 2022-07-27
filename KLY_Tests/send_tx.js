@@ -26,10 +26,10 @@ import {hash} from 'blake3-wasm'
 import fetch from 'node-fetch'
 
 
-let alice={ alias:'alice',pub: "GzmZ9AnRnFb2uMnn514phewbarpeg7EgWU6vXpNVTiZy", prv: "MC4CAQAwBQYDK2VwBCIEIOrT3U7lyb5V35P9nLhFeKuxHveQm2dNmX1GJynlNuNj" }
+let alice={ alias:'alice',pub: "D2KNao3VuuswGpVEsVaUmKbHaPsNtU1sLRhQjkh9dbiM", prv: "MC4CAQAwBQYDK2VwBCIEIM3Phmo6gxrP1zE0jGE5q1Zj3iSS0WIOODrmzkyBArzz" }
 
 
-let bob={ alias:'bob',pub: "HPaoAvk1SLynMgc1woFkc4GkFe25YcHPtYF14FEpV9SW", prv: "MC4CAQAwBQYDK2VwBCIEIHSBKMn6NpoadXz8DEzOSNK9aapptkcGajgNh65xgqLv" },
+let bob={ alias:'bob',pub: "EZhBJCFuQy7SDtK2LKET1hfgc1AaAfPPxxieX3YzGTQF", prv: "MC4CAQAwBQYDK2VwBCIEIGUMfkLOi8jYsWrCv1koPJh4lHiH1bLcsXtH4mG88Poh" },
 
 
 BLAKE3=v=>hash(v).toString('hex'),
@@ -38,7 +38,7 @@ BLAKE3=v=>hash(v).toString('hex'),
 SENDER=bob,
 RECEPIENT=alice,
 
-symbiote='FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9',//chain on which you wanna send tx
+symbiote='f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea',//chain on which you wanna send tx
 
 
 
@@ -55,7 +55,6 @@ chainNonce=await fetch(`http://localhost:11111/account/${symbiote}/${SENDER.pub}
     console.log(`Can't get chain level data`)
 
 }),//nonce on appropriate chain
-
 
 
 //Changable values
@@ -79,11 +78,9 @@ event={
     s:await SIG(symbiote+WORKFLOW_VERSION+PAYLOAD_TYPE+JSON.stringify(payload)+chainNonce+FEE,SENDER.prv)
 }
 
+console.log(symbiote+WORKFLOW_VERSION+PAYLOAD_TYPE+JSON.stringify(payload)+chainNonce+FEE)
 await fetch(`http://localhost:11111/account/${symbiote}/${SENDER.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for SENDER(${SENDER.alias}) =>`,x))
 await fetch(`http://localhost:11111/account/${symbiote}/${RECEPIENT.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for RECEPIENT(${RECEPIENT.alias}) =>`,x))
-
-
-
 
 //Send
 // await fetch('http://localhost:11111/event',
