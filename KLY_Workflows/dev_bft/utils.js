@@ -1,12 +1,12 @@
-import {LOG,SIG,SYMBIOTE_ALIAS,COLORS} from "../../KLY_Utils/utils.js"
+import {LOG,SYMBIOTE_ALIAS,COLORS} from "../../KLY_Utils/utils.js"
+
+import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import cryptoModule from 'crypto'
 
 import readline from 'readline'
 
 import fetch from 'node-fetch'
-
-
 
 
 //Mapping to work with hostchains
@@ -108,6 +108,33 @@ GET_NODES=region=>{
 
 
 
+//Function just for pretty output about information on symbiote
+BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
+
+    if(CONFIG.SYMBIOTE.LOGS.BLOCK){
+
+        console.log(' '.repeat(spaces),color,'_'.repeat(56))
+
+        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(16)+`${color}│`)
+
+        let verbose='Height:'+block.i+' # Events:'+block.e.length+' # Validator:'+block.c
+            
+        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│ ${verbose}`)
+    
+        console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,`${color}│`)
+
+        console.log(' '.repeat(spaces),' ‾'+'‾'.repeat(56),COLORS.C)
+    
+    }
+
+},
+
+
+SIG=data=>BLS.singleSig(data,PRIVATE_KEY),
+
+
+
+VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
 
@@ -159,7 +186,7 @@ GET_NODES=region=>{
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            SIG(data,PRIVATE_KEY).then(sig=>
+            SIG(JSON.stringify(data)).then(sig=>
 
                 fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 

@@ -1,10 +1,10 @@
 import{
 
-    VERIFY,BODY,SAFE_ADD,PARSE_JSON,BLOCKLOG,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE
+    VERIFY,BODY,SAFE_ADD,PARSE_JSON,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE
 
 } from '../../../KLY_Utils/utils.js'
 
-import {SEND_REPORT,BROADCAST} from '../utils.js'
+import {SEND_REPORT,BROADCAST,BLOCKLOG} from '../utils.js'
 
 import ControllerBlock from '../blocks/controllerblock.js'
 

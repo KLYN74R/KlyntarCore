@@ -1,6 +1,6 @@
-import {VERIFY,LOG,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {GET_SYMBIOTE_ACC} from './utils.js'
+import {GET_SYMBIOTE_ACC,BLOCKLOG,VERIFY} from './utils.js'
 
 import Block from './essences/block.js'
 
@@ -291,114 +291,13 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
    
 
-
+   
 
     //block.a.length<=100.At least this limit is only for first times
     if(overviewOk){
 
-
-
-
-        //____________________________________GET TXS FROM INSTANT BLOCK TO SIFT THEM___________________________________
-        
-        
-        let rewardBox=new Map(),//To split fees
-        
-            eventsToSift=new Map(),
-            
-            getBlocksPromises=[]
-        
-
-
-
-        /*
-            █▀█
-            █▄█.Zirst of all,get all InstantBlocks,move to INSTANT_BLOCKS db and delete from candidates
-        */
-        for(let i=0,l=block.a.length;i<l;i++){
-            
-            /*
-            
-              ▄█
-              ░█.Try to get it from local storage-we assume that block was delivered to our node earlier
-            
-            */
-            getBlocksPromises.push(SYMBIOTE_META.CANDIDATES.get(block.a[i]).then(instantBlock=>
-
-                eventsToSift.set(block.a[i],instantBlock.e)
-                &&
-                SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instantBlock,rewardBox)
-            
-            ).catch(e=>
                 
-                /*  
-                  ▀█
-                  █▄.If no block locally-get from some reliable source,we defined in config file(cloud,CDN,some cluster-something which are fast,reliable and has ~100% uptime)
-                */
-               
-                fetch(CONFIG.SYMBIOTE.GET_INSTANT+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+block.a[i]).then(r=>r.json()).then(async instant=>
-
-                    //Check hash and if OK-sift events from inside,otherwise-occur exception to ask block from another sources
-                    InstantBlock.genHash(instant.c,instant.e)===block.a[i]&&await VERIFY(block.a[i],instant.sig,instant.c)
-                    ?
-                    eventsToSift.set(block.a[i],instant.e)&&SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instant,rewardBox)
-                    :
-                    new Error()
-
-                ).catch(async e=>{
-                    
-                    LOG(`No InstantBlock for \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m even from GET_INSTANT service`,'W')
-                    
-                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или BOOTSTRAP_NODES напрямую
-                    let permNear=CONFIG.SYMBIOTE.BOOTSTRAP_NODES,breakPoint=false
-
-                    
-                    
-                    for(let j=0;j<permNear.length;j++){
-                    
-                        if(breakPoint) break//no more ense to ask the rest nodes if we get block
-
-                        await fetch(permNear[j]+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/i/`+block.a[i]).then(r=>r.json()).then(async instant=>
-
-                            InstantBlock.genHash(instant.c,instant.e)===block.a[i]
-                            &&
-                            await VERIFY(block.a[i],instant.sig,instant.c)
-                            &&
-                            eventsToSift.set(block.a[i],instant.e)
-                            &&
-                            (await SET_INSTANT_BLOCK(SYMBIOTE_META,block.a[i],instant,rewardBox),breakPoint=true)
-                            
-                        ).catch(e=>'')
-                    
-                    }
-                   
-                    
-
-                    !eventsToSift.has(block.a[i])
-                    &&                        
-                    LOG(`Unfortunately,can't get InstantBlock \x1b[36;1m${block.a[i]}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
-                    
-                
-                })
-
-            ))
-        
-        }
-
-
-        await Promise.all(getBlocksPromises.splice(0)) 
-
-
-        if(eventsToSift.size!==block.a.length){
-
-            LOG(`Going to ask for InstantBlocks later for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'W')
-
-            return
-        
-        }
-        
-
-
+        let rewardBox=new Map()//To split fees
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
@@ -406,12 +305,8 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
         
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
-        eventsToSift.forEach(eventsSet=>
-             
-            eventsSet.forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c)))
-                
-        )
-
+        block.e.forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c)))
+        
         //Push accounts of creators of InstantBlock
         rewardBox.forEach(reference=>sendersAccounts.push(GET_SYMBIOTE_ACC(reference.creator)))
 
@@ -422,36 +317,29 @@ verifyBlock=async block=>{
 
         //______________________________________CALCULATE TOTAL FEES AND AMOUNTS________________________________________
 
+        block.e.forEach(event=>{
 
-        eventsToSift.forEach(eventsSet=>
-            
-            eventsSet.forEach(event=>{
+            //O(1),coz it's set
+            if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
 
-                //O(1),coz it's set
-                if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
-
-                    
-                    let acc=GET_SYMBIOTE_ACC(event.c),
-                        
-                        spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || 1
-
-
-
-                            
-                    //If no such address-it's a signal that transaction can't be accepted
-                    if(!acc) return;
-                 
-                    (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
-        
-                    if((acc.OUT-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.t]) SYMBIOTE_META.BLACKLIST.add(event.c)
-
-                }
-
-            })
                 
-        )
+                let acc=GET_SYMBIOTE_ACC(event.c),
+                    
+                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || 1
 
 
+
+                        
+                //If no such address-it's a signal that transaction can't be accepted
+                if(!acc) return;
+             
+                (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
+    
+                if((acc.OUT-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.t]) SYMBIOTE_META.BLACKLIST.add(event.c)
+
+            }
+
+        })
 
 
         //___________________________________________START TO PERFORM EVENTS____________________________________________
@@ -460,46 +348,36 @@ verifyBlock=async block=>{
         let eventsPromises=[]
 
 
-        eventsToSift.forEach((eventsSet,hash)=>{
-    
-            eventsSet.forEach(event=>
+        block.e.forEach(event=>
                 
-                //If verifier to such event exsist-then verify it!
-                SYMBIOTE_META.VERIFIERS[event.t]
-                &&
-                eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.t](event,rewardBox.get(hash)))
+            //If verifier to such event exsist-then verify it!
+            SYMBIOTE_META.VERIFIERS[event.t]
+            &&
+            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.t](event,''))
 
-                //Stress test.DELETE
-                //txsPromises.push(VERIFY('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','4ViaOoL3HF5lamTh0ZjGbLVg+59dfk5cebJGKRDtRf29l0hIbS5PHfUNt2GCUdHS+AFqs1ZU+l6cpMYkSbw3Aw==','J+tMlJexrc5bwof9oIpKiRxQy84VmZhMfdIJa53GSY4='))
-            )
-                        
-        })
+        )
         
         await Promise.all(eventsPromises.splice(0))
 
         LOG(`BLACKLIST size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
-
-
         //_________________________________________________SHARE FEES___________________________________________________
         
-
-        //Instant generator receive 80% of fees from his created block,controller receive 20% of his block
         
-        let controllerAcc=await GET_SYMBIOTE_ACC(symbiote)
+        // let controllerAcc=await GET_SYMBIOTE_ACC(symbiote)
 
-        rewardBox.forEach(reference=>{
+        // rewardBox.forEach(reference=>{
         
-            let acc=GET_SYMBIOTE_ACC(reference.creator),
+        //     let acc=GET_SYMBIOTE_ACC(reference.creator),
                 
-                toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
+        //         toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
                 
-            acc.ACCOUNT.B+=toInstant
+        //     acc.ACCOUNT.B+=toInstant
 
-            controllerAcc.ACCOUNT.B+=reference.fees-toInstant
+        //     controllerAcc.ACCOUNT.B+=reference.fees-toInstant
 
-        })
+        // })
         
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
@@ -641,37 +519,37 @@ verifyBlock=async block=>{
 
 
 
-        //Controller shouldn't check
-        if(!CONFIG.SYMBIOTE.CONTROLLER.ME){
+        // //Controller shouldn't check
+        // if(!CONFIG.SYMBIOTE.CONTROLLER.ME){
 
-            let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
-            //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
+        //     let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
+        //     //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
             
-            Object.keys(workflow).forEach(ticker=>
+        //     Object.keys(workflow).forEach(ticker=>
     
-                workflow[ticker].STORE
-                &&
-                SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
+        //         workflow[ticker].STORE
+        //         &&
+        //         SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
 
-                    let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
+        //             let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
                         
-                    if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
+        //             if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
     
-                        LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
+        //                 LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
     
-                    }else{
+        //             }else{
     
-                        LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
+        //                 LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
     
-                        //...send report
+        //                 //...send report
     
-                    }
+        //             }
                     
-                }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+        //         }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
                 
-            )
+        //     )
 
-        }
+        // }
 
     }
 

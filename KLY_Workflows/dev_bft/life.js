@@ -1,10 +1,10 @@
-import {LOG,SIG,BLOCKLOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS} from './utils.js'
-
-import Block from './essences/block.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
+
+import Block from './essences/block.js'
 
 import UWS from 'uWebSockets.js'
 
@@ -171,7 +171,7 @@ RUN_POLLING=async()=>{
 
 export let GEN_BLOCK = async () => {
 
-
+    
     /*
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
     
@@ -179,22 +179,20 @@ export let GEN_BLOCK = async () => {
     
     */
                 
-    let phantomControllers=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
     
         promises=[]//to push blocks to storage
 
 
-        
     //If nothing to generate-then no sense to generate block,so return
-    if(phantomControllers===0) return 
+    //if(phantomControllers===0) return 
 
     //Validator can't generate more blocks than epoch
-    phantomControllers = phantomControllers > CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS ? CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS : phantomControllers 
+    phantomBlocksNumber = phantomBlocksNumber > CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS ? CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS : phantomBlocksNumber + 1
 
+    LOG(`Number of phantoms ${phantomBlocksNumber}`,'I')
 
-    console.log('Phantoms ',phantomControllers)
-
-    for(let i=0;i<phantomControllers;i++){
+    for(let i=0;i<phantomBlocksNumber;i++){
 
 
         let eventsArray=await GET_EVENTS(),
@@ -203,7 +201,7 @@ export let GEN_BLOCK = async () => {
                         
             hash=Block.genHash(blockCandidate.e,blockCandidate.i,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH)
     
-        blockCandidate.sig=await SIG(hash,PRIVATE_KEY)
+        blockCandidate.sig=await SIG(hash)
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,59,'\x1b[32m',blockCandidate)
 
@@ -241,7 +239,7 @@ export let GEN_BLOCK = async () => {
                 //And here we should broadcast blocks
                 arr.forEach(block=>
                     
-                    Promise.all(BROADCAST(route,block))
+                    Promise.all(BROADCAST('/block',block))
                     
                 )
 
@@ -301,7 +299,7 @@ export let GEN_BLOCK = async () => {
                         
                                 control.HOSTCHAIN_HASH=symbioticHash
 
-                                control.SIG=await SIG(control.KLYNTAR_HASH+control.INDEX+control.HOSTCHAIN_HASH+ticker,PRIVATE_KEY)
+                                control.SIG=await SIG(control.KLYNTAR_HASH+control.INDEX+control.HOSTCHAIN_HASH+ticker)
                                 
                                 await SYMBIOTE_META.HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
                                             
@@ -615,21 +613,22 @@ PREPARE_SYMBIOTE=async()=>{
     )
     
 
-    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
+    // let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
         
-        previous=await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
+    //     previous=await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+    // if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
     
-        initSpinner?.stop()
+    //     initSpinner?.stop()
         
-        LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
+    //     LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
         
-        process.exit(125)
-    }
+    //     process.exit(125)
+    // }
     
     
+    //________________________________________________________________MAKE SURE VERIFICATION THREAD IS OK________________________________________________________________
 
 
     //If we just start verification thread, there is no sense to do following logic
@@ -859,7 +858,7 @@ RUN_SYMBIOTE=async()=>{
             
                     .then(val=>val==='OK'&&LOG(`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`,'I'))
             
-                    .catch(e=>LOG(`Node \x1b[32;1m${endpoint}\x1b[31;1m send no response`,'F'))
+                    .catch(e=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response`,'F'))
                         
             )
 
