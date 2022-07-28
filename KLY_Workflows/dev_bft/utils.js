@@ -133,7 +133,7 @@ GET_NODES=region=>{
  * 
  * 
  * 
- *  _______________________________________________________'STATIC_NODES'_______________________________________________________
+ *  _______________________________________________________'MUST_SEND'_______________________________________________________
  * 
  * There is no "online" property coz it's implies that big_providers like crypto exchanges,famous explorers,etc.
  * have high percentage of uptime or highload tolerant infrastructure thus available 365/24/7(best case)
@@ -154,14 +154,14 @@ GET_NODES=region=>{
 
 
     //First of all-send to important destination points - it might be lightweight retranslators, CDNs and so on
-    Object.keys(CONFIG.SYMBIOTE.STATIC_NODES).forEach(addr=>
+    Object.keys(CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
         
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
             SIG(data,PRIVATE_KEY).then(sig=>
 
-                fetch(CONFIG.SYMBIOTE.STATIC_NODES[addr]+route,{
+                fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 
                     method:'POST',
                     
@@ -171,7 +171,7 @@ GET_NODES=region=>{
                     
                     CONFIG.SYMBIOTE.LOGS.OFFLINE
                     &&
-                    LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mSTATIC_NODES\u001b[38;5;3m]`,'W')
+                    LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
                     
                 )
 
@@ -180,8 +180,6 @@ GET_NODES=region=>{
         )
 
     )
-
-
 
 
     /*
@@ -303,8 +301,6 @@ DECRYPT_KEYS=async spinner=>{
     //____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAINS_______________________________________
 
 
-    symbioteRef.CONTROLLER.ME
-    &&
     Object.keys(symbioteRef.HC_CONFIGS).forEach(ticker=>{
         
         let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.HC_CONFIGS[ticker].PRV,'hex','utf8')+decipher.final('utf8')

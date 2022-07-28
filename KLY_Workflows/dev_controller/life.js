@@ -118,7 +118,7 @@ process.on('SIGHUP',graceful)
 
 
 //TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
-let GET_TXS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
 
@@ -421,7 +421,7 @@ export let GEN_BLOCK = async blockType => {
         
         //______________________________TEST__________________________________
         
-        let insBlockCandidate=new InstantBlock(await GET_TXS())
+        let insBlockCandidate=new InstantBlock(await GET_EVENTS())
 
         //_______________________________________________DELELTE________________________________
 

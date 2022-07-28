@@ -14,7 +14,7 @@ export default class{
 
         this.p=payload
 
-        //this.s=await SIG(JSON.stringify(payload)+symbiote+nonce+eventType)
+        //this.s=signature
         
     }
 }

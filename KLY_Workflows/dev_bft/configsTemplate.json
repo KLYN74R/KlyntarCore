@@ -139,19 +139,10 @@
     },
     
     "AWAIT_FOR_AFK_VALIDATOR":120000,
-
-    "BOOTSTRAP_NODES":[
-        "http://localhost:22222",
-        "http://localhost:33333",
-        "http://localhost:44444"
-    ],
-
-    
-    "VT_GT_NORMAL_DIFFERENCE":100,
             
     "CONTROLLER_POLLING":5000,
 
-    "STOP_GENERATE_BLOCK":false,
+    "STOP_GENERATE_BLOCKS":false,
     "STOP_VERIFY":false,
 
     "BLOCK_GENERATION_TIME":3000,
@@ -209,19 +200,12 @@
     },
 
     "BOOTSTRAP_NODES":[
-        "http://localhost:4444",
-        "https://0.mynearpub.com:7777",
-        "https://1.mynearpub.com:7777",
-        "https://2.mynearpub.com:7777",
-        "https://3.mynearpub.com:7777",
-        "https://4.mynearpub.com:7777",
-        "https://5.mynearpub.com:7777",
-        "https://6.mynearpub.com:7777",
-        "https://7.mynearpub.com:7777",
-        "https://8.mynearpub.com:7777"
+        "http://localhost:22222",
+        "http://localhost:33333",
+        "http://localhost:44444"
     ],
         
-    "STATIC_NODES":{
+    "MUST_SEND":{
 
         "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
     
@@ -242,11 +226,11 @@
     },
 
     "TRIGGERS":{
+        
         "INFO":1,
         "NODES":1,
         "ACCOUNTS":1,
-        "INSTANT_BLOCKS":1,
-        "CONTROLLER_BLOCKS":1,
+        "BLOCKS":1,
         "MULTI":1,
         "TX":1
     },

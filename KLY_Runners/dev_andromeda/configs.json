@@ -10,7 +10,7 @@
     "DESC_MAX_LEN":200,
     "REDIRECTION_DEPTH":3,
 
-    "STATIC_NODES":[
+    "MUST_SEND":[
         "https://someklyntarpool.io",
         "htts://api-klyntar.coinbase.com"
     ],

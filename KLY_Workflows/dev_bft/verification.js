@@ -35,7 +35,7 @@ GET_FORWARD_BLOCKS = fromHeight => {
     
                 if(await VERIFY(blockHash,block.sig,block.c)){
 
-                    SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block)
+                    SYMBIOTE_META.BLOCKS.put(block.i,block)
 
                 }
 
@@ -55,7 +55,7 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
 
 //Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
-GET_BLOCK = blockId => SYMBIOTE_META.CONTROLLER_BLOCKS.get(blockId).catch(e=>
+GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
     //FOR FUTURE:
     //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
@@ -503,16 +503,16 @@ verifyBlock=async block=>{
         
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(CONFIG.SYMBIOTE.STORE_CONTROLLER_BLOCKS){
+        if(CONFIG.SYMBIOTE.STORE_BLOCKS){
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
 
         }else{
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.CONTROLLER_BLOCKS.del(block.i).catch(
+            SYMBIOTE_META.BLOCKS.del(block.i).catch(
                 
                 e => LOG(`Failed to delete ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
                 
