@@ -113,17 +113,17 @@ BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
     if(CONFIG.SYMBIOTE.LOGS.BLOCK){
 
-        console.log(' '.repeat(spaces),color,'_'.repeat(56))
+        console.log(' '.repeat(spaces),color,'_'.repeat(79))
 
-        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(16)+`${color}│`)
+        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(1)+`${color}│`)
 
         let verbose='Height:'+block.i+' # Events:'+block.e.length+' # Validator:'+block.c
             
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│ ${verbose}`)
+        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(76),`${color}│ ${verbose}`)
     
-        console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,`${color}│`)
+        console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,' '.repeat(4),`${color}│`)
 
-        console.log(' '.repeat(spaces),' ‾'+'‾'.repeat(56),COLORS.C)
+        console.log(' '.repeat(spaces),' ‾'+'‾'.repeat(78),COLORS.C)
     
     }
 

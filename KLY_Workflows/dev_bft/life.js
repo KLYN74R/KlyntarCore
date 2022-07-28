@@ -203,7 +203,7 @@ export let GEN_BLOCK = async () => {
     
         blockCandidate.sig=await SIG(hash)
             
-        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,59,'\x1b[32m',blockCandidate)
+        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
 
         SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
