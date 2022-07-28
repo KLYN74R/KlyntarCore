@@ -34,7 +34,7 @@ let MAIN = {
 
         let total=0,buf=Buffer.alloc(0)
 
-        
+
         if(!CONFIG.SYMBIOTE.TRIGGERS.BLOCKS){
             
             a.end('Route is off')
@@ -75,7 +75,7 @@ let MAIN = {
                     
                         SYMBIOTE_META.CONTROLLER_BLOCKS.get(block.i).catch(e=>{
 
-                            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,48,'\x1b[31m',block.i)
+                            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,48,'\x1b[31m',block.i)
                             
                             //Store it locally-we'll work with this block later
                             SYMBIOTE_META.BLOCKS.put(block.i,block).then(()=>
@@ -120,7 +120,7 @@ let MAIN = {
         /*
         
             ...and do such "lightweight" verification here to prevent db bloating
-            Anyway we can bump with some short-term desynchronization while perform operations over ControllerBlock
+            Anyway we can bump with some short-term desynchronization while perform operations over block
             Verify and normalize object
 
             Fetch values about fees and MC from some DEZ sources

@@ -304,13 +304,10 @@ verifyBlock=async block=>{
 
 
 
-    let symbiote=block.c,
-    
-        blockHash=Block.genHash(block.e,block.i,block.p)
+    let blockHash=Block.genHash(block.e,block.i,block.p)
 
 
-
-    /*  Maximum 100 InstantBlocks per 1 ControllerBlock(set in configs)
+    /*  Maximum 100 InstantBlocks per 1 block(set in configs)
         
         We have maximum N*K events where N-number of InstantBlocks and K-number of events
 
@@ -420,14 +417,14 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
 
         }else{
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             SYMBIOTE_META.BLOCKS.del(block.i).catch(
                 
-                e => LOG(`Failed to delete ControllerBlock ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
+                e => LOG(`Failed to delete block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
                 
             )
 

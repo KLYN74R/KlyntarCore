@@ -85,7 +85,7 @@ let API = {
         
         let symbioteID=q.getParameter(0),
         
-            fromHeight=+q.getParameter(1)//convert to number to get ControllerBlock's id(height)
+            fromHeight=+q.getParameter(1)//convert to number to get block's id(height)
     
     
         if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){

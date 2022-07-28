@@ -486,7 +486,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         EVENTS_STATE:new Map(),// EVENT_KEY(on symbiote) => EVENT_VALUE
 
-        BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another ControllerBlock
+        BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another block
 
         //Peers to exchange data with
         NEAR:[]
@@ -533,7 +533,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'BLOCKS',//For blocks(key is index)
         
-        'HOSTCHAINS_DATA',//To store external flow of commits for ControllerBlocks
+        'HOSTCHAINS_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
     
     ].forEach(
         
@@ -959,7 +959,7 @@ RUN_SYMBIOTE=async()=>{
             maxVotes=0
 
 
-        gtHandlers.forEach((handler,_hash)=>{
+        gtHandlers.forEach((handler,_)=>{
 
             if(handler.votes>maxVotes){
 
@@ -998,7 +998,8 @@ RUN_SYMBIOTE=async()=>{
             GEN_BLOCK_START()
 
             //Also,run polling for blocks & headers from generation thread
-            GET_BLOCKS_FOR_GENERATION_THREAD()
+            //We start to get blocks from current epoch
+            GET_BLOCKS_FOR_GENERATION_THREAD(SYMBIOTE_META.GENERATION_THREAD.EPOCH_START)
         
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
