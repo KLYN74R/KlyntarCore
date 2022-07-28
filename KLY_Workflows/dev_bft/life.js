@@ -412,7 +412,8 @@ RELOAD_STATE = async() => {
         //Otherwise start rescan form height=0
         SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
 
-        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}
+        
+        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[]}
 
         //Load all the configs
         fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{

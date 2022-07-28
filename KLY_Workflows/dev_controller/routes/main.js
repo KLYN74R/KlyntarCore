@@ -75,15 +75,13 @@ let MAIN = {
 
 
                     if(allow){
-                    
-                        let controllerBlocks=SYMBIOTE_META.CONTROLLER_BLOCKS
                         
-                        controllerBlocks.get(block.i).catch(e=>{
+                        SYMBIOTE_META.CONTROLLER_BLOCKS.get(block.i).catch(e=>{
 
                             BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,59,'\x1b[31m',block.i)
                             
                             //Store it locally-we'll work with this block later
-                            controllerBlocks.put(block.i,block).then(()=>
+                            SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block).then(()=>
                             
                                 Promise.all(BROADCAST('/cb',block,block.c))
                                 
@@ -159,11 +157,7 @@ let MAIN = {
             
             return
 
-        }
-
-        let symbioteMempool=SYMBIOTE_META.MEMPOOL
-
-        
+        }        
 
         /*
         
@@ -177,7 +171,7 @@ let MAIN = {
 
         //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         //Also check if we have normalizer for this type of event
-        if(symbioteMempool.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
+        if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
 
             let filtered=await SYMBIOTE_META.FILTERS[event.t](symbiote,event)
 
@@ -185,7 +179,7 @@ let MAIN = {
     
                 !a.aborted&&a.end('OK')
 
-                symbioteMempool.push(event)
+                SYMBIOTE_META.MEMPOOL.push(event)
                             
             }else !a.aborted&&a.end('Post overview failed')
 

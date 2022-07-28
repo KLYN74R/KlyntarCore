@@ -58,7 +58,7 @@ export default {
         //0.Get aggregated key of pubkeys who has signed this data
         let signersIn=bls.aggregatePublicKeys(pubKeysIn),
 
-            signersOut=bls.aggregatePublicKeys(pubKeysOut),
+            signersOut=bls.aggregatePublicKeys(pubKeysOut),//aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
 
             generalPubKey=bls.aggregatePublicKeys([signersIn,signersOut]),
 

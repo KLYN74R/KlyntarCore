@@ -117,13 +117,13 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
     'CHAINDATA',//Data of symbiotes
     
-    'GENESIS',//Directory which holds subdirs with files for GENESIS data for symbiotes
+    'GENESIS',//Directory with files for GENESIS data for symbiotes
 
     'CONFIGS',//Directory with configs
 
-    'LOGS',//Directory which holds subdirs with log streams.
+    'LOGS',//Directory with logs for symbiote avtivity
 
-    'SNAPSHOTS'//Directory with snapshots of state for symbiotes
+    'SNAPSHOTS'//Directory with snapshots of state for symbiote
 
 ].forEach(scope=>{
 

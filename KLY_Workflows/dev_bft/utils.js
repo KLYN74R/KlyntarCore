@@ -208,6 +208,20 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
     )
 
+    
+    CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
+    
+        fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
+        
+        .catch(_=>
+            
+            CONFIG.SYMBIOTE.LOGS.OFFLINE
+            &&
+            LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
+            
+        )
+
+    )
 
     /*
     
