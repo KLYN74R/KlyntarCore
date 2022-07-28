@@ -190,7 +190,7 @@ let API = {
 
 UWS_SERVER
 
-.get('/multiplicity/:symbiote/:fromHeigth',API.multiplicity)
+.get('/multiplicity/:symbiote/:fromHeight',API.multiplicity)
 
 .get('/account/:symbiote/:address',API.acccount)
 

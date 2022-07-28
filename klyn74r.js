@@ -115,11 +115,11 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 //All content bellow are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
 [
 
-    'CHAINDATA',//Data of symbiotes
+    'CHAINDATA',//Data of symbiote
     
     'GENESIS',//Directory with files for GENESIS data for symbiotes
 
-    'CONFIGS',//Directory with configs
+    'CONFIGS',//Directory with configs(for node,symbiote and so on)
 
     'LOGS',//Directory with logs for symbiote avtivity
 

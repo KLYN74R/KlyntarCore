@@ -205,6 +205,24 @@
         "http://localhost:33333",
         "http://localhost:44444"
     ],
+
+    "GET_URGENT_GENERATION_THREAD":[
+        {
+            "PUB":"6Ha9fUQ3CYou6GnnNKvc2VkhQM3MYQUfTqwbx6oQsN2wSEUaMznPMU5mDf2kMrCnPw",
+            "URL":"http://localhost:22222"
+        },
+        {
+            "PUB":"6smQ7dp9uuAwWrfBRjhHC9w7kwpWvDguSRfqg4dcAfq8oHAqBpJJy9Z1oDAGtv4xHN",
+            "URL":"http://localhost:33333"
+        },
+        {
+            "PUB":"7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X",
+            "URL":"http://localhost:44444"
+        }
+        
+    ],
+
+    "STOP_IF_NO_GT_PROPOSERS":false,
         
     "MUST_SEND":{
 

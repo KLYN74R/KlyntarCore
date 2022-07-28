@@ -1,8 +1,8 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, VERIFY} from './utils.js'
 
-import {START_VERIFY_POLLING} from './verification.js'
+import {GET_BLOCKS_FOR_GENERATION_THREAD, START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -123,6 +123,7 @@ GEN_BLOCK_START=async()=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
+        //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
     
         await GEN_BLOCK()
@@ -171,6 +172,16 @@ RUN_POLLING=async()=>{
 
 export let GEN_BLOCK = async () => {
 
+
+    /*
+    _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
+    
+    Initially, we check if it's your turn to generate block - if your pubkey was choosen as a master validator - then you can produce set of phantom blocks
+    
+    */
+
+    if(SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR!==CONFIG.SYMBIOTE.PUB) return
+
     
     /*
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
@@ -178,6 +189,7 @@ export let GEN_BLOCK = async () => {
     Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
     
     */
+
                 
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
     
@@ -357,7 +369,7 @@ RELOAD_STATE = async() => {
         snapshotVT=await SYMBIOTE_META.SNAPSHOT.METADATA.get('VT').catch(e=>false),
     
         //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH)//snapshot itself must be OK
+        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH+JSON.stringify(snapshotVT.VALIDATORS))//snapshot itself must be OK
                        &&
                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
                        &&
@@ -421,11 +433,15 @@ RELOAD_STATE = async() => {
             //Load genesis state or data from backups(not to load state from the beginning)
             let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
         
-            Object.keys(genesis).forEach(
+            Object.keys(genesis.ACCOUNTS).forEach(
             
-                address => promises.push(SYMBIOTE_META.STATE.put(address,genesis[address]))
+                address => promises.push(SYMBIOTE_META.STATE.put(address,genesis.ACCOUNTS[address]))
                 
             )
+
+            //Push the initial validators to verification thread
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
+
 
         })
 
@@ -513,7 +529,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Create subdirs due to rational solutions
     [
-        'METADATA',//important dir-cointains canaries,pointer to VERIFICATION_THREAD and GENERATION_THREADS
+        'METADATA',//important dir-contains canaries,pointer to VERIFICATION_THREAD and GENERATION_THREAD
     
         'BLOCKS',//For blocks(key is index)
         
@@ -584,7 +600,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         e.notFound
         ?
-        {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}//initial
+        {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[]}//initial
         :
         (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(124))
                     
@@ -640,7 +656,7 @@ PREPARE_SYMBIOTE=async()=>{
             let verifThread=SYMBIOTE_META.VERIFICATION_THREAD
 
             //If staging zone is OK
-            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH)){
+            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH+JSON.stringify(verifThread.VALIDATORS))){
 
                 //This is the signal that we should rewrite state changes from the staging zone
                 if(canary!==verifThread.CHECKSUM){
@@ -841,12 +857,12 @@ RUN_SYMBIOTE=async()=>{
     await PREPARE_SYMBIOTE()
 
 
-    let promises=[]
-
-
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
+        //Start verification process
         await RUN_POLLING()
+
+        let promises=[]
 
         //Check if bootstrap nodes is alive
         CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
@@ -869,12 +885,120 @@ RUN_SYMBIOTE=async()=>{
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
+        //Get the urgent network information about the generation thread
+        let getUrgentGTpromises=[],
+
+            // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
+            // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
+            gtHandlers = new Map() 
+
+        //Check if bootstrap nodes is alive
+        CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
+
+            getUrgentGTpromises.push(
+                        
+                fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
+            
+                    .then(res=>res.json())
+            
+                    .then(async response=>{
+
+                        /*
+                        
+                            Response consists of:
+
+                            +masterValidator(validator choosen for epoch - his BLS pubkey)
+                            +epochStart - height of block when epoch has started
+                            +validators - BLS pubkeys of current validators set
+                            
+                            +signature(data is signed, so you will have proofs that you've received fake data from some sources)
+                            
+                        */
+                       
+                        let payloadHash=BLAKE3(response.masterValidator+response.epochStart+JSON.stringify(response.validators))
+
+
+                        if(await VERIFY(payloadHash,response.signature,node.PUB)){
+
+                            if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
+                            
+                            else {
+
+                                gtHandlers.set(payloadHash,{votes:0,pure:response})
+
+                            }
+
+                        }
+
+
+                    })
+            
+                    .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
+
+            )
+
+        )
+
+
+        //If no answer at all - probably, we need to stop and try later
+        if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
+
+            LOG(`No versions of GT, so going to stop ...`,'W')
+
+            process.exit(130)
+
+        }
+
+
+        await Promise.all(getUrgentGTpromises)
+
+
+        //Among all the answers choose only one with maximum number of votes
+        let winnerHandler='',
+        
+            maxVotes=0
+
+
+        gtHandlers.forEach((handler,_hash)=>{
+
+            if(handler.votes>maxVotes){
+
+                maxVotes=handler.votes
+
+                winnerHandler=handler
+            
+            }else if(handler.votes===maxVotes){
+
+                LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
+
+                process.exit(127)
+
+            }
+
+        })
+
+
+
+        LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | Epoch start:${winnerHandler.epochStart})`,'I')
+
+
+
+        //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
+        SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
+
+        SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
+
+        SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
+
 
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
             
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
             
             GEN_BLOCK_START()
+
+            //Also,run polling for blocks & headers from generation thread
+            GET_BLOCKS_FOR_GENERATION_THREAD()
         
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 

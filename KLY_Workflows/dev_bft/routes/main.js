@@ -34,7 +34,7 @@ let MAIN = {
 
         let total=0,buf=Buffer.alloc(0)
 
-        //Probably you disable for all symbiotes
+        
         if(!CONFIG.SYMBIOTE.TRIGGERS.BLOCKS){
             
             a.end('Route is off')
@@ -143,6 +143,37 @@ let MAIN = {
 
 
         }else !a.aborted&&a.end('Mempool is fullfilled or no such filter')
+    
+    }),
+
+
+    //[symbioteID,hostToAdd(initiator's valid and resolved host)]
+    genThread:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
+        
+
+        if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
+            
+            //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
+            let nodes=SYMBIOTE_META.NEAR
+            
+            if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
+
+                
+                nodes.length<symbioteConfig.MAX_CONNECTIONS
+                ?
+                nodes.push(domain)
+                :
+                nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
+
+
+
+                !a.aborted&&a.end('OK')
+
+            }else !a.aborted&&a.end('Domain already in scope')
+
+        }else !a.aborted&&a.end('Wrong types')
     
     }),
 
@@ -291,13 +322,12 @@ let MAIN = {
 
 UWS_SERVER
 
-.post('/cb',MAIN.block)
-
-.post('/ib',MAIN.instantBlock)
+.post('/genthread',MAIN.genThread)
 
 .post('/addnode',MAIN.addNode)
+
+.post('/block',MAIN.block)
 
 .post('/proof',MAIN.proof)
 
 .post('/event',MAIN.event)
-

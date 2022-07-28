@@ -54,25 +54,17 @@ let API = {
 
 
 
-    // 0 - symbioteID , 1 - type of block(Instant or Controller), 2 - BlockId(index for ControllerBlock and hash for InstantBlock)
+    // 0 - symbioteID , 1 - block index
     block:(a,q)=>{
 
-        //Return ControllerBlock by index or InstantBlock by hash on appropriate symbiote
-        let type=q.getParameter(1)==='i'?'INSTANT_BLOCKS':'CONTROLLER_BLOCKS',
+        let id=q.getParameter(1)
     
-            id=q.getParameter(2)
-        
-    
-    
-        
         //Set triggers
         if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
     
-            let db=SYMBIOTE_META[type]//depends on type of block-chose appropriate db
-    
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
-            db.get(id).then(block=>
+            SYMBIOTE_META.BLOCKS.get(id).then(block=>
                 
                 !a.aborted && a.end(JSON.stringify(block))
                 
@@ -99,71 +91,29 @@ let API = {
         if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){
 
     
-            let symbioteConfig=CONFIG.SYMBIOTE,
-    
-                cbStorage=SYMBIOTE_META.CONTROLLER_BLOCKS,
-                
-                insStorage=SYMBIOTE_META.INSTANT_BLOCKS,
+            let promises=[],
 
-                promises=[],
-
-                response={},
-
-                verifThread=SYMBIOTE_META.VERIFICATION_THREAD
+                response={}
 
 
-
-            for(let max=fromHeight+symbioteConfig.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
+            for(let max=fromHeight+SYMBIOTE.CONFIG.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
 
                 //This is the signal that this node haven't process this height yet and even didn't have forward loading 
-                if(fromHeight>verifThread.COLLAPSED_INDEX && !(await cbStorage.get(fromHeight).catch(e=>false))) break
+                if(fromHeight>SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX && !(await SYMBIOTE_META.BLOCKS.get(fromHeight).catch(e=>false))) break
 
-                promises.push(cbStorage.get(fromHeight).then(
+                promises.push(SYMBIOTE_META.BLOCKS.get(fromHeight).then(
                     
-                    block => {
-                        
-                        response[block.i]={c:block,i:[]}
-
-                        return block
-
-                    }
+                    block => response[block.i]=block
                     
                 ).catch(
                     
-                    e => LOG(`ControllerBlock \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
+                    e => LOG(`Block \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
                     
                 ))
 
             }
 
-
-            //Now let's fetch InstantBlocks
-            let instantPromises=[]
-
-            await Promise.all(promises.splice(0)).then(blocks=>blocks.filter(x=>x)).then(
-                
-                controllerBlocks => controllerBlocks.forEach(
-                
-                    //Go through hashes of InstantBlocks and load them
-                    cBlock => cBlock.a.forEach(
-                        
-                        iBlockHash => instantPromises.push(insStorage.get(iBlockHash).then(
-                            
-                            iBlock => response[cBlock.i].i.push(iBlock)
-                            
-                        ).catch(
-
-                            e => LOG(`InstantBlock ${iBlockHash} on symbiote ${SYMBIOTE_ALIAS()} not found, load please if you need\n${e}`,'W')
-                            
-                        )) 
-                        
-                    )
-                        
-                )
-                
-            )
-
-            await Promise.all(instantPromises.splice(0))
+            await Promise.all(promises)
 
             !a.aborted && a.end(JSON.stringify(response))
 
@@ -190,11 +140,11 @@ let API = {
 
 UWS_SERVER
 
-.get('/multiplicity/:symbiote/:fromHeigth',API.multiplicity)
+.get('/multiplicity/:symbiote/:fromHeight',API.multiplicity)
 
 .get('/account/:symbiote/:address',API.acccount)
 
-.get('/block/:symbiote/:type/:id',API.block)
+.get('/block/:symbiote/:id',API.block)
 
 .get('/nodes/:symbiote/:region',API.nodes)
 

@@ -54,6 +54,43 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
 
 
+GET_BLOCKS_FOR_GENERATION_THREAD = fromHeight => {
+
+    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`)
+
+    .then(r=>r.json()).then(blocksSet=>{
+
+        Object.keys(blocksSet).forEach(
+            
+            async blockIndex => {
+
+                //Add logic to work with proofs
+
+                let block=blocksSet[blockIndex],
+
+                    blockHash=Block.genHash(block.e,block.i,block.p)
+    
+                if(await VERIFY(blockHash,block.sig,block.c)){
+
+                    SYMBIOTE_META.BLOCKS.put(block.i,block)
+
+                }
+
+            }
+
+        )
+
+    }).catch(
+        
+        e => LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
+    
+    )
+
+},
+
+
+
+
 //Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
 GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
@@ -97,9 +134,7 @@ START_VERIFY_POLLING=async()=>{
         THREADS_STILL_WORKS.GENERATION=true
 
         //Try to get block
-        let verifThread=SYMBIOTE_META.VERIFICATION_THREAD,
-            
-            blockId=verifThread.COLLAPSED_INDEX+1,
+        let blockId=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1,
         
             block=await GET_BLOCK(blockId), nextBlock
     
@@ -110,11 +145,11 @@ START_VERIFY_POLLING=async()=>{
             await verifyBlock(block)
 
             //Signal that verification was successful
-            if(blockId===verifThread.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(verifThread.COLLAPSED_INDEX+1)
+            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
 
         }
 
-        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${verifThread.COLLAPSED_INDEX+1}`,'W')
+        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
 
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
@@ -471,7 +506,7 @@ verifyBlock=async block=>{
         SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
 
 
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+block.i+blockHash)//like in network packages
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+block.i+blockHash+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))//like in network packages
 
 
         //Make commit to staging area
