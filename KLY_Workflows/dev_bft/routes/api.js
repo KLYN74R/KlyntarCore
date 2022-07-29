@@ -52,19 +52,33 @@ let API = {
     },
 
 
+    // 0 - symbioteID, 1 - preffered region(close to another node)
+    hash:(a,q)=>{
+    
+            CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
+            ?
+            a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.NODES).end(
+        
+                CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
+        
+            )
+            :
+            !a.aborted&&a.end('Symbiote not supported')
+        
+        },
+    
+
 
 
     // 0 - symbioteID , 1 - block index
     block:(a,q)=>{
-
-        let id=q.getParameter(1)
     
         //Set triggers
         if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
     
-            SYMBIOTE_META.BLOCKS.get(id).then(block=>
+            SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
                 
                 !a.aborted && a.end(JSON.stringify(block))
                 
@@ -144,9 +158,9 @@ UWS_SERVER
 
 .get('/account/:symbiote/:address',API.acccount)
 
-.get('/block/:symbiote/:id',API.block)
-
 .get('/nodes/:symbiote/:region',API.nodes)
+
+.get('/block/:symbiote/:id',API.block)
 
 .post('/alert',API.alert)
 

@@ -54,35 +54,47 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
 
 
-GET_BLOCKS_FOR_GENERATION_THREAD = fromHeight => {
+//Receive object in form {blockIndex0:{validatorsPub},blockIndex1:...,blockIndexN:,}
+PERFORM_BLOCKS_FROM_GENERATION_THREAD=blocksSet=>{
 
-    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`)
+    Object.keys(blocksSet).forEach(
+        
+        async blockIndex => {
 
-    .then(r=>r.json()).then(blocksSet=>{
+            //Add logic to work with proofs
 
-        Object.keys(blocksSet).forEach(
-            
-            async blockIndex => {
+            let block=blocksSet[blockIndex],
 
-                //Add logic to work with proofs
+                blockHash=Block.genHash(block.e,block.i,block.p)
 
-                let block=blocksSet[blockIndex],
+            if(await VERIFY(blockHash,block.sig,SYMBIOTE_META.GENERATION_THREAD.MASTER)){
 
-                    blockHash=Block.genHash(block.e,block.i,block.p)
-    
-                if(await VERIFY(blockHash,block.sig,block.c)){
-
-                    SYMBIOTE_META.BLOCKS.put(block.i,block)
-
-                }
+                SYMBIOTE_META.BLOCKS.put(block.i,block)
 
             }
 
-        )
+        }
 
-    }).catch(
+    )
+
+},
+
+
+
+
+//Send proof with blocks
+GET_BLOCKS_FOR_GENERATION_THREAD = () => {
+
+    //We can ask from some "reliable" and "fast" endpoint.It might be a fast API, some CDN you some private node
+    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${SYMBIOTE_META.GENERATION_THREAD.EPOCH_START}`)
+
+    .then(r=>r.json()).then(PERFORM_BLOCKS_FROM_GENERATION_THREAD).catch(
         
-        e => LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
+        e =>{
+
+            LOG(`Going to ask blocks from GT on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
+
+        }
     
     )
 
@@ -503,7 +515,7 @@ verifyBlock=async block=>{
         SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
 
 
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+block.i+blockHash+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))//like in network packages
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+block.i+blockHash+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)+SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR+SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START)//like in network packages
 
 
         //Make commit to staging area

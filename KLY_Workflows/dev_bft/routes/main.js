@@ -1,16 +1,14 @@
 import{
 
-    BODY,SAFE_ADD,PARSE_JSON,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE
+    BODY,SAFE_ADD,PARSE_JSON,SYMBIOTE_ALIAS,LOG,PATH_RESOLVE,BLAKE3
 
 } from '../../../KLY_Utils/utils.js'
 
-import {SEND_REPORT,BROADCAST,BLOCKLOG,VERIFY} from '../utils.js'
+import {SEND_REPORT,BROADCAST,BLOCKLOG,VERIFY,SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
 import fs from 'fs'
-
-
 
 
 
@@ -148,38 +146,48 @@ let MAIN = {
 
 
     //[symbioteID,hostToAdd(initiator's valid and resolved host)]
-    genThread:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
-        
-
-        if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
-            
-            //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-            let nodes=SYMBIOTE_META.NEAR
-            
-            if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
-
-                
-                nodes.length<symbioteConfig.MAX_CONNECTIONS
-                ?
-                nodes.push(domain)
-                :
-                nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-
-
-
-                !a.aborted&&a.end('OK')
-
-            }else !a.aborted&&a.end('Domain already in scope')
-
-        }else !a.aborted&&a.end('Wrong types')
     
-    }),
+    /*
+                        
+        Response consists of:
+
+        +masterValidator(validator choosen for epoch - his BLS pubkey)
+        +epochStart - height of block when epoch has started
+        +validators - BLS pubkeys of current validators set
+                            
+        +signature(data is signed, so you will have proofs that you've received fake data from some sources)
+                            
+    */
+    genThread:async(a,q)=>{
+ 
+        a.onAborted(()=>a.aborted=true)
+
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)){
+
+            let payload={
+                
+                masterValidator:SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR,
+                
+                epochStart:SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START,
+                
+                validators:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+            
+            },
+        
+                signature=await SIG(BLAKE3(payload.masterValidator+payload.epochStart+JSON.stringify(payload.validators)))
+
+
+            !a.aborted&&a.end(JSON.stringify({payload,signature}))
+
+        }
+        else !a.aborted&&a.end('Symbiote not supported')
+    
+    },
 
 
 
-
+    
 //_____________________________________________________________AUXILARIES________________________________________________________________________
 
 
@@ -188,7 +196,9 @@ let MAIN = {
     //[symbioteID,hostToAdd(initiator's valid and resolved host)]
     addNode:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
+        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),
+        
+            symbioteConfig=CONFIG.SYMBIOTE
         
 
         if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
@@ -317,12 +327,9 @@ let MAIN = {
 }
 
 
-
-
-
 UWS_SERVER
 
-.post('/genthread',MAIN.genThread)
+.get('/genthread/:symbiote',MAIN.genThread)
 
 .post('/addnode',MAIN.addNode)
 

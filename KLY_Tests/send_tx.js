@@ -79,8 +79,15 @@ event={
 }
 
 console.log(symbiote+WORKFLOW_VERSION+PAYLOAD_TYPE+JSON.stringify(payload)+chainNonce+FEE)
-await fetch(`http://localhost:11111/account/${symbiote}/${SENDER.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for SENDER(${SENDER.alias}) =>`,x))
-await fetch(`http://localhost:11111/account/${symbiote}/${RECEPIENT.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for RECEPIENT(${RECEPIENT.alias}) =>`,x))
+
+
+// await fetch(`http://localhost:11111/account/${symbiote}/${SENDER.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for SENDER(${SENDER.alias}) =>`,x))
+// await fetch(`http://localhost:11111/account/${symbiote}/${RECEPIENT.pub}`).then(r=>r.text()).then(x=>console.log(`Account state for RECEPIENT(${RECEPIENT.alias}) =>`,x))
+
+
+
+
+
 
 //Send
 // await fetch('http://localhost:11111/event',

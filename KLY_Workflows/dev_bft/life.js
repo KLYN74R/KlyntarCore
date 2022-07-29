@@ -369,7 +369,7 @@ RELOAD_STATE = async() => {
         snapshotVT=await SYMBIOTE_META.SNAPSHOT.METADATA.get('VT').catch(e=>false),
     
         //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH+JSON.stringify(snapshotVT.VALIDATORS))//snapshot itself must be OK
+        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH+JSON.stringify(snapshotVT.VALIDATORS)+snapshotVT.MASTER_VALIDATOR+snapshotVT.EPOCH_START)//snapshot itself must be OK
                        &&
                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
                        &&
@@ -423,11 +423,12 @@ RELOAD_STATE = async() => {
 
         //Otherwise start rescan form height=0
         SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+        
+        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0,CHECKSUM:''}
 
         
-        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[]}
-
-        //Load all the configs
+        
+        //Load all the genesis files
         fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
 
             //Load genesis state or data from backups(not to load state from the beginning)
@@ -442,6 +443,9 @@ RELOAD_STATE = async() => {
             //Push the initial validators to verification thread
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
 
+            //And set the initial master validator whose epoch starts with block height 0 
+            SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR=genesis.MASTER_VALIDATOR
+            
 
         })
 
@@ -600,7 +604,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         e.notFound
         ?
-        {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[]}//initial
+        {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0}//initial
         :
         (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(124))
                     
@@ -656,7 +660,7 @@ PREPARE_SYMBIOTE=async()=>{
             let verifThread=SYMBIOTE_META.VERIFICATION_THREAD
 
             //If staging zone is OK
-            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH+JSON.stringify(verifThread.VALIDATORS))){
+            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH+JSON.stringify(verifThread.VALIDATORS)+verifThread.MASTER_VALIDATOR+verifThread.EPOCH_START)){
 
                 //This is the signal that we should rewrite state changes from the staging zone
                 if(canary!==verifThread.CHECKSUM){
@@ -915,21 +919,16 @@ RUN_SYMBIOTE=async()=>{
                             
                         */
                        
-                        let payloadHash=BLAKE3(response.masterValidator+response.epochStart+JSON.stringify(response.validators))
+                        let payloadHash=BLAKE3(response.data.masterValidator+response.data.epochStart+JSON.stringify(response.data.validators))
 
 
                         if(await VERIFY(payloadHash,response.signature,node.PUB)){
 
                             if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
                             
-                            else {
-
-                                gtHandlers.set(payloadHash,{votes:0,pure:response})
-
-                            }
+                            else gtHandlers.set(payloadHash,{votes:0,pure:response})
 
                         }
-
 
                     })
             
@@ -999,7 +998,7 @@ RUN_SYMBIOTE=async()=>{
 
             //Also,run polling for blocks & headers from generation thread
             //We start to get blocks from current epoch
-            GET_BLOCKS_FOR_GENERATION_THREAD(SYMBIOTE_META.GENERATION_THREAD.EPOCH_START)
+            GET_BLOCKS_FOR_GENERATION_THREAD()
         
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
