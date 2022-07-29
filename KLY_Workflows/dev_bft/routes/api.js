@@ -13,7 +13,7 @@ let API = {
 
         a.onAborted(()=>a.aborted=true)
     
-        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.ACCOUNTS){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
     
             let data={
             
@@ -23,7 +23,7 @@ let API = {
         
             }
 
-            !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.ACCOUNTS).end(JSON.stringify(data))
+            !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
     
         }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
 
@@ -41,9 +41,9 @@ let API = {
     
         CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
         ?
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.NODES).end(
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API_NODES).end(
     
-            CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
+            CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
     
         )
         :
@@ -52,31 +52,15 @@ let API = {
     },
 
 
-    // 0 - symbioteID, 1 - preffered region(close to another node)
-    hash:(a,q)=>{
-    
-            CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
-            ?
-            a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.NODES).end(
-        
-                CONFIG.SYMBIOTE.TRIGGERS.NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
-        
-            )
-            :
-            !a.aborted&&a.end('Symbiote not supported')
-        
-        },
-    
-
 
 
     // 0 - symbioteID , 1 - block index
     block:(a,q)=>{
     
         //Set triggers
-        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS[type]){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
     
-            a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age=31536000').onAborted(()=>a.aborted=true)
+            a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
     
             SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
                 
@@ -102,7 +86,7 @@ let API = {
             fromHeight=+q.getParameter(1)//convert to number to get block's id(height)
     
     
-        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.MULTI && !isNaN(fromHeight)){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && !isNaN(fromHeight)){
 
     
             let promises=[],

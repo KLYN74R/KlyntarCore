@@ -239,21 +239,27 @@
     "MY_ADDR":"http://somenode.com:7777",
         
     "TTL":{
+        "API_ACCOUNTS":30,
         "INFO":600,
-        "BALANCE":30,
-        "NODES":600,
+        "API_NODES":600,
+        "API_BLOCK":6000,
+        "API_MULTI":600,
+
         "GET_GEN_THREAD":600
     },
 
     "TRIGGERS":{
-        
+
+        "API_ACCOUNTS":1,
         "INFO":1,
-        "NODES":1,
-        "ACCOUNTS":1,
+        "API_NODES":1,
+        "API_BLOCK":1,
+        "API_MULTI":1,
+        
+        "ACCEPT_BLOCKS":1,
+        "ACCEPT_EVENTS":1,
         "GET_GEN_THREAD":1,
-        "BLOCKS":1,
-        "MULTI":1,
-        "TX":1
+        "ACCEPT_NEW_NODES":1
     },
 
     "GET_BLOCKS_URI":"http://localhost:6666",
