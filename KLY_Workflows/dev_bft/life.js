@@ -61,7 +61,7 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS[symbiote]).every(x=>x)){
+        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
 
@@ -895,107 +895,107 @@ RUN_SYMBIOTE=async()=>{
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
-        //Get the urgent network information about the generation thread
-        let getUrgentGTpromises=[],
+        // //Get the urgent network information about the generation thread
+        // let getUrgentGTpromises=[],
 
-            // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
-            // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
-            gtHandlers = new Map() 
+        //     // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
+        //     // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
+        //     gtHandlers = new Map() 
 
-        //Check if bootstrap nodes is alive
-        CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
+        // //Check if bootstrap nodes is alive
+        // CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
 
-            getUrgentGTpromises.push(
+        //     getUrgentGTpromises.push(
                         
-                fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        //         fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
             
-                    .then(res=>res.json())
+        //             .then(res=>res.json())
             
-                    .then(async response=>{
+        //             .then(async response=>{
 
-                        /*
+        //                 /*
                         
-                            Response consists of:
+        //                     Response consists of:
 
-                            +masterValidator(validator choosen for epoch - his BLS pubkey)
-                            +epochStart - height of block when epoch has started
-                            +validators - BLS pubkeys of current validators set
+        //                     +masterValidator(validator choosen for epoch - his BLS pubkey)
+        //                     +epochStart - height of block when epoch has started
+        //                     +validators - BLS pubkeys of current validators set
                             
-                            +signature(data is signed, so you will have proofs that you've received fake data from some sources)
+        //                     +signature(data is signed, so you will have proofs that you've received fake data from some sources)
                             
-                        */
+        //                 */
                        
-                        let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
+        //                 let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
 
 
-                        if(await VERIFY(payloadHash,response.signature,node.PUB)){
+        //                 if(await VERIFY(payloadHash,response.signature,node.PUB)){
 
-                            if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
+        //                     if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
                             
-                            else gtHandlers.set(payloadHash,{votes:1,pure:response})
+        //                     else gtHandlers.set(payloadHash,{votes:1,pure:response})
 
-                        }
+        //                 }
 
-                    })
+        //             })
             
-                    .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
+        //             .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
 
-            )
+        //     )
 
-        )
-
-
-        //If no answer at all - probably, we need to stop and try later
-        if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
-
-            LOG(`No versions of GT, so going to stop ...`,'W')
-
-            process.exit(130)
-
-        }
+        // )
 
 
-        await Promise.all(getUrgentGTpromises)
+        // //If no answer at all - probably, we need to stop and try later
+        // if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
+
+        //     LOG(`No versions of GT, so going to stop ...`,'W')
+
+        //     process.exit(130)
+
+        // }
 
 
-        //Among all the answers choose only one with maximum number of votes
-        let winnerHandler='',
+        // await Promise.all(getUrgentGTpromises)
+
+
+        // //Among all the answers choose only one with maximum number of votes
+        // let winnerHandler='',
         
-            maxVotes=0
+        //     maxVotes=0
 
 
 
 
-        gtHandlers.forEach((handler,_)=>{
+        // gtHandlers.forEach((handler,_)=>{
 
-            if(handler.votes>maxVotes){
+        //     if(handler.votes>maxVotes){
 
-                maxVotes=handler.votes
+        //         maxVotes=handler.votes
 
-                winnerHandler=handler.pure.payload
+        //         winnerHandler=handler.pure.payload
             
-            }else if(handler.votes===maxVotes){
+        //     }else if(handler.votes===maxVotes){
 
-                LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
+        //         LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
 
-                process.exit(127)
+        //         process.exit(127)
 
-            }
+        //     }
 
-        })
-
-
-
-        LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | Epoch start:${winnerHandler.epochStart})`,'I')
+        // })
 
 
 
-        //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
-        SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
+        // LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | Epoch start:${winnerHandler.epochStart})`,'I')
 
-        SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
 
-        SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
+
+        // //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
+        // SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
+
+        // SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
+
+        // SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
 
 
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{

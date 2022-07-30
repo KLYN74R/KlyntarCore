@@ -1,12 +1,12 @@
 import {LOG,SIG,BLOCKLOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS} from './utils.js'
-
 import ControllerBlock from './blocks/controllerblock.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
 import InstantBlock from './blocks/instantblock.js'
+
+import {BROADCAST,DECRYPT_KEYS} from './utils.js'
 
 import UWS from 'uWebSockets.js'
 
@@ -64,7 +64,7 @@ let graceful=()=>{
     setInterval(async()=>{
 
         //Each subprocess in each symbiote must be stopped
-        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS[symbiote]).every(x=>x)){
+        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
 
