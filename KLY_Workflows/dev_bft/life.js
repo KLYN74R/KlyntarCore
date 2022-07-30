@@ -765,7 +765,7 @@ PREPARE_SYMBIOTE=async()=>{
             
         ).catch(e=>(  
             
-            {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  
+            {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}
             
         ))
 
@@ -802,12 +802,19 @@ PREPARE_SYMBIOTE=async()=>{
         let balance
         
         if(CONFIG.SYMBIOTE.BALANCE_VIEW){
+            
             let spinner = ora({
+           
                 color:'red',
+           
                 prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
+           
             }).start()
+
             balance = await HOSTCHAINS.get(tickers[i]).getBalance()
+            
             spinner.stop()
+            
             LOG(`Balance of controller on hostchain \x1b[32;1m${
             
                 tickers[i]
@@ -827,7 +834,6 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/syminfo.txt')).toString(),'S')
-        
 
     LOG(`Canary is \x1b[32;1m<OK>`,'I')
 
@@ -919,14 +925,14 @@ RUN_SYMBIOTE=async()=>{
                             
                         */
                        
-                        let payloadHash=BLAKE3(response.data.masterValidator+response.data.epochStart+JSON.stringify(response.data.validators))
+                        let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
 
 
                         if(await VERIFY(payloadHash,response.signature,node.PUB)){
 
                             if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
                             
-                            else gtHandlers.set(payloadHash,{votes:0,pure:response})
+                            else gtHandlers.set(payloadHash,{votes:1,pure:response})
 
                         }
 
@@ -958,13 +964,15 @@ RUN_SYMBIOTE=async()=>{
             maxVotes=0
 
 
+
+
         gtHandlers.forEach((handler,_)=>{
 
             if(handler.votes>maxVotes){
 
                 maxVotes=handler.votes
 
-                winnerHandler=handler
+                winnerHandler=handler.pure.payload
             
             }else if(handler.votes===maxVotes){
 

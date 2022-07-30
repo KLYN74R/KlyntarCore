@@ -19,35 +19,181 @@ export let
 
 
 
+PERFORM_BLOCK_MULTISET=blocksSet=>Object.keys(blocksSet).forEach(
+            
+    async blockIndex => {
+
+        let block=blocksSet[blockIndex],
+
+            blockHash=Block.genHash(block.e,block.i,block.p)
+
+        if(await VERIFY(blockHash,block.sig,block.c)){
+
+            SYMBIOTE_META.BLOCKS.put(block.i,block)
+
+        }
+
+    }
+
+),
+
+
+
+
+//Initially we ask blocks from CONFIG.SYMBIOTE.GET_MULTI node. It might be some CDN service, special API, private fast node and so on
 GET_FORWARD_BLOCKS = fromHeight => {
 
     fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`)
 
-    .then(r=>r.json()).then(blocksSet=>{
-
-        Object.keys(blocksSet).forEach(
-            
-            async blockIndex => {
-
-                let block=blocksSet[blockIndex],
-
-                    blockHash=Block.genHash(block.e,block.i,block.p)
+    .then(r=>r.json()).then(PERFORM_BLOCK_MULTISET).catch(async error=>{
+        
+        LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}\n${error}`,'I')
     
-                if(await VERIFY(blockHash,block.sig,block.c)){
+        LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_MULTI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
 
-                    SYMBIOTE_META.BLOCKS.put(block.i,block)
+        //Combine all nodes we know about and try to find block there
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+
+
+
+        for(let url in allVisibleNodes){
+
+            if(itsProbablyBlock){
+
+                let itsProbablySetOfBlocks=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId).then(r=>r.json()).catch(e=>false)
+
+                if(itsProbablySetOfBlocks){
+
+                    PERFORM_BLOCK_MULTISET(itsProbablySetOfBlocks)
+
+                    return //and leave function
 
                 }
 
             }
 
-        )
+        }
 
-    }).catch(
+    })
+
+},
+
+
+
+
+//Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URI" node for new blocks
+//If no answer - try to find blocks somewhere else
+
+GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
+
+    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
+
+    .then(r=>r.json()).then(block=>{
+
+
+        let hash=Block.genHash(block.e,block.i,block.p)
+            
+        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
+
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block.i)
+
+            //Try to instantly and asynchronously load more blocks if it's possible
+            GET_FORWARD_BLOCKS(blockId+1)
+
+            return block
+
+        }
+
+    }).catch(async error=>{
+
+        LOG(`No block \x1b[36;1m${blockId}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+
+        LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
+
+        //Combine all nodes we know about and try to find block there
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+
+
+        for(let url in allVisibleNodes){
+
+
+            let itsProbablyBlock=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId).then(r=>r.json()).catch(e=>false)
+
+
+            if(itsProbablyBlock){
+
+                let hash=Block.genHash(itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+            
+
+                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.i==='number'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string'){
+
+                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block.i)
+
+                    //Try to instantly and asynchronously load more blocks if it's possible
+                    GET_FORWARD_BLOCKS(blockId+1)
+
+                    return itsProbablyBlock
+
+                }
+
+            }
+
+        }
         
-        e => LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
+    })
+
+),
+
+
+
+
+START_VERIFY_POLLING=async()=>{
+
+
+    //This option will stop workflow of verification for each symbiote
+    if(!SYSTEM_SIGNAL_ACCEPTED){
+
+        THREADS_STILL_WORKS.GENERATION=true
+
+        //Try to get block
+        let blockId=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1,
+        
+            block=await GET_BLOCK(blockId), nextBlock
     
-    )
+
+    
+            
+        if(block){
+
+            await verifyBlock(block)
+
+            //Signal that verification was successful
+            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
+
+        }
+
+        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
+
+
+        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
+
+
+        //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
+        setTimeout(()=>START_VERIFY_POLLING(),nextBlock?0:CONFIG.SYMBIOTE.CONTROLLER_POLLING)
+
+        //Probably no sense to stop polling via .clearTimeout()
+        //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
+        
+        THREADS_STILL_WORKS.GENERATION=false
+
+    
+    }else{
+
+        LOG(`Polling for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+
+        SIG_PROCESS.VERIFY=true
+
+    }
 
 },
 
@@ -97,92 +243,6 @@ GET_BLOCKS_FOR_GENERATION_THREAD = () => {
         }
     
     )
-
-},
-
-
-
-
-//Make all advanced stuff here-check block locally or ask from "GET_CONTROLLER" for set of block and ask them asynchronously
-GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
-
-    //FOR FUTURE:
-    //Request and get current height of symbiote from CONTROLLER(maxId will be returned)
-    //Then we ask for block with <blockId> and asynchronously request the other blocks
-    
-    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
-
-    .then(r=>r.json()).then(block=>{
-
-        //FOR FUTURE:ASK another blocks for future process optimization here
-
-        let hash=Block.genHash(block.e,block.i,block.p)
-            
-        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
-
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block.i)
-
-            //Try to instantly and asynchronously load more blocks if it's possible
-            GET_FORWARD_BLOCKS(blockId+1)
-
-            return block
-
-        }
-
-    }).catch(e=>LOG(`No block \x1b[36;1m${blockId}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${e}`,'W'))
-
-
-),
-
-
-
-
-START_VERIFY_POLLING=async()=>{
-
-
-    //This option will stop workflow of verification for each symbiote
-    if(!SYSTEM_SIGNAL_ACCEPTED){
-
-        THREADS_STILL_WORKS.GENERATION=true
-
-        //Try to get block
-        let blockId=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1,
-        
-            block=await GET_BLOCK(blockId), nextBlock
-    
-
-            
-        if(block){
-
-            await verifyBlock(block)
-
-            //Signal that verification was successful
-            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
-
-        }
-
-        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
-
-
-        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
-
-
-        //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(()=>START_VERIFY_POLLING(),nextBlock?0:CONFIG.SYMBIOTE.CONTROLLER_POLLING)
-
-        //Probably no sense to stop polling via .clearTimeout()
-        //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
-        
-        THREADS_STILL_WORKS.GENERATION=false
-
-    
-    }else{
-
-        LOG(`Polling for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
-
-        SIG_PROCESS.VERIFY=true
-
-    }
 
 },
 
@@ -335,7 +395,7 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
    
 
-   
+    console.log('Going to verify ',block)
 
     //block.a.length<=100.At least this limit is only for first times
     if(overviewOk){
