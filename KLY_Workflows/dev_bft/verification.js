@@ -90,8 +90,6 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
             
         if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
-            console.log(block);
-
             BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
             //Try to instantly and asynchronously load more blocks if it's possible

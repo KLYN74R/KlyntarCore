@@ -171,8 +171,7 @@ let MAIN = {
             },
         
                 signature=await SIG(BLAKE3(payload.masterValidator+payload.epochStart+JSON.stringify(payload.validators)))
-
-                console.log({payload,signature})
+                
 
             !a.aborted&&a.end(JSON.stringify({payload,signature}))
 

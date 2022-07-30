@@ -208,6 +208,13 @@
             "http://localhost:6664",
             "http://localhost:44444"
         ],
+
+        "BLOCK_ACCEPTION_TRUST_POOL":[
+            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
+            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
+            "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
+        ],
     
         "GET_URGENT_GENERATION_THREAD":[
             {
@@ -270,6 +277,7 @@
     
         "GET_BLOCKS_URI":"http://localhost:6666",
         "GET_MULTI":"http://localhost:6666",
+        "BLOCKS_EXPORT_PORTION":100,
 
         "REGION":"EU",
     

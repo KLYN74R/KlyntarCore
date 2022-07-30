@@ -94,7 +94,7 @@ let API = {
                 response={}
 
 
-            for(let max=fromHeight+SYMBIOTE.CONFIG.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
+            for(let max=fromHeight+CONFIG.SYMBIOTE.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
 
                 //This is the signal that this node haven't process this height yet and even didn't have forward loading 
                 if(fromHeight>SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX && !(await SYMBIOTE_META.BLOCKS.get(fromHeight).catch(e=>false))) break

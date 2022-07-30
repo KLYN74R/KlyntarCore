@@ -267,6 +267,7 @@
     "GET_INSTANT":"http://localhost:11111",
     "GET_MULTI":"http://localhost:11111",
     "BLOCKS_EXPORT_PORTION":100,
+    
     "REGION":"EU",
 
     "LOGS":{

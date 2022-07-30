@@ -1006,7 +1006,7 @@ RUN_SYMBIOTE=async()=>{
 
             //Also,run polling for blocks & headers from generation thread
             //We start to get blocks from current epoch
-            GET_BLOCKS_FOR_GENERATION_THREAD()
+            // GET_BLOCKS_FOR_GENERATION_THREAD()
         
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
