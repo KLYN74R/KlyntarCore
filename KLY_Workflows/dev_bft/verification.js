@@ -58,17 +58,13 @@ GET_FORWARD_BLOCKS = fromHeight => {
 
         for(let url in allVisibleNodes){
 
-            if(itsProbablyBlock){
+            let itsProbablySetOfBlocks=await fetch(url+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`).then(r=>r.json()).catch(e=>false)
 
-                let itsProbablySetOfBlocks=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId).then(r=>r.json()).catch(e=>false)
+            if(itsProbablySetOfBlocks){
 
-                if(itsProbablySetOfBlocks){
+                PERFORM_BLOCK_MULTISET(itsProbablySetOfBlocks)
 
-                    PERFORM_BLOCK_MULTISET(itsProbablySetOfBlocks)
-
-                    return //and leave function
-
-                }
+                return //and leave function
 
             }
 
@@ -90,12 +86,13 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
     .then(r=>r.json()).then(block=>{
 
-
         let hash=Block.genHash(block.e,block.i,block.p)
             
         if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
 
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block.i)
+            console.log(block);
+
+            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
             //Try to instantly and asynchronously load more blocks if it's possible
             GET_FORWARD_BLOCKS(blockId+1)
@@ -395,7 +392,7 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
    
 
-    console.log('Going to verify ',block)
+
 
     //block.a.length<=100.At least this limit is only for first times
     if(overviewOk){

@@ -62,11 +62,11 @@ let API = {
     
             a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
     
-            SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
+            SYMBIOTE_META.BLOCKS.get(+q.getParameter(1)).then(block=>
                 
                 !a.aborted && a.end(JSON.stringify(block))
                 
-            ).catch(e=>a.end(''))
+            ).catch(e=>a.end('No block'))
     
     
         }else !a.aborted && a.end('Symbiote not supported')
