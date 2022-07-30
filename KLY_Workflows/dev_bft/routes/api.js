@@ -74,6 +74,24 @@ let API = {
     },
 
 
+    // 0 - symbioteID , 1 - BLS validator pubkey
+    block:(a,q)=>{
+    
+        //Set triggers
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+    
+            a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
+    
+            SYMBIOTE_META.BLOCKS.get(+q.getParameter(1)).then(block=>
+                
+                !a.aborted && a.end(JSON.stringify(block))
+                
+            ).catch(e=>a.end('No block'))
+    
+    
+        }else !a.aborted && a.end('Symbiote not supported')
+    
+    },
 
     //0 - symbioteID, 1 - height from which you should export block
     multiplicity:async(a,q)=>{
@@ -142,7 +160,11 @@ UWS_SERVER
 
 .get('/account/:symbiote/:address',API.acccount)
 
+// .post('/bind-endpoint',API.bindEndpointToPubKey)
+
 .get('/nodes/:symbiote/:region',API.nodes)
+
+// .get('/find/:validatorBLSPubKey',API.find)
 
 .get('/block/:symbiote/:id',API.block)
 

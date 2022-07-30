@@ -26,7 +26,7 @@ let MAIN = {
 
         let total=0,buf=Buffer.alloc(0)
 
-
+        //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
             
             a.end('Route is off')
@@ -50,14 +50,12 @@ let MAIN = {
                         hash=Block.genHash(block.e,block.i,block.p),
 
 
-                    //Check if we can accept this block
-                    allow=
+                        //Check if we can accept this block
+                        allow=
                 
-                    typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
-                    &&
-                    CONFIG.SYMBIOTE.TRIGGERS.BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-                    &&
-                    await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
+                        typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                        &&
+                        await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
                     
                     
 
@@ -65,9 +63,9 @@ let MAIN = {
 
                     if(allow){
                     
-                        SYMBIOTE_META.CONTROLLER_BLOCKS.get(block.i).catch(e=>{
+                        SYMBIOTE_META.BLOCKS.get(block.i).catch(e=>{
 
-                            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,48,'\x1b[31m',block.i)
+                            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                             
                             //Store it locally-we'll work with this block later
                             SYMBIOTE_META.BLOCKS.put(block.i,block).then(()=>

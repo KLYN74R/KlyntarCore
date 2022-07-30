@@ -1,8 +1,8 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,VERIFY} from './utils.js'
 
-import {GET_BLOCKS_FOR_GENERATION_THREAD, START_VERIFY_POLLING} from './verification.js'
+import {START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -883,9 +883,9 @@ RUN_SYMBIOTE=async()=>{
             
                     .then(res=>res.text())
             
-                    .then(val=>val==='OK'&&LOG(`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`,'I'))
+                    .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`No positive answer from bootstrap ${endpoint}`,'I'))
             
-                    .catch(e=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response`,'F'))
+                    .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,'F'))
                         
             )
 

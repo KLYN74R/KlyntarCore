@@ -88,7 +88,7 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
         let hash=Block.genHash(block.e,block.i,block.p)
             
-        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'){
+        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string' && block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR){
 
             BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
@@ -111,9 +111,7 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
         for(let url in allVisibleNodes){
 
-
             let itsProbablyBlock=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId).then(r=>r.json()).catch(e=>false)
-
 
             if(itsProbablyBlock){
 
@@ -122,7 +120,7 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
                 if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.i==='number'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string'){
 
-                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block.i)
+                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
                     //Try to instantly and asynchronously load more blocks if it's possible
                     GET_FORWARD_BLOCKS(blockId+1)
@@ -164,6 +162,9 @@ START_VERIFY_POLLING=async()=>{
 
             //Signal that verification was successful
             if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
+
+            //If verification failed - delete block. It will force to find another(valid) block from network
+            else SYMBIOTE_META.BLOCKS.del(blockId).catch(e=>'')
 
         }
 
@@ -388,8 +389,8 @@ verifyBlock=async block=>{
         SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p
         &&
         await VERIFY(blockHash,block.sig,block.c)
-   
-
+        &&
+        block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
 
 
     //block.a.length<=100.At least this limit is only for first times
