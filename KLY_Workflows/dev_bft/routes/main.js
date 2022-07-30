@@ -250,6 +250,15 @@ let MAIN = {
     //Passive mode enabled by default    
     proof:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
+
+        if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_PROOFS){
+         
+            !a.aborted&&a.end('Route is off')
+
+            return
+
+        }
+
         /*
         
         VERIFY signature and perform further logic
@@ -257,90 +266,92 @@ let MAIN = {
         
         */
 
-        // let {symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG}=await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG}=await BODY(v,CONFIG.PAYLOAD_SIZE),
         
-        //     workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
+            workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
 
 
-        // if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && !CONFIG.SYMBIOTE.CONTROLLER.ME && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG,symbiote)){
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG)){
 
-        //     //Ok,so firstly we can assume that we have appropriate proof with the same INDEX and HASH
-        //     let alreadyHas=await SYMBIOTE_META.HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
+            //Ok,so firstly we can assume that we have appropriate proof with everything we need
+            
+            let alreadyCheckedLocalProof=await SYMBIOTE_META.HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
 
-        //         LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'W')
+                LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'W')
 
-        //         return false
+                return false
 
-        //     })
+            })
 
 
-        //     //If it's literally the same proof-just send OK
-        //     if(alreadyHas.KLYNTAR_HASH===KLYNTAR_HASH && alreadyHas.INDEX===INDEX){
+            //If it's literally the same proof-just send OK
+            if(alreadyCheckedLocalProof.KLYNTAR_HASH===KLYNTAR_HASH && alreadyCheckedLocalProof.INDEX===INDEX){
                 
-        //         !a.aborted&&a.end('OK')
+                !a.aborted&&a.end('OK')
 
-        //         return
+                return
 
-        //     }
+            }
 
-        //     //If we're working higher than proof for some block we can check instantly
-        //     SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
-        //     &&
-        //     await SYMBIOTE_META.CONTROLLER_BLOCKS.get(INDEX).then(async controllerBlock=>
-                
-        //         workflowOk= Block.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
-        //                     &&
-        //                     await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
+            //If we're working higher than proof for some block we can check instantly
+            SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX>=INDEX
+            &&
+            await SYMBIOTE_META.BLOCKS.get(INDEX).then(async block=>{
+
+                let validatorsBFTProof=await SYMBIOTE_METADATA.VALIDATORS_PROOFS.get(block.i)
+
+                if(BLAKE3(Block.genHash(block.e,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
                                 
-        //                         error => {
-                                    
-        //                             LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${error}`,'W')
-                                    
-        //                             return -1
-                                
-        //                         })
-
-        //     ).catch(e=>
-                
-        //         //You also don't have ability to compare this if you don't have block locally
-        //         LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
+                    error => {
+                        
+                        LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${error}`,'W')
+                        
+                        return -1
                     
-        //     )    
-
-        //     //False only if proof is failed
-        //     if(workflowOk){
-
-        //         CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
-        //         &&
-        //         SYMBIOTE_META.HOSTCHAINS_DATA
+                    })
                 
-        //             .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
+                ) workflowOk = true
 
-        //             .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG,INDEX}))
+           
+            }).catch(e=>
+                
+                //You also don't have ability to compare this if you don't have block locally
+                LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
                     
-        //             .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
+            )    
+
+            //False only if proof is failed
+            if(workflowOk){
+
+                CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
+                &&
+                SYMBIOTE_META.HOSTCHAINS_DATA
+                
+                    .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
                     
-        //             .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+                    .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
+                    
+                    .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
 
 
-        //     }else if(workflowOk!==-1){
+            }else if(workflowOk!==-1){
                 
-        //         LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
+                LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
 
-        //         LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
+                LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
                 
-        //         //Further logic.For example-send report to another host to call some trigger
-        //         SEND_REPORT(symbiote,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
+                //Further logic.For example-send report to another host to call some trigger
+                SEND_REPORT(symbiote,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
 
-        //     }
+            }
             
 
-        //     !a.aborted&&a.end('OK')
+            !a.aborted&&a.end('OK')
 
-        //     Promise.all(BROADCAST('/proof',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
+            Promise.all(BROADCAST('/proof',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
 
 
-        // }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
+        }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
     
     })
 

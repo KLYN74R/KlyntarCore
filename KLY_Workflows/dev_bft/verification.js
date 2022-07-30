@@ -175,7 +175,7 @@ START_VERIFY_POLLING=async()=>{
 
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(()=>START_VERIFY_POLLING(),nextBlock?0:CONFIG.SYMBIOTE.CONTROLLER_POLLING)
+        setTimeout(()=>START_VERIFY_POLLING(),nextBlock?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
@@ -366,34 +366,35 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
+checkBFTProofForBlock=async blockId=>{
+
+    return true
+
+},
+
+
 
 verifyBlock=async block=>{
 
 
+    let blockHash=Block.genHash(block.e,block.i,block.p),
 
 
-    let blockHash=Block.genHash(block.e,block.i,block.p)
-
-
-    /*  Maximum 100 InstantBlocks per 1 block(set in configs)
-        
-        We have maximum N*K events where N-number of InstantBlocks and K-number of events
-
-        It's better to take 100 blocks from different creators with 100 events instead of 10 blocks with 1000 events-this we'll accept from bigger range of creators
-    */
-
-    let overviewOk=
+    overviewOk=
     
         block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK
         &&
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p
+        block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+        &&
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p//it should be a chain
+        &&
+        await checkBFTProofForBlock(block.i)
         &&
         await VERIFY(blockHash,block.sig,block.c)
-        &&
-        block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
 
 
-    //block.a.length<=100.At least this limit is only for first times
+
+
     if(overviewOk){
 
                 
@@ -603,6 +604,21 @@ verifyBlock=async block=>{
         
         })
 
+
+        //____________________________MODIFY THE GENERATION THREAD IN ORDER TO VERIFICATION THREAD______________________
+
+
+        SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
+
+        SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
+
+        SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+
+        SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+
+        SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
+
+
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
 
         block.i!==0//no sense to snaphost if no blocks yet
@@ -617,39 +633,31 @@ verifyBlock=async block=>{
         //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________
 
 
+        let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
+        //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
+        
+        Object.keys(workflow).forEach(ticker=>
 
-
-        // //Controller shouldn't check
-        // if(!CONFIG.SYMBIOTE.CONTROLLER.ME){
-
-        //     let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
-        //     //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
-            
-        //     Object.keys(workflow).forEach(ticker=>
-    
-        //         workflow[ticker].STORE
-        //         &&
-        //         SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
-
-        //             let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
-                        
-        //             if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
-    
-        //                 LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
-    
-        //             }else{
-    
-        //                 LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
-    
-        //                 //...send report
-    
-        //             }
+            workflow[ticker].STORE
+            &&
+            SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
+                let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
                     
-        //         }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
-                
-        //     )
+                if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
 
-        // }
+                    LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
+
+                }else{
+
+                    LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
+
+                    //...send report
+
+                }
+                
+            }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+            
+        )
 
     }
 

@@ -66,10 +66,17 @@ SEND_REPORT = alertInfo =>
 
 
 
+GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
+
+    SYMBIOTE_META.STUFF_CACHE.put(stuffID,obj)
+
+    return obj
+
+}).catch(e=>false)
 
 
 
-    
+
 GET_NODES=region=>{
 
     let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)

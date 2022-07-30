@@ -94,6 +94,7 @@ let graceful=()=>{
 
 
 
+
 //Define listeners on typical signals to safely stop the node
 process.on('SIGTERM',graceful)
 process.on('SIGINT',graceful)
@@ -128,12 +129,6 @@ GEN_BLOCK_START=async()=>{
     
         await GEN_BLOCK()
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCK_START(),CONFIG.SYMBIOTE['BLOCK_GENERATION_TIME'])
-    
-        CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
-        &&
-        clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
-      
     }else{
 
         LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
@@ -173,6 +168,8 @@ RUN_POLLING=async()=>{
 export let GEN_BLOCK = async () => {
 
 
+
+
     /*
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
     
@@ -193,13 +190,16 @@ export let GEN_BLOCK = async () => {
                 
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
     
-        promises=[]//to push blocks to storage
+        promises=[],//to push blocks to storage
+
+        blocksMetadata={}
+
 
 
     //If nothing to generate-then no sense to generate block,so return
     //if(phantomControllers===0) return 
 
-    //Validator can't generate more blocks than epoch
+    //Validator can't generate more blocks than epoch limit defined in symbiote manifest
     phantomBlocksNumber = phantomBlocksNumber > CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS ? CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS : phantomBlocksNumber + 1
 
     LOG(`Number of phantoms ${phantomBlocksNumber}`,'I')
@@ -217,11 +217,14 @@ export let GEN_BLOCK = async () => {
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
+        //To send to other validators and get responces
+        blocksMetadata[blockCandidate.i]=hash
+
 
         SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
  
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
- 
+    
 
         promises.push(SYMBIOTE_META.BLOCKS.put(blockCandidate.i,blockCandidate).then(()=>blockCandidate).catch(error=>{
                 
@@ -234,6 +237,8 @@ export let GEN_BLOCK = async () => {
     }
 
 
+    // console.log('META ',blocksMetadata)
+
         
 
     //_______________________________________________COMMIT CHANGES___________________________________________________
@@ -243,35 +248,31 @@ export let GEN_BLOCK = async () => {
 
     await Promise.all(promises).then(arr=>
             
-            
-        SYMBIOTE_META.METADATA.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
+        new Promise(resolve=>{
 
-            new Promise(resolve=>{
-
-                //And here we should broadcast blocks
-                arr.forEach(block=>
+            //And here we should broadcast blocks
+            arr.forEach(block=>
                     
-                    Promise.all(BROADCAST('/block',block))
+                Promise.all(BROADCAST('/block',block))
                     
-                )
+            )
 
 
-                //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
+            //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
     
-                //Push to hostchains due to appropriate symbiote
-                Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
+            //Push to hostchains due to appropriate symbiote
+            Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
     
-                    //TODO:Add more advanced logic
-                    if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
+                //TODO:Add more advanced logic
+                if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
-                        let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
+                    let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
                         
-                            hostchain=HOSTCHAIN.get(ticker),
+                        hostchain=HOSTCHAIN.get(ticker),
     
-                            //If previous push is still not accepted-then no sense to push new symbiote update
-                            isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
+                        //If previous push is still not accepted-then no sense to push new symbiote update
+                        isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
                         
-                            
 
 
                         LOG(`Check if previous commit is accepted for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m on \x1b[32;1m${ticker}\x1b[36;1m ~~~> \x1b[32;1m${
@@ -280,7 +281,6 @@ export let GEN_BLOCK = async () => {
                             
                         }`,'I')
     
-                            
 
 
                         if(control.KLYNTAR_HASH===''||isAlreadyAccepted){
@@ -339,14 +339,6 @@ export let GEN_BLOCK = async () => {
             })
 
 
-        ).catch(e=>{
-
-            LOG(e,'F')
-                    
-            process.emit('SIGINT',114)
-
-        })
-        
     )
 
 },
@@ -422,7 +414,7 @@ RELOAD_STATE = async() => {
     }else{
 
         //Otherwise start rescan form height=0
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
         
         SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0,CHECKSUM:''}
 
@@ -445,6 +437,21 @@ RELOAD_STATE = async() => {
 
             //And set the initial master validator whose epoch starts with block height 0 
             SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR=genesis.MASTER_VALIDATOR
+
+
+            //____________________________AND PREPARE GENERATION THREAD____________________________
+
+            SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
+
+            SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
+    
+            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+    
+            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+    
+            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
+    
+    
             
 
         })
@@ -483,17 +490,20 @@ PREPARE_SYMBIOTE=async()=>{
     //Contains default set of properties for major part of potential use-cases on symbiote
     global.SYMBIOTE_META={
         
-        MEMPOOL:[],
+        MEMPOOL:[],//to hold onchain events here(contract calls,txs,delegations and so on)
         
-        //Сreate mapping to optimize processes while we check blocks-not to read/write to db many times
+        //Сreate mapping for accout and it's state to optimize processes while we check blocks-not to read/write to db many times
         ACCOUNTS:new Map(),// ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
 
         EVENTS_STATE:new Map(),// EVENT_KEY(on symbiote) => EVENT_VALUE
 
         BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another block
 
-        //Peers to exchange data with
-        NEAR:[]
+        NEAR:[],//Peers to exchange data with
+
+        VALI:true,
+
+        STUFF_CACHE:new Map(),
 
     }
 
@@ -539,6 +549,10 @@ PREPARE_SYMBIOTE=async()=>{
         
         'HOSTCHAINS_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
     
+        'VALIDATORS_PROOFS',// BLS signatures of epoches/ranges
+
+        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on
+
     ].forEach(
         
         dbName => SYMBIOTE_META[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
@@ -548,38 +562,10 @@ PREPARE_SYMBIOTE=async()=>{
     
     /*
     
-        ___________________________________________________State of symbiote___________________________________________________
-
-                                *********************************************************************
-                                *        THE MOST IMPORTANT STORAGE-basis for each symbiote         *
-                                *********************************************************************
-
-
-
-            Holds accounts state,balances,aliases,services & conveyors metadata and so on
-
-            *Examples:
-
-            0)Aliases of accounts & groups & contracts & services & conveyors & domains & social media usernames. Some hint to Web1337.Read more on our sources https://klyntar.org
-    
-        
-                Single emoji refers to address and domain:❤️ => 0xd1ffa2d57241b01174db76b3b7123c3f707a12b91ddda00ea971741c94ab3578(Polygon contract,https://charity.health.com)
-
-                Combo:🔥😈🔥 => PQTJJR4FZIDBLLKOUVAD7FUYYGL66TJUPDERHBTJUUTTIDPYPGGQ(Algorand address by Klyntar)
-        
-                Emoji ref to special signature type🌌 => aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa(Root of hashes tree mapped to conveyor set of addresses protected by hash-based post quantum signatures)
-
-                Usernames(Twitter in this case) @jack => bc1qsmljf8cmfhul2tuzcljc2ylxrqhwf7qxpstj2a
-            
-            
-            1)
-    
-
-
+     ___________________________________________________State of symbiote___________________________________________________
 
     
     */
-
 
     SYMBIOTE_META.STATE=l(process.env.CHAINDATA_PATH+`/STATE`,{valueEncoding:'json'})
     
@@ -610,44 +596,21 @@ PREPARE_SYMBIOTE=async()=>{
                     
     )
 
+    //Also prepare generation thread to work with other validators if need
+    SYMBIOTE_META.GENERATION_THREAD = {}
+
+    SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
+
+    SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
+
+    SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+
+    SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+
+    SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
 
 
 
-
-
-
-
-    //_____Load security stuff-check if stop was graceful,canary is present,should we reload the state and so on_____
-
-
-    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.METADATA.get('GT').catch(e=>
-    
-        e.notFound
-        ?
-        {
-            PREV_HASH:`Poyekhali!@Y.A.Gagarin`,//Genesis hash
-            NEXT_INDEX:0//So the first block will be with index 0
-        }
-        :
-        (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(125))
-                    
-    )
-    
-
-    // let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
-        
-    //     previous=await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
-
-
-    // if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
-    
-    //     initSpinner?.stop()
-        
-    //     LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
-        
-    //     process.exit(125)
-    // }
-    
     
     //________________________________________________________________MAKE SURE VERIFICATION THREAD IS OK________________________________________________________________
 
@@ -895,120 +858,113 @@ RUN_SYMBIOTE=async()=>{
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
-        // //Get the urgent network information about the generation thread
-        // let getUrgentGTpromises=[],
+        //Get the urgent network information about the generation thread
+        let getUrgentGTpromises=[],
 
-        //     // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
-        //     // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
-        //     gtHandlers = new Map() 
+            // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
+            // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
+            gtHandlers = new Map() 
 
-        // //Check if bootstrap nodes is alive
-        // CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
+        //Check if bootstrap nodes is alive
+        CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
 
-        //     getUrgentGTpromises.push(
+            getUrgentGTpromises.push(
                         
-        //         fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
+                fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
             
-        //             .then(res=>res.json())
+                    .then(res=>res.json())
             
-        //             .then(async response=>{
+                    .then(async response=>{
 
-        //                 /*
+                        /*
                         
-        //                     Response consists of:
+                            Response consists of:
 
-        //                     +masterValidator(validator choosen for epoch - his BLS pubkey)
-        //                     +epochStart - height of block when epoch has started
-        //                     +validators - BLS pubkeys of current validators set
+                            +masterValidator(validator choosen for epoch - his BLS pubkey)
+                            +epochStart - height of block when epoch has started
+                            +validators - BLS pubkeys of current validators set
                             
-        //                     +signature(data is signed, so you will have proofs that you've received fake data from some sources)
+                            +signature(data is signed, so you will have proofs that you've received fake data from some sources)
                             
-        //                 */
+                        */
                        
-        //                 let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
+                        let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
 
 
-        //                 if(await VERIFY(payloadHash,response.signature,node.PUB)){
+                        if(await VERIFY(payloadHash,response.signature,node.PUB)){
 
-        //                     if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
+                            if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
                             
-        //                     else gtHandlers.set(payloadHash,{votes:1,pure:response})
+                            else gtHandlers.set(payloadHash,{votes:1,pure:response})
 
-        //                 }
+                        }
 
-        //             })
+                    })
             
-        //             .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
+                    .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
 
-        //     )
+            )
 
-        // )
-
-
-        // //If no answer at all - probably, we need to stop and try later
-        // if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
-
-        //     LOG(`No versions of GT, so going to stop ...`,'W')
-
-        //     process.exit(130)
-
-        // }
+        )
 
 
-        // await Promise.all(getUrgentGTpromises)
+        //If no answer at all - probably, we need to stop and try later
+        if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
+
+            LOG(`No versions of GT, so going to stop ...`,'W')
+
+            process.exit(130)
+
+        }
 
 
-        // //Among all the answers choose only one with maximum number of votes
-        // let winnerHandler='',
+        await Promise.all(getUrgentGTpromises)
+
+
+        //Among all the answers choose only one with maximum number of votes
+        let winnerHandler='',
         
-        //     maxVotes=0
+            maxVotes=0
 
 
 
 
-        // gtHandlers.forEach((handler,_)=>{
+        gtHandlers.forEach((handler,_)=>{
 
-        //     if(handler.votes>maxVotes){
+            if(handler.votes>maxVotes){
 
-        //         maxVotes=handler.votes
+                maxVotes=handler.votes
 
-        //         winnerHandler=handler.pure.payload
+                winnerHandler=handler.pure.payload
             
-        //     }else if(handler.votes===maxVotes){
+            }else if(handler.votes===maxVotes){
 
-        //         LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
+                LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
 
-        //         process.exit(127)
+                process.exit(127)
 
-        //     }
+            }
 
-        // })
-
-
-
-        // LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | Epoch start:${winnerHandler.epochStart})`,'I')
+        })
 
 
 
-        // //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
-        // SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
-
-        // SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
-
-        // SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
+        LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | EpochStart:${winnerHandler.epochStart})`,'I')
 
 
-        !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
-            
-            global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
-            
-            GEN_BLOCK_START()
 
-            //Also,run polling for blocks & headers from generation thread
-            //We start to get blocks from current epoch
-            // GET_BLOCKS_FOR_GENERATION_THREAD()
-        
-        },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
+
+        if(winnerHandler){
+
+            //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
+            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
+
+            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
+
+            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
+
+        }else LOG(`Can't get valid version of generation thread, so we'll do it later`,'I')
+
 
     }
 
