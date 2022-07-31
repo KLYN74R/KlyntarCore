@@ -250,7 +250,7 @@
             "NODES_PORTION":8,
             "MAX_CONNECTIONS":15,
 
-            "MY_ADDR":"http://somenode.com:7777",
+            "MY_HOSTNAME":"http://somenode.com:7777",
             
             "TTL":{
                 "INFO":600,

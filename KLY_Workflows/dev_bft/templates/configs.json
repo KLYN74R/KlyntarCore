@@ -154,8 +154,6 @@
         "URL_PUBKEY_BIND_CACHE_SIZE":50000,
         "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
 
-        "MUON_TRAP":[],
-
         "STOP_GENERATE_BLOCKS":false,
         "STOP_VERIFY":false,
         
@@ -218,33 +216,12 @@
             "http://localhost:44444"
         ],
 
-        "BLOCK_ACCEPTION_TRUST_POOL":[
+        "ASYNC_BLOCK_ACCEPTION_TRUST_POOL":[
             "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
             "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
             "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
             "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
         ],
-    
-        "GET_URGENT_GENERATION_THREAD":[
-            {
-                "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-                "URL":"http://localhost:6666"
-            },
-            {
-                "PUB":"7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
-                "URL":"http://localhost:6665"
-            },
-            {
-                "PUB":"7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
-                "URL":"http://localhost:6664"
-            },
-            {
-                "PUB":"7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X",
-                "URL":"http://localhost:44444"
-            }            
-        ],
-    
-        "STOP_IF_NO_GT_PROPOSERS":false,
             
         "MUST_SEND":{
     
@@ -258,7 +235,7 @@
     
         "NODES_PORTION":8,
         "MAX_CONNECTIONS":15,
-        "MY_ADDR":"http://somenode.com:6666",
+        "MY_HOSTNAME":"http://somenode.com:6666",
             
         "TTL":{
             "API_ACCOUNTS":30,
@@ -282,9 +259,8 @@
             
             "ACCEPT_BLOCKS":1,
             "ACCEPT_EVENTS":1,
-            "GET_GEN_THREAD":1,
             "ACCEPT_NEW_NODES":1,
-            "ACCEPT_PROOFS":1
+            "ACCEPT_HOSTCHAINS_PROOFS":1
         },
     
         "GET_BLOCKS_URI":"http://localhost:6666",

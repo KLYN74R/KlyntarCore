@@ -44,6 +44,12 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 
 
+//Function to set new Master,to add/remove validators from list
+UPDATE_VALIDATORS=()=>{
+
+    //SYMBIOTE_META.VERIFICATION_THREAD
+
+},
 
 
 
@@ -62,6 +68,8 @@ SEND_REPORT = alertInfo =>
         LOG(`No response from report mananger\n CASE \n Symbiote:\x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
         
     ),
+
+
 
 
 

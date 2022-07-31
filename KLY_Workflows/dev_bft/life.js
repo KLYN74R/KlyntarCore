@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -127,7 +127,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
         //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
     
-        await GENERATE_PHANTOM_BLOCKS_PORTION()
+        await GENERATE_PHANTOM_BLOCKS_PORTION()s
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
 
@@ -194,7 +194,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         promises=[],//to push blocks to storage
 
-        blocksMetadata={}
+        phantomsMetadata={id:-1,hash:''}// id and hash of the latest phantom block in a set
 
 
 
@@ -219,8 +219,10 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
-        //To send to other validators and get responces
-        blocksMetadata[blockCandidate.i]=hash
+        //To send to other validators and get signatures as proof of acception this part of blocks
+        phantomsMetadata.id=block.i
+
+        phantomsMetadata.hash=hash
 
 
         SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
@@ -835,7 +837,7 @@ RUN_SYMBIOTE=async()=>{
 
             promises.push(
                         
-                fetch(endpoint+'/addnode',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_ADDR])})
+                fetch(endpoint+'/addnode',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_HOSTNAME])})
             
                     .then(res=>res.text())
             

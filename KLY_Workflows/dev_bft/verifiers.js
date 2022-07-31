@@ -154,7 +154,7 @@ export let VERIFIERS = {
 
 
 
-    OFFSPRING:async (event,blockCreator)=>{
+    OFFSPRING:async(event,blockCreator)=>{
     
         //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
     
@@ -233,6 +233,11 @@ export let VERIFIERS = {
         
     },
 
+
+    VALIDATORS_DEALS:async (event,blockCreator,symbiote)=>{
+        
+
+    },
     
 
     CONTRACT_DEPLOY:async (event,blockCreator,symbiote)=>{},

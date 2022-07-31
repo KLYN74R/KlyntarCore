@@ -80,6 +80,11 @@ export default {
 
     ALIAS:async (symbiote,event)=>{},
 
+    VALIDATORS_DEALS:async (symbiote,event)=>{
+        
+
+    },
+
     UNOBTANIUM:async (symbiote,event)=>{},
     
     //Unimplemented
