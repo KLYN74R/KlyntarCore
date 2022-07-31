@@ -127,7 +127,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
         //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
     
-        await GENERATE_PHANTOM_BLOCKS_PORTION()s
+        await GENERATE_PHANTOM_BLOCKS_PORTION()
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
 

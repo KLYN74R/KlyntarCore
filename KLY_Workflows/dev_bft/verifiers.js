@@ -40,7 +40,7 @@
 
 import {BLAKE3,VERIFY} from '../../KLY_Utils/utils.js'
 
-import {GET_SYMBIOTE_ACC} from './utils.js'
+import {GET_SYMBIOTE_ACC,ADDONS} from './utils.js'
 
 
 
@@ -61,7 +61,7 @@ export let SPENDERS = {
     
     TX:event=>event.p.a+event.f,
 
-    OFFSPRING:event=>CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE+event.f,
+    OFFSPRING:event=>event.f,
 
     ALIAS:event=>event.p.length*0.001+event.f,
 
@@ -85,7 +85,7 @@ export let SPENDERS = {
 
     SERVICE_COMMIT:async event=>{},
 
-    PQC_TX:async event=>{},
+    PQC_TX:async event=>event.p.a+event.f,
 
 
 }
@@ -112,7 +112,7 @@ export let VERIFIERS = {
             
         if(!recipient){
     
-            recipient={ACCOUNT:{B:0,N:0,D:'',T:'A'}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
+            recipient={ACCOUNT:{B:0,N:0,T:'A'}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             
             SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of block
         
@@ -234,6 +234,44 @@ export let VERIFIERS = {
     },
 
 
+    PQC_TX:async (event,blockCreator)=>{
+
+        let sender=GET_SYMBIOTE_ACC(event.c),
+        
+            recipient=await GET_SYMBIOTE_ACC(event.p.r)
+    
+    
+            
+        if(!recipient){
+    
+            recipient={ACCOUNT:{B:0,N:0,T:'A'}}
+            
+            SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)
+        
+        }
+        
+
+        let verifyOverview = 
+        
+            !(SYMBIOTE_META.BLACKLIST.has(event.c)||sender.ND.has(event.n))
+            &&
+            ADDONS[event.p.t==='DIL'?'verify_DIL':'verify_BLISS'](CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.c,event.s)
+    
+
+        if(verifyOverview){
+    
+            sender.ACCOUNT.B-=event.f+event.p.a
+            
+            recipient.ACCOUNT.B+=event.p.a
+    
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
+        
+            blockCreator.fees+=event.f
+    
+        }
+    
+    },
+
     VALIDATORS_DEALS:async (event,blockCreator,symbiote)=>{
         
 
@@ -265,9 +303,5 @@ export let VERIFIERS = {
     THRESHOLD:async (symbiote,event)=>{},
 
     SERVICE_COMMIT:async (symbiote,event)=>{},
-
-    PQC_TX:async (symbiote,event)=>{},
-
-
 
 }
