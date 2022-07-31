@@ -65,14 +65,14 @@ SEND_REPORT = alertInfo =>
 
 
 
+//Cache-Type URL_PUBKEY_BIND or VALIDATORS_PUBKEY_COMBINATIONS
+GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
-GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
-
-    SYMBIOTE_META.STUFF_CACHE.put(stuffID,obj)
+    SYMBIOTE_META[cache_type].set(stuffID,obj)
 
     return obj
 
-}).catch(e=>false)
+}).catch(e=>false),
 
 
 

@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS} from '../../../KLY_Utils/utils.js'
 
-import {WRAP_RESPONSE,GET_NODE,GET_STUFF} from '../utils.js'
+import {WRAP_RESPONSE,GET_NODES,GET_STUFF} from '../utils.js'
 
 
 
@@ -139,7 +139,7 @@ let API = {
     },
 
 
-     //0 - symbioteID, 1 - stuffID
+     //0 - symbioteID, 1 - stuffID, 2 - stuffType
      //Return useful data from stuff cache. It might be array of BLS pubkeys associated with some BLS aggregated pubkey, binding URL-PUBKEY and so on
      //Also, it's a big opportunity for cool plugins e.g. dyncamically track changes in STUFF_CACHE and modify it or share to other endpoints
 
@@ -150,14 +150,27 @@ let API = {
         
         let symbioteID=q.getParameter(0),
         
-            stuffID=q.getParameter(1)
+            stuffID=q.getParameter(1),
+
+            stuffType=q.getParameter(1)
+
+
     
-    
-        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF) !a.aborted && a.end(await GET_STUFF(stuffID))
+        if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF) !a.aborted && a.end(await GET_STUFF(stuffID,stuffType))
 
         else !a.aborted && a.end('Symbiote not supported or route is off')
     
     },
+
+
+
+    stuffAdd:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+        //Unimplemented
+    
+    
+    }),
 
 
     
@@ -179,15 +192,15 @@ UWS_SERVER
 
 .get('/multiplicity/:symbiote/:fromHeight',API.multiplicity)
 
+.get('/stuff/:symbiote/:stuffID/:stuffType',API.stuff)
+
 .get('/account/:symbiote/:address',API.acccount)
-
-.post('/bind-endpoint',API.bindEndpointToPubKey)
-
-.get('/stuff/:symbiote/:stuffID',API.stuff)
 
 .get('/nodes/:symbiote/:region',API.nodes)
 
 .get('/block/:symbiote/:id',API.block)
+
+.post('/stuff_add',API.stuffAdd)
 
 .post('/alert',API.alert)
 

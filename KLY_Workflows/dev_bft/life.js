@@ -129,6 +129,8 @@ GEN_BLOCK_START=async()=>{
     
         await GEN_BLOCK()
 
+        global.STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCK_START(),2000)
+
     }else{
 
         LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
@@ -437,21 +439,6 @@ RELOAD_STATE = async() => {
 
             //And set the initial master validator whose epoch starts with block height 0 
             SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR=genesis.MASTER_VALIDATOR
-
-
-            //____________________________AND PREPARE GENERATION THREAD____________________________
-
-            SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
-
-            SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
-    
-            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-    
-            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
-    
-            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
-    
-    
             
 
         })
@@ -501,9 +488,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         NEAR:[],//Peers to exchange data with
 
-        VALI:true,
+        URL_PUBKEY_BIND:new Map(),
 
-        STUFF_CACHE:new Map(),
+        VALIDATORS_PUBKEY_COMBINATIONS:new Map(),
 
     }
 
@@ -609,6 +596,23 @@ PREPARE_SYMBIOTE=async()=>{
 
     SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
 
+
+    //____________________________________________________________________LOAD STUFF TO STUFF CACHE______________________________________________________________________
+
+
+
+
+    SYMBIOTE_META.STUFF.createReadStream({limit:CONFIG.SYMBIOTE.STUFF_CACHE_SIZE}).on('data',
+    
+        stuff => {
+
+            if(stuff.value.type==='bind') SYMBIOTE_META.URL_PUBKEY_BIND.set(stuff.key,stuff.value.payload)
+            
+            else SYMBIOTE_META.VALIDATORS_PUBKEY_COMBINATIONS.set(stuff.keym,stuff.value.payload)
+
+        }
+        
+    )
 
 
     
@@ -922,7 +926,7 @@ RUN_SYMBIOTE=async()=>{
 
 
         //Among all the answers choose only one with maximum number of votes
-        let winnerHandler='',
+        let winnerHandler=false,
         
             maxVotes=0
 
@@ -963,8 +967,37 @@ RUN_SYMBIOTE=async()=>{
 
             SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
 
-        }else LOG(`Can't get valid version of generation thread, so we'll do it later`,'I')
+        }else{
 
+            LOG(`Can't get valid version of generation thread, so we'll continue to work on \x1b[32;1mVERIFICATION_THREAD`,'I')
+
+            //____________________________AND PREPARE GENERATION THREAD____________________________
+
+            SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
+
+            SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
+    
+            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+    
+            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+    
+            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
+
+
+        }
+
+
+        // !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
+            
+        //     global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
+            
+        //     GEN_BLOCK_START()
+
+        //     //Also,run polling for blocks & headers from generation thread
+        //     //We start to get blocks from current epoch
+        //     // GET_BLOCKS_FOR_GENERATION_THREAD()
+        
+        // },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
     }
 

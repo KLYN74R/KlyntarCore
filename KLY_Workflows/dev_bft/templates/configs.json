@@ -149,8 +149,11 @@
             "HASH":""
         },
 
-        "STUFF_CACHE_SIZE":100000,
-        
+        "STUFF_LOAD_LIMIT":100000,
+        "URL_PUBKEY_BIND_CACHE_SIZE":50000,
+        "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
+
+        "MUON_TRAP":[],
 
         "STOP_GENERATE_BLOCKS":false,
         "STOP_VERIFY":false,

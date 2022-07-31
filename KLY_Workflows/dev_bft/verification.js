@@ -632,15 +632,16 @@ verifyBlock=async block=>{
 
         //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________
 
+        //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
 
         let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
-        //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
         
         Object.keys(workflow).forEach(ticker=>
 
             workflow[ticker].STORE
             &&
             SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
+
                 let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
                     
                 if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
