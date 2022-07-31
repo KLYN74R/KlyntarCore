@@ -143,6 +143,7 @@
         "AWAIT_FOR_AFK_VALIDATOR":120000,
                 
         "VERIFICATION_THREAD_POLLING":5000,
+        "BLOCK_TIME":2000,
 
         "BREAKPOINT":{
             "HEIGHT":0,

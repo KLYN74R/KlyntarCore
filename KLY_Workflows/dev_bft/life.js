@@ -120,16 +120,16 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
 
 
-GEN_BLOCK_START=async()=>{
+GEN_BLOCKS_START_POLLING=async()=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
         //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
     
-        await GEN_BLOCK()
+        await GENERATE_PHANTOM_BLOCKS_PORTION()
 
-        global.STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCK_START(),2000)
+        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
 
     }else{
 
@@ -167,7 +167,7 @@ RUN_POLLING=async()=>{
 
 
 
-export let GEN_BLOCK = async () => {
+export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
 
@@ -211,9 +211,9 @@ export let GEN_BLOCK = async () => {
 
         let eventsArray=await GET_EVENTS(),
             
-            blockCandidate=new Block(eventsArray),
+            blockCandidate=new Block(eventsArray,1337,'1337'),
                         
-            hash=Block.genHash(blockCandidate.e,blockCandidate.i,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH)
+            hash=Block.genHash(blockCandidate.e,blockCandidate.i,'1337')
     
         blockCandidate.sig=await SIG(hash)
             
@@ -488,9 +488,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         NEAR:[],//Peers to exchange data with
 
-        URL_PUBKEY_BIND:new Map(),
+        URL_PUBKEY_BIND:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.)
 
-        VALIDATORS_PUBKEY_COMBINATIONS:new Map(),
+        VALIDATORS_PUBKEY_COMBINATIONS:new Map(), // key - BLS aggregated pubkey, value - array of pubkeys-components of aggregated validators pubkey
 
     }
 
@@ -586,23 +586,12 @@ PREPARE_SYMBIOTE=async()=>{
     //Also prepare generation thread to work with other validators if need
     SYMBIOTE_META.GENERATION_THREAD = {}
 
-    SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
-
-    SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
-
-    SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-
-    SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
-
-    SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
-
-
     //____________________________________________________________________LOAD STUFF TO STUFF CACHE______________________________________________________________________
 
 
 
 
-    SYMBIOTE_META.STUFF.createReadStream({limit:CONFIG.SYMBIOTE.STUFF_CACHE_SIZE}).on('data',
+    SYMBIOTE_META.STUFF.createReadStream({limit:CONFIG.SYMBIOTE.STUFF_LOAD_LIMIT}).on('data',
     
         stuff => {
 
@@ -860,144 +849,18 @@ RUN_SYMBIOTE=async()=>{
 
         await Promise.all(promises)
 
-        //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
-        //Get the urgent network information about the generation thread
-        let getUrgentGTpromises=[],
 
-            // used to choose right fork. Key is hash of generation thread stats and value - number of votes for this state among other endpoints in your configs
-            // So it looks like | (hash of response) => {votes:INT,pure:<DATA FOR GENERATION THREAD>}
-            gtHandlers = new Map() 
+        // LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | EpochStart:${winnerHandler.epochStart})`,'I')
 
-        //Check if bootstrap nodes is alive
-        CONFIG.SYMBIOTE.GET_URGENT_GENERATION_THREAD.forEach(node=>
 
-            getUrgentGTpromises.push(
-                        
-                fetch(node.URL+'/genthread/'+CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
             
-                    .then(res=>res.json())
+            global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
             
-                    .then(async response=>{
-
-                        /*
-                        
-                            Response consists of:
-
-                            +masterValidator(validator choosen for epoch - his BLS pubkey)
-                            +epochStart - height of block when epoch has started
-                            +validators - BLS pubkeys of current validators set
-                            
-                            +signature(data is signed, so you will have proofs that you've received fake data from some sources)
-                            
-                        */
-                       
-                        let payloadHash=BLAKE3(response.payload.masterValidator+response.payload.epochStart+JSON.stringify(response.payload.validators))
-
-
-                        if(await VERIFY(payloadHash,response.signature,node.PUB)){
-
-                            if(gtHandlers.has(payloadHash)) gtHandlers.get(payloadHash).votes++
-                            
-                            else gtHandlers.set(payloadHash,{votes:1,pure:response})
-
-                        }
-
-                    })
-            
-                    .catch(e=>LOG(`Can't get urgent generation thread metadata from \x1b[32;1m${node.URL}`,'F'))
-
-            )
-
-        )
-
-
-        //If no answer at all - probably, we need to stop and try later
-        if(getUrgentGTpromises===0 && CONFIG.SYMBIOTE.STOP_IF_NO_GT_PROPOSERS){
-
-            LOG(`No versions of GT, so going to stop ...`,'W')
-
-            process.exit(130)
-
-        }
-
-
-        await Promise.all(getUrgentGTpromises)
-
-
-        //Among all the answers choose only one with maximum number of votes
-        let winnerHandler=false,
+            GEN_BLOCKS_START_POLLING()
         
-            maxVotes=0
-
-
-
-
-        gtHandlers.forEach((handler,_)=>{
-
-            if(handler.votes>maxVotes){
-
-                maxVotes=handler.votes
-
-                winnerHandler=handler.pure.payload
-            
-            }else if(handler.votes===maxVotes){
-
-                LOG(`Found two or more versions of generation thread\n${gtHandlers}`,'F')
-
-                process.exit(127)
-
-            }
-
-        })
-
-
-
-        LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | EpochStart:${winnerHandler.epochStart})`,'I')
-
-
-
-
-        if(winnerHandler){
-
-            //Here we have a version of generation thread(GT) with a current set of validators, master validator(block creator) and epoch start
-            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=winnerHandler.validators
-
-            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=winnerHandler.masterValidator
-
-            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=winnerHandler.epochStart
-
-        }else{
-
-            LOG(`Can't get valid version of generation thread, so we'll continue to work on \x1b[32;1mVERIFICATION_THREAD`,'I')
-
-            //____________________________AND PREPARE GENERATION THREAD____________________________
-
-            SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
-
-            SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
-    
-            SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-    
-            SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
-    
-            SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
-
-
-        }
-
-
-        // !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
-            
-        //     global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
-            
-        //     GEN_BLOCK_START()
-
-        //     //Also,run polling for blocks & headers from generation thread
-        //     //We start to get blocks from current epoch
-        //     // GET_BLOCKS_FOR_GENERATION_THREAD()
-        
-        // },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
+        },2000)
 
     }
 

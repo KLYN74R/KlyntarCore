@@ -15,14 +15,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/klyntar/KLYNTAR.git"
+    "url": "git+https://github.com/KLYN74R/KlyntarCore.git"
   },
   "author": "KlyntarTeam",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/klyntar/KLYNTAR/issues"
+    "url": "https://github.com/KLYN74R/KlyntarCore/issues"
   },
-  "homepage": "https://github.com/klyntar/KLYNTAR#readme",
+  "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
   "dependencies": {
     "@idena/vrf-js": "^1.0.1",
     "@noble/bls12-381": "^1.2.0",

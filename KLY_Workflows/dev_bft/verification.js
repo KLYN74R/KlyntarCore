@@ -170,6 +170,8 @@ START_VERIFY_POLLING=async()=>{
 
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
 
+        console.log('VT ',SYMBIOTE_META.VERIFICATION_THREAD)
+        console.log('GT ',SYMBIOTE_META.GENERATION_THREAD)
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
 
@@ -190,55 +192,6 @@ START_VERIFY_POLLING=async()=>{
         SIG_PROCESS.VERIFY=true
 
     }
-
-},
-
-
-
-
-//Receive object in form {blockIndex0:{validatorsPub},blockIndex1:...,blockIndexN:,}
-PERFORM_BLOCKS_FROM_GENERATION_THREAD=blocksSet=>{
-
-    Object.keys(blocksSet).forEach(
-        
-        async blockIndex => {
-
-            //Add logic to work with proofs
-
-            let block=blocksSet[blockIndex],
-
-                blockHash=Block.genHash(block.e,block.i,block.p)
-
-            if(await VERIFY(blockHash,block.sig,SYMBIOTE_META.GENERATION_THREAD.MASTER)){
-
-                SYMBIOTE_META.BLOCKS.put(block.i,block)
-
-            }
-
-        }
-
-    )
-
-},
-
-
-
-
-//Send proof with blocks
-GET_BLOCKS_FOR_GENERATION_THREAD = () => {
-
-    //We can ask from some "reliable" and "fast" endpoint.It might be a fast API, some CDN you some private node
-    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${SYMBIOTE_META.GENERATION_THREAD.EPOCH_START}`)
-
-    .then(r=>r.json()).then(PERFORM_BLOCKS_FROM_GENERATION_THREAD).catch(
-        
-        e =>{
-
-            LOG(`Going to ask blocks from GT on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
-
-        }
-    
-    )
 
 },
 
@@ -366,11 +319,13 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
+
 checkBFTProofForBlock=async blockId=>{
 
     return true
 
 },
+
 
 
 
@@ -603,20 +558,6 @@ verifyBlock=async block=>{
             process.emit('SIGINT',108)
         
         })
-
-
-        //____________________________MODIFY THE GENERATION THREAD IN ORDER TO VERIFICATION THREAD______________________
-
-
-        SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
-
-        SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
-
-        SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-
-        SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
-
-        SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
 
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________

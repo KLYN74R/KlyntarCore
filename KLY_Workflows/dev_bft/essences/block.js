@@ -4,15 +4,15 @@ import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
 export default class Block{
     
-    constructor(eventsSet){
+    constructor(eventsSet,index,prevHash){
         
         this.c=CONFIG.SYMBIOTE.PUB//block creator(validator)
         
         this.e=eventsSet//array of events(transactions)
         
-        this.i=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX//index of block.Need for indexation in DB only
+        this.i=index
         
-        this.p=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
+        this.p=prevHash
         
         this.sig=''
     
