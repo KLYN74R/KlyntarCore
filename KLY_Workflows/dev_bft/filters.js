@@ -94,6 +94,14 @@ export default {
         
     ,
 
+    CONTRACT_DEPLOY:async(symbiote,event)=>
+    
+        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        &&
+        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+
+    ,
+
     THRESHOLD:async(symbiote,event)=>
     
         typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
@@ -114,7 +122,6 @@ export default {
         
     ,
 
-    CONTRACT_DEPLOY:async (symbiote,event)=>{},
 
     VALIDATORS_DEALS:async (symbiote,event)=>{
         
