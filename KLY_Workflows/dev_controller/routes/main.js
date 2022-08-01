@@ -4,189 +4,170 @@ import{
 
 } from '../../../KLY_Utils/utils.js'
 
-import {SEND_REPORT,BROADCAST} from '../utils.js'
-
 import ControllerBlock from '../blocks/controllerblock.js'
 
 import {verifyInstantBlock} from '../verification.js'
+
+import {SEND_REPORT,BROADCAST} from '../utils.js'
 
 import fs from 'fs'
 
 
 
 
-
-
-//______________________________________________________________MAIN PART________________________________________________________________________
-
-
-
-
-let MAIN = {
-
-
-
+let
 
 //__________________________________________________________BASIC FUNCTIONAL_____________________________________________________________________
 
 
 
 
-    controllerBlock:a=>{
+controllerBlock=a=>{
 
-        let total=0,buf=Buffer.alloc(0)
+    let total=0,buf=Buffer.alloc(0)
 
-        //Probably you disable for all symbiotes
-        if(!CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS){
-            
-            a.end('Route is off')
-            
-            return
+    //Probably you disable for all symbiotes
+    if(!CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS){
         
-        }
-
-        a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
+        a.end('Route is off')
+        
+        return
     
-            if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
-            
-                buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+    }
 
-                total+=chunk.byteLength
+    a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
+
+        if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+        
+            buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+       
+            total+=chunk.byteLength
+        
+            if(last){
             
-                if(last){
+
+                let block=await PARSE_JSON(buf),
                 
-                    let block=await PARSE_JSON(buf),
-                    
-                        hash=ControllerBlock.genHash(block.a,block.i,block.p),
+                    hash=ControllerBlock.genHash(block.a,block.i,block.p),
+       
+                //Check if we can accept this block
+                allow=
+                
+                CONFIG.SYMBIOTE.CONTROLLER.PUBKEY===block.c&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                &&
+                CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+                &&
+                await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
+                
+                
 
-
-                    //Check if we can accept this block
-                    allow=
-                    
-
-                    CONFIG.SYMBIOTE.CONTROLLER.PUBKEY===block.c&&typeof block.a==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
-                    &&
-                    CONFIG.SYMBIOTE.TRIGGERS.CONTROLLER_BLOCKS//check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-                    &&
-                    await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
-                    
-                    
-
-
-
-                    if(allow){
+                if(allow){
                         
-                        SYMBIOTE_META.CONTROLLER_BLOCKS.get(block.i).catch(e=>{
+                    SYMBIOTE_META.CONTROLLER_BLOCKS.get(block.i).catch(e=>{
 
-                            BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,59,'\x1b[31m',block.i)
+                        BLOCKLOG(`New \x1b[36m\x1b[41;1mControllerBlock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',block.c,hash,59,'\x1b[31m',block.i)
                             
-                            //Store it locally-we'll work with this block later
-                            SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block).then(()=>
+                        //Store it locally-we'll work with this block later
+                        SYMBIOTE_META.CONTROLLER_BLOCKS.put(block.i,block).then(()=>
                             
-                                Promise.all(BROADCAST('/cb',block,block.c))
+                            Promise.all(BROADCAST('/cb',block,block.c))
                                 
-                            ).catch(e=>{})
+                        ).catch(e=>{})
                         
-                        })
+                    })
                     
-                       !a.aborted&&a.end('OK')
+                    !a.aborted&&a.end('OK')
     
-                    }else !a.aborted&&a.end('Overview failed')
+                }else !a.aborted&&a.end('Overview failed')
 
-                }
+            }
             
-            }else !a.aborted&&a.end('Payload limit')
+        }else !a.aborted&&a.end('Payload limit')
         
-        })
+    })
     
-    },
+},
     
 
 
 
-    instantBlock:a=>{
+instantBlock=a=>{
+     
+    //Probably you disable for all symbiotes
+    if(!CONFIG.SYMBIOTE.TRIGGERS.INSTANT_BLOCKS){
+        
+        a.end('Route is off')
+        
+        return
+    
+    }
+    
+    let total=0,buf=Buffer.alloc(0)
 
-         //Probably you disable for all symbiotes
-         if(!CONFIG.SYMBIOTE.TRIGGERS.INSTANT_BLOCKS){
-            
-            a.end('Route is off')
-            
-            return
+    a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
+
+        if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+        
+            buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+
+            total+=chunk.byteLength
+        
+            if(last){
+
+                let block=await PARSE_JSON(buf)
+                        
+                !a.aborted&&a.end(CONFIG.SYMBIOTE.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
+
+                verifyInstantBlock(block)
+
+            } 
         
         }
-
-        let total=0,buf=Buffer.alloc(0)
-
-        a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
     
-            if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
-            
-                buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+    })
 
-                total+=chunk.byteLength
-            
-                if(last){
+},
+    
 
-                    let block=await PARSE_JSON(buf)
-                            
-                    !a.aborted&&a.end(CONFIG.SYMBIOTE.TRIGGERS?.INSTANT_BLOCKS?'OK':'Route is off')
 
-                    verifyInstantBlock(block)
 
-                } 
-            
-            }
+//Format of body : {symbiote,body}
+//There is no 'c'(creator) field-we get it from tx
+acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    
+    //Reject all txs if route is off and other guards methods
+    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
         
-        })
-    
-    },
-    
-    
-    
-
-    //Format of body : {symbiote,body}
-    //There is no 'c'(creator) field-we get it from tx
-    event:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-    
-        let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
+        !a.aborted&&a.end('Overview failed')
         
-        //Reject all txs if route is off and other guards methods
-        if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.TX) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
-            
-            !a.aborted&&a.end('Overview failed')
-            
-            return
-
-        }        
-
-        /*
-        
-            ...and do such "lightweight" verification here to prevent db bloating
-            Anyway we can bump with some short-term desynchronization while perform operations over ControllerBlock
-            Verify and normalize object
-
-            Fetch values about fees and MC from some DEZ sources
-
-        */
-
-        //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
-        //Also check if we have normalizer for this type of event
-        if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
-
-            let filtered=await SYMBIOTE_META.FILTERS[event.t](symbiote,event)
-
-            if(filtered){
+        return
+    }        
+    /*
     
-                !a.aborted&&a.end('OK')
+        ...and do such "lightweight" verification here to prevent db bloating
+        Anyway we can bump with some short-term desynchronization while perform operations over ControllerBlock
+        Verify and normalize object
+        Fetch values about fees and MC from some DEZ sources
+    */
+    //The second operand tells us:if buffer is full-it makes whole logical expression FALSE
+    //Also check if we have normalizer for this type of event
+    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
 
-                SYMBIOTE_META.MEMPOOL.push(event)
-                            
-            }else !a.aborted&&a.end('Post overview failed')
+        let filtered=await SYMBIOTE_META.FILTERS[event.t](symbiote,event)
 
+        if(filtered){
 
-        }else !a.aborted&&a.end('Mempool is fullfilled or no such filter')
-    
-    }),
+            !a.aborted&&a.end('OK')
+
+            SYMBIOTE_META.MEMPOOL.push(event)
+                        
+        }else !a.aborted&&a.end('Post overview failed')
+
+    }else !a.aborted&&a.end('Mempool is fullfilled or no such filter')
+
+}),
 
 
 
@@ -196,44 +177,41 @@ let MAIN = {
 
 
 
-    //[symbioteID,hostToAdd(initiator's valid and resolved host)]
-    addNode:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-        let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
-        
-
-        if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
-            
-            //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-            let nodes=SYMBIOTE_META.NEAR
-            
-            if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
-
-                
-                nodes.length<symbioteConfig.MAX_CONNECTIONS
-                ?
-                nodes.push(domain)
-                :
-                nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-
-
-
-                !a.aborted&&a.end('OK')
-
-            }else !a.aborted&&a.end('Domain already in scope')
-
-        }else !a.aborted&&a.end('Wrong types')
+//[symbioteID,hostToAdd(initiator's valid and resolved host)]
+addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-    }),
+    let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE),symbioteConfig=CONFIG.SYMBIOTE
+    
+    if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
+        
+        //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
+        let nodes=SYMBIOTE_META.NEAR
+        
+        if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
+            
+            nodes.length<symbioteConfig.MAX_CONNECTIONS
+            ?
+            nodes.push(domain)
+            :
+            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
+    
+            !a.aborted&&a.end('OK')
+    
+        }else !a.aborted&&a.end('Domain already in scope')
+    
+    }else !a.aborted&&a.end('Wrong types')
+
+}),
 
 
 
-    //Passive mode enabled by default    
-    proof:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+//Passive mode enabled by default    
+proof=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
         /*
         
-        VERIFY signature and perform further logic
+    VERIFY signature and perform further logic
         Also,broadcast to the other nodes if signature is valid
         
         */
@@ -325,21 +303,19 @@ let MAIN = {
     
     })
 
-}
-
-
 
 
 
 UWS_SERVER
 
-.post('/cb',MAIN.controllerBlock)
+.post('/cb',controllerBlock)
 
-.post('/ib',MAIN.instantBlock)
+.post('/event',acceptEvents)
 
-.post('/addnode',MAIN.addNode)
+.post('/ib',instantBlock)
 
-.post('/proof',MAIN.proof)
+.post('/addnode',addNode)
 
-.post('/event',MAIN.event)
+.post('/proof',proof)
+
 

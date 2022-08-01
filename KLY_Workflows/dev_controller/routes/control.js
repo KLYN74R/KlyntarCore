@@ -2,18 +2,21 @@ let CONTROL = {
 
     nonce:0,
 
-    ls:'SOME GUID',
+    ls:'SOME GUID'
 
-    config:a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async bytes=>{
+},
 
-        let body=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    
-    })
 
-}
+
+config=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async bytes=>{
+
+    let body=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+
+
+})
     
 
 UWS_SERVER
 
-.post('/con',CONTROL.config)
+.post('/con',config)
