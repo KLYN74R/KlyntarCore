@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY,SIG} from '../utils.js'
+import {BROADCAST,BLOCKLOG,VERIFY} from '../utils.js'
 
 import Block from '../essences/block.js'
 

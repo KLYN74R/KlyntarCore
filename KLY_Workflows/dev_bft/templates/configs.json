@@ -145,9 +145,9 @@
         "VERIFICATION_THREAD_POLLING":5000,
         "BLOCK_TIME":2000,
 
-        "BREAKPOINT":{
-            "HEIGHT":0,
-            "HASH":""
+        "CHECKPOINT":{
+            "HEIGHT":53,
+            "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
         },
 
         "STUFF_LOAD_LIMIT":100000,

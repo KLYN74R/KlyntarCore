@@ -38,9 +38,9 @@
 
 
 
-import {BLAKE3,VERIFY} from '../../KLY_Utils/utils.js'
+import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
-import {GET_SYMBIOTE_ACC,ADDONS} from './utils.js'
+import {GET_SYMBIOTE_ACC} from './utils.js'
 
 
 
@@ -61,11 +61,25 @@ export let SPENDERS = {
     
     TX:event=>event.p.a+event.f,
 
+    PQC_TX:event=>event.p.a+event.f,
+
     OFFSPRING:event=>event.f,
 
     ALIAS:event=>event.p.length*0.001+event.f,
 
     UNOBTANIUM:event=>JSON.stringify(event.p).length*0.001+event.f,
+
+    SERVICE_DEPLOY:event=>JSON.stringify(event.p).length*0.01+event.f,
+
+    CONTRACT_DEPLOY:event=>JSON.stringify(event.p).length+event.f,
+
+    VALIDATORS_DEALS:event=>JSON.stringify(event.p).length*0.01+event.f,
+
+    THRESHOLD:event=>event.p.a+event.f,
+
+    //Coming soon
+    RINGSIG:event=>event.p.a+event.f,
+
 
     //_______________________________________Unimplemented section_______________________________________
 
@@ -73,20 +87,11 @@ export let SPENDERS = {
 
     QUANTUMSWAP:async event=>{},
 
-    SERVICE_DEPLOY:async event=>JSON.stringify(event.p).length*0.01+event.f,
-
-    CONTRACT_DEPLOY:async event=>{},
-
     WORKFLOW_CHANGE:async event=>{},
-
-    MULTISIG:async event=>{},
-
-    THRESHOLD:async event=>{},
 
     SERVICE_COMMIT:async event=>{},
 
-    PQC_TX:async event=>event.p.a+event.f,
-
+    MULTISIG:async event=>{},
 
 }
 

@@ -126,11 +126,24 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
         //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
-    
-        await GENERATE_PHANTOM_BLOCKS_PORTION()
+        
+        let shouldEvenTryToTakePart = 
+
+            //If you're still syncing - no sense to "generate" phantom blocks(as master validator) or try to sign new height(as validator)
+            //if this fork is already valid(and you set this checkpoint in symbiote onfigs)
+            CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT < SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX
+            &&
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
+
+
+        if(shouldEvenTryToTakePart){
+
+            await GENERATE_PHANTOM_BLOCKS_PORTION()
+
+        }
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
-
+        
     }else{
 
         LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
