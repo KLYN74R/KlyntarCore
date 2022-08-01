@@ -3,15 +3,13 @@ import {SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
 
 
 
-let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=>m.default).catch(e=>console.log(e))
+let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=>m.default).catch(e=>console.log(e)),
 
 
 
 
-export let SERVICES = {
-    
-    //Only this one function available for ordinary users(the others can be called by node owner)
-    services:a=>{
+//Only this one function available for ordinary users(the others can be called by node owner)
+services=(a)=>{
         
         let total=0,buf=Buffer.alloc(0)
         
@@ -38,13 +36,10 @@ export let SERVICES = {
         
         })
 
-    }
-
 }
-
 
 
 
 UWS_SERVER
 
-.post('/service',SERVICES.services)
+.post('/service',services)
