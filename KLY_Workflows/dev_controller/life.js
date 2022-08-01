@@ -508,7 +508,7 @@ RELOAD_STATE = async() => {
 
                 LOG(`Problems with loading state from snapshot to state db \n${e}`,'F')
 
-                process.exit(138)
+                process.exit(104)
             
             })
 
@@ -698,7 +698,7 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:''}//initial
         :
-        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(124))
+        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(105))
                     
     )
 
@@ -727,7 +727,7 @@ PREPARE_SYMBIOTE=async()=>{
                 NEXT_INDEX:0//So the first block will be with index 0
             }
             :
-            (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(125))
+            (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(106))
                         
         )
 
@@ -745,7 +745,7 @@ PREPARE_SYMBIOTE=async()=>{
 
             LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
             
-            process.exit(125)
+            process.exit(107)
 
         }
 
@@ -789,7 +789,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                         LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m\n${e}`,'F')
 
-                        process.exit(133)
+                        process.exit(108)
 
                     })
 
@@ -895,7 +895,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${e}`,'F')
  
-        process.exit(100)
+        process.exit(109)
 
     })
 
@@ -959,7 +959,7 @@ PREPARE_SYMBIOTE=async()=>{
             
             .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
-        ).then(answer=>answer!=='YES'&& process.exit(126))
+        ).then(answer=>answer!=='YES'&& process.exit(110))
 
 
     }

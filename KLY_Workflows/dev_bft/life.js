@@ -120,6 +120,10 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
 
 
+//Here we ask the symbiote network if we should vote 
+ASK_FOLK=async()=>{},
+
+
 GEN_BLOCKS_START_POLLING=async()=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
@@ -136,7 +140,9 @@ GEN_BLOCKS_START_POLLING=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
 
 
-        if(shouldEvenTryToTakePart){
+        if(shouldEvenTryToTakePart&&await ASK_FOLK()){
+
+
 
             await GENERATE_PHANTOM_BLOCKS_PORTION()
 
@@ -253,10 +259,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
            
     }
 
+    
+    //Work with agreements of validators here
 
-    // console.log('META ',blocksMetadata)
-
-        
 
     //_______________________________________________COMMIT CHANGES___________________________________________________
 
@@ -420,7 +425,7 @@ RELOAD_STATE = async() => {
 
                 LOG(`Problems with loading state from snapshot to state db \n${e}`,'F')
 
-                process.exit(138)
+                process.exit(104)
             
             })
 
@@ -594,7 +599,7 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0}//initial
         :
-        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(124))
+        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(105))
                     
     )
 
@@ -657,7 +662,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                         LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m\n${e}`,'F')
 
-                        process.exit(133)
+                        process.exit(106)
 
                     })
 
@@ -758,7 +763,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${e}`,'F')
  
-        process.exit(100)
+        process.exit(107)
 
     })
 
@@ -822,7 +827,7 @@ PREPARE_SYMBIOTE=async()=>{
             
         .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
-    ).then(answer=>answer!=='YES'&& process.exit(126))
+    ).then(answer=>answer!=='YES'&& process.exit(108))
 
     
     SIG_PROCESS={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation

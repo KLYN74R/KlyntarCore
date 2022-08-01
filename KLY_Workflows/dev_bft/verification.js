@@ -347,6 +347,16 @@ verifyBlock=async block=>{
         &&
         await VERIFY(blockHash,block.sig,block.c)
 
+    
+    if(block.i === CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT){
+
+        LOG(`Checkpoint verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
+
+        LOG('Going to stop...','W')
+
+        process.emit('SIGINT')
+
+    }
 
 
 

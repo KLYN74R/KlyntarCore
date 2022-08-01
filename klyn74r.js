@@ -94,7 +94,7 @@ if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
 
     console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'test' for AntiVenom testnet or 'main' for your symbiotes)\x1b[0m`)
 
-    process.exit(1)
+    process.exit(101)
 
 }
 
@@ -103,7 +103,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
     console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
 
-    process.exit(1)
+    process.exit(102)
 
 }
 
@@ -396,7 +396,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
         .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
         
-    ).then(answer=>answer!=='YES'&& process.exit(126))
+    ).then(answer=>answer!=='YES'&& process.exit(103))
 
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
