@@ -159,6 +159,7 @@
 
         "STOP_GENERATE_BLOCKS":false,
         "STOP_VERIFY":false,
+        "VT_GT_NORMAL_DIFFERENCE":100,
         
         "EVENTS_MEMPOOL_SIZE":300000,         
         "BLOCK_TO_BLOCK_CACHE_SIZE":100000,

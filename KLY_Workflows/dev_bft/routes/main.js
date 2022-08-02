@@ -196,11 +196,11 @@ getGenerationThread=async(a,q)=>{
 
             payload:returnMetadata,
             
-            sig:await SIG(returnMetadata)
+            sig:await SIG(JSON.stringify(returnMetadata))
     
         }
 
-        !a.aborted&&a.end(data)
+        !a.aborted&&a.end(JSON.stringify(data))
 
     }else !a.aborted&&a.end('Symbiote not supported or GET_GENERATION_THREAD trigger is off')
 
@@ -348,7 +348,7 @@ UWS_SERVER
 
 .post('/commitnewheight',commitNewHeight)
 
-.get('/genhread/:symbiote',getGenerationThread)
+.get('/genthread/:symbiote',getGenerationThread)
 
 .post('/proof',acceptHostchainsProofs)
 

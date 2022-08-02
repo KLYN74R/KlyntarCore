@@ -2,10 +2,12 @@ import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY} from './utils.js'
 
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
 import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
 
 
 
@@ -367,7 +369,7 @@ verifyBlock=async block=>{
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p//it should be a chain
         &&
-        true//await checkBFTProofForBlock(block.i,blockHash)
+        await checkBFTProofForBlock(block.i,blockHash)
         &&
         await VERIFY(blockHash,block.sig,block.c)
 

@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF, VERIFY} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -129,26 +129,12 @@ ASK_FOLK=async()=>{
     let validatorsUrls=[]
 
 
-    //____________________________MODIFY THE GENERATION THREAD IN ORDER TO VERIFICATION THREAD______________________
-
-    SYMBIOTE_META.GENERATION_THREAD={}
-
-    SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
-
-    SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
-
-    SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-
-    SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
-
-    SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
-
-
-
     //Specific case - you're only one validator(testnet,local network,etc.)
     if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1 && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0]===CONFIG.SYMBIOTE.PUB) return true
 
     else{
+
+        let nodeToPubkeyBind={}
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(async pubkey=>{
 
@@ -156,17 +142,51 @@ ASK_FOLK=async()=>{
     
                 GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
                     
-                    stuff => stuff.payload.url
+                    stuff => {
+
+                        nodeToPubkeyBind[stuff.payload.url]=pubkey
+
+                        return stuff.payload.url
+
+                    }
                     
-                ).catch(e=>LOG(`Can't find node binding to pubkey \x1b[36;1m${pubkey}`,'W'))
+                ).catch(error=>LOG(`Can't find node binding to pubkey \x1b[36;1m${pubkey}\n${error}`,'W'))
     
             )
     
         })
     
-        await Promise.all(validatorsUrls).then(urls=>{
+        await Promise.all(validatorsUrls).then(async urls=>{
     
             urls=urls.filter(Boolean)//remove undefined / false values
+
+            let validatorsGenerationThreadsState=[]
+
+            urls.forEach(url=>
+            
+                validatorsGenerationThreadsState.push(
+
+                    fetch(url+`/genthread/${CONFIG.SYMBIOTE.SYMBIOTE_ID}`)
+                    
+                        .then(r=>r.json())
+                        
+                        .then(async pureOutput=>
+                            
+                            await VERIFY(JSON.stringify(pureOutput.payload),pureOutput.sig,nodeToPubkeyBind[url]) && pureOutput.payload
+                            
+                        )
+                        
+                        .catch(e=>false)
+
+                )
+                
+            )
+
+            let genThreadVersions=await Promise.all(validatorsGenerationThreadsState)
+
+
+            console.log('SOLUTIONS ',genThreadVersions)
+
             
         })
 
@@ -191,6 +211,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
             CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT < SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX
             &&
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
+
 
 
         if(SYMBIOTE_META.GENERATION_THREAD || shouldEvenTryToTakePart&&await ASK_FOLK()){
@@ -242,15 +263,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
 
+    //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
+    if(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
-    /*
-    _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
-    
-    Initially, we check if it's your turn to generate block - if your pubkey was choosen as a master validator - then you can produce set of phantom blocks
-    
-    */
+        LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
-    if(SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR!==CONFIG.SYMBIOTE.PUB) return
+        return
+
+    }
 
     
     /*
@@ -270,10 +290,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
     //If nothing to generate-then no sense to generate block,so return
-    //if(phantomControllers===0) return 
+    if(phantomBlocksNumber===0) return 
 
-    //Validator can't generate more blocks than epoch limit defined in symbiote manifest
-    phantomBlocksNumber = phantomBlocksNumber > CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS ? CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_EPOCH_IN_BLOCKS : phantomBlocksNumber + 1
 
     LOG(`Number of phantoms ${phantomBlocksNumber}`,'I')
 
@@ -282,7 +300,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         let eventsArray=await GET_EVENTS(),
             
-            blockCandidate=new Block(eventsArray,SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH),
+            blockCandidate=new Block(eventsArray),
                         
             hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
     
@@ -341,31 +359,33 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //Commit group of blocks by setting hash and index of the last one
 
     await Promise.all(promises).then(arr=>
-            
-        new Promise(resolve=>{
+        
+        SYMBIOTE_META.METADATA.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
 
-            //And here we should broadcast blocks
-            arr.forEach(block=>
+            new Promise(resolve=>{
+
+                //And here we should broadcast blocks
+                arr.forEach(block=>
                     
-                Promise.all(BROADCAST('/block',block))
+                    Promise.all(BROADCAST('/block',block))
                     
-            )
+                )
 
 
-            //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
+                //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
     
-            //Push to hostchains due to appropriate symbiote
-            Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
+                //Push to hostchains due to appropriate symbiote
+                Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
     
-                //TODO:Add more advanced logic
-                if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
+                    //TODO:Add more advanced logic
+                    if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
-                    let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
+                        let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
                         
-                        hostchain=HOSTCHAIN.get(ticker),
+                            hostchain=HOSTCHAIN.get(ticker),
     
-                        //If previous push is still not accepted-then no sense to push new symbiote update
-                        isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
+                            //If previous push is still not accepted-then no sense to push new symbiote update
+                            isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
                         
 
 
@@ -398,6 +418,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                             if(symbioticHash){
 
                                 LOG(`Commit on ${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m for block \x1b[36;1m${index}\x1b[32;1m is \x1b[36;1m${symbioticHash}`,'S')
+                                
                                 //Commit localy that we have send it
                                 control.KLYNTAR_HASH=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
                     
@@ -409,17 +430,17 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                                 
                                 await SYMBIOTE_META.HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
                                             
-                                        .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
+                                    .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
                         
-                                        .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
+                                    .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
                         
-                                        .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
+                                    .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
     
     
-                                }
+                            }
 
                             LOG(`Balance on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance()}`,'I')
-                        
+                            
                         }
     
                     }
@@ -431,7 +452,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
             })
-
+            
+        )
 
     )
 
@@ -508,7 +530,7 @@ RELOAD_STATE = async() => {
     }else{
 
         //Otherwise start rescan form height=0
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
+        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
         
         SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0,CHECKSUM:''}
 
@@ -675,8 +697,44 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
+
+
+    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.METADATA.get('GT').catch(e=>
+        
+        e.notFound
+        ?
+        {
+            PREV_HASH:`Poyekhali!@Y.A.Gagarin`,//Genesis hash
+            NEXT_INDEX:0//So the first block will be with index 0
+        }
+        :
+        (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(106))
+                        
+    )
+
+
+    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
+
+        previous=await SYMBIOTE_META.CONTROLLER_BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
     
+
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+        
+        initSpinner?.stop()
+
+        LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
+            
+        process.exit(107)
+
+    }
+
+    
+
+
     //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
+
+
+
 
     SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.METADATA.get('VT').catch(e=>
         
