@@ -115,7 +115,7 @@ process.on('SIGHUP',graceful)
 
 
 
-//TODO:Add more advanced logic(e.g number of txs,ratings,etc.)
+//TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
 
@@ -135,7 +135,11 @@ ASK_FOLK=async()=>{
 
             GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
                 
-                url => {}
+                url => {
+
+
+
+                }
                 
             ).catch(e=>console.log(`Can't find ip binding to pubkey \x1b[36;1m${pubkey}`,'W'))
 

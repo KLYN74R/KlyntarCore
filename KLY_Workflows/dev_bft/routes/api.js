@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS} from '../../../KLY_Utils/utils.js'
 
-import {WRAP_RESPONSE,GET_NODES,GET_STUFF} from '../utils.js'
+import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 
 
 
@@ -130,12 +130,23 @@ stuff=async(a,q)=>{
     
         stuffID=q.getParameter(1),
     
-        stuffType=q.getParameter(1)
+        stuffType=q.getParameter(2)
+
 
     
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF) !a.aborted && a.end(await GET_STUFF(stuffID,stuffType))
-    
-    else !a.aborted && a.end('Symbiote not supported or route is off')
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF && CONFIG.SYMBIOTE.STUFF_CATEGORIES.includes(stuffType)){
+
+        let stuff = SYMBIOTE_META[stuffType].get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
+
+            SYMBIOTE_META[cache_type].set(stuffID,obj)
+        
+            return obj
+        
+        })
+
+        !a.aborted && a.end(JSON.stringify(stuff))
+
+    }else !a.aborted && a.end('Symbiote not supported or route is off')
 
 },
 

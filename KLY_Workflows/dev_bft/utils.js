@@ -81,16 +81,39 @@ SEND_REPORT = alertInfo =>
 //Cache-Type URL_PUBKEY_BIND or VALIDATORS_PUBKEY_COMBINATIONS
 GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
-    SYMBIOTE_META[cache_type].set(stuffID,obj)
+    if(CONFIG.SYMBIOTE[cache_type+'_CACHE_SIZE']>SYMBIOTE_META[cache_type].size) SYMBIOTE_META[cache_type].set(stuffID,obj)
 
     return obj
 
-}).catch(e=>{
+}).catch(_=>{
 
-    LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
+    LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask \x1b[32;1mGET_STUFF_URI\x1b[36;1mnode`,'I')
 
-    //Combine all nodes we know about and try to find block there
-    let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+    let stuff = await fetch(GET_STUFF_URI+`/stuff/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
+
+    if(stuff){
+
+
+        SYMBIOTE_META.STUFF.put(stuffID,stuff).catch(e=>LOG(`Can't store stuff ${stuffID} to local storage`,'W'))        
+
+    
+        if(CONFIG.SYMBIOTE[cache_type+'_CACHE_SIZE']>SYMBIOTE_META[cache_type].size) SYMBIOTE_META[cache_type].set(stuffID,stuff)
+
+
+    }else{
+
+        LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
+
+        //Combine all nodes we know about and try to find block there
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+
+        for(let url in allVisibleNodes){
+
+            let answer = await fetch(url+'/stuff')
+
+        }
+
+    }
 
 }),
 
