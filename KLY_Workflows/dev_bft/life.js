@@ -114,85 +114,8 @@ process.on('SIGHUP',graceful)
 //________________________________________________________________INTERNAL_______________________________________________________________________
 
 
-
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
-
-
-
-
-//Here we ask the symbiote network if we should vote for new phantoms or generate them
-ASK_FOLK=async()=>{
-
-    //Initially, we ask validators
-
-    let validatorsUrls=[]
-
-
-    //Specific case - you're only one validator(testnet,local network,etc.)
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1 && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0]===CONFIG.SYMBIOTE.PUB) return true
-
-    else{
-
-        let nodeToPubkeyBind={}
-
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(async pubkey=>{
-
-            validatorsUrls.push(
-    
-                GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
-                    
-                    stuff => {
-
-                        nodeToPubkeyBind[stuff.payload.url]=pubkey
-
-                        return stuff.payload.url
-
-                    }
-                    
-                ).catch(error=>LOG(`Can't find node binding to pubkey \x1b[36;1m${pubkey}\n${error}`,'W'))
-    
-            )
-    
-        })
-    
-        await Promise.all(validatorsUrls).then(async urls=>{
-    
-            urls=urls.filter(Boolean)//remove undefined / false values
-
-            let validatorsGenerationThreadsState=[]
-
-            urls.forEach(url=>
-            
-                validatorsGenerationThreadsState.push(
-
-                    fetch(url+`/genthread/${CONFIG.SYMBIOTE.SYMBIOTE_ID}`)
-                    
-                        .then(r=>r.json())
-                        
-                        .then(async pureOutput=>
-                            
-                            await VERIFY(JSON.stringify(pureOutput.payload),pureOutput.sig,nodeToPubkeyBind[url]) && pureOutput.payload
-                            
-                        )
-                        
-                        .catch(e=>false)
-
-                )
-                
-            )
-
-            let genThreadVersions=await Promise.all(validatorsGenerationThreadsState)
-
-
-            console.log('SOLUTIONS ',genThreadVersions)
-
-            
-        })
-
-    }
-
-},
 
 
 
@@ -203,26 +126,15 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
         //With this we say to system:"Wait,we still processing the block"
         THREADS_STILL_WORKS.GENERATION=true
-        
-        let shouldEvenTryToTakePart = 
 
-            //If you're still syncing - no sense to "generate" phantom blocks(as master validator) or try to sign new height(as validator)
-            //if this fork is already valid(and you set this checkpoint in symbiote onfigs)
-            CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT < SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
-
-
-
-        if(SYMBIOTE_META.GENERATION_THREAD || shouldEvenTryToTakePart&&await ASK_FOLK()){
-
-
-            await GENERATE_PHANTOM_BLOCKS_PORTION()
-
-        }
+        await GENERATE_PHANTOM_BLOCKS_PORTION()    
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
         
+        CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
+        &&
+        clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
+
     }else{
 
         LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
@@ -262,7 +174,6 @@ RUN_POLLING=async()=>{
 export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
-
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
     if(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
@@ -271,7 +182,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         return
 
     }
-
+    
     
     /*
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
@@ -288,12 +199,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         phantomsMetadata={id:-1,hash:''}// id and hash of the latest phantom block in a set
 
 
+    phantomBlocksNumber++//DELETE after tests
 
     //If nothing to generate-then no sense to generate block,so return
     if(phantomBlocksNumber===0) return 
 
 
     LOG(`Number of phantoms ${phantomBlocksNumber}`,'I')
+
 
     for(let i=0;i<phantomBlocksNumber;i++){
 
@@ -715,10 +628,12 @@ PREPARE_SYMBIOTE=async()=>{
 
     let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
 
-        previous=await SYMBIOTE_META.CONTROLLER_BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
-    
+        previous=await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.a) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+        
+
+
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
         
         initSpinner?.stop()
 
@@ -994,17 +909,17 @@ RUN_SYMBIOTE=async()=>{
         await Promise.all(promises)
 
 
+        //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
-        // LOG(`Choosen generation thread is (Votes:${maxVotes} | Master:${winnerHandler.masterValidator} | EpochStart:${winnerHandler.epochStart})`,'I')
 
-
+        //Start generate ControllerBlocks if you're controller(obviously)
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
-            
+                
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
-            
+                
             GEN_BLOCKS_START_POLLING()
-        
-        },2000)
+            
+        },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
     }
 

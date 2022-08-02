@@ -1,327 +1,319 @@
 {
-    "SYMBIOTE":{
+
+    "VERSION":"0.1.0",
+    "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    
+    "INFO":{
+        "MAIL":"hello@example.com",
+        "TELEGRAM":"@youraddress"
+    },
+    
+    "STOP_WORK":false,
+    
+    "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+    "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
+    
+    "MANIFEST":{
+    
+        "CONTACT":{
+            "TELEGRAM":"@Something",
+            "MAIL":"user@email.com",
+            "SITE":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
+        },
+    
+        "HIVEMIND":[
+            "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
+            "NTma18DvP6VhoWJ427urWCJhNYq2zsr17dzF7mZrEgPr",
+            "G1axah5Ciidjo7HuHHvXJPzq3mpNHr3QRiQgiUrVYZ5P"
+        ],
+                    
+        "HOSTCHAINS":{
         
-        "VERSION":"0.1.0",
-        "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    
-        "INFO":{
-            "MAIL":"hello@example.com",
-            "TELEGRAM":"@youraddress"
-        },
-    
-        "STOP_WORK":false,
-    
-        "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-        "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
-    
-        "MANIFEST":{
-    
-            "CONTACT":{
-                "TELEGRAM":"@Something",
-                "MAIL":"user@email.com",
-                "SITE":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
-            },
-    
-            "HIVEMIND":[
-                "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-                "NTma18DvP6VhoWJ427urWCJhNYq2zsr17dzF7mZrEgPr",
-                "G1axah5Ciidjo7HuHHvXJPzq3mpNHr3QRiQgiUrVYZ5P"
-            ],
-                    
-            "HOSTCHAINS":{
-                "ltc":{
-                    "TYPE":"dev0",
-                    "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
-                },
-                "bsc":{
-                    "TYPE":"dev0",
-                    "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
-                },
-                "eth":{
-                    "TYPE":"dev0",
-                    "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
-                }
-                    
-            },
-    
-            "WORKFLOW":"dev_bft",
-            "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
-            "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-            "VALIDATOR_STAKE":10000,
-            "VALIDATOR_REWARD_PERCENTAGE":0.5,
-            "EVENTS_LIMIT_PER_BLOCK":30000,
-            "VALIDATOR_EPOCH_IN_BLOCKS":1000
-        },
-    
-        "HC_CONFIGS":{
-                    
             "ltc":{
-    
-                "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-                "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
-                "NET":"TEST",
-                "PROVIDER_TYPE":"NODE",
-                "URL":"http://localhost:2339/command",
-                "CONFIRMATIONS":1,
-                "CREDS":"VLAD",
-                "FEE":192666
-                        
+                "TYPE":"dev0",
+                "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
             },
-    
             "bsc":{
-    
-                "URL":"https://data-seed-prebsc-1-s1.binance.org:8545/",
-                "PROVIDER_TYPE":"API",
-                "PUB":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-                "PRV":"fbd0739ef27de0efa663b375ecb2ffb2ba2ac68e3825737eb6e9e39192cbb8994ae6ba5d34d7f630deaeb9be7da8bad231f3b8b460fcec68aa63a2724df4309f78431a907c3b2e728f6dad65fe93ec1e",
-                "TO":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-                "GAS_LIMIT":25000,
-                "GAS_PRICE":"10",
-                "AMOUNT":"0",
-                "NET":"mainnet",
-                "CHAIN_ID":97,
-                "HARDFORK":"petersburg"
-            
+                "TYPE":"dev0",
+                "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
             },
-    
             "eth":{
-                "URL":"https://ropsten.infura.io/v3/221ec7661021452ab89a4a5fa29ebf68",
-                "PROVIDER_TYPE":"NAAS",
-                "PUB":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-                "PRV":"8db9279e332ebd4e098fbba039019ca90b7a45e4c433bc1542ce9e56058eb5a66db9df0fce8ffbfec41f74440fb1a010727b0db46e2a0cba25143c485bae7002a4b4ba48137177536e1a5e2007c573ce",
-                "TO":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-                "GAS_LIMIT":30000,
-                "GAS_PRICE":"100",
-                "AMOUNT":"0",
-                "NET":"mainnet",
-                "CHAIN_ID":3,
-                "HARDFORK":"london",
-                "MAX_FEE_PER_GAS":"30",
-                "MAX_PRIORITY_FEE_PER_GAS":"30"
+                "TYPE":"dev0",
+                "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
             }
-    
-        },
-
-        "ROLE":"",
-    
-        "STOP_HOSTCHAINS":{
-            "ltc":true,
-            "bsc":true,
-            "eth":true
-        },
-    
-        "WORKFLOW_CHECK":{
                     
-            "HOSTCHAINS":{
-                "ltc":{
-                    "MODE":"PASSIVE",
-                    "RANGE":100,
-                    "STORE":true,
-                    "CACHE_SIZE":10000,
-                    "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-                    "URL":"http://localhost:7777",
-                    "REPORT_TO":"http://localhost:7777/alert"
-                },
-                "bsc":{
-                    "MODE":"PASSIVE",
-                    "RANGE":10,
-                    "STORE":true,
-                    "CACHE_SIZE":10000,
-                    "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-                    "URL":"http://localhost:7777",
-                    "REPORT_TO":"http://localhost:7777/alert"
-                },
-                "eth":{
-                    "MODE":"PASSIVE",
-                    "RANGE":10,
-                    "STORE":true,
-                    "CACHE_SIZE":10000,
-                    "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-                    "URL":"http://localhost:7777",
-                    "REPORT_TO":"http://localhost:7777/alert"
-                }
-            }
         },
-        
-        "AWAIT_FOR_AFK_VALIDATOR":120000,
+    
+        "WORKFLOW":"dev_bft",
+        "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
+        "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "VALIDATOR_STAKE":10000,
+        "VALIDATOR_REWARD_PERCENTAGE":0.5,
+        "EVENTS_LIMIT_PER_BLOCK":30000,
+        "VALIDATOR_EPOCH_IN_BLOCKS":1000
+    },
+    
+    "HC_CONFIGS":{
                 
-        "VERIFICATION_THREAD_POLLING":5000,
-        "BLOCK_TIME":2000,
-        "SKIP_BFT_PROOFS":true,
+        "ltc":{
 
-        "CHECKPOINT":{
-            "HEIGHT":-1,
-            "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
+            "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
+            "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
+            "NET":"TEST",
+            "PROVIDER_TYPE":"NODE",
+            "URL":"http://localhost:2339/command",
+            "CONFIRMATIONS":1,
+            "CREDS":"VLAD",
+            "FEE":192666
+                    
         },
 
-        "URL_PUBKEY_BIND_CACHE_SIZE":50000,
-        "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
+        "bsc":{
 
-        "STOP_GENERATE_BLOCKS":false,
-        "STOP_VERIFY":false,
-        "VT_GT_NORMAL_DIFFERENCE":100,
-        
-        "EVENTS_MEMPOOL_SIZE":300000,         
-        "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
-
-        "STORE_BLOCKS":true,
-    
-        "NODES":{
-    
-            "AF":[
-                "https://0.mynearpub.com:7777",
-                "https://1.mynearpub.com:7777",
-                "https://2.mynearpub.com:7777",
-                "https://3.mynearpub.com:7777",
-                "https://4.mynearpub.com:7777",
-                "https://5.mynearpub.com:7777",
-                "https://6.mynearpub.com:7777",
-                "https://7.mynearpub.com:7777",
-                "https://8.mynearpub.com:7777",
-                "https://9.mynearpub.com:7777",
-                "https://10.mynearpub.com:7777",
-                "https://11.mynearpub.com:7777",
-                "https://12.mynearpub.com:7777",
-                "https://13.mynearpub.com:7777",
-                "https://14.mynearpub.com:7777",
-                "https://15.mynearpub.com:7777",
-                "https://16.mynearpub.com:7777",
-                "https://17.mynearpub.com:7777",
-                "https://18.mynearpub.com:7777"
-            ],
-            
-            "AS":[
-                "https://0.mynearpub.com:7777",
-                "https://1.mynearpub.com:7777",
-                "https://2.mynearpub.com:7777",
-                "https://3.mynearpub.com:7777",
-                "https://4.mynearpub.com:7777",
-                "https://5.mynearpub.com:7777",
-                "https://6.mynearpub.com:7777",
-                "https://7.mynearpub.com:7777",
-                "https://8.mynearpub.com:7777",
-                "https://9.mynearpub.com:7777",
-                "https://10.mynearpub.com:7777",
-                "https://11.mynearpub.com:7777",
-                "https://12.mynearpub.com:7777",
-                "https://13.mynearpub.com:7777",
-                "https://14.mynearpub.com:7777",
-                "https://15.mynearpub.com:7777",
-                "https://16.mynearpub.com:7777",
-                "https://17.mynearpub.com:7777",
-                "https://18.mynearpub.com:7777"
-            ]
-    
-        },
-    
-        "BOOTSTRAP_NODES":[
-            "http://localhost:6665",
-            "http://localhost:6664",
-            "http://localhost:44444"
-        ],
-
-        "ASYNC_BLOCK_ACCEPTION_TRUST_POOL":[
-            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
-            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
-            "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
-        ],
-            
-        "MUST_SEND":{
-    
-            "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
-        
-            "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
-        
-            "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
+            "URL":"https://data-seed-prebsc-1-s1.binance.org:8545/",
+            "PROVIDER_TYPE":"API",
+            "PUB":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+            "PRV":"fbd0739ef27de0efa663b375ecb2ffb2ba2ac68e3825737eb6e9e39192cbb8994ae6ba5d34d7f630deaeb9be7da8bad231f3b8b460fcec68aa63a2724df4309f78431a907c3b2e728f6dad65fe93ec1e",
+            "TO":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+            "GAS_LIMIT":25000,
+            "GAS_PRICE":"10",
+            "AMOUNT":"0",
+            "NET":"mainnet",
+            "CHAIN_ID":97,
+            "HARDFORK":"petersburg"
         
         },
-    
-        "NODES_PORTION":8,
-        "MAX_CONNECTIONS":15,
-        "MY_HOSTNAME":"http://somenode.com:6666",
-            
-        "TTL":{
-            "API_ACCOUNTS":30,
-            "INFO":600,
-            "API_NODES":600,
-            "API_BLOCK":6000,
-            "API_MULTI":600,
-    
-            "GET_GEN_THREAD":600
-        },
-    
-        "TRIGGERS":{
-    
-            "API_ACCOUNTS":1,
-            "INFO":1,
-            "API_NODES":1,
-            "API_BLOCK":1,
-            "API_MULTI":1,
-            "API_SHARE_STUFF":1,
-            "API_BIND_PUBKEY_TO_URL":1,
-            
-            "ACCEPT_BLOCKS":1,
-            "ACCEPT_EVENTS":1,
-            "ACCEPT_NEW_NODES":1,
-            "ACCEPT_HOSTCHAINS_PROOFS":1,
 
-            "GET_GENERATION_THREAD":1
-        },
-    
-        "GET_BLOCKS_URI":"http://localhost:6666",
-        "GET_MULTI":"http://localhost:6666",
-        "BLOCKS_EXPORT_PORTION":100,
-        "GET_STUFF_URI":"http://localhost:6666",
-
-        "STUFF_CATEGORIES":[
-            "URL_PUBKEY_BIND",
-            "VALIDATORS_PUBKEY_COMBINATIONS"
-        ],
-
-        "LOAD_STUFF":{
-            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
-                "payload":{
-                    "url":"http://localhost:6666"
-                },
-                "sig":""
-            },
-            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
-                "payload":{
-                    "url":"http://localhost:6665"
-                },
-                "sig":""
-            },
-            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
-                "payload":{
-                    "url":"http://localhost:6664"
-                },
-                "sig":""
-            }
-        },
-
-        "REGION":"EU",
-    
-        "LOGS":{
-        
-            "TO_FILE":true,
-            "OFFLINE":false,
-            "BLOCK":true,
-            "STORE":true
-            
-        },
-                
-        "SNAPSHOTS":{
-            
-            "ENABLE":true,
-            "RANGE":2,
-            "ALL":true,
-            "SHARDS_URLS":[
-                "https://myown.snapshots.io",
-                "https://dead::beef",
-                "http://192.168.1.23:9696"
-            ]
+        "eth":{
+            "URL":"https://ropsten.infura.io/v3/221ec7661021452ab89a4a5fa29ebf68",
+            "PROVIDER_TYPE":"NAAS",
+            "PUB":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+            "PRV":"8db9279e332ebd4e098fbba039019ca90b7a45e4c433bc1542ce9e56058eb5a66db9df0fce8ffbfec41f74440fb1a010727b0db46e2a0cba25143c485bae7002a4b4ba48137177536e1a5e2007c573ce",
+            "TO":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+            "GAS_LIMIT":30000,
+            "GAS_PRICE":"100",
+            "AMOUNT":"0",
+            "NET":"mainnet",
+            "CHAIN_ID":3,
+            "HARDFORK":"london",
+            "MAX_FEE_PER_GAS":"30",
+            "MAX_PRIORITY_FEE_PER_GAS":"30"
         }
+
+    },
+
+    "STOP_HOSTCHAINS":{
+        "ltc":true,
+        "bsc":true,
+        "eth":true
+    },
+
+    "WORKFLOW_CHECK":{
+                
+        "HOSTCHAINS":{
+            "ltc":{
+                "MODE":"PASSIVE",
+                "RANGE":100,
+                "STORE":true,
+                "CACHE_SIZE":10000,
+                "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
+                "URL":"http://localhost:7777",
+                "REPORT_TO":"http://localhost:7777/alert"
+            },
+            "bsc":{
+                "MODE":"PASSIVE",
+                "RANGE":10,
+                "STORE":true,
+                "CACHE_SIZE":10000,
+                "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+                "URL":"http://localhost:7777",
+                "REPORT_TO":"http://localhost:7777/alert"
+            },
+            "eth":{
+                "MODE":"PASSIVE",
+                "RANGE":10,
+                "STORE":true,
+                "CACHE_SIZE":10000,
+                "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+                "URL":"http://localhost:7777",
+                "REPORT_TO":"http://localhost:7777/alert"
+            }
+        }
+    },
+        
+    "VT_GT_NORMAL_DIFFERENCE":100,
+    "VERIFICATION_THREAD_POLLING":5000,
+
+    "BLOCK_TIME":3000,
+
+    "STOP_GENERATE_BLOCKS":false,
+    "STOP_VERIFY":false,
+
+    "STORE_BLOCKS":true,
+    "BLOCK_GENERATION_INIT_DELAY":3000,
+
+    "EVENTS_MEMPOOL_SIZE":300000,         
+    "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
+
+    "AWAIT_FOR_AFK_VALIDATOR":120000,
     
+    "SKIP_BFT_PROOFS":true,
+    
+    "CHECKPOINT":{
+        "HEIGHT":-1,
+        "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
+    },
+    
+    "URL_PUBKEY_BIND_CACHE_SIZE":50000,
+    "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
+
+    "NODES":{
+    
+        "AF":[
+            "https://0.mynearpub.com:7777",
+            "https://1.mynearpub.com:7777",
+            "https://2.mynearpub.com:7777",
+            "https://3.mynearpub.com:7777",
+            "https://4.mynearpub.com:7777",
+            "https://5.mynearpub.com:7777",
+            "https://6.mynearpub.com:7777",
+            "https://7.mynearpub.com:7777",
+            "https://8.mynearpub.com:7777",
+            "https://9.mynearpub.com:7777",
+            "https://10.mynearpub.com:7777",
+            "https://11.mynearpub.com:7777",
+            "https://12.mynearpub.com:7777",
+            "https://13.mynearpub.com:7777",
+            "https://14.mynearpub.com:7777",
+            "https://15.mynearpub.com:7777",
+            "https://16.mynearpub.com:7777",
+            "https://17.mynearpub.com:7777",
+            "https://18.mynearpub.com:7777"
+        ],
+            
+        "AS":[
+            "https://0.mynearpub.com:7777",
+            "https://1.mynearpub.com:7777",
+            "https://2.mynearpub.com:7777",
+            "https://3.mynearpub.com:7777",
+            "https://4.mynearpub.com:7777",
+            "https://5.mynearpub.com:7777",
+            "https://6.mynearpub.com:7777",
+            "https://7.mynearpub.com:7777",
+            "https://8.mynearpub.com:7777",
+            "https://9.mynearpub.com:7777",
+            "https://10.mynearpub.com:7777",
+            "https://11.mynearpub.com:7777",
+            "https://12.mynearpub.com:7777",
+            "https://13.mynearpub.com:7777",
+            "https://14.mynearpub.com:7777",
+            "https://15.mynearpub.com:7777",
+            "https://16.mynearpub.com:7777",
+            "https://17.mynearpub.com:7777",
+            "https://18.mynearpub.com:7777"
+        ]
+    
+    },
+    
+    "BOOTSTRAP_NODES":[
+        "http://localhost:6665",
+        "http://localhost:6664",
+        "http://localhost:44444"
+    ],
+    
+            
+    "MUST_SEND":{
+
+        "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
+    
+        "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
+    
+        "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
+    
+    },
+    
+    "NODES_PORTION":8,
+    "MAX_CONNECTIONS":15,
+    "MY_HOSTNAME":"http://somenode.com:6666",
+        
+    "TTL":{
+        "API_ACCOUNTS":30,
+        "INFO":600,
+        "API_NODES":600,
+        "API_BLOCK":6000,
+        "API_MULTI":600,
+
+        "GET_GEN_THREAD":600
+    },
+    
+    "TRIGGERS":{
+
+        "API_ACCOUNTS":1,
+        "INFO":1,
+        "API_NODES":1,
+        "API_BLOCK":1,
+        "API_MULTI":1,
+        "API_SHARE_STUFF":1,
+        "API_BIND_PUBKEY_TO_URL":1,
+        
+        "ACCEPT_BLOCKS":1,
+        "ACCEPT_EVENTS":1,
+        "ACCEPT_NEW_NODES":1,
+        "ACCEPT_HOSTCHAINS_PROOFS":1,
+        "GET_GENERATION_THREAD":1
+    },
+    
+    "GET_BLOCKS_URI":"http://localhost:6666",
+    "GET_MULTI":"http://localhost:6666",
+    "BLOCKS_EXPORT_PORTION":100,
+    "GET_STUFF_URI":"http://localhost:6666",
+    "STUFF_CATEGORIES":[
+        "URL_PUBKEY_BIND",
+        "VALIDATORS_PUBKEY_COMBINATIONS"
+    ],
+
+    "LOAD_STUFF":{
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+            "payload":{
+                "url":"http://localhost:6666"
+            },
+            "sig":""
+        },
+        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
+            "payload":{
+                "url":"http://localhost:6665"
+            },
+            "sig":""
+        },
+        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
+            "payload":{
+                "url":"http://localhost:6664"
+            },
+            "sig":""
+        }
+    },
+
+    "REGION":"EU",
+
+    "LOGS":{
+    
+        "TO_FILE":true,
+        "OFFLINE":false,
+        "BLOCK":true,
+        "STORE":true
+        
+    },
+            
+    "SNAPSHOTS":{
+        
+        "ENABLE":true,
+        "RANGE":2,
+        "ALL":true,
+        "SHARDS_URLS":[
+            "https://myown.snapshots.io",
+            "https://dead::beef",
+            "http://192.168.1.23:9696"
+        ]
     }
+
 }
