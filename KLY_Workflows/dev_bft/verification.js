@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {GET_SYMBIOTE_ACC,BLOCKLOG,VERIFY} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY} from './utils.js'
 
 import Block from './essences/block.js'
 
@@ -170,8 +170,6 @@ START_VERIFY_POLLING=async()=>{
 
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
 
-        console.log('VT ',SYMBIOTE_META.VERIFICATION_THREAD)
-        console.log('GT ',SYMBIOTE_META.GENERATION_THREAD)
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
 
@@ -371,10 +369,10 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
         
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
-        block.e.forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c)))
+        block.e.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
         
         //Push accounts of creators of InstantBlock
-        rewardBox.forEach(reference=>sendersAccounts.push(GET_SYMBIOTE_ACC(reference.creator)))
+        rewardBox.forEach(reference=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(reference.creator)))
 
         //Now cache has all accounts and ready for the next cycles
         await Promise.all(sendersAccounts.splice(0))
@@ -389,7 +387,7 @@ verifyBlock=async block=>{
             if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
 
                 
-                let acc=GET_SYMBIOTE_ACC(event.c),
+                let acc=GET_ACCOUNT_ON_SYMBIOTE(event.c),
                     
                     spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || 1
 
@@ -431,11 +429,11 @@ verifyBlock=async block=>{
         //_________________________________________________SHARE FEES___________________________________________________
         
         
-        // let controllerAcc=await GET_SYMBIOTE_ACC(symbiote)
+        // let controllerAcc=await GET_ACCOUNT_ON_SYMBIOTE(symbiote)
 
         // rewardBox.forEach(reference=>{
         
-        //     let acc=GET_SYMBIOTE_ACC(reference.creator),
+        //     let acc=GET_ACCOUNT_ON_SYMBIOTE(reference.creator),
                 
         //         toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
                 

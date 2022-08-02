@@ -1,5 +1,6 @@
 {
     "SYMBIOTE":{
+        
         "VERSION":"0.1.0",
         "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     
@@ -100,6 +101,8 @@
             }
     
         },
+
+        "ROLE":"",
     
         "STOP_HOSTCHAINS":{
             "ltc":true,
@@ -150,7 +153,6 @@
             "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
         },
 
-        "STUFF_LOAD_LIMIT":100000,
         "URL_PUBKEY_BIND_CACHE_SIZE":50000,
         "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
 

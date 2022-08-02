@@ -1,6 +1,6 @@
 import {VERIFY,LOG,BLOCKLOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,GET_SYMBIOTE_ACC} from './utils.js'
+import {BROADCAST,GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 import ControllerBlock from './blocks/controllerblock.js'
 
@@ -469,12 +469,12 @@ verifyControllerBlock=async controllerBlock=>{
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
         eventsToSift.forEach(eventsSet=>
              
-            eventsSet.forEach(event=>sendersAccounts.push(GET_SYMBIOTE_ACC(event.c)))
+            eventsSet.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
                 
         )
 
         //Push accounts of creators of InstantBlock
-        rewardBox.forEach(reference=>sendersAccounts.push(GET_SYMBIOTE_ACC(reference.creator)))
+        rewardBox.forEach(reference=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(reference.creator)))
 
         //Now cache has all accounts and ready for the next cycles
         await Promise.all(sendersAccounts.splice(0))
@@ -492,7 +492,7 @@ verifyControllerBlock=async controllerBlock=>{
                 if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
 
                     
-                    let acc=GET_SYMBIOTE_ACC(event.c),
+                    let acc=GET_ACCOUNT_ON_SYMBIOTE(event.c),
                         
                         spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || 1
 
@@ -548,11 +548,11 @@ verifyControllerBlock=async controllerBlock=>{
 
         //Instant generator receive 80% of fees from his created block,controller receive 20% of his block
         
-        let controllerAcc=await GET_SYMBIOTE_ACC(symbiote)
+        let controllerAcc=await GET_ACCOUNT_ON_SYMBIOTE(symbiote)
 
         rewardBox.forEach(reference=>{
         
-            let acc=GET_SYMBIOTE_ACC(reference.creator),
+            let acc=GET_ACCOUNT_ON_SYMBIOTE(reference.creator),
                 
                 toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
                 

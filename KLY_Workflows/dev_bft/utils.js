@@ -15,12 +15,17 @@ global.HOSTCHAINS = new Map()
 
 
 
+export let 
+
+
+
+
 /**# Event initiator account
 * 
 * Symbiote level data.Used when we check blocks
 * Here we read from cache or get data about event initiator from state,push to cache and return
 */
-export let GET_SYMBIOTE_ACC = addr =>
+GET_ACCOUNT_ON_SYMBIOTE = addr =>
 
    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
    SYMBIOTE_META.ACCOUNTS.get(addr)||SYMBIOTE_META.STATE.get(addr)
@@ -80,7 +85,14 @@ GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID)
 
     return obj
 
-}).catch(e=>false),
+}).catch(e=>{
+
+    LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
+
+    //Combine all nodes we know about and try to find block there
+    let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+
+}),
 
 
 

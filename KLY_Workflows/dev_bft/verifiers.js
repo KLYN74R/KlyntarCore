@@ -42,7 +42,7 @@ import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
-import {GET_SYMBIOTE_ACC} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 
 
@@ -112,9 +112,9 @@ export let VERIFIERS = {
 
     TX:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c),
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
-            recipient=await GET_SYMBIOTE_ACC(event.p.r)
+            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.p.r)
     
     
             
@@ -144,9 +144,9 @@ export let VERIFIERS = {
 
     PQC_TX:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c),
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
-            recipient=await GET_SYMBIOTE_ACC(event.p.r)
+            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.p.r)
     
     
             
@@ -183,7 +183,7 @@ export let VERIFIERS = {
     
     NEWSTX:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c)
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
     
         if(event.p.length===64 && await MAIN_VERIFY(event,sender)){
     
@@ -202,7 +202,7 @@ export let VERIFIERS = {
     
         //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
     
-        let sender=GET_SYMBIOTE_ACC(event.c)
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
         
         if(await MAIN_VERIFY(event,sender)){
     
@@ -219,7 +219,7 @@ export let VERIFIERS = {
 
     DELEGATION:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c)
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
 
         if(await MAIN_VERIFY(event,sender)){
 
@@ -245,7 +245,7 @@ export let VERIFIERS = {
     //It's because we perform operations asynchronously
     SERVICE_DEPLOY:async (event,blockCreator)=>{
         
-        let sender=GET_SYMBIOTE_ACC(event.c),
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
             payloadJson=JSON.stringify(event.p),
 
@@ -276,9 +276,9 @@ export let VERIFIERS = {
 
     THRESHOLD:async (event,blockCreator)=>{
 
-        let sender=GET_SYMBIOTE_ACC(event.c),
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
-            recipient=await GET_SYMBIOTE_ACC(event.p.r)
+            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.p.r)
     
     
             

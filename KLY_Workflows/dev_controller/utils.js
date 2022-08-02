@@ -20,7 +20,7 @@ global.HOSTCHAINS = new Map()
 * Symbiote level data.Used when we check blocks
 * Here we read from cache or get data about event initiator from state,push to cache and return
 */
-export let GET_SYMBIOTE_ACC = addr =>
+export let GET_ACCOUNT_ON_SYMBIOTE = addr =>
 
    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
    SYMBIOTE_META.ACCOUNTS.get(addr)||SYMBIOTE_META.STATE.get(addr)

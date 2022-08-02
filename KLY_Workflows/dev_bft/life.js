@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -120,8 +120,33 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
 
 
-//Here we ask the symbiote network if we should vote 
-ASK_FOLK=async()=>{},
+
+//Here we ask the symbiote network if we should vote for new phantoms or generate them
+ASK_FOLK=async()=>{
+
+    //Initially, we ask validators
+    // SYMBIOTE_META.GENERATION_THREAD
+
+    let answers=[]
+
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(async pubkey=>{
+
+        answers.push(
+
+            GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
+                
+                url => {}
+                
+            ).catch(e=>console.log(`Can't find ip binding to pubkey \x1b[36;1m${pubkey}`,'W'))
+
+        )
+
+    })
+
+
+},
+
+
 
 
 GEN_BLOCKS_START_POLLING=async()=>{
@@ -140,8 +165,9 @@ GEN_BLOCKS_START_POLLING=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
 
 
-        if(shouldEvenTryToTakePart&&await ASK_FOLK()){
 
+
+        if(shouldEvenTryToTakePart&&await ASK_FOLK()){
 
 
             await GENERATE_PHANTOM_BLOCKS_PORTION()
@@ -558,7 +584,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'VALIDATORS_PROOFS',// BLS signatures of epoches/ranges
 
-        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on
+        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS
 
     ].forEach(
         
@@ -606,25 +632,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Also prepare generation thread to work with other validators if need
     SYMBIOTE_META.GENERATION_THREAD = {}
 
-    //____________________________________________________________________LOAD STUFF TO STUFF CACHE______________________________________________________________________
 
-
-
-
-    SYMBIOTE_META.STUFF.createReadStream({limit:CONFIG.SYMBIOTE.STUFF_LOAD_LIMIT}).on('data',
-    
-        stuff => {
-
-            if(stuff.value.type==='bind') SYMBIOTE_META.URL_PUBKEY_BIND.set(stuff.key,stuff.value.payload)
-            
-            else SYMBIOTE_META.VALIDATORS_PUBKEY_COMBINATIONS.set(stuff.keym,stuff.value.payload)
-
-        }
-        
-    )
-
-
-    
     //________________________________________________________________MAKE SURE VERIFICATION THREAD IS OK________________________________________________________________
 
 
