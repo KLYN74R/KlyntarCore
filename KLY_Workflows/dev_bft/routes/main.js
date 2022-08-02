@@ -160,9 +160,22 @@ commitNewHeight=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
 
 
 //To accept signatures of phantom blocks ranges from validators
+/*
+
+Proof is object
+
+{
+    hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
+    index:<BLOCK INDEX>
+    sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
+    pub:<AGGREGATED PUB of validators who confirmed this proof>
+    afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+}
+
+*/
 acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-       
+    
 
 }),
 

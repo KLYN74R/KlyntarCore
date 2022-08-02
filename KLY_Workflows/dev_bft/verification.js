@@ -324,6 +324,7 @@ Proof is object
 
 {
     hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
+    index:<BLOCK INDEX>
     sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
     pub:<AGGREGATED PUB of validators who confirmed this proof>
     afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
@@ -332,12 +333,14 @@ Proof is object
 */
 checkBFTProofForBlock=async(blockId,blockHash)=>
 
+    CONFIG.SYMBIOTE.SKIP_BFT_PROOFS
+    ||
     SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).then(async proof=>{
 
 
-        let aggregatedPub = await bls.aggregatePublicKeys([...afkValidators,pub]),//anyway we'll get the same pubkey
+        let aggregatedPub = await bls.aggregatePublicKeys([...afkValidators,proof.pub]),//anyway we'll get the same pubkey
 
-            isVerified = await bls.singleVerify(blockHash,aggregatedPub,proof.sig)
+            isVerified = await bls.aggregatePublicKeys(SYMBIOTE_META.VALIDATORS) === aggregatedPub && await bls.singleVerify(blockHash,aggregatedPub,proof.sig)
 
 
         return isVerified

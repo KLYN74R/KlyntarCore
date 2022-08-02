@@ -287,7 +287,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
     
 
-            
+
         blockCandidate.sig=await SIG(hash)
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
@@ -316,6 +316,23 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
     //Work with agreements of validators here
     console.log('Phantoms metadata ',phantomsMetadata)
+
+    /*
+
+    Here we need to receive proofs from validators and share over the network
+
+    Proof has such format
+
+    {
+        hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
+        index:<BLOCK INDEX>
+        sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
+        pub:<AGGREGATED PUB of validators who confirmed this proof>
+        afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+    }
+
+    
+    */
 
 
     //_______________________________________________COMMIT CHANGES___________________________________________________

@@ -147,6 +147,7 @@
                 
         "VERIFICATION_THREAD_POLLING":5000,
         "BLOCK_TIME":2000,
+        "SKIP_BFT_PROOFS":true,
 
         "CHECKPOINT":{
             "HEIGHT":-1,
