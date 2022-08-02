@@ -5,6 +5,7 @@ import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY} from './utils.js'
 import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 
 
@@ -25,7 +26,7 @@ PERFORM_BLOCK_MULTISET=blocksSet=>Object.keys(blocksSet).forEach(
 
         let block=blocksSet[blockIndex],
 
-            blockHash=Block.genHash(block.e,block.i,block.p)
+            blockHash=Block.genHash(block.c,block.e,block.i,block.p)
 
         if(await VERIFY(blockHash,block.sig,block.c)){
 
@@ -86,7 +87,7 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
     .then(r=>r.json()).then(block=>{
 
-        let hash=Block.genHash(block.e,block.i,block.p)
+        let hash=Block.genHash(block.c,block.e,block.i,block.p)
             
         if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string' && block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR){
 
@@ -115,7 +116,7 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
             if(itsProbablyBlock){
 
-                let hash=Block.genHash(itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+                let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
             
 
                 if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.i==='number'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string'){
@@ -317,12 +318,34 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
+/*
 
-checkBFTProofForBlock=async blockId=>{
+Proof is object
 
-    return true
+{
+    hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
+    sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
+    pub:<AGGREGATED PUB of validators who confirmed this proof>
+    afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+}
 
-},
+*/
+checkBFTProofForBlock=async(blockId,blockHash)=>
+
+    SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).then(async proof=>{
+
+
+        let aggregatedPub = await bls.aggregatePublicKeys([...afkValidators,pub]),//anyway we'll get the same pubkey
+
+            isVerified = await bls.singleVerify(blockHash,aggregatedPub,proof.sig)
+
+
+        return isVerified
+
+
+    }).catch(e=>false)
+
+,
 
 
 
@@ -330,7 +353,7 @@ checkBFTProofForBlock=async blockId=>{
 verifyBlock=async block=>{
 
 
-    let blockHash=Block.genHash(block.e,block.i,block.p),
+    let blockHash=Block.genHash(block.c,block.e,block.i,block.p),
 
 
     overviewOk=
@@ -341,11 +364,13 @@ verifyBlock=async block=>{
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH === block.p//it should be a chain
         &&
-        await checkBFTProofForBlock(block.i)
+        true//await checkBFTProofForBlock(block.i,blockHash)
         &&
         await VERIFY(blockHash,block.sig,block.c)
 
-    
+
+
+
     if(block.i === CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT){
 
         LOG(`Checkpoint verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')

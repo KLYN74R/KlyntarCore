@@ -18,6 +18,6 @@ export default class Block{
     
     }
     
-    static genHash=(eventsSet,index,prevHash)=>BLAKE3( JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID + index + prevHash)
+    static genHash=(creator,eventsSet,index,prevHash)=>BLAKE3( creator + JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID + index + prevHash)
 
 }

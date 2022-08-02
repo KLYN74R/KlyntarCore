@@ -125,28 +125,52 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 ASK_FOLK=async()=>{
 
     //Initially, we ask validators
-    // SYMBIOTE_META.GENERATION_THREAD
 
-    let answers=[]
-
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(async pubkey=>{
-
-        answers.push(
-
-            GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
-                
-                url => {
+    let validatorsUrls=[]
 
 
+    //____________________________MODIFY THE GENERATION THREAD IN ORDER TO VERIFICATION THREAD______________________
 
-                }
-                
-            ).catch(e=>console.log(`Can't find ip binding to pubkey \x1b[36;1m${pubkey}`,'W'))
+    SYMBIOTE_META.GENERATION_THREAD={}
 
-        )
+    SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1
 
-    })
+    SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH
 
+    SYMBIOTE_META.GENERATION_THREAD.VALIDATORS=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+
+    SYMBIOTE_META.GENERATION_THREAD.MASTER_VALIDATOR=SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR
+
+    SYMBIOTE_META.GENERATION_THREAD.EPOCH_START=SYMBIOTE_META.VERIFICATION_THREAD.EPOCH_START
+
+
+
+    //Specific case - you're only one validator(testnet,local network,etc.)
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1 && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0]===CONFIG.SYMBIOTE.PUB) return true
+
+    else{
+
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(async pubkey=>{
+
+            validatorsUrls.push(
+    
+                GET_STUFF(pubkey,'URL_PUBKEY_BIND').then(
+                    
+                    stuff => stuff.payload.url
+                    
+                ).catch(e=>LOG(`Can't find node binding to pubkey \x1b[36;1m${pubkey}`,'W'))
+    
+            )
+    
+        })
+    
+        await Promise.all(validatorsUrls).then(urls=>{
+    
+            urls=urls.filter(Boolean)//remove undefined / false values
+            
+        })
+
+    }
 
 },
 
@@ -169,9 +193,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)//no sense to vote for new height or generate block if you're not a validator
 
 
-
-
-        if(shouldEvenTryToTakePart&&await ASK_FOLK()){
+        if(SYMBIOTE_META.GENERATION_THREAD || shouldEvenTryToTakePart&&await ASK_FOLK()){
 
 
             await GENERATE_PHANTOM_BLOCKS_PORTION()
@@ -260,16 +282,18 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         let eventsArray=await GET_EVENTS(),
             
-            blockCandidate=new Block(eventsArray,1337,'1337'),
+            blockCandidate=new Block(eventsArray,SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH),
                         
-            hash=Block.genHash(blockCandidate.e,blockCandidate.i,'1337')
+            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
     
+
+            
         blockCandidate.sig=await SIG(hash)
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
         //To send to other validators and get signatures as proof of acception this part of blocks
-        phantomsMetadata.id=block.i
+        phantomsMetadata.id=blockCandidate.i
 
         phantomsMetadata.hash=hash
 
@@ -291,6 +315,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     
     //Work with agreements of validators here
+    console.log('Phantoms metadata ',phantomsMetadata)
 
 
     //_______________________________________________COMMIT CHANGES___________________________________________________
@@ -595,11 +620,24 @@ PREPARE_SYMBIOTE=async()=>{
         dbName => SYMBIOTE_META[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
         
     )
+    
+    
+    
+    
+    //____________________________________________Load stuff to db___________________________________________________
+
+
+    Object.keys(CONFIG.SYMBIOTE.LOAD_STUFF).forEach(
+        
+        id => SYMBIOTE_META.STUFF.put(id,CONFIG.SYMBIOTE.LOAD_STUFF[id])
+        
+    )
+
 
     
     /*
     
-     ___________________________________________________State of symbiote___________________________________________________
+    _____________________________________________State of symbiote___________________________________________________
 
     
     */
@@ -633,8 +671,7 @@ PREPARE_SYMBIOTE=async()=>{
                     
     )
 
-    //Also prepare generation thread to work with other validators if need
-    SYMBIOTE_META.GENERATION_THREAD = {}
+
 
 
     //________________________________________________________________MAKE SURE VERIFICATION THREAD IS OK________________________________________________________________

@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY} from '../utils.js'
+import {BROADCAST,BLOCKLOG,VERIFY, SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -14,7 +14,7 @@ let
 
 
 
-block=a=>{
+acceptBlocks=a=>{
     
     let total=0,buf=Buffer.alloc(0)
     
@@ -39,7 +39,7 @@ block=a=>{
             
                 let block=await PARSE_JSON(buf),
                 
-                    hash=Block.genHash(block.e,block.i,block.p),
+                    hash=Block.genHash(block.c,block.e,block.i,block.p),
                 
                 
                     //Check if we can accept this block
@@ -165,7 +165,33 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
        
 
 }),
+
+
+
+
+//To accept signatures of phantom blocks ranges from validators
+getGenerationThread=async(a,q)=>{
     
+    a.onAborted(()=>a.aborted=true)
+
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.GET_GENERATION_THREAD){
+
+        //if node is synchronized and validator - GENERATION_THREAD should be returned. Otherwise - 
+        let returnMetadata = SYMBIOTE_META.GENERATION_THREAD || SYMBIOTE_META.VERIFICATION_THREAD
+
+        let data={
+
+            payload:returnMetadata,
+            
+            sig:await SIG(returnMetadata)
+    
+        }
+
+        !a.aborted&&a.end(data)
+
+    }else !a.aborted&&a.end('Symbiote not supported or GET_GENERATION_THREAD trigger is off')
+
+},
 
 
 //_____________________________________________________________AUXILARIES________________________________________________________________________
@@ -250,7 +276,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
             let validatorsBFTProof=await SYMBIOTE_METADATA.VALIDATORS_PROOFS.get(block.i)
 
-            if(BLAKE3(Block.genHash(block.e,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
+            if(BLAKE3(Block.genHash(blockc.c,block.e,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
                             
                 error => {
                     
@@ -309,10 +335,12 @@ UWS_SERVER
 
 .post('/commitnewheight',commitNewHeight)
 
+.get('/genhread/:symbiote',getGenerationThread)
+
 .post('/proof',acceptHostchainsProofs)
 
 .post('/event',acceptEvents)
 
 .post('/addnode',addNode)
 
-.post('/block',block)
+.post('/block',acceptBlocks)

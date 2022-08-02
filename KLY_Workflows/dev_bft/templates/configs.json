@@ -149,7 +149,7 @@
         "BLOCK_TIME":2000,
 
         "CHECKPOINT":{
-            "HEIGHT":53,
+            "HEIGHT":-1,
             "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
         },
 
@@ -262,7 +262,9 @@
             "ACCEPT_BLOCKS":1,
             "ACCEPT_EVENTS":1,
             "ACCEPT_NEW_NODES":1,
-            "ACCEPT_HOSTCHAINS_PROOFS":1
+            "ACCEPT_HOSTCHAINS_PROOFS":1,
+
+            "GET_GENERATION_THREAD":1
         },
     
         "GET_BLOCKS_URI":"http://localhost:6666",
@@ -274,6 +276,27 @@
             "URL_PUBKEY_BIND",
             "VALIDATORS_PUBKEY_COMBINATIONS"
         ],
+
+        "LOAD_STUFF":{
+            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                "payload":{
+                    "url":"http://localhost:6666"
+                },
+                "sig":""
+            },
+            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
+                "payload":{
+                    "url":"http://localhost:6665"
+                },
+                "sig":""
+            },
+            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
+                "payload":{
+                    "url":"http://localhost:6664"
+                },
+                "sig":""
+            }
+        },
 
         "REGION":"EU",
     
