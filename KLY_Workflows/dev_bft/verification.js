@@ -152,7 +152,7 @@ START_VERIFY_POLLING=async()=>{
         THREADS_STILL_WORKS.GENERATION=true
 
         //Try to get block
-        let blockId=SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1,
+        let blockId=CONFIG.SYMBIOTE.PUB+':'+(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1),
         
             block=await GET_BLOCK(blockId), nextBlock
     
@@ -164,10 +164,10 @@ START_VERIFY_POLLING=async()=>{
             await verifyBlock(block)
 
             //Signal that verification was successful
-            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
+            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(CONFIG.SYMBIOTE.PUB+':'+SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
 
             //If verification failed - delete block. It will force to find another(valid) block from network
-            else SYMBIOTE_META.BLOCKS.del(blockId).catch(e=>'')
+            else SYMBIOTE_META.BLOCKS.del(CONFIG.SYMBIOTE.PUB+':'+blockId).catch(e=>'')
 
         }
 

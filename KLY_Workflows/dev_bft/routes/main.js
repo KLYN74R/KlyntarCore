@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY, SIG} from '../utils.js'
+import {BROADCAST,BLOCKLOG,VERIFY,SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -182,31 +182,6 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 
 
-//To accept signatures of phantom blocks ranges from validators
-getGenerationThread=async(a,q)=>{
-    
-    a.onAborted(()=>a.aborted=true)
-
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.GET_GENERATION_THREAD){
-
-        //if node is synchronized and validator - GENERATION_THREAD should be returned. Otherwise - 
-        let returnMetadata = SYMBIOTE_META.GENERATION_THREAD || SYMBIOTE_META.VERIFICATION_THREAD
-
-        let data={
-
-            payload:returnMetadata,
-            
-            sig:await SIG(JSON.stringify(returnMetadata))
-    
-        }
-
-        !a.aborted&&a.end(JSON.stringify(data))
-
-    }else !a.aborted&&a.end('Symbiote not supported or GET_GENERATION_THREAD trigger is off')
-
-},
-
-
 //_____________________________________________________________AUXILARIES________________________________________________________________________
 
 
@@ -237,6 +212,7 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
     }else !a.aborted&&a.end('Wrong types')
 
 }),
+
 
 
 
@@ -338,7 +314,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
     }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
 
 })
-
+ 
 
 
 
@@ -347,8 +323,6 @@ UWS_SERVER
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
 .post('/commitnewheight',commitNewHeight)
-
-.get('/genthread/:symbiote',getGenerationThread)
 
 .post('/proof',acceptHostchainsProofs)
 

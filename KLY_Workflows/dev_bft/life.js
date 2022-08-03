@@ -153,7 +153,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 RUN_POLLING=async()=>{
 
-    LOG(`Local state collapsed on \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'S')
+    LOG(`Local state collapsed on \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} ### ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'S')
 
     START_VERIFY_POLLING()
 
@@ -174,8 +174,10 @@ RUN_POLLING=async()=>{
 export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
+    let myGenerationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
+
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
+    if(myGenerationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
         LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
@@ -234,7 +236,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
 
-        promises.push(SYMBIOTE_META.BLOCKS.put(blockCandidate.i,blockCandidate).then(()=>blockCandidate).catch(error=>{
+        promises.push(SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,blockCandidate).then(()=>blockCandidate).catch(error=>{
                 
             LOG(`Failed to store block ${blockCandidate.i} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
 
@@ -389,8 +391,9 @@ RELOAD_STATE = async() => {
 
         snapshotVT=await SYMBIOTE_META.SNAPSHOT.METADATA.get('VT').catch(e=>false),
     
+
         //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+snapshotVT.COLLAPSED_INDEX+snapshotVT.COLLAPSED_HASH+JSON.stringify(snapshotVT.VALIDATORS)+snapshotVT.MASTER_VALIDATOR+snapshotVT.EPOCH_START)//snapshot itself must be OK
+        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.VALIDATORS_METADATA))//snapshot itself must be OK
                        &&
                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
                        &&
@@ -439,13 +442,24 @@ RELOAD_STATE = async() => {
 
         LOG(`Successfully recreated state from snapshot`,'I')
 
-    
     }else{
 
-        //Otherwise start rescan form height=0
-        SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX==-1 && SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX==0 ? LOG(`Initial run with no snapshot`,'I') : LOG(`Start sync from genesis`,'W')
-        
-        SYMBIOTE_META.VERIFICATION_THREAD={COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0,CHECKSUM:''}
+        LOG(`Snapshot is not ok - probably it's initial run or syncing from genesis`,'I')
+
+        //Initial state of verification thread
+        SYMBIOTE_META.VERIFICATION_THREAD={
+            
+            DATA:{},//dynamic data between blocks to prevent crushes(electricity off,system errors,etc.)
+            
+            FINALIZED_POINTER:{VALIDATOR:'',INDEX:'',HASH:''},//pointer to know where we should start to process further blocks
+
+            VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
+
+            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+            
+            CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
+            
+        }
 
         
         
@@ -463,9 +477,6 @@ RELOAD_STATE = async() => {
 
             //Push the initial validators to verification thread
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
-
-            //And set the initial master validator whose epoch starts with block height 0 
-            SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR=genesis.MASTER_VALIDATOR
             
 
         })
