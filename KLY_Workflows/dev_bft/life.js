@@ -146,17 +146,6 @@ GEN_BLOCKS_START_POLLING=async()=>{
     //leave function
     THREADS_STILL_WORKS.GENERATION=false
     
-},
-
-
-
-
-RUN_POLLING=async()=>{
-
-    LOG(`Local state collapsed on \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} ### ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}\x1b[32;1m for \x1b[36;1m${SYMBIOTE_ALIAS()}`,'S')
-
-    START_VERIFY_POLLING()
-
 }
 
 
@@ -393,7 +382,7 @@ RELOAD_STATE = async() => {
     
 
         //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.VALIDATORS_METADATA))//snapshot itself must be OK
+        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.VALIDATORS)+JSON.stringify(snapshotVT.VALIDATORS_METADATA))//snapshot itself must be OK
                        &&
                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
                        &&
@@ -482,6 +471,24 @@ RELOAD_STATE = async() => {
         })
 
         await Promise.all(promises)
+
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+            
+            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'} // set the initial values
+            
+        )
+
+        //Node starts to verify blocks from the first validator in genesis, so sequency matter
+        
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
+            
+            VALIDATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0],
+            
+            INDEX:-1,
+            
+            HASH:'Poyekhali!@Y.A.Gagarin'
+        
+        }
         
     }
 
@@ -662,15 +669,34 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.METADATA.get('VT').catch(e=>
+    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.METADATA.get('VT').catch(e=>{
+
+        if(e.notFound){
+
+            //Default initial value
+            SYMBIOTE_META.VERIFICATION_THREAD={
+            
+                DATA:{},//dynamic data between blocks to prevent crushes(electricity off,system errors,etc.)
+                
+                FINALIZED_POINTER:{VALIDATOR:'',INDEX:'',HASH:''},//pointer to know where we should start to process further blocks
+    
+                VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
+    
+                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+                
+                CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
+                
+            }
+
+        }else{
+
+            LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F')
+            
+            process.exit(105)
+
+        }
         
-        e.notFound
-        ?
-        {COLLAPSED_HASH:'Poyekhali!@Y.A.Gagarin',COLLAPSED_INDEX:-1,DATA:{},CHECKSUM:'',VALIDATORS:[],MASTER_VALIDATOR:'',EPOCH_START:0}//initial
-        :
-        (LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(105))
-                    
-    )
+    })
 
 
 
@@ -679,14 +705,14 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //If we just start verification thread, there is no sense to do following logic
-    if(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX!==-1){
+    if(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX!==-1){
 
         await SYMBIOTE_META.METADATA.get('CANARY').then(async canary=>{
 
             let verifThread=SYMBIOTE_META.VERIFICATION_THREAD
 
             //If staging zone is OK
-            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+verifThread.COLLAPSED_INDEX+verifThread.COLLAPSED_HASH+JSON.stringify(verifThread.VALIDATORS)+verifThread.MASTER_VALIDATOR+verifThread.EPOCH_START)){
+            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+JSON.stringify(verifThread.FINALIZED_POINTER)+JSON.stringify(verifThread.VALIDATORS)+JSON.stringify(verifThread.VALIDATORS_METADATA))){
 
                 //This is the signal that we should rewrite state changes from the staging zone
                 if(canary!==verifThread.CHECKSUM){
@@ -863,7 +889,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     LOG(`Canary is \x1b[32;1m<OK>`,'I')
 
-    LOG(`Collapsed on \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_HASH}`,'I')
+    LOG(`Local verification thread state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR}\u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'I')
 
 
 
@@ -896,7 +922,7 @@ RUN_SYMBIOTE=async()=>{
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
         //Start verification process
-        await RUN_POLLING()
+        await START_VERIFY_POLLING()
 
         let promises=[]
 

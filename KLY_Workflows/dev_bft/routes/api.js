@@ -1,4 +1,4 @@
-import {LOG,SYMBIOTE_ALIAS} from '../../../KLY_Utils/utils.js'
+import {BODY,LOG,SYMBIOTE_ALIAS} from '../../../KLY_Utils/utils.js'
 
 import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 
@@ -18,7 +18,7 @@ acccount=async(a,q)=>{
         
             ...await SYMBIOTE_META.STATE.get(q.getParameter(1)).catch(e=>''),
         
-            COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX
+            COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
         }
         !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
@@ -52,7 +52,7 @@ nodes=(a,q)=>{
 
 
 
-// 0 - symbioteID , 1 - block index
+// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 block=(a,q)=>{
 
     //Set triggers
@@ -60,7 +60,7 @@ block=(a,q)=>{
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
 
-        SYMBIOTE_META.BLOCKS.get(+q.getParameter(1)).then(block=>
+        SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
             
             !a.aborted && a.end(JSON.stringify(block))
             
@@ -74,46 +74,59 @@ block=(a,q)=>{
 
 
 
-//0 - symbioteID, 1 - height from which you should export block
-multiplicity=async(a,q)=>{
-    
-    a.onAborted(()=>a.aborted=true)
-    
-    let symbioteID=q.getParameter(0),
-    
-        fromHeight=+q.getParameter(1)//convert to number to get block's id(height)
+/*
+
+? 0 - symbioteID, 1 - array of blockIDs to export
+
+Insofar as blockchain verification thread works horizontally, by passing IDs of blocks,node exports next N blocks in a row
+
+And you ask for a blocks:
+
+*   [Validator1:10,Validator2:10,Validator3:10,...ValidatorX:A,Validator2:13,...]
+
+*/
+
+multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+   
+    let {symbiote,blocksIDs}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && !isNaN(fromHeight)){
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && typeof blocksIDs==='object'){
 
-        let promises=[],
-    
-            response={}
-    
-        for(let max=fromHeight+CONFIG.SYMBIOTE.BLOCKS_EXPORT_PORTION;fromHeight<max;fromHeight++){
+
+        let limit=CONFIG.SYMBIOTE.BLOCKS_EXPORT_PORTION,
         
-            //This is the signal that this node haven't process this height yet and even didn't have forward loading 
-        
-            if(fromHeight>SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX && !(await SYMBIOTE_META.BLOCKS.get(fromHeight).catch(e=>false))) break
-        
-            promises.push(SYMBIOTE_META.BLOCKS.get(fromHeight).then(
+            response=[],
+
+            promises=[]
+
+
+        for(let id in blocksIDs){
+
+            promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
                 
-                block => response[block.i]=block
+                block => response.push(block)
                 
             ).catch(
                 
-                e => LOG(`Block \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found, load please if you need\n${e}`,'W')
+                error => LOG(`Block \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found or another error occured, load please if you need\n${error}`,'W')
                 
             ))
+
+            limit--
+
+            if(limit===0) break
+
         }
-        
+       
         await Promise.all(promises)
         
         !a.aborted && a.end(JSON.stringify(response))
 
     }else !a.aborted && a.end(JSON.stringify({e:'Symbiote not supported'}))
 
-},
+       
+}),
 
 
 

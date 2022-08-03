@@ -49,16 +49,6 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 
 
-//Function to set new Master,to add/remove validators from list
-UPDATE_VALIDATORS=()=>{
-
-    //SYMBIOTE_META.VERIFICATION_THREAD
-
-},
-
-
-
-
 //Recepient must support HTTPS
 //*UPD:Sign with our pubkey to avoid certifications
 SEND_REPORT = alertInfo =>
