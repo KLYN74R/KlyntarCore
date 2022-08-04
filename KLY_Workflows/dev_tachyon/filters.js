@@ -70,6 +70,19 @@ export default {
     ,
 
 
+
+    ATTACH_TO_VALIDATOR:async(symbiote,event)=>
+
+        typeof event.p === 'string'
+        &&
+        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)//check urgent nonce to prevent spam
+        ?
+        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
+        :
+        false
+    ,
+
+
     OFFSPRING:async(symbiote,event)=>
     
         typeof event.p==='string'

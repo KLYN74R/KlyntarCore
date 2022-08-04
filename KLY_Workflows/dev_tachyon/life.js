@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -250,11 +250,32 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     {
         hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-        index:<BLOCK INDEX OF THE LATEST IN SERIA>
+        index:<BLOCK INDEX OF THE LATEST BLOCK IN SERIA>
     }
 
     
     */
+
+    //Run setTimeout to ask for proofs from validators. We assume that for that time - they'll receive our phantom blocks
+
+    // setTimeout(async()=>{
+
+    //     let promises = []
+
+    //     //0. Initially,try to get pubkey => node_ip binding 
+    //     SYMBIOTE_META.VALIDATORS.forEach(
+            
+    //         pubkey => promises.push(GET_STUFF(pubkey,'URL_PUBKEY_BIND'))
+            
+    //     )
+
+    //     await Promise.all(promises)
+
+
+
+    // },CONFIG.SYMBIOTE.TIMEOUT_TO_ASK_FOR_PHANTOM_BLOCKS_PORTION_PROOFS)
+
+
 
 
     //_______________________________________________COMMIT CHANGES___________________________________________________

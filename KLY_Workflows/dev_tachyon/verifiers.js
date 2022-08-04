@@ -66,6 +66,8 @@ export let SPENDERS = {
 
     PQC_TX:event=>event.p.a+event.f,
 
+    ATTACH_TO_VALIDATOR:event=>event.f+0.01,
+
     OFFSPRING:event=>event.f,
 
     ALIAS:event=>event.p.length*0.001+event.f,
@@ -176,6 +178,25 @@ export let VERIFIERS = {
         
             blockCreator.fees+=event.f
     
+        }
+    
+    },
+
+
+    ATTACH_TO_VALIDATOR:async (event,blockCreator)=>{
+
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
+
+        if(await MAIN_VERIFY(event,sender)){
+    
+            sender.ACCOUNT.B-=event.f+0.01
+
+            sender.ACCOUNT.V=event.p//payload - it's validators pubkey
+                        
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
+            
+            blockCreator.fees+=event.f
+        
         }
     
     },
