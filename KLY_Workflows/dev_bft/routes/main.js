@@ -192,9 +192,9 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 //[symbioteID,hostToAdd(initiator's valid and resolved host)]
 addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-    let [domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES&&typeof domain==='string'&&domain.length<=256){
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
         
         //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
         let nodes=SYMBIOTE_META.NEAR

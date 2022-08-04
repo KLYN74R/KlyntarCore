@@ -61,10 +61,10 @@ block=(a,q)=>{
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
 
         SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
-            
+
             !a.aborted && a.end(JSON.stringify(block))
             
-        ).catch(e=>a.end('No block'))
+        ).catch(_=>a.end('No block'))
 
 
     }else !a.aborted && a.end('Symbiote not supported')
@@ -109,7 +109,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
                 
             ).catch(
                 
-                error => LOG(`Block \x1b[36;1m${fromHeight}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found or another error occured, load please if you need\n${error}`,'W')
+                error => LOG(`Block \x1b[36;1m${id}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found or another error occured, load please if you need\n${error}`,'W')
                 
             ))
 
