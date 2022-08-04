@@ -265,7 +265,10 @@
     
     "GET_BLOCKS_URI":"http://localhost:6666",
     "GET_MULTI":"http://localhost:6666",
+    
     "BLOCKS_EXPORT_PORTION":100,
+    "GET_MULTIPLY_BLOCKS_LIMIT":100,
+
     "GET_STUFF_URI":"http://localhost:6666",
     "STUFF_CATEGORIES":[
         "URL_PUBKEY_BIND",

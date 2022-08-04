@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF, VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -163,10 +163,10 @@ GEN_BLOCKS_START_POLLING=async()=>{
 export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
-    let myGenerationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
+    let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
 
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(myGenerationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
+    if(myVerificationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
         LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
@@ -176,6 +176,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
     
     /*
+
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
     
     Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
@@ -208,7 +209,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                         
             hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
     
-
 
         blockCandidate.sig=await SIG(hash)
             
@@ -644,11 +644,9 @@ PREPARE_SYMBIOTE=async()=>{
     )
 
 
-    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
+    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
 
-        previous=await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1).catch(e=>false)//but current block should present at least locally
-
-        
+        previous=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
 
 
     if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
@@ -674,17 +672,17 @@ PREPARE_SYMBIOTE=async()=>{
         if(e.notFound){
 
             //Default initial value
-            SYMBIOTE_META.VERIFICATION_THREAD={
+            return {
             
                 DATA:{},//dynamic data between blocks to prevent crushes(electricity off,system errors,etc.)
                 
-                FINALIZED_POINTER:{VALIDATOR:'',INDEX:'',HASH:''},//pointer to know where we should start to process further blocks
+                FINALIZED_POINTER:{VALIDATOR:'',INDEX:-1,HASH:''},//pointer to know where we should start to process further blocks
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
                 VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
                 
-                CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
+                CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 
             }
 
@@ -889,7 +887,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     LOG(`Canary is \x1b[32;1m<OK>`,'I')
 
-    LOG(`Local verification thread state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR}\u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'I')
+    LOG(`Local verification thread state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}`,'I')
 
 
 

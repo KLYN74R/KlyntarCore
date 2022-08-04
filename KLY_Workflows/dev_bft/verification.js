@@ -21,18 +21,16 @@ export let
 
 
 
-
-PERFORM_BLOCK_MULTISET=blocksSet=>Object.keys(blocksSet).forEach(
+//blocksSet - array of blocks
+PERFORM_BLOCK_MULTISET=blocksSet=>blocksSet.forEach(
             
-    async blockIndex => {
+    async block => {
 
-        let block=blocksSet[blockIndex],
-
-            blockHash=Block.genHash(block.c,block.e,block.i,block.p)
+        let blockHash=Block.genHash(block.c,block.e,block.i,block.p)
 
         if(await VERIFY(blockHash,block.sig,block.c)){
 
-            SYMBIOTE_META.BLOCKS.put(block.i,block)
+            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block)
 
         }
 
@@ -43,12 +41,40 @@ PERFORM_BLOCK_MULTISET=blocksSet=>Object.keys(blocksSet).forEach(
 
 
 
-//Initially we ask blocks from CONFIG.SYMBIOTE.GET_MULTI node. It might be some CDN service, special API, private fast node and so on
-GET_FORWARD_BLOCKS = fromHeight => {
+/*
 
-    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`)
+? Initially we ask blocks from CONFIG.SYMBIOTE.GET_MULTI node. It might be some CDN service, special API, private fast node and so on
 
-    .then(r=>r.json()).then(PERFORM_BLOCK_MULTISET).catch(async error=>{
+We need to send an array of block IDs e.g. [Validator1:1337,Validator2:1337,Validator3:1337,Validator1337:1337, ... ValidatorX:2294]
+
+*/
+
+GET_FORWARD_BLOCKS = () => {
+
+
+    let blocksIDs=[],
+    
+        limitedPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.slice(0,CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT)
+
+
+    for(let validator in limitedPool){
+
+        blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
+
+    }
+
+    
+    let blocksIDsInJSON = JSON.stringify(blocksIDs)
+
+
+    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity`,{
+    
+        method:'POST',
+    
+        body: blocksIDsInJSON
+    
+    
+    }).then(r=>r.json()).then(PERFORM_BLOCK_MULTISET).catch(async error=>{
         
         LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}\n${error}`,'I')
     
@@ -58,14 +84,13 @@ GET_FORWARD_BLOCKS = fromHeight => {
         let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
 
 
-
         for(let url in allVisibleNodes){
 
-            let itsProbablySetOfBlocks=await fetch(url+`/multiplicity/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${fromHeight}`).then(r=>r.json()).catch(e=>false)
+            let itsProbablyArrayOfBlocks=await fetch(url+'/multiplicity',{method:'POST',body:blocksIDsInJSON}).then(r=>r.json()).catch(e=>false)
 
-            if(itsProbablySetOfBlocks){
+            if(itsProbablyArrayOfBlocks){
 
-                PERFORM_BLOCK_MULTISET(itsProbablySetOfBlocks)
+                PERFORM_BLOCK_MULTISET(itsProbablyArrayOfBlocks)
 
                 return //and leave function
 
@@ -83,20 +108,20 @@ GET_FORWARD_BLOCKS = fromHeight => {
 //Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URI" node for new blocks
 //If no answer - try to find blocks somewhere else
 
-GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
+GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+index).catch(e=>
 
-    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId)
+    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockCreator+":"+index)
 
     .then(r=>r.json()).then(block=>{
 
         let hash=Block.genHash(block.c,block.e,block.i,block.p)
             
-        if(typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string' && block.c === SYMBIOTE_META.VERIFICATION_THREAD.MASTER_VALIDATOR){
+        if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
 
             BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
             //Try to instantly and asynchronously load more blocks if it's possible
-            GET_FORWARD_BLOCKS(blockId+1)
+            GET_FORWARD_BLOCKS()
 
             return block
 
@@ -104,29 +129,32 @@ GET_BLOCK = blockId => SYMBIOTE_META.BLOCKS.get(blockId).catch(e=>
 
     }).catch(async error=>{
 
-        LOG(`No block \x1b[36;1m${blockId}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+        LOG(`No block \x1b[36;1m${blockCreator} ### ${index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
 
         LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
 
         //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR],
 
+            blockID=blockCreator+":"+index
+
+        
 
         for(let url in allVisibleNodes){
 
-            let itsProbablyBlock=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockId).then(r=>r.json()).catch(e=>false)
+            let itsProbablyBlock=await fetch(url+`/block/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
 
             if(itsProbablyBlock){
 
                 let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
             
 
-                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.i==='number'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string'){
+                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
 
                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
                     //Try to instantly and asynchronously load more blocks if it's possible
-                    GET_FORWARD_BLOCKS(blockId+1)
+                    GET_FORWARD_BLOCKS()
 
                     return itsProbablyBlock
 
@@ -151,27 +179,51 @@ START_VERIFY_POLLING=async()=>{
 
         THREADS_STILL_WORKS.GENERATION=true
 
+
+
+        let prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
+
+            validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
+
+            //take the next validator in a row. If it's end of validators pool - start from the first validator
+            currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
+
+            //We receive {INDEX,HASH} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck]
+
+
+
+
         //Try to get block
-        let blockId=CONFIG.SYMBIOTE.PUB+':'+(SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1),
         
-            block=await GET_BLOCK(blockId), nextBlock
+        let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
+
+            pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1, //if the id will be increased - then the block was verified and we can move on 
+
+            //take the next validator in a row. If it's end of validators pool - start from the first validator
+            nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
+
+            nextBlock
+
     
 
     
-            
         if(block){
 
             await verifyBlock(block)
 
             //Signal that verification was successful
-            if(blockId===SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX) nextBlock=await GET_BLOCK(CONFIG.SYMBIOTE.PUB+':'+SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1)
+            if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
 
+                nextBlock=await GET_BLOCK(nextValidatorToCheck+':'+SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+
+            }
             //If verification failed - delete block. It will force to find another(valid) block from network
-            else SYMBIOTE_META.BLOCKS.del(CONFIG.SYMBIOTE.PUB+':'+blockId).catch(e=>'')
+            else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')
 
         }
 
-        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${SYMBIOTE_META.VERIFICATION_THREAD.COLLAPSED_INDEX+1}`,'W')
+        LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${nextValidatorToCheck} ### ${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1}`,'W')
 
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
@@ -367,7 +419,7 @@ verifyBlock=async block=>{
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH === block.p//it should be a chain
         &&
-        await checkBFTProofForBlock(block.i,blockHash)
+        await checkBFTProofForBlock(block.c+":"+block.i,blockHash)
         &&
         await VERIFY(blockHash,block.sig,block.c)
 
@@ -555,15 +607,24 @@ verifyBlock=async block=>{
 
 
 
+        //Change finalization pointer
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.c
 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
                 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
+        
+        //Change metadata
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].INDEX=block.i
+
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH=blockHash
+
+
+
         SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
 
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshotVT.DATA)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.VALIDATORS)+JSON.stringify(snapshotVT.VALIDATORS_METADATA))
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
 
 
         //Make commit to staging area
@@ -597,6 +658,7 @@ verifyBlock=async block=>{
 
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
+
 
         block.i!==0//no sense to snaphost if no blocks yet
         &&
