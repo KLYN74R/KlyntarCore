@@ -97,7 +97,7 @@ GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID)
         //Combine all nodes we know about and try to find block there
         let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
 
-        for(let url in allVisibleNodes){
+        for(let url of allVisibleNodes){
 
             let answer = await fetch(url+'/stuff')
 

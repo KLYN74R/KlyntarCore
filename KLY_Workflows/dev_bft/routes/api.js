@@ -101,7 +101,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
             promises=[]
 
 
-        for(let id in blocksIDs){
+        for(let id of blocksIDs){
 
             promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
                 
