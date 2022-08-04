@@ -22,7 +22,7 @@ export let
 
 
 //blocksSet - array of blocks
-PERFORM_BLOCK_MULTISET=blocksSet=>blocksSet.forEach(
+PERFORM_BLOCK_MULTISET=blocksArray=>blocksArray.forEach(
             
     async block => {
 
@@ -57,16 +57,13 @@ GET_FORWARD_BLOCKS = () => {
         limitedPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.slice(0,CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT)
 
 
-    for(let validator in limitedPool){
 
-        blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
-
-    }
+    for(let validator of limitedPool) blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
 
     
-    let blocksIDsInJSON = JSON.stringify(blocksIDs)
+    let blocksIDsInJSON = JSON.stringify({symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,blocksIDs})
 
-
+ 
     fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity`,{
     
         method:'POST',
@@ -195,7 +192,7 @@ START_VERIFY_POLLING=async()=>{
 
 
         //Try to get block
-        
+
         let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
             pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1, //if the id will be increased - then the block was verified and we can move on 
@@ -206,8 +203,6 @@ START_VERIFY_POLLING=async()=>{
             nextBlock
 
     
-
-    
         if(block){
 
             await verifyBlock(block)
@@ -215,7 +210,7 @@ START_VERIFY_POLLING=async()=>{
             //Signal that verification was successful
             if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
 
-                nextBlock=await GET_BLOCK(nextValidatorToCheck+':'+SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+                nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
 
             }
             //If verification failed - delete block. It will force to find another(valid) block from network

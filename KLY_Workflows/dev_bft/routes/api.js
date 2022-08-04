@@ -188,13 +188,13 @@ alert=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborte
 
 UWS_SERVER
 
-.get('/multiplicity/:symbiote/:fromHeight',multiplicity)
-
 .get('/stuff/:symbiote/:stuffID/:stuffType',stuff)
 
 .get('/account/:symbiote/:address',acccount)
 
 .get('/nodes/:symbiote/:region',nodes)
+
+.post('/multiplicity',multiplicity)
 
 .get('/block/:symbiote/:id',block)
 

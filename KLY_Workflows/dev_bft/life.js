@@ -163,6 +163,10 @@ GEN_BLOCKS_START_POLLING=async()=>{
 export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
+    //Safe "if" branch to prevent unnecessary blocks generation
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)) return
+
+
     let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
 
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
