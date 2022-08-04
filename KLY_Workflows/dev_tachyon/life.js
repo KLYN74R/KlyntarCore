@@ -242,19 +242,15 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
     //Work with agreements of validators here
     console.log('Phantoms metadata ',phantomsMetadata)
+    
 
     /*
 
-    Here we need to receive proofs from validators and share over the network
-
-    Proof has such format
+    Here we need to send metadata to other validators and get the signed proofs that they've successfully received blocks
 
     {
         hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-        index:<BLOCK INDEX>
-        sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
-        pub:<AGGREGATED PUB of validators who confirmed this proof>
-        afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+        index:<BLOCK INDEX OF THE LATEST IN SERIA>
     }
 
     

@@ -368,25 +368,26 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
-/*
 
-Proof is object
-
-{
-    hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-    index:<BLOCK INDEX>
-    sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
-    pub:<AGGREGATED PUB of validators who confirmed this proof>
-    afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
-}
-
-*/
 checkBFTProofForBlock=async(blockId,blockHash)=>
 
     CONFIG.SYMBIOTE.SKIP_BFT_PROOFS
     ||
     SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).then(async proof=>{
 
+    /*
+
+        Proof is object
+
+        {
+            hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
+            index:<BLOCK INDEX>
+            sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
+            pub:<AGGREGATED PUB of validators who confirmed this proof>
+            afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+        }
+
+    */
 
         let aggregatedPub = await bls.aggregatePublicKeys([...afkValidators,proof.pub]),//anyway we'll get the same pubkey
 
