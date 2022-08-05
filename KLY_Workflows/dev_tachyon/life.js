@@ -192,7 +192,21 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         promises=[],//to push blocks to storage
 
-        phantomsMetadata={id:-1,hash:''}// id and hash of the latest phantom block in a set
+        //Metadata of part of this validator's chain to share among other validators and get proofs from them
+        phantomsMetadata={
+            
+            START_INDEX:SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
+
+            START_HASH:SYMBIOTE_META.GENERATION_THREAD.PREV_HASH,
+
+            // And fill the second part of metadata - ending. Firstly, we set default values,
+            // but after portion of generated phantoms blocks this index/hash pair will be associated with the latest block in session
+
+            END_INDEX:-1,
+            
+            END_HASH:'',
+        
+        }
 
 
     phantomBlocksNumber++//DELETE after tests
@@ -201,7 +215,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     if(phantomBlocksNumber===0) return 
 
 
-    LOG(`Number of phantoms ${phantomBlocksNumber}`,'I')
+    LOG(`Number of phantoms to generate \x1b[32;1m${phantomBlocksNumber}`,'I')
 
 
     for(let i=0;i<phantomBlocksNumber;i++){
@@ -219,9 +233,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
         //To send to other validators and get signatures as proof of acception this part of blocks
-        phantomsMetadata.id=blockCandidate.i
+        phantomsMetadata.END_INDEX=blockCandidate.i
 
-        phantomsMetadata.hash=hash
+        phantomsMetadata.END_HASH=hash
 
 
         SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
@@ -258,22 +272,22 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     //Run setTimeout to ask for proofs from validators. We assume that for that time - they'll receive our phantom blocks
 
-    // setTimeout(async()=>{
+    setTimeout(async()=>{
 
-    //     let promises = []
+        let promises = []
 
-    //     //0. Initially,try to get pubkey => node_ip binding 
-    //     SYMBIOTE_META.VALIDATORS.forEach(
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-    //         pubkey => promises.push(GET_STUFF(pubkey,'URL_PUBKEY_BIND'))
+            pubkey => promises.push(GET_STUFF(pubkey,'URL_PUBKEY_BIND'))
             
-    //     )
+        )
 
-    //     await Promise.all(promises)
+        await Promise.all(promises)
 
 
 
-    // },CONFIG.SYMBIOTE.TIMEOUT_TO_ASK_FOR_PHANTOM_BLOCKS_PORTION_PROOFS)
+    },CONFIG.SYMBIOTE.TIMEOUT_TO_ASK_FOR_PHANTOM_BLOCKS_PORTION_PROOFS)
 
 
 
@@ -403,11 +417,21 @@ RELOAD_STATE = async() => {
     
 
         //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(JSON.stringify(snapshotVT.DATA)+JSON.stringify(snapshotVT.FINALIZED_POINTER)+JSON.stringify(snapshotVT.VALIDATORS)+JSON.stringify(snapshotVT.VALIDATORS_METADATA))//snapshot itself must be OK
-                       &&
-                       canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
-                       &&
-                       CONFIG.SYMBIOTE.SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
+        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(
+            
+                            JSON.stringify(snapshotVT.DATA)
+                            +
+                            JSON.stringify(snapshotVT.FINALIZED_POINTER)
+                            +
+                            JSON.stringify(snapshotVT.VALIDATORS)
+                            +
+                            JSON.stringify(snapshotVT.VALIDATORS_METADATA)
+                        
+                        )//snapshot itself must be OK
+                        &&
+                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
+                        &&
+                        CONFIG.SYMBIOTE.SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
 
         
        
@@ -465,7 +489,7 @@ RELOAD_STATE = async() => {
 
             VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',FIND_PROOFS_POINTER:}
             
             CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
             
@@ -495,7 +519,7 @@ RELOAD_STATE = async() => {
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'} // set the initial values
+            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FIND_PROOFS_POINTER:0} // set the initial values
             
         )
 
@@ -701,7 +725,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
-                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',FIND_PROOFS_POINTER:0}
                 
                 CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 

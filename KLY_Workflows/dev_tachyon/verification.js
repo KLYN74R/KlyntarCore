@@ -186,7 +186,7 @@ START_VERIFY_POLLING=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator
             currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,FIND_PROOFS_POINTER} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck]
 
 
@@ -621,7 +621,17 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
 
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(JSON.stringify(snapshot)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)+JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(
+            
+            JSON.stringify(snapshot)
+            +
+            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER)
+            +
+            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)
+            +
+            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+        
+        )
 
 
         //Make commit to staging area
