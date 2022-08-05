@@ -345,11 +345,11 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
+.get('/getvalidatorsproofs/:symbiote/:blockID',getValidatorsProofs)
+
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
 .post('/commitnewgtmeta',commitNewGenerationThreadMetadata)
-
-.get('/getvalidatorsproofs',getValidatorsProofs)
 
 .post('/hostchainproof',acceptHostchainsProofs)
 
