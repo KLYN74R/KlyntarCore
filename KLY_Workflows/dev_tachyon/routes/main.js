@@ -130,46 +130,46 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 //____________________________________________________________CONSENSUS STUFF__________________________________________________________________
 
 
+//Function to accept updates of GT from validators,check,sign and share our agreement
+//TODO:Provide some extra communication to prevent potential problems with forks
 
+commitNewGenerationThreadMetadata=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    
 
-commitNewHeight=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    let phantomsMetadata=await BODY(v,CONFIG.PAYLOAD_SIZE)  
     
-    //Headers is a block simple metadata. It's object where key is block index and data - it's hash. This metadata is also signed by master validator
-    let {phantomsSetLatestBlock,masterValidatorSigna}=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    /*
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES&&typeof domain==='string'&&domain.length<=256){
-    
-        //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-        let nodes=SYMBIOTE_META.NEAR
-    
-        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
-        
-            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
-            ?
-            nodes.push(domain)
-            :
-            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-    
-            !a.aborted&&a.end('OK')
-    
-        }else !a.aborted&&a.end('Domain already in scope')
-    
-    }else !a.aborted&&a.end('Wrong types')
+        Phantoms metadata has the following structure
+            
+            START_INDEX,
 
+            START_HASH,
+
+            END_INDEX,
+            
+            END_HASH,
+
+            SIG(signature of appropriate validator)
+    
+    */
+ 
 }),
 
 
 
 
-//To accept signatures of phantom blocks ranges from validators
 /*
+
+
+To accept signatures of phantom blocks ranges from validators
 
 Proof is object
 
 {
-    hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-    index:<BLOCK INDEX>
-    sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
+    START_INDEX:<index>,
+    START_INDEX:<index>,
+
     pub:<AGGREGATED PUB of validators who confirmed this proof>
     afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
 }
@@ -180,6 +180,28 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
    
 
 }),
+
+
+
+
+// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+getValidatorsProofs=(a,q)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
+
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
+
+        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(block=>
+
+            !a.aborted && a.end(JSON.stringify(block))
+            
+        ).catch(_=>a.end('No proofs'))
+
+
+    }else !a.aborted && a.end('Symbiote not supported')
+
+},
 
 
 
@@ -224,6 +246,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_HOSTCHAINS_PROOFS){
      
         !a.aborted&&a.end('Route is off')
+        
         return
     }
     
@@ -324,9 +347,11 @@ UWS_SERVER
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
-.post('/commitnewheight',commitNewHeight)
+.post('/commitnewgtmeta',commitNewGenerationThreadMetadata)
 
-.post('/proof',acceptHostchainsProofs)
+.get('/getvalidatorsproofs',getValidatorsProofs)
+
+.post('/hostchainproof',acceptHostchainsProofs)
 
 .post('/event',acceptEvents)
 

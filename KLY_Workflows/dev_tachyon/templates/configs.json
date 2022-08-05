@@ -243,7 +243,7 @@
         "API_BLOCK":6000,
         "API_MULTI":600,
 
-        "GET_GEN_THREAD":600
+        "GET_VALIDATORS_PROOFS":600
     },
     
     "TRIGGERS":{
@@ -260,7 +260,8 @@
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
         "ACCEPT_HOSTCHAINS_PROOFS":1,
-        "GET_GENERATION_THREAD":1
+        
+        "GET_VALIDATORS_PROOFS":1
     },
     
     "GET_BLOCKS_URI":"http://localhost:6666",

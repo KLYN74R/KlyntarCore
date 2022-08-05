@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG, GET_STUFF, VERIFY} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -253,22 +253,22 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
            
     }
 
-    
+
+    //______________________________________ WORKING WITH PROOFS & GENERATION THREAD METADATA ______________________________________
+
+
+    //Self-sign our proofs
+    let signa=await SIG(phantomsMetadata.START_INDEX+phantomsMetadata.START_HASH+phantomsMetadata.END_INDEX+phantomsMetadata.END_HASH)
+
+    phantomsMetadata.SIG=signa
+
+
     //Work with agreements of validators here
     console.log('Phantoms metadata ',phantomsMetadata)
     
 
-    /*
-
-    Here we need to send metadata to other validators and get the signed proofs that they've successfully received blocks
-
-    {
-        hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-        index:<BLOCK INDEX OF THE LATEST BLOCK IN SERIA>
-    }
-
+    //Here we need to send metadata to other validators and get the signed proofs that they've successfully received blocks
     
-    */
 
     //Run setTimeout to ask for proofs from validators. We assume that for that time - they'll receive our phantom blocks
 

@@ -21,6 +21,7 @@ acccount=async(a,q)=>{
             COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
         }
+        
         !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
 
     }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
