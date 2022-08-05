@@ -489,7 +489,7 @@ RELOAD_STATE = async() => {
 
             VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',FIND_PROOFS_POINTER:}
+            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',PROOFS_PTR_START:<INDEX>,PROOFS_PTR_END:<INDEX>}
             
             CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
             
@@ -519,7 +519,7 @@ RELOAD_STATE = async() => {
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FIND_PROOFS_POINTER:0} // set the initial values
+            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',PROOFS_PTR_START:0} // set the initial values
             
         )
 
