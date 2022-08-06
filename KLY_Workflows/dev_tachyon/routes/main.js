@@ -47,8 +47,10 @@ acceptBlocks=a=>{
             
                     typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
                     &&
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX+CONFIG.SYMBIOTE.BLOCK_ACCEPTION_NORMAL_DIFFERENCE>block.i //check if block index is not too far from verification thread
+                    &&
                     await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
-                
+                    
                 
                 if(allow){
                 
