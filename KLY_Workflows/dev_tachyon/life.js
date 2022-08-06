@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF} from './utils.js'
 
 import {START_VERIFY_POLLING} from './verification.js'
 
@@ -192,21 +192,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         promises=[],//to push blocks to storage
 
-        //Metadata of part of this validator's chain to share among other validators and get proofs from them
-        phantomsMetadata={
-            
-            START_INDEX:SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
-
-            START_HASH:SYMBIOTE_META.GENERATION_THREAD.PREV_HASH,
-
-            // And fill the second part of metadata - ending. Firstly, we set default values,
-            // but after portion of generated phantoms blocks this index/hash pair will be associated with the latest block in session
-
-            END_INDEX:-1,
-            
-            END_HASH:'',
-        
-        }
+        phantomsMetadata=[]//to share among other validators and get proofs from them
 
 
     phantomBlocksNumber++//DELETE after tests
@@ -233,9 +219,22 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
         //To send to other validators and get signatures as proof of acception this part of blocks
-        phantomsMetadata.END_INDEX=blockCandidate.i
 
-        phantomsMetadata.END_HASH=hash
+        let meta={
+            
+            V:CONFIG.SYMBIOTE.PUB,
+        
+            I:blockCandidate.i,
+            
+            H:hash,
+
+            S:await SIG(blockCandidate.i+hash)//self-sign our proofs as one of the validator
+        
+        }
+
+        
+        phantomsMetadata.push(meta)
+
 
 
         SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
@@ -243,7 +242,24 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
 
-        promises.push(SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,blockCandidate).then(()=>blockCandidate).catch(error=>{
+        promises.push(SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,blockCandidate).then(()=>
+
+            SYMBIOTE_META.VALIDATORS_PROOFS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,{
+            
+                H:meta.H,
+                V:[
+                    {
+                        V:meta.V,
+                        
+                        S:meta.S
+                        
+                    }
+    
+                ]
+            
+            })    
+
+        ).then(()=>blockCandidate).catch(error=>{
                 
             LOG(`Failed to store block ${blockCandidate.i} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
 
@@ -257,21 +273,12 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //______________________________________ WORKING WITH PROOFS & GENERATION THREAD METADATA ______________________________________
 
 
-    //Self-sign our proofs
-    let signa=await SIG(phantomsMetadata.START_INDEX+phantomsMetadata.START_HASH+phantomsMetadata.END_INDEX+phantomsMetadata.END_HASH)
-
-    phantomsMetadata.SIG=signa
-
-
     //Work with agreements of validators here
     console.log('Phantoms metadata ',phantomsMetadata)
     
 
-    //Here we need to send metadata to other validators and get the signed proofs that they've successfully received blocks
-    
-
-    //Run setTimeout to ask for proofs from validators. We assume that for that time - they'll receive our phantom blocks
-
+    //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
+    //?NOTE - we use setTimeout here to delay sending our proofs. We need to give some time for network to share blocks
     setTimeout(async()=>{
 
         let promises = []
@@ -283,11 +290,25 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             
         )
 
-        await Promise.all(promises)
+
+        let pureUrls = await Promise.all(promises).then(array=>array.filter(Boolean)),
+        
+            payload = JSON.stringify(phantomsMetadata)//this will be send to validators and to other nodes & endpoints
 
 
+        for(let validatorNode of pureUrls) {
 
-    },CONFIG.SYMBIOTE.TIMEOUT_TO_ASK_FOR_PHANTOM_BLOCKS_PORTION_PROOFS)
+            fetch(validatorNode,{
+                
+                method:'POST',
+                
+                body:payload
+            
+            }).catch(_=>{})//
+
+        }        
+
+    },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_PROOFS)
 
 
 
