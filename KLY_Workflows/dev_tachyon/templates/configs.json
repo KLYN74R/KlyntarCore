@@ -157,8 +157,6 @@
 
     "AWAIT_FOR_AFK_VALIDATOR":120000,
     
-    "SKIP_BFT_PROOFS":true,
-    
     "CHECKPOINT":{
         "HEIGHT":-1,
         "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
@@ -273,6 +271,15 @@
     "FAILED_ATTEMPTS_TO_FIND_A_BLOCK":3,
     "FIND_BLOCK_FOR_VALIDATORS_INTERVAL":5000,
 
+    "TRUST_POOL_TO_ACCEPT_BLOCKS":[
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
+        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
+        "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
+    ],
+
+    "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
+
     "GET_STUFF_URI":"http://localhost:6666",
     
     "STUFF_CATEGORIES":[
@@ -300,6 +307,20 @@
             "sig":""
         }
     },
+
+    "GET_VALIDATORS_PROOFS_URI":"http://localhost:6666",
+
+    "TRUST_POOL_FOR_VALIDATORS_PROOFS":[
+        
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
+        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
+        "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
+    
+    ],
+
+    "VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK":200,
+    "SKIP_BFT_PROOFS":true,
 
     "REGION":"EU",
 
