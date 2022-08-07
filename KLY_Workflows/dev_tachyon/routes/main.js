@@ -135,51 +135,82 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 //Function to accept updates of GT from validators,check,sign and share our agreement
 //TODO:Provide some extra communication to prevent potential problems with forks
 
-commitNewGenerationThreadMetadata=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-    
-
-    let phantomsMetadata=await BODY(v,CONFIG.PAYLOAD_SIZE)  
-    
-    /*
-    
-        Phantoms metadata has the following structure
-            
-            START_INDEX,
-
-            START_HASH,
-
-            END_INDEX,
-            
-            END_HASH,
-
-            SIG(signature of appropriate validator)
-    
-    */
- 
-}),
-
-
-
 
 /*
 
 
-To accept signatures of phantom blocks ranges from validators
+To accept signatures of phantom blocks from validators
+
+Here we receive the object with validator's pubkey and his array of proofs
+
+{
+    v:<PUBKEY>,
+    p:[
+        <PROOF_1>,
+        <PROOF_2>,
+        <PROOF_3>,
+        ...
+        <PROOF_N>,
+    ]
+}
 
 Proof is object
 
 {
-    START_INDEX:<index>,
-    START_INDEX:<index>,
-
-    pub:<AGGREGATED PUB of validators who confirmed this proof>
-    afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
+    
+    B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>>
+    
+    S:<Signature => SIG(BLOCK_ID+HASH)>
+        
 }
+
+To verify that ValidatorX has received and confirmed block BLOCK_ID from ValidatorY we check
+
+VERIFY(BLOCK_ID+HASH,Signature,Validator's pubkey)
 
 */
 acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-   
+    let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+    console.log('RECEIVED ',payload)
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v)){
+
+        a.end('OK')
+
+        payload.p.forEach(async proof=>{
+
+            if(await VERIFY('<BLOCK_ID>+<HASH>',proof.S,payload.v)){
+
+                //Try to get proofs from local storage. Key is BlockID(ValidatorPubKey:Height)
+                let maybeProof = await SYMBIOTE_META.get(proof.B).catch(e=>{
+
+                    //if nothing - return empty template
+                    return []
+
+                })
+
+                if(CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>maybeProof.length){
+
+                    if(maybeProof.length===0) maybeProof.push()
+
+                    else {
+
+                        
+
+                    }
+
+                }
+
+
+            }
+
+        })
+
+    }else a.end('Route is off')
+    
 
 }),
 
@@ -194,9 +225,9 @@ getValidatorsProofs=(a,q)=>{
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
-        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(block=>
+        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(proofs=>
 
-            !a.aborted && a.end(JSON.stringify(block))
+            !a.aborted && a.end(JSON.stringify(proofs))
             
         ).catch(_=>a.end('No proofs'))
 
@@ -351,12 +382,10 @@ UWS_SERVER
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
-.post('/commitnewgtmeta',commitNewGenerationThreadMetadata)
-
 .post('/hostchainproof',acceptHostchainsProofs)
+
+.post('/block',acceptBlocks)
 
 .post('/event',acceptEvents)
 
 .post('/addnode',addNode)
-
-.post('/block',acceptBlocks)

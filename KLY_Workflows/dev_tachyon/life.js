@@ -220,18 +220,15 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         //To send to other validators and get signatures as proof of acception this part of blocks
 
-        let meta={
-            
-            V:CONFIG.SYMBIOTE.PUB,
-        
-            I:blockCandidate.i,
-            
-            H:hash,
+        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,
 
-            S:await SIG(blockCandidate.i+hash)//self-sign our proofs as one of the validator
+            meta={
         
-        }
-
+                B:blockID,
+            
+                S:await SIG(blockID+hash)//self-sign our proofs as one of the validator
+        
+            }
         
         phantomsMetadata.push(meta)
 
@@ -242,14 +239,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
 
-        promises.push(SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,blockCandidate).then(()=>
+        promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
 
-            SYMBIOTE_META.VALIDATORS_PROOFS.put(CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,{
+            SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,
             
-                H:meta.H,
-                V:[
+                [
+                    
                     {
-                        V:meta.V,
+                        V:CONFIG.SYMBIOTE.PUB,
                         
                         S:meta.S
                         
@@ -257,7 +254,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
                 ]
             
-            })    
+            ) 
 
         ).then(()=>blockCandidate).catch(error=>{
                 
@@ -276,6 +273,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //Work with agreements of validators here
     console.log('Phantoms metadata ',phantomsMetadata)
     
+    phantomsMetadata={v:CONFIG.SYMBIOTE.PUB,p:phantomsMetadata}
 
     //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
     //?NOTE - we use setTimeout here to delay sending our proofs. We need to give some time for network to share blocks
@@ -291,20 +289,22 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         )
 
 
-        let pureUrls = await Promise.all(promises).then(array=>array.filter(Boolean)),
+        let pureUrls = await Promise.all(promises).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
         
             payload = JSON.stringify(phantomsMetadata)//this will be send to validators and to other nodes & endpoints
 
 
         for(let validatorNode of pureUrls) {
 
-            fetch(validatorNode,{
+            console.log('Going to send ',validatorNode)
+
+            fetch(validatorNode+'/acceptvalidatorsproofs',{
                 
                 method:'POST',
                 
                 body:payload
             
-            }).catch(_=>{})//
+            }).catch(_=>{})//doesn't matter if error
 
         }        
 

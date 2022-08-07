@@ -258,7 +258,8 @@
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
         "ACCEPT_HOSTCHAINS_PROOFS":1,
-        
+        "ACCEPT_VALIDATORS_PROOFS":1,
+
         "GET_VALIDATORS_PROOFS":1
     },
     
@@ -281,6 +282,15 @@
     "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
 
     "GET_STUFF_URI":"http://localhost:6666",
+
+    "TRUST_POOL_TO_ACCEPT_STUFF":[
+        
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
+        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
+        "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
+    
+    ],
     
     "STUFF_CATEGORIES":[
         "URL_PUBKEY_BIND",
@@ -310,7 +320,7 @@
 
     "GET_VALIDATORS_PROOFS_URI":"http://localhost:6666",
 
-    "TRUST_POOL_FOR_VALIDATORS_PROOFS":[
+    "TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS":[
         
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
         "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
