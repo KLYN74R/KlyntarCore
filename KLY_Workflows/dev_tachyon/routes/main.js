@@ -158,15 +158,15 @@ Proof is object
 
 {
     
-    B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>>
+    B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>
     
-    S:<Signature => SIG(BLOCK_ID+HASH)>
+    S:<Signature => SIG(BLOCK_ID+":"+HASH)>
         
 }
 
 To verify that ValidatorX has received and confirmed block BLOCK_ID from ValidatorY we check
 
-VERIFY(BLOCK_ID+HASH,Signature,Validator's pubkey)
+VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 
 */
 acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
@@ -182,7 +182,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
         payload.p.forEach(async proof=>{
 
-            if(await VERIFY('<BLOCK_ID>+<HASH>',proof.S,payload.v)){
+            if(await VERIFY('<BLOCK_ID>+":"+<HASH>',proof.S,payload.v)){
 
                 //Try to get proofs from local storage. Key is BlockID(ValidatorPubKey:Height)
                 let maybeProof = await SYMBIOTE_META.get(proof.B).catch(e=>{

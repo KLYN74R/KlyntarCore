@@ -226,7 +226,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         
                 B:blockID,
             
-                S:await SIG(blockID+hash)//self-sign our proofs as one of the validator
+                S:await SIG(blockID+":"+hash)//self-sign our proofs as one of the validator
         
             }
         
@@ -243,15 +243,19 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
             SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,
             
-                [
+                {
                     
-                    {
-                        V:CONFIG.SYMBIOTE.PUB,
-                        
-                        S:meta.S
-                    }
-    
-                ]
+                    V:[
+                    
+                        {
+                            V:CONFIG.SYMBIOTE.PUB,
+                            
+                            S:meta.S
+                        }
+        
+                    ]
+
+                }
             
             ) 
 
