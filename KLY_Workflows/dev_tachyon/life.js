@@ -249,7 +249,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                         V:CONFIG.SYMBIOTE.PUB,
                         
                         S:meta.S
-                        
                     }
     
                 ]
@@ -284,7 +283,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         //0. Initially,try to get pubkey => node_ip binding 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-            pubkey => promises.push(GET_STUFF(pubkey,'URL_PUBKEY_BIND'))
+            pubkey => promises.push(GET_STUFF(pubkey))
             
         )
 
@@ -599,7 +598,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         NEAR:[],//Peers to exchange data with
 
-        URL_PUBKEY_BIND:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.)
+        STUFF_CACHE:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
         VALIDATORS_PUBKEY_COMBINATIONS:new Map(), // key - BLS aggregated pubkey, value - array of pubkeys-components of aggregated validators pubkey
 
@@ -649,7 +648,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'VALIDATORS_PROOFS',// BLS signatures of epoches/ranges
 
-        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS
+        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
     ].forEach(
         
@@ -746,7 +745,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
-                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',FIND_PROOFS_POINTER:0}
+                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
                 
                 CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 

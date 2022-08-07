@@ -21,7 +21,7 @@ acccount=async(a,q)=>{
             COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
         }
-        
+
         !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
 
     }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
@@ -132,7 +132,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 
 
-//0 - symbioteID, 1 - stuffID, 2 - stuffType
+//0 - symbioteID, 1 - stuffID
 //Return useful data from stuff cache. It might be array of BLS pubkeys associated with some BLS aggregated pubkey, binding URL-PUBKEY and so on
 //Also, it's a big opportunity for cool plugins e.g. dyncamically track changes in STUFF_CACHE and modify it or share to other endpoints
 
@@ -142,17 +142,14 @@ stuff=async(a,q)=>{
     
     let symbioteID=q.getParameter(0),
     
-        stuffID=q.getParameter(1),
-    
-        stuffType=q.getParameter(2)
+        stuffID=q.getParameter(1)
 
+        
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
 
-    
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF && CONFIG.SYMBIOTE.STUFF_CATEGORIES.includes(stuffType)){
+        let stuff = SYMBIOTE_META.STUFF_CACHE.get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
-        let stuff = SYMBIOTE_META[stuffType].get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
-
-            SYMBIOTE_META[cache_type].set(stuffID,obj)
+            SYMBIOTE_META.STUFF_CACHE.set(stuffID,obj)
         
             return obj
         

@@ -49,7 +49,7 @@ We need to send an array of block IDs e.g. [Validator1:1337,Validator2:1337,Vali
 
 */
 
-GET_FORWARD_BLOCKS = () => {
+GET_BLOCKS_FOR_FUTURE = () => {
 
 
     let blocksIDs=[],
@@ -118,7 +118,7 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
             BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
             //Try to instantly and asynchronously load more blocks if it's possible
-            GET_FORWARD_BLOCKS()
+            GET_BLOCKS_FOR_FUTURE()
 
             return block
 
@@ -152,7 +152,7 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
                     //Try to instantly and asynchronously load more blocks if it's possible
-                    GET_FORWARD_BLOCKS()
+                    GET_BLOCKS_FOR_FUTURE()
 
                     return itsProbablyBlock
 
@@ -165,6 +165,77 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
     })
 
 ),
+
+
+
+
+CHECK_IF_WE_SHOULD_SKIP = async blockID => {
+
+    let skipPoint = await SYMBIOTE_META.VALIDATORS_PROOFS.get('SKIP:'+blockID).catch(e=>false)
+
+    
+    if(skipPoint){
+
+        // Daaaaamn, we should skip this block following some logic
+    
+    /*    
+        __________________________ Check if (2/3)*N+1 validators have voted to skip block on this thread and continue after some state of VERIFICATION_THREAD __________________________
+        
+        skipPoint - it's object with the following structure
+
+        {
+            refreshPoint:<BLAKE3 HASH OF VERIFICATION_THREAD WHEN WE SHOULD VERIFY THIS BLOCK>
+
+            votes:[
+                {
+                    V:<Validator1_BLS_PubKey>,
+                    S:<Validator1_BLS_Signature>,
+                },
+                {
+                    V:<Validator2_BLS_PubKey>,
+                    S:<Validator2_BLS_Signature>,
+                },
+                
+                ...
+                {
+                    V:<ValidatorX_BLS_PubKey>,
+                    S:<ValidatorX_BLS_Signature>,
+                },
+            ]
+        }
+
+        
+    ███    ██  ██████  ████████ ███████ 
+    ████   ██ ██    ██    ██    ██      
+    ██ ██  ██ ██    ██    ██    █████   
+    ██  ██ ██ ██    ██    ██    ██      
+    ██   ████  ██████     ██    ███████ 
+                                    
+                                    
+    1. If we have 1 pair in votes array - then it's already aggregated version of proofs
+    2. If we have 2 objects in array and the second pair is array - then it's case when the firt object - aggregated BLS pubkeys & signatures of validators and second object - array of AFK validators
+    3. Otherwise - we have raw version of proofs
+
+        
+    */
+
+    if(skipPoint.votes)
+
+    let aggregatedValidatorsPublicKey = await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS),
+        
+        isVerified = await bls.aggregatePublicKeys(SYMBIOTE_META.VALIDATORS) === aggregatedValidatorsPublicKey && await bls.singleVerify(blockHash,aggregatedValidatorsPublicKey,proof.sig)
+
+        
+        //We get the hash of verification thread and compare with refreshPoint - if it's equal, then we can verify block, otherwise - skip
+        
+        return SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== skipPoint.refreshPoint
+
+    }
+
+    else return false
+
+
+},
 
 
 
@@ -183,12 +254,13 @@ START_VERIFY_POLLING=async()=>{
 
             validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
 
-            //take the next validator in a row. If it's end of validators pool - start from the first validator
+            //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH,FIND_PROOFS_POINTER} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck]
+            //We receive {INDEX,HASH} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
 
+            blockID =  currentValidatorToCheck+":"+currentSessionMetadata.INDEX+1
 
 
 
@@ -206,16 +278,24 @@ START_VERIFY_POLLING=async()=>{
     
         if(block){
 
-            await verifyBlock(block)
+            if(await CHECK_IF_WE_SHOULD_SKIP(blockID)){
 
-            //Signal that verification was successful
-            if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+                //Further logic
 
-                nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+            }else {
+
+                await verifyBlock(block)
+
+                //Signal that verification was successful
+                if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+    
+                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+    
+                }
+                //If verification failed - delete block. It will force to find another(valid) block from network
+                else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
 
             }
-            //If verification failed - delete block. It will force to find another(valid) block from network
-            else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')
 
         }
 
@@ -369,37 +449,50 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
-checkBFTProofForBlock=async(blockId,blockHash)=>
+CHECK_BFT_PROOFS_FOR_BLOCK=async(blockId,blockHash)=>{
 
-    CONFIG.SYMBIOTE.SKIP_BFT_PROOFS
-    ||
-    SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).then(async proof=>{
+    if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS) return true
+    
+    else {
 
-    /*
+        let probablyItsSetOfProofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId)
 
-        Proof is object
+        /*
+    
+            Set of proofs is an array like this
 
-        {
-            hash:<HASH OF LATEST BLOCK IN SET OF PHANTOMS>
-            index:<BLOCK INDEX>
-            sig:<AGGREGATED SIGNATURE OF VALIDATORS>,
-            pub:<AGGREGATED PUB of validators who confirmed this proof>
-            afkValidators:[BLS pubkey1,BLS pubkey2,BLS pubkey3,...] - array of pubkeys of validators offline or not signed the phantom blocks seria
-        }
+            [
+                {
+                    V:<BLS ValidatorA_PubKey>,
+                    S:<BLS SignatureA>
+                },
+                {
+                    V:<BLS ValidatorB_PubKey>,
+                    S:<BLS SignatureB>
+                },
+                
+                ...(other validators proofs)
+                
+                {
+                    V:<BLS ValidatorN_PubKey>,
+                    S:<BLS SignatureN>
+                },
+            ]
+            
+        */
 
-    */
+        //Get from cache aggregated pubkey
 
         let aggregatedPub = await bls.aggregatePublicKeys([...afkValidators,proof.pub]),//anyway we'll get the same pubkey
-
+        
             isVerified = await bls.aggregatePublicKeys(SYMBIOTE_META.VALIDATORS) === aggregatedPub && await bls.singleVerify(blockHash,aggregatedPub,proof.sig)
-
-
+        
+        
         return isVerified
 
+    }
 
-    }).catch(e=>false)
-
-,
+},
 
 
 
@@ -416,7 +509,7 @@ verifyBlock=async block=>{
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH === block.p//it should be a chain
         &&
-        await checkBFTProofForBlock(block.c+":"+block.i,blockHash)
+        await CHECK_BFT_PROOFS_FOR_BLOCK(block.c+":"+block.i,blockHash)
         &&
         await VERIFY(blockHash,block.sig,block.c)
 

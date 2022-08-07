@@ -194,11 +194,12 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
                 if(CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>maybeProof.length){
 
-                    if(maybeProof.length===0) maybeProof.push()
+                    if(maybeProof.length===0) maybeProof.push(proof)
 
                     else {
 
-                        
+                        //Check if such proof already exsists
+                        //! Add cache here
 
                     }
 

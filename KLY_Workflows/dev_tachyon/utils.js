@@ -67,11 +67,9 @@ SEND_REPORT = alertInfo =>
 
 
 
+GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
-//Cache-Type URL_PUBKEY_BIND or VALIDATORS_PUBKEY_COMBINATIONS
-GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
-
-    if(CONFIG.SYMBIOTE[cache_type+'_CACHE_SIZE']>SYMBIOTE_META[cache_type].size) SYMBIOTE_META[cache_type].set(stuffID,obj)
+    if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,obj)
 
     return obj
 
@@ -87,7 +85,7 @@ GET_STUFF = async (stuffID,cache_type) => SYMBIOTE_META[cache_type].get(stuffID)
         SYMBIOTE_META.STUFF.put(stuffID,stuff).catch(e=>LOG(`Can't store stuff ${stuffID} to local storage`,'W'))        
 
     
-        if(CONFIG.SYMBIOTE[cache_type+'_CACHE_SIZE']>SYMBIOTE_META[cache_type].size) SYMBIOTE_META[cache_type].set(stuffID,stuff)
+        if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,stuff)
 
 
     }else{

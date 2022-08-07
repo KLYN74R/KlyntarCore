@@ -161,9 +161,6 @@
         "HEIGHT":-1,
         "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
     },
-    
-    "URL_PUBKEY_BIND_CACHE_SIZE":50000,
-    "VALIDATORS_PUBKEY_COMBINATIONS_CACHE_SIZE":50000,
 
     "NODES":{
     
@@ -283,6 +280,8 @@
 
     "GET_STUFF_URI":"http://localhost:6666",
 
+    "STUFF_CACHE_SIZE":100000,
+
     "TRUST_POOL_TO_ACCEPT_STUFF":[
         
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
@@ -292,11 +291,6 @@
     
     ],
     
-    "STUFF_CATEGORIES":[
-        "URL_PUBKEY_BIND",
-        "VALIDATORS_PUBKEY_COMBINATIONS"
-    ],
-
     "LOAD_STUFF":{
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
             "payload":{
