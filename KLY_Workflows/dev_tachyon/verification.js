@@ -352,23 +352,44 @@ START_VERIFY_POLLING=async()=>{
 
             let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
 
-                //We receive {refreshPoint}
                 validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
 
 
+            if(validatorsSolution.bftProofsIsOk){
 
-            if(){
+                if(!validatorsSolution.shouldSkip){
 
-                await verifyBlock(block)
+                    await verifyBlock(block)
 
-                //Signal that verification was successful
-                if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+                    //Signal that verification was successful
+                    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+        
+                        nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+        
+                    }
+                    //If verification failed - delete block. It will force to find another(valid) block from network
+                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
     
-                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
-    
+
+                }else{
+
+                    /*
+                    
+                        Here we do everything to skip this block and move to the next validator's block
+                        
+                        If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
+                    
+                        Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
+
+                    */
+
+                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+
+                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+                                
+                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash 
+                   
                 }
-                //If verification failed - delete block. It will force to find another(valid) block from network
-                else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
 
             }
 
