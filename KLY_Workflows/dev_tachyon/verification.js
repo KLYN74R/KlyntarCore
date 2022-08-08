@@ -325,7 +325,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-        if(votes.length===1 && false){
+        if(votes.length===1){
     
             // 1. If we have 1 pair in votes array - then it's already aggregated version of proofs
 
@@ -333,13 +333,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
             bftProofsIsOk = aggregatedValidatorsPublicKey === aggregatedVote.V && await VERIFY(metadataToVerify,aggregatedVote.S,aggregatedVote.V)
    
-        }else if (votes.length===2 && Array.isArray(votes[1])  && false){
+        }else if (votes.length===2 && Array.isArray(votes[1])){
 
             /*
         
                 If we have 2 objects in array and the second pair is array - then it's case when the
             
-                *    Firt object - aggregated BLS pubkeys & signatures of validators
+                *    First object - aggregated BLS pubkeys & signatures of validators
             
                 *    Second object - array of AFK validators        
         
@@ -451,7 +451,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             }else{
 
-                LOG(`Less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+                LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
 
             }
 
