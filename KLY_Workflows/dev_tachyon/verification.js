@@ -263,8 +263,8 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     if(shouldSkip) return {bftProofsIsOk:true,shouldSkip}
 
 
-
     
+
     if(proofs && !CONFIG.SYMBIOTE.SKIP_BFT_PROOFS){
 
     
@@ -323,7 +323,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
             metadataToVerify = refreshPoint ? refreshPoint+":"+blockId+":"+blockHash : blockId+":"+blockHash
 
 
-        console.log('VOTES ',votes)
+
 
         if(votes.length===1 && false){
     
@@ -376,8 +376,6 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-            console.log('Verified and filtered => ', verifiedVotesOfCurrentValidators)
-
 
             let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
@@ -405,22 +403,22 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
             )
 
 
-            aggregatedSignature = await bls.aggregateSignatures(pureSignatures).toString('base64')
-
+            aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
             
             
             if(verifiedVotesOfCurrentValidators.length===validatorsNumber){
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
 
-
                 let aggregatedProofsArray = [{V:aggregatedValidatorsPublicKey,S:aggregatedSignature}],
 
-                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}
+                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}//this will be stored locally for future verification or to share over the network
 
 
                 //And store proof locally
                 await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,finalProof).catch(e=>{})
+
+                bftProofsIsOk=true
 
 
             }else if(verifiedVotesOfCurrentValidators.length>=majority) {
@@ -428,29 +426,32 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
                 //Firstly - find AFK validators
-                let aggregatedPubKeyOfAFKValidators = Base58.encode(
-
-                    await bls.aggregatePublicKeys(
-
-                        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
                         
-                        .filter(pubKey => !votersPubKeys.includes(pubKey)) // get validators whose votes we don't have
+                                                        .filter(pubKey => !votersPubKeys.includes(pubKey)) //get validators whose votes we don't have
                         
-                        .map(publicKey => Base58.decode(publicKey)) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
-
-                    )
-
-                )
+                                                        .map(publicKey => Base58.decode(publicKey)) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
             
-                
-                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(votersPubKeys.map(key=>Base58.decode(key))))
+
 
                 
+                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(votersPubKeys.map(key=>Base58.decode(key)))),
 
+                    aggregatedProofsArray = [{V:aggregatedPubKeyOfVoters,S:aggregatedSignature},pubKeysOfAFKValidators],
+
+                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}//this will be stored locally for future verification or to share over the network
+
+
+
+
+                //And store proof locally
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,finalProof).catch(e=>{})
+
+                bftProofsIsOk=true
 
             }else{
 
-                LOG(`Less than majority have voted for block \x1b[32;1m${blockId} (\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+                LOG(`Less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
 
             }
 
@@ -703,7 +704,7 @@ MAKE_SNAPSHOT=async()=>{
 
 
     //After that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
-    await Promise.all(write)
+    await Promise.all(write.splice(0))
     
                     .then(_=>SNAPSHOT.METADATA.put('CANARY',canary))//put canary to snapshot
                     

@@ -292,7 +292,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         )
 
 
-        let pureUrls = await Promise.all(promises).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
+        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
         
             payload = JSON.stringify(phantomsMetadata)//this will be send to validators and to other nodes & endpoints
 
@@ -319,7 +319,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     //Commit group of blocks by setting hash and index of the last one
 
-    await Promise.all(promises).then(arr=>
+    await Promise.all(promises.splice(0)).then(arr=>
         
         SYMBIOTE_META.METADATA.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
 
@@ -481,7 +481,7 @@ RELOAD_STATE = async() => {
 
         Object.keys(accs).forEach(addr=>promises.push(SYMBIOTE_META.STATE.put(addr,accs[addr])))
 
-        await Promise.all(promises)
+        await Promise.all(promises.splice(0))
         
             .then(()=>SYMBIOTE_META.METADATA.put('CANARY',canary))
 
@@ -537,7 +537,7 @@ RELOAD_STATE = async() => {
 
         })
 
-        await Promise.all(promises)
+        await Promise.all(promises.splice(0))
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
@@ -799,7 +799,7 @@ PREPARE_SYMBIOTE=async()=>{
                     )
 
                     
-                    await Promise.all(promises).catch(e=>{
+                    await Promise.all(promises.splice(0)).catch(e=>{
 
                         LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m\n${e}`,'F')
 
@@ -1010,7 +1010,7 @@ RUN_SYMBIOTE=async()=>{
 
         )
 
-        await Promise.all(promises)
+        await Promise.all(promises.splice(0))
 
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
