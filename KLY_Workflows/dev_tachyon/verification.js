@@ -170,6 +170,7 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
 
 
+
 /*
 
 This is the function where we check the agreement from validators to understand what we should to do
@@ -195,14 +196,20 @@ It they are equal - then we can verify the block, otherwise - we should skip it 
 CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
-    let proofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false)
-
-    //if no proofs - find over the network
-
-    console.log('Proofs is ',proofs)
+    let proofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
 
-    if(proofs){
+        //We should skip the block in case when refreshPoint exsist in validators proofs and it doesn't equal to checksum of VERIFICATION_THREAD state
+        shouldSkip = proofs.R && SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== proofs.R
+
+    
+    //Imitate that bft proofs is OK - anyway we skip this block(in current iteration). We'll check BFT proofs later(when block shouldn't be skipped)
+    if(shouldSkip) return {bftProofsIsOk:true,shouldSkip}
+
+
+
+    
+    if(proofs && !CONFIG.SYMBIOTE.SKIP_BFT_PROOFS){
 
     
     /*    
@@ -257,8 +264,6 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
-            shouldSkip = refreshPoint, //if nothing - then OK,we can check block if proofs is also OK
-
             metadataToVerify = refreshPoint ? refreshPoint+":"+blockId+":"+blockHash : blockId+":"+blockHash
 
 
@@ -299,21 +304,49 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         
             //3. Otherwise - we have raw version of proofs
             // In this case we need to through the proofs,make sure that majority has voted for the same version of proofs(agree/disagree, skip/verify and so on)
+            let votesPromises = []
+            
+            for(let singleVote of votes){
 
-            votes.forEach(singleVote=>{
+                votesPromises.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(singleVote.V) && VERIFY(metadataToVerify,singleVote.S,singleVote.V).then(isOk=>isOk&&singleVote))
 
+            }
+
+            let verifiedVotesOfCurrentValidators = await Promise.all(votesPromises).then(
                 
+                array => array.filter(Boolean) //delete useless / unverified stuff
+                
+            ).catch(e=>false)
 
-            })
-
+            console.log('Verified and filtered => ', verifiedVotesOfCurrentValidators)
        
         }
 
 
-            return SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== proofs.refreshPoint && bftProofsIsOk
+
+        
+        return {bftProofsIsOk,shouldSkip}
 
     
-    } else return false
+    }{
+
+        if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS){
+
+            return {
+            
+                bftProofsIsOk:CONFIG.SYMBIOTE.SKIP_BFT_PROOFS,
+                
+                shouldSkip
+            
+            }
+    
+        }else{
+
+            //Find proofs over the network
+
+        }
+
+    }
 
 },
 
