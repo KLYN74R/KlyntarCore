@@ -8,6 +8,8 @@ import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
 
+import Base58 from 'base-58'
+
 
 
 
@@ -190,13 +192,14 @@ It they are equal - then we can verify the block, otherwise - we should skip it 
 
 
 */
-CHECK_BFT_PROOFS_FOR_BLOCK=async (blockId,blockHash) =>{
+CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
     let proofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false)
 
     //if no proofs - find over the network
 
+    console.log('Proofs is ',proofs)
 
 
     if(proofs){
@@ -237,70 +240,77 @@ CHECK_BFT_PROOFS_FOR_BLOCK=async (blockId,blockHash) =>{
                                     
                                     
     1. If we have 1 pair in votes array - then it's already aggregated version of proofs
+    
     2. If we have 2 objects in array and the second pair is array - then it's case when the firt object - aggregated BLS pubkeys & signatures of validators and second object - array of AFK validators
+    
     3. Otherwise - we have raw version of proofs
 
         
     */
 
+
+
+
+        let bftProofsIsOk=false, // so optimistically
     
+            {V:votes,R:refreshPoint} = proofs,
+
+            aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
+
+            shouldSkip = refreshPoint, //if nothing - then OK,we can check block if proofs is also OK
+
+            metadataToVerify = refreshPoint ? refreshPoint+":"+blockId+":"+blockHash : blockId+":"+blockHash
 
 
-    let bftProofsIsOk=false, // so optimistically
+        console.log('VOTES ',votes)
+
+        if(votes.length===1){
     
-        {V:votes,R:refreshPoint} = proofs
+            // 1. If we have 1 pair in votes array - then it's already aggregated version of proofs
 
-
-
-
-    if(votes.length===1){
-    
-        // 1. If we have 1 pair in votes array - then it's already aggregated version of proofs
-
-        let aggregatedVote = votes[0],
-
-            aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)
-
-
-        bftProofsIsOk = aggregatedValidatorsPublicKey === aggregatedVote.V && await VERIFY(refreshPoint+":"+blockId+":"+blockHash,aggregatedVote.S,aggregatedVote.V)
-
+            let aggregatedVote = votes[0]
+                
+            bftProofsIsOk = aggregatedValidatorsPublicKey === aggregatedVote.V && await VERIFY(metadataToVerify,aggregatedVote.S,aggregatedVote.V)
    
+        }else if (votes.length===2 && Array.isArray(votes[1])){
 
-   
-    }else if (votes.length===2 && Array.isArray(votes[1])){
-
-        /*
+            /*
         
-            If we have 2 objects in array and the second pair is array - then it's case when the
+                If we have 2 objects in array and the second pair is array - then it's case when the
             
-            *    Firt object - aggregated BLS pubkeys & signatures of validators and
+                *    Firt object - aggregated BLS pubkeys & signatures of validators
             
-            *    Second object - array of AFK validators        
+                *    Second object - array of AFK validators        
         
-        */
+            */
     
-        let [aggregatedVote,afkValidators] = votes,
+            let [aggregatedVote,afkValidators] = votes,
 
-            aggregatedValidatorsPublicKey = await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS),
+                validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-            validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
-
-            majority = Math.ceil(validatorsNumber*(2/3))
+                majority = Math.ceil(validatorsNumber*(2/3))
 
 
 
-        bftProofsIsOk = (validatorsNumber-afkValidators.length)>=majority && await VERIFY(refreshPoint+":"+blockId+":"+blockHash,aggregatedVote.S,aggregatedVote.V)
+            bftProofsIsOk = (validatorsNumber-afkValidators.length)>=majority && await VERIFY(metadataToVerify,aggregatedVote.S,aggregatedVote.V)
 
     
-    }else{
-
-        //3. Otherwise - we have raw version of proofs
-        // In this case we need to through the proofs and
-
-    }
-
+        }else{
         
-        return SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== proofs.refreshPoint && bftProofsIsOk
+            //3. Otherwise - we have raw version of proofs
+            // In this case we need to through the proofs,make sure that majority has voted for the same version of proofs(agree/disagree, skip/verify and so on)
+
+            votes.forEach(singleVote=>{
+
+                
+
+            })
+
+       
+        }
+
+
+            return SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== proofs.refreshPoint && bftProofsIsOk
 
     
     } else return false
@@ -330,7 +340,7 @@ START_VERIFY_POLLING=async()=>{
             //We receive {INDEX,HASH} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
 
-            blockID =  currentValidatorToCheck+":"+currentSessionMetadata.INDEX+1
+            blockID =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
 
 
 
@@ -354,6 +364,9 @@ START_VERIFY_POLLING=async()=>{
 
                 validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
 
+            console.log('Solution is ',validatorsSolution)
+
+            //If no solution from validators - skip this block and start another iteration
 
             if(validatorsSolution.bftProofsIsOk){
 

@@ -299,8 +299,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         for(let validatorNode of pureUrls) {
 
-            console.log('Going to send ',validatorNode)
-
             fetch(validatorNode+'/acceptvalidatorsproofs',{
                 
                 method:'POST',
@@ -916,6 +914,8 @@ PREPARE_SYMBIOTE=async()=>{
     //___________________________________________Load data from hostchains___________________________________________
 
 
+
+    
     for(let i=0,l=tickers.length;i<l;i++){
         
         let balance

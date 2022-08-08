@@ -173,8 +173,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
-
-    console.log('RECEIVED ',payload)
+    
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v)){
 
