@@ -173,7 +173,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
-    
+
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v)){
 
@@ -367,7 +367,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         
         !a.aborted&&a.end('OK')
         
-        Promise.all(BROADCAST('/proof',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
+        Promise.all(BROADCAST('/hc_proofs',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
     
     }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
 
@@ -378,11 +378,11 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/getvalidatorsproofs/:symbiote/:blockID',getValidatorsProofs)
+.get('/proofs/:symbiote/:blockID',getValidatorsProofs)
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
-.post('/hostchainproof',acceptHostchainsProofs)
+.post('/hc_proofs',acceptHostchainsProofs)
 
 .post('/block',acceptBlocks)
 

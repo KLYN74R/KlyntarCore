@@ -171,6 +171,62 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
 
 
+START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
+
+    fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
+
+    .then(r=>r.json()).then(block=>{
+
+        // let hash=Block.genHash(block.c,block.e,block.i,block.p)
+            
+        // if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
+
+        //     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+
+        //     //Try to instantly and asynchronously load more blocks if it's possible
+        //     GET_BLOCKS_FOR_FUTURE()
+
+        //     return block
+
+        // }
+
+    }).catch(async error=>{
+
+        LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+
+        //Combine all nodes we know about and try to find block there
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+        
+
+        for(let url of allVisibleNodes){
+
+            
+            let itsProbablyBlock=await fetch(url+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
+            
+
+            if(itsProbablyBlock){
+
+                let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+            
+
+                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
+
+                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+
+
+                }
+
+            }
+
+        }
+        
+    })
+
+},
+
+
+
+
 /*
 
 This is the function where we check the agreement from validators to understand what we should to do
@@ -269,7 +325,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
         console.log('VOTES ',votes)
 
-        if(votes.length===1){
+        if(votes.length===1 && false){
     
             // 1. If we have 1 pair in votes array - then it's already aggregated version of proofs
 
@@ -277,7 +333,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
             bftProofsIsOk = aggregatedValidatorsPublicKey === aggregatedVote.V && await VERIFY(metadataToVerify,aggregatedVote.S,aggregatedVote.V)
    
-        }else if (votes.length===2 && Array.isArray(votes[1])){
+        }else if (votes.length===2 && Array.isArray(votes[1])  && false){
 
             /*
         
@@ -318,13 +374,92 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
             ).catch(e=>false)
 
+
+
             console.log('Verified and filtered => ', verifiedVotesOfCurrentValidators)
+
+
+            let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
+
+                majority = Math.ceil(validatorsNumber*(2/3)),
+
+                aggregatedSignature = '', 
+            
+                votersPubKeys = [],
+
+                pureSignatures = []
+            
+
+
+
+            verifiedVotesOfCurrentValidators.forEach(
+                        
+                singleVote => {
+                    
+                    votersPubKeys.push(singleVote.V)
+
+                    pureSignatures.push(Buffer.from(singleVote.S,'base64'))
+
+                }
+                    
+            )
+
+
+            aggregatedSignature = await bls.aggregateSignatures(pureSignatures).toString('base64')
+
+            
+            
+            if(verifiedVotesOfCurrentValidators.length===validatorsNumber){
+
+                //If 100% of validators approve this block - OK,accept it and aggregate data
+
+
+                let aggregatedProofsArray = [{V:aggregatedValidatorsPublicKey,S:aggregatedSignature}],
+
+                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}
+
+
+                //And store proof locally
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,finalProof).catch(e=>{})
+
+
+            }else if(verifiedVotesOfCurrentValidators.length>=majority) {
+                
+                //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
+
+                //Firstly - find AFK validators
+                let aggregatedPubKeyOfAFKValidators = Base58.encode(
+
+                    await bls.aggregatePublicKeys(
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+                        
+                        .filter(pubKey => !votersPubKeys.includes(pubKey)) // get validators whose votes we don't have
+                        
+                        .map(publicKey => Base58.decode(publicKey)) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
+
+                    )
+
+                )
+            
+                
+                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(votersPubKeys.map(key=>Base58.decode(key))))
+
+                
+
+
+            }else{
+
+                LOG(`Less than majority have voted for block \x1b[32;1m${blockId} (\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+
+            }
+
        
         }
 
 
+        //Finally - return results
 
-        
         return {bftProofsIsOk,shouldSkip}
 
     
@@ -342,7 +477,8 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
         }else{
 
-            //Find proofs over the network
+            //Let's find proofs over the network asynchronously
+            START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
         }
 

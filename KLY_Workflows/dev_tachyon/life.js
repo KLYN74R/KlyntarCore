@@ -363,7 +363,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                             //If accpted-we can share to the rest
                             isAlreadyAccepted
                             &&
-                            Promise.all(BROADCAST('/proof',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
+                            Promise.all(BROADCAST('/hc_proofs',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
                         
 
                             let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
@@ -915,7 +915,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    
+
     for(let i=0,l=tickers.length;i<l;i++){
         
         let balance

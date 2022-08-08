@@ -120,7 +120,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
         }
        
-        await Promise.all(promises)
+        await Promise.all(promises.splice(0))
         
         !a.aborted && a.end(JSON.stringify(response))
 
@@ -144,7 +144,7 @@ stuff=async(a,q)=>{
     
         stuffID=q.getParameter(1)
 
-        
+
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
 
         let stuff = SYMBIOTE_META.STUFF_CACHE.get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
