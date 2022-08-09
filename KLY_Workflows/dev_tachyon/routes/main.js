@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY, GET_STUFF} from '../utils.js'
+import {BROADCAST,BLOCKLOG,VERIFY, GET_STUFF, SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -21,7 +21,7 @@ acceptBlocks=a=>{
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
         
-        a.end('Route is off')
+        !a.aborted&&a.end('Route is off')
         
         return
     
@@ -185,7 +185,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
     if(shouldAccept){
 
-        a.end('OK')
+        !a.aborted&&a.end('OK')
 
 
         //Go through the set of proofs
@@ -221,10 +221,57 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
         })
 
-    }else a.end('Route is off')
+    }else !a.aborted&&a.end('Route is off')
     
 
 }),
+
+
+
+// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+createValidatorsProofs=async(a,q)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.CREATE_VALIDATORS_PROOFS){
+
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
+
+        //Check if our proof presents in db
+        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(async proofs=>{
+
+            if(proofs[CONFIG.SYMBIOTE.PUB]){
+
+                !a.aborted && a.end(proofs[CONFIG.SYMBIOTE.PUB])
+
+            }else{
+
+                //Else, check if block present localy and create a proof
+
+                let block = await SYMBIOTE_META.BLOCK.get(q.getParameter(1)).catch(e=>false)
+
+                if(block){
+                    
+                    let proof = await SIG(q.getParameter(1))
+
+                    proofs[CONFIG.SYMBIOTE.PUB]=proof
+
+                    SYMBIOTE_META.VALIDATORS_PROOFS.put(q.getParameter(1),proofs).catch(e=>{})
+
+                    !a.aborted && a.end(proof)
+
+                }
+
+                else !a.aborted && a.end('No block')
+
+            }
+           
+
+        }).catch(_=>a.end('No proofs'))
+
+    }else !a.aborted && a.end('Symbiote not supported')
+
+},
+
 
 
 
@@ -419,9 +466,11 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/proofs/:symbiote/:blockID',getValidatorsProofs)
-
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
+
+.post('/createvalidatorsproofs',createValidatorsProofs)
+
+.get('/proofs/:symbiote/:blockID',getValidatorsProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
 

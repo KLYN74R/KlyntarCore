@@ -233,19 +233,19 @@ This is the function where we check the agreement from validators to understand 
 
 Algorithm:
 
-[+] 0. Initially,we should check if proofs from validators for block with BLOCK_ID have no <refreshPoint>
+[+] 0. Initially,we should check if proofs from validators for block with BLOCK_ID have no <skipPoint>
 
-        * RefreshPoint - is a hash of verification thread to know when we should continue to verify block of some validator 
-
-
-
-[+] 1. If refreshPoint presents in proofs and majority of validators agree with this, then we compare the refreshPoint with the current hash of VERIFICATION_THREAD (VERIFICATION_THREAD.CHECKSUM)
-
-It they are equal - then we can verify the block, otherwise - we should skip it and verify block of the next validator
+        * skipPoint - is a hash of verification thread to know when we should skip and don't verify block of some validator. We'll check this block later, after validator return to game 
 
 
 
-[+] 2. If no refreshPoint present and majority agree with this - we can securely verify the block
+[+] 1. If skipPoint presents in proofs and majority of validators agree with this, then we compare the skipPoint with the current hash of VERIFICATION_THREAD (VERIFICATION_THREAD.CHECKSUM)
+
+It they are equal - then we can skip the block and mark current validator as offline(ACTIVE:false)
+
+
+
+[+] 2. If no skipPoint present and majority agree with this - we can securely verify the block following order of VERIFICATION_THREAD
 
 
 */
@@ -255,43 +255,34 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     let proofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
 
-        //We should skip the block in case when refreshPoint exsist in validators proofs and it doesn't equal to checksum of VERIFICATION_THREAD state
-        shouldSkip = proofs.R && SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM !== proofs.R
-
-    
-    //Imitate that bft proofs is OK - anyway we skip this block(in current iteration). We'll check BFT proofs later(when block shouldn't be skipped)
-    if(shouldSkip) return {bftProofsIsOk:true,shouldSkip}
-
+        //We should skip the block in case when skipPoint exsists in validators proofs and it equal to checksum of VERIFICATION_THREAD state
+        shouldSkip = proofs.S && SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM === proofs.S
 
     
 
-    if(proofs && !CONFIG.SYMBIOTE.SKIP_BFT_PROOFS){
+
+    if(proofs){
 
     
     /*    
         __________________________ Check if (2/3)*N validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
         
-        It's object with the following structure
+        Proofs - it's object with the following structure
 
         {
-            ? refreshPoint:<BLAKE3 HASH OF VERIFICATION_THREAD WHEN WE SHOULD VERIFY THIS BLOCK>
+            ? skipPoint:<BLAKE3 HASH OF VERIFICATION_THREAD WHEN WE SHOULD SKIP THIS BLOCK>
 
-            + votes:[
-                {
-                    V:<Validator1_BLS_PubKey>,
-                    S:<Validator1_BLS_Signature>,
-                },
-                {
-                    V:<Validator2_BLS_PubKey>,
-                    S:<Validator2_BLS_Signature>,
-                },
+            + votes:{
+
+                [<Validator1_BLS_PubKey>]:<Validator1_BLS_Signature>,
+                [<Validator2_BLS_PubKey>]:<Validator2_BLS_Signature>,
                 
                 ...
-                {
-                    V:<ValidatorX_BLS_PubKey>,
-                    S:<ValidatorX_BLS_Signature>,
-                },
-            ]
+
+                [<Validator3_BLS_PubKey>]:<Validator3_BLS_Signature>,
+
+            }
+            
         }
 
         
@@ -304,7 +295,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                                     
     1. If we have 1 pair in votes array - then it's already aggregated version of proofs
     
-    2. If we have 2 objects in array and the second pair is array - then it's case when the firt object - aggregated BLS pubkeys & signatures of validators and second object - array of AFK validators
+    2. If we have 2 objects in array and the second pair is array - then it's case when the first object - aggregated BLS pubkeys & signatures of validators and second object - array of AFK validators
     
     3. Otherwise - we have raw version of proofs
 
@@ -316,11 +307,11 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
         let bftProofsIsOk=false, // so optimistically
     
-            {V:votes,R:refreshPoint} = proofs,
+            {V:votes,S:skipPoint} = proofs,
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
-            metadataToVerify = refreshPoint ? refreshPoint+":"+blockId+":"+blockHash : blockId+":"+blockHash
+            metadataToVerify = skipPoint ? skipPoint+":"+blockId : blockId+":"+blockHash
 
 
 
@@ -464,25 +455,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         return {bftProofsIsOk,shouldSkip}
 
     
-    }{
+    }else{
 
-        if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS){
+        //Let's find proofs over the network asynchronously
+        START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
-            return {
-            
-                bftProofsIsOk:CONFIG.SYMBIOTE.SKIP_BFT_PROOFS,
-                
-                shouldSkip
-            
-            }
+        return {bftProofsIsOk:false}
     
-        }else{
-
-            //Let's find proofs over the network asynchronously
-            START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
-
-        }
-
     }
 
 },
@@ -496,8 +475,8 @@ START_VERIFY_POLLING=async()=>{
     //This option will stop workflow of verification for each symbiote
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        THREADS_STILL_WORKS.GENERATION=true
 
+        THREADS_STILL_WORKS.GENERATION=true
 
 
         let prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
@@ -507,76 +486,96 @@ START_VERIFY_POLLING=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
 
-            blockID =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
-
-
-
-        //Try to get block
-
-        let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
-
-            pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1, //if the id will be increased - then the block was verified and we can move on 
+            blockID =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1),
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator
             nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
 
-            nextBlock
+            nextBlock//to verify block as fast as possible
 
+
+
+
+        //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
+        if(!currentSessionMetadata.ACTIVE){
+
+            /*
+                    
+                Here we do everything to skip this block and move to the next validator's block
+                        
+                If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
+                    
+                Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
+
+            */
+
+                
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+                                    
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+
+
+        }else {
+
+            let validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID)
+        
+
+            if(validatorsSolution.shouldSkip){
+
+                /*
+                        
+                    Here we do everything to skip this block and move to the next validator's block
+                            
+                    If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
+                        
+                    Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
     
+                */
+
+                currentSessionMetadata.ACTIVE=false
+    
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+                                        
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+    
+            }else{
+
+                //Try to get block
+                let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
+
+                    pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
 
-        if(block){
 
-            let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
 
-                validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
-
-            console.log('Solution is ',validatorsSolution)
-
-            //If no solution from validators - skip this block and start another iteration
-
-            if(validatorsSolution.bftProofsIsOk){
-
-                if(!validatorsSolution.shouldSkip){
-
+                if(block && validatorsSolution.bftProofsIsOk){
+                     
+            
                     await verifyBlock(block)
-
+            
                     //Signal that verification was successful
                     if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
-        
+                
                         nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
-        
+                
                     }
                     //If verification failed - delete block. It will force to find another(valid) block from network
                     else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
-    
-
-                }else{
-
-                    /*
-                    
-                        Here we do everything to skip this block and move to the next validator's block
-                        
-                        If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
-                    
-                        Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
-
-                    */
-
-                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
-
-                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
-                                
-                    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash 
-                   
+            
                 }
 
-            }
+            }                
 
         }
+
+        LOG(!currentSessionMetadata.ACTIVE?'Oops, this validator is sleeping. Jump to next one':'Current validator generated blocks for us','I')
 
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${nextValidatorToCheck} ### ${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1}`,'W')
 
@@ -585,7 +584,7 @@ START_VERIFY_POLLING=async()=>{
 
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(()=>START_VERIFY_POLLING(),nextBlock?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING)
+        setTimeout(()=>START_VERIFY_POLLING(),(nextBlock||!currentSessionMetadata.ACTIVE)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
