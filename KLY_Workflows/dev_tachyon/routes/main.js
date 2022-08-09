@@ -193,7 +193,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
             let [blockCreator,height] = proof.B.split(':'),
             
-                blockHash = await GET_STUFF('HASH:'+proof.B) || await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)),
+                blockHash = await GET_STUFF('HASH:'+proof.B) || await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),
 
                 //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
                 shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)
@@ -202,24 +202,17 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
                 
             if(shouldAcceptDueToHeight && await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
 
-                //Try to get proofs from local storage. Key is BlockID(ValidatorPubKey:Height)
-                let maybeProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(proof.B).catch(e=>{
+                //Try to get proofs from local storage. Key is BlockID(ValidatorPubKey:Height). If nothing - return empty template
+                let maybeProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(proof.B).catch(e=>false) || {},
 
-                    //if nothing - return empty template
-                    return []
+                    generalNumOfProofs = Object.keys(maybeProof)
 
-                })
 
-                if(CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>maybeProof.length){
+                if(CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>generalNumOfProofs && !maybeProof[payload.v]){
 
-                    if(maybeProof.length===0) maybeProof.push(proof)
+                    maybeProof[payload.v] = proof.S
 
-                    else {
-
-                        //Check if such proof already exsists
-                        //! Add cache here
-
-                    }
+                    SYMBIOTE_META.VALIDATORS_PROOFS.put(proof.B,maybeProof).catch(e=>{})
 
                 }
 

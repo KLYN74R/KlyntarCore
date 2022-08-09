@@ -245,16 +245,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             
                 {
                     
-                    V:[
+                    V:{[CONFIG.SYMBIOTE.PUB]:meta.S} // Validators proofs will be stored in V property as object with PublicKey=>Signature(BLOCK_ID+":"+BLOCK_HASH)
                     
-                        {
-                            V:CONFIG.SYMBIOTE.PUB,
-                            
-                            S:meta.S
-                        }
-        
-                    ]
-
                 }
             
             ) 
@@ -511,7 +503,7 @@ RELOAD_STATE = async() => {
 
             VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:<Index of finalized block>,HASH:<Hash of finalized block>,ACTIVE:<Should we check block or skip>}
             
             CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
             
@@ -541,7 +533,7 @@ RELOAD_STATE = async() => {
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'} // set the initial values
+            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',ACTIVE:true} // set the initial values
             
         )
 
@@ -747,7 +739,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
-                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:''}
+                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',ACTIVE}
                 
                 CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 
