@@ -173,6 +173,9 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
 START_TO_FIND_PROOFS_FOR_BLOCK = async (blockID,mode) => {
 
+
+    console.log('Iam here to find proofs')
+
     // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
 
     // .then(r=>r.json()).then(block=>{
@@ -531,7 +534,12 @@ START_VERIFY_POLLING=async()=>{
 
         }else {
 
-            let validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID)
+            //Try to get block
+            let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
+
+                blockHash = Block.genHash(block.c,block.e,block.i,block.p),
+
+                validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
         
 
             if(validatorsSolution.shouldSkip){
@@ -555,14 +563,8 @@ START_VERIFY_POLLING=async()=>{
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
     
             }else{
-
-                //Try to get block
-                let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
-
-                    pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
-
-
-
+                
+                let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
                 if(block && validatorsSolution.bftProofsIsOk){
                      

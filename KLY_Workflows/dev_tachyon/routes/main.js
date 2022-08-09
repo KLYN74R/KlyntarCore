@@ -193,7 +193,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
             let [blockCreator,height] = proof.B.split(':'),
             
-                blockHash = await GET_STUFF('HASH:'+proof.B) || await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),
+                blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
 
                 //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
                 shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)
