@@ -171,56 +171,56 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
 
 
-START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
+START_TO_FIND_PROOFS_FOR_BLOCK = async (blockID,mode) => {
 
-    fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
+    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
 
-    .then(r=>r.json()).then(block=>{
+    // .then(r=>r.json()).then(block=>{
 
-        // let hash=Block.genHash(block.c,block.e,block.i,block.p)
+    //     // let hash=Block.genHash(block.c,block.e,block.i,block.p)
             
-        // if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
+    //     // if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
 
-        //     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+    //     //     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
-        //     //Try to instantly and asynchronously load more blocks if it's possible
-        //     GET_BLOCKS_FOR_FUTURE()
+    //     //     //Try to instantly and asynchronously load more blocks if it's possible
+    //     //     GET_BLOCKS_FOR_FUTURE()
 
-        //     return block
+    //     //     return block
 
-        // }
+    //     // }
 
-    }).catch(async error=>{
+    // }).catch(async error=>{
 
-        LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+    //     LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
 
-        //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+    //     //Combine all nodes we know about and try to find block there
+    //     let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
         
 
-        for(let url of allVisibleNodes){
+    //     for(let url of allVisibleNodes){
 
             
-            let itsProbablyBlock=await fetch(url+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
+    //         let itsProbablyBlock=await fetch(url+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
             
 
-            if(itsProbablyBlock){
+    //         if(itsProbablyBlock){
 
-                let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+    //             let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
             
 
-                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
+    //             if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
 
-                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+    //                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
 
-                }
+    //             }
 
-            }
+    //         }
 
-        }
+    //     }
         
-    })
+    // })
 
 },
 
@@ -293,11 +293,11 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     ██   ████  ██████     ██    ███████ 
                                     
                                     
-    1. If we have 1 pair in votes array - then it's already aggregated version of proofs
+    1. If we have 1 pair(property-value) in votes object - then it's already aggregated version of proofs
     
-    2. If we have 2 objects in array and the second pair is array - then it's case when the first object - aggregated BLS pubkeys & signatures of validators and second object - array of AFK validators
+    2. If we have 2 properties and the second is A(aggregated) - then it's case when the first property-value pair - aggregated BLS pubkey & signature of validators and second property - array of AFK validators
     
-    3. Otherwise - we have raw version of proofs
+    3. Otherwise - we have raw version of proofs like previously shown(where string "Check if (2/3)*N validators...")
 
         
     */
@@ -311,24 +311,45 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
-            metadataToVerify = skipPoint ? skipPoint+":"+blockId : blockId+":"+blockHash
+            metadataToVerify = skipPoint ? (skipPoint+":"+blockId) : (blockId+":"+blockHash),
+
+            validatorsWhoVoted = Object.keys(votes)
 
 
 
 
-        if(votes.length===1){
+        if(validatorsWhoVoted.length===1){
     
-            // 1. If we have 1 pair in votes array - then it's already aggregated version of proofs
+            // 1. If we have 1 pair in votes - then it's already aggregated version of proofs
 
-            let aggregatedVote = votes[0]
+            let aggregatedSigna = votes[validatorsWhoVoted[0]]
                 
-            bftProofsIsOk = aggregatedValidatorsPublicKey === aggregatedVote.V && await VERIFY(metadataToVerify,aggregatedVote.S,aggregatedVote.V)
+            bftProofsIsOk = aggregatedValidatorsPublicKey === validatorsWhoVoted[0] && await VERIFY(metadataToVerify,aggregatedSigna,validatorsWhoVoted[0])
    
-        }else if (votes.length===2 && Array.isArray(votes[1])){
+        }else if (validatorsWhoVoted.length===2 && validatorsWhoVoted[1]==='A'){
 
             /*
+
+                In this case, structure looks like this
+
+                {
+                    "AggregatedPubKey as property name":<Signature as value>
+                    A:[Pub1,Pub2,Pub3] //array of AFK validators
+                }
+
+                Example:
+
+                {
+                
+                    "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":"iueh10NIDO9XEAQ2DYf6CrJtVtDCPSQ187BUI42XO1fJCFBlcNHWOc0mX0RbsZSMBk98D1eYE3gN2moo/vorgexuh/C/v1GRgwzeSBnJ6KJg54/GBfOoKuwa6lmvSWpj",
+                    
+                    A:["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT"]
+                
+                }
         
-                If we have 2 objects in array and the second pair is array - then it's case when the
+                If we have 2 properties where the first one is BLS aggregated pubkey of validators(as property name) and aggregated signature as value
+                
+                the second pair is array - then it's case when the
             
                 *    First object - aggregated BLS pubkeys & signatures of validators
             
@@ -353,13 +374,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
             // In this case we need to through the proofs,make sure that majority has voted for the same version of proofs(agree/disagree, skip/verify and so on)
             let votesPromises = []
             
-            for(let singleVote of votes){
+            for(let singleValidator of votes){
 
-                votesPromises.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(singleVote.V) && VERIFY(metadataToVerify,singleVote.S,singleVote.V).then(isOk=>isOk&&singleVote))
+                votesPromises.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(singleValidator) && VERIFY(metadataToVerify,votes[singleValidator],singleValidator).then(isOk=>isOk&&singleValidator))
 
             }
 
-            let verifiedVotesOfCurrentValidators = await Promise.all(votesPromises).then(
+            let validatorsWithVerifiedSignatures = await Promise.all(votesPromises).then(
                 
                 array => array.filter(Boolean) //delete useless / unverified stuff
                 
@@ -372,24 +393,16 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
                 majority = Math.ceil(validatorsNumber*(2/3)),
 
-                aggregatedSignature = '', 
-            
-                votersPubKeys = [],
+                aggregatedSignature = '',
 
                 pureSignatures = []
             
 
 
 
-            verifiedVotesOfCurrentValidators.forEach(
+            validatorsWithVerifiedSignatures.forEach(
                         
-                singleVote => {
-                    
-                    votersPubKeys.push(singleVote.V)
-
-                    pureSignatures.push(Buffer.from(singleVote.S,'base64'))
-
-                }
+                validator => pureSignatures.push(Buffer.from(votes[validator],'base64'))
                     
             )
 
@@ -397,52 +410,48 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
             aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
             
             
-            if(verifiedVotesOfCurrentValidators.length===validatorsNumber){
+            if(validatorsWithVerifiedSignatures.length===validatorsNumber){
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
 
-                let aggregatedProofsArray = [{V:aggregatedValidatorsPublicKey,S:aggregatedSignature}],
-
-                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}//this will be stored locally for future verification or to share over the network
-
+                let aggregatedProof = {[aggregatedValidatorsPublicKey]:aggregatedSignature}
 
                 //And store proof locally
-                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,finalProof).catch(e=>{})
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,aggregatedProof).catch(e=>{})
 
                 bftProofsIsOk=true
 
 
-            }else if(verifiedVotesOfCurrentValidators.length>=majority) {
+            }else if(validatorsWithVerifiedSignatures.length>=majority) {
                 
                 //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
                 //Firstly - find AFK validators
                 let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
                         
-                                                        .filter(pubKey => !votersPubKeys.includes(pubKey)) //get validators whose votes we don't have
+                                                        .filter( pubKey => !validatorsWithVerifiedSignatures.includes(pubKey) ) //get validators whose votes we don't have
                         
-                                                        .map(publicKey => Base58.decode(publicKey)) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
+                                                        .map(Base58.decode) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
             
 
 
                 
-                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(votersPubKeys.map(key=>Base58.decode(key)))),
+                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignatures.map(Base58.decode))),
 
-                    aggregatedProofsArray = [{V:aggregatedPubKeyOfVoters,S:aggregatedSignature},pubKeysOfAFKValidators],
-
-                    finalProof = proofs.R ? {R:proofs.R,V:aggregatedProofsArray} : {V:aggregatedProofsArray}//this will be stored locally for future verification or to share over the network
-
+                    aggregatedProof = {[aggregatedPubKeyOfVoters]:aggregatedSignature,A:pubKeysOfAFKValidators}
 
 
 
                 //And store proof locally
-                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,finalProof).catch(e=>{})
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,aggregatedProof).catch(e=>{})
 
                 bftProofsIsOk=true
 
             }else{
 
-                LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${verifiedVotesOfCurrentValidators.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+                LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${validatorsWithVerifiedSignatures.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+
+                START_TO_FIND_PROOFS_FOR_BLOCK(blockId,'SOME')
 
             }
 
@@ -458,7 +467,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     }else{
 
         //Let's find proofs over the network asynchronously
-        START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
+        START_TO_FIND_PROOFS_FOR_BLOCK(blockId,'ALL')
 
         return {bftProofsIsOk:false}
     

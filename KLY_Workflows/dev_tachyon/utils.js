@@ -77,7 +77,7 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
 
     LOG(`Can't find stuff with ID=\x1b[32;1m${stuffID}\x1b[36;1m in cache. Going to ask \x1b[32;1mGET_STUFF_URI\x1b[36;1m node`,'I')
 
-    let stuff = await fetch(GET_STUFF_URI+`/stuff/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
+    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URI+`/stuff/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
 
     if(stuff){
 
