@@ -11,6 +11,8 @@ config=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onD
 
     let body=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
+    a.end('')
+
 
 })
 

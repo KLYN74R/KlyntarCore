@@ -238,7 +238,8 @@
         "API_BLOCK":6000,
         "API_MULTI":600,
 
-        "GET_VALIDATORS_PROOFS":600
+        "GET_VALIDATORS_PROOFS":600,
+        "GET_STUFF":600
     },
     
     "TRIGGERS":{
@@ -256,6 +257,7 @@
         "ACCEPT_NEW_NODES":1,
         "ACCEPT_HOSTCHAINS_PROOFS":1,
         "ACCEPT_VALIDATORS_PROOFS":1,
+        "ACCEPT_VOTE_TO_SKIP":1,
 
         "GET_VALIDATORS_PROOFS":1
     },

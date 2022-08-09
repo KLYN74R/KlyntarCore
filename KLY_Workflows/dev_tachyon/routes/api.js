@@ -87,7 +87,7 @@ And you ask for a blocks:
 
 */
 
-multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`).onAborted(()=>a.aborted=true).onData(async v=>{
    
     let {symbiote,blocksIDs}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -138,7 +138,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 stuff=async(a,q)=>{
     
-    a.onAborted(()=>a.aborted=true)
+    a.onAborted(()=>a.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_STUFF}`)
     
     let symbioteID=q.getParameter(0),
     
@@ -167,7 +167,7 @@ stuff=async(a,q)=>{
 stuffAdd=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
     //Unimplemented
-
+    a.end('')
 
 }),
 
@@ -178,6 +178,7 @@ stuffAdd=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abo
 alert=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
     //Unimplemented
+    a.end('')
 
 })
 

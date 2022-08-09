@@ -251,24 +251,33 @@ getValidatorsProofs=(a,q)=>{
 
 
 
-//Function to allow validators to 
-voteToSkip=(a,q)=>{
-
-    //Set triggers
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
-
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
-
-        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(proofs=>
-
-            !a.aborted && a.end(JSON.stringify(proofs))
+//Function to allow validators to cahnge status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
+voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    
+    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
+        
+        //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
+        let nodes=SYMBIOTE_META.NEAR
+        
+        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
             
-        ).catch(_=>a.end('No proofs'))
+            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
+            ?
+            nodes.push(domain)
+            :
+            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
+    
+            !a.aborted&&a.end('OK')
+    
+        }else !a.aborted&&a.end('Domain already in scope')
+    
+    }else !a.aborted&&a.end('Wrong types')
+
+}),
 
 
-    }else !a.aborted && a.end('Symbiote not supported')
-
-},
 
 
 //_____________________________________________________________AUXILARIES________________________________________________________________________
@@ -415,6 +424,8 @@ UWS_SERVER
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
+
+.post('/votetoskip',voteToSkipValidator)
 
 .post('/block',acceptBlocks)
 
