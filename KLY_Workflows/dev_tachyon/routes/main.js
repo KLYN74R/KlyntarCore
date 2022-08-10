@@ -37,9 +37,12 @@ acceptBlocks=a=>{
         
             if(last){
             
-                let block=await PARSE_JSON(buf),
+                let block=await PARSE_JSON(buf)
                 
-                    hash=Block.genHash(block.c,block.e,block.i,block.p),
+                
+                
+                
+                let hash=Block.genHash(block.c,block.e,block.i,block.p),
                 
                 
                     //Check if we can accept this block

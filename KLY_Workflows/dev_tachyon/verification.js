@@ -23,18 +23,23 @@ export let
 
 
 
-//blocksSet - array of blocks
-PERFORM_BLOCK_MULTISET=blocksArray=>blocksArray.forEach(
+//blocksAndProofs - array like this [{b:blockX,p:Proof_for_blockX}, {b:blockY,p:Proof_for_blockY}, ...]
+PERFORM_BLOCK_MULTISET=blocksAndProofs=>blocksAndProofs.forEach(
             
-    async block => {
+    //blockAndProof - {b:<block object>,p:<proof object>}
+    async blockAndProof => {
 
-        let blockHash=Block.genHash(block.c,block.e,block.i,block.p)
+        let {b:block,p:bftProof} = blockAndProof,
+
+            blockHash=Block.genHash(block.c,block.e,block.i,block.p)
 
         if(await VERIFY(blockHash,block.sig,block.c)){
 
-            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block)
+            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>{})
 
         }
+
+        if(bftProof) SYMBIOTE_META.VALIDATORS_PROOFS.put(block.c+":"+block.i,bftProof).catch(e=>{})
 
     }
 
@@ -61,7 +66,7 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
 
     for(let validator of limitedPool) blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
-
+    
     
     let blocksIDsInJSON = JSON.stringify({symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,blocksIDs})
 
@@ -85,11 +90,11 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
         for(let url of allVisibleNodes){
 
-            let itsProbablyArrayOfBlocks=await fetch(url+'/multiplicity',{method:'POST',body:blocksIDsInJSON}).then(r=>r.json()).catch(e=>false)
+            let itsProbablyArrayOfBlocksAndProofs=await fetch(url+'/multiplicity',{method:'POST',body:blocksIDsInJSON}).then(r=>r.json()).catch(e=>false)
 
-            if(itsProbablyArrayOfBlocks){
+            if(itsProbablyArrayOfBlocksAndProofs){
 
-                PERFORM_BLOCK_MULTISET(itsProbablyArrayOfBlocks)
+                PERFORM_BLOCK_MULTISET(itsProbablyArrayOfBlocksAndProofs)
 
                 return //and leave function
 
@@ -535,6 +540,8 @@ START_VERIFY_POLLING=async()=>{
                 validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
         
 
+
+
             if(validatorsSolution.shouldSkip){
 
                 /*
@@ -578,8 +585,6 @@ START_VERIFY_POLLING=async()=>{
             }                
 
         }
-
-        LOG(!currentSessionMetadata.ACTIVE?'Oops, this validator is sleeping. Jump to next one':'Current validator generated blocks for us','I')
 
         LOG(nextBlock?'Next is available':`Wait for nextblock \x1b[36;1m${nextValidatorToCheck} ### ${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1}`,'W')
 

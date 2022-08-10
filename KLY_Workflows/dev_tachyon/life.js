@@ -264,9 +264,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     //______________________________________ WORKING WITH PROOFS & GENERATION THREAD METADATA ______________________________________
 
-
-    //Work with agreements of validators here
-    console.log('Phantoms metadata ',phantomsMetadata)
     
     phantomsMetadata={v:CONFIG.SYMBIOTE.PUB,p:phantomsMetadata}
 
@@ -290,6 +287,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
         for(let validatorNode of pureUrls) {
+
+            if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
 
             fetch(validatorNode+'/acceptvalidatorsproofs',{
                 

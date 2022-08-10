@@ -106,7 +106,13 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
 
             promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
                 
-                block => response.push(block)
+                async block => {
+
+                    let proof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(id).catch(e=>'')
+
+                    response.push({b:block,p:proof})
+
+                }
                 
             ).catch(
                 
