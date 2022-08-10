@@ -104,6 +104,12 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
 
         for(let id of blocksIDs){
 
+            let [blockCreator,height]=id?.split(':')
+
+            height=+height
+
+            if(Number.isInteger(height) && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+100<height) continue
+
             promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
                 
                 async block => {
@@ -114,11 +120,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
 
                 }
                 
-            ).catch(
-                
-                error => LOG(`Block \x1b[36;1m${id}\u001b[38;5;3m on symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m not found or another error occured, load please if you need\n${error}`,'W')
-                
-            ))
+            ).catch(_=>{}))
 
             limit--
 

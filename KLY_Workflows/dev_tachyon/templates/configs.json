@@ -258,7 +258,8 @@
         "ACCEPT_HOSTCHAINS_PROOFS":1,
         "ACCEPT_VALIDATORS_PROOFS":1,
         "ACCEPT_VOTE_TO_SKIP":1,
-
+        "ACCEPT_VOTE_TO_ALIVE":1,
+        
         "GET_VALIDATORS_PROOFS":1
     },
     

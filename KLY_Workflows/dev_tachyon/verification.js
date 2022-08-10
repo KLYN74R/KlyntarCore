@@ -60,14 +60,35 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
 
     let blocksIDs=[],
+
+        currentValidators=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
     
-        limitedPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.slice(0,CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT)
+        limitedPool = currentValidators.slice(0,CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT)
+
+    
+    if(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT>currentValidators.length){
+
+        let perValidator = Math.ceil(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT/currentValidators.length)
+
+        for(let index=0;index<perValidator;index++){
+
+            currentValidators.forEach(validator=>{
+
+                blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+index))
+    
+            })
+
+        }
 
 
+    }else{
 
-    for(let validator of limitedPool) blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
-    
-    
+        //If number of validators is bigger than our configurated limit to ask in advance blocks, then we ask 1 block per validator(according to VERIFICATION_THREAD state)
+        for(let validator of limitedPool) blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
+
+    }    
+
+
     let blocksIDsInJSON = JSON.stringify({symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,blocksIDs})
 
  
@@ -1032,7 +1053,7 @@ verifyBlock=async block=>{
 
                 }
                 
-            }).catch(e=>LOG(`No proofs for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
+            }).catch(e=>{})
             
         )
 

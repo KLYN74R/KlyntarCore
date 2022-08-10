@@ -39,7 +39,14 @@ acceptBlocks=a=>{
             
                 let block=await PARSE_JSON(buf)
                 
+                //No sense to verify & accept own block
+                if(block.c===CONFIG.SYMBIOTE.PUB||block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
+
+                    !a.aborted&&a.end('OK')
+
+                    return
                 
+                }
                 
                 
                 let hash=Block.genHash(block.c,block.e,block.i,block.p),
@@ -329,12 +336,13 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
 
 
-//Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
+//Function to allow validator to back to the game
+//Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
 voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE){
         
         let nodes=SYMBIOTE_META.NEAR
         
