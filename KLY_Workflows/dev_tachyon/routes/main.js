@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY,GET_STUFF,SIG} from '../utils.js'
+import {BROADCAST,VERIFY,GET_STUFF,SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -65,8 +65,6 @@ acceptBlocks=a=>{
                 if(allow){
                 
                     SYMBIOTE_META.BLOCKS.get(block.с+":"+block.i).catch(e=>{
-                
-                        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                         
                         //Store it locally-we'll work with this block later
                         SYMBIOTE_META.BLOCKS.put(block.с+":"+block.i,block).then(()=>
@@ -308,27 +306,48 @@ getValidatorsProofs=(a,q)=>{
 
 
 //Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
+//Here validators exchange commitments among each other to skip some block to continue the VERIFICATION_THREAD
 voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    /*
     
-    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
-    
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
+        Propose to skip is an object with the following structure 
         
-        let nodes=SYMBIOTE_META.NEAR
+        {
+            V:<Validator who sent this message to you>,
+            P:<CHECKSUM_OF_VT:BlockID to sign and to skip>,
+            S:<Signature of blockID e.g. SIG(BLOCK_ID)>
+        }
+    
+    */
+    
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP && SKIP_METADATA?.GOING_TO_SKIP_STATE){
+
+        let {P:skipPointAndBlockID,V:validatorWhoPropose,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+
+        //Decide should we check and perform this message
+        overviewIsOk = 
+
+            SYMBIOTE_META.VALIDATORS.includes(validatorWhoPropose)
+            &&
+            SKIP_METADATA.SKIP_POINT_AND_BLOCK_ID===skipPointAndBlockID
+            &&
+            await VERIFY(skipPointAndBlockID,proposerSignature,validatorWhoPropose)
+
+        if(overviewIsOk){
+
+            //Share with validator what we have
+            !a.aborted&&a.end(JSON.stringify({V:CONFIG.SYMBIOTE.PUB,S:await SIG(skipPointAndBlockID)}))
+    
+            //Put to local cache of votes
+            SKIP_METADATA.VOTES[validatorWhoPropose]=proposerSignature
         
-        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
-            
-            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
-            ?
-            nodes.push(domain)
-            :
-            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-    
-            !a.aborted&&a.end('OK')
-    
-        }else !a.aborted&&a.end('Domain already in scope')
-    
-    }else !a.aborted&&a.end('Wrong types')
+        }else !a.aborted&&a.end('Overview failed')
+
+        
+
+    }else !a.aborted&&a.end('Node is not in <GOING_TO_SKIP_STATE> or TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')
+        
 
 }),
 
@@ -356,8 +375,6 @@ voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
         shouldSignToAlive =
 
-            CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote
-            &&
             CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE
             &&
             SYMBIOTE_META.VALIDATORS.includes(helloMessage?.V)
@@ -373,7 +390,7 @@ voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
         let myAgreement = await SIG(validatorVTMetadataHash)
 
-        !a.aborted&&a.end({P:CONFIG.SYMBIOTE.PUB,S:myAgreement})
+        !a.aborted&&a.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
     
     }else !a.aborted&&a.end('Overview failed')
 

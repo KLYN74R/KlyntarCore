@@ -259,7 +259,7 @@
         "ACCEPT_VALIDATORS_PROOFS":1,
         "ACCEPT_VOTE_TO_SKIP":1,
         "ACCEPT_VOTE_TO_ALIVE":1,
-        
+
         "GET_VALIDATORS_PROOFS":1
     },
     
@@ -329,7 +329,14 @@
     ],
 
     "VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK":200,
-    "SKIP_BFT_PROOFS":true,
+    
+    "SKIP_BFT_PROOFS":{
+
+        "ACTIVATE":true,
+        "POINT":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:1250"
+
+    },
+
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
 
     "REGION":"EU",
