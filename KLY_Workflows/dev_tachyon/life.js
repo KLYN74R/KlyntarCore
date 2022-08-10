@@ -299,7 +299,13 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             
             }).catch(_=>{})//doesn't matter if error
 
-        }        
+        }
+
+        //You can also share proofs over the network, not only to validators
+        CONFIG.SYMBIOTE.ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES
+        &&
+        BROADCAST('/acceptvalidatorsproofs',payload)
+
 
     },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_PROOFS)
 
@@ -864,8 +870,6 @@ PREPARE_SYMBIOTE=async()=>{
 
         }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
 
-
-        //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
         
         //Load canary
         SYMBIOTE_META.HOSTCHAINS_WORKFLOW[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
@@ -926,7 +930,7 @@ PREPARE_SYMBIOTE=async()=>{
             
             spinner.stop()
             
-            LOG(`Balance of controller on hostchain \x1b[32;1m${
+            LOG(`Balance on hostchain \x1b[32;1m${
             
                 tickers[i]
             
@@ -1008,7 +1012,7 @@ RUN_SYMBIOTE=async()=>{
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
 
-        //Start generate ControllerBlocks if you're controller(obviously)
+        //Start generate blocks
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
                 
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false

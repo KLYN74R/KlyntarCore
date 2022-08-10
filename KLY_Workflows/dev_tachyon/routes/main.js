@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLOCKLOG,VERIFY, GET_STUFF, SIG} from '../utils.js'
+import {BROADCAST,BLOCKLOG,VERIFY,GET_STUFF,SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -178,9 +178,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         
         CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS
         &&
-        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only 
-
-
+        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
 
 
     if(shouldAccept){
@@ -225,6 +223,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
     
 
 }),
+
 
 
 
@@ -298,14 +297,13 @@ getValidatorsProofs=(a,q)=>{
 
 
 
-//Function to allow validators to cahnge status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
+//Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
 voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
     let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
         
-        //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
         let nodes=SYMBIOTE_META.NEAR
         
         if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
@@ -327,6 +325,34 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
 
 
+
+//Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
+voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    
+    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
+        
+        let nodes=SYMBIOTE_META.NEAR
+        
+        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
+            
+            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
+            ?
+            nodes.push(domain)
+            :
+            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
+    
+            !a.aborted&&a.end('OK')
+    
+        }else !a.aborted&&a.end('Domain already in scope')
+    
+    }else !a.aborted&&a.end('Wrong types')
+
+}),
+
+
+
 //_____________________________________________________________AUXILARIES________________________________________________________________________
 
 
@@ -339,7 +365,7 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
     
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
         
-        //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
+        //Add more advanced logic in future
         let nodes=SYMBIOTE_META.NEAR
         
         if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
@@ -426,7 +452,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         }).catch(e=>
             
             //You also don't have ability to compare this if you don't have block locally
-            LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_CONTROLLER_BLOCKS is false\n${e}`,'W')
+            LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_BLOCKS is false\n${e}`,'W')
                 
         )    
         
@@ -473,6 +499,8 @@ UWS_SERVER
 .get('/proofs/:symbiote/:blockID',getValidatorsProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
+
+.post('/votetoalive',voteToAliveValidator)
 
 .post('/votetoskip',voteToSkipValidator)
 

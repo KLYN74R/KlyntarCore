@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY, GET_STUFF} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -171,59 +171,52 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
 
 
-START_TO_FIND_PROOFS_FOR_BLOCK = async (blockID,mode) => {
+START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
 
-    console.log('Iam here to find proofs')
+    fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
 
-    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID)
+    .then(r=>r.json()).then(proofObject=>{
 
-    // .then(r=>r.json()).then(block=>{
 
-    //     // let hash=Block.genHash(block.c,block.e,block.i,block.p)
+        //Here we find the proofs and store localy to use in the next iteration of CHECK_BFT_PROOFS_FOR_BLOCK
+        
+        SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,proofObject).catch(e=>false)
+
+
+    }).catch(async error=>{
+
+        LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+
+        let promises = []
+
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-    //     // if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
+            pubkey => promises.push(GET_STUFF(pubkey))
+        
+        )
 
-    //     //     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
-    //     //     //Try to instantly and asynchronously load more blocks if it's possible
-    //     //     GET_BLOCKS_FOR_FUTURE()
+        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
 
-    //     //     return block
-
-    //     // }
-
-    // }).catch(async error=>{
-
-    //     LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
-
-    //     //Combine all nodes we know about and try to find block there
-    //     let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+            //Combine all nodes we know about and try to find proofs for block there. We starts with validators and so on(order by priority)
+            allVisibleNodes=[...pureUrls,CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
         
 
-    //     for(let url of allVisibleNodes){
+        for(let url of allVisibleNodes){
 
+            let itsProbablyProofs=await fetch(url+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
             
-    //         let itsProbablyBlock=await fetch(url+`/proofs/${CONFIG.SYMBIOTE.SYMBIOTE_ID}/`+blockID).then(r=>r.json()).catch(e=>false)
-            
+            if(itsProbablyProofs){            
 
-    //         if(itsProbablyBlock){
+                SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,itsProbablyProofs).catch(e=>false)                
 
-    //             let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
-            
+            }
 
-    //             if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
-
-    //                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
-
-
-    //             }
-
-    //         }
-
-    //     }
+        }
         
-    // })
+    })
 
 },
 
@@ -454,7 +447,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
                 LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${validatorsWithVerifiedSignatures.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
 
-                START_TO_FIND_PROOFS_FOR_BLOCK(blockId,'SOME')
+                START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
             }
 
@@ -470,7 +463,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     }else{
 
         //Let's find proofs over the network asynchronously
-        START_TO_FIND_PROOFS_FOR_BLOCK(blockId,'ALL')
+        START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
         return {bftProofsIsOk:false}
     
@@ -537,7 +530,7 @@ START_VERIFY_POLLING=async()=>{
             //Try to get block
             let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
-                blockHash = Block.genHash(block.c,block.e,block.i,block.p),
+                blockHash = block && Block.genHash(block.c,block.e,block.i,block.p),
 
                 validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
         

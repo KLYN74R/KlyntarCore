@@ -316,6 +316,8 @@
 
     "GET_VALIDATORS_PROOFS_URI":"http://localhost:6666",
 
+    "ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES":true,
+
     "TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS":[
         
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",

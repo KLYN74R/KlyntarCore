@@ -7,7 +7,7 @@ export default class Block{
     constructor(eventsSet){
         
         this.c=CONFIG.SYMBIOTE.PUB//block creator(validator)
-        
+
         this.e=eventsSet//array of events(transactions)
         
         this.i=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX

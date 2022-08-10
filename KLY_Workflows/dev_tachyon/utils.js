@@ -186,8 +186,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
  *
  * Near contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
  * We need NEAR just to exchange with blocks(at least in current pre-alpha release)
- * Non static list which changes permanently and received each time we ask Controller
- * In future(with providing voting with CONTROLLER and other stuff) it will be one more kind of interaction
+ * Non static list which changes permanently and received each time we run node
  * 
  * Also,some auths methods will be added
  * 
