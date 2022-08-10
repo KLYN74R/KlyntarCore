@@ -340,25 +340,42 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 //Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
 voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
-    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    /*
     
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE){
-        
-        let nodes=SYMBIOTE_META.NEAR
-        
-        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
-            
-            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
-            ?
-            nodes.push(domain)
-            :
-            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
+        helloMessage looks like this
+     
+        {
+            "V":<Pubkey of validator>
+            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[<PubKey>]))
+        }
+
+    */
+    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
+
+        validatorVTMetadataHash=BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[helloMessage?.V])
+
+        shouldSignToAlive =
+
+            CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote
+            &&
+            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE
+            &&
+            SYMBIOTE_META.VALIDATORS.includes(helloMessage?.V)
+            &&
+            SYMBIOTE_META.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
+            &&
+            !SYMBIOTE_META.VALIDATORS_METADATA[helloMessage.V].ACTIVE//Also,check if validator was marked as ACTIVE:false
+            &&
+            await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
+
     
-            !a.aborted&&a.end('OK')
+    if(shouldSignToAlive){
+
+        let myAgreement = await SIG(validatorVTMetadataHash)
+
+        !a.aborted&&a.end({P:CONFIG.SYMBIOTE.PUB,S:myAgreement})
     
-        }else !a.aborted&&a.end('Domain already in scope')
-    
-    }else !a.aborted&&a.end('Wrong types')
+    }else !a.aborted&&a.end('Overview failed')
 
 }),
 
