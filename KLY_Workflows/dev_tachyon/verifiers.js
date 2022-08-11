@@ -112,7 +112,7 @@ export let VERIFIERS = {
 
 
 
-    TX:async (event,blockCreator)=>{
+    TX:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
@@ -137,14 +137,14 @@ export let VERIFIERS = {
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
     
         }
     
     },
 
 
-    PQC_TX:async (event,blockCreator)=>{
+    PQC_TX:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
@@ -176,14 +176,14 @@ export let VERIFIERS = {
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
     
         }
     
     },
 
 
-    ATTACH_TO_VALIDATOR:async (event,blockCreator)=>{
+    ATTACH_TO_VALIDATOR:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
 
@@ -195,14 +195,14 @@ export let VERIFIERS = {
                         
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
             
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
         
         }
     
     },
 
     
-    NEWSTX:async (event,blockCreator)=>{
+    NEWSTX:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
     
@@ -212,14 +212,14 @@ export let VERIFIERS = {
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
     
         }
         
     },
 
 
-    OFFSPRING:async(event,blockCreator)=>{
+    OFFSPRING:async(event,rewardBox)=>{
     
         //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
     
@@ -231,14 +231,14 @@ export let VERIFIERS = {
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)//update maximum nonce
         
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
     
         }
     
     },
 
 
-    DELEGATION:async (event,blockCreator)=>{
+    DELEGATION:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
 
@@ -255,7 +255,7 @@ export let VERIFIERS = {
 
             }
     
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
 
         }
 
@@ -264,7 +264,7 @@ export let VERIFIERS = {
 
     //Common mechanisms as with delegation
     //It's because we perform operations asynchronously
-    SERVICE_DEPLOY:async (event,blockCreator)=>{
+    SERVICE_DEPLOY:async (event,rewardBox)=>{
         
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
@@ -288,14 +288,14 @@ export let VERIFIERS = {
             //!Add to stage zone before
             SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
 
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
         
         }
         
     },
 
 
-    THRESHOLD:async (event,blockCreator)=>{
+    THRESHOLD:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
         
@@ -327,39 +327,39 @@ export let VERIFIERS = {
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
-            blockCreator.fees+=event.f
+            rewardBox.fees+=event.f
     
         }
     
     },
 
 
-    CONTRACT_DEPLOY:async (event,blockCreator,symbiote)=>{},
+    CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
 
 
 
-    VALIDATORS_DEALS:async (event,blockCreator,symbiote)=>{
+    VALIDATORS_DEALS:async (event,rewardBox,symbiote)=>{
         
 
     },
 
 
-    ALIAS:async (event,blockCreator,symbiote)=>{
+    ALIAS:async (event,rewardBox,symbiote)=>{
 
         
 
     },
 
 
-    UNOBTANIUM:async (event,blockCreator,symbiote)=>{
+    UNOBTANIUM:async (event,rewardBox,symbiote)=>{
 
     },
 
 
     //Unimplemented
-    RL_OWNSHIP_APPRV:async(event,blockCreator,symbiote)=>{},
+    RL_OWNSHIP_APPRV:async(event,rewardBox,symbiote)=>{},
 
-    QUANTUMSWAP:async (event,blockCreator,symbiote)=>{},
+    QUANTUMSWAP:async (event,rewardBox,symbiote)=>{},
     
     MULTISIG:async (symbiote,event)=>{},
 

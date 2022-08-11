@@ -831,8 +831,8 @@ verifyBlock=async block=>{
 
     if(overviewOk){
 
-        //To split fees between validators
-        let rewardBox=new Map()
+        //To calculate fees and split between validators.Currently - general fees sum is 0. It will be increased each performed transaction
+        let rewardBox={fees:0}
 
 
         global.SYNC_OPERATION={VALIDATORS:{}}
@@ -847,15 +847,14 @@ verifyBlock=async block=>{
         block.e.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
         
         //Push accounts of validators
-        
-        rewardBox.forEach(reference=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(reference.creator)))
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
 
         //Now cache has all accounts and ready for the next cycles
         await Promise.all(sendersAccounts.splice(0))
-        
 
 
         //______________________________________CALCULATE TOTAL FEES AND AMOUNTS________________________________________
+
 
         block.e.forEach(event=>{
 
@@ -865,7 +864,7 @@ verifyBlock=async block=>{
                 
                 let acc=GET_ACCOUNT_ON_SYMBIOTE(event.c),
                     
-                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || 1
+                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || CONFIG.SYMBIOTE.MANIFEST.DEFAULT_PAYMENT_IF_WRONG_TYPE
 
 
 
@@ -893,7 +892,7 @@ verifyBlock=async block=>{
             //If verifier to such event exsist-then verify it!
             SYMBIOTE_META.VERIFIERS[event.t]
             &&
-            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.t](event,''))
+            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.t](event,rewardBox))
 
         )
         
@@ -905,27 +904,32 @@ verifyBlock=async block=>{
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
 
 
+            
 
 
 
-
-        //_________________________________________________SHARE FEES___________________________________________________
+        //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
-        
-        // let controllerAcc=await GET_ACCOUNT_ON_SYMBIOTE(symbiote)
 
-        // rewardBox.forEach(reference=>{
-        
-        //     let acc=GET_ACCOUNT_ON_SYMBIOTE(reference.creator),
-                
-        //         toInstant=reference.fees*CONFIG.SYMBIOTE.MANIFEST.GENERATOR_FEE//% of block to generator
-                
-        //     acc.ACCOUNT.B+=toInstant
+        let shareFeesPromises=[], 
 
-        //     controllerAcc.ACCOUNT.B+=reference.fees-toInstant
-
-        // })
+            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
         
+            payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToValidator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
+
+
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(validatorPubKey=>
+
+            shareFeesPromises.push(
+
+                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountRef=>accountRef.ACCOUNT.B+=payToSingleNonCreatorValidator)
+
+            )
+            
+        )
+     
+        await Promise.all(shareFeesPromises.splice(0))
+
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
         if(CONFIG.SYMBIOTE.STORE_BLOCKS){
