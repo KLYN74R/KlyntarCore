@@ -835,7 +835,7 @@ verifyBlock=async block=>{
         let rewardBox={fees:0}
 
 
-        global.SYNC_OPERATION={VALIDATORS:{}}
+        global.SYNC_OPERATIONS={VALIDATORS:{}}
 
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
@@ -904,8 +904,34 @@ verifyBlock=async block=>{
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
 
 
-            
+        global.SYNC_OPERATIONS={VALIDATORS:{}}
 
+
+        //Currently we have sync operations only for changes in validators' stuff
+        Object.keys(SYNC_OPERATIONS.VALIDATORS).forEach(pubKey=>{
+
+            let operation = SYNC_OPERATIONS.VALIDATORS[pubKey]
+
+            if(operation==='DELETE'){
+
+                //Delete from general list of VERIFICATION_THREAD
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.splice(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.indexOf(pubKey),1)
+
+                //Delete metadata of validator
+                delete SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubKey]
+
+
+            }else if (operation==='ADD'){
+
+                //Add to general list of VERIFICATION_THREAD
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(pubKey)
+
+                //Add metadata of validator
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',ACTIVE:true}
+
+            }
+
+        })
 
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
