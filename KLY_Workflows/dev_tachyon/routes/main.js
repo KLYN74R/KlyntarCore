@@ -40,7 +40,7 @@ acceptBlocks=a=>{
                 let block=await PARSE_JSON(buf)
                 
                 //No sense to verify & accept own block
-                if(block.c===CONFIG.SYMBIOTE.PUB||block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
+                if(block.c===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(block.с+":"+block.i) || block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
 
                     !a.aborted&&a.end('OK')
 
@@ -64,22 +64,20 @@ acceptBlocks=a=>{
                 
                 if(allow){
                 
-                    let blockID = block.с+":"+block.i,
-
-                        checkIfExists = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID) || await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+                    let blockID = block.с+":"+block.i
                     
                     
-                    if(!checkIfExists){
-
                         //Store it locally-we'll work with this block later
-                        SYMBIOTE_META.BLOCKS.put(block.с+":"+block.i,block).then(()=>
-                        
-                            Promise.all(BROADCAST('/block',block))
+                        SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
-                        ).catch(e=>{})
-                    
-                    }
-                                     
+                            e => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                            
+                                Promise.all(BROADCAST('/block',block))
+                                
+                            ).catch(e=>{})
+                            
+                        )
+
                    !a.aborted&&a.end('OK')
 
                 }else !a.aborted&&a.end('Overview failed')
@@ -91,7 +89,7 @@ acceptBlocks=a=>{
     })
 
 },
-    
+  
     
 
 
@@ -266,10 +264,12 @@ createValidatorsProofs=async(a,q)=>{
     //Check trigger
     if(CONFIG.SYMBIOTE.TRIGGERS.CREATE_VALIDATORS_PROOFS){
 
+        let blockID = q.getParameter(0)
+
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in db
-        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0))?.[CONFIG.SYMBIOTE.PUB]
+        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB]
 
 
         if(ourProof) !a.aborted && a.end(ourProof)
@@ -278,17 +278,22 @@ createValidatorsProofs=async(a,q)=>{
 
             //Else, check if block present localy and create a proof
 
-            let block = await SYMBIOTE_META.BLOCK.get(q.getParameter(0)).catch(e=>false)
+            let block = await SYMBIOTE_META.BLOCK.get(blockID).catch(e=>false) // or get from cache
 
             if(block){
+
+                let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
-                let proof = await SIG(q.getParameter(0))
+                    proofSignature = await SIG(blockID+":"+blockHash)
 
-                proofs[CONFIG.SYMBIOTE.PUB]=proof
+                !a.aborted && a.end(proofSignature)
+                
 
-                SYMBIOTE_META.VALIDATORS_PROOFS.put(q.getParameter(0),proofs).catch(e=>{})
+                let proofTemplate = {}
 
-                !a.aborted && a.end(proof)
+                proofTemplate[CONFIG.SYMBIOTE.PUB] = proofSignature
+
+                SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofTemplate)                
 
             
             } else !a.aborted && a.end('No block')
