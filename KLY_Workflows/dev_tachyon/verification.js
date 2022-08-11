@@ -92,6 +92,7 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
     let blocksIDsInJSON = JSON.stringify({symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,blocksIDs})
 
+    console.log('Going to ask ',blocksIDs)
  
     fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity`,{
     
@@ -275,6 +276,8 @@ It they are equal - then we can skip the block and mark current validator as off
 CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
+
+
     let proofs = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
 
@@ -290,8 +293,8 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     if(proofs){
 
 
-        console.log('HERE')
-    
+
+        
     /*    
         __________________________ Check if (2/3)*N validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
         
@@ -345,7 +348,6 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-
         if(validatorsWhoVoted.length===1){
     
             // 1. If we have 1 pair in votes - then it's already aggregated version of proofs
@@ -354,6 +356,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
             bftProofsIsOk = aggregatedValidatorsPublicKey === validatorsWhoVoted[0] && await VERIFY(metadataToVerify,aggregatedSigna,validatorsWhoVoted[0])
    
+
         }else if (validatorsWhoVoted.length===2 && validatorsWhoVoted[1]==='A'){
 
             /*
@@ -486,9 +489,10 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
        
         }
 
+        
+        if(!bftProofsIsOk) START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
         //Finally - return results
-
         return {bftProofsIsOk,shouldSkip}
 
     
@@ -509,7 +513,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 PREPARE_TO_SKIP_PROCEDURE = () => {
 
 
-
+    LOG('Skip procedure is going to start. But let`s await firstly','W')
 
 
 },
@@ -617,7 +621,7 @@ START_VERIFY_POLLING=async()=>{
                     //If verification failed - delete block. It will force to find another(valid) block from network
                     else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
             
-                }else if (!block){
+                }else if (!block && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)){
 
                     //Also, if we validator,we should start the handler to skip block if we can't find it in the next N times(defined in configs as FAILED_ATTEMPTS_TO_FIND_A_BLOCK)
                     if(!global.SKIP_METADATA){
@@ -631,6 +635,7 @@ START_VERIFY_POLLING=async()=>{
                         }    
 
                     }else !SKIP_METADATA.GOING_TO_SKIP_STATE && SKIP_METADATA.ATTEMPTS++
+
 
                     if(SKIP_METADATA.ATTEMPTS === CONFIG.SYMBIOTE.FAILED_ATTEMPTS_TO_FIND_A_BLOCK){
 
@@ -646,7 +651,7 @@ START_VERIFY_POLLING=async()=>{
 
         }
 
-        
+
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
 
@@ -826,8 +831,12 @@ verifyBlock=async block=>{
 
     if(overviewOk){
 
-                
-        let rewardBox=new Map()//To split fees
+        //To split fees between validators
+        let rewardBox=new Map()
+
+
+        global.SYNC_OPERATION={VALIDATORS:{}}
+
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
@@ -837,7 +846,8 @@ verifyBlock=async block=>{
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
         block.e.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
         
-        //Push accounts of creators of InstantBlock
+        //Push accounts of validators
+        
         rewardBox.forEach(reference=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(reference.creator)))
 
         //Now cache has all accounts and ready for the next cycles
@@ -889,9 +899,16 @@ verifyBlock=async block=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`BLACKLIST size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`BLACKLIST size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
+        //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
+
+
+
+
+
+
         //_________________________________________________SHARE FEES___________________________________________________
         
         

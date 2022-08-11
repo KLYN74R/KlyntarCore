@@ -2,6 +2,8 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF} from './utils.js'
 
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
 import {START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
@@ -9,6 +11,8 @@ import Block from './essences/block.js'
 import UWS from 'uWebSockets.js'
 
 import fetch from 'node-fetch'
+
+import Base58 from 'base-58'
 
 import ora from 'ora'
 
@@ -172,7 +176,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
     if(myVerificationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
-        LOG(`Block generation for \u001b[38;5;m${SYMBIOTE_ALIAS()}\x1b[36;1m skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Block generation skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         return
 
@@ -841,6 +845,11 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
+    
+    //_____________________________________Set some values to stuff cache___________________________________________
+
+
+    SYMBIOTE_META.STUFF_CACHE.set('VALIDATORS_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________
