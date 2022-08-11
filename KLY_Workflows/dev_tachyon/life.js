@@ -845,7 +845,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
-    
+
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
@@ -984,6 +984,19 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
+GRAB_ACTIVITY_FLAGS=()=>{
+    
+    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET+'/getvalidators').then(r=>r.json()).then(currentValidators=>{
+
+        
+
+    }).catch(e=>LOG(`Can't get current validators set`,'W'))
+
+},
+
+
+
+
 RUN_SYMBIOTE=async()=>{
 
 
@@ -1026,6 +1039,8 @@ RUN_SYMBIOTE=async()=>{
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
                 
             GEN_BLOCKS_START_POLLING()
+
+            GRAB_ACTIVITY_FLAGS()
             
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 

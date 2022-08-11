@@ -514,15 +514,27 @@ PREPARE_TO_SKIP_PROCEDURE = blockID => {
 
     LOG('Skip procedure is going to start. But let`s await firstly for block','W')
 
-    global.SKIP_METADATA={
-            
-        GOING_TO_SKIP_STATE:true
-
-    }
-
     setTimeout(()=>{
 
-        SKIP_METADATA.BLOCK_TO_SKIP=blockID
+        let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+
+        if(!block){
+
+            global.SKIP_METADATA={
+            
+                GOING_TO_SKIP_STATE:true
+        
+            }
+    
+            SKIP_METADATA.BLOCK_TO_SKIP=blockID
+
+            SKIP_METADATA.VOTES={}
+
+            //Go through the validators and grab proofs to skip
+
+            let pureUrls = []
+
+        }
 
     },CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
 
@@ -614,6 +626,7 @@ START_VERIFY_POLLING=async()=>{
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
                                         
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+
     
             }else{
                 
