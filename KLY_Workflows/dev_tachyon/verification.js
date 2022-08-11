@@ -1,6 +1,6 @@
-import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF} from './utils.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY, GET_STUFF} from './utils.js'
+import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -510,10 +510,21 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-PREPARE_TO_SKIP_PROCEDURE = () => {
+PREPARE_TO_SKIP_PROCEDURE = blockID => {
 
+    LOG('Skip procedure is going to start. But let`s await firstly for block','W')
 
-    LOG('Skip procedure is going to start. But let`s await firstly','W')
+    global.SKIP_METADATA={
+            
+        GOING_TO_SKIP_STATE:true
+
+    }
+
+    setTimeout(()=>{
+
+        SKIP_METADATA.BLOCK_TO_SKIP=blockID
+
+    },CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
 
 
 },
@@ -620,33 +631,13 @@ START_VERIFY_POLLING=async()=>{
                     }
                     //If verification failed - delete block. It will force to find another(valid) block from network
                     else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
-            
+                
                 }else if (!block && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)){
 
-                    //Also, if we validator,we should start the handler to skip block if we can't find it in the next N times(defined in configs as FAILED_ATTEMPTS_TO_FIND_A_BLOCK)
-                    if(!global.SKIP_METADATA){
-
-                        global.SKIP_METADATA={
-            
-                            GOING_TO_SKIP_STATE:false,
-                
-                            ATTEMPTS:0
-            
-                        }    
-
-                    }else !SKIP_METADATA.GOING_TO_SKIP_STATE && SKIP_METADATA.ATTEMPTS++
-
-
-                    if(SKIP_METADATA.ATTEMPTS === CONFIG.SYMBIOTE.FAILED_ATTEMPTS_TO_FIND_A_BLOCK){
-
-                        SKIP_METADATA.GOING_TO_SKIP_STATE = true
-
-                        PREPARE_TO_SKIP_PROCEDURE()
-
-                    }
+                    PREPARE_TO_SKIP_PROCEDURE(blockID)
 
                 }
-
+                
             }
 
         }
@@ -727,18 +718,13 @@ MAKE_SNAPSHOT=async()=>{
             
                             .on('close',resolve)
             
-    
-        ).catch(
-    
-            e => {
+        ).catch(e=>{
     
                 LOG(`Snapshot creation failed on state copying stage for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
                 
                 process.emit('SIGINT',130)
     
-            }
-    
-        )
+            })
 
     }else{
 
