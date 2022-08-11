@@ -603,7 +603,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         STUFF_CACHE:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
-        VALIDATORS_PUBKEY_COMBINATIONS:new Map(), // key - BLS aggregated pubkey, value - array of pubkeys-components of aggregated validators pubkey
+        VALIDATORS_PROOFS_CACHE:new Map(),
 
     }
 
@@ -670,7 +670,6 @@ PREPARE_SYMBIOTE=async()=>{
         id => SYMBIOTE_META.STUFF.put(id,CONFIG.SYMBIOTE.LOAD_STUFF[id])
         
     )
-
 
     
     /*

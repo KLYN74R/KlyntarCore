@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,VERIFY,GET_STUFF,SIG} from '../utils.js'
+import {BROADCAST,VERIFY,SIG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -64,8 +64,13 @@ acceptBlocks=a=>{
                 
                 if(allow){
                 
-                    SYMBIOTE_META.BLOCKS.get(block.с+":"+block.i).catch(e=>{
-                        
+                    let blockID = block.с+":"+block.i,
+
+                        checkIfExists = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID) || await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+                    
+                    
+                    if(!checkIfExists){
+
                         //Store it locally-we'll work with this block later
                         SYMBIOTE_META.BLOCKS.put(block.с+":"+block.i,block).then(()=>
                         
@@ -73,8 +78,8 @@ acceptBlocks=a=>{
                             
                         ).catch(e=>{})
                     
-                    })
-                
+                    }
+                                     
                    !a.aborted&&a.end('OK')
 
                 }else !a.aborted&&a.end('Overview failed')
@@ -187,46 +192,64 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS
         &&
         (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
+        &&
+        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
+
 
 
     if(shouldAccept){
 
         !a.aborted&&a.end('OK')
 
-
         //Go through the set of proofs
-        payload.p.forEach(async proof=>{
+        for(let proof of payload.p){
 
-            let [blockCreator,height] = proof.B.split(':'),
+            let proofRefInCache = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(proof.B)
+
+            //If some proofs from other validators exists - then reference to object in mapping should exist
+            if(proofRefInCache){
+
+                let checkIfVoteFromThisValidatorExists = proofRefInCache[proof.v]
+
+                if(!checkIfVoteFromThisValidatorExists){
+
+                    //If no votes from this validator - accept it
+                    let [blockCreator,height] = proof.B.split(':'),
             
-                blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
-
-                //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
-                shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)
-
-
-                
-            if(shouldAcceptDueToHeight && await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
-
-                //Try to get proofs from local storage. Key is BlockID(ValidatorPubKey:Height). If nothing - return empty template
-                let maybeProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(proof.B).catch(e=>false) || {},
-
-                    generalNumOfProofs = Object.keys(maybeProof)
+                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
+    
+                        //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
+                        shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)    
 
 
-                if(CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>generalNumOfProofs && !maybeProof[payload.v]){
+                    if(shouldAcceptDueToHeight && await VERIFY(proof.B+":"+blockHash,proof.S,payload.v) && CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>Object.keys(proofRefInCache).length){
 
-                    maybeProof[payload.v] = proof.S
+                        proofRefInCache[proof.v]=proof.S
 
-                    SYMBIOTE_META.VALIDATORS_PROOFS.put(proof.B,maybeProof).catch(e=>{})
+                    }
 
                 }
 
+            }else{
+
+                
+                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
+    
+
+                if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v) && CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>Object.keys(proofRefInCache).length){
+
+                    let proofTemplate = {}
+                    
+                    proofTemplate[payload.v]=proof.S
+                    
+                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(proof.B,proofTemplate)
+                    
+                }
 
             }
 
-        })
-
+        }
+            
     }else !a.aborted&&a.end('Route is off')
     
 
@@ -235,46 +258,43 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 
 
-// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// return simpleSignature
+
 createValidatorsProofs=async(a,q)=>{
 
-    //Set triggers
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.CREATE_VALIDATORS_PROOFS){
+    //Check trigger
+    if(CONFIG.SYMBIOTE.TRIGGERS.CREATE_VALIDATORS_PROOFS){
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in db
-        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(async proofs=>{
+        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0))?.[CONFIG.SYMBIOTE.PUB]
 
-            if(proofs[CONFIG.SYMBIOTE.PUB]){
 
-                !a.aborted && a.end(proofs[CONFIG.SYMBIOTE.PUB])
+        if(ourProof) !a.aborted && a.end(ourProof)
 
-            }else{
+        else{
 
-                //Else, check if block present localy and create a proof
+            //Else, check if block present localy and create a proof
 
-                let block = await SYMBIOTE_META.BLOCK.get(q.getParameter(1)).catch(e=>false)
+            let block = await SYMBIOTE_META.BLOCK.get(q.getParameter(0)).catch(e=>false)
 
-                if(block){
+            if(block){
                     
-                    let proof = await SIG(q.getParameter(1))
+                let proof = await SIG(q.getParameter(0))
 
-                    proofs[CONFIG.SYMBIOTE.PUB]=proof
+                proofs[CONFIG.SYMBIOTE.PUB]=proof
 
-                    SYMBIOTE_META.VALIDATORS_PROOFS.put(q.getParameter(1),proofs).catch(e=>{})
+                SYMBIOTE_META.VALIDATORS_PROOFS.put(q.getParameter(0),proofs).catch(e=>{})
 
-                    !a.aborted && a.end(proof)
+                !a.aborted && a.end(proof)
 
-                }
+            
+            } else !a.aborted && a.end('No block')
 
-                else !a.aborted && a.end('No block')
-
-            }
+        }
            
-
-        }).catch(_=>a.end('No proofs'))
-
     }else !a.aborted && a.end('Symbiote not supported')
 
 },
@@ -283,19 +303,17 @@ createValidatorsProofs=async(a,q)=>{
 
 
 
-// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+//0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 getValidatorsProofs=(a,q)=>{
 
-    //Set triggers
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
+    //Check triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
-        SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(1)).then(proofs=>
+        let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0)) || SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(0)).catch(_=>'No proofs')
 
-            !a.aborted && a.end(JSON.stringify(proofs))
-            
-        ).catch(_=>a.end('No proofs'))
+        !a.aborted && a.end(JSON.stringify(proofs))
 
 
     }else !a.aborted && a.end('Symbiote not supported')

@@ -334,6 +334,8 @@
 
     },
 
+    "PROOFS_CACHE_SIZE":100000,
+
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
 
     "GET_CURRENT_VALIDATORS_SET":"http://localhost:6666",

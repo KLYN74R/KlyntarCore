@@ -514,7 +514,7 @@ PREPARE_TO_SKIP_PROCEDURE = blockID => {
 
     LOG('Skip procedure is going to start. But let`s await firstly for block','W')
 
-    setTimeout(()=>{
+    setTimeout(async()=>{
 
         let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
 
