@@ -343,9 +343,6 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
     if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS.ACTIVATE) return {bftProofsIsOk:true,shouldSkip}
 
- 
-    return {bftProofsIsOk:true,shouldSkip}
-
 
     if(proofs && Object.keys(proofs).length!==0){
 

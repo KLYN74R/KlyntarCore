@@ -977,11 +977,77 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-GRAB_ACTIVITY_FLAGS=()=>{
+GRAB_ACTIVITY_FLAGS=async()=>{
     
     fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET+'/getvalidators').then(r=>r.json()).then(currentValidators=>{
 
+        LOG(`Received list of current validators.Preparing to <ALIVE_VALIDATOR> procedure`,'S')
+
+        let promises=[]
+
+        //0. Initially,try to get pubkey => node_ip binding 
+        currentValidators.forEach(
         
+            pubkey => promises.push(GET_STUFF(pubkey))
+            
+        )
+    
+        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url))
+        
+        //We'll use it to aggreage it to single tx and store locally to allow you to share over the network to include it to one of the block 
+        let pingBackMsgs = []
+
+        //Send message to each validator to return our generation thread "back to the game"
+
+        /*
+    
+            helloMessage looks like this
+     
+            {
+                "V":<Pubkey of validator>
+                "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[<PubKey>]))
+            }
+
+        */
+
+        let helloMessage = {
+            
+            V:CONFIG.SYMBIOTE.PUB,
+
+            S:await SIG(BLAKE3(CONFIF.SYMBIOTE.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
+        
+        },
+
+        answer={}
+
+        for(let url of pureUrls) {
+
+            pingBackMsgs.push(fetch(url+'/votetoalive',{method:'POST',body:JSON.stringify(helloMessage)})
+            
+                .then(r=>r.json())
+                
+                .then(resp=>{
+
+                    /*
+                    
+                        Response is
+
+                            {P:CONFIG.SYMBIOTE.PUB,S:<Validator signa>}
+
+
+                    */
+
+                })
+
+                .catch(e=>LOG(`Validator ${url} send no data to <ALIVE>`,'W'))
+
+            )
+
+        }
+
+
+        await Promise.all(pingBackMsgs.splice(0))
+
 
     }).catch(e=>LOG(`Can't get current validators set`,'W'))
 
