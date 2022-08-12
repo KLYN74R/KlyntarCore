@@ -4,7 +4,7 @@ import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {GET_BLOCKS_FOR_FUTURE_WRAPPER, START_VERIFY_POLLING} from './verification.js'
+import {GET_BLOCKS_FOR_FUTURE_WRAPPER,START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -1039,7 +1039,7 @@ RUN_SYMBIOTE=async()=>{
 
 
         //Run another thread to ask for blocks
-        GET_BLOCKS_FOR_FUTURE_WRAPPER()
+        // GET_BLOCKS_FOR_FUTURE_WRAPPER()
 
     }
 

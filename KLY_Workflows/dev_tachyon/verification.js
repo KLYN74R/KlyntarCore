@@ -15,6 +15,8 @@ import Base58 from 'base-58'
 global.GETTING_BLOCK_FROM_NETWORK_PROCESS=false
 
 
+
+
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
@@ -163,57 +165,64 @@ GET_BLOCKS_FOR_FUTURE_WRAPPER = async() => {
 //Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URI" node for new blocks
 //If no answer - try to find blocks somewhere else
 
-GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+index).catch(e=>
+GET_BLOCK = (blockCreator,index) => {
 
-    fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/`+blockCreator+":"+index)
+    let blockID=blockCreator+":"+index
 
-    .then(r=>r.json()).then(block=>{
+    
+    return SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>
 
-        let hash=Block.genHash(block.c,block.e,block.i,block.p)
-            
-        if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
-
-            BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
-
-            return block
-
-        }
-
-    }).catch(async error=>{
-
-        LOG(`No block \x1b[36;1m${blockCreator} ### ${index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
-
-        LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
-
-        //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR],
-
-            blockID=blockCreator+":"+index
-        
-
-        for(let url of allVisibleNodes){
-            
-            let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
-            
-            if(itsProbablyBlock){
-
-                let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
-            
-                if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
-
-                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
-
-                    return itsProbablyBlock
-
-                }
-
+        fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/`+blockCreator+":"+index)
+    
+        .then(r=>r.json()).then(block=>{
+    
+            let hash=Block.genHash(block.c,block.e,block.i,block.p)
+                
+            if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
+    
+                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+    
+                return block
+    
             }
+    
+        }).catch(async error=>{
+    
+            LOG(`No block \x1b[36;1m${blockCreator} ### ${index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+    
+            LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
+    
+            //Combine all nodes we know about and try to find block there
+            let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+            
+    
+            for(let url of allVisibleNodes){
 
-        }
-        
-    })
+                if(url===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+                
+                let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
+                
+                if(itsProbablyBlock){
+    
+                    let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+                
+                    if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
+    
+                        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+    
+                        return itsProbablyBlock
+    
+                    }
+    
+                }
+    
+            }
+            
+        })
+    
+    )
 
-),
+},
 
 
 

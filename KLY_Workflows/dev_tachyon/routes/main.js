@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,VERIFY,SIG} from '../utils.js'
+import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -65,18 +65,19 @@ acceptBlocks=a=>{
                 if(allow){
                 
                     let blockID = block.с+":"+block.i
+
+                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                     
-                    
-                        //Store it locally-we'll work with this block later
-                        SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                    //Store it locally-we'll work with this block later
+                    SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
-                            e => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                        e => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
                             
-                                Promise.all(BROADCAST('/block',block))
+                            Promise.all(BROADCAST('/block',block))
                                 
-                            ).catch(e=>{})
+                        ).catch(e=>{})
                             
-                        )
+                    )
 
                    !a.aborted&&a.end('OK')
 
