@@ -234,7 +234,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
                 let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
     
 
-                if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v) && CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>Object.keys(proofRefInCache).length){
+                if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
 
                     let proofTemplate = {}
                     
@@ -278,7 +278,7 @@ createValidatorsProofs=async(a,q)=>{
 
             //Else, check if block present localy and create a proof
 
-            let block = await SYMBIOTE_META.BLOCK.get(blockID).catch(e=>false) // or get from cache
+            let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false) // or get from cache
 
             if(block){
 
@@ -300,7 +300,7 @@ createValidatorsProofs=async(a,q)=>{
 
         }
            
-    }else !a.aborted && a.end('Symbiote not supported')
+    }else !a.aborted && a.end('Route is off')
 
 },
 
@@ -309,14 +309,16 @@ createValidatorsProofs=async(a,q)=>{
 
 
 //0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-getValidatorsProofs=(a,q)=>{
+getValidatorsProofs=async(a,q)=>{
 
     //Check triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
-        let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0)) || SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(0)).catch(_=>'No proofs')
+        let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0)) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(0)).catch(_=>false)
+
+        console.log('QWERTY HERE ',proofs)
 
         !a.aborted && a.end(JSON.stringify(proofs))
 
@@ -562,9 +564,9 @@ UWS_SERVER
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
-.post('/createvalidatorsproofs',createValidatorsProofs)
+.get('/createvalidatorsproofs/:blockID',createValidatorsProofs)
 
-.get('/proofs/:symbiote/:blockID',getValidatorsProofs)
+.get('/proofs/:blockID',getValidatorsProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
 

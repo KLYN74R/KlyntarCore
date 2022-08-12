@@ -54,15 +54,16 @@ nodes=(a,q)=>{
 
 
 
-// 0 - symbioteID , 1 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 block=(a,q)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
 
-        SYMBIOTE_META.BLOCKS.get(q.getParameter(1)).then(block=>
+        SYMBIOTE_META.BLOCKS.get(q.getParameter(0)).then(block=>
 
             !a.aborted && a.end(JSON.stringify(block))
             
@@ -78,7 +79,7 @@ block=(a,q)=>{
 
 /*
 
-? 0 - symbioteID, 1 - array of blockIDs to export
+? 0 - array of blockIDs to export
 
 Insofar as blockchain verification thread works horizontally, by passing IDs of blocks,node exports next N blocks in a row
 
@@ -90,10 +91,10 @@ And you ask for a blocks:
 
 multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`).onAborted(()=>a.aborted=true).onData(async v=>{
    
-    let {symbiote,blocksIDs}=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let blocksIDs=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && typeof blocksIDs==='object'){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && Array.isArray(blocksIDs)){
 
 
         let limit=CONFIG.SYMBIOTE.BLOCKS_EXPORT_PORTION,
@@ -141,7 +142,7 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
 
 
 
-//0 - symbioteID, 1 - stuffID
+//0 - stuffID
 //Return useful data from stuff cache. It might be array of BLS pubkeys associated with some BLS aggregated pubkey, binding URL-PUBKEY and so on
 //Also, it's a big opportunity for cool plugins e.g. dyncamically track changes in STUFF_CACHE and modify it or share to other endpoints
 
@@ -149,12 +150,9 @@ stuff=async(a,q)=>{
     
     a.onAborted(()=>a.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_STUFF}`)
     
-    let symbioteID=q.getParameter(0),
-    
-        stuffID=q.getParameter(1)
+    let stuffID=q.getParameter(0)
 
-
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbioteID && CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
 
         let stuff = SYMBIOTE_META.STUFF_CACHE.get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
@@ -196,17 +194,17 @@ alert=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborte
 
 UWS_SERVER
 
-.get('/stuff/:symbiote/:stuffID/:stuffType',stuff)
-
-.get('/account/:symbiote/:address',acccount)
-
-.get('/nodes/:symbiote/:region',nodes)
+.get('/stuff/:stuffID/:stuffType',stuff)
 
 .post('/multiplicity',multiplicity)
 
-.get('/block/:symbiote/:id',block)
+.get('/account/:address',acccount)
 
 .post('/stuff_add',stuffAdd)
+
+.get('/nodes/:region',nodes)
+
+.get('/block/:id',block)
 
 .post('/alert',alert)
 

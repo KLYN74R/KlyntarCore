@@ -12,6 +12,7 @@ import Base58 from 'base-58'
 
 
 
+global.GETTING_BLOCK_FROM_NETWORK_PROCESS=false
 
 
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
@@ -24,26 +25,33 @@ export let
 
 
 //blocksAndProofs - array like this [{b:blockX,p:Proof_for_blockX}, {b:blockY,p:Proof_for_blockY}, ...]
-PERFORM_BLOCK_MULTISET=blocksAndProofs=>blocksAndProofs.forEach(
+PERFORM_BLOCK_MULTISET=blocksAndProofs=>{
+
+    blocksAndProofs.forEach(
             
-    //blockAndProof - {b:<block object>,p:<proof object>}
-    async blockAndProof => {
-
-        let {b:block,p:bftProof} = blockAndProof,
-
-            blockHash=Block.genHash(block.c,block.e,block.i,block.p)
-
-        if(await VERIFY(blockHash,block.sig,block.c)){
-
-            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>{})
-
+        //blockAndProof - {b:<block object>,p:<proof object>}
+        async blockAndProof => {
+    
+            let {b:block,p:bftProof} = blockAndProof,
+    
+                blockHash=Block.genHash(block.c,block.e,block.i,block.p)
+    
+            if(await VERIFY(blockHash,block.sig,block.c)){
+    
+                SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>{})
+    
+            }
+    
+            if(bftProof) SYMBIOTE_META.VALIDATORS_PROOFS.put(block.c+":"+block.i,bftProof).catch(e=>{})
+    
         }
+    
+    )
 
-        if(bftProof) SYMBIOTE_META.VALIDATORS_PROOFS.put(block.c+":"+block.i,bftProof).catch(e=>{})
+    //Reset flag
+    GETTING_BLOCK_FROM_NETWORK_PROCESS=false
 
-    }
-
-),
+},
 
 
 
@@ -58,6 +66,8 @@ We need to send an array of block IDs e.g. [Validator1:1337,Validator2:1337,Vali
 
 GET_BLOCKS_FOR_FUTURE = () => {
 
+    //Set locker
+    global.GETTING_BLOCK_FROM_NETWORK_PROCESS=true
 
 
     let blocksIDs=[],
@@ -73,11 +83,13 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
         for(let index=0;index<perValidator;index++){
 
-            currentValidators.forEach(validator=>{
+            for(let validator of currentValidators){
+
+                if(validator===CONFIG.SYMBIOTE.PUB) continue
 
                 blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+index))
-    
-            })
+
+            }
 
         }
 
@@ -108,7 +120,7 @@ GET_BLOCKS_FOR_FUTURE = () => {
         LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_MULTI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
 
         //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+        let allVisibleNodes=[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
 
 
         for(let url of allVisibleNodes){
@@ -119,13 +131,29 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
                 PERFORM_BLOCK_MULTISET(itsProbablyArrayOfBlocksAndProofs)
 
-                return //and leave function
-
+                break
+                
             }
 
         }
 
+        //Reset flag
+        GETTING_BLOCK_FROM_NETWORK_PROCESS=false
+
     })
+
+},
+
+
+
+
+GET_BLOCKS_FOR_FUTURE_WRAPPER = async() => {
+
+    !GETTING_BLOCK_FROM_NETWORK_PROCESS //if flag is not disabled - then we still find blocks in another thread
+    &&
+    await GET_BLOCKS_FOR_FUTURE()
+
+    setTimeout(GET_BLOCKS_FOR_FUTURE_WRAPPER,CONFIG.SYMBIOTE.GET_BLOCKS_FOR_FUTURE_TIMEOUT)
 
 },
 
@@ -147,9 +175,6 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 
             BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
-            //Try to instantly and asynchronously load more blocks if it's possible
-            GET_BLOCKS_FOR_FUTURE()
-
             return block
 
         }
@@ -167,22 +192,16 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
         
 
         for(let url of allVisibleNodes){
-
             
             let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
             
-
             if(itsProbablyBlock){
 
                 let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
             
-
                 if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
 
                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
-
-                    //Try to instantly and asynchronously load more blocks if it's possible
-                    GET_BLOCKS_FOR_FUTURE()
 
                     return itsProbablyBlock
 
@@ -202,46 +221,75 @@ GET_BLOCK = (blockCreator,index) => SYMBIOTE_META.BLOCKS.get(blockCreator+":"+in
 START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
 
-    fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/`+blockID)
+    let promises = []
 
-    .then(r=>r.json()).then(proofObject=>
-
-        //Here we find the proofs and store localy to use in the next iteration of CHECK_BFT_PROOFS_FOR_BLOCK
-        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofObject)
-
-    ).catch(async error=>{
-
-        LOG(`Can't find BFT proofs for \x1b[36;1m${blockID}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
-
-        let promises = []
-
-        //0. Initially,try to get pubkey => node_ip binding 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-            
-            pubkey => promises.push(GET_STUFF(pubkey))
+    //0. Initially,try to get pubkey => node_ip binding 
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
-        )
-
-
-        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
-
-            //Combine all nodes we know about and try to find proofs for block there. We starts with validators and so on(order by priority)
-            allVisibleNodes=[...pureUrls,CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
-        
-
-        for(let url of allVisibleNodes){
-
-            let itsProbablyProofs=await fetch(url+`/createvalidatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)
+        pubkey => promises.push(GET_STUFF(pubkey).then(
             
-            if(itsProbablyProofs){            
+            url => ({pubkey,pureUrl:url.payload.url})
+            
+        ))
+    
+    )
 
-                SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,itsProbablyProofs).catch(e=>false)                
+
+    let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+
+        //Combine all nodes we know about and try to find proofs for block there. We starts with validators and so on(order by priority)
+        allVisibleNodes=[...CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+
+        
+    console.log('VALIDATORS URLS ',validatorsUrls)
+
+    //Try to find proofs
+    for(let validatorHandler of validatorsUrls){
+
+        fetch(validatorHandler.pureUrl+`/createvalidatorsproofs/`+blockID).then(r=>r.text()).then(
+            
+            proof =>{
+
+                console.log('PROOF ',proof)
+
+                if(proof!=='No block') SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)[validatorHandler.pubKey]=proof
+
+                console.log(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)
 
             }
+            
+        ).catch(_=>{})
 
-        }
+
+    }
+
+    // //In the worst case
+    // for(let url of allVisibleNodes){
+
+    //     let itsProbablyProofs=await fetch(url+`/createvalidatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)
         
-    })
+    //     if(itsProbablyProofs){            
+
+    //         SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,itsProbablyProofs).catch(e=>false)                
+
+    //     }
+
+    // }
+    
+
+
+    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/`+blockID)
+
+    // .then(r=>r.json()).then(proofObject=>{
+
+    //     console.log('Receive ',proofObject)
+
+    //     //Here we find the proofs and store localy to use in the next iteration of CHECK_BFT_PROOFS_FOR_BLOCK
+    //     proofObject && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofObject)
+
+    // }).catch(async error=>{
+
+    // })
 
 },
 
@@ -286,11 +334,15 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
     if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS.ACTIVATE) return {bftProofsIsOk:true,shouldSkip}
 
+ 
+    return {bftProofsIsOk:true,shouldSkip}
 
-    if(proofs){
+
+    if(proofs && Object.keys(proofs).length!==0){
 
 
-
+        console.log('ZXCV ',proofs)
+        console.log(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockId))
         
     /*    
         __________________________ Check if (2/3)*N validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
@@ -333,6 +385,8 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
+    console.log('PROOF IS ',proofs)
+
 
         let bftProofsIsOk=false, // so optimistically
     
@@ -340,10 +394,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
-            metadataToVerify = skipPoint ? (skipPoint+":"+blockId) : (blockId+":"+blockHash),
+            metadataToVerify = skipPoint ? (skipPoint+":"+blockId) : (blockId+":"+blockHash)
 
-            validatorsWhoVoted = Object.keys(votes)
+            console.log('Who voted ',votes)
 
+            let validatorsWhoVoted = Object.keys(votes)
+
+        console.log('Who voted ',validatorsWhoVoted)
 
         if (validatorsWhoVoted.length===2 && validatorsWhoVoted[1]==='A'){
 
@@ -390,8 +447,11 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
             //3. Otherwise - we have raw version of proofs
             // In this case we need to through the proofs,make sure that majority has voted for the same version of proofs(agree/disagree, skip/verify and so on)
             let votesPromises = []
+
+
+            console.log(votes)
             
-            for(let singleValidator of votes){
+            for(let singleValidator in votes){
 
                 votesPromises.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(singleValidator)
                 &&
@@ -478,9 +538,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         }
 
         
-        if(!bftProofsIsOk) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run 
-        
-        else SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.delete(blockId) //clear cache
+        if(!bftProofsIsOk) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run
 
 
         //Finally - return results
@@ -563,8 +621,6 @@ START_VERIFY_POLLING=async()=>{
             nextBlock//to verify block as fast as possible
 
 
-
-
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         if(!currentSessionMetadata.ACTIVE){
 
@@ -624,7 +680,7 @@ START_VERIFY_POLLING=async()=>{
                 let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
                 if(block && validatorsSolution.bftProofsIsOk){
-            
+
                     await verifyBlock(block)
             
                     //Signal that verification was successful
@@ -806,7 +862,7 @@ verifyBlock=async block=>{
 
 
 
-
+        
     if(block.i === CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT){
 
         LOG(`Checkpoint verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
@@ -820,6 +876,7 @@ verifyBlock=async block=>{
 
 
     if(overviewOk){
+
 
         //To calculate fees and split between validators.Currently - general fees sum is 0. It will be increased each performed transaction
         let rewardBox={fees:0}
@@ -929,9 +986,11 @@ verifyBlock=async block=>{
 
         let shareFeesPromises=[], 
 
-            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
+            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
         
             payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToValidator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
+
+
 
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(validatorPubKey=>

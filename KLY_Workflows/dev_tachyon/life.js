@@ -4,7 +4,7 @@ import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {START_VERIFY_POLLING} from './verification.js'
+import {GET_BLOCKS_FOR_FUTURE_WRAPPER, START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -245,15 +245,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
 
-            SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,
-            
-                {
-                    
-                    V:{[CONFIG.SYMBIOTE.PUB]:meta.S} // Validators proofs will be stored in V property as object with PublicKey=>Signature(BLOCK_ID+":"+BLOCK_HASH)
-                    
-                }
-            
-            ) 
+            // Validators proofs will be stored in V property as object with PublicKey=>Signature(BLOCK_ID+":"+BLOCK_HASH)
+            SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,{V:{[CONFIG.SYMBIOTE.PUB]:meta.S}})
+             
 
         ).then(()=>blockCandidate).catch(error=>{
                 
@@ -1042,6 +1036,10 @@ RUN_SYMBIOTE=async()=>{
             GRAB_ACTIVITY_FLAGS()
             
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
+
+
+        //Run another thread to ask for blocks
+        GET_BLOCKS_FOR_FUTURE_WRAPPER()
 
     }
 

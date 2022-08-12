@@ -239,7 +239,8 @@
         "API_MULTI":600,
 
         "GET_VALIDATORS_PROOFS":600,
-        "GET_STUFF":600
+        "GET_STUFF":600,
+        "CREATE_VALIDATORS_PROOFS":600
     },
     
     "TRIGGERS":{
@@ -251,6 +252,7 @@
         "API_MULTI":1,
         "API_SHARE_STUFF":1,
         "API_BIND_PUBKEY_TO_URL":1,
+        "CREATE_VALIDATORS_PROOFS":1,
         
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
@@ -268,6 +270,8 @@
     
     "BLOCKS_EXPORT_PORTION":100,
     "GET_MULTIPLY_BLOCKS_LIMIT":100,
+
+    "GET_BLOCKS_FOR_FUTURE_TIMEOUT":10000,
 
     "TRUST_POOL_TO_ACCEPT_BLOCKS":[
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
