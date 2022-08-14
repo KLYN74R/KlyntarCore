@@ -976,10 +976,14 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
+/*
 
-GRAB_ACTIVITY_FLAGS=async()=>{
+
+
+*/
+GRAB_ACTIVITY_FLAGS=()=>{
     
-    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET+'/getvalidators').then(r=>r.json()).then(currentValidators=>{
+    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
         LOG(`Received list of current validators.Preparing to <ALIVE_VALIDATOR> procedure`,'S')
 

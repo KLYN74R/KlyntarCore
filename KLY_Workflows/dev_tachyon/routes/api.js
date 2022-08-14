@@ -7,9 +7,22 @@ import {BODY} from '../../../KLY_Utils/utils.js'
 
 let
 
-// 0 - symbioteID, 1 - account
 
-acccount=async(a,q)=>{
+
+/**## API/account
+ * 
+ *  Returns account's state
+ * 
+ *  0 - symbioteID, 1 - account
+ * 
+ * 
+ * @param {string} symbioteID 32-bytes hexadecimal hash of symbiote's manifest. It's SYMBIOTE_ID
+ * @param {string} account publicKey/address of account(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on)
+ * 
+ * @returns {Account} Account instance
+ * 
+ * */
+account=async(a,q)=>{
     
     a.onAborted(()=>a.aborted=true)
 
@@ -31,12 +44,33 @@ acccount=async(a,q)=>{
 
 
 
-    
+/**## API/info
+ * 
+ *  Returns general info about node/infrastructure
+ *  
+ * 
+ * @returns {String} Info in JSON
+ * 
+ * */
 info=a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 
 
-// 0 - symbioteID, 1 - preffered region(close to another node)
+
+/**## API/nodes
+ * 
+ *  Returns set of nodes for P2P communications
+ * 
+ *  0 - symbioteID, 1 - preffered region(close to another node)
+ * 
+ * 
+ * @param {string} symbioteID 32-bytes hexadecimal hash of symbiote's manifest. It's SYMBIOTE_ID
+ * @param {string} prefferedRegion Continent,Country code and so on
+ * 
+ * @returns {Array} Array of urls. Example [http://somenode.io,https://dead::beaf,...]
+ * 
+ * */
+
 nodes=(a,q)=>{
 
     CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
@@ -198,7 +232,7 @@ UWS_SERVER
 
 .post('/multiplicity',multiplicity)
 
-.get('/account/:address',acccount)
+.get('/account/:address',account)
 
 .post('/stuff_add',stuffAdd)
 

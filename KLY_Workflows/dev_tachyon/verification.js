@@ -181,6 +181,8 @@ GET_BLOCK = (blockCreator,index) => {
             if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
     
                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+
+                SYMBIOTE_META.BLOCKS.put(blockID,block)
     
                 return block
     
@@ -209,6 +211,8 @@ GET_BLOCK = (blockCreator,index) => {
                     if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+
+                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock)
     
                         return itsProbablyBlock
     
@@ -230,14 +234,17 @@ GET_BLOCK = (blockCreator,index) => {
 START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
 
-    let promises = []
+    let promises = [],
+
+        proofRef = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID) || {V:{}}
+
 
     //0. Initially,try to get pubkey => node_ip binding 
     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
-        pubkey => promises.push(GET_STUFF(pubkey).then(
+        pubKey => promises.push(GET_STUFF(pubKey).then(
             
-            url => ({pubkey,pureUrl:url.payload.url})
+            url => ({pubKey,pureUrl:url.payload.url})
             
         ))
     
@@ -250,20 +257,23 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
         allVisibleNodes=[...CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
 
         
-    console.log('VALIDATORS URLS ',validatorsUrls)
-
     //Try to find proofs
     for(let validatorHandler of validatorsUrls){
+
+        //No sense to ask someone whose proof we already have
+        if(proofRef.V[validatorHandler.pubKey]) continue
 
         fetch(validatorHandler.pureUrl+`/createvalidatorsproofs/`+blockID).then(r=>r.text()).then(
             
             proof =>{
 
-                console.log('PROOF ',proof)
+                if(proof!=='No block'){
+                    
+                    proofRef.V[validatorHandler.pubKey]=proof
+                    
+                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
 
-                if(proof!=='No block') SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)[validatorHandler.pubKey]=proof
-
-                console.log(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)
+                }
 
             }
             
@@ -271,6 +281,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
 
     }
+
 
     // //In the worst case
     // for(let url of allVisibleNodes){
@@ -334,21 +345,22 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
     let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
-
         //We should skip the block in case when skipPoint exsists in validators proofs and it equal to checksum of VERIFICATION_THREAD state
         shouldSkip = proofs.S && SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM === proofs.S
 
-    
+
+
+
+    //Optimization stuff
     if(blockId===CONFIG.SYMBIOTE.SKIP_BFT_PROOFS.POINT) CONFIG.SYMBIOTE.SKIP_BFT_PROOFS.ACTIVATE=false
     
     if(CONFIG.SYMBIOTE.SKIP_BFT_PROOFS.ACTIVATE) return {bftProofsIsOk:true,shouldSkip}
 
 
-    if(proofs && Object.keys(proofs).length!==0){
 
 
-        console.log('ZXCV ',proofs)
-        console.log(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockId))
+    if(proofs){
+
         
     /*    
         __________________________ Check if (2/3)*N validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
@@ -391,22 +403,21 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    console.log('PROOF IS ',proofs)
-
-
+    
         let bftProofsIsOk=false, // so optimistically
     
             {V:votes,S:skipPoint} = proofs,
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
-            metadataToVerify = skipPoint ? (skipPoint+":"+blockId) : (blockId+":"+blockHash)
+            metadataToVerify = skipPoint ? (skipPoint+":"+blockId) : (blockId+":"+blockHash),
 
-            console.log('Who voted ',votes)
+            validatorsWhoVoted = Object.keys(votes),
 
-            let validatorsWhoVoted = Object.keys(votes)
+            isAggregatedBranch = true
 
-        console.log('Who voted ',validatorsWhoVoted)
+ 
+
 
         if (validatorsWhoVoted.length===2 && validatorsWhoVoted[1]==='A'){
 
@@ -449,13 +460,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
     
         }else{
+
+            isAggregatedBranch = false
         
             //3. Otherwise - we have raw version of proofs
             // In this case we need to through the proofs,make sure that majority has voted for the same version of proofs(agree/disagree, skip/verify and so on)
             let votesPromises = []
 
-
-            console.log(votes)
             
             for(let singleValidator in votes){
 
@@ -499,7 +510,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
 
-                let aggregatedProof = {[aggregatedValidatorsPublicKey]:aggregatedSignature,A:[]}
+                let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[]}
 
                 //And store proof locally
                 await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,aggregatedProof).catch(e=>{})
@@ -507,7 +518,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 bftProofsIsOk=true
 
 
-            }else if(validatorsWithVerifiedSignatures.length>=majority) {
+            }else if(validatorsWithVerifiedSignatures.length>=majority){
                 
                 //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
@@ -523,7 +534,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
                 let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignatures.map(Base58.decode))),
 
-                    aggregatedProof = {[aggregatedPubKeyOfVoters]:aggregatedSignature,A:pubKeysOfAFKValidators}
+                    aggregatedProof = {V:{[aggregatedPubKeyOfVoters]:aggregatedSignature},A:pubKeysOfAFKValidators}
 
 
 
@@ -544,7 +555,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         }
 
         
-        if(!bftProofsIsOk) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run
+        if(!bftProofsIsOk && isAggregatedBranch) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run
 
 
         //Finally - return results
@@ -696,7 +707,7 @@ START_VERIFY_POLLING=async()=>{
                 
                     }
                     //If verification failed - delete block. It will force to find another(valid) block from network
-                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>'')    
+                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>console.log('Going to delete'))    
                 
                 }else if (!block && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)){
 
@@ -714,7 +725,7 @@ START_VERIFY_POLLING=async()=>{
 
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(()=>START_VERIFY_POLLING(),(nextBlock||!currentSessionMetadata.ACTIVE)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING)
+        setTimeout(START_VERIFY_POLLING,(nextBlock||!currentSessionMetadata.ACTIVE)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
@@ -956,6 +967,7 @@ verifyBlock=async block=>{
         
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
 
+
         let validatorsToMakeSyncOperations = Object.keys(SYNC_OPERATIONS.VALIDATORS)
 
         //Currently we have sync operations only for changes in validators' stuff
@@ -1023,12 +1035,12 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.i,block).catch(e=>LOG(`Failed to store block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>LOG(`Failed to store block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
 
         }else{
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.BLOCKS.del(block.i).catch(
+            SYMBIOTE_META.BLOCKS.del(block.c+":"+block.i).catch(
                 
                 e => LOG(`Failed to delete block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
                 

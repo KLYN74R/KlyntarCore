@@ -71,7 +71,7 @@ acceptBlocks=a=>{
                     //Store it locally-we'll work with this block later
                     SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
-                        e => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                        _ => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
                             
                             Promise.all(BROADCAST('/block',block))
                                 
@@ -223,7 +223,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
                     if(shouldAcceptDueToHeight && await VERIFY(proof.B+":"+blockHash,proof.S,payload.v) && CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>Object.keys(proofRefInCache).length){
 
-                        proofRefInCache[proof.v]=proof.S
+                        proofRefInCache.V[proof.v]=proof.S
 
                     }
 
@@ -237,9 +237,9 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
                 if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
 
-                    let proofTemplate = {}
+                    let proofTemplate = {V:{}}
                     
-                    proofTemplate[payload.v]=proof.S
+                    proofTemplate.V[payload.v]=proof.S
                     
                     SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(proof.B,proofTemplate)
                     
@@ -270,7 +270,7 @@ createValidatorsProofs=async(a,q)=>{
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in db
-        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB]
+        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
 
 
         if(ourProof) !a.aborted && a.end(ourProof)
@@ -288,13 +288,13 @@ createValidatorsProofs=async(a,q)=>{
                     proofSignature = await SIG(blockID+":"+blockHash)
 
                 !a.aborted && a.end(proofSignature)
-                
 
-                let proofTemplate = {}
 
-                proofTemplate[CONFIG.SYMBIOTE.PUB] = proofSignature
+                let proofTemplate = {V:{}}
 
-                SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofTemplate)                
+                proofTemplate.V[CONFIG.SYMBIOTE.PUB] = proofSignature
+
+                SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofTemplate)               
 
             
             } else !a.aborted && a.end('No block')
