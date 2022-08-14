@@ -983,7 +983,7 @@ PREPARE_SYMBIOTE=async()=>{
 */
 GRAB_ACTIVITY_FLAGS=()=>{
     
-    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
+    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET_URL+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
         LOG(`Received list of current validators.Preparing to <ALIVE_VALIDATOR> procedure`,'S')
 
@@ -1038,8 +1038,11 @@ GRAB_ACTIVITY_FLAGS=()=>{
 
                             {P:CONFIG.SYMBIOTE.PUB,S:<Validator signa>}
 
+                        We collect this responses and aggregate to add to the blocks to return our validators thread to game
 
                     */
+
+                    console.log(`Received from ${url} => ${resp}`)
 
                 })
 
@@ -1082,7 +1085,7 @@ RUN_SYMBIOTE=async()=>{
             
                     .then(res=>res.text())
             
-                    .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`No positive answer from bootstrap ${endpoint}`,'I'))
+                    .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,'I'))
             
                     .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,'F'))
                         

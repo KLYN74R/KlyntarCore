@@ -265,7 +265,7 @@
         "GET_VALIDATORS_PROOFS":1
     },
     
-    "GET_BLOCKS_URI":"http://localhost:6666",
+    "GET_BLOCKS_URL":"http://localhost:6666",
     "GET_MULTI":"http://localhost:6666",
     
     "BLOCKS_EXPORT_PORTION":100,
@@ -282,7 +282,7 @@
 
     "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
 
-    "GET_STUFF_URI":"http://localhost:6666",
+    "GET_STUFF_URL":"http://localhost:6666",
 
     "STUFF_CACHE_SIZE":100000,
 
@@ -316,7 +316,7 @@
         }
     },
 
-    "GET_VALIDATORS_PROOFS_URI":"http://localhost:6666",
+    "GET_VALIDATORS_PROOFS_URL":"http://localhost:6666",
 
     "ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES":true,
 
@@ -342,7 +342,7 @@
 
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
 
-    "GET_CURRENT_VALIDATORS_SET":"http://localhost:6666",
+    "GET_CURRENT_VALIDATORS_SET_URL":"http://localhost:6666",
 
     "REGION":"EU",
 

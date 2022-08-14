@@ -75,9 +75,9 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
 
 }).catch(async _ =>{
 
-    LOG(`Can't find stuff with ID=\x1b[32;1m${stuffID}\x1b[36;1m in cache. Going to ask \x1b[32;1mGET_STUFF_URI\x1b[36;1m node`,'I')
+    LOG(`Can't find stuff with ID=\x1b[32;1m${stuffID}\x1b[36;1m in cache. Going to ask \x1b[32;1mGET_STUFF_URL\x1b[36;1m node`,'I')
 
-    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URI+`/stuff/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
+    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
 
     if(stuff){
 
@@ -127,7 +127,7 @@ GET_NODES=region=>{
     
             index = Math.floor((arrSize + 1) * Math.random())
             
-            //Destructurisation doesn't work,so use temporary variable
+            //DestructURLsation doesn't work,so use temporary variable
             temp = shuffled[index]
             
             shuffled[index] = shuffled[arrSize]

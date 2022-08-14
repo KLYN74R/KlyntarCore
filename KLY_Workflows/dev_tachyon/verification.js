@@ -162,7 +162,7 @@ GET_BLOCKS_FOR_FUTURE_WRAPPER = async() => {
 
 
 
-//Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URI" node for new blocks
+//Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URL" node for new blocks
 //If no answer - try to find blocks somewhere else
 
 GET_BLOCK = (blockCreator,index) => {
@@ -172,7 +172,7 @@ GET_BLOCK = (blockCreator,index) => {
     
     return SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>
 
-        fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URI+`/block/`+blockCreator+":"+index)
+        fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
     
         .then(r=>r.json()).then(block=>{
     
@@ -192,7 +192,7 @@ GET_BLOCK = (blockCreator,index) => {
     
             LOG(`No block \x1b[36;1m${blockCreator} ### ${index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
     
-            LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
+            LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
             //Combine all nodes we know about and try to find block there
             let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
@@ -298,7 +298,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     
 
 
-    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URI+`/proofs/`+blockID)
+    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/proofs/`+blockID)
 
     // .then(r=>r.json()).then(proofObject=>{
 
@@ -403,7 +403,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    
+
         let bftProofsIsOk=false, // so optimistically
     
             {V:votes,S:skipPoint} = proofs,
