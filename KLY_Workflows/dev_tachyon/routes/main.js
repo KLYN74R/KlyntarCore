@@ -269,11 +269,11 @@ createValidatorsProofs=async(a,q)=>{
 
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
-        //Check if our proof presents in db
+        //Check if our proof presents in cache
         let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
 
 
-        if(ourProof) !a.aborted && a.end(ourProof)
+        if(ourProof) !a.aborted && a.end(JSON.stringify({S:ourProof}))
 
         else{
 
@@ -281,15 +281,18 @@ createValidatorsProofs=async(a,q)=>{
 
             let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false) // or get from cache
 
+
+            //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
             if(block){
 
                 let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
                     proofSignature = await SIG(blockID+":"+blockHash)
 
-                !a.aborted && a.end(proofSignature)
+                !a.aborted && a.end(JSON.stringify({S:proofSignature}))
 
 
+                //And add to local cache
                 let proofTemplate = {V:{}}
 
                 proofTemplate.V[CONFIG.SYMBIOTE.PUB] = proofSignature
@@ -354,7 +357,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
         //Decide should we check and perform this message
         overviewIsOk = 
 
-            SYMBIOTE_META.VALIDATORS.includes(validatorWhoPropose)
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
             &&
             SKIP_METADATA.SKIP_POINT_AND_BLOCK_ID===skipPointAndBlockID
             &&
@@ -391,27 +394,28 @@ voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
      
         {
             "V":<Pubkey of validator>
-            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[<PubKey>]))
+            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
         }
 
     */
     let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
 
-        validatorVTMetadataHash=BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[helloMessage?.V])
+        validatorVTMetadataHash=BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V]),
 
         shouldSignToAlive =
 
             CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE
             &&
-            SYMBIOTE_META.VALIDATORS.includes(helloMessage?.V)
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(helloMessage?.V)
             &&
-            SYMBIOTE_META.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
             &&
-            !SYMBIOTE_META.VALIDATORS_METADATA[helloMessage.V].ACTIVE//Also,check if validator was marked as ACTIVE:false
+            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].ACTIVE//Also,check if validator was marked as ACTIVE:false
             &&
             await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
-
-    
+        
+            
+            
     if(shouldSignToAlive){
 
         let myAgreement = await SIG(validatorVTMetadataHash)
@@ -449,7 +453,7 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
     
             !a.aborted&&a.end('OK')
     
-        }else !a.aborted&&a.end('Domain already in scope')
+        }else !a.aborted&&a.end('Your node already in scope')
     
     }else !a.aborted&&a.end('Wrong types')
 
@@ -563,9 +567,9 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.post('/acceptvalidatorsproofs',acceptValidatorsProofs)
-
 .get('/createvalidatorsproofs/:blockID',createValidatorsProofs)
+
+.post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
 .get('/proofs/:blockID',getValidatorsProofs)
 

@@ -240,7 +240,8 @@
 
         "GET_VALIDATORS_PROOFS":600,
         "GET_STUFF":600,
-        "CREATE_VALIDATORS_PROOFS":600
+        "CREATE_VALIDATORS_PROOFS":600,
+        "GET_VALIDATORS":600
     },
     
     "TRIGGERS":{
@@ -262,7 +263,8 @@
         "ACCEPT_VOTE_TO_SKIP":1,
         "ACCEPT_VOTE_TO_ALIVE":1,
 
-        "GET_VALIDATORS_PROOFS":1
+        "GET_VALIDATORS_PROOFS":1,
+        "GET_VALIDATORS":1
     },
     
     "GET_BLOCKS_URL":"http://localhost:6666",
@@ -317,6 +319,7 @@
     },
 
     "GET_VALIDATORS_PROOFS_URL":"http://localhost:6666",
+    "STORE_VALIDATORS_PROOFS_CACHE":true,
 
     "ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES":true,
 

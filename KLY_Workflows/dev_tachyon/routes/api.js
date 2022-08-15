@@ -111,6 +111,22 @@ block=(a,q)=>{
 
 
 
+getValidators=a=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
+
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>a.aborted=true)
+
+        a.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
+
+    }else !a.aborted && a.end('Symbiote not supported')
+
+},
+
+
+
+
 /*
 
 ? 0 - array of blockIDs to export
@@ -229,6 +245,8 @@ alert=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborte
 UWS_SERVER
 
 .get('/stuff/:stuffID/:stuffType',stuff)
+
+.get('/getvalidators',getValidators)
 
 .post('/multiplicity',multiplicity)
 

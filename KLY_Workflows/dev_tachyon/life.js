@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF, VERIFY} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -86,9 +86,25 @@ let graceful=()=>{
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
 
-            LOG('Node was gracefully stopped','I')
+            if(CONFIG.SYMBIOTE.STORE_VALIDATORS_PROOFS_CACHE){
                 
-            process.exit(0)
+                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)),()=>{
+
+                    LOG('Validators proofs stored to cache','I')
+
+                    LOG('Node was gracefully stopped','I')
+                    
+                    process.exit(0)    
+
+                })    
+
+            }else{
+
+                LOG('Node was gracefully stopped','I')
+                
+                process.exit(0)    
+
+            }
 
         }
 
@@ -576,6 +592,8 @@ PREPARE_SYMBIOTE=async()=>{
     }
     
 
+    let cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json')) || {}
+
 
     //____________________________________________Prepare structures_________________________________________________
 
@@ -597,7 +615,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         STUFF_CACHE:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
-        VALIDATORS_PROOFS_CACHE:new Map(),
+        VALIDATORS_PROOFS_CACHE:new Map(Object.entries(cachedProofs)),
 
     }
 
@@ -612,6 +630,8 @@ PREPARE_SYMBIOTE=async()=>{
         name => !fs.existsSync(`${name}`) && fs.mkdirSync(`${name}`)
         
     )
+
+
     
 
     //___________________________Load functionality to verify/filter/transform events_______________________________
@@ -665,7 +685,6 @@ PREPARE_SYMBIOTE=async()=>{
         
     )
 
-    
     /*
     
     _____________________________________________State of symbiote___________________________________________________
@@ -1009,20 +1028,22 @@ GRAB_ACTIVITY_FLAGS=()=>{
      
             {
                 "V":<Pubkey of validator>
-                "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VALIDATORS_METADATA[<PubKey>]))
+                "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
             }
 
         */
+
+        let myMetadataHash = BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB])
 
         let helloMessage = {
             
             V:CONFIG.SYMBIOTE.PUB,
 
-            S:await SIG(BLAKE3(CONFIF.SYMBIOTE.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
+            S:await SIG(myMetadataHash)
         
         },
 
-        answer={}
+        answers=[]
 
         for(let url of pureUrls) {
 
@@ -1030,33 +1051,84 @@ GRAB_ACTIVITY_FLAGS=()=>{
             
                 .then(r=>r.json())
                 
-                .then(resp=>{
+                .then(resp=>
 
                     /*
                     
                         Response is
 
-                            {P:CONFIG.SYMBIOTE.PUB,S:<Validator signa>}
+                            {P:CONFIG.SYMBIOTE.PUB,S:<Validator signa SIG(myMetadataHash)>}
 
                         We collect this responses and aggregate to add to the blocks to return our validators thread to game
 
                     */
 
-                    console.log(`Received from ${url} => ${resp}`)
+                    VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(e=>false)
 
-                })
+                )
 
-                .catch(e=>LOG(`Validator ${url} send no data to <ALIVE>`,'W'))
+                .catch(e=>
+                
+                    LOG(`Validator ${url} send no data to <ALIVE>. Caused error \n${e}`,'W')
+
+                )
 
             )
 
         }
 
 
+
         await Promise.all(pingBackMsgs.splice(0))
 
+        answers = answers.filter(Boolean)
 
-    }).catch(e=>LOG(`Can't get current validators set`,'W'))
+
+
+        //Here we have verified signatures from validators
+        
+
+        let majority = Math.ceil(currentValidators.length*(2/3))
+
+        //If we have majority votes - we can aggregate and share to "ressuect" our node
+        if(answers.length>=majority){
+
+            let pubkeys=[],
+            
+                signatures=[]
+
+            answers.forEach(descriptor=>{
+
+                pubkeys.push(Base58.decode(descriptor.P))
+
+                signatures.push(new Uint8Array(Buffer.from(descriptor.S,'base64')))
+
+            })
+
+
+            let aggregatedPub = Base58.encode(await bls.aggregatePublicKeys(pubkeys)),
+
+                aggregatedSignatures = Buffer.from(await bls.aggregateSignatures(signatures)).toString('base64')
+
+
+            //Make final verification
+            if(await VERIFY(myMetadataHash,aggregatedSignatures,aggregatedPub)){
+
+                LOG(`♛ Hooray!!! Going to share this TX to resurrect your node. Keep working :)`,'S')
+
+                //Create TX here
+
+            }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')
+
+        }
+
+    }).catch(e=>{
+
+        LOG(`Can't get current validators set`,'W')
+
+        console.log(e)
+
+    })
 
 },
 

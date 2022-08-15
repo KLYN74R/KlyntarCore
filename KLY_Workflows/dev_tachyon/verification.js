@@ -263,13 +263,22 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
         //No sense to ask someone whose proof we already have
         if(proofRef.V[validatorHandler.pubKey]) continue
 
-        fetch(validatorHandler.pureUrl+`/createvalidatorsproofs/`+blockID).then(r=>r.text()).then(
+        fetch(validatorHandler.pureUrl+`/createvalidatorsproofs/`+blockID).then(r=>r.json()).then(
             
             proof =>{
 
-                if(proof!=='No block'){
+                if(proof.S){
+
+                    //Check if it's aggregated proof - it will be so called "optimization"
+                    //Aggregated proof has "A" array (array of AFK validators)
                     
-                    proofRef.V[validatorHandler.pubKey]=proof
+                    if(proof.A){
+
+                        console.log('Aggregated proof received ',proof)
+
+                    }
+                    
+                    proofRef.V[validatorHandler.pubKey]=proof.S
                     
                     SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
 
