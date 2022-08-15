@@ -573,6 +573,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         
         if(!bftProofsIsOk && isAggregatedBranch) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run
 
+        if(bftProofsIsOk) SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.delete(blockId)
 
         //Finally - return results
         return {bftProofsIsOk,shouldSkip}
