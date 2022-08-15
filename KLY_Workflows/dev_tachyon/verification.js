@@ -239,6 +239,10 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
         proofRef = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID) || {V:{}}
 
 
+    //If it was aggregated proof and failed verification - then prepare empty template to start new iteration to find proofs
+    if(proofRef.A) proofRef={V:{}}
+
+
     //0. Initially,try to get pubkey => node_ip binding 
     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
@@ -263,25 +267,20 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
         //No sense to ask someone whose proof we already have
         if(proofRef.V[validatorHandler.pubKey]) continue
 
-        fetch(validatorHandler.pureUrl+`/createvalidatorsproofs/`+blockID).then(r=>r.json()).then(
+        fetch(validatorHandler.pureUrl+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
             
             proof =>{
 
-                if(proof.S){
+                if(proof.A){
 
-                    //Check if it's aggregated proof - it will be so called "optimization"
-                    //Aggregated proof has "A" array (array of AFK validators)
-                    
-                    if(proof.A){
+                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+                
+                }else if(proof.S){
 
-                        console.log('Aggregated proof received ',proof)
-
-                    }
-                    
                     proofRef.V[validatorHandler.pubKey]=proof.S
                     
                     SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
-
+                    
                 }
 
             }
@@ -295,7 +294,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     // //In the worst case
     // for(let url of allVisibleNodes){
 
-    //     let itsProbablyProofs=await fetch(url+`/createvalidatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)
+    //     let itsProbablyProofs=await fetch(url+`/validatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)
         
     //     if(itsProbablyProofs){            
 
@@ -428,22 +427,30 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
  
 
 
-        if (validatorsWhoVoted.length===2 && validatorsWhoVoted[1]==='A'){
+        if (proofs.A && validatorsWhoVoted.length===1){
 
             /*
 
                 In this case, structure looks like this
 
                 {
-                    "AggregatedPubKey as property name":<Signature as value>
+                    V:{
+
+                        "AggregatedPubKey as property name":<Signature as value>
+
+                    }                   
                     A:[Pub1,Pub2,Pub3] //array of AFK validators
                 }
 
                 Example:
 
                 {
-                
-                    "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":"iueh10NIDO9XEAQ2DYf6CrJtVtDCPSQ187BUI42XO1fJCFBlcNHWOc0mX0RbsZSMBk98D1eYE3gN2moo/vorgexuh/C/v1GRgwzeSBnJ6KJg54/GBfOoKuwa6lmvSWpj",
+                    
+                    V:{
+
+                        "6E4t37dNa7oasEHbHBUZ2QiY67pY9fAPNAATT1TZBG9DULuhZJADswySonHEGQc7nT":"pj7Fg0WIegALdbCGZXFG/Xoa5nbHaFpYqlZfA3/qtUt51WQ/jPlvIdpYwnDQca0WEx2CalDiHJqRekHn6VQ9THRh4NWpfKeB5rIT+89+8QeXZl7UpjUJ61ce84JxmbXg"
+
+                    },
                     
                     A:["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT"]
                 
@@ -465,7 +472,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-            bftProofsIsOk = (validatorsNumber-votes['A'].length)>=majority && await VERIFY(metadataToVerify,validatorsWhoVoted[0],votes[validatorsWhoVoted[0]])
+            bftProofsIsOk = (validatorsNumber-proofs.A.length)>=majority && await VERIFY(metadataToVerify,votes[validatorsWhoVoted[0]],validatorsWhoVoted[0])
 
     
         }else{

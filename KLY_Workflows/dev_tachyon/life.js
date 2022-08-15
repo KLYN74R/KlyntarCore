@@ -1122,13 +1122,7 @@ GRAB_ACTIVITY_FLAGS=()=>{
 
         }
 
-    }).catch(e=>{
-
-        LOG(`Can't get current validators set`,'W')
-
-        console.log(e)
-
-    })
+    }).catch(e=>LOG(`Can't get current validators set\n${e}`,'W'))
 
 },
 

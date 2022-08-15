@@ -181,6 +181,9 @@ To verify that ValidatorX has received and confirmed block BLOCK_ID from Validat
 VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 
 */
+
+//! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
+               
 acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
@@ -260,14 +263,14 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 // return simpleSignature
 
-createValidatorsProofs=async(a,q)=>{
+shareValidatorsProofs=async(a,q)=>{
 
     //Check trigger
-    if(CONFIG.SYMBIOTE.TRIGGERS.CREATE_VALIDATORS_PROOFS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_VALIDATORS_PROOFS){
 
         let blockID = q.getParameter(0)
 
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.CREATE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.SHARE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in cache
         let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
@@ -277,57 +280,34 @@ createValidatorsProofs=async(a,q)=>{
 
         else{
 
-            //Else, check if block present localy and create a proof
+            //Try to find proof from db - it should be aggegated proof
+            let aggregatedProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
-            let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false) // or get from cache
+            if(aggregatedProof) !a.aborted && a.end(JSON.stringify(aggregatedProof))
+
+            else {
+
+                //Else, check if block present localy and create a proof
+                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false) // or get from cache
 
 
-            //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-            if(block){
+                //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
+                if(block){
 
-                let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
+                    let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
-                    proofSignature = await SIG(blockID+":"+blockHash)
+                        proofSignature = await SIG(blockID+":"+blockHash)
 
-                !a.aborted && a.end(JSON.stringify({S:proofSignature}))
+                        !a.aborted && a.end(JSON.stringify({S:proofSignature}))
 
+                        
+                } else !a.aborted && a.end('No block')
 
-                //And add to local cache
-                let proofTemplate = {V:{}}
-
-                proofTemplate.V[CONFIG.SYMBIOTE.PUB] = proofSignature
-
-                SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofTemplate)               
-
+            }
             
-            } else !a.aborted && a.end('No block')
-
         }
            
     }else !a.aborted && a.end('Route is off')
-
-},
-
-
-
-
-
-//0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-getValidatorsProofs=async(a,q)=>{
-
-    //Check triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS_PROOFS){
-
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
-
-        let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(q.getParameter(0)) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(q.getParameter(0)).catch(_=>false)
-
-        console.log('QWERTY HERE ',proofs)
-
-        !a.aborted && a.end(JSON.stringify(proofs))
-
-
-    }else !a.aborted && a.end('Symbiote not supported')
 
 },
 
@@ -567,11 +547,9 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/createvalidatorsproofs/:blockID',createValidatorsProofs)
+.get('/validatorsproofs/:blockID',shareValidatorsProofs)
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
-
-.get('/proofs/:blockID',getValidatorsProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
 

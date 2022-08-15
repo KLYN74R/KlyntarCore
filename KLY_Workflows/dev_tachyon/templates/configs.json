@@ -238,9 +238,8 @@
         "API_BLOCK":6000,
         "API_MULTI":600,
 
-        "GET_VALIDATORS_PROOFS":600,
         "GET_STUFF":600,
-        "CREATE_VALIDATORS_PROOFS":600,
+        "SHARE_VALIDATORS_PROOFS":600,
         "GET_VALIDATORS":600
     },
     
@@ -252,8 +251,7 @@
         "API_BLOCK":1,
         "API_MULTI":1,
         "API_SHARE_STUFF":1,
-        "API_BIND_PUBKEY_TO_URL":1,
-        "CREATE_VALIDATORS_PROOFS":1,
+        "SHARE_VALIDATORS_PROOFS":1,
         
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
@@ -263,7 +261,6 @@
         "ACCEPT_VOTE_TO_SKIP":1,
         "ACCEPT_VOTE_TO_ALIVE":1,
 
-        "GET_VALIDATORS_PROOFS":1,
         "GET_VALIDATORS":1
     },
     
