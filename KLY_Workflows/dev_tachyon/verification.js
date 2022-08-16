@@ -243,53 +243,62 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     if(proofRef.A) proofRef={V:{}}
 
 
-    //0. Initially,try to get pubkey => node_ip binding 
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+    if(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL){
+
+        fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
+            
+            proof => proof.A && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
         
-        pubKey => promises.push(GET_STUFF(pubKey).then(
-            
-            url => ({pubKey,pureUrl:url.payload.url})
-            
-        ))
-    
-    )
-
-
-    let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
-
-        //Combine all nodes we know about and try to find proofs for block there. We starts with validators and so on(order by priority)
-        allVisibleNodes=[...CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
-
-        
-    //Try to find proofs
-    for(let validatorHandler of validatorsUrls){
-
-        //No sense to ask someone whose proof we already have or get the answer from node in blacklist
-        if(proofRef.V[validatorHandler.pubKey] || CONFIG.SYMBIOTE.BLACKLISTED_NODES.includes(validatorHandler.pureUrl)) continue
-
-        fetch(validatorHandler.pureUrl+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
-            
-            proof =>{
-
-                if(proof.A){
-
-                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
-                
-                }else if(proof.S){
-
-                    proofRef.V[validatorHandler.pubKey]=proof.S
-                    
-                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
-                    
-                }
-
-            }
-            
         ).catch(_=>{})
 
+    }else{
+
+
+
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+        
+            pubKey => promises.push(GET_STUFF(pubKey).then(
+            
+                url => ({pubKey,pureUrl:url.payload.url})
+            
+            ))
+    
+        )
+
+                
+        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+        
+        //Try to find proofs
+        for(let validatorHandler of validatorsUrls){
+
+            //No sense to ask someone whose proof we already have or get the answer from node in blacklist
+            if(proofRef.V[validatorHandler.pubKey] || CONFIG.SYMBIOTE.BLACKLISTED_NODES.includes(validatorHandler.pureUrl)) continue
+
+            fetch(validatorHandler.pureUrl+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
+            
+                proof =>{
+
+                    if(proof.A){
+
+                        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+                
+                    }else if(proof.S){
+
+                        proofRef.V[validatorHandler.pubKey]=proof.S
+                    
+                        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
+                    
+                    }
+
+                }
+            
+            ).catch(_=>{})
+
+        }
 
     }
-
 
     // //In the worst case
     // for(let url of allVisibleNodes){
@@ -303,21 +312,6 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     //     }
 
     // }
-    
-
-
-    // fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/proofs/`+blockID)
-
-    // .then(r=>r.json()).then(proofObject=>{
-
-    //     console.log('Receive ',proofObject)
-
-    //     //Here we find the proofs and store localy to use in the next iteration of CHECK_BFT_PROOFS_FOR_BLOCK
-    //     proofObject && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofObject)
-
-    // }).catch(async error=>{
-
-    // })
 
 },
 
@@ -411,7 +405,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-
+    
         let bftProofsIsOk=false, // so optimistically
     
             {V:votes,S:skipPoint} = proofs,
