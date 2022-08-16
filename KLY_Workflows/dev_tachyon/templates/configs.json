@@ -226,6 +226,10 @@
         "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
     
     },
+
+    "BLACKLISTED_NODES":[
+        
+    ],
     
     "NODES_PORTION":8,
     "MAX_CONNECTIONS":15,

@@ -264,8 +264,8 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     //Try to find proofs
     for(let validatorHandler of validatorsUrls){
 
-        //No sense to ask someone whose proof we already have
-        if(proofRef.V[validatorHandler.pubKey]) continue
+        //No sense to ask someone whose proof we already have or get the answer from node in blacklist
+        if(proofRef.V[validatorHandler.pubKey] || CONFIG.SYMBIOTE.BLACKLISTED_NODES.includes(validatorHandler.pureUrl)) continue
 
         fetch(validatorHandler.pureUrl+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
             
