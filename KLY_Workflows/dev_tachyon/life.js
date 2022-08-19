@@ -4,7 +4,7 @@ import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF, VERIFY} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {GET_BLOCKS_FOR_FUTURE_WRAPPER,START_VERIFY_POLLING} from './verification.js'
+import {PROGRESS_CHECKER, START_VERIFY_POLLING} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -858,6 +858,16 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
+    //______________Take the data from VERIFICATION_THREAD to create another structure - PROGRESS_CHECKER____________
+
+
+    SYMBIOTE_META.PROGRESS_CHECKER={
+
+        PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
+
+    }
+
+
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
@@ -1137,8 +1147,11 @@ RUN_SYMBIOTE=async()=>{
 
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
-        //Start verification process
+        //0.Start verification process
         await START_VERIFY_POLLING()
+
+        //1.Start progress checker
+        setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
 
         let promises=[]
 

@@ -405,7 +405,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    
+
         let bftProofsIsOk=false, // so optimistically
     
             {V:votes,S:skipPoint} = proofs,
@@ -586,34 +586,45 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
+//Function to make time-by-time checkups if VERIFICATION_THREAD is in progress and validator(if your node is a validator)
+//should start preparation to skip blocks of another dormant validator
 
-PREPARE_TO_SKIP_PROCEDURE = blockID => {
+PROGRESS_CHECKER = () => {
 
-    LOG('Skip procedure is going to start. But let`s await firstly for block','W')
 
-    setTimeout(async()=>{
+    if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
 
-        let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+        LOG('Still no progress(hashes are equal)','W')
 
-        if(!block){
+    }else LOG(`VerificationThread works fine! (${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} => ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM})`,'S')
 
-            global.SKIP_METADATA={
+
+
+    // LOG('Skip procedure is going to start. But let`s await firstly for block','W')
+
+    // setTimeout(async()=>{
+
+    //     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+
+    //     if(!block){
+
+    //         global.SKIP_METADATA={
             
-                GOING_TO_SKIP_STATE:true
+    //             GOING_TO_SKIP_STATE:true
         
-            }
+    //         }
     
-            SKIP_METADATA.BLOCK_TO_SKIP=blockID
+    //         SKIP_METADATA.BLOCK_TO_SKIP=blockID
 
-            SKIP_METADATA.VOTES={}
+    //         SKIP_METADATA.VOTES={}
 
-            //Go through the validators and grab proofs to skip
+    //         //Go through the validators and grab proofs to skip
 
-            let pureUrls = []
+    //         let pureUrls = []
 
-        }
+    //     }
 
-    },CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
+    // },CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
 
 
 },
@@ -720,10 +731,6 @@ START_VERIFY_POLLING=async()=>{
                     //If verification failed - delete block. It will force to find another(valid) block from network
                     else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>console.log('Going to delete'))    
                 
-                }else if (!block && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)){
-
-                    PREPARE_TO_SKIP_PROCEDURE(blockID)
-
                 }
                 
             }
