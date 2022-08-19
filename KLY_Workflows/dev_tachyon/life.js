@@ -35,9 +35,6 @@ global.THREADS_STILL_WORKS={VERIFICATION:false,GENERATION:false}
 
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
-//To stop/start block generation
-global.STOP_GEN_BLOCK={}
-
 //Your decrypted private key
 global.PRIVATE_KEY=null
 
@@ -149,7 +146,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
         await GENERATE_PHANTOM_BLOCKS_PORTION()    
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(()=>GEN_BLOCKS_START_POLLING(),CONFIG.SYMBIOTE.BLOCK_TIME)
+        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(GEN_BLOCKS_START_POLLING,CONFIG.SYMBIOTE.BLOCK_TIME)
         
         CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
         &&
@@ -1010,7 +1007,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 */
-GRAB_ACTIVITY_FLAGS=()=>{
+START_AWAKENING_PROCEDURE=()=>{
     
     fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET_URL+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
@@ -1185,7 +1182,7 @@ RUN_SYMBIOTE=async()=>{
                 
             GEN_BLOCKS_START_POLLING()
 
-            GRAB_ACTIVITY_FLAGS()
+            START_AWAKENING_PROCEDURE()
             
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 

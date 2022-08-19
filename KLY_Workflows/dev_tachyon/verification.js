@@ -589,8 +589,10 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 //Function to make time-by-time checkups if VERIFICATION_THREAD is in progress and validator(if your node is a validator)
 //should start preparation to skip blocks of another dormant validator
 
-PROGRESS_CHECKER = () => {
+PROGRESS_CHECKER = async() => {
 
+    //Check if no block currently being verified
+    
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
 
@@ -650,24 +652,25 @@ PROGRESS_CHECKER = () => {
            //Validator handler is {pubKey,pureUrl}
             for(let validatorHandler of validatorsUrls){
 
+                console.log('SEND ',validatorHandler)
                 //Propose to skip
-                fetch(validatorHandler.pureUrl+`/votetoskip`,
+                // fetch(validatorHandler.pureUrl+`/votetoskip`,
                 
-                    {
-                        method:'POST',
+                //     {
+                //         method:'POST',
 
-                        body:JSON.stringify(sendPayload)
-                    }
+                //         body:JSON.stringify(sendPayload)
+                //     }
 
-                ).then(r=>r.json()).then(
+                // ).then(r=>r.json()).then(
             
-                    proof => {
+                //     proof => {
 
                         
 
-                    }
+                //     }
             
-                ).catch(_=>{})
+                // ).catch(_=>{})
 
             }
 
@@ -725,7 +728,7 @@ START_VERIFY_POLLING=async()=>{
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
 
-        THREADS_STILL_WORKS.GENERATION=true
+        THREADS_STILL_WORKS.VERIFICATION=true
 
 
         let prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
@@ -834,7 +837,7 @@ START_VERIFY_POLLING=async()=>{
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
         
-        THREADS_STILL_WORKS.GENERATION=false
+        THREADS_STILL_WORKS.VERIFICATION=false
 
     
     }else{
