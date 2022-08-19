@@ -280,7 +280,7 @@ shareValidatorsProofs=async(a,q)=>{
 
         else{
 
-            //Try to find proof from db - it should be aggegated proof
+            //Try to find proof from db - it should be aggregated proof
             let aggregatedProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
             if(aggregatedProof) !a.aborted && a.end(JSON.stringify(aggregatedProof))
@@ -324,38 +324,36 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
         
         {
             V:<Validator who sent this message to you>,
-            P:<CHECKSUM_OF_VT:BlockID to sign and to skip>,
-            S:<Signature of blockID e.g. SIG(BLOCK_ID)>
+            P:<Hash of VERIFICATION_THREAD>,
+            B:<BlockID>
+            H:<Block hash>
+            S:<Signature of commitment e.g. SIG(P+B+H)>
         }
     
     */
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP && SKIP_METADATA?.GOING_TO_SKIP_STATE){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
-        let {P:skipPointAndBlockID,V:validatorWhoPropose,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPropose,P:skipPointAndBlockID,B:blockID,H:blockHash,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
         //Decide should we check and perform this message
         overviewIsOk = 
 
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
             &&
-            SKIP_METADATA.SKIP_POINT_AND_BLOCK_ID===skipPointAndBlockID
-            &&
-            await VERIFY(skipPointAndBlockID,proposerSignature,validatorWhoPropose)
+            await VERIFY(skipPointAndBlockID+blockID+blockHash,proposerSignature,validatorWhoPropose)
 
         if(overviewIsOk){
 
             //Share with validator what we have
             !a.aborted&&a.end(JSON.stringify({V:CONFIG.SYMBIOTE.PUB,S:await SIG(skipPointAndBlockID)}))
-    
-            //Put to local cache of votes
-            SKIP_METADATA.VOTES[validatorWhoPropose]=proposerSignature
+
         
         }else !a.aborted&&a.end('Overview failed')
 
         
 
-    }else !a.aborted&&a.end('Node is not in <GOING_TO_SKIP_STATE> or TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')
+    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')
         
 
 }),

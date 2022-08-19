@@ -596,7 +596,93 @@ PROGRESS_CHECKER = () => {
 
         LOG('Still no progress(hashes are equal)','W')
 
-    }else LOG(`VerificationThread works fine! (${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} => ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM})`,'S')
+
+        let promises = []
+
+
+        if(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL){
+
+            fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
+            
+                proof => proof.A && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+        
+            ).catch(_=>{})
+
+        }else{
+
+            //0. Initially,try to get pubkey => node_ip binding 
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+        
+                pubKey => promises.push(GET_STUFF(pubKey).then(
+            
+                    url => ({pubKey,pureUrl:url.payload.url})
+                    
+                ))
+    
+            )
+
+                
+            let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+
+
+               /*
+    
+            Propose to skip is an object with the following structure 
+        
+            {
+                V:<Validator who sent this message to you>,
+                P:<Hash of VERIFICATION_THREAD>,
+                B:<BlockID>
+                H:<Block hash>
+                S:<Signature of commitment e.g. SIG(P+B+H)>
+            }
+    
+            */
+                sendPayload = {
+                    V:CONFIG.SYMBIOTE.PUB,
+                    P:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
+                    B:'',
+                    H:'',
+                    S:''
+                }
+
+        
+           //Validator handler is {pubKey,pureUrl}
+            for(let validatorHandler of validatorsUrls){
+
+                //Propose to skip
+                fetch(validatorHandler.pureUrl+`/votetoskip`,
+                
+                    {
+                        method:'POST',
+
+                        body:JSON.stringify(sendPayload)
+                    }
+
+                ).then(r=>r.json()).then(
+            
+                    proof => {
+
+                        
+
+                    }
+            
+                ).catch(_=>{})
+
+            }
+
+        
+        }
+
+
+    }else{
+
+        LOG(`VerificationThread works fine! (${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} => ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM})`,'S')
+
+        //Update the progress point
+        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
+
+    }
 
 
 
