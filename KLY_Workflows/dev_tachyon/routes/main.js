@@ -75,7 +75,7 @@ acceptBlocks=a=>{
                             
                             Promise.all(BROADCAST('/block',block))
                                 
-                        ).catch(e=>{})
+                        ).catch(_=>{})
                             
                     )
 
@@ -326,27 +326,54 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             V:<Validator who sent this message to you>,
             P:<Hash of VERIFICATION_THREAD>,
             B:<BlockID>
-            H:<Block hash>
-            S:<Signature of commitment e.g. SIG(P+B+H)>
+            S:<Signature of commitment e.g. SIG(P+B)>
         }
     
     */
     
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
-        let {V:validatorWhoPropose,P:skipPointAndBlockID,B:blockID,H:blockHash,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPropose,P:skipPoint,B:blockID,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
-        //Decide should we check and perform this message
-        overviewIsOk = 
+            threadID = blockID?.split(":")?.[0],
 
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
-            &&
-            await VERIFY(skipPointAndBlockID+blockID+blockHash,proposerSignature,validatorWhoPropose)
+            //Decide should we check and perform this message
+            overviewIsOk = 
+
+                SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipPoint //we can vote to skip only if we have the same "stop" point
+                &&
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
+                &&
+                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE.ALL)
+                &&
+                await VERIFY(skipPoint+":"+blockID,proposerSignature,validatorWhoPropose)
+
 
         if(overviewIsOk){
 
-            //Share with validator what we have
-            !a.aborted&&a.end(JSON.stringify({V:CONFIG.SYMBIOTE.PUB,S:await SIG(skipPointAndBlockID)}))
+            //0. Check if we already vote for this block
+            let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).then(proof=>proof[CONFIG.SYMBIOTE.PUB]).catch(e=>false)
+
+            console.log('MyVote is ',myVote)
+
+            if(myVote){
+
+                //If we have voted for block => send it
+                
+
+            }else{
+
+                //Otherwise - check if block present locally
+                //We vote against skip if we have block
+                
+                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
+
+                console.log('BLOCK PRESENT ',block)
+
+            
+            }
+
+            !a.aborted&&a.end(JSON.stringify({V:CONFIG.SYMBIOTE.PUB,S:await SIG(skipPoint+":"+blockID)}))
 
         
         }else !a.aborted&&a.end('Overview failed')

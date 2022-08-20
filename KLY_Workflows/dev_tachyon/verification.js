@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF, SIG} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -591,90 +591,98 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 PROGRESS_CHECKER = async() => {
 
-    //Check if no block currently being verified
-    
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
 
-        LOG('Still no progress(hashes are equal)','W')
+        LOG('Still no progress(hashes are equal). Going to initiate <SKIP_VALIDATOR> procedure','W')
 
 
         let promises = []
 
 
-        if(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL){
-
-            fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
-            
-                proof => proof.A && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
-            ).catch(_=>{})
-
-        }else{
-
-            //0. Initially,try to get pubkey => node_ip binding 
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-        
-                pubKey => promises.push(GET_STUFF(pubKey).then(
+            pubKey => promises.push(GET_STUFF(pubKey).then(
             
-                    url => ({pubKey,pureUrl:url.payload.url})
+                url => ({pubKey,pureUrl:url.payload.url})
                     
-                ))
+            ))
     
-            )
+        )
 
-                
-            let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+            
+        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+
+            prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
+
+            validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
+
+            //take the next validator in a row. If it's end of validators pool - start from the first validator in array
+            currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
+        
+            //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
+        
+            blockToProposeToSkip =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
 
 
-               /*
+            // block = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER,
+
+            // validatorToSkipMetadata = 
+
+
+        /*
     
-            Propose to skip is an object with the following structure 
+        Propose to skip is an object with the following structure 
         
             {
                 V:<Validator who sent this message to you>,
                 P:<Hash of VERIFICATION_THREAD>,
                 B:<BlockID>
-                H:<Block hash>
-                S:<Signature of commitment e.g. SIG(P+B+H)>
+                S:<Signature of commitment e.g. SIG(P+B)>
             }
     
-            */
-                sendPayload = {
-                    V:CONFIG.SYMBIOTE.PUB,
-                    P:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
-                    B:'',
-                    H:'',
-                    S:''
+        */
+
+        let sendPayload = {
+                    
+            V:CONFIG.SYMBIOTE.PUB,
+            P:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
+            B:blockToProposeToSkip,
+            S:await SIG(SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM+":"+blockToProposeToSkip)
+       
+        }
+
+
+        console.log('PAYLOAD ',sendPayload)
+
+        //Validator handler is {pubKey,pureUrl}
+        for(let validatorHandler of validatorsUrls){
+     
+            //Propose to skip
+            fetch(validatorHandler.pureUrl+`/votetoskip`,
+                
+                {
+                    method:'POST',
+
+                    body:JSON.stringify(sendPayload)
                 }
 
-        
-           //Validator handler is {pubKey,pureUrl}
-            for(let validatorHandler of validatorsUrls){
+            ).then(r=>r.json()).then(
+            
+                proof => {
 
-                console.log('SEND ',validatorHandler)
-                //Propose to skip
-                // fetch(validatorHandler.pureUrl+`/votetoskip`,
+                    console.log('Received skip approvement ',proof)                        
+
+                }
+            
+            ).catch(e=>{
                 
-                //     {
-                //         method:'POST',
+                console.log('ERRR ',e)
 
-                //         body:JSON.stringify(sendPayload)
-                //     }
+            })
 
-                // ).then(r=>r.json()).then(
-            
-                //     proof => {
-
-                        
-
-                //     }
-            
-                // ).catch(_=>{})
-
-            }
-
-        
         }
 
 

@@ -2,9 +2,9 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF, VERIFY} from './utils.js'
 
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
 import {PROGRESS_CHECKER, START_VERIFY_POLLING} from './verification.js'
+
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import Block from './essences/block.js'
 

@@ -342,6 +342,10 @@
 
     },
 
+    "RESPONSIBILITY_ZONE":{
+        "ALL":true
+    },
+
     "PROOFS_CACHE_SIZE":100000,
 
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
