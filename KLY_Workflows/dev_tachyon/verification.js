@@ -300,7 +300,9 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
     }
 
-    // //In the worst case
+    //* Probably add queries to other nodes
+    //! In the worst case
+    
     // for(let url of allVisibleNodes){
 
     //     let itsProbablyProofs=await fetch(url+`/validatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)

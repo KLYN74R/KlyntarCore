@@ -288,11 +288,12 @@ shareValidatorsProofs=async(a,q)=>{
             else {
 
                 //Else, check if block present localy and create a proof
-                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false) // or get from cache
+                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false), // or get from cache
 
+                    threadID = blockID?.split(":")?.[0]
 
                 //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-                if(block){
+                if(block && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
@@ -315,7 +316,7 @@ shareValidatorsProofs=async(a,q)=>{
 
 
 //Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
-//Here validators exchange commitments among each other to skip some block to continue the VERIFICATION_THREAD
+//Here validators exchange commitments among each other during several rounds(single round in the best case) to skip some block to continue the VERIFICATION_THREAD
 voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     /*
@@ -326,14 +327,15 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             V:<Validator who sent this message to you>,
             P:<Hash of VERIFICATION_THREAD>,
             B:<BlockID>
-            S:<Signature of commitment e.g. SIG(P+B)>
+            R:<Voting round id>
+            S:<Signature of commitment e.g. SIG(P+B+R)>
         }
     
     */
     
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
-        let {V:validatorWhoPropose,P:skipPoint,B:blockID,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPropose,P:skipPoint,B:blockID,R:roundID,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
             threadID = blockID?.split(":")?.[0],
 
@@ -346,7 +348,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
                 &&
                 (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE.ALL)
                 &&
-                await VERIFY(skipPoint+":"+blockID,proposerSignature,validatorWhoPropose)
+                await VERIFY(skipPoint+":"+blockID+":"+roundID,proposerSignature,validatorWhoPropose)
 
 
         if(overviewIsOk){
