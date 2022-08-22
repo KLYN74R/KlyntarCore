@@ -1111,6 +1111,11 @@ verifyBlock=async block=>{
                     //Add metadata of validator
                     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',ACTIVE:true}
     
+                }else if (operation==='TEMP_STOP'){
+    
+                    //If it's temporary stop - we just change the status of validator to "dormant"
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[pubKey].ACTIVE=false
+        
                 }
     
             })
