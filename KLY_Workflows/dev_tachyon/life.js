@@ -470,7 +470,7 @@ RELOAD_STATE = async() => {
     // If it's integrity problem - then we check if snapshot is OK-then we can load data from snapshot
     //In case when snapshot is NOT ok - go to else branch and start sync from the genesis
     
-    if( snapshotIsOk ){
+    if(snapshotIsOk){
 
 
         SYMBIOTE_META.VERIFICATION_THREAD=snapshotVT
@@ -523,6 +523,8 @@ RELOAD_STATE = async() => {
             
             CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
             
+            SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
+
         }
 
         
@@ -761,6 +763,8 @@ PREPARE_SYMBIOTE=async()=>{
                 
                 CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 
+                SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.RANGE
+            
             }
 
         }else{

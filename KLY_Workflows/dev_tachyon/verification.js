@@ -690,7 +690,7 @@ PROGRESS_CHECKER = async() => {
 
     }else{
 
-        LOG(`VerificationThread works fine! (${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} => ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM})`,'S')
+        LOG(`VerificationThread works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM}\x1b[32;1m)`,'S')
 
         //Update the progress point
         SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
@@ -1079,7 +1079,7 @@ verifyBlock=async block=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`BLACKLIST size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`Black size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
@@ -1259,6 +1259,14 @@ verifyBlock=async block=>{
         
         )
 
+        //Finally - decrease the counter to snapshot
+        
+        SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER--
+
+        let snapCounter=SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER
+
+
+
 
         //Make commit to staging area
         await SYMBIOTE_META.METADATA.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
@@ -1297,7 +1305,7 @@ verifyBlock=async block=>{
         &&
         CONFIG.SYMBIOTE.SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
         &&
-        block.i%CONFIG.SYMBIOTE.SNAPSHOTS.RANGE===0//if it's time to make snapshot(e.g. next 200th block generated)
+        snapCounter===0//if it's time to make snapshot(e.g. next 200th block generated)
         &&
         await MAKE_SNAPSHOT()
 
