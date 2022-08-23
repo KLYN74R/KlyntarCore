@@ -142,7 +142,7 @@
     },
         
     "VT_GT_NORMAL_DIFFERENCE":100,
-    "VERIFICATION_THREAD_POLLING":5000,
+    "VERIFICATION_THREAD_POLLING_INTERVAL":5000,
 
     "BLOCK_TIME":3000,
 
@@ -155,7 +155,7 @@
     "EVENTS_MEMPOOL_SIZE":300000,         
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
-    "AWAIT_FOR_AFK_VALIDATOR":60000,
+    "PROGRESS_CHECKER_INTERVAL":60000,
     
     "CHECKPOINT":{
         "HEIGHT":-1,
@@ -338,6 +338,7 @@
     "SKIP_BFT_PROOFS":{
 
         "ACTIVATE":true,
+        
         "POINT":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:1250"
 
     },
@@ -349,6 +350,12 @@
     "PROOFS_CACHE_SIZE":100000,
 
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
+
+    "FORKS_PREVENTION_NODES":[
+        "http://kly-node.io",
+        "http://localhost:6665",
+        "http://localhost:6664"
+    ],
 
     "GET_CURRENT_VALIDATORS_SET_URL":"http://localhost:6666",
 

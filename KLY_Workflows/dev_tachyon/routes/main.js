@@ -327,7 +327,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             V:<Validator who sent this message to you>,
             P:<Hash of VERIFICATION_THREAD>,
             B:<BlockID>
-            R:<Voting round id>
+            R:<round ID> - id of round of "test" queries before the solution
             S:<Signature of commitment e.g. SIG(P+B+R)>
         }
     

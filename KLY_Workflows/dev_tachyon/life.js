@@ -1,8 +1,8 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF, VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY} from './utils.js'
 
-import {PROGRESS_CHECKER, START_VERIFY_POLLING} from './verification.js'
+import {PROGRESS_CHECKER,START_VERIFICATION_THREAD} from './verification.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -864,7 +864,14 @@ PREPARE_SYMBIOTE=async()=>{
 
     SYMBIOTE_META.PROGRESS_CHECKER={
 
-        PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
+        PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
+
+        // votes per roundes when we need to skip the block
+        VOTES:{
+
+            ACTIVE:false
+
+        }
 
     }
 
@@ -1149,10 +1156,10 @@ RUN_SYMBIOTE=async()=>{
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
         //0.Start verification process
-        await START_VERIFY_POLLING()
+        await START_VERIFICATION_THREAD()
 
         //1.Start progress checker
-        setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.AWAIT_FOR_AFK_VALIDATOR)
+        setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
         let promises=[]
 
