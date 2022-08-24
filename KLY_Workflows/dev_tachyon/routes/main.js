@@ -293,7 +293,7 @@ shareValidatorsProofs=async(a,q)=>{
                     threadID = blockID?.split(":")?.[0]
 
                 //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-                if(block && SYMBIOTE_META.PROGRESS_CHECKER.FREEZE!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
+                if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
@@ -393,7 +393,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
         
         }else !a.aborted&&a.end('Overview failed')
-        
+
 
     }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')
         

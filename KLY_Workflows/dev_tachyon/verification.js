@@ -546,7 +546,17 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
                 let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignatures.map(Base58.decode))),
 
-                    aggregatedProof = {V:{[aggregatedPubKeyOfVoters]:aggregatedSignature},A:pubKeysOfAFKValidators}
+                    aggregatedProof = {
+                        
+                        V:{
+                            
+                            [aggregatedPubKeyOfVoters]:aggregatedSignature
+                        
+                        },
+                        
+                        A:pubKeysOfAFKValidators
+                    
+                    }
 
 
 
@@ -591,20 +601,40 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
-    //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE
-    
+
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
+    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
+    
     let majority = 2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
 
     console.log('PC ',SYMBIOTE_META.PROGRESS_CHECKER)
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
 
+        //! Make SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE = false after all to activate checker function again
+        //* ✅And make SKIP_POINTS and APPROVE_POINTS zero
+
+        let signaForMyProof
+
         if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority){
 
+            //Here we create proof to skip the block
+            signaForMyProof = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP)
 
+        }else {
 
-        }else {}
+            //Here we create proof to approve the block - that's why we need a hash
+
+            let blockHash = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),
+
+                signaForMyProof = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP)
+
+        }
 
 
     }else {
@@ -703,7 +733,7 @@ PROGRESS_CHECKER=async()=>{
 
             //If we still haven't any proof - then freeze the ability to generate proofs for block to avoid situation when our node generate both proofs - to "skip" and to "accept"
 
-            SYMBIOTE_META.PROGRESS_CHECKER.FREEZE=blockToSkip
+            SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=blockToSkip
 
         }
 
@@ -777,6 +807,14 @@ PROGRESS_CHECKER=async()=>{
 
         //Update the progress point
         SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
+
+        SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
+
+        SYMBIOTE_META.PROGRESS_CHECKER.VOTES={}
+
+        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS=0
+
+        SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS=0
 
     }
 

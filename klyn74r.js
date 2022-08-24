@@ -383,7 +383,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
     LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
 
-    LOG(`Server configuration is \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
+    LOG(`Server is working on \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 
     LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
 
