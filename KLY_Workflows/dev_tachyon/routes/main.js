@@ -293,7 +293,7 @@ shareValidatorsProofs=async(a,q)=>{
                     threadID = blockID?.split(":")?.[0]
 
                 //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-                if(block && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
+                if(block && SYMBIOTE_META.PROGRESS_CHECKER.FREEZE!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
@@ -335,6 +335,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
     
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
+        
         let {V:validatorWhoPropose,P:skipPoint,B:blockID,D:desicion,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
             threadID = blockID?.split(":")?.[0],
@@ -357,10 +358,22 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
             
+            let propositionToSkip = {
+                
+                V:CONFIG.SYMBIOTE.PUB,
+                P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+                B:blockID,
+                D:false,
+                S:''
+           
+            }
+
+
             if(myVote){
 
                 //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
-                
+
+                propositionToSkip.D=false
 
             }else{
 
@@ -369,14 +382,17 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
                 
                 let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
 
-            
+                propositionToSkip.D=!block
+
+                
             }
 
-            !a.aborted&&a.end(JSON.stringify({V:CONFIG.SYMBIOTE.PUB,S:await SIG(skipPoint+":"+blockID)}))
+            propositionToSkip.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+propositionToSkip.D)
+
+            !a.aborted&&a.end(JSON.stringify(propositionToSkip))
 
         
         }else !a.aborted&&a.end('Overview failed')
-
         
 
     }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')

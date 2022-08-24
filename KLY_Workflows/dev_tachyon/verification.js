@@ -592,13 +592,23 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 START_VOTES_CHECK_POLLING=()=>{
 
     //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE
-
     
+    //Firstly,check if we have enough votes to at least one of variant
+    let majority = 2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
 
 
-    setTimeout(START_VOTES_CHECK_POLLING,CONFIG.SYMBIOTE.START_VOTES_CHECK_POLLING)
+    if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
 
-}
+        //Check 
+
+    }else {
+
+        //If still not enough commitments - start another iteration
+        setTimeout(START_VOTES_CHECK_POLLING,CONFIG.SYMBIOTE.START_VOTES_CHECK_POLLING)
+
+    }
+
+},
 
 
 
@@ -687,12 +697,11 @@ PROGRESS_CHECKER=async()=>{
 
         }
 
+
         propositionToSkip.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+propositionToSkip.D) //initially - send test proposition
 
         propositionToSkip = JSON.stringify(propositionToSkip)
 
-
-        console.log('PAYLOAD ',propositionToSkip)
 
         //Validator handler is {pubKey,pureUrl}
         for(let validatorHandler of validatorsUrls){
@@ -703,14 +712,12 @@ PROGRESS_CHECKER=async()=>{
                 {
                     method:'POST',
 
-                    body:JSON.stringify(propositionToSkip)
+                    body:propositionToSkip
                 }
 
             ).then(r=>r.json()).then(
         
                 async alsoProposition => {
-
-                    console.log('Received skip approvement ',alsoProposition)
 
                     //If everything is OK and validator was stopped on the same point - in this case we receive the same proposition object from validator
 
