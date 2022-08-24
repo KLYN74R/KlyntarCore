@@ -864,16 +864,18 @@ PREPARE_SYMBIOTE=async()=>{
 
     SYMBIOTE_META.PROGRESS_CHECKER={
 
+        //to avoid async problems
+        ACTIVE:false,
+
+        //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
         PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
 
-        // votes per roundes when we need to skip the block
-        VOTES:{
-
-            ACTIVE:false
-
-        }
+        //votes of validators to make sure that validators will vote to one of possible solution (skip/accept block)
+        VOTES:{}
 
     }
+
+
 
 
     //_____________________________________Set some values to stuff cache___________________________________________
@@ -1022,7 +1024,7 @@ START_AWAKENING_PROCEDURE=()=>{
     
     fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET_URL+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
-        LOG(`Received list of current validators.Preparing to <ALIVE_VALIDATOR> procedure`,'S')
+        LOG(`Received list of current validators.Preparing to \x1b[31;1m<ALIVE_VALIDATOR>\x1b[32;1m procedure`,'S')
 
         let promises=[]
 

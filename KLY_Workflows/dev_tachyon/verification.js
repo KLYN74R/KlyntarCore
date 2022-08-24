@@ -589,122 +589,149 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-PROGRESS_CHECKER_LOGIC = async() => {
-
-    //Make false when we receive proofs to skip block
-    //SYMBIOTE_META.PROGRESS_CHECKER.VOTES.ACTIVE=false
-
-    //To repeat function permanently
-    //setTimeout(PROGRESS_CHECKER_LOGIC,CONFIG.SYMBIOTE.SKIP_PROCEDURE_INTERVAL)
-
-    LOG('Still no progress(hashes are equal). Going to initiate \x1b[32;1m<SKIP_VALIDATOR>\u001b[38;5;3m procedure','W')
-
-    let promises = []
-
-
-    //0. Initially,try to get pubkey => node_ip binding 
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-    
-        pubKey => promises.push(GET_STUFF(pubKey).then(
-        
-            url => ({pubKey,pureUrl:url.payload.url})
-                
-        ))
-
-    )
-
-        
-    let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
-
-        prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
-
-        validatorsPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
-
-        //take the next validator in a row. If it's end of validators pool - start from the first validator in array
-        currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
-    
-        //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
-        currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
-    
-        blockToSkip =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
-
-
-    /*
-
-    Propose to skip is an object with the following structure 
-    
-        {
-            V:<Validator who sent this message to you>,
-            P:<Hash of VERIFICATION_THREAD>,
-            B:<BlockID>
-            R:<round ID> - the test rounds is a test queries to know how many validators are ready to skip this block
-            S:<Signature of commitment e.g. SIG(P+B+R)>
-        }
-
-    */
-
-
-    let sendPayload = {
-                
-        V:CONFIG.SYMBIOTE.PUB,
-        P:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
-        B:blockToSkip,
-        R:0,
-        S:await SIG(SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM+":"+blockToSkip+":"+0) //initially - send test proposition
-   
-    }
-
-
-    console.log('PAYLOAD ',sendPayload)
-
-    //Validator handler is {pubKey,pureUrl}
-    for(let validatorHandler of validatorsUrls){
- 
-        //Propose to skip
-        fetch(validatorHandler.pureUrl+`/votetoskip`,
-            
-            {
-                method:'POST',
-
-                body:JSON.stringify(sendPayload)
-            }
-
-        ).then(r=>r.json()).then(
-        
-            proof => {
-
-                console.log('Received skip approvement ',proof)
-
-            }
-        
-        ).catch(e=>{
-            
-            console.log('ERRR ',e)
-
-        })
-
-    }
-
-},
-
-
-
 //Function to make time-by-time checkups if VERIFICATION_THREAD is in progress and validator(if your node is a validator)
-//should start preparation to skip blocks of another dormant validator
+//Should start preparation to skip blocks of another dormant validator
 
-PROGRESS_CHECKER = async() => {
+PROGRESS_CHECKER=async()=>{
+
+    //If we already "wait" for votes - skip checker iteration
+    if(SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE) return
 
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
 
+        SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE=true
 
-        if(SYMBIOTE_META.PROGRESS_CHECKER.VOTES.ACTIVE) return //if we already in process - skip further logic
+        LOG('Still no progress(hashes are equal). Going to initiate \x1b[32;1m<SKIP_VALIDATOR>\u001b[38;5;3m procedure','W')
 
-        else SYMBIOTE_META.PROGRESS_CHECKER.VOTES.ACTIVE=true //otherwise - start the SKIP_VALIDATOR procedure
+        let promises = []
 
-        global.COUNTER=0
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+    
+            pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+                url => ({pubKey,pureUrl:url.payload.url})
+                
+            ))
 
-        PROGRESS_CHECKER_LOGIC()
+        )
+
+        
+        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+
+            prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
+
+            validatorsPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
+
+            //take the next validator in a row. If it's end of validators pool - start from the first validator in array
+            currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
+    
+            //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
+    
+            blockToSkip = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
+
+
+            /*
+
+            Propose to skip is an object with the following structure 
+    
+                {
+                    V:<Validator who sent this message to you>,
+                    P:<Hash of VERIFICATION_THREAD>,
+                    B:<BlockID>
+                    D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
+                    S:<Signature of commitment e.g. SIG(P+B+D)>
+                }
+
+            */
+
+
+        let propositionToSkip = {
+                
+            V:CONFIG.SYMBIOTE.PUB,
+            P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+            B:blockToSkip,
+            D:true,
+            S:''
+       
+        }
+
+
+        //Check if we already have own proofs for block <blockToSkip>
+        let myProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockToSkip)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockToSkip).catch(e=>false)
+
+        
+        if(myProof) propositionToSkip.D=false // if we have block - then vote to stop <SKIP_VALIDATOR> procedure
+        
+        else {
+
+            //If we still haven't any proof - then freeze the ability to generate proofs for block to avoid situation when our node generate both proofs - to "skip" and to "accept"
+
+            SYMBIOTE_META.PROGRESS_CHECKER.FREEZE=blockToSkip
+
+        }
+
+        propositionToSkip.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+propositionToSkip.D) //initially - send test proposition
+
+        propositionToSkip = JSON.stringify(propositionToSkip)
+
+
+        console.log('PAYLOAD ',propositionToSkip)
+
+        //Validator handler is {pubKey,pureUrl}
+        for(let validatorHandler of validatorsUrls){
+ 
+            //Propose to skip
+            fetch(validatorHandler.pureUrl+`/votetoskip`,
+            
+                {
+                    method:'POST',
+
+                    body:JSON.stringify(propositionToSkip)
+                }
+
+            ).then(r=>r.json()).then(
+        
+                async alsoProposition => {
+
+                    console.log('Received skip approvement ',alsoProposition)
+
+                    //If everything is OK and validator was stopped on the same point - in this case we receive the same proposition object from validator
+
+                    /*
+                    
+                        alsoProposition is object like
+
+                           {
+                                V:<Validator who sent this message to you>,
+                                P:<Hash of VERIFICATION_THREAD>,
+                                B:<BlockID>
+                                D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
+                                S:<Signature of commitment e.g. SIG(P+B+D)>
+                    
+                            }
+                    
+                    */
+
+                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+alsoProposition.D,alsoProposition.S,validatorHandler.pubKey)){
+
+                        //If signature is OK - we can store this commitment locally
+
+                        SYMBIOTE_META.PROGRESS_CHECKER.VOTES[validatorHandler.pubKey]=alsoProposition
+
+                    }
+
+                }
+        
+            ).catch(e=>{
+            
+                console.log('ERRR ',e)
+
+            })
+
+        }
 
 
     }else{
@@ -715,35 +742,6 @@ PROGRESS_CHECKER = async() => {
         SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
 
     }
-
-
-
-    // LOG('Skip procedure is going to start. But let`s await firstly for block','W')
-
-    // setTimeout(async()=>{
-
-    //     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
-
-    //     if(!block){
-
-    //         global.SKIP_METADATA={
-            
-    //             GOING_TO_SKIP_STATE:true
-        
-    //         }
-    
-    //         SKIP_METADATA.BLOCK_TO_SKIP=blockID
-
-    //         SKIP_METADATA.VOTES={}
-
-    //         //Go through the validators and grab proofs to skip
-
-    //         let pureUrls = []
-
-    //     }
-
-    // },CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
-
 
 },
 
@@ -1098,7 +1096,7 @@ verifyBlock=async block=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`Black size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`Blacklist size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________

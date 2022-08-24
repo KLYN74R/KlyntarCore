@@ -327,8 +327,9 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             V:<Validator who sent this message to you>,
             P:<Hash of VERIFICATION_THREAD>,
             B:<BlockID>
-            R:<round ID> - id of round of "test" queries before the solution
-            S:<Signature of commitment e.g. SIG(P+B+R)>
+            R:<RoundID> - the test rounds is a test queries to know how many validators are ready to skip this block
+            D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
+            S:<Signature of commitment e.g. SIG(P+B+R+D)>
         }
     
     */
@@ -356,8 +357,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             //0. Check if we already vote for this block
             let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).then(proof=>proof[CONFIG.SYMBIOTE.PUB]).catch(e=>false)
 
-            console.log('MyVote is ',myVote)
-
+            
             if(myVote){
 
                 //If we have voted for block => send it
@@ -369,8 +369,6 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
                 //We vote against skip if we have block
                 
                 let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
-
-                console.log('BLOCK PRESENT ',block)
 
             
             }
