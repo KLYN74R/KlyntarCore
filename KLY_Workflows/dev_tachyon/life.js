@@ -872,7 +872,7 @@ PREPARE_SYMBIOTE=async()=>{
         //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
         PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
 
-        FREEZE:'',
+        BLOCK_TO_SKIP:'',
 
         //votes of validators to make sure that validators will vote to one of possible solution (skip/accept block)
         VOTES:{},

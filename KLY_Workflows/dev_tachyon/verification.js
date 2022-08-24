@@ -607,7 +607,6 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     
     let majority = 2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
@@ -619,20 +618,42 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         //! Make SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE = false after all to activate checker function again
         //* ✅And make SKIP_POINTS and APPROVE_POINTS zero
 
-        let signaForMyProof
-
         if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority){
 
             //Here we create proof to skip the block
-            signaForMyProof = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP)
+
+            /*
+            
+                Proof is object
+
+                {
+                    P:<SKIP_POINT => Hash of VERIFICATION_THREAD>
+
+                    B:<BLOCK_ID>
+
+                    S:<Signature => SIG(SKIP_POINT+":"+BLOCK_ID)>
+
+                }
+            
+            */
+
+            let myProof = {
+                
+                P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+
+                B:SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP,
+
+                S:await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP)
+
+            }
+
+            //And share our "skip" proof among other validators & nodes
+            fetch()
+
 
         }else {
 
-            //Here we create proof to approve the block - that's why we need a hash
-
-            let blockHash = await SYMBIOTE_META.BLOCKS.get(SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),
-
-                signaForMyProof = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP)
+            //If majority have voted for approving block - then just find proofs and do nothing
 
         }
 
@@ -655,7 +676,7 @@ PROGRESS_CHECKER=async()=>{
 
 
     //If we already "wait" for votes - skip checker iteration
-    if(SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE) return
+    if(SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE && SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM) return
 
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
