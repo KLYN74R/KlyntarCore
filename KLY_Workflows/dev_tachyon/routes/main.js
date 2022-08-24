@@ -293,7 +293,7 @@ shareValidatorsProofs=async(a,q)=>{
                     threadID = blockID?.split(":")?.[0]
 
                 //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-                if(block && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE.ALL)){
+                if(block && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
                     
@@ -327,16 +327,15 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
             V:<Validator who sent this message to you>,
             P:<Hash of VERIFICATION_THREAD>,
             B:<BlockID>
-            R:<RoundID> - the test rounds is a test queries to know how many validators are ready to skip this block
             D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
-            S:<Signature of commitment e.g. SIG(P+B+R+D)>
+            S:<Signature of commitment e.g. SIG(P+B+D)>
         }
     
     */
     
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
-        let {V:validatorWhoPropose,P:skipPoint,B:blockID,R:roundID,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPropose,P:skipPoint,B:blockID,D:desicion,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
             threadID = blockID?.split(":")?.[0],
 
@@ -347,20 +346,20 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
                 &&
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
                 &&
-                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONE.ALL)
+                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP.ALL)
                 &&
-                await VERIFY(skipPoint+":"+blockID+":"+roundID,proposerSignature,validatorWhoPropose)
+                await VERIFY(skipPoint+":"+blockID+":"+desicion,proposerSignature,validatorWhoPropose)
 
 
         if(overviewIsOk){
 
             //0. Check if we already vote for this block
-            let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).then(proof=>proof[CONFIG.SYMBIOTE.PUB]).catch(e=>false)
+            let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
             
             if(myVote){
 
-                //If we have voted for block => send it
+                //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
                 
 
             }else{

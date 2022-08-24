@@ -156,6 +156,7 @@
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
     "PROGRESS_CHECKER_INTERVAL":60000,
+    "START_VOTES_CHECK_POLLING":3000,
     
     "CHECKPOINT":{
         "HEIGHT":-1,
@@ -343,8 +344,20 @@
 
     },
 
-    "RESPONSIBILITY_ZONE":{
-        "ALL":true
+    "RESPONSIBILITY_ZONES":{
+
+        "SHARE_PROOFS":{
+
+            "ALL":true
+
+        },
+
+        "VOTE_TO_SKIP":{
+
+            "ALL":true
+
+        }
+
     },
 
     "PROOFS_CACHE_SIZE":100000,

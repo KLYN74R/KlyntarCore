@@ -589,6 +589,20 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
+START_VOTES_CHECK_POLLING=()=>{
+
+    //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE
+
+    
+
+
+    setTimeout(START_VOTES_CHECK_POLLING,CONFIG.SYMBIOTE.START_VOTES_CHECK_POLLING)
+
+}
+
+
+
+
 //Function to make time-by-time checkups if VERIFICATION_THREAD is in progress and validator(if your node is a validator)
 //Should start preparation to skip blocks of another dormant validator
 
@@ -662,7 +676,7 @@ PROGRESS_CHECKER=async()=>{
         //Check if we already have own proofs for block <blockToSkip>
         let myProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockToSkip)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockToSkip).catch(e=>false)
 
-        
+
         if(myProof) propositionToSkip.D=false // if we have block - then vote to stop <SKIP_VALIDATOR> procedure
         
         else {
@@ -721,6 +735,8 @@ PROGRESS_CHECKER=async()=>{
 
                         SYMBIOTE_META.PROGRESS_CHECKER.VOTES[validatorHandler.pubKey]=alsoProposition
 
+                        alsoProposition.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++
+
                     }
 
                 }
@@ -732,6 +748,9 @@ PROGRESS_CHECKER=async()=>{
             })
 
         }
+
+
+        START_VOTES_CHECK_POLLING()
 
 
     }else{

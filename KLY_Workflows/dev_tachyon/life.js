@@ -583,11 +583,13 @@ PREPARE_SYMBIOTE=async()=>{
     if(!CONFIG.PRELUDE.NO_SPINNERS){
 
         initSpinner = ora({
+        
             color:'red',
+        
             prefixText:`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[0m`
+        
         }).start()
 
-        
     }
     
 
@@ -871,7 +873,11 @@ PREPARE_SYMBIOTE=async()=>{
         PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
 
         //votes of validators to make sure that validators will vote to one of possible solution (skip/accept block)
-        VOTES:{}
+        VOTES:{},
+
+        SKIP_POINTS:0,
+        
+        APPROVE_POINTS:0
 
     }
 
