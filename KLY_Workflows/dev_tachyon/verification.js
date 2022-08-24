@@ -589,22 +589,27 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-START_VOTES_CHECK_POLLING=()=>{
+START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
     //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE
     
-    //Firstly,check if we have enough votes to at least one of variant
+    //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     let majority = 2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
 
+    console.log('PC ',SYMBIOTE_META.PROGRESS_CHECKER)
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
 
-        //Check 
+        if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority){
+
+
+
+        }else {}
+
 
     }else {
 
-        //If still not enough commitments - start another iteration
-        setTimeout(START_VOTES_CHECK_POLLING,CONFIG.SYMBIOTE.START_VOTES_CHECK_POLLING)
+        setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
 
     }
 
@@ -618,13 +623,14 @@ START_VOTES_CHECK_POLLING=()=>{
 
 PROGRESS_CHECKER=async()=>{
 
+
     //If we already "wait" for votes - skip checker iteration
     if(SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE) return
 
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
 
-        SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE=true
+        SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE=true //to avoid running PROGRESS_CHECKER function next time when we still don't get consensus about some point
 
         LOG('Still no progress(hashes are equal). Going to initiate \x1b[32;1m<SKIP_VALIDATOR>\u001b[38;5;3m procedure','W')
 
@@ -655,6 +661,10 @@ PROGRESS_CHECKER=async()=>{
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
     
             blockToSkip = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
+
+
+        //Check if this thread (validator) is not in our zone of responsibility in cluster
+        if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP[currentValidatorToCheck])) return
 
 
             /*
@@ -698,7 +708,7 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        propositionToSkip.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+propositionToSkip.D) //initially - send test proposition
+        propositionToSkip.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+propositionToSkip.D) //initially - send test proposition
 
         propositionToSkip = JSON.stringify(propositionToSkip)
 
@@ -733,6 +743,7 @@ PROGRESS_CHECKER=async()=>{
                                 S:<Signature of commitment e.g. SIG(P+B+D)>
                     
                             }
+
                     
                     */
 
@@ -757,7 +768,7 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        START_VOTES_CHECK_POLLING()
+        START_TO_COUNT_COMMITMENTS_TO_SKIP()
 
 
     }else{
