@@ -373,46 +373,51 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
         if(overviewIsOk){
 
+            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.VOTES[CONFIG.SYMBIOTE.PUB]
+
+            if(myCommitment){
+
+                !a.aborted&&a.end(JSON.stringify(myCommitment))
+
+            }else {
+
+                //0. Check if we already generate proof for this block or if we already have an aggregated proof(so, majority already have voted to approve and not to skip the block <blockID>)
+                let proofAlreadyGenerated = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
 
-
-            //0. Check if we already vote for this block or if we already have an aggregated proof(so, majority already have voted to approve and not to skip the block <blockID>)
-            let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
-
-            
-            let myCommitment = {
+                let myCommitmentTemplate = {
                 
-                V:CONFIG.SYMBIOTE.PUB,
-                P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
-                B:blockID,
-                D:false,
-                S:''
+                    V:CONFIG.SYMBIOTE.PUB,
+                    P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+                    B:blockID,
+                    D:false,
+                    S:''
            
-            }
+                }
 
+                if(proofAlreadyGenerated){
 
-            if(myVote){
+                    //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
 
-                //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
+                    myCommitmentTemplate.D=false
 
-                myCommitment.D=false
+                }else{
+            
+                    //Otherwise - check if block present locally. We vote against skip if we have block
 
-            }else{
+                    let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
 
-                //Otherwise - check if block present locally
-                //We vote against skip if we have block
-                
-                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
-
-                myCommitment.D=!block
+                    myCommitmentTemplate.D=!block
 
                 
+                }
+
+                myCommitmentTemplate.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+myCommitmentTemplate.D)
+
+                !a.aborted&&a.end(JSON.stringify(myCommitmentTemplate))
+
+
             }
-
-            myCommitment.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+myCommitment.D)
-
-            !a.aborted&&a.end(JSON.stringify(myCommitment))
-
         
         }else !a.aborted&&a.end('Overview failed')
 
