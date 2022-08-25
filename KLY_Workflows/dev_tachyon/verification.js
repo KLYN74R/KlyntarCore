@@ -351,7 +351,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
         //We should skip the block in case when skipPoint exsists in validators proofs and it equal to checksum of VERIFICATION_THREAD state
-        shouldSkip = proofs.S && SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM === proofs.S
+        shouldSkip = proofs.P && BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) === proofs.P
 
 
 
@@ -627,7 +627,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
             let aggregatedSignature='',
 
-                verificationThreadChecksum = SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+                validatorsMetadataHash = SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
                 
                 blockID = SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP
                 
@@ -708,7 +708,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
 
-                let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[],P:verificationThreadChecksum}
+                let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[],P:validatorsMetadataHash}
 
 
                 //And store proof locally
@@ -737,7 +737,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
                     
                         A:pubKeysOfAFKValidators,
 
-                        P:verificationThreadChecksum
+                        P:validatorsMetadataHash
                 
                     }
 
@@ -816,7 +816,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
                 if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[validatorHandler.pubKey]) continue
 
-                fetch(url+'/shareskipproofs',{
+                fetch(validatorHandler.pureUrl+'/shareskipproofs',{
 
                     method:'POST',
     
@@ -824,7 +824,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     
                 }).then(res=>res.json()).then(
                     
-                    counterProof => {
+                    async counterProof => {
 
                         let isOK =
 
@@ -844,10 +844,100 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             }
 
 
+            setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+
+
         } //If majority have voted for approving block - then just find proofs and do nothing
+        else{
+            console.log('THIS BRANCH')
+        }
+
+    }else {
+
+        //Re-send commitments to validators whose votes we still don't have
+
+        let promises = []
+
+        //0. Initially,try to get pubkey => node_ip binding 
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+    
+            pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+                url => ({pubKey,pureUrl:url.payload.url})
+                
+            ))
+
+        )
+
+        
+        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)), 
+        
+            myCommitmentInJSON = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB])
+        
+        
+        for(let validatorHandler of validatorsUrls){
+
+            if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]) continue
+
+            fetch(validatorHandler.pureUrl+`/skipcommitments`,
+            
+                {
+                    method:'POST',
+            
+                    body:myCommitmentInJSON
+                }
+
+            ).then(r=>r.json()).then(
+    
+                async counterCommitment => {
+
+                    //If everything is OK and validator was stopped on the same point - in this case we receive the same <CommitmentToSkip> object from validator
+
+                    /*
+                
+                        CommitmentToSkip is object like
+
+                           {
+                                V:<Validator who sent this message to you>,
+                                P:<Hash of VERIFICATION_THREAD>,
+                                B:<BlockID>
+                                D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
+                                S:<Signature of commitment e.g. SIG(P+B+D)>
+                
+                            }
+
+                    */
+
+                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP+":"+counterCommitment.D,counterCommitment.S,validatorHandler.pubKey)){
+
+                        //If signature is OK - we can store this commitment locally
+
+                        if(!SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]){
+
+                            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+
+                            counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++    
+
+                        }
+
+                    }
+
+                }
+    
+        
+            ).catch(e=>{
+        
+                console.log('ERRR ',e)
+
+            })
 
 
-    }else setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+        }
+
+
+        setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+
+    }
 
 },
 
@@ -863,7 +953,7 @@ PROGRESS_CHECKER=async()=>{
     
         SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE //If we already "wait" for votes - skip checker iteration
         &&
-        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM //we shouldn't start another session if our VERIFICATION_THREAD works normally and have a progress since previous iteration
+        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) //we shouldn't start another session if our VERIFICATION_THREAD works normally and have a progress since previous iteration
         &&
         !SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START //but if it's first iteration after node launch - then we shoudn't skip following logic 
 
@@ -873,7 +963,7 @@ PROGRESS_CHECKER=async()=>{
 
 
 
-    if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM){
+    if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))){
 
 
         SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE=true //to avoid running PROGRESS_CHECKER function next time when we still don't get consensus about some point
@@ -962,8 +1052,8 @@ PROGRESS_CHECKER=async()=>{
 
         myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
 
-        //! Finally, check if PROGRESS_POINT still equal to VERIFICATION_THREAD.CHECKSUM
-        if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM) return
+        //! Finally, check if PROGRESS_POINT still equal to hash of VALIDATORS_METADATA
+        if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))) return
 
 
         // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1013,9 +1103,14 @@ PROGRESS_CHECKER=async()=>{
 
                         //If signature is OK - we can store this commitment locally
 
-                        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+                        
+                        if(!SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]){
 
-                        counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++
+                            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+
+                            counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++    
+
+                        }
 
                     }
 
@@ -1035,11 +1130,15 @@ PROGRESS_CHECKER=async()=>{
 
     }else{
 
-        LOG(`VerificationThread works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM}\x1b[32;1m)`,'S')
+        let progress=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
+
+        LOG(`VerificationThread works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${progress}\x1b[32;1m)`,'S')
+
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
 
         //Update the progress metadata
         
-        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM
+        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=progress
 
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
@@ -1608,7 +1707,6 @@ verifyBlock=async block=>{
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         SYMBIOTE_META.BLACKLIST.clear()
-
         
 
 

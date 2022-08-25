@@ -874,7 +874,7 @@ PREPARE_SYMBIOTE=async()=>{
         ACTIVE:false,
 
         //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
-        PROGRESS_POINT:SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM,
+        PROGRESS_POINT:BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
         BLOCK_TO_SKIP:'',
 
@@ -1071,7 +1071,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
         */
 
-        let myMetadataHash = BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB])
+        let myMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
 
         let helloMessage = {
             

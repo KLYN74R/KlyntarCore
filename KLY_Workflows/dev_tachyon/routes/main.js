@@ -469,7 +469,7 @@ voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
     */
     let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
 
-        validatorVTMetadataHash=BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V]),
+        validatorVTMetadataHash=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V])),
 
         shouldSignToAlive =
 
