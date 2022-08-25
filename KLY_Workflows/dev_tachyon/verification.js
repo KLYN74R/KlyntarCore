@@ -610,11 +610,146 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     
-    let majority = 2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
+    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)
 
     console.log('PC ',SYMBIOTE_META.PROGRESS_CHECKER)
 
+
     if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
+
+
+        let validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS)
+
+
+        if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length>=majority){
+
+            //Aggregate proofs and push to VALIDATORS_PROOFS_CACHE with appropriate form
+
+            let aggregatedSignature='',
+
+                verificationThreadChecksum = SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+                
+                blockID = SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP
+                
+            /*
+
+                In this case, structure should looks like this
+
+                {
+                    V:{
+
+                        "AggregatedPubKey as property name":<Signature as value>
+
+                    }                   
+                    A:[Pub1,Pub2,Pub3] //array of AFK validators,
+
+                    P:<skipPoint => verificationThreadChecksum>
+                }
+
+                Example:
+
+                {
+                    
+                    V:{
+
+                        "6E4t37dNa7oasEHbHBUZ2QiY67pY9fAPNAATT1TZBG9DULuhZJADswySonHEGQc7nT":"pj7Fg0WIegALdbCGZXFG/Xoa5nbHaFpYqlZfA3/qtUt51WQ/jPlvIdpYwnDQca0WEx2CalDiHJqRekHn6VQ9THRh4NWpfKeB5rIT+89+8QeXZl7UpjUJ61ce84JxmbXg"
+
+                    },
+                    
+                    A:["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT"],
+
+                    P:
+                
+                }
+        
+                If we have 2 properties where the first one is BLS aggregated pubkey of validators(as property name) and aggregated signature as value
+                
+                the second pair is array - then it's case when the
+            
+                *    First object - aggregated BLS pubkeys & signatures of validators
+            
+                *    Second object - array of AFK validators
+
+
+
+
+
+                ==========================================================
+
+                Single proof look like this
+
+                {
+                    V:<Validator's pubkey>
+
+                    P:<SKIP_POINT => Hash of VERIFICATION_THREAD>
+
+                    B:<BLOCK_ID>
+
+                    S:<Signature => SIG(SKIP_POINT+":"+BLOCK_ID)>
+
+                }
+        
+        
+            */        
+
+            let pureSignatures = []
+
+            validatorsWithVerifiedSignaturesWhoVotedToSkip.forEach(pubKey=>{
+
+                pureSignatures.push(Buffer.from(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[pubKey],'base64'))
+
+            })
+            
+
+            aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
+        
+        
+            if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length===SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length){
+
+                //If 100% of validators approve this block - OK,accept it and aggregate data
+
+                let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[],P:verificationThreadChecksum}
+
+
+                //And store proof locally
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>{})
+
+
+            }else {
+            
+                //Firstly - find AFK validators
+                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+                    
+                                                            .filter( pubKey => !validatorsWithVerifiedSignaturesWhoVotedToSkip.includes(pubKey) ) //get validators whose votes we don't have
+                    
+                                                            .map(Base58.decode), //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
+        
+            
+                    aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignaturesWhoVotedToSkip.map(Base58.decode))),
+
+                    aggregatedProof = {
+                    
+                        V:{
+                        
+                            [aggregatedPubKeyOfVoters]:aggregatedSignature
+                    
+                        },
+                    
+                        A:pubKeysOfAFKValidators,
+
+                        P:verificationThreadChecksum
+                
+                    }
+
+
+                //And store proof locally
+                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>{})
+            
+            }
+
+            return
+        
+        }
 
         //! Make SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE = false after all to activate checker function again
         //* ✅And make SKIP_POINTS and APPROVE_POINTS zero
@@ -628,6 +763,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
                 Proof is object
 
                 {
+                    V:<Validator's pubkey>
+
                     P:<SKIP_POINT => Hash of VERIFICATION_THREAD>
 
                     B:<BLOCK_ID>
@@ -665,7 +802,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         
                 pubKey => promises.push(GET_STUFF(pubKey).then(
             
-                    url => url.payload.url
+                    url => ({pubKey,pureUrl:url.payload.url})
                     
                 ))
     
@@ -675,31 +812,42 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
             
             
-            for(let url of validatorsUrls) {
+            for(let validatorHandler of validatorsUrls){
 
-                fetch(url+'/acceptskipproofs',{
+                if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[validatorHandler.pubKey]) continue
+
+                fetch(url+'/shareskipproofs',{
 
                     method:'POST',
     
                     body:myProof
     
-                }).catch(e=>{})
+                }).then(res=>res.json()).then(
+                    
+                    counterProof => {
+
+                        let isOK =
+
+                            SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===counterProof.P //we can vote to skip only if we have the same "stop" point
+                            &&
+                            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(counterProof.V) //if prover is validator
+                            &&
+                            await VERIFY(counterProof.P+":"+counterProof.B,counterProof.S,counterProof.V) //check signature finally
+
+                        
+                        if(isOK) SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[counterProof.V]=counterProof
+
+                    }
+                    
+                ).catch(e=>{})
 
             }
 
 
-        }else {
-
-            //If majority have voted for approving block - then just find proofs and do nothing
-
-        }
+        } //If majority have voted for approving block - then just find proofs and do nothing
 
 
-    }else {
-
-        setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
-
-    }
+    }else setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
 
 },
 

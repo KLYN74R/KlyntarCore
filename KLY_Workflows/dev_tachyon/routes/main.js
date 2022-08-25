@@ -269,7 +269,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
     
 */
 
-acceptSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+shareSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let skipProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
 
@@ -291,6 +291,8 @@ acceptSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted((
     if(shouldAccept){
 
         SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V]=skipProof
+
+        !a.aborted && a.end(JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[CONFIG.SYMBIOTE.PUB])) //response with own proof
 
     }else !a.aborted && a.end('Overview failed')
     
@@ -640,7 +642,7 @@ UWS_SERVER
 
 .post('/skipcommitments',shareSkipCommitments)
 
-.post('/acceptskipproofs',acceptSkipProofs)
+.post('/shareskipproofs',shareSkipProofs)
 
 .post('/hc_proofs',acceptHostchainsProofs)
 
