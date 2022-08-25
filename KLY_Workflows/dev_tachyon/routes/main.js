@@ -182,8 +182,7 @@ VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 
 */
 
-//! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-               
+            
 acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
@@ -260,6 +259,26 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 
 
+acceptSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
+
+
+        shouldAccept = 
+        
+        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS
+        &&
+        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
+        &&
+        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
+
+
+    
+}),
+
+
+
+
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 // return simpleSignature
 
@@ -292,7 +311,7 @@ shareValidatorsProofs=async(a,q)=>{
 
                     threadID = blockID?.split(":")?.[0]
 
-                //! Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
+                //* Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
                 if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
@@ -315,13 +334,13 @@ shareValidatorsProofs=async(a,q)=>{
 
 
 
-//Function to allow validators to change status of validator to "offline" to stop verify his blocks and continue to verify blocks of other validators in VERIFICATION_THREAD
-//Here validators exchange commitments among each other during several rounds(single round in the best case) to skip some block to continue the VERIFICATION_THREAD
-voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+//Function to allow validators to change status of validator to "offline" to stop verify his blocks(his thread in general) and continue to verify blocks of other validators in VERIFICATION_THREAD
+//Here validators exchange commitments among each other to skip some block to continue the VERIFICATION_THREAD
+shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     /*
     
-        Propose to skip is an object with the following structure 
+        <CommitmentToSkip> is an object with the following structure 
         
         {
             V:<Validator who sent this message to you>,
@@ -336,7 +355,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
 
         
-        let {V:validatorWhoPropose,P:skipPoint,B:blockID,D:desicion,S:proposerSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPromise,P:skipPoint,B:blockID,D:desicion,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
             threadID = blockID?.split(":")?.[0],
 
@@ -345,20 +364,23 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
                 SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipPoint //we can vote to skip only if we have the same "stop" point
                 &&
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPropose)
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPromise)
                 &&
                 (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP.ALL)
                 &&
-                await VERIFY(skipPoint+":"+blockID+":"+desicion,proposerSignature,validatorWhoPropose)
+                await VERIFY(skipPoint+":"+blockID+":"+desicion,hisSignature,validatorWhoPromise)
 
 
         if(overviewIsOk){
 
-            //0. Check if we already vote for this block
+
+
+
+            //0. Check if we already vote for this block or if we already have an aggregated proof(so, majority already have voted to approve and not to skip the block <blockID>)
             let myVote = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
 
             
-            let propositionToSkip = {
+            let myCommitment = {
                 
                 V:CONFIG.SYMBIOTE.PUB,
                 P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
@@ -373,7 +395,7 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
                 //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
 
-                propositionToSkip.D=false
+                myCommitment.D=false
 
             }else{
 
@@ -382,14 +404,14 @@ voteToSkipValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborte
                 
                 let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
 
-                propositionToSkip.D=!block
+                myCommitment.D=!block
 
                 
             }
 
-            propositionToSkip.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+propositionToSkip.D)
+            myCommitment.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+myCommitment.D)
 
-            !a.aborted&&a.end(JSON.stringify(propositionToSkip))
+            !a.aborted&&a.end(JSON.stringify(myCommitment))
 
         
         }else !a.aborted&&a.end('Overview failed')
@@ -591,11 +613,13 @@ UWS_SERVER
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
+.post('/skipcommitments',shareSkipCommitments)
+
+.post('/acceptskipproofs',acceptSkipProofs)
+
 .post('/hc_proofs',acceptHostchainsProofs)
 
 .post('/votetoalive',voteToAliveValidator)
-
-.post('/votetoskip',voteToSkipValidator)
 
 .post('/block',acceptBlocks)
 

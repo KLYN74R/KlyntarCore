@@ -83,6 +83,10 @@ let graceful=()=>{
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
 
+            fs.writeFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json',JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER))
+
+
+
             if(CONFIG.SYMBIOTE.STORE_VALIDATORS_PROOFS_CACHE){
                 
                 fs.writeFile(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)),()=>{
@@ -864,7 +868,7 @@ PREPARE_SYMBIOTE=async()=>{
     //______________Take the data from VERIFICATION_THREAD to create another structure - PROGRESS_CHECKER____________
 
 
-    SYMBIOTE_META.PROGRESS_CHECKER={
+    let progressCheckerTemplate = {
 
         //to avoid async problems
         ACTIVE:false,
@@ -884,6 +888,10 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
+    SYMBIOTE_META.PROGRESS_CHECKER = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitments.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json')) || progressCheckerTemplate
+
+    
+    SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START=true
 
 
     //_____________________________________Set some values to stuff cache___________________________________________
