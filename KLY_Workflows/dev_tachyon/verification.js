@@ -12,6 +12,7 @@ import Base58 from 'base-58'
 
 
 
+
 global.GETTING_BLOCK_FROM_NETWORK_PROCESS=false
 
 
@@ -190,7 +191,7 @@ GET_BLOCK = (blockCreator,index) => {
     
         }).catch(async error=>{
     
-            LOG(`No block \x1b[36;1m${blockCreator} ### ${index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+            LOG(`No block \x1b[36;1m${blockCreator+":"+index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
     
             LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
@@ -638,6 +639,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             */
 
             let myProof = {
+
+                V:CONFIG.SYMBIOTE.PUB,
                 
                 P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
 
@@ -647,14 +650,42 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
             }
 
+
+            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[CONFIG.SYMBIOTE.PUB]
+
+
+            myProof = JSON.stringify(myProof)
+
             //And share our "skip" proof among other validators & nodes
-            fetch('/acceptskipproofs',{
 
-                method:'POST',
+            let promises = []
 
+            //0. Initially,try to get pubkey => node_ip binding 
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+        
+                pubKey => promises.push(GET_STUFF(pubKey).then(
+            
+                    url => url.payload.url
+                    
+                ))
+    
+            )
+    
+            
+            let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+            
+            
+            for(let url of validatorsUrls) {
 
+                fetch(url+'/acceptskipproofs',{
 
-            })
+                    method:'POST',
+    
+                    body:myProof
+    
+                }).catch(e=>{})
+
+            }
 
 
         }else {
@@ -783,8 +814,10 @@ PROGRESS_CHECKER=async()=>{
 
         myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
 
-        
-        
+        //! Finally, check if PROGRESS_POINT still equal to VERIFICATION_THREAD.CHECKSUM
+        if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM) return
+
+
         // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         // + Go through the validators and share our commitment about skip|approve the block(and validators thread in general) +
         // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -793,6 +826,9 @@ PROGRESS_CHECKER=async()=>{
         //Validator handler is {pubKey,pureUrl}
         for(let validatorHandler of validatorsUrls){
  
+            //If we already have commitment(for example, from previous node launch) then no sense to get it again
+            if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]) continue
+
             //Share our commitment and receive the answers
 
             fetch(validatorHandler.pureUrl+`/skipcommitments`,
@@ -829,7 +865,7 @@ PROGRESS_CHECKER=async()=>{
 
                         //If signature is OK - we can store this commitment locally
 
-                        SYMBIOTE_META.PROGRESS_CHECKER.VOTES[validatorHandler.pubKey]=counterCommitment
+                        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
 
                         counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++
 
@@ -859,7 +895,7 @@ PROGRESS_CHECKER=async()=>{
 
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
-        SYMBIOTE_META.PROGRESS_CHECKER.VOTES={}
+        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS={}
 
         SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS=0
 
@@ -1220,7 +1256,7 @@ verifyBlock=async block=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`Blacklist size(\u001b[38;5;177m${block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\x1b[32;1m ### \u001b[38;5;177m${block.c}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`Blacklist size(\u001b[38;5;177m${block.c+":"+block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
         
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________

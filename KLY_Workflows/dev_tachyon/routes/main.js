@@ -257,22 +257,42 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 }),
 
 
-
+/*
+    
+        SkipProof is object
+        {
+            V:<Validator pubkey>
+            P:<SKIP_POINT => Hash of VERIFICATION_THREAD
+            B:<BLOCK_ID
+            S:<Signature => SIG(SKIP_POINT+":"+BLOCK_ID)
+        }
+    
+*/
 
 acceptSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-    let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
-
+    let skipProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
 
         shouldAccept = 
         
-        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS
-        &&
-        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
-        &&
-        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
+            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SKIP_PROOFS
+            &&
+            SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipProof.P //we can vote to skip only if we have the same "stop" point
+            &&
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(skipProof.V) //if prover is validator
+            &&
+            SYMBIOTE_META.PROGRESS_CHECKER.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) //if this node is validator so should accept the proofs
+            &&
+            !SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V] //if we still don't have proofs from this validator
+            &&
+            await VERIFY(skipProof.P+":"+skipProof.B,skipProof.S,skipProof.V) //check signature finally
 
 
+    if(shouldAccept){
+
+        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V]=skipProof
+
+    }else !a.aborted && a.end('Overview failed')
     
 }),
 
@@ -373,7 +393,7 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
         if(overviewIsOk){
 
-            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.VOTES[CONFIG.SYMBIOTE.PUB]
+            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB]
 
             if(myCommitment){
 

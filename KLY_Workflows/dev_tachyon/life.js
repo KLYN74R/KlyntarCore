@@ -83,8 +83,8 @@ let graceful=()=>{
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
 
+            //Store commitments locally
             fs.writeFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json',JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER))
-
 
 
             if(CONFIG.SYMBIOTE.STORE_VALIDATORS_PROOFS_CACHE){
@@ -879,18 +879,20 @@ PREPARE_SYMBIOTE=async()=>{
         BLOCK_TO_SKIP:'',
 
         //votes of validators to make sure that validators will vote to one of possible solution (skip/accept block)
-        VOTES:{},
+        SKIP_COMMITMENTS:{},
 
         SKIP_POINTS:0,
         
-        APPROVE_POINTS:0
+        APPROVE_POINTS:0,
+
+        SKIP_PROOFS:{}
 
     }
 
 
     SYMBIOTE_META.PROGRESS_CHECKER = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitments.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json')) || progressCheckerTemplate
 
-    
+
     SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START=true
 
 
@@ -1176,7 +1178,9 @@ RUN_SYMBIOTE=async()=>{
         //0.Start verification process
         await START_VERIFICATION_THREAD()
 
-        //1.Start progress checker
+        //1.Start progress checker. Only validators do it coz only them votes to skip some blocks or approve
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
+        &&
         setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
         let promises=[]
