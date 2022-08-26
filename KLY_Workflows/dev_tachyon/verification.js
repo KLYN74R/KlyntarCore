@@ -608,20 +608,47 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
+    //If we track the progress - then no sense to do smth - in this case counting commitments and create a proofs
+    if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))) return
+
+
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     
-    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)
+    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length),
+    
+        validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
+
+        skipPoints = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS,
+
+        approvePoints = SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS,
+
+        stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - (skipPoints+approvePoints)
+
 
     console.log('PC ',SYMBIOTE_META.PROGRESS_CHECKER)
+
+
+    //The case when we know for sure that commitments sharing ceremony failed and no solution for SKIP or APPROVE
+    //This mean that we shouldn't create skip proofs because some honest validators will send the blocks for us & other validators and the rest of nodes
+    if(skipPoints+stillNoVoted<majority && approvePoints+stillNoVoted<majority){
+
+        console.log('WRONG CEREMONY')
+
+        //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
+        SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
+
+    }
 
 
     if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
 
 
-        let validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS)
+        console.log('SKIP PROOFS IS ',SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS)
 
 
         if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length>=majority){
+
+            console.log('Going here')
 
             //Aggregate proofs and push to VALIDATORS_PROOFS_CACHE with appropriate form
 
@@ -788,7 +815,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             }
 
 
-            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[CONFIG.SYMBIOTE.PUB]
+            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[CONFIG.SYMBIOTE.PUB]=myProof
 
 
             myProof = JSON.stringify(myProof)
@@ -849,7 +876,12 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
         } //If majority have voted for approving block - then just find proofs and do nothing
         else{
+
             console.log('THIS BRANCH')
+
+            //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
+            SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
+
         }
 
     }else {
@@ -1102,7 +1134,6 @@ PROGRESS_CHECKER=async()=>{
                     if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+counterCommitment.D,counterCommitment.S,validatorHandler.pubKey)){
 
                         //If signature is OK - we can store this commitment locally
-
                         
                         if(!SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]){
 

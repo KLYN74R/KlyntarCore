@@ -393,6 +393,9 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
                 await VERIFY(skipPoint+":"+blockID+":"+desicion,hisSignature,validatorWhoPromise)
 
 
+
+        console.log('Accepted commitment query here ',validatorWhoPromise,' => ',skipPoint)
+
         if(overviewIsOk){
 
             let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB]
@@ -642,11 +645,11 @@ UWS_SERVER
 
 .post('/skipcommitments',shareSkipCommitments)
 
-.post('/shareskipproofs',shareSkipProofs)
-
 .post('/hc_proofs',acceptHostchainsProofs)
 
 .post('/votetoalive',voteToAliveValidator)
+
+.post('/shareskipproofs',shareSkipProofs)
 
 .post('/block',acceptBlocks)
 
