@@ -623,6 +623,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     //This mean that we shouldn't create skip proofs because some honest validators will send the blocks for us & other validators and the rest of nodes
     if(skipPoints+stillNoVoted<majority && approvePoints+stillNoVoted<majority){
 
+        LOG(`Ceremony done. Wait for block & proofs \x1b[31;1m(S:${skipPoints} | A:${approvePoints})`,'I')
+
         //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
@@ -634,6 +636,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
         if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length>=majority){
 
+            LOG(`Going to aggregate \x1b[34;1mSKIP_PROOFS\x1b[32;1m, because majority voted for skip`,'S')
 
             //Aggregate proofs and push to VALIDATORS_PROOFS_CACHE with appropriate form
 
@@ -818,7 +821,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             
             let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
             
-            
+            LOG(`Going to share proofs to skip.\x1b[34;1mSKIP_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${majority}`,'I')
+
             for(let validatorHandler of validatorsUrls){
 
                 if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[validatorHandler.pubKey]) continue
@@ -857,6 +861,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         } //If majority have voted for approving block - then just find proofs and do nothing
         else{
 
+            LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${majority}`,'I')
+
             //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
             SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
@@ -884,6 +890,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         
             myCommitmentInJSON = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB])
         
+        LOG(`Going to share \x1b[34;1mSKIP_COMMITMENTS\x1b[36;1m. Current progress stats is (\x1b[31;1mskip/approve/validators\x1b[36;1m => \x1b[32;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS}/${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length}\x1b[36;1m)`,'I')
         
         for(let validatorHandler of validatorsUrls){
 
