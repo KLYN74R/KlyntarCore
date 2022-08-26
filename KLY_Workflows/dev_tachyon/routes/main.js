@@ -394,8 +394,6 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
 
 
-        console.log('Accepted commitment query here ',validatorWhoPromise,' => ',skipPoint)
-
         if(overviewIsOk){
 
             let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB]
