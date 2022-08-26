@@ -143,6 +143,7 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
 GEN_BLOCKS_START_POLLING=async()=>{
 
+
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
         //With this we say to system:"Wait,we still processing the block"
@@ -1155,6 +1156,7 @@ START_AWAKENING_PROCEDURE=()=>{
                 LOG(`♛ Hooray!!! Going to share this TX to resurrect your node. Keep working :)`,'S')
 
                 //Create TX here
+
 
             }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')
 

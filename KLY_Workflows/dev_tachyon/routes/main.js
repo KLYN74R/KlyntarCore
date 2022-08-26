@@ -281,7 +281,7 @@ shareSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
             &&
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(skipProof.V) //if prover is validator
             &&
-            SYMBIOTE_META.PROGRESS_CHECKER.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) //if this node is validator so should accept the proofs
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) //if this node is validator so should accept the proofs
             &&
             !SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V] //if we still don't have proofs from this validator
             &&

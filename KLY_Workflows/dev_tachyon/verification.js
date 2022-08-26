@@ -625,14 +625,10 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - (skipPoints+approvePoints)
 
 
-    console.log('PC ',SYMBIOTE_META.PROGRESS_CHECKER)
-
 
     //The case when we know for sure that commitments sharing ceremony failed and no solution for SKIP or APPROVE
     //This mean that we shouldn't create skip proofs because some honest validators will send the blocks for us & other validators and the rest of nodes
     if(skipPoints+stillNoVoted<majority && approvePoints+stillNoVoted<majority){
-
-        console.log('WRONG CEREMONY')
 
         //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
@@ -643,12 +639,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
 
 
-        console.log('SKIP PROOFS IS ',SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS)
-
-
         if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length>=majority){
 
-            console.log('Going here')
 
             //Aggregate proofs and push to VALIDATORS_PROOFS_CACHE with appropriate form
 
@@ -723,7 +715,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
             validatorsWithVerifiedSignaturesWhoVotedToSkip.forEach(pubKey=>{
 
-                pureSignatures.push(Buffer.from(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[pubKey],'base64'))
+                pureSignatures.push(Buffer.from(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[pubKey].S,'base64'))
 
             })
             
@@ -877,8 +869,6 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         } //If majority have voted for approving block - then just find proofs and do nothing
         else{
 
-            console.log('THIS BRANCH')
-
             //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
             SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
@@ -957,11 +947,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
                 }
     
         
-            ).catch(e=>{
-        
-                console.log('ERRR ',e)
-
-            })
+            ).catch(e=>{})
 
 
         }
@@ -1147,11 +1133,7 @@ PROGRESS_CHECKER=async()=>{
 
                 }
         
-            ).catch(e=>{
-            
-                console.log('ERRR ',e)
-
-            })
+            ).catch(e=>{})
 
         }
 
@@ -1165,7 +1147,6 @@ PROGRESS_CHECKER=async()=>{
 
         LOG(`VerificationThread works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${progress}\x1b[32;1m)`,'S')
 
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
 
         //Update the progress metadata
         
@@ -1230,9 +1211,9 @@ START_VERIFICATION_THREAD=async()=>{
                 
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
 
         }else {
@@ -1263,9 +1244,11 @@ START_VERIFICATION_THREAD=async()=>{
     
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
 
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                         
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
+
+                LOG(`Going to skip \x1b[31;1m${currentValidatorToCheck}:${currentSessionMetadata.INDEX+1}`,'S')
 
     
             }else{
