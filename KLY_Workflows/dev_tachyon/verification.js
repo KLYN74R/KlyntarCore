@@ -536,16 +536,9 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
                 //Firstly - find AFK validators
-                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-                        
-                                                        .filter( pubKey => !validatorsWithVerifiedSignatures.includes(pubKey) ) //get validators whose votes we don't have
-                        
-                                                        .map(Base58.decode) //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
-            
-
-
+                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.filter(pubKey=>!validatorsWithVerifiedSignatures.includes(pubKey)),
                 
-                let aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignatures.map(Base58.decode))),
+                     aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignatures.map(Base58.decode))),
 
                     aggregatedProof = {
                         
@@ -737,13 +730,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             }else {
             
                 //Firstly - find AFK validators
-                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
-                    
-                                                            .filter( pubKey => !validatorsWithVerifiedSignaturesWhoVotedToSkip.includes(pubKey) ) //get validators whose votes we don't have
-                    
-                                                            .map(Base58.decode), //decode from base58 format to raw buffer(need for .aggregatePublicKeys() function)
+                let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.filter(pubKey=>!validatorsWithVerifiedSignaturesWhoVotedToSkip.includes(pubKey)),
         
-            
                     aggregatedPubKeyOfVoters = Base58.encode(await bls.aggregatePublicKeys(validatorsWithVerifiedSignaturesWhoVotedToSkip.map(Base58.decode))),
 
                     aggregatedProof = {
