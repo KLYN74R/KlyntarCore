@@ -138,6 +138,8 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
+    GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
+
 
 
 
@@ -229,11 +231,11 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     for(let i=0;i<phantomBlocksNumber;i++){
 
 
-        let eventsArray=await GET_EVENTS(),
+        let eventsArray=await GET_EVENTS(), validatorsStuff = await GET_VALIDATORS_STUFF_EVENTS()
             
-            blockCandidate=new Block(eventsArray),
+            blockCandidate=new Block(eventsArray,validatorsStuff),
                         
-            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
+            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.v,blockCandidate.i,blockCandidate.p)
     
 
         blockCandidate.sig=await SIG(hash)
@@ -608,18 +610,20 @@ PREPARE_SYMBIOTE=async()=>{
     //Contains default set of properties for major part of potential use-cases on symbiote
     global.SYMBIOTE_META={
         
-        MEMPOOL:[],//to hold onchain events here(contract calls,txs,delegations and so on)
+        MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
+
+        VALIDATORS_MEMPOOL:[], //to hold events to add to VALIDATORS_STUFF section in block
         
-        //Сreate mapping for accout and it's state to optimize processes while we check blocks-not to read/write to db many times
-        ACCOUNTS:new Map(),// ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
+        //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
+        ACCOUNTS:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
 
-        EVENTS_STATE:new Map(),// EVENT_KEY(on symbiote) => EVENT_VALUE
+        EVENTS_STATE:new Map(), //EVENT_KEY(on symbiote) => EVENT_VALUE
 
-        BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another block
+        BLACKLIST:new Set(), //To sift addresses which spend more than has when we check another block
 
-        NEAR:[],//Peers to exchange data with
+        NEAR:[], //Peers to exchange data with
 
-        STUFF_CACHE:new Map(),// BLS pubkey => destination(domain:port,node ip addr,etc.) | 
+        STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
         VALIDATORS_PROOFS_CACHE:new Map(Object.entries(cachedProofs)),
 
@@ -1036,12 +1040,13 @@ PREPARE_SYMBIOTE=async()=>{
 
 /*
 
-
+    Function to get approvements from other validators to make your validator instance active again
 
 */
 START_AWAKENING_PROCEDURE=()=>{
     
-    fetch(CONFIG.SYMBIOTE.GET_CURRENT_VALIDATORS_SET_URL+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
+
+    fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
         LOG(`Received list of current validators.Preparing to \x1b[31;1m<ALIVE_VALIDATOR>\x1b[32;1m procedure`,'S')
 
@@ -1063,7 +1068,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
         /*
     
-            helloMessage looks like this
+            AwakeRequestMessage looks like this
      
             {
                 "V":<Pubkey of validator>
@@ -1074,7 +1079,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
         let myMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
 
-        let helloMessage = {
+        let awakeRequestMessage = {
             
             V:CONFIG.SYMBIOTE.PUB,
 
@@ -1086,7 +1091,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
         for(let url of pureUrls) {
 
-            pingBackMsgs.push(fetch(url+'/votetoalive',{method:'POST',body:JSON.stringify(helloMessage)})
+            pingBackMsgs.push(fetch(url+'/awakerequest',{method:'POST',body:JSON.stringify(awakeRequestMessage)})
             
                 .then(r=>r.json())
                 
@@ -1155,7 +1160,44 @@ START_AWAKENING_PROCEDURE=()=>{
 
                 LOG(`♛ Hooray!!! Going to share this TX to resurrect your node. Keep working :)`,'S')
 
-                //Create TX here
+                //Create AwakeMessage here
+
+                let awakeMessage = {
+
+                    V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
+                   
+                    P:aggregatedPub, //Approver's aggregated BLS pubkey
+
+                    S:aggregatedSignatures,
+
+                    H:myMetadataHash,
+
+                    A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
+
+                }
+
+
+                //And share it
+
+                fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/vmessage',{
+
+                    method:'POST',
+
+                    body:JSON.stringify({
+
+                        T:'AWAKE',
+                        
+                        M:awakeMessage
+
+                    })
+
+                }).then(r=>r.text()).then(async response=>{
+
+                    response==='OK' && LOG('Ok, validators received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
+
+                }).catch(e=>LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W'))
+
+
 
 
             }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')

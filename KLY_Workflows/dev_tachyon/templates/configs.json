@@ -50,6 +50,7 @@
         "VALIDATOR_STAKE":10000,
         "VALIDATOR_REWARD_PERCENTAGE":0.5,
         "EVENTS_LIMIT_PER_BLOCK":30000,
+        "VALIDATORS_STUFF_LIMIT_PER_BLOCK":100,
         "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
     },
     
@@ -266,6 +267,7 @@
         "ACCEPT_VOTE_TO_SKIP":1,
         "ACCEPT_VOTE_TO_ALIVE":1,
         "ACCEPT_SKIP_PROOFS":1,
+        "ACCEPT_VALIDATORS_MESSAGES":1,
 
         "GET_VALIDATORS":1
     },
@@ -371,7 +373,7 @@
         "http://localhost:6664"
     ],
 
-    "GET_CURRENT_VALIDATORS_SET_URL":"http://localhost:6666",
+    "AWAKE_HELPER_NODE":"http://localhost:6666",
 
     "REGION":"EU",
 

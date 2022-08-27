@@ -49,7 +49,7 @@ acceptBlocks=a=>{
                 }
                 
                 
-                let hash=Block.genHash(block.c,block.e,block.i,block.p),
+                let hash=Block.genHash(block.c,block.e,block.v,block.i,block.p),
                 
                 
                     //Check if we can accept this block
@@ -114,7 +114,7 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
         ...and do such "lightweight" verification here to prevent db bloating
         Anyway we can bump with some short-term desynchronization while perform operations over block
         Verify and normalize object
-        Fetch values about fees and MC from some DEZ sources
+        Fetch values about fees and MC from some decentralized sources
     
         The second operand tells us:if buffer is full-it makes whole logical expression FALSE
         Also check if we have normalizer for this type of event
@@ -217,7 +217,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
                     //If no votes from this validator - accept it
                     let [blockCreator,height] = proof.B.split(':'),
             
-                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
+                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.v,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
     
                         //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
                         shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)    
@@ -234,7 +234,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
             }else{
 
                 
-                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.i,block.p)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
+                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.v,block.i,block.p)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
     
 
                 if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
@@ -336,7 +336,7 @@ shareValidatorsProofs=async(a,q)=>{
                 //* Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
                 if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
-                    let blockHash = Block.genHash(block.c,block.e,block.i,block.p),
+                    let blockHash = Block.genHash(block.c,block.e,block.v,block.i,block.p),
                     
                         proofSignature = await SIG(blockID+":"+blockHash)
 
@@ -453,14 +453,13 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
 
 
 
-
 //Function to allow validator to back to the game
 //Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
-voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
     /*
     
-        helloMessage looks like this
+        AwakeRequestMessage looks like this
      
         {
             "V":<Pubkey of validator>
@@ -495,6 +494,7 @@ voteToAliveValidator=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
     }else !a.aborted&&a.end('Overview failed')
 
 }),
+
 
 
 
@@ -582,7 +582,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
             let validatorsBFTProof=await SYMBIOTE_METADATA.VALIDATORS_PROOFS.get(block.i)
 
-            if(BLAKE3(Block.genHash(blockc.c,block.e,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
+            if(BLAKE3(Block.genHash(blockc.c,block.e,block.v,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
                             
                 error => {
                     
@@ -630,8 +630,79 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
     
     }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
 
+}),
+
+
+
+
+//Function to communicate between validators
+//Currently - just to send wake up message to include to block and make dormant validator ACTIVE
+validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    /*
+    
+        Payload is object with the following structure
+
+        {
+      
+            T:<Message type>,
+            M:<Message payload>
+      
+        }
+
+        +++++++++++++++++++++++++
+        + Example: AwakeMessage +
+        +++++++++++++++++++++++++
+
+        {
+            T:"AWAKE",
+            
+            M:{
+                V:{
+
+                    V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
+                   
+                    P:aggregatedPub, //Approver's aggregated BLS pubkey
+
+                    S:aggregatedSignatures,
+
+                    H:myMetadataHash,
+
+                    A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
+
+                }
+            
+            }
+
+        }
+
+
+    */
+    
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES){
+
+        
+        let message = await BODY(v,CONFIG.PAYLOAD_SIZE)
+
+
+        if(message.T==='AWAKE'){
+
+            let messagePayload = message.M
+
+            if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(messagePayload.V)){
+
+
+
+            }
+
+        }else !a.aborted&&a.end('Message not supported')
+
+
+    }else !a.aborted&&a.end('Route is off')
+
+
 })
- 
+
 
 
 
@@ -641,13 +712,15 @@ UWS_SERVER
 
 .post('/acceptvalidatorsproofs',acceptValidatorsProofs)
 
+.post('/awakerequest',awakeRequestMessageHandler)
+
 .post('/skipcommitments',shareSkipCommitments)
 
 .post('/hc_proofs',acceptHostchainsProofs)
 
-.post('/votetoalive',voteToAliveValidator)
-
 .post('/shareskipproofs',shareSkipProofs)
+
+.post('/vmessage',validatorsMessages)
 
 .post('/block',acceptBlocks)
 

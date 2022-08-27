@@ -37,7 +37,7 @@ PERFORM_BLOCK_MULTISET=blocksAndProofs=>{
     
             let {b:block,p:bftProof} = blockAndProof,
     
-                blockHash=Block.genHash(block.c,block.e,block.i,block.p)
+                blockHash=Block.genHash(block.c,block.e,block.v,block.i,block.p)
     
             if(await VERIFY(blockHash,block.sig,block.c)){
     
@@ -177,7 +177,7 @@ GET_BLOCK = (blockCreator,index) => {
     
         .then(r=>r.json()).then(block=>{
     
-            let hash=Block.genHash(block.c,block.e,block.i,block.p)
+            let hash=Block.genHash(block.c,block.e,block.v,block.i,block.p)
                 
             if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
     
@@ -207,7 +207,7 @@ GET_BLOCK = (blockCreator,index) => {
                 
                 if(itsProbablyBlock){
     
-                    let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.i,itsProbablyBlock.p)
+                    let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.v,itsProbablyBlock.i,itsProbablyBlock.p)
                 
                     if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
     
@@ -1216,7 +1216,7 @@ START_VERIFICATION_THREAD=async()=>{
             //Try to get block
             let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
-                blockHash = block && Block.genHash(block.c,block.e,block.i,block.p),
+                blockHash = block && Block.genHash(block.c,block.e,block.v,block.i,block.p),
 
                 validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
         
@@ -1416,12 +1416,14 @@ MAKE_SNAPSHOT=async()=>{
 verifyBlock=async block=>{
 
 
-    let blockHash=Block.genHash(block.c,block.e,block.i,block.p),
+    let blockHash=Block.genHash(block.c,block.e,block.v,block.i,block.p),
 
 
     overviewOk=
     
         block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK
+        &&
+        block.v?.length<=CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH === block.p//it should be a chain
         &&
