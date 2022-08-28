@@ -231,7 +231,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     for(let i=0;i<phantomBlocksNumber;i++){
 
 
-        let eventsArray=await GET_EVENTS(), validatorsStuff = await GET_VALIDATORS_STUFF_EVENTS()
+        let eventsArray=await GET_EVENTS(), validatorsStuff = await GET_VALIDATORS_STUFF_EVENTS(),
             
             blockCandidate=new Block(eventsArray,validatorsStuff),
                         
@@ -739,7 +739,7 @@ PREPARE_SYMBIOTE=async()=>{
         previous=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + JSON.stringify(previous.v) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
         
         initSpinner?.stop()
 

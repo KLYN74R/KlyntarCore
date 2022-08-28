@@ -267,7 +267,9 @@
         "ACCEPT_VOTE_TO_SKIP":1,
         "ACCEPT_VOTE_TO_ALIVE":1,
         "ACCEPT_SKIP_PROOFS":1,
-        "ACCEPT_VALIDATORS_MESSAGES":1,
+        "ACCEPT_VALIDATORS_MESSAGES":{
+            "AWAKE":1
+        },
 
         "GET_VALIDATORS":1
     },

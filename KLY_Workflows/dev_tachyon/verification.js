@@ -4,6 +4,8 @@ import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import MESSAGE_VERIFIERS from './messagesVerifiers.js'
+
 import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
@@ -515,13 +517,11 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                     
             )
 
-
-            aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
-            
-            
+                        
             if(validatorsWithVerifiedSignatures.length===validatorsNumber){
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
+                let aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
 
                 let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[]}
 
@@ -533,6 +533,8 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             }else if(validatorsWithVerifiedSignatures.length>=majority){
                 
+                let aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
+
                 //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
                 //Firstly - find AFK validators
@@ -1451,9 +1453,6 @@ verifyBlock=async block=>{
         let rewardBox={fees:0}
 
 
-        global.SYNC_OPERATIONS={VALIDATORS:{}}
-
-
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
 
@@ -1516,50 +1515,24 @@ verifyBlock=async block=>{
 
         LOG(`Blacklist size(\u001b[38;5;177m${block.c+":"+block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
-        
+
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
 
+        // Some events must be synchronized
 
-        let validatorsToMakeSyncOperations = Object.keys(SYNC_OPERATIONS.VALIDATORS)
+        //_______________________________________PERFORM VALIDATORS_STUFF OPERATIONS____________________________________
 
-        //Currently we have sync operations only for changes in validators' stuff
+        // We need it for consensus too, so do it in a separate structure
 
-        if(validatorsToMakeSyncOperations.length!==0){
+        let validatorsStuffOperations = []
 
-            validatorsToMakeSyncOperations.forEach(pubKey=>{
+        for(let operation of block.v){
 
-                let operation = SYNC_OPERATIONS.VALIDATORS[pubKey]
-    
-                if(operation==='DELETE'){
-    
-                    //Delete from general list of VERIFICATION_THREAD
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.splice(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.indexOf(pubKey),1)
-    
-                    //Delete metadata of validator
-                    delete SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubKey]
-    
-                }else if (operation==='ADD'){
-    
-                    //Add to general list of VERIFICATION_THREAD
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(pubKey)
-    
-                    //Add metadata of validator
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',ACTIVE:true}
-    
-                }else if (operation==='TEMP_STOP'){
-    
-                    //If it's temporary stop - we just change the status of validator to "dormant"
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[pubKey].ACTIVE=false
-        
-                }
-    
-            })
-
-            //Recount root BLS pubkey after all
-            SYMBIOTE_META.STUFF_CACHE.set('VALIDATORS_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))))
-
+            validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.M]?.(operation,true).catch(e=>''))
 
         }
+
+        await Promise.all(validatorsStuffOperations.splice(0))
 
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________

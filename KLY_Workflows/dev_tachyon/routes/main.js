@@ -2,6 +2,8 @@ import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
 import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
+import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
+
 import Block from '../essences/block.js'
 
 
@@ -658,40 +660,38 @@ validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted
             T:"AWAKE",
             
             M:{
-                V:{
 
-                    V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
+                V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
                    
-                    P:aggregatedPub, //Approver's aggregated BLS pubkey
+                P:aggregatedPub, //Approver's aggregated BLS pubkey
 
-                    S:aggregatedSignatures,
+                S:aggregatedSignatures,
 
-                    H:myMetadataHash,
+                H:myMetadataHash,
 
-                    A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
+                A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
 
-                }
-            
             }
 
         }
 
 
     */
-    
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES){
+  
+    let message = await BODY(v,CONFIG.PAYLOAD_SIZE)
 
         
-        let message = await BODY(v,CONFIG.PAYLOAD_SIZE)
-
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES[message.T]){
 
         if(message.T==='AWAKE'){
 
-            let messagePayload = message.M
+            if(await MESSAGE_VERIFIERS[message.M]?.(messagePayload)){
 
-            if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(messagePayload.V)){
+                //Put it to VALIDATORS_MEMPOOL
 
+                SYMBIOTE_META.VALIDATORS_MEMPOOL.push(messagePayload)
 
+                !a.aborted&&a.end('OK')
 
             }
 

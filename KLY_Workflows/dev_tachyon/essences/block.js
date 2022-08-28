@@ -2,15 +2,16 @@ import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
 
 
+
 export default class Block{
     
     constructor(eventsSet,validatorsStuff){
         
         this.c=CONFIG.SYMBIOTE.PUB //block creator(validator) Example:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta
 
-        this.e=eventsSet //array of events(transactions)
+        this.e=eventsSet //array of events(transactions,contract calls, services logic,etc.)
         
-        this.v=validatorsStuff //arry of validators related stuff. For example, sync flags to ressuect validators
+        this.v=validatorsStuff //array of validators related stuff. For example, sync flags to ressuect validators
 
         this.i=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX //index of block in validator's thread
         
