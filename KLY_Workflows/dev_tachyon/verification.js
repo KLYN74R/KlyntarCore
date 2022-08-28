@@ -215,7 +215,7 @@ GET_BLOCK = (blockCreator,index) => {
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
-                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock)
+                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(e=>{})
     
                         return itsProbablyBlock
     
@@ -563,7 +563,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             }else{
 
-                LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/validators/majority\x1b[36;1m => \x1b[32;1m${validatorsWithVerifiedSignatures.length}/${validatorsNumber}/${majority}\x1b[36;1m)`,'I')
+                LOG(`Currently,less than majority have voted for block \x1b[32;1m${blockId} \x1b[36;1m(\x1b[31;1mvotes/majority/validators\x1b[36;1m => \x1b[32;1m${validatorsWithVerifiedSignatures.length}/${majority}/${validatorsNumber}\x1b[36;1m)`,'I')
 
                 START_TO_FIND_PROOFS_FOR_BLOCK(blockId)
 
@@ -711,6 +711,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
             let pureSignatures = []
 
+
             validatorsWithVerifiedSignaturesWhoVotedToSkip.forEach(pubKey=>{
 
                 pureSignatures.push(Buffer.from(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[pubKey].S,'base64'))
@@ -724,6 +725,8 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length===SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length){
 
                 //If 100% of validators approve this block - OK,accept it and aggregate data
+
+                let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode)))
 
                 let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[],P:validatorsMetadataHash}
 
@@ -1142,7 +1145,7 @@ PROGRESS_CHECKER=async()=>{
 
         let progress=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
 
-        LOG(`VerificationThread works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${progress}\x1b[32;1m)`,'S')
+        LOG(`VERIFICATION_THREAD works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${progress}\x1b[32;1m)`,'S')
 
 
         //Update the progress metadata
@@ -1192,6 +1195,8 @@ START_VERIFICATION_THREAD=async()=>{
             nextBlock//to verify block as fast as possible
 
 
+
+            
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         if(!currentSessionMetadata.ACTIVE){
 
@@ -1263,7 +1268,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
                     }
                     //If verification failed - delete block. It will force to find another(valid) block from network
-                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>console.log('Going to delete'))    
+                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
                 
                 }
                 
@@ -1432,8 +1437,6 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
 
 
-
-        
     if(block.i === CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT){
 
         LOG(`Checkpoint verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
@@ -1443,7 +1446,6 @@ verifyBlock=async block=>{
         process.emit('SIGINT')
 
     }
-
 
 
     if(overviewOk){
@@ -1526,11 +1528,13 @@ verifyBlock=async block=>{
 
         let validatorsStuffOperations = []
 
+
         for(let operation of block.v){
 
-            validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.M]?.(operation,true).catch(e=>''))
+            validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.T]?.(operation,true).catch(e=>''))
 
         }
+
 
         await Promise.all(validatorsStuffOperations.splice(0))
 

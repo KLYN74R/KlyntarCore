@@ -1,6 +1,9 @@
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import {VERIFY} from './utils.js'
+
 import Base58 from 'base-58'
+
 
 
 
@@ -43,8 +46,7 @@ export default {
                 //Change the state
 
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].ACTIVE=true
-
-                return
+                
 
             } else return true
                 

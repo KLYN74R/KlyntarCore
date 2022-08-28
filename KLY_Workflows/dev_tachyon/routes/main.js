@@ -484,9 +484,8 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
             !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].ACTIVE//Also,check if validator was marked as ACTIVE:false
             &&
             await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
-        
-            
-            
+
+
     if(shouldSignToAlive){
 
         let myAgreement = await SIG(validatorVTMetadataHash)
@@ -645,39 +644,30 @@ validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted
     
         Payload is object with the following structure
 
-        {
-      
-            T:<Message type>,
-            M:<Message payload>
-      
-        }
 
         +++++++++++++++++++++++++
         + Example: AwakeMessage +
         +++++++++++++++++++++++++
 
         {
-            T:"AWAKE",
             
-            M:{
+            T:"AWAKE",
 
-                V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
+            V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
                    
-                P:aggregatedPub, //Approver's aggregated BLS pubkey
+            P:aggregatedPub, //Approver's aggregated BLS pubkey
 
-                S:aggregatedSignatures,
+            S:aggregatedSignatures,
 
-                H:myMetadataHash,
+            H:myMetadataHash,
 
-                A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
-
-            }
+            A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
 
         }
 
 
     */
-  
+
     let message = await BODY(v,CONFIG.PAYLOAD_SIZE)
 
         
@@ -685,11 +675,11 @@ validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted
 
         if(message.T==='AWAKE'){
 
-            if(await MESSAGE_VERIFIERS[message.M]?.(messagePayload)){
+            if(await MESSAGE_VERIFIERS[message.T]?.(message)){
 
-                //Put it to VALIDATORS_MEMPOOL
-
-                SYMBIOTE_META.VALIDATORS_MEMPOOL.push(messagePayload)
+                //Put it to VALIDATORS_STUFF_MEMPOOL
+                
+                SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.push(message)
 
                 !a.aborted&&a.end('OK')
 

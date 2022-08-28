@@ -147,7 +147,7 @@
 
     "BLOCK_TIME":3000,
 
-    "STOP_GENERATE_BLOCKS":false,
+    "STOP_GENERATE_BLOCKS":true,
     "STOP_VERIFY":false,
 
     "STORE_BLOCKS":true,

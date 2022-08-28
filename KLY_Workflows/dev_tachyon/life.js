@@ -138,7 +138,7 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
-    GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
+    GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
 
 
 
@@ -241,6 +241,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         blockCandidate.sig=await SIG(hash)
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
+
 
         //To send to other validators and get signatures as proof of acception this part of blocks
 
@@ -600,7 +601,20 @@ PREPARE_SYMBIOTE=async()=>{
     }
     
 
-    let cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json')) || {}
+
+
+    let cachedProofs
+    
+    try{
+
+        cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json'))
+
+    }catch{
+
+        cachedProofs = {}
+
+    }
+
 
 
     //____________________________________________Prepare structures_________________________________________________
@@ -612,7 +626,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
 
-        VALIDATORS_MEMPOOL:[], //to hold events to add to VALIDATORS_STUFF section in block
+        VALIDATORS_STUFF_MEMPOOL:[], //to hold events to add to VALIDATORS_STUFF section in block
         
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         ACCOUNTS:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
@@ -1045,7 +1059,6 @@ PREPARE_SYMBIOTE=async()=>{
 */
 START_AWAKENING_PROCEDURE=()=>{
     
-
     fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
 
         LOG(`Received list of current validators.Preparing to \x1b[31;1m<ALIVE_VALIDATOR>\x1b[32;1m procedure`,'S')
@@ -1076,6 +1089,7 @@ START_AWAKENING_PROCEDURE=()=>{
             }
 
         */
+       
 
         let myMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
 
@@ -1128,7 +1142,6 @@ START_AWAKENING_PROCEDURE=()=>{
         answers = answers.filter(Boolean)
 
 
-
         //Here we have verified signatures from validators
         
 
@@ -1137,17 +1150,32 @@ START_AWAKENING_PROCEDURE=()=>{
         //If we have majority votes - we can aggregate and share to "ressuect" our node
         if(answers.length>=majority){
 
+
             let pubkeys=[],
+
+                nonDecoded=[],
             
-                signatures=[]
+                signatures=[],
+                
+                afkValidators=[]
+
 
             answers.forEach(descriptor=>{
 
                 pubkeys.push(Base58.decode(descriptor.P))
 
+                nonDecoded.push(descriptor.P)
+
                 signatures.push(new Uint8Array(Buffer.from(descriptor.S,'base64')))
 
             })
+
+
+            currentValidators.forEach(validator=>
+
+                !nonDecoded.includes(validator)&&afkValidators.push(validator)
+
+            )
 
 
             let aggregatedPub = Base58.encode(await bls.aggregatePublicKeys(pubkeys)),
@@ -1164,6 +1192,8 @@ START_AWAKENING_PROCEDURE=()=>{
 
                 let awakeMessage = {
 
+                    T:'AWAKE',
+
                     V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
                    
                     P:aggregatedPub, //Approver's aggregated BLS pubkey
@@ -1172,7 +1202,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
                     H:myMetadataHash,
 
-                    A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
+                    A:afkValidators //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
 
                 }
 
@@ -1183,21 +1213,23 @@ START_AWAKENING_PROCEDURE=()=>{
 
                     method:'POST',
 
-                    body:JSON.stringify({
-
-                        T:'AWAKE',
-                        
-                        M:awakeMessage
-
-                    })
+                    body:JSON.stringify(awakeMessage)
 
                 }).then(r=>r.text()).then(async response=>{
 
-                    response==='OK' && LOG('Ok, validators received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
+                    response==='OK'
+                    ?
+                    LOG('Ok, validators received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
+                    :
+                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
 
-                }).catch(e=>LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W'))
+                }).catch(e=>
+                {
+                    console.log('ERRRR ',e)
 
-
+                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
+                
+                })
 
 
             }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')
@@ -1252,17 +1284,23 @@ RUN_SYMBIOTE=async()=>{
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
 
+
+
         //Start generate blocks
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
                 
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
                 
             GEN_BLOCKS_START_POLLING()
-
-            START_AWAKENING_PROCEDURE()
             
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
+
+        setTimeout(()=>
+
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
+
+        ,3000)
 
         //Run another thread to ask for blocks
         // GET_BLOCKS_FOR_FUTURE_WRAPPER()
