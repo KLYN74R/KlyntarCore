@@ -599,7 +599,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
 
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    //Go though validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
+    //Go through validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
@@ -866,7 +866,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         } //If majority have voted for approving block - then just find proofs and do nothing
         else{
 
-            LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${majority}`,'I')
+            LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS}/${majority}`,'I')
 
             //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
             SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
@@ -1196,7 +1196,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-            
+
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         if(!currentSessionMetadata.ACTIVE){
 
