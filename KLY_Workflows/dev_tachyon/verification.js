@@ -370,7 +370,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
         
     /*    
-        __________________________ Check if (2/3)*N validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
+        __________________________ Check if (2/3)*N+1 validators have voted to accept this block on this thread or skip and continue after some state of VERIFICATION_THREAD __________________________
         
         Proofs - it's object with the following structure
 
@@ -403,7 +403,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
     1. If we have 2 properties and the second is A(aggregated) - then it's case when the first property-value pair - aggregated BLS pubkey & signature of validators and second property - array of AFK validators
     
-    2. Otherwise - we have raw version of proofs like previously shown(where string "Check if (2/3)*N validators...")
+    2. Otherwise - we have raw version of proofs like previously shown(where string "Check if (2/3)*N+1 validators...")
 
         
     */
@@ -467,8 +467,12 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
             let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-                majority = Math.ceil(validatorsNumber*(2/3))
+                majority = Math.ceil(validatorsNumber*(2/3))+1
 
+
+            //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+
+            majority = majority > validatorsNumber ? validatorsNumber : majority
 
 
             bftProofsIsOk = (validatorsNumber-proofs.A.length)>=majority && await VERIFY(metadataToVerify,votes[validatorsWhoVoted[0]],validatorsWhoVoted[0])
@@ -502,13 +506,13 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-                majority = Math.ceil(validatorsNumber*(2/3)),
-
-                aggregatedSignature = '',
+                majority = Math.ceil(validatorsNumber*(2/3))+1,
 
                 pureSignatures = []
             
 
+            //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+            majority = majority > validatorsNumber ? validatorsNumber : majority
 
 
             validatorsWithVerifiedSignatures.forEach(
@@ -535,7 +539,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
                 
                 let aggregatedSignature = Buffer.from(await bls.aggregateSignatures(pureSignatures)).toString('base64')
 
-                //If more than 2/3 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
+                //If more than 2/3*N + 1 have voted for block - then ok,but firstly we need to do some extra operations(aggregate to less size,delete useless data and so on)
 
                 //Firstly - find AFK validators
                 let pubKeysOfAFKValidators = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.filter(pubKey=>!validatorsWithVerifiedSignatures.includes(pubKey)),
@@ -609,7 +613,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     
-    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length),
+    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)+1,
     
         validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
 
@@ -618,6 +622,10 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         approvePoints = SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS,
 
         stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - (skipPoints+approvePoints)
+
+
+    //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+    majority = majority > SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length ? SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length : majority
 
 
 
@@ -1204,7 +1212,7 @@ START_VERIFICATION_THREAD=async()=>{
                     
                 Here we do everything to skip this block and move to the next validator's block
                         
-                If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
+                If 2/3+1 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
                     
                 Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
 
@@ -1229,14 +1237,13 @@ START_VERIFICATION_THREAD=async()=>{
         
 
 
-
             if(validatorsSolution.shouldSkip){
 
                 /*
                         
                     Here we do everything to skip this block and move to the next validator's block
                             
-                    If 2/3 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
+                    If 2/3+1 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
                         
                     Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
     
