@@ -84,7 +84,7 @@ GET_BLOCKS_FOR_FUTURE = () => {
     
     if(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT>currentValidators.length){
 
-        let perValidator = Math.ceil(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT/currentValidators.length)
+        let perValidator = Math.floor(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT/currentValidators.length)
 
         for(let index=0;index<perValidator;index++){
 
@@ -467,7 +467,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
     
             let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-                majority = Math.ceil(validatorsNumber*(2/3))+1
+                majority = Math.floor(validatorsNumber*(2/3))+1
 
 
             //Check if majority is not bigger than number of validators. It possible when there is small number of validators
@@ -506,7 +506,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
             let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-                majority = Math.ceil(validatorsNumber*(2/3))+1,
+                majority = Math.floor(validatorsNumber*(2/3))+1,
 
                 pureSignatures = []
             
@@ -613,7 +613,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
     //Firstly,check if we have enough votes to at least one of variant, so compare number of commitments grabbed from other validators 
     
-    let majority = Math.ceil(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)+1,
+    let majority = Math.floor(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)+1,
     
         validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
 
@@ -989,6 +989,7 @@ PROGRESS_CHECKER=async()=>{
 
 
 
+    
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))){
 
 
@@ -1038,10 +1039,10 @@ PROGRESS_CHECKER=async()=>{
     
                 {
                     V:<Validator who sent this message to you>,
-                    P:<Hash of VERIFICATION_THREAD>,
-                    B:<BlockID>
-                    D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
-                    S:<Signature of commitment e.g. SIG(P+B+D)>
+                    P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
+                    B:<BlockID>,
+                    ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
+                    S:<Signature of commitment e.g. SIG(P+B+M)>
                 }
 
             */
@@ -1052,7 +1053,6 @@ PROGRESS_CHECKER=async()=>{
             V:CONFIG.SYMBIOTE.PUB,
             P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
             B:blockToSkip,
-            D:true,
             S:''
        
         }
@@ -1060,10 +1060,18 @@ PROGRESS_CHECKER=async()=>{
 
         //Check if we already have own proofs for block <blockToSkip>
 
-        let myOrAggregatedProofExists = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockToSkip)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockToSkip).catch(e=>false)
+        let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockToSkip).then(
+            
+            block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
+            
+        ).catch(e=>false)
 
 
-        if(myOrAggregatedProofExists) myCommitmentToSkipOrApprove.D=false // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
+        if(blockHashAndSignaByValidator) {
+
+            myCommitmentToSkipOrApprove.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
+
+        }
         
         else {
 
