@@ -369,10 +369,20 @@
 
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
 
-    "FORKS_PREVENTION_NODES":[
-        "http://kly-node.io",
-        "http://localhost:6665",
-        "http://localhost:6664"
+    "NODES_OPTIMIZERS":[
+        {
+            "url":"http://kly-node.io",
+            "pub":"BLS_PUBKEY"
+        },
+        {
+            "url":"http://localhost:6665",
+            "pub":"BLS_PUBKEY"
+        },
+        {
+            "url":"http://localhost:6664",
+            "pub":"BLS_PUBKEY"
+        }
+    
     ],
 
     "AWAKE_HELPER_NODE":"http://localhost:6666",
