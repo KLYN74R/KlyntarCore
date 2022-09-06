@@ -369,6 +369,8 @@
 
     "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
 
+    "ENABLE_ASK_OPTIMIZERS":true,
+
     "NODES_OPTIMIZERS":[
         {
             "url":"http://kly-node.io",

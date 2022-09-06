@@ -889,7 +889,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     let progressCheckerTemplate = {
 
-        //to avoid async problems
+        //To avoid async problems
         ACTIVE:false,
 
         //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
@@ -897,13 +897,19 @@ PREPARE_SYMBIOTE=async()=>{
 
         BLOCK_TO_SKIP:'',
 
-        //votes of validators to make sure that validators will vote to one of possible solution (skip/accept block)
-        SKIP_COMMITMENTS:{},
+        //Commitments by validators to make sure that validators will vote to one of possible solution (skip/accept block)
+        COMMITMENTS:{},
 
-        SKIP_POINTS:0,
-        
-        APPROVE_POINTS:0,
+        //Key is blockHash,value - number of validators who claim that produce proof for this fork. We use it to easily found the best fork which we should follow
+        POINTS_PER_FORK:{},
 
+        //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
+        TOTAL_COMMITMENTS:0,
+
+        //Object used by hunter to hunt for attempts to split the symbiote by validators-adversaries
+        ADVERSARIES:{},
+
+        //Here we'll put proofs to skip by validators
         SKIP_PROOFS:{}
 
     }

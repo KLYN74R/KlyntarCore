@@ -1002,7 +1002,20 @@ PROGRESS_CHECKER=async()=>{
         LOG('Still no progress(hashes are equal). Going to initiate \x1b[32;1m<SKIP_VALIDATOR>\u001b[38;5;3m procedure','W')
 
 
-        if(!SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS){
+        /*
+        
+            ██     ██  ██████  ██████  ██   ██     ██     ██ ██ ████████ ██   ██      ██████  ██████  ████████ ██ ███    ███ ██ ███████ ███████ ██████  ███████ 
+            ██     ██ ██    ██ ██   ██ ██  ██      ██     ██ ██    ██    ██   ██     ██    ██ ██   ██    ██    ██ ████  ████ ██    ███  ██      ██   ██ ██      
+            ██  █  ██ ██    ██ ██████  █████       ██  █  ██ ██    ██    ███████     ██    ██ ██████     ██    ██ ██ ████ ██ ██   ███   █████   ██████  ███████ 
+            ██ ███ ██ ██    ██ ██   ██ ██  ██      ██ ███ ██ ██    ██    ██   ██     ██    ██ ██         ██    ██ ██  ██  ██ ██  ███    ██      ██   ██      ██ 
+             ███ ███   ██████  ██   ██ ██   ██      ███ ███  ██    ██    ██   ██      ██████  ██         ██    ██ ██      ██ ██ ███████ ███████ ██   ██ ███████
+        
+        */
+
+
+        if(CONFIG.SYMBIOTE.ENABLE_ASK_OPTIMIZERS && !SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS){
+
+            LOG('Ask optimizers if we should start the \x1b[32;1m<SKIP_VALIDATOR>\x1b[36;1m procedure','I')
 
             // -1. Let's ask OPTIMIZERS if we should start SKIP procedure
             // We do it via messaging among nodes & validators. So send the OPTIMIZER_QUERY_MESSAGE
@@ -1070,6 +1083,8 @@ PROGRESS_CHECKER=async()=>{
                 //But this works only one time,so next iteration you'll start SKIP_PROCEDURE if there will be no progress yet
                 SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=true
 
+                LOG(`Ok. We'll initiate \x1b[32;1m<SKIP_VALIDATOR>\x1b[36;1m next time`,'I')
+
                 return
 
             }
@@ -1078,16 +1093,42 @@ PROGRESS_CHECKER=async()=>{
 
 
 
+
+        /*
+        
+        
+            ███████ ████████  █████  ██████  ████████     ███████ ██   ██ ██ ██████      ██████  ██████   ██████   ██████ ███████ ██████  ██    ██ ██████  ███████ 
+            ██         ██    ██   ██ ██   ██    ██        ██      ██  ██  ██ ██   ██     ██   ██ ██   ██ ██    ██ ██      ██      ██   ██ ██    ██ ██   ██ ██      
+            ███████    ██    ███████ ██████     ██        ███████ █████   ██ ██████      ██████  ██████  ██    ██ ██      █████   ██   ██ ██    ██ ██████  █████   
+                 ██    ██    ██   ██ ██   ██    ██             ██ ██  ██  ██ ██          ██      ██   ██ ██    ██ ██      ██      ██   ██ ██    ██ ██   ██ ██      
+            ███████    ██    ██   ██ ██   ██    ██        ███████ ██   ██ ██ ██          ██      ██   ██  ██████   ██████ ███████ ██████   ██████  ██   ██ ███████ 
+                                                                                                                                                                                                                                                                                             
+        
+        */
+
+
+            console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
+
+
         let promises = []
 
         //0. Initially,try to get pubkey => node_ip binding 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
     
-            pubKey => promises.push(GET_STUFF(pubKey).then(
+            pubKey => {
+
+                promises.push(GET_STUFF(pubKey).then(
         
-                url => ({pubKey,pureUrl:url.payload.url})
-                
-            ))
+                    url => ({pubKey,pureUrl:url.payload.url})
+                    
+                ))
+
+
+                //Also, prepare structure for commitments
+                // Insofar as we do hashing over commitments, all validators need to have the same structure
+                SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]={}
+
+            }
 
         )
 
@@ -1106,6 +1147,9 @@ PROGRESS_CHECKER=async()=>{
     
             blockToSkip = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
 
+
+
+        console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
 
         //Check if this thread (validator) is not in our zone of responsibility in cluster
         if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[currentValidatorToCheck])) return
@@ -1144,22 +1188,20 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        //Check if we already have own proofs for block <blockToSkip>
+        //Check if we already have block. This way we check our ability to generate proof for fork with this block
 
         let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockToSkip).then(
             
             block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
             
-        ).catch(e=>false)
+        ).catch(_=>false)
 
 
         if(blockHashAndSignaByValidator) {
 
             myCommitmentToSkipOrApprove.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
 
-        }
-        
-        else {
+        } else {
 
             //If we still haven't any proof - then freeze the ability to generate proofs for block to avoid situation when our node generate both proofs - to "skip" and to "accept"
 
@@ -1168,7 +1210,7 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(myCommitmentToSkipOrApprove.M || "")) //initially - send test commitment
+        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(myCommitmentToSkipOrApprove.M || ""))
 
         myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
 
@@ -1223,18 +1265,47 @@ PROGRESS_CHECKER=async()=>{
 
                     */
 
-                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
-
-                        //If signature is OK - we can store this commitment locally
+                    if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey] && await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
                         
-                        if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]){
+                        //If this fork already exist - then add points,otherwise - add the first point
+                            
 
-                            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+                        //SKIP is the special pre-set fork means that validator has no version of block with <blockID>, so generated commitment to skip
 
-                            counterCommitment.M ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS++    
+                        let fork = counterCommitment.M ? counterCommitment.M.split(":") : "SKIP",
+
+                            blockCreator = blockToSkip.split(":")[0]
+
+                        /*
+                            
+                            We need to verify the signature by blockCreator of blockHash to make sure that voter do not try to trick us
+                                                            
+                            In this case counterCommitment.M looks like ===> BlockHash:validatorSignature
+
+                            So:
+
+                                fork[0] - block hash
+                                fork[1] - signature which proofs that blockcreator has signed it
+        
+                        */
+
+
+                        //So, if signature failed - then we don't accept commitment from this validator - some error occured or it tries to trick us
+                        if(fork!=='SKIP' && !await VERIFY(fork[0],fork[0],blockCreator)) return
+                        
+                        //If everything is OK - we can store this commitment locally
+                        SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+
+                        SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS++
+
+                        if(SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]){
+
+                            SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]++
 
                         }
-
+                        else SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]=1
+                        
+                        
                     }
 
                 }
@@ -1255,18 +1326,25 @@ PROGRESS_CHECKER=async()=>{
 
 
         //Update the progress metadata
-        
-        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT=progress
+        SYMBIOTE_META.PROGRESS_CHECKER={
 
-        SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
+            PROGRESS_POINT:progress,
+            
+            BLOCK_TO_SKIP:'',
+            
+            COMMITMENTS:{},
+            
+            POINTS_PER_FORK:{},
 
-        SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS={}
+            TOTAL_COMMITMENTS:0,
 
-        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS=0
+            ADVERSARIES:{},
 
-        SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS=0
+            SKIP_PROOFS:{},
+   
+            ALREADY_ASK_OPTIMIZERS:false
 
-        SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=false
+        }
 
     }
 
