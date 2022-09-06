@@ -357,12 +357,39 @@ shareValidatorsProofs=async(a,q)=>{
 
 
 
-//Function share and receive FINAL_COMMITMENTS. You receive it from validators who already has 2/3*N+1 commitments and 
+
+//Function share and receive FINAL_COMMITMENTS. You receive it from validators who already has 2/3*N+1 commitments
+//Also, you can share it if you already have 2/3*N+1 commitments and have an obvious understanding of what to do
 shareFinalCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-    
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS){
 
-})
+        
+        let {V:validatorWhoPromise,P:skipPoint,B:blockID,M:metadata,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+
+            threadID = blockID?.split(":")?.[0],
+
+            //Decide should we check and perform this message
+            overviewIsOk = 
+
+                SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipPoint //we can vote to skip only if we have the same "stop" point
+                &&
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPromise)
+                &&
+                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL)
+                &&
+                await VERIFY(skipPoint+":"+blockID+":"+(metadata||""),hisSignature,validatorWhoPromise)
+
+        
+            if(overviewIsOk){
+
+            }else !a.aborted&&a.end('Overview failed')
+
+
+    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_COMMITMENTS disabled')
+        
+
+}),
 
 
 
@@ -712,13 +739,13 @@ UWS_SERVER
 
 .post('/awakerequest',awakeRequestMessageHandler)
 
+.post('/finalcommitments',shareFinalCommitments)
+
 .post('/hc_proofs',acceptHostchainsProofs)
 
 .post('/shareskipproofs',shareSkipProofs)
 
 .post('/commitments',shareCommitments)
-
-.post('/finalcommitments',shareFinalCommitments)
 
 .post('/vmessage',validatorsMessages)
 

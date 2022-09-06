@@ -979,9 +979,9 @@ PROGRESS_CHECKER=async()=>{
     
         SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE //If we already "wait" for commitments - skip checker iteration
         &&
-        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) //we shouldn't start another session if our VERIFICATION_THREAD works normally and have a progress since previous iteration
+        SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) //We shouldn't start another session if our VERIFICATION_THREAD works normally and have a progress since previous iteration
         &&
-        !SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START //but if it's first iteration after node launch - then we shoudn't skip following logic 
+        !SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START //But if it's first iteration after node launch - then we shoudn't skip following logic 
 
 
 
@@ -1000,6 +1000,83 @@ PROGRESS_CHECKER=async()=>{
 
         
         LOG('Still no progress(hashes are equal). Going to initiate \x1b[32;1m<SKIP_VALIDATOR>\u001b[38;5;3m procedure','W')
+
+
+        if(!SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS){
+
+            // -1. Let's ask OPTIMIZERS if we should start SKIP procedure
+            // We do it via messaging among nodes & validators. So send the OPTIMIZER_QUERY_MESSAGE
+
+            /*
+    
+                Payload is object with the following structure
+
+                +++++++++++++++++++++++++
+                + Example: AwakeMessage +
+                +++++++++++++++++++++++++
+
+                {
+            
+                    T:"AWAKE",
+
+                    V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
+                   
+                    P:aggregatedPub, //Approver's aggregated BLS pubkey
+
+                    S:aggregatedSignatures,
+
+                    H:myMetadataHash,
+
+                    A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
+
+                }
+
+
+            */
+
+            let optimizersPromises = []
+
+            for(let optimizerData of CONFIG.SYMBIOTE.NODES_OPTIMIZERS){
+    
+                optimizersPromises.push(
+                    
+                    fetch(optimizerData.url+'/vmessage',{
+                    
+                        method: 'POST',
+                    
+                        body: JSON.stringify({
+    
+                            T:"OPTIMIZER_QUERY",
+                        
+                            B:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT
+    
+                        })
+                
+                    }).then(r=>r.json()).then(resp=>
+    
+                        VERIFY(resp.p,resp.s,optimizerData.pub).then(_=>resp.p) //verify signature from OPTIMIZER and return his solution if signa is OK
+    
+                    ).catch(e=>'YES')
+                
+                )
+    
+            }
+    
+            let shouldGiveOneMoreChance = await Promise.all(optimizersPromises.splice(0)).then(arr=>arr.includes('NO'))
+    
+            //If some optimizer send us promise that "Everything is ok,soon you'll get your proofs or block"
+            if(shouldGiveOneMoreChance){
+
+                //But this works only one time,so next iteration you'll start SKIP_PROCEDURE if there will be no progress yet
+                SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=true
+
+                return
+
+            }
+
+        }
+
+
 
         let promises = []
 
@@ -1188,6 +1265,8 @@ PROGRESS_CHECKER=async()=>{
         SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS=0
 
         SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS=0
+
+        SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=false
 
     }
 
