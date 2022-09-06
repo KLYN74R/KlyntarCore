@@ -599,6 +599,221 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
+SHARE_COMMITMENTS = async() =>{
+
+    let promises = []
+
+    //0. Initially,try to get pubkey => node_ip binding 
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+
+        pubKey => {
+
+            promises.push(GET_STUFF(pubKey).then(
+    
+                url => ({pubKey,pureUrl:url.payload.url})
+                
+            ))
+
+
+            //Also, prepare structure for commitments
+            // Insofar as we do hashing over commitments, all validators need to have the same structure
+            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]={}
+
+        }
+
+    )
+
+    
+    let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
+
+        prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
+
+        validatorsPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
+
+        //take the next validator in a row. If it's end of validators pool - start from the first validator in array
+        currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
+
+        //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+        currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
+
+        blockToSkip = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
+
+
+
+    //Check if this thread (validator) is not in our zone of responsibility in cluster
+    if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[currentValidatorToCheck])) return
+
+
+        /*
+        
+        Going to build our commitment
+
+        Commitment is an object with the following structure 
+
+            {
+                V:<Validator who sent this message to you>,
+                P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
+                B:<BlockID - block which we are going to skip>,
+
+                ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
+
+                ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
+                
+                    If you're going to skip - then you don't have "M" property in commitment
+
+                S:<Signature of commitment e.g. SIG(P+B+M)>
+            }
+
+        */
+
+    let myCommitmentToSkipOrApprove
+
+    if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB]){
+
+        myCommitmentToSkipOrApprove = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB])
+
+    }else{
+
+        myCommitmentToSkipOrApprove = {
+            
+            V:CONFIG.SYMBIOTE.PUB,
+            P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
+            B:blockToSkip,
+            S:''
+       
+        }
+
+        //Check if we already have block. This way we check our ability to generate proof for fork with this block
+
+        let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockToSkip).then(
+        
+            block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
+            
+        ).catch(_=>false)
+    
+    
+        if(blockHashAndSignaByValidator) {
+    
+            myCommitmentToSkipOrApprove.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
+    
+        } else {
+    
+            //If we still haven't any proof - then freeze the ability to generate proofs for block to avoid situation when our node generate both proofs - to "skip" and to "accept"
+    
+            SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=blockToSkip
+    
+        }
+        
+        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(myCommitmentToSkipOrApprove.M || ""))
+
+        myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
+            
+    }
+
+
+    //! Finally, check if PROGRESS_POINT still equal to hash of VALIDATORS_METADATA
+    if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))) return
+
+
+    // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    // + Go through the validators and share our commitment about skip|approve the block(and validators thread in general) +
+    // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+    //Validator handler is {pubKey,pureUrl}
+    for(let validatorHandler of validatorsUrls){
+
+        //If we already have commitment(for example, from previous node launch) then no sense to get it again
+        if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]) continue
+
+        //Share our commitment and receive the answers
+
+        fetch(validatorHandler.pureUrl+`/commitments`,
+        
+            {
+                method:'POST',
+
+                body:myCommitmentToSkipOrApprove
+            }
+
+        ).then(r=>r.json()).then(
+    
+            async counterCommitment => {
+
+                //If everything is OK and validator was stopped on the same point - in this case we receive the same <CommitmentToSkip> object from validator
+
+                /*
+                
+                   Commitment is an object with the following structure 
+
+                        {
+                            V:<Validator who sent this message to you>,
+                            P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
+                            B:<BlockID - block which we are going to skip>,
+
+                        ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
+
+                            ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
+                
+                            If you're going to skip - then you don't have "M" property in commitment
+
+                            S:<Signature of commitment e.g. SIG(P+B+M)>
+                        }
+
+                */
+
+                if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey] && await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
+                    
+                    //If this fork already exist - then add points,otherwise - add the first point
+                        
+
+                    //SKIP is the special pre-set fork means that validator has no version of block with <blockID>, so generated commitment to skip
+
+                    let fork = counterCommitment.M ? counterCommitment.M.split(":") : "SKIP",
+
+                        blockCreator = blockToSkip.split(":")[0]
+
+                    /*
+                        
+                        We need to verify the signature by blockCreator of blockHash to make sure that voter do not try to trick us
+                                                        
+                        In this case counterCommitment.M looks like ===> BlockHash:validatorSignature
+
+                        So:
+
+                            fork[0] - block hash
+                            fork[1] - signature which proofs that blockcreator has signed it
+    
+                    */
+
+
+                    //So, if signature failed - then we don't accept commitment from this validator - some error occured or it tries to trick us
+                    if(fork!=='SKIP' && !await VERIFY(fork[0],fork[0],blockCreator)) return
+                    
+                    //If everything is OK - we can store this commitment locally
+                    SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+
+                    SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS++
+
+
+                    if(SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]) SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]++
+
+                    else SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]=1
+
+                    
+                }
+
+            }
+    
+        ).catch(e=>{})
+
+    }
+
+},
+
+
+
+
 START_TO_COUNT_COMMITMENTS=async()=>{
 
 
@@ -617,11 +832,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
     
         validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
 
-        skipPoints = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS,
-
-        approvePoints = SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS,
-
-        stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - (skipPoints+approvePoints)
+        stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS
 
 
     //Check if majority is not bigger than number of validators. It possible when there is small number of validators
@@ -884,82 +1095,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
     }else {
 
         //Re-send commitments to validators whose votes we still don't have
-
-        let promises = []
-
-        //0. Initially,try to get pubkey => node_ip binding 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-    
-            pubKey => promises.push(GET_STUFF(pubKey).then(
-        
-                url => ({pubKey,pureUrl:url.payload.url})
-                
-            ))
-
-        )
-
-        
-        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)), 
-        
-            myCommitmentInJSON = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB])
-        
-        LOG(`Going to share \x1b[34;1mSKIP_COMMITMENTS\x1b[36;1m. Current progress stats is (\x1b[31;1mskip/approve/validators\x1b[36;1m => \x1b[32;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS}/${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS}/${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length}\x1b[36;1m)`,'I')
-        
-        for(let validatorHandler of validatorsUrls){
-
-            if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]) continue
-
-            fetch(validatorHandler.pureUrl+`/commitments`,
-            
-                {
-                    method:'POST',
-            
-                    body:myCommitmentInJSON
-                }
-
-            ).then(r=>r.json()).then(
-    
-                async counterCommitment => {
-
-                    //If everything is OK and validator was stopped on the same point - in this case we receive the same <Commitment> object from validator
-
-                    /*
-                
-                        Commitment is object like
-
-                           {
-                                V:<Validator who sent this message to you>,
-                                P:<Hash of VERIFICATION_THREAD>,
-                                B:<BlockID>
-                                D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
-                                S:<Signature of commitment e.g. SIG(P+B+D)>
-                
-                            }
-
-                    */
-
-                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
-
-                        //If signature is OK - we can store this commitment locally
-
-                        if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]){
-
-                            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
-
-                            counterCommitment.M ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS++    
-
-                        }
-
-                    }
-
-                }
-    
-        
-            ).catch(e=>{})
-
-
-        }
-
+        SHARE_COMMITMENTS()
 
         setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
 
@@ -985,12 +1121,10 @@ PROGRESS_CHECKER=async()=>{
 
 
 
+
     if(shouldSkipIteration) return
 
 
-
-
-    
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))){
 
 
@@ -1107,213 +1241,7 @@ PROGRESS_CHECKER=async()=>{
         */
 
 
-            console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
-
-
-        let promises = []
-
-        //0. Initially,try to get pubkey => node_ip binding 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-    
-            pubKey => {
-
-                promises.push(GET_STUFF(pubKey).then(
-        
-                    url => ({pubKey,pureUrl:url.payload.url})
-                    
-                ))
-
-
-                //Also, prepare structure for commitments
-                // Insofar as we do hashing over commitments, all validators need to have the same structure
-                SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]={}
-
-            }
-
-        )
-
-        
-        let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)),
-
-            prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
-
-            validatorsPool = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
-
-            //take the next validator in a row. If it's end of validators pool - start from the first validator in array
-            currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
-    
-            //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
-    
-            blockToSkip = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1)
-
-
-
-        console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
-
-        //Check if this thread (validator) is not in our zone of responsibility in cluster
-        if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[currentValidatorToCheck])) return
-
-
-            /*
-            
-            Going to build our commitment
-
-            Commitment is an object with the following structure 
-    
-                {
-                    V:<Validator who sent this message to you>,
-                    P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
-                    B:<BlockID - block which we are going to skip>,
-
-                    ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
-
-                    ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
-                    
-                        If you're going to skip - then you don't have "M" property in commitment
-
-                    S:<Signature of commitment e.g. SIG(P+B+M)>
-                }
-
-            */
-
-
-        let myCommitmentToSkipOrApprove = {
-                
-            V:CONFIG.SYMBIOTE.PUB,
-            P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
-            B:blockToSkip,
-            S:''
-       
-        }
-
-
-        //Check if we already have block. This way we check our ability to generate proof for fork with this block
-
-        let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockToSkip).then(
-            
-            block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
-            
-        ).catch(_=>false)
-
-
-        if(blockHashAndSignaByValidator) {
-
-            myCommitmentToSkipOrApprove.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
-
-        } else {
-
-            //If we still haven't any proof - then freeze the ability to generate proofs for block to avoid situation when our node generate both proofs - to "skip" and to "accept"
-
-            SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=blockToSkip
-
-        }
-
-
-        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(myCommitmentToSkipOrApprove.M || ""))
-
-        myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
-
-        //! Finally, check if PROGRESS_POINT still equal to hash of VALIDATORS_METADATA
-        if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))) return
-
-
-        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        // + Go through the validators and share our commitment about skip|approve the block(and validators thread in general) +
-        // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-        //Validator handler is {pubKey,pureUrl}
-        for(let validatorHandler of validatorsUrls){
- 
-            //If we already have commitment(for example, from previous node launch) then no sense to get it again
-            if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]) continue
-
-            //Share our commitment and receive the answers
-
-            fetch(validatorHandler.pureUrl+`/commitments`,
-            
-                {
-                    method:'POST',
-
-                    body:myCommitmentToSkipOrApprove
-                }
-
-            ).then(r=>r.json()).then(
-        
-                async counterCommitment => {
-
-                    //If everything is OK and validator was stopped on the same point - in this case we receive the same <CommitmentToSkip> object from validator
-
-                    /*
-                    
-                       Commitment is an object with the following structure 
-    
-                            {
-                                V:<Validator who sent this message to you>,
-                                P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
-                                B:<BlockID - block which we are going to skip>,
-
-                            ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
-
-                                ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
-                    
-                                If you're going to skip - then you don't have "M" property in commitment
-
-                                S:<Signature of commitment e.g. SIG(P+B+M)>
-                            }
-
-                    */
-
-                    if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey] && await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
-                        
-                        //If this fork already exist - then add points,otherwise - add the first point
-                            
-
-                        //SKIP is the special pre-set fork means that validator has no version of block with <blockID>, so generated commitment to skip
-
-                        let fork = counterCommitment.M ? counterCommitment.M.split(":") : "SKIP",
-
-                            blockCreator = blockToSkip.split(":")[0]
-
-                        /*
-                            
-                            We need to verify the signature by blockCreator of blockHash to make sure that voter do not try to trick us
-                                                            
-                            In this case counterCommitment.M looks like ===> BlockHash:validatorSignature
-
-                            So:
-
-                                fork[0] - block hash
-                                fork[1] - signature which proofs that blockcreator has signed it
-        
-                        */
-
-
-                        //So, if signature failed - then we don't accept commitment from this validator - some error occured or it tries to trick us
-                        if(fork!=='SKIP' && !await VERIFY(fork[0],fork[0],blockCreator)) return
-                        
-                        //If everything is OK - we can store this commitment locally
-                        SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
-
-                        SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS++
-
-                        if(SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]){
-
-                            SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]++
-
-                        }
-                        else SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]=1
-                        
-                        
-                    }
-
-                }
-        
-            ).catch(e=>{})
-
-        }
-
+        SHARE_COMMITMENTS()
 
         START_TO_COUNT_COMMITMENTS()
 
