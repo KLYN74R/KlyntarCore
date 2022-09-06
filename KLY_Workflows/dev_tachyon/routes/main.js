@@ -357,29 +357,40 @@ shareValidatorsProofs=async(a,q)=>{
 
 
 
+//Function share and receive FINAL_COMMITMENTS. You receive it from validators who already has 2/3*N+1 commitments and 
+shareFinalCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    
+
+})
+
+
 
 //Function to allow validators to change status of validator to "offline" to stop verify his blocks(his thread in general) and continue to verify blocks of other validators in VERIFICATION_THREAD
 //Here validators exchange commitments among each other to skip some block to continue the VERIFICATION_THREAD
-shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+shareCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     /*
     
-        <CommitmentToSkip> is an object with the following structure 
-        
+        Commitment is an object with the following structure 
+    
         {
             V:<Validator who sent this message to you>,
-            P:<Hash of VERIFICATION_THREAD>,
-            B:<BlockID>
-            D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
-            S:<Signature of commitment e.g. SIG(P+B+D)>
+            P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
+            B:<BlockID - block which we are going to skip>
+            ++++++++++++ The following structure might be different for APPROVE and SKIP commitments +++++++++++
+            ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
+            
+                If you're going to skip - then you don't have "M" property in commitment
+            S:<Signature of commitment e.g. SIG(P+B+M)>
         }
     
     */
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_SKIP){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS){
 
         
-        let {V:validatorWhoPromise,P:skipPoint,B:blockID,D:desicion,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
+        let {V:validatorWhoPromise,P:skipPoint,B:blockID,M:metadata,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
 
             threadID = blockID?.split(":")?.[0],
 
@@ -390,15 +401,15 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
                 &&
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPromise)
                 &&
-                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP.ALL)
+                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL)
                 &&
-                await VERIFY(skipPoint+":"+blockID+":"+desicion,hisSignature,validatorWhoPromise)
+                await VERIFY(skipPoint+":"+blockID+":"+(metadata||""),hisSignature,validatorWhoPromise)
 
 
 
         if(overviewIsOk){
 
-            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB]
+            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB]
 
             if(myCommitment){
 
@@ -415,29 +426,26 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
                     V:CONFIG.SYMBIOTE.PUB,
                     P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
                     B:blockID,
-                    D:false,
                     S:''
            
                 }
 
-                if(proofAlreadyGenerated){
 
-                    //If we have voted for block or already have an aggregated proof => send false as a value of desicion to not to skip the block
-
-                    myCommitmentTemplate.D=false
-
-                }else{
+                let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockID).then(
             
-                    //Otherwise - check if block present locally. We vote against skip if we have block
-
-                    let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false)
-
-                    myCommitmentTemplate.D=!block
-
-                
+                    block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
+                    
+                ).catch(e=>false)
+        
+        
+                if(blockHashAndSignaByValidator) {
+        
+                    myCommitmentTemplate.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
+        
                 }
-
-                myCommitmentTemplate.S=await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+myCommitmentTemplate.D)
+        
+                myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+(myCommitmentTemplate.M || "")) //initially - send test commitment
+        
 
                 !a.aborted&&a.end(JSON.stringify(myCommitmentTemplate))
 
@@ -447,7 +455,7 @@ shareSkipCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbort
         }else !a.aborted&&a.end('Overview failed')
 
 
-    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_VOTE_TO_SKIP disabled')
+    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_COMMITMENTS disabled')
         
 
 }),
@@ -704,11 +712,13 @@ UWS_SERVER
 
 .post('/awakerequest',awakeRequestMessageHandler)
 
-.post('/skipcommitments',shareSkipCommitments)
-
 .post('/hc_proofs',acceptHostchainsProofs)
 
 .post('/shareskipproofs',shareSkipProofs)
+
+.post('/commitments',shareCommitments)
+
+.post('/finalcommitments',shareFinalCommitments)
 
 .post('/vmessage',validatorsMessages)
 

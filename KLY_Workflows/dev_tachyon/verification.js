@@ -599,12 +599,12 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
+START_TO_COUNT_COMMITMENTS=async()=>{
 
 
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    //Go through validators solutions about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
-    //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //Go through validators commitments about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
     //If we track the progress - then no sense to do smth - in this case counting commitments and create a proofs
@@ -617,9 +617,9 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     
         validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
 
-        skipPoints = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS,
+        skipPoints = SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS,
 
-        approvePoints = SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS,
+        approvePoints = SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS,
 
         stillNoVoted = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length - (skipPoints+approvePoints)
 
@@ -641,7 +641,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     }
 
 
-    if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS>=majority){
+    if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS>=majority || SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS>=majority){
 
 
         if(validatorsWithVerifiedSignaturesWhoVotedToSkip.length>=majority){
@@ -775,9 +775,9 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         }
 
         //! Make SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE = false after all to activate checker function again
-        //* ✅And make SKIP_POINTS and APPROVE_POINTS zero
+        //* ✅And make SKIP_COMMITMENTS and APPROVE_COMMITMENTS zero
 
-        if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS>=majority){
+        if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS>=majority){
 
             //Here we create proof to skip the block
 
@@ -834,7 +834,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             
             let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
             
-            LOG(`Going to share proofs to skip.\x1b[34;1mSKIP_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${majority}`,'I')
+            LOG(`Going to share proofs to skip.\x1b[34;1mSKIP_COMMITMENTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS}/${majority}`,'I')
 
             for(let validatorHandler of validatorsUrls){
 
@@ -868,13 +868,13 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
             }
 
 
-            setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+            setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
 
 
         } //If majority have voted for approving block - then just find proofs and do nothing
         else{
 
-            LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_POINTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS}/${majority}`,'I')
+            LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_COMMITMENTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS}/${majority}`,'I')
 
             //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
             SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
@@ -901,15 +901,15 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         
         let validatorsUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean)), 
         
-            myCommitmentInJSON = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[CONFIG.SYMBIOTE.PUB])
+            myCommitmentInJSON = JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB])
         
-        LOG(`Going to share \x1b[34;1mSKIP_COMMITMENTS\x1b[36;1m. Current progress stats is (\x1b[31;1mskip/approve/validators\x1b[36;1m => \x1b[32;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS}/${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS}/${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length}\x1b[36;1m)`,'I')
+        LOG(`Going to share \x1b[34;1mSKIP_COMMITMENTS\x1b[36;1m. Current progress stats is (\x1b[31;1mskip/approve/validators\x1b[36;1m => \x1b[32;1m${SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS}/${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS}/${SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length}\x1b[36;1m)`,'I')
         
         for(let validatorHandler of validatorsUrls){
 
-            if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]) continue
+            if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]) continue
 
-            fetch(validatorHandler.pureUrl+`/skipcommitments`,
+            fetch(validatorHandler.pureUrl+`/commitments`,
             
                 {
                     method:'POST',
@@ -921,11 +921,11 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
     
                 async counterCommitment => {
 
-                    //If everything is OK and validator was stopped on the same point - in this case we receive the same <CommitmentToSkip> object from validator
+                    //If everything is OK and validator was stopped on the same point - in this case we receive the same <Commitment> object from validator
 
                     /*
                 
-                        CommitmentToSkip is object like
+                        Commitment is object like
 
                            {
                                 V:<Validator who sent this message to you>,
@@ -938,15 +938,15 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
 
                     */
 
-                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP+":"+counterCommitment.D,counterCommitment.S,validatorHandler.pubKey)){
+                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
 
                         //If signature is OK - we can store this commitment locally
 
-                        if(!SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]){
+                        if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]){
 
-                            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+                            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
 
-                            counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++    
+                            counterCommitment.M ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS++    
 
                         }
 
@@ -961,7 +961,7 @@ START_TO_COUNT_COMMITMENTS_TO_SKIP=async()=>{
         }
 
 
-        setTimeout(START_TO_COUNT_COMMITMENTS_TO_SKIP,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+        setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
 
     }
 
@@ -977,7 +977,7 @@ PROGRESS_CHECKER=async()=>{
 
     let shouldSkipIteration = 
     
-        SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE //If we already "wait" for votes - skip checker iteration
+        SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE //If we already "wait" for commitments - skip checker iteration
         &&
         SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) //we shouldn't start another session if our VERIFICATION_THREAD works normally and have a progress since previous iteration
         &&
@@ -989,7 +989,7 @@ PROGRESS_CHECKER=async()=>{
 
 
 
-    
+
     
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))){
 
@@ -1031,18 +1031,26 @@ PROGRESS_CHECKER=async()=>{
 
 
         //Check if this thread (validator) is not in our zone of responsibility in cluster
-        if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.VOTE_TO_SKIP[currentValidatorToCheck])) return
+        if(!(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[currentValidatorToCheck])) return
 
 
             /*
+            
+            Going to build our commitment
 
-            CommitmentToSkip is an object with the following structure 
+            Commitment is an object with the following structure 
     
                 {
                     V:<Validator who sent this message to you>,
                     P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
-                    B:<BlockID>,
+                    B:<BlockID - block which we are going to skip>,
+
+                    ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
+
                     ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
+                    
+                        If you're going to skip - then you don't have "M" property in commitment
+
                     S:<Signature of commitment e.g. SIG(P+B+M)>
                 }
 
@@ -1083,7 +1091,7 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+myCommitmentToSkipOrApprove.D) //initially - send test commitment
+        myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(myCommitmentToSkipOrApprove.M || "")) //initially - send test commitment
 
         myCommitmentToSkipOrApprove = JSON.stringify(myCommitmentToSkipOrApprove)
 
@@ -1100,11 +1108,11 @@ PROGRESS_CHECKER=async()=>{
         for(let validatorHandler of validatorsUrls){
  
             //If we already have commitment(for example, from previous node launch) then no sense to get it again
-            if(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]) continue
+            if(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]) continue
 
             //Share our commitment and receive the answers
 
-            fetch(validatorHandler.pureUrl+`/skipcommitments`,
+            fetch(validatorHandler.pureUrl+`/commitments`,
             
                 {
                     method:'POST',
@@ -1120,29 +1128,33 @@ PROGRESS_CHECKER=async()=>{
 
                     /*
                     
-                        CommitmentToSkip is object like
-
-                           {
+                       Commitment is an object with the following structure 
+    
+                            {
                                 V:<Validator who sent this message to you>,
-                                P:<Hash of VERIFICATION_THREAD>,
-                                B:<BlockID>
-                                D:<Desicion true/false> - skip or not. If vote to skip - then true, otherwise false
-                                S:<Signature of commitment e.g. SIG(P+B+D)>
+                                P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
+                                B:<BlockID - block which we are going to skip>,
+
+                            ++++++++++++ The following structure might be different for APPROVE and SKIP commitments ++++++++++++
+
+                                ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
                     
+                                If you're going to skip - then you don't have "M" property in commitment
+
+                                S:<Signature of commitment e.g. SIG(P+B+M)>
                             }
 
-                    
                     */
 
-                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+counterCommitment.D,counterCommitment.S,validatorHandler.pubKey)){
+                    if(await VERIFY(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockToSkip+":"+(counterCommitment.M || ""),counterCommitment.S,validatorHandler.pubKey)){
 
                         //If signature is OK - we can store this commitment locally
                         
-                        if(!SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]){
+                        if(!SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]){
 
-                            SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS[validatorHandler.pubKey]=counterCommitment
+                            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[validatorHandler.pubKey]=counterCommitment
 
-                            counterCommitment.D ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS++    
+                            counterCommitment.M ? SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS++ : SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS++    
 
                         }
 
@@ -1155,7 +1167,7 @@ PROGRESS_CHECKER=async()=>{
         }
 
 
-        START_TO_COUNT_COMMITMENTS_TO_SKIP()
+        START_TO_COUNT_COMMITMENTS()
 
 
     }else{
@@ -1171,11 +1183,11 @@ PROGRESS_CHECKER=async()=>{
 
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
-        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS={}
+        SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS={}
 
-        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_POINTS=0
+        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_COMMITMENTS=0
 
-        SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_POINTS=0
+        SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS=0
 
     }
 
