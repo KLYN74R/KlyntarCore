@@ -814,6 +814,12 @@ SHARE_COMMITMENTS = async() =>{
 
 
 
+//Function to find maulicious commitments over the network among validators to get consensus
+HUNTER_MODE = async()=>{},
+
+
+
+
 START_TO_COUNT_COMMITMENTS=async()=>{
 
 
@@ -978,8 +984,24 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
 
+    //If we already have more than 2/3N+1 commitments - we can start the second round to harvest the finalcommitments
+    if(SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS>=majority){
 
+        //______________________________________Define special handler to harvest FinalCommitments______________________________________
 
+        SYMBIOTE_META.FINAL_COMMITMENTS_HARVESTER={
+
+            FINAL_COMMITMENTS:{},// Key => validator's solution about skip/approve based on 2/3*N+1 commitments accepted by him.
+            
+            CHALLENGE:new Date().getTime(), //Challenge to make sure that nobody tries to do MiTM. Refresh it each session
+
+            COMMITMENTS_HASH:BLAKE3(JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS))
+
+        }
+
+    }
+
+    //------------------------------------------- DEADLINE -------------------------------------------
 
     //The case when we know for sure that commitments sharing ceremony failed and no solution for SKIP or APPROVE
     //This mean that we shouldn't create skip proofs because some honest validators will send the blocks for us & other validators and the rest of nodes
@@ -1249,16 +1271,6 @@ PROGRESS_CHECKER=async()=>{
                                                                                                                                                                                                                                                                                              
         
         */
-
-        //______________________________________Define special handler to harvest FinalCommitments______________________________________
-
-        SYMBIOTE_META.FINAL_COMMITMENTS_HARVESTER={
-
-            FINAL_COMMITMENTS:{},// Key => validator's solution about skip/approve based on 2/3*N+1 commitments accepted by him.
-            
-            CHALLENGE:new Date().getTime() //Challenge to make sure that nobody tries to do MiTM. Refresh it each session
-
-        }
 
 
         await SHARE_COMMITMENTS() //await to give the time to share commitments and later start to count

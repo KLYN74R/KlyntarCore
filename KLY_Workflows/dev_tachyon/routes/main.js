@@ -335,7 +335,7 @@ shareValidatorsProofs=async(a,q)=>{
 
                     threadID = blockID?.split(":")?.[0]
 
-                //* Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
+                //*✅ Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
                 if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
                     let blockHash = Block.genHash(block.c,block.e,block.v,block.i,block.p),
@@ -390,6 +390,7 @@ shareFinalCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
         
 
 }),
+
 
 
 
