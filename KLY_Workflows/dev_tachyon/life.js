@@ -1152,7 +1152,16 @@ START_AWAKENING_PROCEDURE=()=>{
         //Here we have verified signatures from validators
         
 
-        let majority = Math.ceil(currentValidators.length*(2/3))
+        let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
+
+            majority = Math.floor(validatorsNumber*(2/3))+1
+
+
+        //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+
+        majority = majority > validatorsNumber ? validatorsNumber : majority
+
+
 
         //If we have majority votes - we can aggregate and share to "ressuect" our node
         if(answers.length>=majority){

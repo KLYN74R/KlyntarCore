@@ -33,10 +33,16 @@ export default {
 
             rootPub = Base58.encode(await bls.aggregatePublicKeys([...messagePayload.A.map(Base58.decode),Base58.decode(messagePayload.P)])),
 
-            majority = Math.ceil(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length*(2/3)),
+            validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
 
-            isMajority = ((SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-messagePayload.A.length)>=majority)
+            majority = Math.floor(validatorsNumber*(2/3))+1
 
+
+        //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+
+        majority = majority > validatorsNumber ? validatorsNumber : majority
+            
+        let isMajority = ((SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-messagePayload.A.length)>=majority)
 
 
         if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
@@ -45,8 +51,11 @@ export default {
 
                 //Change the state
 
+                //Make active to turn back this validator's thread to VERIFICATION_THREAD
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].ACTIVE=true
                 
+                //And increase skipped block to avoid
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].INDEX++
 
             } else return true
                 
