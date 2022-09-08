@@ -617,7 +617,7 @@ SHARE_COMMITMENTS = async() =>{
 
             //Also, prepare structure for commitments
             // Insofar as we do hashing over commitments, all validators need to have the same structure
-            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]={}
+            SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]||={}
 
         }
 
@@ -815,7 +815,11 @@ SHARE_COMMITMENTS = async() =>{
 
 
 //Function to find maulicious commitments over the network among validators to get consensus
-HUNTER_MODE = async()=>{},
+HUNTER_MODE=async()=>{
+
+    //unimplemented!()
+
+},
 
 
 
@@ -828,10 +832,10 @@ START_TO_COUNT_COMMITMENTS=async()=>{
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-    //If we track the progress - then no sense to do smth - in this case counting commitments and create a proofs
+    //If we notice the progress - then no sense to do smth - just leave the function
     if(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT!==BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))) return
 
-    //Define common vars    
+    //Define common vars
     let majority = Math.floor(2/3*SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length)+1,
     
         validatorsWithVerifiedSignaturesWhoVotedToSkip = Object.keys(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS),
@@ -944,11 +948,16 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
             let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode)))
 
-            let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[],P:validatorsMetadataHash}
+            let aggregatedProof = {
+                
+                V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},
+                A:[],
+                P:validatorsMetadataHash
+            }
 
 
             //And store proof locally
-            await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>{})
+            await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>LOG(`Can't store proof locally \n${e}`,'I'))
 
 
         }else {
@@ -984,7 +993,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
 
-    //If we already have more than 2/3N+1 commitments - we can start the second round to harvest the finalcommitments
+    //If we already have more than 2/3*N+1 commitments - we can start the second round to harvest the FinalCommitments
     if(SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS>=majority){
 
         //______________________________________Define special handler to harvest FinalCommitments______________________________________
@@ -1111,7 +1120,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
             }
 
 
-            setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+            setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_INTERVAL)
 
 
         } //If majority have voted for approving block - then just find proofs and do nothing
@@ -1129,7 +1138,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
         //Re-send commitments to validators whose votes we still don't have
         SHARE_COMMITMENTS()
 
-        setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_TO_SKIP_INTERVAL)
+        setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_INTERVAL)
 
     }
 
@@ -1287,6 +1296,8 @@ PROGRESS_CHECKER=async()=>{
 
         //Update the progress metadata
         SYMBIOTE_META.PROGRESS_CHECKER={
+
+            ACTIVE:false,
 
             PROGRESS_POINT:progress,
             
