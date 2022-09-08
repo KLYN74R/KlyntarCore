@@ -910,7 +910,10 @@ PREPARE_SYMBIOTE=async()=>{
         ADVERSARIES:{},
 
         //Here we'll put proofs to skip by validators
-        SKIP_PROOFS:{}
+        SKIP_PROOFS:{},
+
+        //Optimizations. Make this flag true after OPTIMIZERS nodes 
+        ALREADY_ASK_OPTIMIZERS:false
 
     }
 

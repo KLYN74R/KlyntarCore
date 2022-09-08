@@ -1255,9 +1255,6 @@ PROGRESS_CHECKER=async()=>{
             //If some optimizer send us promise that "Everything is ok,soon you'll get your proofs or block"
             if(shouldGiveOneMoreChance){
 
-                //But this works only one time,so next iteration you'll start SKIP_PROCEDURE if there will be no progress yet
-                SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=true
-
                 LOG(`Ok. We'll initiate \x1b[32;1m<SKIP_VALIDATOR>\x1b[36;1m next time`,'I')
 
                 return
@@ -1266,7 +1263,8 @@ PROGRESS_CHECKER=async()=>{
 
         }
 
-
+        //But this works only one time,so next iteration you'll start SKIP_PROCEDURE if there will be no progress yet
+        SYMBIOTE_META.PROGRESS_CHECKER.ALREADY_ASK_OPTIMIZERS=true
 
 
         /*
@@ -1293,26 +1291,33 @@ PROGRESS_CHECKER=async()=>{
 
         LOG(`VERIFICATION_THREAD works fine! (\x1b[31;1m${SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT} \x1b[36;1m=>\x1b[31;1m ${progress}\x1b[32;1m)`,'S')
 
-
         //Update the progress metadata
         SYMBIOTE_META.PROGRESS_CHECKER={
 
+            //To avoid async problems
             ACTIVE:false,
 
+            //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
             PROGRESS_POINT:progress,
             
             BLOCK_TO_SKIP:'',
             
+            //Commitments by validators to make sure that validators will vote to one of possible solution (skip/accept block)
             COMMITMENTS:{},
             
+            //Key is blockHash,value - number of validators who claim that produce proof for this fork. We use it to easily found the best fork which we should follow
             POINTS_PER_FORK:{},
 
+            //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
             TOTAL_COMMITMENTS:0,
 
+            //Object used by hunter to hunt for attempts to split the symbiote by validators-adversaries
             ADVERSARIES:{},
 
+            //Here we'll put proofs to skip by validators
             SKIP_PROOFS:{},
    
+            //For a new iteration we'll make it false again to ask optimizers if we'll need it
             ALREADY_ASK_OPTIMIZERS:false
 
         }
