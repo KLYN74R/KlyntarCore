@@ -824,12 +824,21 @@ HUNTER_MODE=async()=>{
 
 
 
+START_HARVEST_FINAL_COMMITMENTS=async()=>{
+
+    HUNTER_MODE()    
+
+},
+
+
+
+
 START_TO_COUNT_COMMITMENTS=async()=>{
 
 
-    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    //Go through validators commitments about what to do and check if we already have a majority to generate votes to SKIP or to APPROVE   +
-    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    //Go through validators commitments about what to do and check if we already have a majority to generate commitments to SKIP or to APPROVE +
+    //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
     //If we notice the progress - then no sense to do smth - just leave the function
@@ -848,7 +857,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
 
-
+    console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
 
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -993,6 +1002,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
 
+
     //If we already have more than 2/3*N+1 commitments - we can start the second round to harvest the FinalCommitments
     if(SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS>=majority){
 
@@ -1007,6 +1017,10 @@ START_TO_COUNT_COMMITMENTS=async()=>{
             COMMITMENTS_HASH:BLAKE3(JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS))
 
         }
+
+
+        START_HARVEST_FINAL_COMMITMENTS()
+
 
     }
 
@@ -1161,6 +1175,7 @@ PROGRESS_CHECKER=async()=>{
         !SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START //But if it's first iteration after node launch - then we shoudn't skip following logic 
 
 
+        
 
 
     if(shouldSkipIteration) return
