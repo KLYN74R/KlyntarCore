@@ -4,5 +4,5 @@
 
 <br/>
 <p>
-This is the storage for all WASM onchain contracts for KLY_VM
+This is the storage for all WASM onchain contracts for KLYNTAR VM
 </p>
