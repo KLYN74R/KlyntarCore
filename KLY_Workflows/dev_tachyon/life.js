@@ -689,7 +689,9 @@ PREPARE_SYMBIOTE=async()=>{
     
         'VALIDATORS_PROOFS',// BLS signatures of epoches/ranges
 
-        'STUFF'//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
+        'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
+
+        'CONTRACTS' //Storage of WASM contracts for KLYNTAR VM
 
     ].forEach(
         
