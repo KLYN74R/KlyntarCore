@@ -1,0 +1,22 @@
+{
+    "COMING":"SOON",
+
+    "METERING":{
+        
+        "TYPE":"i32",
+        
+        "FUNCTION_NAME":"energyUse",
+
+        "MODULE_NAME":"metering",
+        
+        "COST_TABLE_PATH":"./configsTemplate.json"
+    
+    },
+
+    "CONTRACTS_CACHE_SIZE":10000,
+
+    "PENALTY_IF_LACK_OF_ENERGY":0.1,
+
+    "ALLOWED_MODULES":["github","btc","polygon","twitter"]
+
+}
