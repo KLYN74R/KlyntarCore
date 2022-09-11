@@ -1,0 +1,31 @@
+{
+    "GALAXY":"Milky Way",
+    "ROLE":"BASIC",
+    "CONTROL_SID":"<SOME PRIVATE_KEY>",
+    "CONTROL_PUB_KEY":"FASj1powx5qF1J6MRmx1PB7NQp5mENYEukhyfaWoqzL9",
+    "2FA":false,
+    
+    "ALIASES":{
+        "2CfkMCWs49dRzd1AXjKgv3Z4HCGqPH7tGzEAsKkrGyzA":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
+    },
+
+    "PRELUDE":{
+
+        "DECRYPTED":false,
+        "ANIMATION_DURATION":0,
+        "NO_SPINNERS":false,
+        "OPTIMISTIC":true
+        
+    },
+
+    "DAEMON_LOGS":true,
+
+    "EVM":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo"],
+    
+    "BITFORKS":["btc","ltc","doge","dash"],
+
+    "PLUGINS":[],
+
+    "RUNNER":"dev_andromeda/runner.js"
+
+}
