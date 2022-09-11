@@ -877,6 +877,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
             
             blockID = SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP
             
+            
         /*
 
             In this case, structure should looks like this
