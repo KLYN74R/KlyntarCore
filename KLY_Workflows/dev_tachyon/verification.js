@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF, SIG} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,SIG} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -616,7 +616,7 @@ SHARE_COMMITMENTS = async() =>{
 
 
             //Also, prepare structure for commitments
-            // Insofar as we do hashing over commitments, all validators need to have the same structure
+
             SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[pubKey]||={}
 
         }
@@ -796,10 +796,11 @@ SHARE_COMMITMENTS = async() =>{
                     SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS++
 
 
-                    if(SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]) SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]++
+                    if(SYMBIOTE_META.PROGRESS_CHECKER.FORKS.includes(fork)){
 
-                    else SYMBIOTE_META.PROGRESS_CHECKER.POINTS_PER_FORK[fork]=1
+                        //Stop SKIP procedure and share proof about fork to force other validators to generate SKIP_PROOFS, because of fork
 
+                    }
                     
                 }
 
@@ -808,25 +809,6 @@ SHARE_COMMITMENTS = async() =>{
         ).catch(e=>{})
 
     }
-
-},
-
-
-
-
-//Function to find maulicious commitments over the network among validators to get consensus
-HUNTER_MODE=async()=>{
-
-    //unimplemented!()
-
-},
-
-
-
-
-START_HARVEST_FINAL_COMMITMENTS=async()=>{
-
-    HUNTER_MODE()    
 
 },
 
@@ -1003,29 +985,6 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
 
-
-    //If we already have more than 2/3*N+1 commitments - we can start the second round to harvest the FinalCommitments
-    if(SYMBIOTE_META.PROGRESS_CHECKER.TOTAL_COMMITMENTS>=majority){
-
-        //______________________________________Define special handler to harvest FinalCommitments______________________________________
-
-        SYMBIOTE_META.FINAL_COMMITMENTS_HARVESTER={
-
-            FINAL_COMMITMENTS:{},// Key => validator's solution about skip/approve based on 2/3*N+1 commitments accepted by him.
-            
-            CHALLENGE:new Date().getTime(), //Challenge to make sure that nobody tries to do MiTM. Refresh it each session
-
-            COMMITMENTS_HASH:BLAKE3(JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS))
-
-        }
-
-
-        START_HARVEST_FINAL_COMMITMENTS()
-
-
-    }
-
-    //------------------------------------------- DEADLINE -------------------------------------------
 
     //The case when we know for sure that commitments sharing ceremony failed and no solution for SKIP or APPROVE
     //This mean that we shouldn't create skip proofs because some honest validators will send the blocks for us & other validators and the rest of nodes
@@ -1319,16 +1278,14 @@ PROGRESS_CHECKER=async()=>{
             BLOCK_TO_SKIP:'',
             
             //Commitments by validators to make sure that validators will vote to one of possible solution (skip/accept block)
+            // Key => Validator , Value => Commitment
             COMMITMENTS:{},
             
-            //Key is blockHash,value - number of validators who claim that produce proof for this fork. We use it to easily found the best fork which we should follow
-            POINTS_PER_FORK:{},
+            //To check if possible forks occurs. If yes - vote to skip immediately with proof
+            FORKS:[],
 
             //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
             TOTAL_COMMITMENTS:0,
-
-            //Object used by hunter to hunt for attempts to split the symbiote by validators-adversaries
-            ADVERSARIES:{},
 
             //Here we'll put proofs to skip by validators
             SKIP_PROOFS:{},

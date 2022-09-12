@@ -527,7 +527,7 @@ RELOAD_STATE = async() => {
 
             VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:<Index of finalized block>,HASH:<Hash of finalized block>,ACTIVE:<Should we check block or skip>}
+            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:<Index of finalized block>,HASH:<Hash of finalized block>,BLOCKS_GENERATORS:<Should we check block or skip>}
             
             CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
             
@@ -786,7 +786,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
-                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',ACTIVE}
+                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
                 CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
                 
@@ -900,14 +900,15 @@ PREPARE_SYMBIOTE=async()=>{
         BLOCK_TO_SKIP:'',
 
         //Commitments by validators to make sure that validators will vote to one of possible solution (skip/accept block)
+        // Key => Validator , Value => Commitment
         COMMITMENTS:{},
 
-        //Key is blockHash,value - number of validators who claim that produce proof for this fork. We use it to easily found the best fork which we should follow
-        POINTS_PER_FORK:{},
+        //To check if possible forks occurs. If yes - vote to skip immediately with proof
+        FORKS:[],
 
         //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
         TOTAL_COMMITMENTS:0,
-        
+
         //Here we'll put proofs to skip by validators
         SKIP_PROOFS:{},
 
