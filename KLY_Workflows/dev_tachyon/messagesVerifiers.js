@@ -52,9 +52,9 @@ export default {
                 //Change the state
 
                 //Make active to turn back this validator's thread to VERIFICATION_THREAD
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].ACTIVE=true
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].BLOCKS_GENERATOR=true
                 
-                //And increase skipped block to avoid
+                //And increase index to avoid confusion
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].INDEX++
 
             } else return true

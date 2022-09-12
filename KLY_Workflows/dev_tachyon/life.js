@@ -559,7 +559,7 @@ RELOAD_STATE = async() => {
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
             
-            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',ACTIVE:true} // set the initial values
+            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true} // set the initial values
             
         )
 
@@ -907,10 +907,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
         TOTAL_COMMITMENTS:0,
-
-        //Object used by hunter to hunt for attempts to split the symbiote by validators-adversaries
-        ADVERSARIES:{},
-
+        
         //Here we'll put proofs to skip by validators
         SKIP_PROOFS:{},
 

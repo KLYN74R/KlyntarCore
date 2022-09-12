@@ -1376,7 +1376,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
-        if(!currentSessionMetadata.ACTIVE){
+        if(!currentSessionMetadata.BLOCKS_GENERATOR){
 
             /*
                     
@@ -1419,7 +1419,7 @@ START_VERIFICATION_THREAD=async()=>{
     
                 */
 
-                currentSessionMetadata.ACTIVE=false
+                currentSessionMetadata.BLOCKS_GENERATOR=false
     
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
 
@@ -1459,7 +1459,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(START_VERIFICATION_THREAD,(nextBlock||!currentSessionMetadata.ACTIVE)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
+        setTimeout(START_VERIFICATION_THREAD,(nextBlock||!currentSessionMetadata.BLOCKS_GENERATOR)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread

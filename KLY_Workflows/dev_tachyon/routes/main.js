@@ -517,7 +517,7 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
             &&
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
             &&
-            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].ACTIVE//Also,check if validator was marked as ACTIVE:false
+            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].BLOCKS_GENERATOR//Also,check if validator was marked as ACTIVE:false
             &&
             await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
 
