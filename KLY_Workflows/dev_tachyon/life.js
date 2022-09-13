@@ -906,8 +906,11 @@ PREPARE_SYMBIOTE=async()=>{
         //To check if possible forks occurs. If yes - vote to skip immediately with proof
         FORKS:[],
 
-        //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
-        TOTAL_COMMITMENTS:0,
+        //Number of commitments by validators who voted to skip
+        SKIP_POINTS:0,
+
+        //Number of commitments by validators who voted to approve
+        APPROVE_POINTS:0,
 
         //Here we'll put proofs to skip by validators
         SKIP_PROOFS:{},

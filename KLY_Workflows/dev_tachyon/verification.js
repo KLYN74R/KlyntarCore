@@ -1097,7 +1097,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
             setTimeout(START_TO_COUNT_COMMITMENTS,CONFIG.SYMBIOTE.COUNT_COMMITMENTS_INTERVAL)
 
 
-        } //If majority have voted for approving block - then just find proofs and do nothing
+        } //If majority have voted for approving block - then just find proofs and do nothing. Also, clean the BLOCK_TO_SKIP field
         else{
 
             LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_COMMITMENTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS}/${majority}`,'I')
@@ -1284,10 +1284,13 @@ PROGRESS_CHECKER=async()=>{
             //To check if possible forks occurs. If yes - vote to skip immediately with proof
             FORKS:[],
 
-            //General number of commitments. Use it not to recount each time or use "expensive" Object.keys()
-            TOTAL_COMMITMENTS:0,
+            //Number of commitments by validators who voted to skip
+            SKIP_POINTS:0,
 
-            //Here we'll put proofs to skip by validators
+            //Number of commitments by validators who voted to approve
+            APPROVE_POINTS:0,
+
+            //Here we'll put proofs to skip created by validators
             SKIP_PROOFS:{},
    
             //For a new iteration we'll make it false again to ask optimizers if we'll need it
