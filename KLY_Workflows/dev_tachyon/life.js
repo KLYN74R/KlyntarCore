@@ -889,6 +889,7 @@ PREPARE_SYMBIOTE=async()=>{
     //______________Take the data from VERIFICATION_THREAD to create another structure - PROGRESS_CHECKER____________
 
 
+    
     let progressCheckerTemplate = {
 
         //To avoid async problems
