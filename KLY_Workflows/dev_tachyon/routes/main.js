@@ -66,19 +66,21 @@ acceptBlocks=a=>{
                 
                 if(allow){
                 
-                    let blockID = block.с+":"+block.i
+                    let blockID = block.c+":"+block.i
 
                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                     
                     //Store it locally-we'll work with this block later
                     SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
-                        _ => SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                        _ =>
                             
-                            Promise.all(BROADCAST('/block',block))
+                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                            
+                                Promise.all(BROADCAST('/block',block))
                                 
-                        ).catch(_=>{})
-                            
+                            ).catch(_=>{})
+                         
                     )
 
                    !a.aborted&&a.end('OK')
