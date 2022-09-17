@@ -39,6 +39,8 @@ export default {
         
     },
 
+    getBlock:blockIndex=>{},
+
 
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{

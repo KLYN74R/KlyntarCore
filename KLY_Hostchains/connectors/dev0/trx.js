@@ -113,6 +113,8 @@ export default {
 
     },
 
+    getBlock:blockIndex=>{},
+
     getBalance:()=>{
 
         let {URL,PUB,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,

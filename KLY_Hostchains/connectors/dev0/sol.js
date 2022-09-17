@@ -140,6 +140,8 @@ export default {
     },
 
 
+    getBlock:blockIndex=>{},
+
 
 
     getBalance:async()=>{

@@ -140,10 +140,19 @@ export default class {
     })
 
 
+
     //Only for Controller(at least in first releases)
     changeManifest=manifest=>{
 
     }
+
+
+    getBlock=blockIndex=>{
+
+        
+
+    }
+
 
     getBalance=async()=>{
 

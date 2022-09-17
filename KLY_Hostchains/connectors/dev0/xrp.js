@@ -139,6 +139,9 @@ export default {
     },
 
 
+    getBlock:blockIndex=>{},
+
+
     getBalance:async()=>{
 
         let balance=await connection.connect().then(()=>

@@ -114,6 +114,8 @@ export default {
 
     },
 
+    getBlock:blockIndex=>{},
+
     
     getBalance:async()=>connection.bank.balance(symbiote).then(bal=>bal[0].toAmino()[0].amount/10**6)
 }

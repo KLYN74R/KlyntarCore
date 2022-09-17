@@ -172,8 +172,7 @@ export default {
 
 
 
-
-
+    getBlock:blockIndex=>{},
 
 
 

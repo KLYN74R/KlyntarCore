@@ -221,6 +221,8 @@ export default {
 
     },
 
+
+    getBlock:blockIndex=>{},
     
 
     
