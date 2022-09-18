@@ -94,11 +94,17 @@
 
 
 
+import {getBlockByIndex} from './btcForksCommon.js'
+
 import {LOG} from '../../../KLY_Utils/utils.js'
 
 import bitcore from 'bitcore-lib'
 
 import fetch from 'node-fetch'
+
+
+
+
 
 
 
@@ -220,12 +226,8 @@ export default {
 
 
     },
-
-
-    getBlock:blockIndex=>{},
     
 
-    
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
 
@@ -247,6 +249,10 @@ export default {
         
         })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
-    }
+    },
+
+
+    getBlockByIndex:blockIndex=>getBlockByIndex('btc',blockIndex)
+    
 
 }

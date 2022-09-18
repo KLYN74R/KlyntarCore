@@ -29,10 +29,8 @@
  * 
  *      282f44877e0d5d6fca233021c62bec11bd0cc3579be2ba7732a13e33c9abf1b6 useful.txt
  * 
- * 
  * ]
- *  
- * Links -> https://tltc.bitaps.com/ (great explorer)
+ * 
  * 
  * @Build for KLYNTAR symbiotic platform and hostchains
  * 
@@ -40,6 +38,8 @@
 
 
 
+
+import {getBlockByIndex} from './btcForksCommon.js'
 
 import {LOG} from '../../../KLY_Utils/utils.js'
 
@@ -172,12 +172,7 @@ export default {
 
 
 
-    getBlock:blockIndex=>{},
-
-
-
     getBalance:()=>{
-
       
         let {URL,CREDS,PUB}=CONFIG.SYMBIOTE.HC_CONFIGS.ltc
 
@@ -192,6 +187,15 @@ export default {
         })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
 
-    }
+    },
+
+
+
+
+    //____________________________________________________________ USED IN TACHYON ____________________________________________________________
+
+
+
+    getBlockByIndex:blockIndex=>getBlockByIndex('ltc',blockIndex)
 
 }
