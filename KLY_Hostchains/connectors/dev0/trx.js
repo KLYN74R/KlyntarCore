@@ -43,7 +43,7 @@ import TronWeb from 'tronweb'
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>{
 
         let {URL,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,
         
@@ -74,7 +74,7 @@ export default {
 
 
     
-    sendTx:async(blockIndex,klyntarHash)=>{
+    makeCommit:async(blockIndex,klyntarHash)=>{
 
         let {PRV,AMOUNT,TO,URL} = CONFIG.SYMBIOTE.HC_CONFIGS.trx,
                     

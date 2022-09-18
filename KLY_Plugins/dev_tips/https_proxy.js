@@ -9,6 +9,7 @@ let server = net.createServer()
 server.on("connection", (clientToProxySocket) => {
 
     console.log("Client connected to proxy");
+    
     clientToProxySocket.once("data", (data) => {
 
 

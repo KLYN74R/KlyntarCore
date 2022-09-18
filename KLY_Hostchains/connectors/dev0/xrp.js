@@ -61,7 +61,7 @@ if(server) connection=new RippleAPI({server})
 
 export default {
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>
 
         connection.connect().then(()=>
         
@@ -87,7 +87,7 @@ export default {
 
 
     
-    sendTx:async(blockIndex,klyntarHash)=>
+    makeCommit:async(blockIndex,klyntarHash)=>
 
         connection.connect().then(async()=>{
 

@@ -249,7 +249,7 @@ proof=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborte
                 
                 workflowOk= ControllerBlock.genHash(controllerBlock.a,controllerBlock.i,controllerBlock.p)===KLYNTAR_HASH
                             &&
-                            await HOSTCHAINS.get(ticker).checkTx(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH,symbiote).catch(
+                            await HOSTCHAINS.get(ticker).checkCommit(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH).catch(
                                 
                                 error => {
                                     

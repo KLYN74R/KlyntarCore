@@ -1875,7 +1875,7 @@ verifyBlock=async block=>{
             &&
             SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
 
-                let response = await HOSTCHAINS.get(ticker).checkTx(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH,symbiote).catch(e=>-1)
+                let response = await HOSTCHAINS.get(ticker).checkCommit(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH).catch(e=>-1)
                     
                 if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
 

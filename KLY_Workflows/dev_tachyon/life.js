@@ -362,7 +362,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                             hostchain=HOSTCHAIN.get(ticker),
     
                             //If previous push is still not accepted-then no sense to push new symbiote update
-                            isAlreadyAccepted=await hostchain.checkTx(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
+                            isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
                         
 
 
@@ -384,7 +384,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
                             let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
 
-                                symbioticHash=await hostchain.sendTx(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
+                                symbioticHash=await hostchain.makeCommit(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
                                     
                                     LOG(`Error on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m with push to \x1b[36;1m${ticker} \n${e}`,'W')
                                 

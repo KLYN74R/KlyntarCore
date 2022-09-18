@@ -31,11 +31,11 @@ Links:[
 export default {
 
 
-    checkTx:(chainId,txHash)=>{
+    checkCommit:(chainId,txHash)=>{
 
     },
 
-    sendTx:(symbiote,blockIndex,klyntarHash)=>{
+    makeCommit:(blockIndex,klyntarHash)=>{
         
     },
 

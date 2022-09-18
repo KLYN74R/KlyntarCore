@@ -94,13 +94,9 @@
 
 
 
-import {getBlockByIndex} from './btcForksCommon.js'
-
-import {LOG} from '../../../KLY_Utils/utils.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
 
 import bitcore from 'bitcore-lib'
-
-import fetch from 'node-fetch'
 
 
 
@@ -111,121 +107,10 @@ import fetch from 'node-fetch'
 
 export default {
     
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>checkCommit('btc',hostChainHash,blockIndex,klyntarHash),
 
 
-        let {URL,CONFIRMATIONS,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.btc
-
-
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'gettx',hash:hostChainHash},
-            
-            command:`bitcoin-cli gettransaction ${hostChainHash}`
-        
-        })}).then(r=>r.json()).then(tx=>
-            
-            tx.confirmations>=CONFIRMATIONS
-            &&
-            fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-
-                data:{command:'getdecoded',hash:hostChainHash},
-
-                command:`bitcoin-cli decoderawtransaction $(bitcoin-cli getrawtransaction ${hostChainHash})`
-
-            })}).then(r=>r.json()).then(tx=>{
-                
-                //Convert hexademical data from output and get rid of magic bytes
-                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
-
-                return data[0]==blockIndex&&data[1]===klyntarHash
-
-            })
-
-        ).catch(e=>LOG(`Some error has been occured in BTC \x1b[36;1m${e}`,'W'))
-        
-
-    },
-
-
-
-
-    sendTx:async(blockIndex,klyntarHash)=>{
-        
-        
-        let {URL,PUB,PRV,FEE,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.btc,
-        
-            inputs=[],
-            
-
-
-            //Fetch available from utxo pool
-            nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-                
-                data:{command:'getutxos',address:PUB},
-                
-                command:'bitcoin-cli listunspent'
-           
-            })})    .then(r=>r.text())      
-        
-                    .then(
-                        
-                        obj => JSON.parse(obj).filter(utxo=>utxo.address===PUB)//do it coz bitcoin daemon can return utxos from your another addresses of wallet
-                    
-                    )
-
-
-
-        nodeUtxos.forEach(output=>{
-     
-            let utxo = {}
-
-            utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
-            utxo.script = output.scriptPubKey
-            utxo.address = output.address
-            utxo.txId = output.txid
-            utxo.outputIndex = output.vout
-            
-            inputs.push(utxo)
-        
-        })
-
-
-    
-        //Create empty instance...
-        let transaction = new bitcore.Transaction()
-
-
-        transaction.from(inputs)//Set transaction inputs
-  
-            .addData(blockIndex+'_'+klyntarHash)//Add payload
-
-            .change(PUB)// Set change address - Address to receive the left over funds after transfer
-
-            .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
-
-            .sign(PRV)// Sign transaction with your private key
-            
-
-        
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-            
-            data:{command:'sendtx',hex:transaction.serialize()},
-
-            command:`bitcoin-cli sendrawtransaction ${transaction.serialize()}`
-    
-        })}).then(r=>r.text()).catch(e=>LOG(`ERROR BTC ${e}`,'W'))
-
-
-    },
+    makeCommit:(blockIndex,klyntarHash)=>makeCommit(bitcore.Transaction,'btc',blockIndex,klyntarHash),
     
 
     //Only for Controller(at least in first releases)
@@ -234,22 +119,7 @@ export default {
     },
 
 
-    getBalance:()=>{
-
-      
-        let {URL,PUB}=CONFIG.SYMBIOTE.HC_CONFIGS.btc
-
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'getbalance',address:PUB},
-
-            command:'bitcoin-cli getbalance'
-        
-        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
-
-    },
+    getBalance:()=>getBalance('btc'),
 
 
     getBlockByIndex:blockIndex=>getBlockByIndex('btc',blockIndex)

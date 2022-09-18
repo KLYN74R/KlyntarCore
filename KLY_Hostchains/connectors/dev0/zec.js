@@ -15,14 +15,15 @@
 
 
 
+
 export default {
 
 
-    checkTx:(symbiote,txHash)=>{
+    checkCommit:(symbiote,txHash)=>{
 
     },
 
-    sendTx:(symbiote,blockIndex,klyntarHash)=>{
+    makeCommit:(symbiote,blockIndex,klyntarHash)=>{
         
     },
 
@@ -31,4 +32,5 @@ export default {
     changeManifest:manifest=>{
 
     }
+
 }

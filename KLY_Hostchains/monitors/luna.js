@@ -46,24 +46,29 @@
 
 
 
- import { LocalTerra, WebSocketClient } from '@terra-money/terra.js';
+import { LocalTerra, WebSocketClient } from '@terra-money/terra.js';
 
- const wsclient = new WebSocketClient('ws://bombay-lcd.terra.dev/websocket');
+const wsclient = new WebSocketClient('ws://bombay-lcd.terra.dev/websocket');
  
- const terra = new LocalTerra();
+const terra = new LocalTerra();
  
- let count = 0;
- wsclient.subscribe('NewBlock', {}, (_) => {
-   console.log(count);
-   count += 1;
+let count = 0;
+
+wsclient.subscribe('NewBlock',{},_=>{
+  
+    console.log(count)
+
+    count += 1
  
-   if (count === 3) {
-     wsclient.destroy();
-   }
- });
+    if (count === 3) wsclient.destroy()
+
+})
+
+
+//Subscribe to events
+wsclient.subscribe('Tx',{'message.action':'send'},data=>{
+  
+    console.log('Send occured!');
+    console.log(data.value);
  
- // send tracker
- wsclient.subscribe('Tx', { 'message.action': 'send' }, data => {
-   console.log('Send occured!');
-   console.log(data.value);
- });
+});

@@ -84,7 +84,7 @@ if(configs) connection=new Web3.Connection(URL,COMMITMENT)
 export default {
 
 
-    checkTx:(hostChainSig,blockIndex,klyntarHash)=>
+    checkCommit:(hostChainSig,blockIndex,klyntarHash)=>
     
         connection.getTransaction(hostChainSig).then(tx=>{
         
@@ -98,7 +98,7 @@ export default {
 
 
 
-    sendTx:(blockIndex,klyntarHash)=>{
+    makeCommit:(blockIndex,klyntarHash)=>{
 
         //PRV-private key in Base64
         let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTE.HC_CONFIGS.sol,

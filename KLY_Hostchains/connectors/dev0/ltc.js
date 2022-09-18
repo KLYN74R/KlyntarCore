@@ -39,131 +39,20 @@
 
 
 
-import {getBlockByIndex} from './btcForksCommon.js'
-
-import {LOG} from '../../../KLY_Utils/utils.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
 
 import bitlite from 'litecore-lib-v5'//'litecore-lib'
-
-import fetch from 'node-fetch'
 
 
 
 
 export default {
-
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
-
-
-
-        let {URL,CONFIRMATIONS,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.ltc
-
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'gettx',hash:hostChainHash},
-            
-            command:`litecoin-cli gettransaction ${hostChainHash}`
-        
-        })}).then(r=>r.json()).then(tx=>
-            
-            tx.confirmations>=CONFIRMATIONS
-            &&
-            fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-
-                data:{command:'getdecoded',hash:hostChainHash},
-
-                command:`litecoin-cli decoderawtransaction $(litecoin-cli getrawtransaction ${hostChainHash})`
-
-            })}).then(r=>r.json()).then(tx=>{
-                
-                //Convert hexademical data from output and get rid of magic bytes
-                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
-
-                return data[0]==blockIndex&&data[1]===klyntarHash
-
-            })
-
-        ).catch(e=>LOG(`Some error has been occured in LTC \x1b[36;1m${e}`,'W'))
-        
-
-    },
-
-
-
-
-
-
-
-    sendTx:async(blockIndex,klyntarHash)=>{
-
-        
-
-        let {URL,PUB,PRV,FEE,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.ltc,
     
-            inputs=[],
-            
-            //Fetch available from utxo pool
-            nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-
-                data:{command:'getutxos',address:PUB},
-            
-                command:'litecoin-cli listunspent'
-           
-            })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>checkCommit('ltc',hostChainHash,blockIndex,klyntarHash),
 
 
-            //Try to get UTXOs from node
-            nodeUtxos.forEach(output=>{
-     
-                let utxo = {}
-
-                utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
-                utxo.script = output.scriptPubKey
-                utxo.address = output.address
-                utxo.txId = output.txid
-                utxo.outputIndex = output.vout
-            
-                inputs.push(utxo)
-        
-            })
-
-
+    makeCommit:(blockIndex,klyntarHash)=>makeCommit(bitlite.Transaction,'ltc',blockIndex,klyntarHash),
     
-            //Create empty instance...
-            let transaction = new bitlite.Transaction()
-
-
-            transaction.from(inputs)//Set transaction inputs
-  
-                .addData(blockIndex+'_'+klyntarHash)//Add payload
-
-                .change(PUB)// Set change address - Address to receive the left over funds after transfer
-
-                .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
-
-                .sign(PRV)// Sign transaction with your private key
-            
-
-        
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'sendtx',hex:transaction.serialize()},
-
-            command:`litecoin-cli sendrawtransaction ${transaction.serialize()}`
-    
-        })}).then(r=>r.text()).catch(e=>LOG(`ERROR LTC ${e}`,'W'))
-
-        
-    },
-
 
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
@@ -171,31 +60,11 @@ export default {
     },
 
 
-
-    getBalance:()=>{
-      
-        let {URL,CREDS,PUB}=CONFIG.SYMBIOTE.HC_CONFIGS.ltc
-
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'getbalance',address:PUB},
-            
-            command:'litecoin-cli getbalance'
-        
-        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
-
-
-    },
-
-
-
+    getBalance:()=>getBalance('ltc'),
 
     //____________________________________________________________ USED IN TACHYON ____________________________________________________________
 
-
-
     getBlockByIndex:blockIndex=>getBlockByIndex('ltc',blockIndex)
+    
 
 }

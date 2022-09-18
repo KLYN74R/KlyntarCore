@@ -63,7 +63,7 @@ if(configs) connection=new LCDClient({URL,chainID:CHAIN_ID})
 export default {
 
 
-    checkTx:async(hostChainHash,blockIndex,klyntarHash)=>{
+    checkCommit:async(hostChainHash,blockIndex,klyntarHash)=>{
       
         let tx=await connection.tx.txInfo(hostChainHash).then(data=>data.tx).catch(e=>false)
 
@@ -77,9 +77,10 @@ export default {
 
     },
 
+    
 
 
-    sendTx:(symbiote,blockIndex,klyntarHash)=>{
+    makeCommit:(blockIndex,klyntarHash)=>{
 
         let {MNEMONIC,TO,AMOUNT}=CONFIG.SYMBIOTE.HC_CONFIGS.luna,
 

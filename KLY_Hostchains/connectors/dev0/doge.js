@@ -43,154 +43,31 @@
  */
 
 
-import {getBlockByIndex} from './btcForksCommon.js'
-
-import {LOG} from '../../../KLY_Utils/utils.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
 
 import bitdoge from 'bitcore-doge-lib'
-
-import fetch from 'node-fetch'
 
 
 
 
 export default {
-
-    checkTx:(hostChainHash,blockIndex,klyntarHash)=>{
-
-        let {URL,CONFIRMATIONS,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.doge
+    
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>checkCommit('doge',hostChainHash,blockIndex,klyntarHash),
 
 
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'gettx',hash:hostChainHash},
-            
-            command:`doge-cli gettransaction ${hostChainHash}`
-        
-        })}).then(r=>r.json()).then(tx=>
-            
-            tx.confirmations>=CONFIRMATIONS
-            &&
-            fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-
-                data:{command:'getdecoded',hash:hostChainHash},
-
-                command:`doge-cli decoderawtransaction $(doge-cli getrawtransaction ${hostChainHash})`
-
-            })}).then(r=>r.json()).then(tx=>{
-                
-                //Convert hexademical data from output and get rid of magic bytes
-                let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
-
-                return data[0]==blockIndex&&data[1]===klyntarHash
-
-            })
-
-        ).catch(e=>LOG(`Some error has been occured in DOGE \x1b[36;1m${e}`,'W'))
+    makeCommit:(blockIndex,klyntarHash)=>makeCommit(bitdoge.Transaction,'doge',blockIndex,klyntarHash),
     
 
-    },
-
-
-
-
-    sendTx:async(blockIndex,klyntarHash)=>{
-
-        
-        let {PUB,PRV,URL,FEE,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.doge,
-            
-            inputs=[],
-            
-            //Fetch available from utxo pool
-            nodeUtxos=await fetch(URL,{method:'POST',body:JSON.stringify({
-
-                password:CREDS,
-
-                data:{command:'getutxos',address:PUB},
-            
-                command:'doge-cli listunspent'
-           
-            })}).then(r=>r.text()).then(obj=>JSON.parse(obj).filter(utxo=>utxo.address===PUB))
-
-
-            //Try to get UTXOs from node
-            nodeUtxos.forEach(output=>{
-     
-                let utxo = {}
-
-                utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
-                utxo.script = output.scriptPubKey
-                utxo.address = output.address
-                utxo.txId = output.txid
-                utxo.outputIndex = output.vout
-            
-                inputs.push(utxo)
-        
-            })
-
-
-    
-        //Create empty instance...
-        let transaction = new bitdoge.Transaction()
-
-
-        transaction.from(inputs)//Set transaction inputs
-  
-            .addData(blockIndex+'_'+klyntarHash)//Add payload
-
-            .change(PUB)// Set change address - Address to receive the left over funds after transfer
-
-            .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
-
-            .sign(PRV)// Sign transaction with your private key
-            
-
-            
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'sendtx',hex:transaction.serialize()},
-
-            command:`doge-cli sendrawtransaction ${transaction.serialize()}`
-    
-        })}).then(r=>r.text()).catch(e=>LOG(`ERROR DOGE ${e}`,'W'))
-
-
-    },
-
-
-    
     //Only for Controller(at least in first releases)
     changeManifest:manifest=>{
 
     },
 
 
-    getBalance:()=>{
-
-
-        let {URL,PUB,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS.doge
-
-        return fetch(URL,{method:'POST',body:JSON.stringify({
-
-            password:CREDS,
-
-            data:{command:'getbalance',address:PUB},
-            
-            command:'doge-cli getbalance'
-        
-        })}).then(r=>r.text()).then(balance=>balance.replace('\n','')).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
-        
-    },
-
+    getBalance:()=>getBalance('doge'),
 
 
     getBlockByIndex:blockIndex=>getBlockByIndex('doge',blockIndex)
-
+    
 
 }

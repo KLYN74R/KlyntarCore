@@ -32,11 +32,11 @@ Links:[
 export default {
 
 
-    checkTx:(hostChainHash,blockIndex,klyntarHash,symbiote)=>{
+    checkCommit:(hostChainHash,blockIndex,klyntarHash)=>{
 
     },
 
-    sendTx:(symbiote,blockIndex,klyntarHash)=>{
+    makeCommit:(blockIndex,klyntarHash)=>{
         
     },
 

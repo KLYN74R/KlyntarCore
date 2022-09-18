@@ -47,7 +47,7 @@ export default class {
     }
 
 
-    checkTx=(hostChainHash,blockIndex,klyntarHash)=>
+    checkCommit=(hostChainHash,blockIndex,klyntarHash)=>
         
         this.web3.eth.getTransaction(hostChainHash).then(tx=>{
         
@@ -64,7 +64,7 @@ export default class {
 
 
 
-    sendTx=(_symbiote,blockIndex,klyntarHash)=>new Promise((resolve,reject)=>{
+    makeCommit=(_symbiote,blockIndex,klyntarHash)=>new Promise((resolve,reject)=>{
 
         this.web3.eth.getTransactionCount(this.PUB,(err,txCount)=>{
     
