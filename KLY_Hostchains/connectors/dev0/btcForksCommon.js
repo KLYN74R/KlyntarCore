@@ -78,11 +78,11 @@ export let getBlockByIndex = async (btcFork,blockIndex) =>
 
 export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
 
+    console.log('Going to check ',`${btcFork}:${hostChainHash}:${blockIndex}:${klyntarHash}`)
+
     return REQUEST_TO_NODE(btcFork,'getrawtransaction',[hostChainHash]).then(
     
-        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject.result]).then(resp=>{
-
-            let tx = resp.result
+        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject]).then(tx=>{
 
             //Convert hexademical data from output and get rid of magic bytes
             let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
@@ -161,7 +161,7 @@ export let getTransaction = (btcFork,txHash) => {
 
     REQUEST_TO_NODE(btcFork,'getrawtransaction',[txHash]).then(
     
-        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject.result]).then(resp=>resp.result)
+        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject])
     
     ).catch(e=>LOG(`Some error has been occurred in ${btcFork} when getting tx by hash\x1b[36;1m${e}`,'W'))
 
