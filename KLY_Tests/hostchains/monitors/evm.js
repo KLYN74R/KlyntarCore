@@ -315,3 +315,35 @@ let web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545'),
 let result=await contract.getPastEvents('Change',{fromBlock:15093771,toBlock:15093771})
 
 console.log(result)
+
+
+/*
+
+
+JSON PRC
+
+fetch('<Own server>',{
+
+        method:'POST',
+    
+        headers:{
+            'Content-Type': 'application/json'
+        },
+    
+        body:JSON.stringify({
+    
+            jsonrpc:"2.0",
+            id:4362001930791882,
+            method:'eth_getBalance',
+            params:['0x4741c39e6096c192Db6E1375Ff32526512069dF5','latest']
+            
+        })
+    
+    }).then(r=>r.json()).then(r=>console.log('Manual response ',web3.utils.fromWei(r.result,'ether')))
+
+
+
+
+
+
+*/

@@ -147,11 +147,10 @@ export default class {
     }
 
 
-    getBlock=blockIndex=>{
+    getBlock=blockIndex=>this.web3.eth.getBlock(blockIndex)
 
-        
 
-    }
+    getTransaction=txHash=>this.web3.eth.getTransaction(txHash).catch(e=>false)
 
 
     getBalance=async()=>{

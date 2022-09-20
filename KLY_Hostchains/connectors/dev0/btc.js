@@ -94,7 +94,7 @@
 
 
 
-import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance,getTransaction} from './btcForksCommon.js'
 
 import bitcore from 'bitcore-lib'
 
@@ -122,7 +122,9 @@ export default {
     getBalance:()=>getBalance('btc'),
 
 
-    getBlockByIndex:blockIndex=>getBlockByIndex('btc',blockIndex)
+    getBlockByIndex:blockIndex=>getBlockByIndex('btc',blockIndex),
+
+    getTransaction:txHash=>getTransaction('btc',txHash)
     
 
 }

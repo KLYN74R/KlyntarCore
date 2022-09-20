@@ -39,7 +39,7 @@
 
 
 
-import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance,getTransaction} from './btcForksCommon.js'
 
 import bitlite from 'litecore-lib-v5'//'litecore-lib'
 
@@ -64,7 +64,9 @@ export default {
 
     //____________________________________________________________ USED IN TACHYON ____________________________________________________________
 
-    getBlockByIndex:blockIndex=>getBlockByIndex('ltc',blockIndex)
+    getBlockByIndex:blockIndex=>getBlockByIndex('ltc',blockIndex),
+
+    getTransaction:txHash=>getTransaction('dash',txHash)
     
 
 }

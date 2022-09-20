@@ -43,7 +43,7 @@
  */
 
 
-import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance,getTransaction} from './btcForksCommon.js'
 
 import bitdoge from 'bitcore-doge-lib'
 
@@ -67,7 +67,9 @@ export default {
     getBalance:()=>getBalance('doge'),
 
 
-    getBlockByIndex:blockIndex=>getBlockByIndex('doge',blockIndex)
+    getBlockByIndex:blockIndex=>getBlockByIndex('doge',blockIndex),
+
+    getTransaction:txHash=>getTransaction('doge',txHash)
     
 
 }

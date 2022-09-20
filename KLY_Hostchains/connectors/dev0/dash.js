@@ -43,7 +43,7 @@
 
 
 
-import {getBlockByIndex,checkCommit,makeCommit,getBalance} from './btcForksCommon.js'
+import {getBlockByIndex,checkCommit,makeCommit,getBalance,getTransaction} from './btcForksCommon.js'
 
 import dashcore from '@dashevo/dashcore-lib'
 
@@ -67,7 +67,9 @@ export default {
     getBalance:()=>getBalance('dash'),
 
 
-    getBlockByIndex:blockIndex=>getBlockByIndex('dash',blockIndex)
+    getBlockByIndex:blockIndex=>getBlockByIndex('dash',blockIndex),
+
+    getTransaction:txHash=>getTransaction('dash',txHash)
     
 
 }

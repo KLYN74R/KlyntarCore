@@ -91,7 +91,7 @@ export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
 
         })
     
-    ).catch(e=>LOG(`Some error has been occured in DOGE \x1b[36;1m${e}`,'W'))
+    ).catch(e=>LOG(`Some error has been occurred in ${btcFork} when getting tx by hash\x1b[36;1m${e}`,'W'))
 
 }
 
@@ -144,7 +144,7 @@ export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
         
 
         
-    return REQUEST_TO_NODE(btcFork,'sendrawtransaction',[transaction.serialize()]).catch(e=>LOG(`ERROR DOGE ${e}`,'W'))
+    return REQUEST_TO_NODE(btcFork,'sendrawtransaction',[transaction.serialize()]).catch(e=>LOG(`Can't make commit in ${btcFork}\n${e}`,'W'))
     
 
 }
@@ -159,3 +159,16 @@ export let getBalance = btcFork =>
         balance => balance.replace('\n','')
         
     ).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+
+
+
+
+export let getTransaction = (btcFork,txHash) => {
+
+    REQUEST_TO_NODE(btcFork,'getrawtransaction',[txHash]).then(
+    
+        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject.result]).then(resp=>resp.result)
+    
+    ).catch(e=>LOG(`Some error has been occurred in ${btcFork} when getting tx by hash\x1b[36;1m${e}`,'W'))
+
+}
