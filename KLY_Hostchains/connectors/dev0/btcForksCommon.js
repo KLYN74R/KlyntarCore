@@ -111,6 +111,7 @@ export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
             utxos => utxos.filter(utxo=>utxo.address===PUB) //to get inputs for address format
             
         )
+
         
         //Try to get UTXOs from node
         nodeUtxos.forEach(output=>{
@@ -119,7 +120,7 @@ export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
 
             utxo.satoshis = Math.floor(Number(output.amount) * 100000000)
             utxo.script = output.scriptPubKey
-            utxo.address = output.address
+            utxo.address = PUB
             utxo.txId = output.txid
             utxo.outputIndex = output.vout
         
@@ -141,7 +142,6 @@ export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
         .fee(FEE)//Manually set transaction fees: 20 satoshis per byte
 
         .sign(PRV)// Sign transaction with your private key
-        
 
         
     return REQUEST_TO_NODE(btcFork,'sendrawtransaction',[transaction.serialize()]).catch(e=>LOG(`Can't make commit in ${btcFork}\n${e}`,'W'))
@@ -152,13 +152,7 @@ export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
 
 
 
-export let getBalance = btcFork => 
-    
-    REQUEST_TO_NODE(btcFork,'getbalance',[]).then(
-        
-        balance => balance.replace('\n','')
-        
-    ).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
+export let getBalance = btcFork => REQUEST_TO_NODE(btcFork,'getbalance',[]).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 
 
 

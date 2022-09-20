@@ -66,7 +66,7 @@ export default {
 
     getBlockByIndex:blockIndex=>getBlockByIndex('ltc',blockIndex),
 
-    getTransaction:txHash=>getTransaction('dash',txHash)
+    getTransaction:txHash=>getTransaction('ltc',txHash)
     
 
 }

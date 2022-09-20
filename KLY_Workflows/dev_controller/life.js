@@ -10,6 +10,8 @@ import {BROADCAST,DECRYPT_KEYS} from './utils.js'
 
 import UWS from 'uWebSockets.js'
 
+import readline from 'readline'
+
 import fetch from 'node-fetch'
 
 import ora from 'ora'
@@ -17,7 +19,6 @@ import ora from 'ora'
 import l from 'level'
 
 import fs from 'fs'
-
 
 
 
@@ -957,7 +958,7 @@ PREPARE_SYMBIOTE=async()=>{
     
             readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
             
-            .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+            .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
         ).then(answer=>answer!=='YES'&& process.exit(110))
 

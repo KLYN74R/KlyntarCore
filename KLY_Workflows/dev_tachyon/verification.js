@@ -1126,6 +1126,10 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 PROGRESS_CHECKER=async()=>{
 
+
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)) return
+    
+
     let shouldSkipIteration = 
     
         SYMBIOTE_META.PROGRESS_CHECKER.ACTIVE //If we already "wait" for commitments - skip checker iteration

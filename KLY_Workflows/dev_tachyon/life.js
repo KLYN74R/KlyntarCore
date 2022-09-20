@@ -10,6 +10,8 @@ import Block from './essences/block.js'
 
 import UWS from 'uWebSockets.js'
 
+import readline from 'readline'
+
 import fetch from 'node-fetch'
 
 import Base58 from 'base-58'
@@ -359,7 +361,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
                         let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
                         
-                            hostchain=HOSTCHAIN.get(ticker),
+                            hostchain=HOSTCHAINS.get(ticker),
     
                             //If previous push is still not accepted-then no sense to push new symbiote update
                             isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
@@ -1055,7 +1057,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
             
-        .question(`\n ${'\u001b[38;5;23m'}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
     ).then(answer=>answer!=='YES'&& process.exit(108))
 
@@ -1277,10 +1279,7 @@ RUN_SYMBIOTE=async()=>{
         //0.Start verification process
         await START_VERIFICATION_THREAD()
 
-        //1.Start progress checker. Only validators do it coz only them votes to skip some blocks or approve
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
-        &&
-        setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
+        // setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
         let promises=[]
 
