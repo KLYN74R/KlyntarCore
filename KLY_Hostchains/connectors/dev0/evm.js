@@ -64,7 +64,7 @@ export default class {
 
 
 
-    makeCommit=(_symbiote,blockIndex,klyntarHash)=>new Promise((resolve,reject)=>{
+    makeCommit=(blockIndex,klyntarHash)=>new Promise((resolve,reject)=>{
 
         this.web3.eth.getTransactionCount(this.PUB,(err,txCount)=>{
     
@@ -82,9 +82,9 @@ export default class {
                     "from"                  :   this.PUB,
                     "to"                    :   this.TO,
                     "gasLimit"              :   web3Utils.toHex(this.GAS_LIMIT),
-                    "maxFeePerGas"          :   web3Utils.toHex(web3Utils.toWei( this.MAX_FEE_PER_GAS , 'gwei' ) ),
-                    "maxPriorityFeePerGas"  :   web3Utils.toHex(web3Utils.toWei( this.MAX_PRIORITY_FEE_PER_GAS , 'gwei' ) ),
-                    "value"                 :   web3Utils.toHex(web3Utils.toWei(this.AMOUNT, 'ether')),
+                    "maxFeePerGas"          :   web3Utils.toHex(web3Utils.toWei(this.MAX_FEE_PER_GAS,'gwei')),
+                    "maxPriorityFeePerGas"  :   web3Utils.toHex(web3Utils.toWei(this.MAX_PRIORITY_FEE_PER_GAS ,'gwei')),
+                    "value"                 :   web3Utils.toHex(web3Utils.toWei(this.AMOUNT,'ether')),
                     "data"                  :   '0x'+Buffer.from(blockIndex+'_'+klyntarHash,'utf8').toString('hex'),
                     "nonce"                 :   web3Utils.toHex(txCount),
                     "chainId"               :   `0x${this.CHAIN_ID.toString(16)}`,

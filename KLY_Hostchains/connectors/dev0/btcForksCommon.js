@@ -78,8 +78,6 @@ export let getBlockByIndex = async (btcFork,blockIndex) =>
 
 export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
 
-    console.log('Going to check ',`${btcFork}:${hostChainHash}:${blockIndex}:${klyntarHash}`)
-
     return REQUEST_TO_NODE(btcFork,'getrawtransaction',[hostChainHash]).then(
     
         rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject]).then(tx=>{

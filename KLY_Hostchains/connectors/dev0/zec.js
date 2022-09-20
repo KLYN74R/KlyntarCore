@@ -19,11 +19,11 @@
 export default {
 
 
-    checkCommit:(symbiote,txHash)=>{
+    checkCommit:txHash=>{
 
     },
 
-    makeCommit:(symbiote,blockIndex,klyntarHash)=>{
+    makeCommit:(blockIndex,klyntarHash)=>{
         
     },
 
