@@ -142,126 +142,63 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
     GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
 
+    QUICK_SORT = arr => {
+    
+        if (arr.length < 2) return arr
+        
+        let min = 1,
+            
+            max = arr.length - 1,
+            
+            rand = Math.floor(min + Math.random() * (max + 1 - min)),
+            
+            pivot = arr[rand],
+    
+            left = [], right = []
+        
+
+        arr.splice(arr.indexOf(pivot),1)
+        
+        arr = [pivot].concat(arr)
+        
+
+        for (let i = 1; i < arr.length; i++) pivot > arr[i] ? left.push(arr[i]):right.push(arr[i])
+
+
+        return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
+      
+    },
+
     GET_QUORUM = () => {
 
         //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length>CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE){
+        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE){
 
 
-            //------------------------------------------ ALGORITHM ------------------------------------------
+            let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)+'0'),
 
-            /*
-            
-                We use the BLAKE3 hash of validatorsMetadata as a seed to choose <QUORUM_SIZE>(usually,it's 127) validators to temporary quorum to generate checkpoints to hostchains & approve blocks
+                mapping = new Map(),
 
-                &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& BUT &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-                &
-                &    !!!!!!! IF THE SIZE OF SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS array is less than 128 - then all the validators are in quorum !!!!!!!
-                &
-                &    In other cases(if more than 127 validators available) we should choose the quorum
-                &
-                &
-                &    NOTE: We choose 127 as quorum size for initial symbiotes. If you need another size of quorum for your symbiote - change CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE
-                &
-                &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& BUT &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+                sortedChallenges = QUICK_SORT(
 
-
-                Then, dependent on total number of validators(length of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS array) we took N first bytes of hash to cover length of array
-
-                Remember that 1 byte is equal to 256 potential values(0-255)
-
-                Hence, for different sizes of array we we'll take N first bytes. For example
-
-                *******************************************************************************************************************
-                *            Total Validators number        *                           Required bytes                            *
-                *******************************************************************************************************************
-                *                    128-256                *                 1(coz,1 byte = 8 bits = 256 values)                 *
-                *******************************************************************************************************************
-                *                   257-65536               *           2(coz,2 bytes = 16 bits = 2^16 = 65536 values)            *
-                *******************************************************************************************************************                                                              
-                *            ....(hope,you understand)      *                                                                     *
-                *******************************************************************************************************************
-                
-                In our case
-
-                    Let  SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA is 1337
-                    Let  CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE is 127
-                    Let  BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA) is f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea
-
-
-                1337 required first 2 bytes(because 256<1337<65536)
-
-                    It's < f0 4c >
-
-                We get the decimal representation of hex to get the index of pseudo-randomly choosen index of validator to add to quorum
-
-                    DEC(f04c)=61 516
-
-                Then, take the percentage representation of 61 516 in 65536
-
-                    65536=100%  |
-                                | ==> x=61516*100/65536=93%
-                    61516=x%    |
-
-                Finally,to get the index of first validator to quorum, get the 93% of 1337 to get the index
-
-                    INDEX = 1337*0.93 = 1243
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
                     
-                So, first validator in quorum is SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[INDEX]
+                        validatorPubKey => {
 
+                            let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
 
+                            mapping.set(challenge,validatorPubKey)
 
-                ++++++++++++++++++++++++++++++ HOW TO GET NEXT X VALIDATORS TO QUORUM ++++++++++++++++++++++++++++++
+                            return challenge
 
-                We need to get another hash and repeate the same algorithm
+                        }
+                        
+                    )
 
-                So, new hash will be BLAKE3(f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea)=c1eebfad7c81c2b12cbf86c877804c13da9c4a2e078886421ac7135473b18c91
+                )
 
-                Again, the first two bytes are <c1ee> what is 49646
+            return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
 
-                49646 is 75% of 65536, so next index of second validator will be 0.75*1337=1002
-
-
-
-                The same you do for the rest validators. In our case(when QUORUM_SIZE is 127) we need to repeate this procedure 127 times
-
-
-
-
-
-                More detailed https://mastering.klyntar.org/beginning/architecture/workflows/tachyon
-
-            */
-
-            let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
-
-
-            for(let i=0;i<CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE;i++){
-
-                validatorsMetadataHash = BLAKE3(validatorsMetadataHash)
-
-
-                let requiredBytesToSlice=1, quorumTemplate = [], hashInBytes = Buffer.from(validatorsMetadataHash,'hex')
-    
-    
-                while(2**(requiredBytesToSlice*8)<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length) requiredBytesToSlice++
-      
-                let bytesWeNeedToFindIndex=hashInBytes.slice(0,requiredBytesToSlice).toString('hex'),
-    
-                    inDecimal = parseInt(bytesWeNeedToFindIndex,16)
-    
-                //Now, get the percentage
-    
-                let percentage = ~~((inDecimal*100) / (2**(requiredBytesToSlice*8))),
-    
-                    indexForQuorum = ~~(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length*percentage/100)
-    
-    
-                quorumTemplate.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[indexForQuorum])
-    
-            }
-
-            return quorumTemplate
 
         } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
 
