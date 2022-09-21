@@ -47,9 +47,9 @@
     "@assemblyscript/loader": "^0.20.13",
     "@solana/web3.js": "^1.62.0",
     "assemblyscript": "^0.19.9",
-    "wasm-json-toolkit": "^0.2.6",
-    "wasm-metering": "^0.2.1",
     "ethereumjs-common": "^1.5.2",
-    "ethereumjs-tx": "^2.1.2"
+    "ethereumjs-tx": "^2.1.2",
+    "wasm-json-toolkit": "^0.2.6",
+    "wasm-metering": "^0.2.1"
   }
 }

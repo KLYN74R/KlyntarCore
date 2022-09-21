@@ -1128,7 +1128,7 @@ PROGRESS_CHECKER=async()=>{
 
 
     if(!SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)) return
-    
+
 
     let shouldSkipIteration = 
     

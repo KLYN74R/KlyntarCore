@@ -2,7 +2,7 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY} from './utils.js'
 
-import {PROGRESS_CHECKER,START_VERIFICATION_THREAD} from './verification.js'
+import {START_VERIFICATION_THREAD} from './verification.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -142,6 +142,132 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
     GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
 
+    GET_QUORUM = () => {
+
+        //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
+        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length>CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE){
+
+
+            //------------------------------------------ ALGORITHM ------------------------------------------
+
+            /*
+            
+                We use the BLAKE3 hash of validatorsMetadata as a seed to choose <QUORUM_SIZE>(usually,it's 127) validators to temporary quorum to generate checkpoints to hostchains & approve blocks
+
+                &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& BUT &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+                &
+                &    !!!!!!! IF THE SIZE OF SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS array is less than 128 - then all the validators are in quorum !!!!!!!
+                &
+                &    In other cases(if more than 127 validators available) we should choose the quorum
+                &
+                &
+                &    NOTE: We choose 127 as quorum size for initial symbiotes. If you need another size of quorum for your symbiote - change CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE
+                &
+                &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& BUT &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+                Then, dependent on total number of validators(length of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS array) we took N first bytes of hash to cover length of array
+
+                Remember that 1 byte is equal to 256 potential values(0-255)
+
+                Hence, for different sizes of array we we'll take N first bytes. For example
+
+                *******************************************************************************************************************
+                *            Total Validators number        *                           Required bytes                            *
+                *******************************************************************************************************************
+                *                    128-256                *                 1(coz,1 byte = 8 bits = 256 values)                 *
+                *******************************************************************************************************************
+                *                   257-65536               *           2(coz,2 bytes = 16 bits = 2^16 = 65536 values)            *
+                *******************************************************************************************************************                                                              
+                *            ....(hope,you understand)      *                                                                     *
+                *******************************************************************************************************************
+                
+                In our case
+
+                    Let  SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA is 1337
+                    Let  CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE is 127
+                    Let  BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA) is f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea
+
+
+                1337 required first 2 bytes(because 256<1337<65536)
+
+                    It's < f0 4c >
+
+                We get the decimal representation of hex to get the index of pseudo-randomly choosen index of validator to add to quorum
+
+                    DEC(f04c)=61 516
+
+                Then, take the percentage representation of 61 516 in 65536
+
+                    65536=100%  |
+                                | ==> x=61516*100/65536=93%
+                    61516=x%    |
+
+                Finally,to get the index of first validator to quorum, get the 93% of 1337 to get the index
+
+                    INDEX = 1337*0.93 = 1243
+                    
+                So, first validator in quorum is SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[INDEX]
+
+
+
+                ++++++++++++++++++++++++++++++ HOW TO GET NEXT X VALIDATORS TO QUORUM ++++++++++++++++++++++++++++++
+
+                We need to get another hash and repeate the same algorithm
+
+                So, new hash will be BLAKE3(f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea)=c1eebfad7c81c2b12cbf86c877804c13da9c4a2e078886421ac7135473b18c91
+
+                Again, the first two bytes are <c1ee> what is 49646
+
+                49646 is 75% of 65536, so next index of second validator will be 0.75*1337=1002
+
+
+
+                The same you do for the rest validators. In our case(when QUORUM_SIZE is 127) we need to repeate this procedure 127 times
+
+
+
+
+
+                More detailed https://mastering.klyntar.org/beginning/architecture/workflows/tachyon
+
+            */
+
+            let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA))
+
+
+            for(let i=0;i<CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE;i++){
+
+                validatorsMetadataHash = BLAKE3(validatorsMetadataHash)
+
+
+                let requiredBytesToSlice=1, quorumTemplate = [], hashInBytes = Buffer.from(validatorsMetadataHash,'hex')
+    
+    
+                while(2**(requiredBytesToSlice*8)<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length) requiredBytesToSlice++
+      
+                let bytesWeNeedToFindIndex=hashInBytes.slice(0,requiredBytesToSlice).toString('hex'),
+    
+                    inDecimal = parseInt(bytesWeNeedToFindIndex,16)
+    
+                //Now, get the percentage
+    
+                let percentage = ~~((inDecimal*100) / (2**(requiredBytesToSlice*8))),
+    
+                    indexForQuorum = ~~(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length*percentage/100)
+    
+    
+                quorumTemplate.push(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[indexForQuorum])
+    
+            }
+
+            return quorumTemplate
+
+        } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
+
+
+    },
+
 
 
 
@@ -195,8 +321,12 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
 
+
+
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    if(myVerificationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
+    //Set VT_GT_NORMAL_DIFFERENCE to 0 if you don't need any limits
+
+    if(CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE && myVerificationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
         LOG(`Block generation skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
@@ -1279,6 +1409,8 @@ RUN_SYMBIOTE=async()=>{
         //0.Start verification process
         await START_VERIFICATION_THREAD()
 
+        setInterval(GET_QUORUM,3000)
+
         // setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
         let promises=[]
@@ -1325,6 +1457,7 @@ RUN_SYMBIOTE=async()=>{
         ,3000)
 
         //Run another thread to ask for blocks
+        // UPD:We have decied to speed up this procedure during parallelism & plugins
         // GET_BLOCKS_FOR_FUTURE_WRAPPER()
 
     }
