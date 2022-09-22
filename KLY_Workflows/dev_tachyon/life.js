@@ -81,11 +81,6 @@ let graceful=()=>{
 
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
-
-            //Store commitments locally
-            fs.writeFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json',JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER))
-
-
             if(CONFIG.SYMBIOTE.STORE_VALIDATORS_PROOFS_CACHE){
                 
                 fs.writeFile(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)),()=>{
@@ -952,49 +947,6 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
-    //______________Take the data from VERIFICATION_THREAD to create another structure - PROGRESS_CHECKER____________
-
-
-    
-    let progressCheckerTemplate = {
-
-        //To avoid async problems
-        ACTIVE:false,
-
-        //BLAKE3 hash of VERIFICATION_THREAD to make sure that validators are working on the same fork and going to stop on the same height
-        PROGRESS_POINT:BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
-
-        BLOCK_TO_SKIP:'',
-
-        //Commitments by validators to make sure that validators will vote to one of possible solution (skip/accept block)
-        // Key => Validator , Value => Commitment
-        COMMITMENTS:{},
-
-        //To check if possible forks occurs. If yes - vote to skip immediately with proof
-        FORKS:[],
-
-        //Number of commitments by validators who voted to skip
-        SKIP_POINTS:0,
-
-        //Number of commitments by validators who voted to approve
-        APPROVE_POINTS:0,
-
-        //Here we'll put proofs to skip by validators
-        SKIP_PROOFS:{},
-
-        //Optimizations. Make this flag true after OPTIMIZERS nodes 
-        ALREADY_ASK_OPTIMIZERS:false
-
-    }
-
-
-    SYMBIOTE_META.PROGRESS_CHECKER = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitments.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitments.json')) || progressCheckerTemplate
-
-
-    SYMBIOTE_META.PROGRESS_CHECKER.FIRST_CHECK_AFTER_START=true
-
-
-
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
@@ -1004,7 +956,7 @@ PREPARE_SYMBIOTE=async()=>{
     //__________________________________Load modules to work with hostchains_________________________________________
 
 
-    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChainConnector
+    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS), EvmHostChainConnector
 
 
     SYMBIOTE_META.HOSTCHAINS_MONITORING={}
@@ -1060,7 +1012,6 @@ PREPARE_SYMBIOTE=async()=>{
         process.exit(107)
 
     })
-
 
 
 

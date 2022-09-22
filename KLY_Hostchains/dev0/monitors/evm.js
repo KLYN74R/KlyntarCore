@@ -70,22 +70,46 @@ let latestKnownBlockNumber = -1;
 let blockTime = 5000;
 
 // Our function that will triggered for every block
-async function processBlock(blockNumber) {
-    console.log("We process block: " + blockNumber)
-    latestKnownBlockNumber = blockNumber;
+// async function processBlock(blockNumber) {
+//     console.log("We process block: " + blockNumber)
+//     latestKnownBlockNumber = blockNumber;
     
-    let block = await web3.eth.getBlock(blockNumber);
-    console.log("New block :", block)
-}
+//     let block = await web3.eth.getBlock(blockNumber);
+//     console.log("New block :", block)
+// }
 
-// This function is called every blockTime, check the current block number and order the processing of the new block(s)
-async function checkCurrentBlock() {
-    const currentBlockNumber = await web3.eth.getBlockNumber()
-    console.log("Current blockchain top: " + currentBlockNumber, " | Script is at: " + latestKnownBlockNumber)
-    while (latestKnownBlockNumber == -1 || currentBlockNumber > latestKnownBlockNumber) {
-        await processBlock(latestKnownBlockNumber == -1 ? currentBlockNumber : latestKnownBlockNumber + 1);
-    }
-    setTimeout(checkCurrentBlock, blockTime);
-}
+// // This function is called every blockTime, check the current block number and order the processing of the new block(s)
+// async function checkCurrentBlock() {
+//     const currentBlockNumber = await web3.eth.getBlockNumber()
+//     console.log("Current blockchain top: " + currentBlockNumber, " | Script is at: " + latestKnownBlockNumber)
+//     while (latestKnownBlockNumber == -1 || currentBlockNumber > latestKnownBlockNumber) {
+//         await processBlock(latestKnownBlockNumber == -1 ? currentBlockNumber : latestKnownBlockNumber + 1);
+//     }
+//     setTimeout(checkCurrentBlock, blockTime);
+// }
 
-checkCurrentBlock()
+// checkCurrentBlock()
+
+
+
+export default (btcFork) => {
+
+    setInterval(()=>{
+
+        
+
+        getBlockByIndex(btcFork,1000000).then(block=>{
+
+            block.tx.forEach(async hash=>{
+
+                let tx = await getTransaction(btcFork,hash)
+
+                console.log(tx)
+
+            })
+
+        })
+
+    },3000)
+
+}

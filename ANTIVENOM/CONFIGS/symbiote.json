@@ -120,7 +120,7 @@
                 
                 "HOSTCHAINS":{
                     "ltc":{
-                        "MODE":"PASSIVE",
+                        "MODE":"FULL",
                         "RANGE":100,
                         "STORE":true,
                         "CACHE_SIZE":10000,
@@ -129,7 +129,7 @@
                         "REPORT_TO":"http://localhost:7777/alert"
                     },
                     "bsc":{
-                        "MODE":"PASSIVE",
+                        "MODE":"FULL",
                         "RANGE":10,
                         "STORE":true,
                         "CACHE_SIZE":10000,
@@ -138,7 +138,7 @@
                         "REPORT_TO":"http://localhost:7777/alert"
                     },
                     "eth":{
-                        "MODE":"PASSIVE",
+                        "MODE":"FULL",
                         "RANGE":10,
                         "STORE":true,
                         "CACHE_SIZE":10000,

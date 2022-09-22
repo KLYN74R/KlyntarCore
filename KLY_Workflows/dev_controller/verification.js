@@ -705,12 +705,12 @@ verifyControllerBlock=async controllerBlock=>{
         //Controller shouldn't check
         if(!CONFIG.SYMBIOTE.CONTROLLER.ME){
 
-            let workflow=CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS
+            let monitoringOptions=CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS
             //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
             
-            Object.keys(workflow).forEach(ticker=>
+            Object.keys(monitoringOptions).forEach(ticker=>
     
-                workflow[ticker].STORE
+                monitoringOptions[ticker].STORE
                 &&
                 SYMBIOTE_META.HOSTCHAINS_DATA.get(controllerBlock.i+ticker).then(async proof=>{
 

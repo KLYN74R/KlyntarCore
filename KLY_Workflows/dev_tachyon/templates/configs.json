@@ -114,16 +114,12 @@
                 
         "HOSTCHAINS":{
             "ltc":{
-                "MODE":"PASSIVE",
-                "RANGE":100,
-                "STORE":true,
-                "CACHE_SIZE":10000,
+                "MODE":"FULL",
                 "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-                "URL":"http://localhost:7777",
-                "REPORT_TO":"http://localhost:7777/alert"
+                "URL":"http://localhost:7777"
             },
             "bsc":{
-                "MODE":"PASSIVE",
+                "MODE":"FULL",
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,
@@ -132,7 +128,7 @@
                 "REPORT_TO":"http://localhost:7777/alert"
             },
             "eth":{
-                "MODE":"PASSIVE",
+                "MODE":"FULL",
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,

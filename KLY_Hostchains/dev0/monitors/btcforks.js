@@ -33,7 +33,7 @@
  *
  * LINKS:[
  * 
- *      https://docs.solana.com/developing/clients/jsonrpc-api
+ *      https://developer.bitcoin.org/reference/rpc/
  * 
  * ]
  * 
@@ -43,29 +43,53 @@
  */
 
 
+/*
 
+REQUIRED OPTIONS TO USE MONITOR:
+
+    URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
+
+    MODE:"FULL" | "TRUST" - behavior for monitor. FULL - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
+
+
+OPTIONAL
+
+    TARGET:"<address or contract to track>"
+
+*/
 
 import {getBlockByIndex,getTransaction} from '../connectors/btcForksCommon.js'
 
 export default (btcFork) => {
 
-    setInterval(()=>{
+    let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork]
 
-        getBlockByIndex(btcFork,1000000).then(block=>{
+    if(configs.MODE==='FULL'){
 
-            console.log('Block is ',block)
-            console.log('Going to fetch txs')
+        //Check entire blockthread
+        setInterval(()=>{
 
-            block.tx.forEach(async hash=>{
-
-                let tx = await getTransaction(btcFork,hash)
-
-                console.log(tx)
-
+            getBlockByIndex(btcFork,1000000).then(block=>{
+    
+                block.tx.forEach(async hash=>{
+    
+                    let tx = await getTransaction(btcFork,hash)
+    
+                    console.log(tx)
+    
+                })
+    
             })
+    
+        },3000)
+    
 
-        })
+    }else if(configs.MODE==='TRUST'){
 
-    },3000)
+        //Ask some node(or gateway) about commits to avoid enumerating itself
+
+        setInterval(()=>{})
+
+    }
 
 }
