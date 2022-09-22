@@ -866,11 +866,11 @@ PREPARE_SYMBIOTE=async()=>{
         //Depending on TYPE load appropriate module
         if(CONFIG.EVM.includes(tickers[i])){
         
-            EvmHostChain=(await import(`../../KLY_Hostchains/connectors/${way}/evm.js`)).default
+            EvmHostChain=(await import(`../../KLY_Hostchains/${way}/connectors/evm.js`)).default
             
             HOSTCHAINS.set(tickers[i],new EvmHostChain(tickers[i]))
 
-        }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/connectors/${way}/${tickers[i]}.js`)).default)
+        }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/${way}/connectors/${tickers[i]}.js`)).default)
 
 
         //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module

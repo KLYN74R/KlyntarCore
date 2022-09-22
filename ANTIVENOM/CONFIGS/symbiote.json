@@ -116,7 +116,7 @@
                 "eth":true
             },
 
-            "WORKFLOW_CHECK":{
+            "MONITORING":{
                 
                 "HOSTCHAINS":{
                     "ltc":{

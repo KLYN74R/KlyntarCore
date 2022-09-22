@@ -1578,9 +1578,9 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
 
 
-    if(block.i === CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.CHECKPOINT.HEIGHT){
+    if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
 
-        LOG(`Checkpoint verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
+        LOG(`SYMBIOTE_CHECKPOINT verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
 
         LOG('Going to stop...','W')
 
@@ -1866,36 +1866,6 @@ verifyBlock=async block=>{
         &&
         await MAKE_SNAPSHOT()
 
-
-        //____________________________________________FINALLY-CHECK WORKFLOW____________________________________________
-
-        //Here we check if has proofs for this block in any hostchain for this symbiote.So here we check workflow
-
-        let workflow=CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS
-        
-        Object.keys(workflow).forEach(ticker=>
-
-            workflow[ticker].STORE
-            &&
-            SYMBIOTE_META.HOSTCHAINS_DATA.get(block.i+ticker).then(async proof=>{
-
-                let response = await HOSTCHAINS.get(ticker).checkCommit(proof.HOSTCHAIN_HASH,block.i,proof.KLYNTAR_HASH).catch(e=>-1)
-                    
-                if(proof.KLYNTAR_HASH===blockHash && response!=-1 && response){
-
-                    LOG(`Proof for block \x1b[36;1m${block.i}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S')
-
-                }else{
-
-                    LOG(`Can't write proof for block \x1b[36;1m${block.i}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W')
-
-                    //...send report
-
-                }
-                
-            }).catch(e=>{})
-            
-        )
 
     }
 

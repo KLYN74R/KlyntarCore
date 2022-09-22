@@ -58,7 +58,7 @@ let {PublicKey,Connection}=Web3,
 
 //     let unique=[]
 
-//     let {URL,TARGET,COMMITMENT} = CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS.sol
+//     let {URL,TARGET,COMMITMENT} = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS.sol
     
 //     //Let's use only unique sources
 //     if(!unique.includes(URL)){

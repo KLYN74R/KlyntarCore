@@ -53,7 +53,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 //*UPD:Sign with our pubkey to avoid certifications
 SEND_REPORT = alertInfo =>
 
-    fetch(CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
+    fetch(CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
 
         method:'POST',
         body:JSON.stringify(alertInfo)

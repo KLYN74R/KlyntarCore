@@ -110,7 +110,7 @@
         "eth":true
     },
 
-    "WORKFLOW_CHECK":{
+    "MONITORING":{
                 
         "HOSTCHAINS":{
             "ltc":{
@@ -141,6 +141,7 @@
                 "REPORT_TO":"http://localhost:7777/alert"
             }
         }
+
     },
         
     "VT_GT_NORMAL_DIFFERENCE":100,
@@ -160,7 +161,7 @@
     "PROGRESS_CHECKER_INTERVAL":60000,
     "COUNT_COMMITMENTS_INTERVAL":3000,
     
-    "CHECKPOINT":{
+    "SYMBIOTE_CHECKPOINT":{
         "HEIGHT":-1,
         "HASH":"95bb10524eb6631cfc0dfc90d7c8fb86551102934eeabccf456aaccf9cb3cf7b"
     },

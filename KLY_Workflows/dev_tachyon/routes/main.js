@@ -643,7 +643,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         //False only if proof is failed
         if(workflowOk){
         
-            CONFIG.SYMBIOTE.WORKFLOW_CHECK.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
+            CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
             &&
             SYMBIOTE_META.HOSTCHAINS_DATA
             
