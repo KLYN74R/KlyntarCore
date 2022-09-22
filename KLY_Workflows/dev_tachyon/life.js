@@ -81,9 +81,9 @@ let graceful=()=>{
 
             global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
 
-            if(CONFIG.SYMBIOTE.STORE_VALIDATORS_PROOFS_CACHE){
+            if(CONFIG.SYMBIOTE.STORE_QUORUM_COMMITMENTS_CACHE){
                 
-                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.VALIDATORS_PROOFS_CACHE)),()=>{
+                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE)),()=>{
 
                     LOG('Validators proofs stored to cache','I')
 
@@ -277,7 +277,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         promises=[],//to push blocks to storage
 
-        phantomsMetadata=[]//to share among other validators and get proofs from them
+        commitmentsArray=[]//to share among other validators and get proofs from them
 
 
     phantomBlocksNumber++//DELETE after tests
@@ -304,7 +304,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
 
-        //To send to other validators and get signatures as proof of acception this part of blocks
+        //To send to other validators and get signatures as a commitment of acception this part of blocks
 
         let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,
 
@@ -312,11 +312,11 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         
                 B:blockID,
             
-                S:await SIG(blockID+":"+hash)//self-sign our proofs as one of the validator
+                S:await SIG(blockID+":"+hash)//self-sign our commitment as one of the validator
         
             }
         
-        phantomsMetadata.push(meta)
+        commitmentsArray.push(meta)
 
 
 
@@ -328,7 +328,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
 
             // Validators proofs will be stored in V property as object with PublicKey=>Signature(BLOCK_ID+":"+BLOCK_HASH)
-            SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,{V:{[CONFIG.SYMBIOTE.PUB]:meta.S}})
+            SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(blockID,{V:{[CONFIG.SYMBIOTE.PUB]:meta.S}})
              
 
         ).then(()=>blockCandidate).catch(error=>{
@@ -345,10 +345,10 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //______________________________________ WORKING WITH PROOFS & GENERATION THREAD METADATA ______________________________________
 
     
-    phantomsMetadata={v:CONFIG.SYMBIOTE.PUB,p:phantomsMetadata}
+    commitmentsArray={v:CONFIG.SYMBIOTE.PUB,p:commitmentsArray}
 
     //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
-    //?NOTE - we use setTimeout here to delay sending our proofs. We need to give some time for network to share blocks
+    //?NOTE - we use setTimeout here to delay sending our commitments. We need to give some time for network to share blocks
     setTimeout(async()=>{
 
         let promises = []
@@ -363,14 +363,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
         
-            payload = JSON.stringify(phantomsMetadata)//this will be send to validators and to other nodes & endpoints
+            payload = JSON.stringify(commitmentsArray)//this will be send to validators and to other nodes & endpoints
 
 
         for(let validatorNode of pureUrls) {
 
             if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
 
-            fetch(validatorNode+'/acceptvalidatorsproofs',{
+            fetch(validatorNode+'/acceptcommitments',{
                 
                 method:'POST',
                 
@@ -381,12 +381,12 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         }
 
         //You can also share proofs over the network, not only to validators
-        CONFIG.SYMBIOTE.ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES
+        CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
         &&
-        BROADCAST('/acceptvalidatorsproofs',payload)
+        BROADCAST('/acceptcommitments',payload)
 
 
-    },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_PROOFS)
+    },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)
 
 
 
@@ -440,7 +440,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                             //If accpted-we can share to the rest
                             isAlreadyAccepted
                             &&
-                            Promise.all(BROADCAST('/hc_proofs',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
+                            Promise.all(BROADCAST('/checkpoints',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
                         
 
                             let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
@@ -668,7 +668,7 @@ PREPARE_SYMBIOTE=async()=>{
     
     try{
 
-        cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/validatorsProofsCache.json'))
+        cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json'))
 
     }catch{
 
@@ -700,7 +700,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
-        VALIDATORS_PROOFS_CACHE:new Map(Object.entries(cachedProofs)),
+        QUORUM_COMMITMENTS_CACHE:new Map(Object.entries(cachedProofs)),
 
     }
 

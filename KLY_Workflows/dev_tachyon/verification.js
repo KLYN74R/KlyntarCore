@@ -238,7 +238,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
     let promises = [],
 
-        proofRef = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID) || {V:{}}
+        proofRef = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockID) || {V:{}}
 
 
     //If it was aggregated proof and failed verification - then prepare empty template to start new iteration to find proofs
@@ -247,9 +247,9 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
 
     if(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL){
 
-        fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
+        fetch(CONFIG.SYMBIOTE.GET_VALIDATORS_PROOFS_URL+`/commitments/`+blockID).then(r=>r.json()).then(
             
-            proof => proof.A && SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+            proof => proof.A && SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(blockID,proof)
         
         ).catch(_=>{})
 
@@ -278,19 +278,19 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
             //No sense to ask someone whose proof we already have or get the answer from node in blacklist
             if(proofRef.V[validatorHandler.pubKey] || CONFIG.SYMBIOTE.BLACKLISTED_NODES.includes(validatorHandler.pureUrl)) continue
 
-            fetch(validatorHandler.pureUrl+`/validatorsproofs/`+blockID).then(r=>r.json()).then(
+            fetch(validatorHandler.pureUrl+`/commitments/`+blockID).then(r=>r.json()).then(
             
                 proof =>{
 
                     if(proof.A){
 
-                        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proof)
+                        SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(blockID,proof)
                 
                     }else if(proof.S){
 
                         proofRef.V[validatorHandler.pubKey]=proof.S
                     
-                        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(blockID,proofRef)
+                        SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(blockID,proofRef)
                     
                     }
 
@@ -307,7 +307,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
     
     // for(let url of allVisibleNodes){
 
-    //     let itsProbablyProofs=await fetch(url+`/validatorsproofs/`+blockID).then(r=>r.json()).catch(e=>false)
+    //     let itsProbablyProofs=await fetch(url+`/commitments/`+blockID).then(r=>r.json()).catch(e=>false)
         
     //     if(itsProbablyProofs){            
 
@@ -349,7 +349,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    let proofs = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
+    let proofs = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
 
         //We should skip the block in case when skipPoint exsists in validators proofs and it equal to checksum of VERIFICATION_THREAD state
         shouldSkip = proofs.P && BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) === proofs.P
@@ -578,7 +578,7 @@ CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
         
         if(!bftProofsIsOk && isAggregatedBranch) START_TO_FIND_PROOFS_FOR_BLOCK(blockId) //run
 
-        if(bftProofsIsOk) SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.delete(blockId)
+        if(bftProofsIsOk) SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.delete(blockId)
 
         //Finally - return results
         return {bftProofsIsOk,shouldSkip}
@@ -847,7 +847,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
         LOG(`Going to aggregate \x1b[34;1mSKIP_PROOFS\x1b[32;1m, because majority voted for skip`,'S')
 
-        //Aggregate proofs and push to VALIDATORS_PROOFS_CACHE with appropriate form
+        //Aggregate proofs and push to QUORUM_COMMITMENTS_CACHE with appropriate form
 
         let aggregatedSignature='',
 
@@ -988,7 +988,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
         LOG(`Ceremony done. Wait for block & proofs \x1b[31;1m(S:${skipPoints} | A:${approvePoints})`,'I')
 
-        //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
+        //Make it null to allow our node to generate proofs for block in "/commitments" route
         SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
     }
@@ -1098,7 +1098,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
             LOG(`Block \x1b[37;1m${SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP}\x1b[36;1m will be approved.\x1b[34;1mAPPROVE_COMMITMENTS/MAJORITY\x1b[36;1m ratio is \x1b[34;1m${SYMBIOTE_META.PROGRESS_CHECKER.APPROVE_COMMITMENTS}/${majority}`,'I')
 
-            //Make it null to allow our node to generate proofs for block in "/validatorsproofs" route
+            //Make it null to allow our node to generate proofs for block in "/commitments" route
             SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP=''
 
         }

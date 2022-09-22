@@ -6,9 +6,9 @@ import fetch from 'node-fetch'
 //________________________________________________________________ "PRIVATE" common messages ________________________________________________________________
 
 
-let REQUEST_TO_NODE = async (btcFork,command,params)=>{
+let REQUEST_TO_NODE = async (btcFork,command,params,isMonitor)=>{
 
-    let {URL,CREDS}=CONFIG.SYMBIOTE.HC_CONFIGS[btcFork]
+    let {URL,CREDS}=isMonitor?CONFIG.SYMBIOTE.HC_CONFIGS[btcFork]:CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork]
 
     return fetch(URL,{
 
@@ -65,11 +65,11 @@ Returned object
 
 */
 
-export let getBlockByIndex = async (btcFork,blockIndex) =>
+export let getBlockByIndex = async (btcFork,blockIndex,isMonitor) =>
 
-    REQUEST_TO_NODE(btcFork,'getblockhash',[blockIndex]).then(
+    REQUEST_TO_NODE(btcFork,'getblockhash',[blockIndex],isMonitor).then(
     
-        blockHash => REQUEST_TO_NODE(btcFork,'getblock',[blockHash])
+        blockHash => REQUEST_TO_NODE(btcFork,'getblock',[blockHash],isMonitor)
     
     )
 
@@ -155,10 +155,10 @@ export let getBalance = btcFork => REQUEST_TO_NODE(btcFork,'getbalance',[]).catc
 
 
 
-export let getTransaction = (btcFork,txHash) =>
+export let getTransaction = (btcFork,txHash,isMonitor) =>
 
-    REQUEST_TO_NODE(btcFork,'getrawtransaction',[txHash]).then(
+    REQUEST_TO_NODE(btcFork,'getrawtransaction',[txHash],isMonitor).then(
     
-        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject])
+        rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject],isMonitor)
     
     ).catch(e=>LOG(`Some error has been occurred in ${btcFork} when getting tx by hash\x1b[36;1m${e}`,'W'))

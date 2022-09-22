@@ -114,27 +114,31 @@
                 
         "HOSTCHAINS":{
             "ltc":{
-                "MODE":"FULL",
+                "MODE":"PARANOIC",
                 "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-                "URL":"http://localhost:7777"
+                "URL":"http://localhost:7777",
+                "CREDS":"Vlad:ltcpassword",
+                "START_FROM":2000000
             },
             "bsc":{
-                "MODE":"FULL",
+                "MODE":"PARANOIC",
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,
                 "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
                 "URL":"http://localhost:7777",
-                "REPORT_TO":"http://localhost:7777/alert"
+                "REPORT_TO":"http://localhost:7777/alert",
+                "START_FROM":2000000
             },
             "eth":{
-                "MODE":"FULL",
+                "MODE":"PARANOIC",
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,
                 "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
                 "URL":"http://localhost:7777",
-                "REPORT_TO":"http://localhost:7777/alert"
+                "REPORT_TO":"http://localhost:7777/alert",
+                "START_FROM":2000000
             }
         }
 
@@ -324,9 +328,9 @@
     },
 
     "GET_VALIDATORS_PROOFS_URL":"http://localhost:6666",
-    "STORE_VALIDATORS_PROOFS_CACHE":true,
+    "STORE_QUORUM_COMMITMENTS_CACHE":true,
 
-    "ALSO_SHARE_BFT_PROOFS_TO_DEFAULT_NODES":true,
+    "ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES":true,
 
     "TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS":[
         
@@ -365,7 +369,7 @@
 
     "PROOFS_CACHE_SIZE":100000,
 
-    "TIMEOUT_TO_PRE_SHARE_PROOFS":2000,
+    "TIMEOUT_TO_PRE_SHARE_COMMITMENTS":2000,
 
     "ENABLE_ASK_OPTIMIZERS":true,
 

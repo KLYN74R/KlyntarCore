@@ -49,8 +49,11 @@ REQUIRED OPTIONS TO USE MONITOR:
 
     URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
 
-    MODE:"FULL" | "TRUST" - behavior for monitor. FULL - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
+    MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
 
+    CREDS:"" - string with BasicAuth creds, token or smth like this
+
+    START_FROM - height to start to monitor from
 
 OPTIONAL
 
@@ -64,16 +67,18 @@ export default (btcFork) => {
 
     let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork]
 
-    if(configs.MODE==='FULL'){
+    if(configs.MODE==='PARANOIC'){
 
         //Check entire blockthread
         setInterval(()=>{
 
-            getBlockByIndex(btcFork,1000000).then(block=>{
+            getBlockByIndex(btcFork,1000000,true).then(block=>{
+
+                console.log('Block is ',block)
     
                 block.tx.forEach(async hash=>{
     
-                    let tx = await getTransaction(btcFork,hash)
+                    let tx = await getTransaction(btcFork,hash,true)
     
                     console.log(tx)
     

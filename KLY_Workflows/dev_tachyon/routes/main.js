@@ -42,7 +42,7 @@ acceptBlocks=a=>{
                 let block=await PARSE_JSON(buf)
                 
                 //No sense to verify & accept own block
-                if(block.c===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(block.с+":"+block.i) || block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
+                if(block.c===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(block.с+":"+block.i) || block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
 
                     !a.aborted&&a.end('OK')
 
@@ -187,7 +187,7 @@ VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 */
 
             
-acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+acceptCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
 
@@ -198,7 +198,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         &&
         (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
         &&
-        SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
+        SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
 
 
 
@@ -209,7 +209,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
         //Go through the set of proofs
         for(let proof of payload.p){
 
-            let proofRefInCache = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(proof.B)
+            let proofRefInCache = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(proof.B)
 
             //If some proofs from other validators exists - then reference to object in mapping should exist
             if(proofRefInCache){
@@ -247,7 +247,7 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
                     
                     proofTemplate.V[payload.v]=proof.S
                     
-                    SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.set(proof.B,proofTemplate)
+                    SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(proof.B,proofTemplate)
                     
                 }
 
@@ -261,54 +261,12 @@ acceptValidatorsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 }),
 
 
-/*
-    
-        SkipProof is object
-        {
-            V:<Validator pubkey>
-            P:<SKIP_POINT => Hash of VERIFICATION_THREAD
-            B:<BLOCK_ID
-            S:<Signature => SIG(SKIP_POINT+":"+BLOCK_ID)
-        }
-    
-*/
-
-shareSkipProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-    let skipProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
-
-        shouldAccept = 
-        
-            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SKIP_PROOFS
-            &&
-            SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipProof.P //we can vote to skip only if we have the same "stop" point
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(skipProof.V) //if prover is validator
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) //if this node is validator so should accept the proofs
-            &&
-            !SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V] //if we still don't have proofs from this validator
-            &&
-            await VERIFY(skipProof.P+":"+skipProof.B,skipProof.S,skipProof.V) //check signature finally
-
-
-    if(shouldAccept){
-
-        SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[skipProof.V]=skipProof
-
-        !a.aborted && a.end(JSON.stringify(SYMBIOTE_META.PROGRESS_CHECKER.SKIP_PROOFS[CONFIG.SYMBIOTE.PUB])) //response with own proof
-
-    }else !a.aborted && a.end('Overview failed')
-    
-}),
-
-
 
 
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 // return simpleSignature
 
-shareValidatorsProofs=async(a,q)=>{
+shareCommitments=async(a,q)=>{
 
     //Check trigger
     if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_VALIDATORS_PROOFS){
@@ -318,7 +276,7 @@ shareValidatorsProofs=async(a,q)=>{
         a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.SHARE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in cache
-        let ourProof = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
+        let ourProof = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
 
 
         if(ourProof) !a.aborted && a.end(JSON.stringify({S:ourProof}))
@@ -356,139 +314,6 @@ shareValidatorsProofs=async(a,q)=>{
     }else !a.aborted && a.end('Route is off')
 
 },
-
-
-
-
-//Function share and receive FINAL_COMMITMENTS. You receive it from validators who already has 2/3*N+1 commitments
-//Also, you can share it if you already have 2/3*N+1 commitments and have an obvious understanding of what to do
-shareFinalCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS){
-
-        
-        let {V:validatorWhoPromise,P:skipPoint,B:blockID,M:metadata,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
-
-            threadID = blockID?.split(":")?.[0],
-
-            //Decide should we check and perform this message
-            overviewIsOk = 
-
-                SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipPoint //we can vote to skip only if we have the same "stop" point
-                &&
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPromise)
-                &&
-                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL)
-                &&
-                await VERIFY(skipPoint+":"+blockID+":"+(metadata||""),hisSignature,validatorWhoPromise)
-
-        
-            if(overviewIsOk){
-
-            }else !a.aborted&&a.end('Overview failed')
-
-
-    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_COMMITMENTS disabled')
-        
-
-}),
-
-
-
-
-//Function to allow validators to change status of validator to "offline" to stop verify his blocks(his thread in general) and continue to verify blocks of other validators in VERIFICATION_THREAD
-//Here validators exchange commitments among each other to skip some block to continue the VERIFICATION_THREAD
-shareCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-    /*
-    
-        Commitment is an object with the following structure 
-    
-        {
-            V:<Validator who sent this message to you>,
-            P:<Hash of VERIFICATION_THREAD a.k.a. progress point>,
-            B:<BlockID - block which we are going to skip>
-            ++++++++++++ The following structure might be different for APPROVE and SKIP commitments +++++++++++
-            ?M:<BlockHash:validatorSignature> - if block exists and we're going to vote to APPROVE - then also send hash with signature(created by block creator) to make sure there is no forks
-            
-                If you're going to skip - then you don't have "M" property in commitment
-            S:<Signature of commitment e.g. SIG(P+B+M)>
-        }
-    
-    */
-    
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS){
-
-        
-        let {V:validatorWhoPromise,P:skipPoint,B:blockID,M:metadata,S:hisSignature} = await BODY(v,CONFIG.PAYLOAD_SIZE),
-
-            threadID = blockID?.split(":")?.[0],
-
-            //Decide should we check and perform this message
-            overviewIsOk = 
-
-                SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT===skipPoint //we can vote to skip only if we have the same "stop" point
-                &&
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(validatorWhoPromise)
-                &&
-                (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_COMMITMENTS.ALL)
-                &&
-                await VERIFY(skipPoint+":"+blockID+":"+(metadata||""),hisSignature,validatorWhoPromise)
-
-
-
-        if(overviewIsOk){
-
-            let myCommitment = SYMBIOTE_META.PROGRESS_CHECKER.COMMITMENTS[CONFIG.SYMBIOTE.PUB]
-
-            if(myCommitment){
-
-                !a.aborted&&a.end(JSON.stringify(myCommitment))
-
-            }else {
-
-                //0. Check if we already generate proof for this block or if we already have an aggregated proof(so, majority already have voted to approve and not to skip the block <blockID>)
-                let proofAlreadyGenerated = SYMBIOTE_META.VALIDATORS_PROOFS_CACHE.get(blockID)?.[CONFIG.SYMBIOTE.PUB] || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
-
-
-                let myCommitmentTemplate = {
-                
-                    V:CONFIG.SYMBIOTE.PUB,
-                    P:SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT,
-                    B:blockID,
-                    S:''
-           
-                }
-
-
-                let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockID).then(
-            
-                    block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
-                    
-                ).catch(e=>false)
-        
-        
-                if(blockHashAndSignaByValidator) {
-        
-                    myCommitmentTemplate.M=blockHashAndSignaByValidator // if we have block - then vote to stop <SKIP_VALIDATOR> procedure and to approve the block
-        
-                }
-        
-                myCommitmentToSkipOrApprove.S = await SIG(SYMBIOTE_META.PROGRESS_CHECKER.PROGRESS_POINT+":"+blockID+":"+(myCommitmentTemplate.M || "")) //initially - send test commitment
-        
-
-                !a.aborted&&a.end(JSON.stringify(myCommitmentTemplate))
-
-
-            }
-        
-        }else !a.aborted&&a.end('Overview failed')
-
-
-    }else !a.aborted&&a.end('Route TRIGGERS.ACCEPT_COMMITMENTS disabled')
-        
-
-}),
 
 
 
@@ -571,103 +396,8 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
 
 
 
-//Passive mode enabled by default    
-acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-    
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_HOSTCHAINS_PROOFS){
-     
-        !a.aborted&&a.end('Route is off')
-        
-        return
-    }
-    
-    
-    /*
-    
-    VERIFY signature and perform further logic
-    Also,broadcast to the other nodes if signature is valid
-    
-    */
-    
-    
-    let {symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG}=await BODY(v,CONFIG.PAYLOAD_SIZE),
-    
-        workflowOk=true//by default.Can be changed in case if our local collapse is higher than index in proof
-    
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && await VERIFY(KLYNTAR_HASH+INDEX+HOSTCHAIN_HASH+ticker,SIG)){
-    
-        //Ok,so firstly we can assume that we have appropriate proof with everything we need
-        
-        let alreadyCheckedLocalProof=await SYMBIOTE_META.HOSTCHAINS_DATA.get(INDEX+ticker).catch(e=>{
-    
-            LOG(`No proof for \x1b[36;1m${INDEX} \u001b[38;5;3mblock \x1b[36;1m(hostchain:${ticker})\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'W')
-    
-            return false
-    
-        })
-    
-        //If it's literally the same proof-just send OK
-        if(alreadyCheckedLocalProof.KLYNTAR_HASH===KLYNTAR_HASH && alreadyCheckedLocalProof.INDEX===INDEX){
-            
-            !a.aborted&&a.end('OK')
-    
-            return
-        }
+finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-        //If we're working higher than proof for some block we can check instantly
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX>=INDEX
-        &&
-        await SYMBIOTE_META.BLOCKS.get(INDEX).then(async block=>{
-
-            let validatorsBFTProof=await SYMBIOTE_METADATA.VALIDATORS_PROOFS.get(block.i)
-
-            if(BLAKE3(Block.genHash(blockc.c,block.e,block.v,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.CONNECTORS.get(ticker).checkCommit(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH).catch(
-                            
-                error => {
-                    
-                    LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m.Check the error to get more info\n${error}`,'W')
-                    
-                    return -1
-                
-                })
-            
-            ) workflowOk = true
-       
-        }).catch(e=>
-            
-            //You also don't have ability to compare this if you don't have block locally
-            LOG(`Can't check proof for \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m coz you don't have local copy of block. Check your configs-probably your STORE_BLOCKS is false\n${e}`,'W')
-                
-        )    
-        
-        //False only if proof is failed
-        if(workflowOk){
-        
-            CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[ticker].STORE//if option that we should locally store proofs is true
-            &&
-            SYMBIOTE_META.HOSTCHAINS_DATA
-            
-                .put(INDEX+ticker,{KLYNTAR_HASH,HOSTCHAIN_HASH,SIG})
-                
-                .then(()=>LOG(`Proof for block \x1b[36;1m${INDEX}\x1b[32;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m verified and stored`,'S'))
-                
-                .catch(e=>LOG(`Can't write proof for block \x1b[36;1m${INDEX}\u001b[38;5;3m on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m to \x1b[36;1m${ticker}\u001b[38;5;3m`,'W'))
-        
-        }else if(workflowOk!==-1){
-            
-            LOG(fs.readFileSync(PATH_RESOLVE('images/events/fork.txt')).toString(),'F')
-          
-            LOG(`<WARNING>-found fork.Block \x1b[36;1m${INDEX}\x1b[31;1m on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m to \x1b[36;1m${ticker}`,'F')
-            
-            //Further logic.For example-send report to another host to call some trigger
-            SEND_REPORT(symbiote,{height:INDEX,hostchain:ticker,hostchainTx:HOSTCHAIN_HASH})
-        }
-        
-        !a.aborted&&a.end('OK')
-        
-        Promise.all(BROADCAST('/hc_proofs',{symbiote,ticker,KLYNTAR_HASH,HOSTCHAIN_HASH,INDEX,SIG},symbiote))
-    
-    }else !a.aborted&&a.end('Symbiote not supported or wrong signature')
 
 }),
 
@@ -736,21 +466,15 @@ validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted
 
 UWS_SERVER
 
-.get('/validatorsproofs/:blockID',shareValidatorsProofs)
-
-.post('/acceptvalidatorsproofs',acceptValidatorsProofs)
-
 .post('/awakerequest',awakeRequestMessageHandler)
 
-.post('/finalcommitments',shareFinalCommitments)
-
-.post('/hc_proofs',acceptHostchainsProofs)
-
-.post('/shareskipproofs',shareSkipProofs)
+.post('/acceptcommitments',acceptCommitments)
 
 .post('/commitments',shareCommitments)
 
 .post('/vmessage',validatorsMessages)
+
+.post('/finalization',finalization)
 
 .post('/block',acceptBlocks)
 
