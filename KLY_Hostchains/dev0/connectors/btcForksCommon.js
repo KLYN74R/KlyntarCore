@@ -155,12 +155,10 @@ export let getBalance = btcFork => REQUEST_TO_NODE(btcFork,'getbalance',[]).catc
 
 
 
-export let getTransaction = (btcFork,txHash) => {
+export let getTransaction = (btcFork,txHash) =>
 
     REQUEST_TO_NODE(btcFork,'getrawtransaction',[txHash]).then(
     
         rawTxObject => REQUEST_TO_NODE(btcFork,'decoderawtransaction',[rawTxObject])
     
     ).catch(e=>LOG(`Some error has been occurred in ${btcFork} when getting tx by hash\x1b[36;1m${e}`,'W'))
-
-}

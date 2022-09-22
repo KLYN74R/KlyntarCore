@@ -714,7 +714,7 @@ verifyControllerBlock=async controllerBlock=>{
                 &&
                 SYMBIOTE_META.HOSTCHAINS_DATA.get(controllerBlock.i+ticker).then(async proof=>{
 
-                    let response = await HOSTCHAINS.get(ticker).checkCommit(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH).catch(e=>-1)
+                    let response = await HOSTCHAINS.CONNECTORS.get(ticker).checkCommit(proof.HOSTCHAIN_HASH,controllerBlock.i,proof.KLYNTAR_HASH).catch(e=>-1)
                         
                     if(proof.KLYNTAR_HASH===controllerHash && response!=-1 && response){
     

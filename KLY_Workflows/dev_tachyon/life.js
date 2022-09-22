@@ -2,9 +2,9 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY} from './utils.js'
 
-import {START_VERIFICATION_THREAD} from './verification.js'
-
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
+import {START_VERIFICATION_THREAD} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -67,9 +67,6 @@ let graceful=()=>{
         if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
-
-
-
 
             //Close logs streams
             await new Promise( resolve => SYMBIOTE_LOGS_STREAM.close( error => {
@@ -426,9 +423,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                     //TODO:Add more advanced logic
                     if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
-                        let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
+                        let control=SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker],
                         
-                            hostchain=HOSTCHAINS.get(ticker),
+                            hostchain=HOSTCHAINS.CONNECTORS.get(ticker),
     
                             //If previous push is still not accepted-then no sense to push new symbiote update
                             isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
@@ -1007,34 +1004,34 @@ PREPARE_SYMBIOTE=async()=>{
     //__________________________________Load modules to work with hostchains_________________________________________
 
 
-    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChain
+    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChainConnector
 
 
-    SYMBIOTE_META.HOSTCHAINS_WORKFLOW={}
+    SYMBIOTE_META.HOSTCHAINS_MONITORING={}
 
 
     //Add hostchains to mapping
     //Load way to communicate with hostchain via appropriate type
     for(let i=0,l=tickers.length;i<l;i++){
 
-        
-        let way=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
+        let ticker = tickers[i],
+
+            packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].TYPE
 
 
-        //Depending on TYPE load appropriate module
-        if(CONFIG.EVM.includes(tickers[i])){
+        //Depending on packID load appropriate module
+        if(CONFIG.EVM.includes(ticker)){
         
-            EvmHostChain=(await import(`../../KLY_Hostchains/${way}/connectors/evm.js`)).default
+            EvmHostChainConnector=(await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
             
-            HOSTCHAINS.set(tickers[i],new EvmHostChain(tickers[i]))
-
-        }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/${way}/connectors/${tickers[i]}.js`)).default)
-
+            HOSTCHAINS.CONNECTORS.set(ticker,new EvmHostChainConnector(ticker))
+    
+        }else HOSTCHAINS.CONNECTORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default)
         
-        //Load canary
-        SYMBIOTE_META.HOSTCHAINS_WORKFLOW[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
+        //Load last data about checkpoints
+        SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
             
-            tickers[i]
+            ticker
             
         ).catch(e=>(  
             
@@ -1042,9 +1039,9 @@ PREPARE_SYMBIOTE=async()=>{
             
         ))
 
+        HOSTCHAINS.MONITORS.set(tickers[i],(await import(`../../KLY_Hostchains/${packID}/monitors/${tickers[i]}.js`).catch(e=>false)).default)
+    
     }
-
-
 
 
     //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
@@ -1086,7 +1083,7 @@ PREPARE_SYMBIOTE=async()=>{
            
             }).start()
 
-            balance = await HOSTCHAINS.get(tickers[i]).getBalance()
+            balance = await HOSTCHAINS.CONNECTORS.get(tickers[i]).getBalance()
             
             spinner.stop()
             
@@ -1307,7 +1304,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
                     body:JSON.stringify(awakeMessage)
 
-                }).then(r=>r.text()).then(async response=>{
+                }).then(r=>r.text()).then(async response=>
 
                     response==='OK'
                     ?
@@ -1315,13 +1312,11 @@ START_AWAKENING_PROCEDURE=()=>{
                     :
                     LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
 
-                }).catch(e=>
-                {
-                    console.log('ERRRR ',e)
+                ).catch(e=>
 
-                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
+                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT\n${e}`,'W')
                 
-                })
+                )
 
 
             }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')
@@ -1345,8 +1340,6 @@ RUN_SYMBIOTE=async()=>{
 
         //0.Start verification process
         await START_VERIFICATION_THREAD()
-
-        setInterval(GET_QUORUM,3000)
 
         // setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
@@ -1375,8 +1368,6 @@ RUN_SYMBIOTE=async()=>{
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
 
-
-
         //Start generate blocks
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
                 
@@ -1396,6 +1387,16 @@ RUN_SYMBIOTE=async()=>{
         //Run another thread to ask for blocks
         // UPD:We have decied to speed up this procedure during parallelism & plugins
         // GET_BLOCKS_FOR_FUTURE_WRAPPER()
+
+
+        //______________________________________________________RUN MONITORS FOR HOSTCHAINS____________________________________________________________
+
+
+        HOSTCHAINS.MONITORS.forEach(
+            
+            (monitor,ticker) => monitor&&monitor(ticker)
+            
+        )
 
     }
 

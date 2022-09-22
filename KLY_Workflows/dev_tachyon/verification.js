@@ -109,7 +109,6 @@ GET_BLOCKS_FOR_FUTURE = () => {
 
     let blocksIDsInJSON = JSON.stringify(blocksIDs)
 
-    console.log('Going to ask ',blocksIDs)
  
     fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity`,{
     
@@ -837,9 +836,6 @@ START_TO_COUNT_COMMITMENTS=async()=>{
     //Check if majority is not bigger than number of validators. It possible when there is small number of validators
     majority = majority > SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length ? SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length : majority
 
-
-
-    console.log('Checker is ',SYMBIOTE_META.PROGRESS_CHECKER)
 
 
     //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

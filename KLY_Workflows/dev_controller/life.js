@@ -326,7 +326,7 @@ export let GEN_BLOCK = async blockType => {
                         //TODO:Add more advanced logic
                         if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
-                            let control=SYMBIOTE_META.HOSTCHAINS_WORKFLOW[ticker],
+                            let control=SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker],
                         
                                 hostchain=HOSTCHAIN.get(ticker),
     
@@ -849,10 +849,10 @@ PREPARE_SYMBIOTE=async()=>{
     //...and push template to global HOSTCHAINS_DATA object to control the flow
 
 
-    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChain
+    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS),EvmHostChainConnector
 
 
-    SYMBIOTE_META.HOSTCHAINS_WORKFLOW={}
+    SYMBIOTE_META.HOSTCHAINS_MONITORING={}
 
 
     //Add hostchains to mapping
@@ -860,23 +860,21 @@ PREPARE_SYMBIOTE=async()=>{
     for(let i=0,l=tickers.length;i<l;i++){
 
         
-        let way=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
+        let packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
 
 
-        //Depending on TYPE load appropriate module
+        //Depending on packID load appropriate module
         if(CONFIG.EVM.includes(tickers[i])){
         
-            EvmHostChain=(await import(`../../KLY_Hostchains/${way}/connectors/evm.js`)).default
+            EvmHostChainConnector=(await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
             
-            HOSTCHAINS.set(tickers[i],new EvmHostChain(tickers[i]))
+            HOSTCHAINS.CONNECTORS.set(tickers[i],new EvmHostChainConnector(tickers[i]))
 
-        }else HOSTCHAINS.set(tickers[i],(await import(`../../KLY_Hostchains/${way}/connectors/${tickers[i]}.js`)).default)
+        }else HOSTCHAINS.CONNECTORS.set(tickers[i],(await import(`../../KLY_Hostchains/${packID}/connectors/${tickers[i]}.js`)).default)
 
 
-        //hostchains.set(controllerAddr,tickers[i],(await import(`./KLY_Hostchains/${tickers[i]}.js`)).default)//load module
-        
-        //Load canary
-        SYMBIOTE_META.HOSTCHAINS_WORKFLOW[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(tickers[i]).catch(e=>(  {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  ))
+        //Load latest checkpoint
+        SYMBIOTE_META.HOSTCHAINS_MONITORING[tickers[i]]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(tickers[i]).catch(e=>(  {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}  ))
 
     }
 
@@ -919,7 +917,7 @@ PREPARE_SYMBIOTE=async()=>{
                     prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
                 }).start()
 
-                balance = await HOSTCHAINS.get(tickers[i]).getBalance()
+                balance = await HOSTCHAINS.CONNECTORS.get(tickers[i]).getBalance()
 
                 spinner.stop()
 

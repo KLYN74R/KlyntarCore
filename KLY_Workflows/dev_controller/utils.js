@@ -262,7 +262,7 @@ DECRYPT_KEYS=async(spinner,role)=>{
             
             ticker => {
                 
-                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
                 else CONFIG.SYMBIOTE.HC_CONFIGS[ticker].PRV=keys[ticker]
     
@@ -327,7 +327,7 @@ DECRYPT_KEYS=async(spinner,role)=>{
 
 
 
-        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(privateKey,'hex')
+        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
         else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
         

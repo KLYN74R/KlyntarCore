@@ -10,12 +10,18 @@ import fetch from 'node-fetch'
 
 
 //Mapping to work with hostchains
-global.HOSTCHAINS = new Map()
+global.HOSTCHAINS = {
+
+    CONNECTORS:new Map(),
+
+    MONITORS:new Map()
+
+}
 
 
 
 
-export let 
+export let
 
 
 
@@ -322,7 +328,7 @@ DECRYPT_KEYS=async spinner=>{
             
             ticker => {
                 
-                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
                 else CONFIG.SYMBIOTE.HC_CONFIGS[ticker].PRV=keys[ticker]
     
@@ -386,7 +392,7 @@ DECRYPT_KEYS=async spinner=>{
 
 
 
-        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.get(ticker).PRV=Buffer.from(privateKey,'hex')
+        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
         else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
         

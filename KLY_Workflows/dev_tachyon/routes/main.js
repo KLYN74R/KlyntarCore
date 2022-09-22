@@ -621,7 +621,7 @@ acceptHostchainsProofs=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
             let validatorsBFTProof=await SYMBIOTE_METADATA.VALIDATORS_PROOFS.get(block.i)
 
-            if(BLAKE3(Block.genHash(blockc.c,block.e,block.v,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.get(ticker).checkCommit(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH).catch(
+            if(BLAKE3(Block.genHash(blockc.c,block.e,block.v,block.i,block.p)+validatorsBFTProof)===KLYNTAR_HASH && await HOSTCHAINS.CONNECTORS.get(ticker).checkCommit(HOSTCHAIN_HASH,INDEX,KLYNTAR_HASH).catch(
                             
                 error => {
                     

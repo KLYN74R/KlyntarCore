@@ -41,3 +41,31 @@
  *                                                                IMPLEMENTATION OF MONITOR FOR BTC & FORKS TYPE 0(via tracks in OP_RETURN)
  * 
  */
+
+
+
+
+import {getBlockByIndex,getTransaction} from '../connectors/btcForksCommon.js'
+
+export default (btcFork) => {
+
+    setInterval(()=>{
+
+        getBlockByIndex(btcFork,1000000).then(block=>{
+
+            console.log('Block is ',block)
+            console.log('Going to fetch txs')
+
+            block.tx.forEach(async hash=>{
+
+                let tx = await getTransaction(btcFork,hash)
+
+                console.log(tx)
+
+            })
+
+        })
+
+    },3000)
+
+}
