@@ -63,6 +63,11 @@ OPTIONAL
 
 import {getBlockByIndex,getTransaction} from '../connectors/btcForksCommon.js'
 
+import {LOG} from '../../../KLY_Utils/utils.js'
+
+
+
+
 export default (btcFork) => {
 
     let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork]
@@ -84,7 +89,7 @@ export default (btcFork) => {
     
                 })
     
-            })
+            }).catch(e=>LOG(`Can't get block(${e})`,'W'))
     
         },3000)
     

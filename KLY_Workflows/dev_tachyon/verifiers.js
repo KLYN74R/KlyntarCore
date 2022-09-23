@@ -286,7 +286,7 @@ export let VERIFIERS = {
 
             //Store service manifest
             //!Add to stage zone before
-            SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
+            // SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
 
             rewardBox.fees+=event.f
         

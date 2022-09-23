@@ -99,7 +99,7 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
         LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
 
         //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
 
         for(let url of allVisibleNodes){
 
@@ -186,12 +186,12 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
  * 
  * 
  * 
- * __________________________________________________________'NEAR'_________________________________________________________
+ * __________________________________________________________'PEERS'_________________________________________________________
  *
  * 
  *
- * Near contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
- * We need NEAR just to exchange with blocks(at least in current pre-alpha release)
+ * PEERS contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
+ * We need PEERS just to exchange with blocks(at least in current pre-alpha release)
  * Non static list which changes permanently and received each time we run node
  * 
  * Also,some auths methods will be added
@@ -268,7 +268,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
     /*
     
-    Finally-send resource to NEAR nodes
+    Finally-send resource to PEERS nodes
     If response isn't equal 1-delete node from list,
     coz it's signal that node does no more support this
     symbiote(or at current time),has wrong payload size settings etc,so no sense to spend network resources on this node
@@ -276,21 +276,21 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
     */
 
 
-    SYMBIOTE_META.NEAR.forEach((addr,index)=>
+    SYMBIOTE_META.PEERS.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&SYMBIOTE_META.NEAR.splice(index,1)
+                value!=='1'&&SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(_=>{
                 
                 CONFIG.SYMBIOTE.LOGS.OFFLINE
                 &&
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
+                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mPEERS ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
 
-                SYMBIOTE_META.NEAR.splice(index,1)
+                SYMBIOTE_META.PEERS.splice(index,1)
 
             })
             

@@ -115,12 +115,12 @@ GET_NODES=region=>{
  * 
  * 
  * 
- * __________________________________________________________'NEAR'_________________________________________________________
+ * __________________________________________________________'PEERS'_________________________________________________________
  *
  * 
  *
- * Near contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
- * We need NEAR just to exchange with blocks(at least in current pre-alpha release)
+ * PEERS contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
+ * We need PEERS just to exchange with blocks(at least in current pre-alpha release)
  * Non static list which changes permanently and received each time we ask Controller
  * In future(with providing voting with CONTROLLER and other stuff) it will be one more kind of interaction
  * 
@@ -202,7 +202,7 @@ GET_NODES=region=>{
 
     /*
     
-    Finally-send resource to NEAR nodes
+    Finally-send resource to PEERS nodes
     If response isn't equal 1-delete node from list,
     coz it's signal that node does no more support this
     symbiote(or at current time),has wrong payload size settings etc,so no sense to spend network resources on this node
@@ -210,21 +210,21 @@ GET_NODES=region=>{
     */
 
 
-    SYMBIOTE_META.NEAR.forEach((addr,index)=>
+    SYMBIOTE_META.PEERS.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&SYMBIOTE_META.NEAR.splice(index,1)
+                value!=='1'&&SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(_=>{
                 
                 CONFIG.SYMBIOTE.LOGS.OFFLINE
                 &&
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mNEAR ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
+                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mPEERS ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
 
-                SYMBIOTE_META.NEAR.splice(index,1)
+                SYMBIOTE_META.PEERS.splice(index,1)
 
             })
             

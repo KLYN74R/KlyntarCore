@@ -185,7 +185,7 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
     if(symbioteConfig&&typeof domain==='string'&&domain.length<=256){
         
         //Add more advanced logic in future(e.g instant single PING request or ask controller if this host asked him etc.)
-        let nodes=SYMBIOTE_META.NEAR
+        let nodes=SYMBIOTE_META.PEERS
         
         if(!(nodes.includes(domain) || symbioteConfig.BOOTSTRAP_NODES || symbioteConfig.MUST_SEND)){
             

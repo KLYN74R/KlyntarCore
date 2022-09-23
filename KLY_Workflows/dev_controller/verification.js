@@ -410,7 +410,7 @@ verifyControllerBlock=async controllerBlock=>{
                     
                     LOG(`No InstantBlock for \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m even from GET_INSTANT service`,'W')
                     
-                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из NEAR или BOOTSTRAP_NODES напрямую
+                    //3.Last chance-ask from nodes directly | Последний рубеж-запрос из PEERS или BOOTSTRAP_NODES напрямую
                     let permNear=CONFIG.SYMBIOTE.BOOTSTRAP_NODES,breakPoint=false
 
                     

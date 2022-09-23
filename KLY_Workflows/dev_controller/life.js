@@ -582,7 +582,7 @@ PREPARE_SYMBIOTE=async()=>{
         BLACKLIST:new Set(),//To sift addresses which spend more than has when we check another ControllerBlock
 
         //Peers to exchange data with
-        NEAR:[]
+        PEERS:[]
 
     }
 
@@ -1019,7 +1019,7 @@ RUN_SYMBIOTE=async()=>{
                         
                                     .then(res=>res.text())
                         
-                                    .then(val=>val==='OK'&&SYMBIOTE_META.NEAR.push(addr))
+                                    .then(val=>val==='OK'&&SYMBIOTE_META.PEERS.push(addr))
                         
                                     .catch(e=>'')
                                     
@@ -1029,7 +1029,7 @@ RUN_SYMBIOTE=async()=>{
 
                     await Promise.all(answers)
                 
-                    LOG(`Total nodeset ${SYMBIOTE_ALIAS()}...\x1b[36;1m  has ${SYMBIOTE_META.NEAR.length} addresses`,'I')
+                    LOG(`Total nodeset ${SYMBIOTE_ALIAS()}...\x1b[36;1m  has ${SYMBIOTE_META.PEERS.length} addresses`,'I')
                 
                 }
             

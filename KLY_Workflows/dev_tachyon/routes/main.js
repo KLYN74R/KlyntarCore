@@ -368,14 +368,14 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 //[symbioteID,hostToAdd(initiator's valid and resolved host)]
-addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+addPeer=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
     
     let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
         
         //Add more advanced logic in future
-        let nodes=SYMBIOTE_META.NEAR
+        let nodes=SYMBIOTE_META.PEERS
         
         if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
             
@@ -399,66 +399,6 @@ addNode=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
 finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
-}),
-
-
-
-
-//Function to communicate between validators
-//Currently - just to send wake up message to include to block and make dormant validator ACTIVE
-validatorsMessages=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-    /*
-    
-        Payload is object with the following structure
-
-
-        +++++++++++++++++++++++++
-        + Example: AwakeMessage +
-        +++++++++++++++++++++++++
-
-        {
-            
-            T:"AWAKE",
-
-            V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
-                   
-            P:aggregatedPub, //Approver's aggregated BLS pubkey
-
-            S:aggregatedSignatures,
-
-            H:myMetadataHash,
-
-            A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
-
-        }
-
-
-    */
-
-    let message = await BODY(v,CONFIG.PAYLOAD_SIZE)
-
-        
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES[message.T]){
-
-        if(message.T==='AWAKE'){
-
-            if(await MESSAGE_VERIFIERS[message.T]?.(message)){
-
-                //Put it to VALIDATORS_STUFF_MEMPOOL
-                
-                SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.push(message)
-
-                !a.aborted&&a.end('OK')
-
-            }
-
-        }else !a.aborted&&a.end('Message not supported')
-
-
-    }else !a.aborted&&a.end('Route is off')
-
-
 })
 
 
@@ -472,12 +412,10 @@ UWS_SERVER
 
 .post('/commitments',shareCommitments)
 
-.post('/vmessage',validatorsMessages)
-
 .post('/finalization',finalization)
 
 .post('/block',acceptBlocks)
 
 .post('/event',acceptEvents)
 
-.post('/addnode',addNode)
+.post('/addnode',addPeer)

@@ -124,7 +124,7 @@ GET_BLOCKS_FOR_FUTURE = () => {
         LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_MULTI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
 
         //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+        let allVisibleNodes=[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
 
 
         for(let url of allVisibleNodes){
@@ -197,7 +197,7 @@ GET_BLOCK = (blockCreator,index) => {
             LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.NEAR]
+            let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
             
     
             for(let url of allVisibleNodes){
@@ -344,7 +344,7 @@ It they are equal - then we can skip the block and mark current validator as off
 
 
 */
-CHECK_BFT_PROOFS_FOR_BLOCK = async (blockId,blockHash) => {
+CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
@@ -1175,7 +1175,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 blockHash = block && Block.genHash(block.c,block.e,block.v,block.i,block.p),
 
-                validatorsSolution = await CHECK_BFT_PROOFS_FOR_BLOCK(blockID,blockHash)
+                validatorsSolution = await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash)
         
 
 
@@ -1254,31 +1254,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 MAKE_SNAPSHOT=async()=>{
 
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD,METADATA}=SYMBIOTE_META,//get appropriate dbs & descriptors of symbiote
-
-
-        //Get current height canary
-        canary=await METADATA.get('CANARY').catch(e=>{
-            
-            LOG(`Can't load canary for snapshot of \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'W')
-
-            return false
-        
-        })
-
-
-
-    
-    //Delete old canary and VT.Now we can't use snapshot till the next canary will be added(in the end of snapshot creating)
-    await SNAPSHOT.METADATA.del('CANARY').then(()=>SNAPSHOT.METADATA.del('VT')).catch(e=>{
-
-        LOG(`Can't delete canary or VT from snapshot on \x1b[36;1m${SYMBIOTE_ALIAS()}\n\x1b[31;1m${e}`,'F')
-
-        process.emit('SIGINT',137)
-
-    })
-
-
+    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=SYMBIOTE_META//get appropriate dbs & descriptors of symbiote
 
 
     //_____________________________________________________Now we can make snapshot_____________________________________________________
@@ -1286,9 +1262,8 @@ MAKE_SNAPSHOT=async()=>{
     LOG(`Start making snapshot for ${SYMBIOTE_ALIAS()}`,'I')
 
     
-    //Init in-memory caches
-    let records={}
-
+    //Init atomic descriptor
+    let atomicBatch = SNAPSHOT.batch()
 
     //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
     if(CONFIG.SYMBIOTE.SNAPSHOTS.ALL){
@@ -1297,7 +1272,7 @@ MAKE_SNAPSHOT=async()=>{
         
             resolve => STATE.createReadStream()
             
-                            .on('data',data=>records[data.key]=data.value)//add state of each account to snapshot dbs
+                            .on('data',data=>atomicBatch.put(data.key,data.value))//add state of each account to snapshot dbs
             
                             .on('close',resolve)
             
@@ -1320,10 +1295,17 @@ MAKE_SNAPSHOT=async()=>{
 
         choosen.forEach(
             
-            recordId => getPromises.push(STATE.get(recordId).then(acc=>records[recordId]=acc))
+            recordId => getPromises.push(
+                
+                STATE.get(recordId).then(
+                    
+                    acc => atomicBatch.put(recordId,acc)
+                    
+                )
+                
+            )
             
         )
-
 
         await Promise.all(getPromises.splice(0)).catch( e => {
     
@@ -1337,31 +1319,19 @@ MAKE_SNAPSHOT=async()=>{
     }
     
 
-    let write=[]
-
-    Object.keys(records).forEach(id=>write.push(SNAPSHOT.STATE.put(id,records[id])))
 
 
-
-
-    //After that-put another updated canary,to tell the core that this snapshot is valid and state inside is OK
-    await Promise.all(write.splice(0))
+    await atomicBatch.write()
     
-                    .then(_=>SNAPSHOT.METADATA.put('CANARY',canary))//put canary to snapshot
-                    
-                    .then(()=>SNAPSHOT.METADATA.put('VT',VERIFICATION_THREAD))//...and VERIFICATION_THREAD(to get info about collapsed height,hash etc.)
-                    
-                    .catch(e => {
-
-                        LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
+        .then(()=>LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on point \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR}:${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S'))
         
-                        process.emit('SIGINT',130)
+        .catch(e=>{
 
-                    })
+            LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
+        
+            process.emit('SIGINT',130)
 
-    LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on height \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S')
-
-
+        })
 
 
 },
@@ -1534,25 +1504,19 @@ verifyBlock=async block=>{
 
         //________________________________________________COMMIT STATE__________________________________________________    
 
-        SYMBIOTE_META.VERIFICATION_THREAD.DATA={}//prepare empty staging data
 
-
-        let promises=[],snapshot={ACCOUNTS:{},EVENTS:{}}
-        
-
+        let atomicBatch = SYMBIOTE_META.STATE.batch()
 
         
-        //Commit state
+        //Change state of accounts & contracts
         //Use caching(such primitive for the first time)
         if(SYMBIOTE_META.ACCOUNTS.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE){
 
-            SYMBIOTE_META.ACCOUNTS.forEach((acc,addr)=>{
+            SYMBIOTE_META.ACCOUNTS.forEach((acc,addr)=>
 
-                promises.push(SYMBIOTE_META.STATE.put(addr,acc.ACCOUNT))
+                atomicBatch.put(addr,acc.ACCOUNT)
 
-                snapshot.ACCOUNTS[addr]=acc.ACCOUNT
-
-            })
+            )
             
             SYMBIOTE_META.ACCOUNTS.clear()//flush cache.NOTE-some kind of advanced upgrade soon
         
@@ -1560,11 +1524,7 @@ verifyBlock=async block=>{
             
             SYMBIOTE_META.ACCOUNTS.forEach((acc,addr)=>{
 
-                promises.push(SYMBIOTE_META.STATE.put(addr,acc.ACCOUNT))
-            
-                snapshot.ACCOUNTS[addr]=acc.ACCOUNT
-
-
+                atomicBatch.put(addr,acc.ACCOUNT)
 
                 //Update urgent balance for the next blocks
                 acc.OUT=acc.ACCOUNT.B
@@ -1578,24 +1538,6 @@ verifyBlock=async block=>{
         }
 
 
-        
-        //Create for each type of events which occured changes
-        SYMBIOTE_META.EVENTS_STATE.forEach(
-            
-            (eventChanges,eventId)=>{
-
-                //Add to snapshot for durability
-                snapshot.EVENTS[eventId]=eventChanges
-
-                //...and definitely to state
-                promises.push(SYMBIOTE_META.STATE.put(eventId,eventChanges))
-
-            }
-        
-        )
-
-
-
         //Change finalization pointer
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.c
 
@@ -1604,64 +1546,27 @@ verifyBlock=async block=>{
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
         
-        //Change metadata
+        //Change metadata per validator's thread
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].INDEX=block.i
 
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH=blockHash
 
 
-
-        SYMBIOTE_META.VERIFICATION_THREAD.DATA=snapshot
-
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM=BLAKE3(
-            
-            JSON.stringify(snapshot)
-            +
-            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER)
-            +
-            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS)
-            +
-            JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
-        
-        )
-
         //Finally - decrease the counter to snapshot
-        
         SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER--
 
         let snapCounter=SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER
 
 
+        //Fix the state of VERIFICATION_THREAD
+        atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
 
+        await atomicBatch.write()
 
-        //Make commit to staging area
-        await SYMBIOTE_META.METADATA.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
-
-
-
-        
-        SYMBIOTE_META.EVENTS_STATE.clear()
 
         //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
         SYMBIOTE_META.BLACKLIST.clear()
         
-
-
-        //____________________________________NOW WE CAN SAFELY WRITE STATE OF ACCOUNTS_________________________________
-        
-
-        await Promise.all(promises.splice(0)).then(()=>
-            
-            SYMBIOTE_META.METADATA.put('CANARY',SYMBIOTE_META.VERIFICATION_THREAD.CHECKSUM)//canary is the signal that current height is verified and you can continue from this point
-
-        ).catch(e=>{
-            
-            LOG(`Problem when write to state or canary on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${e}`,'F')
-            
-            process.emit('SIGINT',108)
-        
-        })
-
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
 

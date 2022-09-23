@@ -132,8 +132,6 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
 
-    GET_VALIDATORS_STUFF_EVENTS = () => SYMBIOTE_META.VALIDATORS_STUFF_MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK),
-
     QUICK_SORT = arr => {
     
         if (arr.length < 2) return arr
@@ -292,11 +290,11 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     for(let i=0;i<phantomBlocksNumber;i++){
 
 
-        let eventsArray=await GET_EVENTS(), validatorsStuff = await GET_VALIDATORS_STUFF_EVENTS(),
+        let eventsArray=await GET_EVENTS(),
             
-            blockCandidate=new Block(eventsArray,validatorsStuff),
+            blockCandidate=new Block(eventsArray),
                         
-            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.v,blockCandidate.i,blockCandidate.p)
+            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
     
 
         blockCandidate.sig=await SIG(hash)
@@ -398,7 +396,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
     await Promise.all(promises.splice(0)).then(arr=>
         
-        SYMBIOTE_META.METADATA.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
+        SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
 
             new Promise(resolve=>{
 
@@ -499,145 +497,46 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
 
+LOAD_GENESIS=async()=>{
 
-RELOAD_STATE = async() => {
+    let atomicBatch = SYMBIOTE_META.STATE.batch()
 
-    //Reset verification breakpoint
-    await SYMBIOTE_META.STATE.clear()
+    //Load all the configs
+    fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
 
-    let promises=[],
+        //Load genesis state or data from backups(not to load state from the beginning)
+        let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
     
-
-
-        //Try to load snapshot metadata to use as last collapsed
-        canary=await SYMBIOTE_META.SNAPSHOT.METADATA.get('CANARY').catch(e=>false),
-
-        snapshotVT=await SYMBIOTE_META.SNAPSHOT.METADATA.get('VT').catch(e=>false),
-    
-
-        //Snapshot will never be OK if it's empty
-        snapshotIsOk = snapshotVT.CHECKSUM===BLAKE3(
-            
-                            JSON.stringify(snapshotVT.DATA)
-                            +
-                            JSON.stringify(snapshotVT.FINALIZED_POINTER)
-                            +
-                            JSON.stringify(snapshotVT.VALIDATORS)
-                            +
-                            JSON.stringify(snapshotVT.VALIDATORS_METADATA)
-                        
-                        )//snapshot itself must be OK
-                        &&
-                        canary===snapshotVT.CHECKSUM//and we must be sure that no problems with staging zone,so snapshot is finally OK
-                        &&
-                        CONFIG.SYMBIOTE.SNAPSHOTS.ALL//we have no remote shards(first releases don't have these features)
-
+        Object.keys(genesis).forEach(
         
-       
-    //Try to load from snapshot
-    //If it was initial run-then we'll start from genesis state
-    // If it's integrity problem - then we check if snapshot is OK-then we can load data from snapshot
-    //In case when snapshot is NOT ok - go to else branch and start sync from the genesis
-    
-    if(snapshotIsOk){
-
-
-        SYMBIOTE_META.VERIFICATION_THREAD=snapshotVT
-
-        let accs={},promises=[]
-
-        await new Promise(
-            
-            resolve => SYMBIOTE_META.SNAPSHOT.STATE.createReadStream()
-            
-                                .on('data',data=>accs[data.key]=data.value)
-                                
-                                .on('close',resolve)
+            address => atomicBatch.put(address,genesis[address])
             
         )
 
-        Object.keys(accs).forEach(addr=>promises.push(SYMBIOTE_META.STATE.put(addr,accs[addr])))
+        //Push the initial validators to verification thread
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
 
-        await Promise.all(promises.splice(0))
+    })
+
+    await atomicBatch.write()
+
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
-            .then(()=>SYMBIOTE_META.METADATA.put('CANARY',canary))
-
-            .then(()=>SYMBIOTE_META.METADATA.put('VT',snapshotVT))
-
-            .catch(e=>{
-
-                LOG(`Problems with loading state from snapshot to state db \n${e}`,'F')
-
-                process.exit(104)
-            
-            })
-
-
-        LOG(`Successfully recreated state from snapshot`,'I')
-
-    }else{
-
-        LOG(`Snapshot is not ok - probably it's initial run or syncing from genesis`,'I')
-
-        //Initial state of verification thread
-        SYMBIOTE_META.VERIFICATION_THREAD={
-            
-            DATA:{},//dynamic data between blocks to prevent crushes(electricity off,system errors,etc.)
-            
-            FINALIZED_POINTER:{VALIDATOR:'',INDEX:'',HASH:''},//pointer to know where we should start to process further blocks
-
-            VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
-
-            VALIDATORS_METADATA:{},// PUBKEY => {INDEX:<Index of finalized block>,HASH:<Hash of finalized block>,BLOCKS_GENERATORS:<Should we check block or skip>}
-            
-            CHECKSUM:'',// BLAKE3(JSON.stringify(DATA)+JSON.stringify(FINALIZED_POINTER)+JSON.stringify(VALIDATORS)+JSON.stringify(VALIDATORS_METADATA))
-            
-            SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
-
-        }
-
+        pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true} // set the initial values
         
+    )
+
+    //Node starts to verify blocks from the first validator in genesis, so sequency matter
+    
+    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
         
-        //Load all the genesis files
-        fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
-
-            //Load genesis state or data from backups(not to load state from the beginning)
-            let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
+        VALIDATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0],
         
-            Object.keys(genesis.ACCOUNTS).forEach(
-            
-                address => promises.push(SYMBIOTE_META.STATE.put(address,genesis.ACCOUNTS[address]))
-                
-            )
-
-            //Push the initial validators to verification thread
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
-            
-
-        })
-
-        await Promise.all(promises.splice(0))
-
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-            
-            pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true} // set the initial values
-            
-        )
-
-        //Node starts to verify blocks from the first validator in genesis, so sequency matter
+        INDEX:-1,
         
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
-            
-            VALIDATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS[0],
-            
-            INDEX:-1,
-            
-            HASH:'Poyekhali!@Y.A.Gagarin'
-        
-        }
-        
+        HASH:'Poyekhali!@Y.A.Gagarin'
+    
     }
-
 
 },
 
@@ -686,17 +585,13 @@ PREPARE_SYMBIOTE=async()=>{
     global.SYMBIOTE_META={
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
-
-        VALIDATORS_STUFF_MEMPOOL:[], //to hold events to add to VALIDATORS_STUFF section in block
         
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         ACCOUNTS:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
 
-        EVENTS_STATE:new Map(), //EVENT_KEY(on symbiote) => EVENT_VALUE
-
         BLACKLIST:new Set(), //To sift addresses which spend more than has when we check another block
 
-        NEAR:[], //Peers to exchange data with
+        PEERS:[], //Peers to exchange data with
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
@@ -742,7 +637,6 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Create subdirs due to rational solutions
     [
-        'METADATA',//important dir-contains canaries,pointer to VERIFICATION_THREAD and GENERATION_THREAD
     
         'BLOCKS',//For blocks(key is index)
         
@@ -776,6 +670,7 @@ PREPARE_SYMBIOTE=async()=>{
     
     _____________________________________________State of symbiote___________________________________________________
 
+    Contains state of accounts, contracts, services, metadata and so on
     
     */
 
@@ -785,19 +680,12 @@ PREPARE_SYMBIOTE=async()=>{
 
     //...and separate dirs for state and metadata snapshots
 
-    SYMBIOTE_META.SNAPSHOT={
-
-        METADATA:l(process.env.SNAPSHOTS_PATH+`/METADATA`,{valueEncoding:'json'}),
-
-        STATE:l(process.env.SNAPSHOTS_PATH+`/STATE`,{valueEncoding:'json'})
-
-    }
+    SYMBIOTE_META.SNAPSHOT=l(process.env.SNAPSHOTS_PATH,{valueEncoding:'json'})
 
 
 
 
-
-    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.METADATA.get('GT').catch(e=>
+    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.STATE.get('GT').catch(e=>
         
         e.notFound
         ?
@@ -816,7 +704,7 @@ PREPARE_SYMBIOTE=async()=>{
         previous=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + JSON.stringify(previous.v) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
         
         initSpinner?.stop()
 
@@ -834,24 +722,20 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.METADATA.get('VT').catch(e=>{
+    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(e=>{
 
         if(e.notFound){
 
             //Default initial value
             return {
-            
-                DATA:{},//dynamic data between blocks to prevent crushes(electricity off,system errors,etc.)
-                
+                            
                 FINALIZED_POINTER:{VALIDATOR:'',INDEX:-1,HASH:''},//pointer to know where we should start to process further blocks
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
                 VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
-                
-                CHECKSUM:'',// BLAKE3( JSON.stringify(DATA) + JSON.stringify(FINALIZED_POINTER) + JSON.stringify(VALIDATORS) + JSON.stringify(VALIDATORS_METADATA) )
-                
-                SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.RANGE
+                     
+                SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
             
             }
 
@@ -866,86 +750,7 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
 
-
-
-    //________________________________________________________________MAKE SURE VERIFICATION THREAD IS OK________________________________________________________________
-
-
-    //If we just start verification thread, there is no sense to do following logic
-    if(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX!==-1){
-
-        await SYMBIOTE_META.METADATA.get('CANARY').then(async canary=>{
-
-            let verifThread=SYMBIOTE_META.VERIFICATION_THREAD
-
-            //If staging zone is OK
-            if(verifThread.CHECKSUM===BLAKE3(JSON.stringify(verifThread.DATA)+JSON.stringify(verifThread.FINALIZED_POINTER)+JSON.stringify(verifThread.VALIDATORS)+JSON.stringify(verifThread.VALIDATORS_METADATA))){
-
-                //This is the signal that we should rewrite state changes from the staging zone
-                if(canary!==verifThread.CHECKSUM){
-
-                    initSpinner?.stop()
-
-                    LOG(`Load state data from staging zone on \x1b[32;1m${SYMBIOTE_ALIAS()}`,'I')
-                    
-                    let promises=[];
-
-                    ['ACCOUNTS','EVENTS'].forEach(
-                        
-                        type => Object.keys(verifThread.DATA[type]).forEach(
-                        
-                            key => promise.push(SYMBIOTE_META.STATE.put(key,verifThread.DATA[type][key]))
-                            
-                        )    
-                        
-                    )
-
-                    
-                    await Promise.all(promises.splice(0)).catch(e=>{
-
-                        LOG(`Problems with loading state from staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[31;1m\n${e}`,'F')
-
-                        process.exit(106)
-
-                    })
-
-                }
-                
-            }else{
-
-                initSpinner?.stop()
-
-                LOG(`Problems with staging zone of verification thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'W')
-
-                await RELOAD_STATE()
-
-            }
-
-        }).catch(async err=>{
-
-            initSpinner?.stop()
-
-            LOG(fs.readFileSync(PATH_RESOLVE('images/events/canaryDied.txt')).toString(),'CD')
-
-            LOG(`Problems with canary on \x1b[36;1m${SYMBIOTE_ALIAS()}\n${err}`,'W')
-
-            //Reset verification breakpoint
-            await RELOAD_STATE()
-
-        })    
-
-    }else {
-
-        initSpinner?.stop()
-
-        //Clear previous state to avoid mistakes
-        SYMBIOTE_META.STATE.clear()
-
-        //Load data from genesis state(initial values)
-        await RELOAD_STATE()
-
-    }
-
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===0) await LOAD_GENESIS()
 
     //_____________________________________Set some values to stuff cache___________________________________________
 
@@ -976,9 +781,28 @@ PREPARE_SYMBIOTE=async()=>{
         
             EvmHostChainConnector=(await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
             
+            //Set connector
             HOSTCHAINS.CONNECTORS.set(ticker,new EvmHostChainConnector(ticker))
+
+            //Set monitor
+            HOSTCHAINS.MONITORS.set(ticker,
+            
+                (await import(`../../KLY_Hostchains/${packID}/monitors/evm.js`)).default
+                
+            )
+
     
-        }else HOSTCHAINS.CONNECTORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default)
+        }else {
+
+            HOSTCHAINS.CONNECTORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default)
+
+            HOSTCHAINS.MONITORS.set(ticker,
+            
+                (await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`).catch(e=>false)).default
+                
+            )
+
+        }
         
         //Load last data about checkpoints
         SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
@@ -990,10 +814,9 @@ PREPARE_SYMBIOTE=async()=>{
             {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}
             
         ))
-
-        HOSTCHAINS.MONITORS.set(tickers[i],(await import(`../../KLY_Hostchains/${packID}/monitors/${tickers[i]}.js`).catch(e=>false)).default)
     
     }
+
 
 
     //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
@@ -1057,8 +880,6 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/syminfo.txt')).toString(),'S')
-
-    LOG(`Canary is \x1b[32;1m<OK>`,'I')
 
     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}`,'I')
 
@@ -1283,7 +1104,6 @@ START_AWAKENING_PROCEDURE=()=>{
 
 RUN_SYMBIOTE=async()=>{
 
-
     await PREPARE_SYMBIOTE()
 
 
@@ -1318,6 +1138,8 @@ RUN_SYMBIOTE=async()=>{
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
+
+        console.log(SYMBIOTE_META)
 
         //Start generate blocks
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{

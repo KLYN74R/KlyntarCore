@@ -44,20 +44,28 @@
  */
 
 
+/*
 
 
-/**
- * 
- * 
+REQUIRED OPTIONS TO USE MONITOR:
 
- * 
- * 
+    URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
+
+        * in some cases, URL will require some API token or smth like that. Use HTTPS only
+
+    MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
+
+    START_FROM - height to start to monitor from
+
+OPTIONAL
+
+    TARGET:"<address or contract to track>"
+
+
 */
 
 
-
 import Web3 from 'web3'
-
 
 
 //________________________________________________ SIMPLE BLOCK LISTENER ___________________________________________________
@@ -65,9 +73,9 @@ import Web3 from 'web3'
 
 // BSC example
 
-const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
-let latestKnownBlockNumber = -1;
-let blockTime = 5000;
+// const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545')
+// let latestKnownBlockNumber = -1;
+// let blockTime = 5000;
 
 // Our function that will triggered for every block
 // async function processBlock(blockNumber) {
@@ -91,25 +99,30 @@ let blockTime = 5000;
 // checkCurrentBlock()
 
 
+export default (evmChainTicker) => {
 
-export default (btcFork) => {
+    let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker],
 
-    setInterval(()=>{
+        web3 = new Web3(configs.URL)
 
-        
+    
 
-        getBlockByIndex(btcFork,1000000).then(block=>{
+    if(configs.MODE==='PARANOIC'){
 
-            block.tx.forEach(async hash=>{
+        //Check entire blockthread
+        setInterval(()=>{
 
-                let tx = await getTransaction(btcFork,hash)
+            web3.eth.getBlock(1000000).then(block=>console.log(evmChainTicker,' => ',block)).catch(console.log)
+    
+        },3000)
+    
 
-                console.log(tx)
+    }else if(configs.MODE==='TRUST'){
 
-            })
+        //Ask some node(or gateway) about checkpoints to avoid enumerating itself
 
-        })
+        setInterval(()=>{})
 
-    },3000)
+    }
 
 }
