@@ -1015,7 +1015,7 @@ RUN_SYMBIOTE=async()=>{
                         
                         addr => answers.push(
                             
-                            fetch(addr+'/addnode',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_ADDR])})
+                            fetch(addr+'/addpeer',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_ADDR])})
                         
                                     .then(res=>res.text())
                         

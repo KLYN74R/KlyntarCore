@@ -314,7 +314,7 @@ UWS_SERVER
 
 .post('/ib',instantBlock)
 
-.post('/addnode',addNode)
+.post('/addpeer',addNode)
 
 .post('/proof',proof)
 

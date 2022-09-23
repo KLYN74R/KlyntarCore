@@ -110,9 +110,14 @@ export default (evmChainTicker) => {
     if(configs.MODE==='PARANOIC'){
 
         //Check entire blockthread
-        setInterval(()=>{
+        setInterval(async()=>{
 
-            web3.eth.getBlock(1000000).then(block=>console.log(evmChainTicker,' => ',block)).catch(console.log)
+            let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
+                
+            console.log(evmChainTicker,' => ',block)
+
+            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
+
     
         },3000)
     

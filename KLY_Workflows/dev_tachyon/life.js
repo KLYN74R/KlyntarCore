@@ -89,7 +89,7 @@ let graceful=()=>{
 
                     LOG('Node was gracefully stopped','I')
                     
-                    process.exit(0)    
+                    process.exit(0)
 
                 })    
 
@@ -410,78 +410,78 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
                 //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
     
-                //Push to hostchains due to appropriate symbiote
-                Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
+                // //Push to hostchains due to appropriate symbiote
+                // Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
     
-                    //TODO:Add more advanced logic
-                    if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
+                //     //TODO:Add more advanced logic
+                //     if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
     
-                        let control=SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker],
+                //         let control=SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker],
                         
-                            hostchain=HOSTCHAINS.CONNECTORS.get(ticker),
+                //             hostchain=HOSTCHAINS.CONNECTORS.get(ticker),
     
-                            //If previous push is still not accepted-then no sense to push new symbiote update
-                            isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
+                //             //If previous push is still not accepted-then no sense to push new symbiote update
+                //             isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
                         
 
 
-                        LOG(`Check if previous commit is accepted for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m on \x1b[32;1m${ticker}\x1b[36;1m ~~~> \x1b[32;1m${
+                //         LOG(`Check if previous commit is accepted for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m on \x1b[32;1m${ticker}\x1b[36;1m ~~~> \x1b[32;1m${
                                 
-                            control.KLYNTAR_HASH===''?'Just start':isAlreadyAccepted
+                //             control.KLYNTAR_HASH===''?'Just start':isAlreadyAccepted
                             
-                        }`,'I')
+                //         }`,'I')
     
 
 
-                        if(control.KLYNTAR_HASH===''||isAlreadyAccepted){
+                //         if(control.KLYNTAR_HASH===''||isAlreadyAccepted){
 
-                            //If accpted-we can share to the rest
-                            isAlreadyAccepted
-                            &&
-                            Promise.all(BROADCAST('/checkpoints',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
+                //             //If accpted-we can share to the rest
+                //             isAlreadyAccepted
+                //             &&
+                //             Promise.all(BROADCAST('/checkpoints',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
                         
 
-                            let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
+                //             let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
 
-                                symbioticHash=await hostchain.makeCommit(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
+                //                 symbioticHash=await hostchain.makeCommit(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
                                     
-                                    LOG(`Error on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m with push to \x1b[36;1m${ticker} \n${e}`,'W')
+                //                     LOG(`Error on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m with push to \x1b[36;1m${ticker} \n${e}`,'W')
                                 
-                                    return false
-                                })
+                //                     return false
+                //                 })
                     
 
-                            if(symbioticHash){
+                //             if(symbioticHash){
 
-                                LOG(`Commit on ${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m for block \x1b[36;1m${index}\x1b[32;1m is \x1b[36;1m${symbioticHash}`,'S')
+                //                 LOG(`Commit on ${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m for block \x1b[36;1m${index}\x1b[32;1m is \x1b[36;1m${symbioticHash}`,'S')
                                 
-                                //Commit localy that we have send it
-                                control.KLYNTAR_HASH=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
+                //                 //Commit localy that we have send it
+                //                 control.KLYNTAR_HASH=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
                     
-                                control.INDEX=index
+                //                 control.INDEX=index
                         
-                                control.HOSTCHAIN_HASH=symbioticHash
+                //                 control.HOSTCHAIN_HASH=symbioticHash
 
-                                control.SIG=await SIG(control.KLYNTAR_HASH+control.INDEX+control.HOSTCHAIN_HASH+ticker)
+                //                 control.SIG=await SIG(control.KLYNTAR_HASH+control.INDEX+control.HOSTCHAIN_HASH+ticker)
                                 
-                                await SYMBIOTE_META.HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
+                //                 await SYMBIOTE_META.HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
                                             
-                                    .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
+                //                     .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
                         
-                                    .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
+                //                     .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
                         
-                                    .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
+                //                     .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
     
     
-                            }
+                //             }
 
-                            LOG(`Balance on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance()}`,'I')
+                //             LOG(`Balance on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance()}`,'I')
                             
-                        }
+                //         }
     
-                    }
+                //     }
                         
-                })
+                // })
 
 
                 resolve()
@@ -733,8 +733,10 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
-                VALIDATORS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
-                     
+                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
+                
+                HOSTCHAINS_MONITORING:{},
+
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
             
             }
@@ -752,19 +754,18 @@ PREPARE_SYMBIOTE=async()=>{
 
     if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===0) await LOAD_GENESIS()
 
+
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
     SYMBIOTE_META.STUFF_CACHE.set('VALIDATORS_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))))
 
 
+
     //__________________________________Load modules to work with hostchains_________________________________________
 
 
     let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS), EvmHostChainConnector
-
-
-    SYMBIOTE_META.HOSTCHAINS_MONITORING={}
 
 
     //Add hostchains to mapping
@@ -804,18 +805,16 @@ PREPARE_SYMBIOTE=async()=>{
 
         }
         
-        //Load last data about checkpoints
-        SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker]=await SYMBIOTE_META.HOSTCHAINS_DATA.get(
-            
-            ticker
-            
-        ).catch(e=>(  
-            
-            {KLYNTAR_HASH:'',INDEX:0,HOSTCHAIN_HASH:'',SIG:''}
-            
-        ))
+
+        if(!SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]){
+
+            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]=CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[ticker].MONITORING_PRESET
+
+        }
     
     }
+
+    console.log(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING)
 
 
 
@@ -1121,7 +1120,7 @@ RUN_SYMBIOTE=async()=>{
 
             promises.push(
                         
-                fetch(endpoint+'/addnode',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_HOSTNAME])})
+                fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_HOSTNAME])})
             
                     .then(res=>res.text())
             
@@ -1138,8 +1137,6 @@ RUN_SYMBIOTE=async()=>{
 
         //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
-
-        console.log(SYMBIOTE_META)
 
         //Start generate blocks
         !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{

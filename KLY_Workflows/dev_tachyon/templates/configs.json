@@ -115,10 +115,15 @@
         "HOSTCHAINS":{
             "ltc":{
                 "MODE":"PARANOIC",
-                "TARGET":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
                 "URL":"http://localhost:7777",
                 "CREDS":"Vlad:ltcpassword",
-                "START_FROM":2000000
+                
+                "MONITORING_PRESET":{
+
+                    "START_FROM":2000000
+
+                }
+                
             },
             "bsc":{
                 "MODE":"PARANOIC",
@@ -128,7 +133,12 @@
                 "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
                 "URL":"http://localhost:7777",
                 "REPORT_TO":"http://localhost:7777/alert",
-                "START_FROM":2000000
+                "MONITORING_PRESET":{
+
+                    "START_FROM":2000000
+
+                }
+
             },
             "eth":{
                 "MODE":"PARANOIC",
@@ -138,8 +148,14 @@
                 "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
                 "URL":"http://localhost:7777",
                 "REPORT_TO":"http://localhost:7777/alert",
-                "START_FROM":2000000
+                "MONITORING_PRESET":{
+
+                    "START_FROM":2000000
+
+                }
+
             }
+
         }
 
     },
@@ -247,7 +263,7 @@
         "API_MULTI":600,
 
         "GET_STUFF":600,
-        "SHARE_VALIDATORS_PROOFS":600,
+        "GET_COMMITMENTS":600,
         "GET_VALIDATORS":600
     },
     
@@ -259,7 +275,7 @@
         "API_BLOCK":1,
         "API_MULTI":1,
         "API_SHARE_STUFF":1,
-        "SHARE_VALIDATORS_PROOFS":1,
+        "GET_COMMITMENTS":1,
         
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,

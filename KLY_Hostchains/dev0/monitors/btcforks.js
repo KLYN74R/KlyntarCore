@@ -75,22 +75,26 @@ export default (btcFork) => {
     if(configs.MODE==='PARANOIC'){
 
         //Check entire blockthread
-        setInterval(()=>{
+        setInterval(async()=>{
+            
+            let block = await getBlockByIndex(btcFork,SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM,true).catch(e=>LOG(`Can't get block(${e})`,'W'))
+                
+            if(block) {
 
-            getBlockByIndex(btcFork,1000000,true).then(block=>{
+                SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM++
 
                 console.log('Block is ',block)
+
+                // block.tx.forEach(async hash=>{
     
-                block.tx.forEach(async hash=>{
+                //     let tx = await getTransaction(btcFork,hash,true)
     
-                    let tx = await getTransaction(btcFork,hash,true)
+                //     console.log(tx)
     
-                    console.log(tx)
-    
-                })
-    
-            }).catch(e=>LOG(`Can't get block(${e})`,'W'))
-    
+                // })
+
+            }
+            
         },3000)
     
 
@@ -98,7 +102,11 @@ export default (btcFork) => {
 
         //Ask some node(or gateway) about commits to avoid enumerating itself
 
-        setInterval(()=>{})
+        setInterval(()=>{
+
+
+
+        },3000)
 
     }
 

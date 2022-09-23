@@ -157,20 +157,20 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 To accept signatures of phantom blocks from validators
 
-Here we receive the object with validator's pubkey and his array of proofs
+Here we receive the object with validator's pubkey and his array of commitments
 
 {
     v:<PUBKEY>,
     p:[
-        <PROOF_1>,
-        <PROOF_2>,
-        <PROOF_3>,
+        <Commitment1>,
+        <Commitment2>,
+        <Commitment3>,
         ...
-        <PROOF_N>,
+        <CommitmentN>,
     ]
 }
 
-Proof is object
+Commitment is object
 
 {
     
@@ -187,7 +187,7 @@ VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 */
 
             
-acceptCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
 
@@ -266,14 +266,14 @@ acceptCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
 // return simpleSignature
 
-shareCommitments=async(a,q)=>{
+getCommitments=async(a,q)=>{
 
     //Check trigger
-    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_VALIDATORS_PROOFS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
 
         let blockID = q.getParameter(0)
 
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.SHARE_VALIDATORS_PROOFS}`).onAborted(()=>a.aborted=true)
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_COMMITMENTS}`).onAborted(()=>a.aborted=true)
 
         //Check if our proof presents in cache
         let ourProof = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
@@ -362,6 +362,38 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
+getFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+}),
+
+
+
+
+setFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+}),
+
+
+
+
+getCheckpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+}),
+
+
+
+
+setCheckpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+
+}),
+
+
+
+
 //_____________________________________________________________AUXILARIES________________________________________________________________________
 
 
@@ -391,15 +423,11 @@ addPeer=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
     
     }else !a.aborted&&a.end('Wrong types')
 
-}),
-
-
-
-
-finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-
 })
+
+
+
+
 
 
 
@@ -408,14 +436,43 @@ UWS_SERVER
 
 .post('/awakerequest',awakeRequestMessageHandler)
 
-.post('/acceptcommitments',acceptCommitments)
 
-.post('/commitments',shareCommitments)
 
-.post('/finalization',finalization)
+
+//To accept/get aggregated object-proof where 2/3N+1 from QUORUM have produced commitments for block X by ValidatorY with hash <HASH>
+//If validator from quorum has this finalization-proof - it'll never vote for another solution to add to checkpoint 
+//If 2/3*N+1 of validators from quorum has such finalization proof - then, it's 100% garantee of non-rollback
+
+//Returns aggregated FinalizationProof
+.get('/getfinalization/:blockID',getFinalization)
+
+//Accept FinalizationProof from external source. Verify it, and if OK - store locally
+.post('/setfinalization',setFinalization)
+
+
+//To accept/get commitments about accepting block X by ValidatorY with hash <HASH>
+//Finalization proof consists of these commitments. If more than 2/3*N from QUORUM have produced such commitment for block X by ValidatorY with hash <HASH> - then,you can aggregate it
+//and share to validators in QUORUM to prevent changes to checkpoints which will be published on hostchains
+
+//Return own commitment for early accepted blockX by ValdatorY with hash <HASH>
+.get('/getcommitments/:blockID',getCommitments)
+
+//To accept commitments for blockX by ValdatorY with hash <HASH> from another validators in QUORUM
+.post('/setcommitments',setCommitments)
+
+
+
+//To get/set pointers on hostchains to track progress of verification thread
+
+.post('/setcheckpoint',setCheckpoint)
+
+.get('/getcheckpoint',getCheckpoint)
+
+
+
 
 .post('/block',acceptBlocks)
 
 .post('/event',acceptEvents)
 
-.post('/addnode',addPeer)
+.post('/addpeer',addPeer)
