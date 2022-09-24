@@ -368,7 +368,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
             if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
 
-            fetch(validatorNode+'/acceptcommitments',{
+            fetch(validatorNode+'/setcommitments',{
                 
                 method:'POST',
                 
@@ -381,7 +381,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         //You can also share proofs over the network, not only to validators
         CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
         &&
-        BROADCAST('/acceptcommitments',payload)
+        BROADCAST('/setcommitments',payload)
 
 
     },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)
@@ -814,7 +814,6 @@ PREPARE_SYMBIOTE=async()=>{
     
     }
 
-    console.log(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING)
 
 
 
