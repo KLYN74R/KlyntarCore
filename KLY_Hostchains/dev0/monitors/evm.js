@@ -99,27 +99,88 @@ import Web3 from 'web3'
 // checkCurrentBlock()
 
 
+
+//Make it global
+let configs,web3
+
+
+
+
+let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
+
+    let startOfDay = new Date()
+        
+    startOfDay.setUTCHours(0,0,0,0)
+
+    let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
+
+        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()),
+
+        step = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
+
+        candidateIndex = bestBlock.number - step
+
+
+    //Go through the chain from the top block to the latest block yesterday(UTC)
+
+    while(true){
+
+        let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>console.log(e))
+
+        console.log('CANDIDATE ',candidate)
+
+        if(candidate.timestamp>dayStartTimestampInSeconds){
+
+            candidateIndex-=step
+
+        }else{
+
+            let possibleIndex = candidate.number
+
+            //Start another reversed cycle to find really first block
+            while(true){
+
+                let block = await web3.eth.getBlock(possibleIndex)
+
+                if(block.timestamp>dayStartTimestampInSeconds) return block
+                
+                else possibleIndex++
+
+            }
+
+        }
+
+    }
+
+}
+
+
+
+
 export default (evmChainTicker) => {
 
-    let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker],
+    configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker]
 
-        web3 = new Web3(configs.URL)
+    web3 = new Web3(configs.URL)
 
     
 
     if(configs.MODE==='PARANOIC'){
 
+        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(`(${evmChainTicker}) Get best block `,block))
+
         //Check entire blockthread
-        setInterval(async()=>{
+        // setInterval(async()=>{
 
-            let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
-                
-            console.log(evmChainTicker,' => ',block)
+            
+        //     // let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
 
-            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
+        //     // console.log(evmChainTicker,' => ',block)
+
+        //     // SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
 
     
-        },3000)
+        // },3000)
     
 
     }else if(configs.MODE==='TRUST'){

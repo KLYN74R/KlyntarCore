@@ -51,9 +51,11 @@ REQUIRED OPTIONS TO USE MONITOR:
 
     MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
 
-    CREDS:"" - string with BasicAuth creds, token or smth like this
+    CREDS:"Vlad:Password" - string with BasicAuth creds, token or smth like this
 
-    START_FROM - height to start to monitor from
+    START_FROM:13371337 - height to start to monitor from
+
+    FIRST_BLOCK_FIND_STEP:30 - step to find first block of the day to track changes in quorum
 
 OPTIONAL
 
@@ -61,10 +63,77 @@ OPTIONAL
 
 */
 
-import {getBlockByIndex,getTransaction} from '../connectors/btcForksCommon.js'
+import {getBlockByIndex,getTransaction,getBestBlockHash,getBlockByHash} from '../connectors/btcForksCommon.js'
 
 import {LOG} from '../../../KLY_Utils/utils.js'
 
+
+
+
+let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
+
+    let startOfDay = new Date()
+        
+    startOfDay.setUTCHours(0,0,0,0)
+
+    let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
+
+        bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true),
+
+        step = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork].FIRST_BLOCK_FIND_STEP,
+
+        candidateIndex = bestBlock.height - step
+
+    
+    //Go through the chain from the top block to the latest block yesterday(UTC)
+
+    while(true){
+
+        let candidate = await getBlockByIndex('ltc',candidateIndex,true)
+
+        if(candidate.time>dayStartTimestampInSeconds){
+
+            candidateIndex-=step
+
+        }else{
+
+            let possibleIndex = candidate.height
+
+            //Start another reversed cycle to find really first block
+            while(true){
+
+                let block = await getBlockByIndex('ltc',possibleIndex,true)
+
+                if(block.time>dayStartTimestampInSeconds) return block
+                
+                else possibleIndex++
+
+            }
+
+        }
+
+    }
+
+
+    // let block = await getBlockByIndex(btcFork,SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM,true).catch(e=>LOG(`Can't get block(${e})`,'W'))
+        
+    // if(block) {
+
+    //     SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM++
+
+    //     console.log('Block is ',block)
+
+    //     // block.tx.forEach(async hash=>{
+
+    //     //     let tx = await getTransaction(btcFork,hash,true)
+
+    //     //     console.log(tx)
+
+    //     // })
+
+    // }
+
+}
 
 
 
@@ -74,28 +143,7 @@ export default (btcFork) => {
 
     if(configs.MODE==='PARANOIC'){
 
-        //Check entire blockthread
-        setInterval(async()=>{
-            
-            let block = await getBlockByIndex(btcFork,SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM,true).catch(e=>LOG(`Can't get block(${e})`,'W'))
-                
-            if(block) {
-
-                SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM++
-
-                console.log('Block is ',block)
-
-                // block.tx.forEach(async hash=>{
-    
-                //     let tx = await getTransaction(btcFork,hash,true)
-    
-                //     console.log(tx)
-    
-                // })
-
-            }
-            
-        },3000)
+        FIND_FIRST_BLOCK_OF_DAY(btcFork).then(block=>console.log('********* FOUND **********\n',block))
     
 
     }else if(configs.MODE==='TRUST'){

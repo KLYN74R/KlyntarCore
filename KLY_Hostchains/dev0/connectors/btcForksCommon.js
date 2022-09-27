@@ -74,6 +74,9 @@ export let getBlockByIndex = async (btcFork,blockIndex,isMonitor) =>
     )
 
 
+export let getBestBlockHash = async (btcFork,isMonitor) => REQUEST_TO_NODE(btcFork,'getbestblockhash',[],isMonitor)
+
+export let getBlockByHash = async (btcFork,blockHash,isMonitor) => REQUEST_TO_NODE(btcFork,'getblock',[blockHash],isMonitor)
 
 
 export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {

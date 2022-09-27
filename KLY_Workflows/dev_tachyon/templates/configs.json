@@ -113,10 +113,13 @@
     "MONITORING":{
                 
         "HOSTCHAINS":{
+
             "ltc":{
+                
                 "MODE":"PARANOIC",
                 "URL":"http://localhost:7777",
                 "CREDS":"Vlad:ltcpassword",
+                "FIRST_BLOCK_FIND_STEP":30,
                 
                 "MONITORING_PRESET":{
 
@@ -126,13 +129,18 @@
                 
             },
             "bsc":{
+                
                 "MODE":"PARANOIC",
+                "URL":"http://localhost:7777",
+                "FIRST_BLOCK_FIND_STEP":30,
+
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,
                 "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-                "URL":"http://localhost:7777",
+                
                 "REPORT_TO":"http://localhost:7777/alert",
+                
                 "MONITORING_PRESET":{
 
                     "START_FROM":2000000
@@ -141,13 +149,17 @@
 
             },
             "eth":{
+                
                 "MODE":"PARANOIC",
+                "URL":"http://localhost:7777",
+                "FIRST_BLOCK_FIND_STEP":30,
+                
                 "RANGE":10,
                 "STORE":true,
                 "CACHE_SIZE":10000,
                 "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-                "URL":"http://localhost:7777",
                 "REPORT_TO":"http://localhost:7777/alert",
+                
                 "MONITORING_PRESET":{
 
                     "START_FROM":2000000

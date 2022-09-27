@@ -772,6 +772,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Load way to communicate with hostchain via appropriate type
     for(let i=0,l=tickers.length;i<l;i++){
 
+    
         let ticker = tickers[i],
 
             packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].TYPE
