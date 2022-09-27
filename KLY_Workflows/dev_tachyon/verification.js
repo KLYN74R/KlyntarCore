@@ -1347,9 +1347,9 @@ verifyBlock=async block=>{
 
     overviewOk=
     
-        block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK
+        block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
         &&
-        block.v?.length<=CONFIG.SYMBIOTE.MANIFEST.VALIDATORS_STUFF_LIMIT_PER_BLOCK
+        block.v?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH === block.p//it should be a chain
         &&
@@ -1400,7 +1400,7 @@ verifyBlock=async block=>{
                 
                 let acc=GET_ACCOUNT_ON_SYMBIOTE(event.c),
                     
-                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || CONFIG.SYMBIOTE.MANIFEST.DEFAULT_PAYMENT_IF_WRONG_TYPE
+                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE
 
 
 
@@ -1463,7 +1463,7 @@ verifyBlock=async block=>{
 
         let shareFeesPromises=[], 
 
-            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
+            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
         
             payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToValidator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
 

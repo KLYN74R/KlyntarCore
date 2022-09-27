@@ -130,7 +130,7 @@ process.on('SIGHUP',graceful)
 
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
     QUICK_SORT = arr => {
     
@@ -162,7 +162,7 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
     GET_QUORUM = () => {
 
         //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE){
+        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
 
 
             let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)+'0'),
@@ -187,7 +187,7 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.E
 
                 )
 
-            return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
+            return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
 
 
         } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
@@ -271,7 +271,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     */
 
                 
-    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.EVENTS_LIMIT_PER_BLOCK),
+    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
     
         promises=[],//to push blocks to storage
 
@@ -775,7 +775,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         let ticker = tickers[i],
 
-            packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].TYPE
+            packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
 
 
         //Depending on packID load appropriate module
@@ -809,7 +809,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         if(!SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]){
 
-            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]=CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[ticker].MONITORING_PRESET
+            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]=CONFIG.SYMBIOTE.MONITORS[ticker].MONITORING_PRESET
 
         }
     

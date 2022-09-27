@@ -45,7 +45,7 @@ export default {
 
     checkCommit:(hostChainHash,blockIndex,klyntarHash)=>{
 
-        let {URL,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,
+        let {URL,PRV}=CONFIG.SYMBIOTE.CONNECTORS.trx,
         
             HttpProvider = TronWeb.providers.HttpProvider,
             
@@ -76,7 +76,7 @@ export default {
     
     makeCommit:async(blockIndex,klyntarHash)=>{
 
-        let {PRV,AMOUNT,TO,URL} = CONFIG.SYMBIOTE.HC_CONFIGS.trx,
+        let {PRV,AMOUNT,TO,URL} = CONFIG.SYMBIOTE.CONNECTORS.trx,
                     
 
 
@@ -117,7 +117,7 @@ export default {
 
     getBalance:()=>{
 
-        let {URL,PUB,PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.trx,
+        let {URL,PUB,PRV}=CONFIG.SYMBIOTE.CONNECTORS.trx,
 
             HttpProvider = TronWeb.providers.HttpProvider,
             

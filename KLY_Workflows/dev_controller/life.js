@@ -860,7 +860,7 @@ PREPARE_SYMBIOTE=async()=>{
     for(let i=0,l=tickers.length;i<l;i++){
 
         
-        let packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].TYPE
+        let packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[tickers[i]].PACK
 
 
         //Depending on packID load appropriate module

@@ -114,9 +114,9 @@ let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
     let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
 
-        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()),
+        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber().catch(e=>console.log(e))).catch(e=>console.log('HERE')),
 
-        step = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
+        step = CONFIG.SYMBIOTE.MONITORS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.number - step
 
@@ -159,15 +159,14 @@ let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
 export default (evmChainTicker) => {
 
-    configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[evmChainTicker]
+    configs = CONFIG.SYMBIOTE.MONITORS[evmChainTicker]
 
     web3 = new Web3(configs.URL)
-
     
 
     if(configs.MODE==='PARANOIC'){
 
-        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(`(${evmChainTicker}) Get best block `,block))
+        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(`(${evmChainTicker}) Get best block `,block)).catch(e=>console.log('ERR ',e))
 
         //Check entire blockthread
         // setInterval(async()=>{

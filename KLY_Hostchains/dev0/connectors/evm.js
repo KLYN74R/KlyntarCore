@@ -20,7 +20,7 @@ export default class {
 
     constructor(ticker){
 
-        let {URL,PUB,GAS_LIMIT,GAS_PRICE,AMOUNT,TO,NET,CHAIN_ID,HARDFORK} = CONFIG.SYMBIOTE.HC_CONFIGS[ticker]
+        let {URL,PUB,GAS_LIMIT,GAS_PRICE,AMOUNT,TO,NET,CHAIN_ID,HARDFORK} = CONFIG.SYMBIOTE.CONNECTORS[ticker]
         
         this.web3=new Web3(URL)
         
@@ -38,9 +38,9 @@ export default class {
 
             this.COMMON=Common.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK})
         
-            this.MAX_FEE_PER_GAS=CONFIG.SYMBIOTE.HC_CONFIGS[ticker].MAX_FEE_PER_GAS
+            this.MAX_FEE_PER_GAS=CONFIG.SYMBIOTE.CONNECTORS[ticker].MAX_FEE_PER_GAS
             
-            this.MAX_PRIORITY_FEE_PER_GAS=CONFIG.SYMBIOTE.HC_CONFIGS[ticker].MAX_PRIORITY_FEE_PER_GAS
+            this.MAX_PRIORITY_FEE_PER_GAS=CONFIG.SYMBIOTE.CONNECTORS[ticker].MAX_PRIORITY_FEE_PER_GAS
 
         }else this.COMMON=OldLibCommon.default.forCustomChain(NET,{networkId:CHAIN_ID,chainId:CHAIN_ID,hardfork:HARDFORK},HARDFORK)
         

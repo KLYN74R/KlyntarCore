@@ -264,7 +264,7 @@ DECRYPT_KEYS=async(spinner,role)=>{
                 
                 if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
-                else CONFIG.SYMBIOTE.HC_CONFIGS[ticker].PRV=keys[ticker]
+                else CONFIG.SYMBIOTE.CONNECTORS[ticker].PRV=keys[ticker]
     
             
             }
@@ -321,15 +321,15 @@ DECRYPT_KEYS=async(spinner,role)=>{
 
     symbioteRef.CONTROLLER.ME
     &&
-    Object.keys(symbioteRef.HC_CONFIGS).forEach(ticker=>{
+    Object.keys(symbioteRef.CONNECTORS).forEach(ticker=>{
         
-        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.HC_CONFIGS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
+        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
         if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
-        else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
+        else symbioteRef.CONNECTORS[ticker].PRV=privateKey
         
 
 

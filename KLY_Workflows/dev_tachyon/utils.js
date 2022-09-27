@@ -59,7 +59,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 //*UPD:Sign with our pubkey to avoid certifications
 SEND_REPORT = alertInfo =>
 
-    fetch(CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[alertInfo.hostchain].REPORT_TO,{
+    fetch(CONFIG.SYMBIOTE.MONITORS[alertInfo.hostchain].REPORT_TO,{
 
         method:'POST',
         body:JSON.stringify(alertInfo)
@@ -330,7 +330,7 @@ DECRYPT_KEYS=async spinner=>{
                 
                 if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
-                else CONFIG.SYMBIOTE.HC_CONFIGS[ticker].PRV=keys[ticker]
+                else CONFIG.SYMBIOTE.CONNECTORS[ticker].PRV=keys[ticker]
     
             
             }
@@ -386,15 +386,15 @@ DECRYPT_KEYS=async spinner=>{
     //____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAINS_______________________________________
 
 
-    Object.keys(symbioteRef.HC_CONFIGS).forEach(ticker=>{
+    Object.keys(symbioteRef.CONNECTORS).forEach(ticker=>{
         
-        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.HC_CONFIGS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
+        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
         if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
-        else symbioteRef.HC_CONFIGS[ticker].PRV=privateKey
+        else symbioteRef.CONNECTORS[ticker].PRV=privateKey
         
 
 

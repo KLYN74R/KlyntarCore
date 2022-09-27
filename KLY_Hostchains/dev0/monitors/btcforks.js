@@ -78,9 +78,9 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
     let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
 
-        bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true),
+        bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true).catch(e=>console.log('ERR ',e)),
 
-        step = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork].FIRST_BLOCK_FIND_STEP,
+        step = CONFIG.SYMBIOTE.MONITORS[btcFork].FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.height - step
 
@@ -89,7 +89,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
     while(true){
 
-        let candidate = await getBlockByIndex('ltc',candidateIndex,true)
+        let candidate = await getBlockByIndex('ltc',candidateIndex,true).catch(e=>console.log('ERR ',e))
 
         if(candidate.time>dayStartTimestampInSeconds){
 
@@ -102,7 +102,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
             //Start another reversed cycle to find really first block
             while(true){
 
-                let block = await getBlockByIndex('ltc',possibleIndex,true)
+                let block = await getBlockByIndex('ltc',possibleIndex,true).catch(e=>console.log('ERR ',e))
 
                 if(block.time>dayStartTimestampInSeconds) return block
                 
@@ -139,7 +139,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
 export default (btcFork) => {
 
-    let configs = CONFIG.SYMBIOTE.MONITORING.HOSTCHAINS[btcFork]
+    let configs = CONFIG.SYMBIOTE.MONITORS[btcFork]
 
     if(configs.MODE==='PARANOIC'){
 

@@ -53,7 +53,7 @@ import {LOG} from '../../../KLY_Utils/utils.js'
  */
 let connection,
 
-    {URL,CHAIN_ID}=CONFIG.SYMBIOTE.HC_CONFIGS.luna
+    {URL,CHAIN_ID}=CONFIG.SYMBIOTE.CONNECTORS.luna
          
 if(configs) connection=new LCDClient({URL,chainID:CHAIN_ID})
 
@@ -82,7 +82,7 @@ export default {
 
     makeCommit:(blockIndex,klyntarHash)=>{
 
-        let {MNEMONIC,TO,AMOUNT}=CONFIG.SYMBIOTE.HC_CONFIGS.luna,
+        let {MNEMONIC,TO,AMOUNT}=CONFIG.SYMBIOTE.CONNECTORS.luna,
 
             account=new MnemonicKey({mnemonic:MNEMONIC}),
 

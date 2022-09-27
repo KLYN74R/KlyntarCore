@@ -30,32 +30,42 @@
         "HOSTCHAINS":{
         
             "ltc":{
-                "TYPE":"dev0",
-                "ADDRESS":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa"
+                "PACK":"dev0",
+                "MANIFEST_OPTIONS":{}
             },
             "bsc":{
-                "TYPE":"dev0",
-                "ADDRESS":"0x4741c39e6096c192Db6E1375Ff32526512069dF5"
+                "PACK":"dev0",
+                "MANIFEST_OPTIONS":{
+                    "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
+                }
+                
             },
             "eth":{
-                "TYPE":"dev0",
-                "ADDRESS":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A"
+                "PACK":"dev0",
+                "MANIFEST_OPTIONS":{
+                    "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
+                }
             }
                     
         },
     
         "WORKFLOW":"dev_tachyon",
         "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
-        "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-        "VALIDATOR_STAKE":10000,
-        "VALIDATOR_REWARD_PERCENTAGE":0.5,
-        "QUORUM_SIZE":127,
-        "EVENTS_LIMIT_PER_BLOCK":30000,
-        "VALIDATORS_STUFF_LIMIT_PER_BLOCK":100,
-        "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
+        "WORKFLOW_OPTIONS":{
+
+            "VALIDATOR_STAKE":10000,
+            "VALIDATOR_REWARD_PERCENTAGE":0.5,
+            "QUORUM_SIZE":127,
+            "VALIDATORS_STUFF_LIMIT_PER_BLOCK":100,
+            "EVENTS_LIMIT_PER_BLOCK":30000,
+            "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
+        
+        },
+        
+        "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     },
     
-    "HC_CONFIGS":{
+    "CONNECTORS":{
                 
         "ltc":{
 
@@ -110,68 +120,65 @@
         "eth":true
     },
 
-    "MONITORING":{
-                
-        "HOSTCHAINS":{
 
-            "ltc":{
-                
-                "MODE":"PARANOIC",
-                "URL":"http://localhost:7777",
-                "CREDS":"Vlad:ltcpassword",
-                "FIRST_BLOCK_FIND_STEP":30,
-                
-                "MONITORING_PRESET":{
+    "MONITORS":{
 
-                    "START_FROM":2000000
+        "ltc":{
+            
+            "MODE":"PARANOIC",
+            "URL":"http://localhost:7777",
+            "CREDS":"Vlad:ltcpassword",
+            "FIRST_BLOCK_FIND_STEP":30,
+            
+            "MONITORING_PRESET":{
 
-                }
-                
-            },
-            "bsc":{
-                
-                "MODE":"PARANOIC",
-                "URL":"http://localhost:7777",
-                "FIRST_BLOCK_FIND_STEP":30,
+                "START_FROM":2000000
 
-                "RANGE":10,
-                "STORE":true,
-                "CACHE_SIZE":10000,
-                "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-                
-                "REPORT_TO":"http://localhost:7777/alert",
-                
-                "MONITORING_PRESET":{
+            }
+            
+        },
+        "bsc":{
+            
+            "MODE":"PARANOIC",
+            "URL":"http://localhost:7777",
+            "FIRST_BLOCK_FIND_STEP":30,
 
-                    "START_FROM":2000000
+            "RANGE":10,
+            "STORE":true,
+            "CACHE_SIZE":10000,
+            "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
+            
+            "REPORT_TO":"http://localhost:7777/alert",
+            
+            "MONITORING_PRESET":{
 
-                }
+                "START_FROM":2000000
 
-            },
-            "eth":{
-                
-                "MODE":"PARANOIC",
-                "URL":"http://localhost:7777",
-                "FIRST_BLOCK_FIND_STEP":30,
-                
-                "RANGE":10,
-                "STORE":true,
-                "CACHE_SIZE":10000,
-                "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-                "REPORT_TO":"http://localhost:7777/alert",
-                
-                "MONITORING_PRESET":{
+            }
 
-                    "START_FROM":2000000
+        },
+        "eth":{
+            
+            "MODE":"PARANOIC",
+            "URL":"http://localhost:7777",
+            "FIRST_BLOCK_FIND_STEP":30,
+            
+            "RANGE":10,
+            "STORE":true,
+            "CACHE_SIZE":10000,
+            "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
+            "REPORT_TO":"http://localhost:7777/alert",
+            
+            "MONITORING_PRESET":{
 
-                }
+                "START_FROM":2000000
 
             }
 
         }
 
     },
-        
+
     "VT_GT_NORMAL_DIFFERENCE":100,
     "VERIFICATION_THREAD_POLLING_INTERVAL":5000,
 

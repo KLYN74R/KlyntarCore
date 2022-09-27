@@ -73,7 +73,7 @@ let {TransactionInstruction,Transaction,Keypair} = Web3
 
 let connection,
 
-    {URL,COMMITMENT}=CONFIG.SYMBIOTE.HC_CONFIGS.sol
+    {URL,COMMITMENT}=CONFIG.SYMBIOTE.CONNECTORS.sol
          
 
 if(configs) connection=new Web3.Connection(URL,COMMITMENT)
@@ -101,7 +101,7 @@ export default {
     makeCommit:(blockIndex,klyntarHash)=>{
 
         //PRV-private key in Base64
-        let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTE.HC_CONFIGS.sol,
+        let {PRV,PROGRAM,COMMITMENT}=CONFIG.SYMBIOTE.CONNECTORS.sol,
 
             account=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))),
 
@@ -146,7 +146,7 @@ export default {
 
     getBalance:async()=>{
 
-        let {PRV}=CONFIG.SYMBIOTE.HC_CONFIGS.sol,
+        let {PRV}=CONFIG.SYMBIOTE.CONNECTORS.sol,
 
             pub=Keypair.fromSecretKey(new Uint8Array(Buffer.from(PRV,'base64'))).publicKey
 
