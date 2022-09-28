@@ -51,7 +51,6 @@
     ?CONTRACT:"0x77D4e0dc185409B9f20f58127146692A81272799" - address of contract to grab VM logs
 
 
-
 !REQUIRED OPTIONS TO USE MONITOR:
 
     ?URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
@@ -60,12 +59,14 @@
 
     ?MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
 
-    ?START_FROM - height to start to monitor from
+    ?CONTRACT - address of contract to track
 
-!OPTIONAL
+    ?ABI - JSON'ed ABI of contract
 
-    ?TARGET:"<address or contract to track>"
 
+    The following options must be in section MONITORING_PRESET
+
+        ?START_FROM - height to start to monitor from
 
 */
 
@@ -73,90 +74,33 @@
 import Web3 from 'web3'
 
 
-//________________________________________________ SIMPLE BLOCK LISTENER ___________________________________________________
-
-
-// BSC example
-
-// const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545')
-// let latestKnownBlockNumber = -1;
-// let blockTime = 5000;
-
-// Our function that will triggered for every block
-// async function processBlock(blockNumber) {
-//     console.log("We process block: " + blockNumber)
-//     latestKnownBlockNumber = blockNumber;
-    
-//     let block = await web3.eth.getBlock(blockNumber);
-//     console.log("New block :", block)
-// }
-
-// // This function is called every blockTime, check the current block number and order the processing of the new block(s)
-// async function checkCurrentBlock() {
-//     const currentBlockNumber = await web3.eth.getBlockNumber()
-//     console.log("Current blockchain top: " + currentBlockNumber, " | Script is at: " + latestKnownBlockNumber)
-//     while (latestKnownBlockNumber == -1 || currentBlockNumber > latestKnownBlockNumber) {
-//         await processBlock(latestKnownBlockNumber == -1 ? currentBlockNumber : latestKnownBlockNumber + 1);
-//     }
-//     setTimeout(checkCurrentBlock, blockTime);
-// }
-
-// checkCurrentBlock()
-
 
 
 //Make it global
-let configs,web3
+let configs,web3,
 
 
 
 
-let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
+GET_CONTRACT_EVENTS = evmChainTicker => {
 
-    let startOfDay = new Date()
+
+    let {ABI,CONTRACT} = CONFIG.SYMBIOTE.MONITORS[evmChainTicker],
+    
+        contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+    
+        //Get from the height we stopped till the last known block
+        options = {
+    
+            fromBlock: SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM,
         
-    startOfDay.setUTCHours(0,0,0,0)
-
-    let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
-
-        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()).catch(e=>false),
-
-        step = CONFIG.SYMBIOTE.MONITORS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
-
-        candidateIndex = bestBlock.number - step
-
-
-    //Go through the chain from the top block to the latest block yesterday(UTC)
-
-    while(true){
-
-        let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>false)
-
-        if(candidate.timestamp>dayStartTimestampInSeconds){
-
-            candidateIndex-=step
-
-        }else{
-
-            let possibleIndex = candidate.number
-
-            //Start another reversed cycle to find really first block
-            while(true){
-
-                let block = await web3.eth.getBlock(possibleIndex).catch(e=>false)
-
-                if(block.timestamp>dayStartTimestampInSeconds) return block
-                
-                else possibleIndex++
-
-            }
-
-        }
-
-    }
+            toBlock:'latest',
+    
+        };
+    
+    return contractInstance.getPastEvents('Checkpoint',options)
 
 }
-
 
 
 
@@ -169,20 +113,7 @@ export default (evmChainTicker) => {
 
     if(configs.MODE==='PARANOIC'){
 
-        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(`(${evmChainTicker}) Get best block `,block)).catch(e=>console.log('ERR ',e))
-
-        //Check entire blockthread
-        // setInterval(async()=>{
-            
-        //     let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
-
-        //     console.log(evmChainTicker,' => ',block)
-
-        //     SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
-
-    
-        // },3000)
-    
+        GET_CONTRACT_EVENTS(evmChainTicker).then(events=>console.log(events))
 
     }else if(configs.MODE==='TRUST'){
 
