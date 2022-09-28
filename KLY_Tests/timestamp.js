@@ -21,3 +21,8 @@ console.log(startOfDay.getTime());
 const endOfDay = new Date();
 endOfDay.setUTCHours(23,59,59,999);
 console.log(endOfDay.getTime());
+
+console.log(new Date().getTime())
+console.log(Date.now())
+
+console.log(new Date(Date.now()).toUTCString())

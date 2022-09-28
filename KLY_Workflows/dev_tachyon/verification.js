@@ -39,7 +39,7 @@ PERFORM_BLOCK_MULTISET=blocksAndProofs=>{
     
             let {b:block,p:bftProof} = blockAndProof,
     
-                blockHash=Block.genHash(block.c,block.e,block.v,block.i,block.p)
+                blockHash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
     
             if(await VERIFY(blockHash,block.sig,block.c)){
     
@@ -178,7 +178,7 @@ GET_BLOCK = (blockCreator,index) => {
     
         .then(r=>r.json()).then(block=>{
     
-            let hash=Block.genHash(block.c,block.e,block.v,block.i,block.p)
+            let hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
                 
             if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
     
@@ -208,7 +208,7 @@ GET_BLOCK = (blockCreator,index) => {
                 
                 if(itsProbablyBlock){
     
-                    let hash=Block.genHash(itsProbablyBlock.c,itsProbablyBlock.e,itsProbablyBlock.v,itsProbablyBlock.i,itsProbablyBlock.p)
+                    let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
                 
                     if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
     
@@ -686,7 +686,7 @@ SHARE_COMMITMENTS = async() =>{
 
         let blockHashAndSignaByValidator = await SYMBIOTE_META.BLOCKS.get(blockToSkip).then(
         
-            block => Block.genHash(block.c,block.e,block.v,block.i,block.p)+':'+block.sig
+            block => Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)+':'+block.sig
             
         ).catch(_=>false)
     
@@ -1173,7 +1173,7 @@ START_VERIFICATION_THREAD=async()=>{
             //Try to get block
             let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
-                blockHash = block && Block.genHash(block.c,block.e,block.v,block.i,block.p),
+                blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
                 validatorsSolution = await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash)
         
@@ -1342,7 +1342,7 @@ MAKE_SNAPSHOT=async()=>{
 verifyBlock=async block=>{
 
 
-    let blockHash=Block.genHash(block.c,block.e,block.v,block.i,block.p),
+    let blockHash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
 
     overviewOk=

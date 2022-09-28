@@ -411,8 +411,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
         
     }
 
-    //Run custom modules
-    //To load them one by one,use top level await,so we need "for...of"
     for(let scriptPath of CONFIG.PLUGINS){
 
         import(`./KLY_Plugins/${scriptPath}`).catch(

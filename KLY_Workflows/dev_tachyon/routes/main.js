@@ -51,7 +51,7 @@ acceptBlocks=a=>{
                 }
                 
                 
-                let hash=Block.genHash(block.c,block.e,block.v,block.i,block.p),
+                let hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
                 
                 
                     //Check if we can accept this block
@@ -221,7 +221,7 @@ setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=
                     //If no votes from this validator - accept it
                     let [blockCreator,height] = proof.B.split(':'),
             
-                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.v,block.i,block.p)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
+                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
     
                         //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
                         shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)    
@@ -238,7 +238,7 @@ setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=
             }else{
 
                 
-                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.c,block.e,block.v,block.i,block.p)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
+                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
     
 
                 if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
@@ -298,7 +298,7 @@ getCommitments=async(a,q)=>{
                 //*✅ Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
                 if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
 
-                    let blockHash = Block.genHash(block.c,block.e,block.v,block.i,block.p),
+                    let blockHash = Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
                     
                         proofSignature = await SIG(blockID+":"+blockHash)
 

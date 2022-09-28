@@ -39,27 +39,32 @@
  *  
  * ] 
  * 
- *                                                                IMPLEMENTATION OF MONITOR FOR EVM TYPE 0(via tracks in data field of txs)
+ *                                       IMPLEMENTATION OF MONITOR FOR EVM TYPE 0(via tracks in data field of txs when interact with simple contract with a single event)
  * 
  */
 
 
 /*
 
+!MANIFEST OPTIONS:
 
-REQUIRED OPTIONS TO USE MONITOR:
+    ?CONTRACT:"0x77D4e0dc185409B9f20f58127146692A81272799" - address of contract to grab VM logs
 
-    URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
+
+
+!REQUIRED OPTIONS TO USE MONITOR:
+
+    ?URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
 
         * in some cases, URL will require some API token or smth like that. Use HTTPS only
 
-    MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
+    ?MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
 
-    START_FROM - height to start to monitor from
+    ?START_FROM - height to start to monitor from
 
-OPTIONAL
+!OPTIONAL
 
-    TARGET:"<address or contract to track>"
+    ?TARGET:"<address or contract to track>"
 
 
 */
@@ -114,7 +119,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
     let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
 
-        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber().catch(e=>console.log(e))).catch(e=>console.log('HERE')),
+        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()).catch(e=>false),
 
         step = CONFIG.SYMBIOTE.MONITORS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
 
@@ -125,9 +130,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
     while(true){
 
-        let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>console.log(e))
-
-        console.log('CANDIDATE ',candidate)
+        let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>false)
 
         if(candidate.timestamp>dayStartTimestampInSeconds){
 
@@ -140,7 +143,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
             //Start another reversed cycle to find really first block
             while(true){
 
-                let block = await web3.eth.getBlock(possibleIndex)
+                let block = await web3.eth.getBlock(possibleIndex).catch(e=>false)
 
                 if(block.timestamp>dayStartTimestampInSeconds) return block
                 
@@ -170,13 +173,12 @@ export default (evmChainTicker) => {
 
         //Check entire blockthread
         // setInterval(async()=>{
-
             
-        //     // let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
+        //     let block = await web3.eth.getBlock(SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM)
 
-        //     // console.log(evmChainTicker,' => ',block)
+        //     console.log(evmChainTicker,' => ',block)
 
-        //     // SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
+        //     SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM++
 
     
         // },3000)

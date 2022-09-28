@@ -294,7 +294,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             
             blockCandidate=new Block(eventsArray),
                         
-            hash=Block.genHash(blockCandidate.c,blockCandidate.e,blockCandidate.i,blockCandidate.p)
+            hash=Block.genHash(blockCandidate.creator,blockCandidate.time,blockCandidate.events,blockCandidate.index,blockCandidate.prevHash)
     
 
         blockCandidate.sig=await SIG(hash)
@@ -304,7 +304,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         //To send to other validators and get signatures as a commitment of acception this part of blocks
 
-        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.i,
+        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index,
 
             meta={
         
@@ -331,7 +331,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         ).then(()=>blockCandidate).catch(error=>{
                 
-            LOG(`Failed to store block ${blockCandidate.i} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
+            LOG(`Failed to store block ${blockCandidate.index} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
 
             process.emit('SIGINT',122)
             
@@ -701,10 +701,10 @@ PREPARE_SYMBIOTE=async()=>{
 
     let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
 
-        previous=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
+        previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previous.e) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previous.i + previous.p))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
         
         initSpinner?.stop()
 
@@ -796,13 +796,11 @@ PREPARE_SYMBIOTE=async()=>{
     
         }else {
 
+            //Also, set connector
             HOSTCHAINS.CONNECTORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default)
 
-            HOSTCHAINS.MONITORS.set(ticker,
-            
-                (await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`).catch(e=>false)).default
-                
-            )
+            //Also, set monitor
+            HOSTCHAINS.MONITORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`)).default)
 
         }
         
@@ -1164,7 +1162,7 @@ RUN_SYMBIOTE=async()=>{
 
         HOSTCHAINS.MONITORS.forEach(
             
-            (monitor,ticker) => monitor&&monitor(ticker)
+            (monitor,ticker) => monitor && monitor(ticker)
             
         )
 

@@ -161,7 +161,7 @@ BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
         console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(1)+`${color}│`)
 
-        let verbose='Height:'+block.i+' # Events:'+block.e.length+' # Validator:'+block.c
+        let verbose='Height:'+block.index+' \x1b[33m#\x1b[32m Events:'+block.events.length+' \x1b[33m#\x1b[32m Validator:'+block.creator+' \x1b[33m#\x1b[32m Time:'+new Date(block.time).toUTCString()
             
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(76),`${color}│ ${verbose}`)
     
@@ -390,9 +390,8 @@ DECRYPT_KEYS=async spinner=>{
         
         let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
 
-
-
-        if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
+        
+        if(CONFIG.EVM.includes(ticker)) symbioteRef.CONNECTORS[ticker].PRV=Buffer.from(privateKey,'hex')
         
         else symbioteRef.CONNECTORS[ticker].PRV=privateKey
         

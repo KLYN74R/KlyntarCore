@@ -7,18 +7,20 @@ export default class Block{
     
     constructor(eventsSet){
         
-        this.c=CONFIG.SYMBIOTE.PUB //block creator(validator) Example:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta
+        this.creator=CONFIG.SYMBIOTE.PUB //block creator(validator) Example:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta
 
-        this.e=eventsSet //array of events(transactions,contract calls, services logic,etc.)
+        this.time=Date.now() //UTC timestamp
 
-        this.i=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX //index of block in validator's thread
+        this.events=eventsSet //array of events(transactions,contract calls, services logic,etc.)
+
+        this.index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX //index of block in validator's thread
         
-        this.p=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH //hash of previous block in validator's thread
+        this.prevHash=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH //hash of previous block in validator's thread
         
         this.sig='' //BLS signature of block
     
     }
     
-    static genHash=(creator,eventsSet,index,prevHash)=>BLAKE3( creator + JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID + index + prevHash)
+    static genHash=(creator,time,eventsSet,index,prevHash)=>BLAKE3( creator + time + JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID + index + prevHash)
 
 }

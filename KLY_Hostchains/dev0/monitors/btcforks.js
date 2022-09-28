@@ -38,28 +38,25 @@
  * ]
  * 
  * 
- *                                                                IMPLEMENTATION OF MONITOR FOR BTC & FORKS TYPE 0(via tracks in OP_RETURN)
+ *                                                                IMPLEMENTATION OF MONITOR FOR BTC & FORKS TYPE 0(via checkpoints in OP_RETURN)
  * 
  */
 
 
 /*
 
-REQUIRED OPTIONS TO USE MONITOR:
+!REQUIRED OPTIONS TO USE MONITOR:
 
-    URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
+    ?URL:"http://youhostchainnode:<port>", - URL for node which accept RPC, API calls to query data. It might be your own node, NaaS service, "trusted" gateway, your own gateway which take info from several sources and so on
 
-    MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
+    ?MODE:"PARANOIC" | "TRUST" - behavior for monitor. PARANOIC - you'll track hostchains on your own, block by block to make sure everything is ok. TRUST - you just ask another "trusted" instance about checkpoints
 
-    CREDS:"Vlad:Password" - string with BasicAuth creds, token or smth like this
+    ?CREDS:"Vlad:Password" - string with BasicAuth creds, token or smth like this
 
-    START_FROM:13371337 - height to start to monitor from
+    ?START_FROM:13371337 - height to start to monitor from
 
-    FIRST_BLOCK_FIND_STEP:30 - step to find first block of the day to track changes in quorum
+    ?FIRST_BLOCK_FIND_STEP:30 - step to find first block of the day to track changes in quorum
 
-OPTIONAL
-
-    TARGET:"<address or contract to track>"
 
 */
 
