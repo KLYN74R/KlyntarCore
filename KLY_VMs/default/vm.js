@@ -4,9 +4,9 @@ import loader from '@assemblyscript/loader'
 
 import metering from 'wasm-metering'
 
-import EXECUTE from './base.js'
+import EXECUTE from './rustBase.js'
 
- 
+
 
 
 let {TYPE,FUNCTION_NAME,MODULE_NAME}=CONFIG.VM.METERING
@@ -63,11 +63,24 @@ export let VM = {
 
 
  
-    callContract:(contractInstance,contractMetadata,serializedContractStateChunk,functionName)=>{
+    callContract:(contractInstance,contractMetadata,serializedContractStateChunk,functionName,type)=>{
 
         contractMetadata.energyUsed=0 //make null before call contract
 
-        let result = EXECUTE(contractInstance,serializedContractStateChunk,functionName)
+        let result
+
+        if(type==='RUST'){
+
+            result = EXECUTE(contractInstance,serializedContractStateChunk,functionName)
+
+
+        }else if(type==='ASC'){
+
+            let pointerToChunk = contractInstance.__newString(serializedContractStateChunk);
+
+                result = contractInstance.__getString(contractInstance[functionName](pointerToChunk))
+
+        }
 
         return {result,contractMetadata}
 
