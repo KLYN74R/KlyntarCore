@@ -4,46 +4,42 @@ import loader from '@assemblyscript/loader'
 
 import metering from 'wasm-metering'
 
-import fs from 'fs'
+import EXECUTE from './base.js'
+
+ 
 
 
-
-
-//Path to configs for KLYNTAR VM is usually defined in <SYMBIOTE_DIR>/CONFIGS/symbiote.json and usually it's <SYMBIOTE_DIR>/CONFIGS/vm.json
-
-let vmConfigs = JSON.parse(fs.readFileSync('./configsTemplate.json')),
-
-    energyTable = JSON.parse(fs.readFileSync(vmConfigs.METERING_COST_TABLE_PATH))
-
-
+let {TYPE,FUNCTION_NAME,MODULE_NAME}=CONFIG.VM.METERING
 
 
 export let VM = {
 
     //Function to create a contract instance from WASM bytecode with injected metering function 
-    bytesToMeteredContract:async contractBuffer=>{
+    bytesToMeteredContract:async (contractBuffer,energyLimit)=>{
 
+        //Modify contract to inject metering functions
         let prePreparedContractBytecode = metering.meterWASM(contractBuffer,{
     
-            meterType: vmConfigs.METERING.TYPE,
+            meterType: TYPE,
             
-            fieldStr: vmConfigs.METERING.FUNCTION_NAME,
+            fieldStr: FUNCTION_NAME,
         
-            moduleStr:vmConfigs.METERING.MODULE_NAME,
-        
+            moduleStr: MODULE_NAME,
         
             //And cost table to meter energy usage by opcodes price
-            costTable:energyTable,
+            costTable: CONFIG.VM.ENERGY_TABLE,
         
         })
 
+        //Prepare pointer to contract metadata to track changes in energy changes
         let contractMetadata = {
 
-            energyLimit:9000000,
+            energyLimit,
             energyUsed:0
 
         }
 
+        //Inject metering function
         let contractInstance = await loader.instantiate(prePreparedContractBytecode,{
 
             metering: {
@@ -52,7 +48,7 @@ export let VM = {
                     
                     contractMetadata.energyUsed += energy
             
-                    if (energyUsed > contractMetadata.energyLimit) throw new Error('No more energy')
+                    if (contractMetadata.energyUsed > contractMetadata.energyLimit) throw new Error('No more energy')
           
                 }
             
@@ -66,12 +62,12 @@ export let VM = {
 
 
 
-
-    callContract:async(contractInstance,contractMetadata,functionName,params)=>{
+ 
+    callContract:(contractInstance,contractMetadata,serializedContractStateChunk,functionName)=>{
 
         contractMetadata.energyUsed=0 //make null before call contract
 
-        let result = contractInstance[functionName](...params)
+        let result = EXECUTE(contractInstance,serializedContractStateChunk,functionName)
 
         return {result,contractMetadata}
 
