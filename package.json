@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
   "dependencies": {
+    "@chainsafe/bls": "^7.1.1",
     "@idena/vrf-js": "^1.0.1",
     "@noble/bls12-381": "^1.2.0",
     "base-58": "^0.0.1",
@@ -49,6 +50,7 @@
     "assemblyscript": "^0.19.9",
     "ethereumjs-common": "^1.5.2",
     "ethereumjs-tx": "^2.1.2",
+    "random-bytes": "^1.0.0",
     "wasm-json-toolkit": "^0.2.6",
     "wasm-metering": "^0.2.1"
   }

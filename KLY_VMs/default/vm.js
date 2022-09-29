@@ -46,9 +46,9 @@ export let VM = {
 
         let contractInstance = await loader.instantiate(prePreparedContractBytecode,{
 
-            'metering': {
+            metering: {
                 
-                'energyUse': energy => {
+                energyUse: energy => {
                     
                     contractMetadata.energyUsed += energy
             
@@ -60,7 +60,7 @@ export let VM = {
         
         }).then(contract=>contract.exports)
 
-        return {contractInstance,contractMetadata}
+        return {contractInstance,contractMetadata} //return instance and pointer to metadata to track energy changes
         
     },
 

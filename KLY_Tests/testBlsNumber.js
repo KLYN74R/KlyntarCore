@@ -5,9 +5,9 @@ import Base58 from 'base-58'
 
 let privateKeys=[], publicKeys=[], signatures = []
 
-console.time('GEN 1000')
+console.time('GEN 500')
 
-for(let i=0;i<100;i++){
+for(let i=0;i<500;i++){
 
     let privateKey = await bls.generatePrivateKey();
 
@@ -21,7 +21,7 @@ for(let i=0;i<100;i++){
 
 }
 
-console.timeEnd('GEN 1000')
+console.timeEnd('GEN 500')
 
 let ten_private=[], ten_public=[], ten_signatures=[]
 
@@ -44,12 +44,12 @@ for(let i=0;i<10;i++){
 
 console.timeEnd('GEN 10')
 
-console.time('Agg 1000')
+console.time('Agg 500')
 let aggregatedPub1000 = Base58.encode(await bls.aggregatePublicKeys(publicKeys))
 
-console.log('Agg 1000 ',aggregatedPub1000)
+console.log('Agg 500 ',aggregatedPub1000)
 
-console.timeEnd('Agg 1000')
+console.timeEnd('Agg 500')
 
 console.time('Agg 10')
 let agg10 = Base58.encode(await bls.aggregatePublicKeys(ten_public))
@@ -59,13 +59,13 @@ console.log('Agg 10' ,agg10)
 console.timeEnd('Agg 10')
 
 
-console.time('Agg 1000 sig')
+console.time('Agg 500 sig')
 
 let sig1000 = Buffer.from(await bls.aggregateSignatures(signatures)).toString('base64')
 
 console.log('Sig 1000 ',sig1000)
 
-console.timeEnd('Agg 1000 sig')
+console.timeEnd('Agg 500 sig')
 
 
 console.time('Agg 10 sig')
@@ -77,11 +77,11 @@ console.log('Sig 10 ',sig10)
 console.timeEnd('Agg 10 sig')
 
 
-console.time('Verify 1000')
+console.time('Verify 500')
 
 console.log(await bls.singleVerify('Hello',aggregatedPub1000,sig1000))
 
-console.timeEnd('Verify 1000')
+console.timeEnd('Verify 500')
 
 
 console.time('Verify 10')

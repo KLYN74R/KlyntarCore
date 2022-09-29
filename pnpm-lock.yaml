@@ -2,6 +2,7 @@ lockfileVersion: 5.3
 
 specifiers:
   '@assemblyscript/loader': ^0.20.13
+  '@chainsafe/bls': ^7.1.1
   '@idena/vrf-js': ^1.0.1
   '@noble/bls12-381': ^1.2.0
   '@solana/web3.js': ^1.62.0
@@ -21,6 +22,7 @@ specifiers:
   node-seal: ^4.6.4
   ntru: ^3.2.2
   ora: ^6.0.1
+  random-bytes: ^1.0.0
   secp256k1: ^4.0.2
   uWebSockets.js: github:uNetworking/uWebSockets.js#v20.3.0
   wasm-json-toolkit: ^0.2.6
@@ -28,6 +30,7 @@ specifiers:
   web3: ^1.8.0
 
 dependencies:
+  '@chainsafe/bls': 7.1.1
   '@idena/vrf-js': 1.0.1
   '@noble/bls12-381': 1.2.0
   base-58: 0.0.1
@@ -53,6 +56,7 @@ devDependencies:
   assemblyscript: 0.19.23
   ethereumjs-common: 1.5.2
   ethereumjs-tx: 2.1.2
+  random-bytes: 1.0.0
   wasm-json-toolkit: 0.2.6
   wasm-metering: 0.2.1
 
@@ -68,6 +72,31 @@ packages:
     dependencies:
       regenerator-runtime: 0.13.9
     dev: true
+
+  /@chainsafe/bls-hd-key/0.3.0:
+    resolution: {integrity: sha512-LsYYnfBEEmqGFPDm8hQN3Kc+v9wPFnhn+CToD403KEynUiUSHKLAf5B6UCY5eooShDOcaGCUgAUhIw1CmpEf3Q==}
+    dependencies:
+      '@noble/hashes': 1.1.2
+    dev: false
+
+  /@chainsafe/bls-keygen/0.4.0:
+    resolution: {integrity: sha512-wqtuj4G/sWpIugJW1mb/nSTwcTuZKqB3DS3ANUIOn7pva8EB6LfxgIL34o4qk3lti/8Mdxqtqc2n4xRszrNdzA==}
+    dependencies:
+      '@chainsafe/bls-hd-key': 0.3.0
+      '@noble/hashes': 1.1.2
+      '@scure/bip39': 1.1.0
+    dev: false
+
+  /@chainsafe/bls/7.1.1:
+    resolution: {integrity: sha512-56hjFJujW0Z0Ntkr8y22xIAfT4SChYWQtCGM8dfUMkWWX8xLOXkhBFFSNTvPXA5cBlsFlo102CtBo+6A60II2w==}
+    engines: {node: '>=14.8.0'}
+    peerDependencies:
+      '@chainsafe/blst': ^0.2.4
+    dependencies:
+      '@chainsafe/bls-keygen': 0.4.0
+      bls-eth-wasm: 0.4.8
+      randombytes: 2.1.0
+    dev: false
 
   /@ethereumjs/common/2.6.5:
     resolution: {integrity: sha512-lRyVQOeCDaIVtgfbowla32pzeDv2Obr8oR8Put5RdUBNRGr1VGPGQNGP6elWIpgK3YdpzqTOh4GyUGOureVeeA==}
@@ -262,11 +291,21 @@ packages:
 
   /@noble/hashes/1.1.2:
     resolution: {integrity: sha512-KYRCASVTv6aeUi1tsF8/vpyR7zpfs3FUzy2Jqm+MU+LmUKhQ0y2FpfwqkCcxSg2ua4GALJd8k2R76WxwZGbQpA==}
-    dev: true
 
   /@noble/secp256k1/1.7.0:
     resolution: {integrity: sha512-kbacwGSsH/CTout0ZnZWxnW1B+jH/7r/WAAKLBtrRJ/+CUH7lgmQzl3GTrQua3SGKWNSDsS6lmjnDpIJ5Dxyaw==}
     dev: true
+
+  /@scure/base/1.1.1:
+    resolution: {integrity: sha512-ZxOhsSyxYwLJj3pLZCefNitxsj093tb2vq90mp2txoYeBqbcjDjqFhyM8eUjq/uFm6zJ+mUuqxlS2FkuSY1MTA==}
+    dev: false
+
+  /@scure/bip39/1.1.0:
+    resolution: {integrity: sha512-pwrPOS16VeTKg98dYXQyIjJEcWfz7/1YJIwxUEPFfQPtc86Ym/1sVgQ2RLoD43AazMk2l/unK4ITySSpW2+82w==}
+    dependencies:
+      '@noble/hashes': 1.1.2
+      '@scure/base': 1.1.1
+    dev: false
 
   /@sindresorhus/is/4.6.0:
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
@@ -630,6 +669,10 @@ packages:
 
   /blakejs/1.2.1:
     resolution: {integrity: sha512-QXUSXI3QVc/gJME0dBpXrag1kbzOqCjCX8/b54ntNyW6sjtoqxqRk3LTmXzaJoh71zMsDCjM+47jS7XiwN/+fQ==}
+
+  /bls-eth-wasm/0.4.8:
+    resolution: {integrity: sha512-ye7+G6KFLb3i9xSrLASAoYqOUK5WLB6XA5DD8Sh0UQpZ3T999ylsYbFdoOJpmvTDuBuMi23Vy8Jm0pn/GF01CA==}
+    dev: false
 
   /bls-wasm/0.4.8:
     resolution: {integrity: sha512-UF0cHgtK5fBr+MFek8KGNWFePcDKe7izQxyMWpJECpn0WW2iSlgr9iNJrvIczVx87ALWQWZqxoTkGImnOaJJtA==}
@@ -3158,6 +3201,11 @@ packages:
     resolution: {integrity: sha512-WuyALRjWPDGtt/wzJiadO5AXY+8hZ80hVpe6MyivgraREW751X3SbhRvG3eLKOYN+8VEvqLcf3wdnt44Z4S4SA==}
     engines: {node: '>=10'}
     dev: false
+
+  /random-bytes/1.0.0:
+    resolution: {integrity: sha512-iv7LhNVO047HzYR3InF6pUcUsPQiHTM1Qal51DcGSuZFBil1aBBWG5eHPNek7bvILMaYJ/8RU1e8w1AMdHmLQQ==}
+    engines: {node: '>= 0.8'}
+    dev: true
 
   /randombytes/2.1.0:
     resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
