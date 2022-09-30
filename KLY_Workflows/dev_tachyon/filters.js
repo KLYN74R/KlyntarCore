@@ -37,126 +37,81 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
-import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
-
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
-import {VERIFY} from '../../KLY_Utils/utils.js'
+import {VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
 
+let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE(event,'FILTER') ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
 
 
 export default {
 
-    //__________________Default payment methods__________________
     
-    TX:async(symbiote,event)=>
+    TX:async event=>
 
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
+        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0 && (!event.p.rev_t || typeof event.p.rev_t==='number')
         &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)//check urgent nonce to prevent spam
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
+        await VERIFY_WRAP(event)
     ,
 
-
-
-    PQC_TX:async(symbiote,event)=>
-
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
-        &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)//check urgent nonce to prevent spam
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
-    ,
-
-
-
-    THRESHOLD:async(symbiote,event)=>
-    
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
-        &&
-        await tbls.verifyTBLS(event.c,event.s,symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f)
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
-    ,
-
-
-    MULTISIG:async(symbiote,event)=>
-
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
-        &&
-        await bls.singleVerify(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.c,event.s)
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
-
-    ,
-
-
-    //________________________Operations_________________________
-
-
-    ATTACH_TO_VALIDATOR:async(symbiote,event)=>
+    //Payload(event.p) is validators BLS pubkey
+    ATTACH_TO_VALIDATOR:async event=>
 
         typeof event.p === 'string'
         &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)//check urgent nonce to prevent spam
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
+        await VERIFY_WRAP(event)
     ,
 
-    DELEGATION:async(symbiote,event)=>
+    //Payload(event.p) is validators BLS pubkey
+    DELEGATION:async event=>
     
         typeof event.p==='string'
         &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+        await VERIFY_WRAP(event)
         
     ,
 
-    ALIAS:async (symbiote,event)=>{},
+    
+    CONTRACT_DEPLOY:async event=>
+    
+        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        &&
+        await VERIFY_WRAP(event)
 
-    UNOBTANIUM:async (symbiote,event)=>{},
+    ,
 
+    CONTRACT_CALL:async(symbiote,event)=>
+    
+        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        &&
+        await VERIFY_WRAP(event)
+
+    ,
+
+    
     SERVICE_DEPLOY:async(symbiote,event)=>
     
         typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
         &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-        
-    ,
-
-    CONTRACT_DEPLOY:async(symbiote,event)=>
+        await VERIFY_WRAP(event)
     
-        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
-        &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-
     ,
 
+    SERVICE_COMMIT:async (symbiote,event)=>{},
+
+    QUANTUMSWAP:async (symbiote,event)=>{},
+
+
+
+    //BLS only,because it's offchain service
+
+    UNOBTANIUM_MINT:async (symbiote,event)=>{},
+
+    ALIAS:async (symbiote,event)=>{},
 
     VALIDATORS_DEALS:async (symbiote,event)=>{
         
 
     },
-
-
-    //_______________________________________Unimplemented section_______________________________________
-
-    RINGSIG:async (symbiote,event)=>{},
-
-    QUANTUMSWAP:async (symbiote,event)=>{},
-
-    SERVICE_COMMIT:async (symbiote,event)=>{}
 
 
 }

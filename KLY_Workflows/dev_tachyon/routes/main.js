@@ -128,7 +128,7 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
     
     if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
 
-        let filtered=await SYMBIOTE_META.FILTERS[event.t](symbiote,event)
+        let filtered=await SYMBIOTE_META.FILTERS[event.t](event)
 
         if(filtered){
 

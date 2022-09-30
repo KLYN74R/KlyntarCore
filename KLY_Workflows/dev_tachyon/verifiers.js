@@ -42,71 +42,91 @@ import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
 import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 
 
 
-let MAIN_VERIFY=async(event,senderStorageObject)=>{
+let GET_SPEND_BY_SIG_TYPE = event => {
 
-    if(!(SYMBIOTE_META.BLACKLIST.has(event.c)||senderStorageObject.ND.has(event.n))){
+    if(event.p.t==='D') return 0
+    
+    if(event.p.t==='T') return 0.01
 
-        return VERIFY(CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c)
+    if(event.p.t==='P/D') return 0.03
 
-    }
+    if(event.p.t==='P/B') return 0.02
+
+    if(event.p.t==='M') return 0.01+event.p.afk.length*0.001
 
 }
 
 
-//Type of event defined in "t" property
+
+
+export let VERIFY_BASED_ON_SIG_TYPE = (event,senderStorageObject)=>{
+
+    //It should be used by FILTER or only in case when account is not in blacklist and nonce is OK
+    if(senderStorageObject==='FILTER' || !(SYMBIOTE_META.BLACKLIST.has(event.c)||senderStorageObject.ND.has(event.n))){
+
+        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
+        let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f
+
+        if(event.p.t==='D') return VERIFY(signedData,event.s,event.c)
+        
+        if(event.p.t==='T') return tbls.verifyTBLS(event.c,event.s,signedData)
+
+        if(event.p.t==='P/D') return ADDONS['verify_DIL'](signedData,event.c,event.s)
+
+        if(event.p.t==='P/B') return ADDONS['verify_BLISS'](signedData,event.c,event.s)
+
+        if(event.p.t==='M') return bls.verifyThresholdSignature(event.p.active,event.p.afk,event.c,signedData,event.s,senderStorageObject.ACCOUNT.REV_T)
+    
+    }    
+
+}
+
+
+
 
 export let SPENDERS = {
 
-    //__________________Default payment methods__________________
+    //________________________General operations_________________________
 
-    //Ed25519 Base58 encoded
-    TX:event=>event.p.a+event.f,
-
-    //Dilithium | BLISS
-    PQC_TX:event=>event.p.a+event.f+0.01,
-
-    //TBLS - for T/N or N/N solutions
-    THRESHOLD:event=>event.p.a+event.f+0.01,
-
-    //BLS - more UX friendly to use. Used in T/N or N/N cases
-    MULTISIG:event=>event.p.a+event.f,
-
-    //________________________Operations_________________________
+    TX:event=>GET_SPEND_BY_SIG_TYPE(event)+event.p.a+event.f,
 
     //Method to attach your account to a single thread for extreme speed. You can use any payment method you want
-    ATTACH_TO_VALIDATOR:event=>event.f+0.01,
+    ATTACH_TO_VALIDATOR:event=>GET_SPEND_BY_SIG_TYPE(event)+event.f+0.01,
 
     //Method to delegate your assets to some validator | pool
-    DELEGATION:event=>event.f,
-
-    //Method to get aliases you own from Internet and attach your account to to this. You can use any payment method you want
-    ALIAS:event=>event.p.length*0.001+event.f,
-
-    //Method to mint unobtanium on symbiote. Use BLS multisig, because it's offchain service
-    UNOBTANIUM:event=>JSON.stringify(event.p).length*0.001+event.f,
-
-    //Method to deploy rules & manifest for service. You can use any payment method you want
-    SERVICE_DEPLOY:event=>JSON.stringify(event.p).length*0.01+event.f,
+    DELEGATION:event=>GET_SPEND_BY_SIG_TYPE(event)+event.f,
 
     //Method to deploy onchain contract and callmap to VM. You can use any payment method you want
-    CONTRACT_DEPLOY:event=>JSON.stringify(event.p).length+event.f,
+    CONTRACT_DEPLOY:event=>GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.p).length+event.f,
 
-    VALIDATORS_DEALS:event=>JSON.stringify(event.p).length*0.01+event.f,
+    //Method to call contract
+    CONTRACT_CALL:event=>JSON.stringify(event.p).length+event.f,
+
+    //Method to deploy rules & manifest for service. You can use any payment method you want
+    SERVICE_DEPLOY:event=>GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.p).length*0.01+event.f,
+
+    SERVICE_COMMIT:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001,
+
+    QUANTUMSWAP:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001,
 
 
-    //_______________________________________Unimplemented section_______________________________________
 
-    //Coming soon
-    RINGSIG:event=>event.p.a+event.f,
 
-    QUANTUMSWAP:async event=>{},
+    //BLS only.Method to mint unobtanium on symbiote. Use BLS multisig, because it's offchain service
+    UNOBTANIUM_MINT:event=>JSON.stringify(event.p).length*0.001+event.f,
 
-    SERVICE_COMMIT:async event=>{},
+    //BLS only.Method to pin aliases you own from Internet and attach your account to to this. You can use any payment method you want
+    ALIAS:event=>event.p.length*0.001+event.f,
+
+    //BLS only
+    VALIDATORS_DEALS:event=>JSON.stringify(event.p).length*0.01+event.f
 
 }
 
@@ -133,95 +153,24 @@ export let VERIFIERS = {
             
         if(!recipient){
     
-            recipient={ACCOUNT:{B:0,N:0,T:'A'}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-            
-            SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of block
-        
-        }
-        
-    
-        if(await MAIN_VERIFY(event,sender)){
-    
-            sender.ACCOUNT.B-=event.f+event.p.a
-            
-            recipient.ACCOUNT.B+=event.p.a
-    
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-        
-            rewardBox.fees+=event.f
-    
-        }
-    
-    },
-
-
-    PQC_TX:async (event,rewardBox)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
-        
-            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.p.r)
-    
-    
-            
-        if(!recipient){
-    
+            //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
             recipient={ACCOUNT:{B:0,N:0,T:'A'}}
             
-            SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)
-        
-        }
-        
+            //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
+            if(event.p.rev_t) recipient.ACCOUNT.REV_T=event.p.rev_t
 
-        let verifyOverview = 
-        
-            !(SYMBIOTE_META.BLACKLIST.has(event.c)||sender.ND.has(event.n))
-            &&
-            ADDONS[event.p.t==='DIL'?'verify_DIL':'verify_BLISS'](CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.c,event.s)
-    
-
-        if(verifyOverview){
-    
-            sender.ACCOUNT.B-=event.f+event.p.a
-            
-            recipient.ACCOUNT.B+=event.p.a
-    
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-        
-            rewardBox.fees+=event.f
-    
-        }
-    
-    },
-
-    THRESHOLD:async (event,rewardBox)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
-        
-            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.p.r)
-    
-    
-            
-        if(!recipient){
-    
-            recipient={ACCOUNT:{B:0,N:0,T:'A'}}//default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-            
             SYMBIOTE_META.ACCOUNTS.set(event.p.r,recipient)//add to cache to collapse after all events in blocks of block
         
         }
         
-
-        let verifyOverview = 
-        
-            !(SYMBIOTE_META.BLACKLIST.has(event.c)||sender.ND.has(event.n))
-            &&
-            await tbls.verifyTBLS(event.c,event.s,CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.t+JSON.stringify(event.p)+event.n+event.f)
     
-
-        if(verifyOverview){
+        if(await VERIFY_BASED_ON_SIG_TYPE(event,sender)){
     
-            sender.ACCOUNT.B-=event.f+event.p.a
+            let transfer = SPENDERS.TX(event)
+
+            sender.ACCOUNT.B-=transfer
             
-            recipient.ACCOUNT.B+=event.p.a
+            recipient.ACCOUNT.B+=transfer
     
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
         
@@ -231,24 +180,14 @@ export let VERIFIERS = {
     
     },
 
-    MULTISIG:async (symbiote,event)=>{},
 
-
-
-
-    //________________________Operations_________________________
-
-
-
-
-    //Diff
     ATTACH_TO_VALIDATOR:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
 
-        if(await MAIN_VERIFY(event,sender)){
+        if(await VERIFY_BASED_ON_SIG_TYPE(event,sender)){
     
-            sender.ACCOUNT.B-=event.f+0.01
+            sender.ACCOUNT.B-=SPENDERS.ATTACH_TO_VALIDATOR(event)
 
             sender.ACCOUNT.V=event.p//payload - it's validators pubkey
                         
@@ -260,14 +199,14 @@ export let VERIFIERS = {
     
     },
 
-    //Diff
+
     DELEGATION:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
 
-        if(await MAIN_VERIFY(event,sender)){
+        if(await VERIFY_BASED_ON_SIG_TYPE(event,sender)){
 
-            sender.ACCOUNT.B-=event.f
+            sender.ACCOUNT.B-=SPENDERS.DELEGATION(event)
         
             //Make changes only for bigger nonces.This way in async mode all nodes will have common state
             if(sender.ACCOUNT.N<event.n){
@@ -284,22 +223,15 @@ export let VERIFIERS = {
 
     },
 
-    //BLS, coz service
-    ALIAS:async (event,rewardBox,symbiote)=>{
 
-        
+    CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
 
-    },
 
-    //BLS, coz service
-    UNOBTANIUM:async (event,rewardBox,symbiote)=>{
-
-    },
+    CONTRACT_CALL:async (event,rewardBox,symbiote)=>{},
 
 
     //Common mechanisms as with delegation
     //It's because we perform operations asynchronously
-    //Diff
     SERVICE_DEPLOY:async (event,rewardBox)=>{
         
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
@@ -313,9 +245,9 @@ export let VERIFIERS = {
 
 
 
-        if(await MAIN_VERIFY(event,sender) && noSuchService){
+        if(await VERIFY_BASED_ON_SIG_TYPE(event,sender) && noSuchService){
 
-            sender.ACCOUNT.B-=event.f+payloadJson.length*0.01
+            sender.ACCOUNT.B-=SPENDERS.SERVICE_DEPLOY(event)
         
             sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
             
@@ -331,24 +263,30 @@ export let VERIFIERS = {
     },
 
 
-    //Diff
-    CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
+    SERVICE_COMMIT:async (symbiote,event)=>{},
+
+
+
+    //BLS, coz service
+    UNOBTANIUM_MINT:async (event,rewardBox,symbiote)=>{
+
+    },
+
+    //BLS, coz service
+    ALIAS:async (event,rewardBox,symbiote)=>{
+
+        
+
+    },
+
 
     //BLS multisig,coz validators
     VALIDATORS_DEALS:async (event,rewardBox,symbiote)=>{
         
 
     },
-
-
-    //_______________________________________Unimplemented section_______________________________________
     
-    RINGSIG:async (event,rewardBox,symbiote)=>{
 
-    },
-
-    QUANTUMSWAP:async (event,rewardBox,symbiote)=>{},
-
-    SERVICE_COMMIT:async (symbiote,event)=>{}
+    QUANTUMSWAP:async (event,rewardBox,symbiote)=>{}
 
 }

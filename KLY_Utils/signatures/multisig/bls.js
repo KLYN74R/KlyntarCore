@@ -44,32 +44,25 @@ export default {
 
   /**
    * Adds an array of verification vectors together to produce the groups verification vector
-   * @param {Array} pubKeysIn - an array of signers who take part in this signing
-   * @param {Array} pubKeysOut - the rest of addresses which are in general pubkey,but don't take part in this round
-   * @param {String} originalGroupPub  - aggregated general(master) pubkey which includes all previously reminded addresses
+   * @param {String} aggregatedPubkeyWhoSign - an aggregated BLS pubkey of users who signed message,so can aggregate their pubkeys into a single one
+   * @param {Array} afkPubkeysArray - the rest of addresses which are in general pubkey,but don't take part in this round
+   * @param {String} masterPub  - aggregated general(master) pubkey which includes all previously reminded addresses
    * @param {String} data - message to be signed. It might be transaction,random message, Unobtanium freeze, some service logic and so on
-   * @param {String} aggregatedSignaIn - aggregated signature received from <pubKeysIn> signatures
-   * @param {Number} m - number of signers required
-   * @param {Number} n - total number of signers
+   * @param {String} aggregatedSignature - aggregated signature received from <pubKeysIn> signatures
+   * @param {Number} reverseThreshold - number of signers allowed to be afk
    * 
    */
-    verify_M_N_signature:async(pubKeysIn,pubKeysOut,originalGroupPub,data,aggregatedSignaIn,m,n)=>{
+    verifyThresholdSignature:async(aggregatedPubkeyWhoSign,afkPubkeysArray,masterPub,data,aggregatedSignature,reverseThreshold)=>{
 
-        //0.Get aggregated key of pubkeys who has signed this data
-        let signersIn=bls.aggregatePublicKeys(pubKeysIn),
+        let signersOut=bls.aggregatePublicKeys(afkPubkeysArray),//aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
 
-            signersOut=bls.aggregatePublicKeys(pubKeysOut),//aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
+            generalPubKey=bls.aggregatePublicKeys([aggregatedPubkeyWhoSign,signersOut]),
 
-            generalPubKey=bls.aggregatePublicKeys([signersIn,signersOut]),
-
-            verifiedSignature=await bls.verify(aggregatedSignaIn,data,signersIn)
+            verifiedSignature=await bls.verify(aggregatedSignature,data,aggregatedPubkeyWhoSign)
 
 
-        return verifiedSignature && generalPubKey === originalGroupPub
-                                 && 
-                                 (!m || pubKeysIn.length+pubKeysOut.length === n && pubKeysIn.length === m)//if m and n are undefined-we don't interest in number of participants
+        return verifiedSignature && generalPubKey === masterPub && afkPubkeysArray.length <= reverseThreshold 
     
     }
-
 
 }

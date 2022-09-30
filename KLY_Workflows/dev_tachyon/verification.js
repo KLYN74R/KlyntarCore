@@ -1410,7 +1410,7 @@ verifyBlock=async block=>{
              
                 (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
     
-                if((acc.OUT-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.t]) SYMBIOTE_META.BLACKLIST.add(event.c)
+                if((acc.OUT-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.t] || event.p.r==='GT' || event.p.r==='VT') SYMBIOTE_META.BLACKLIST.add(event.c)
 
             }
 
