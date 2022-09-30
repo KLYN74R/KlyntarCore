@@ -17,11 +17,11 @@ import Web3 from '@solana/web3.js'
 
 let {Keypair,PublicKey,Connection} = Web3,
 
-    connection = new Connection('https://api.testnet.solana.com', "confirmed"),//or use your own RPC and commitment level(I use <confirmed> as default)
+    connection = new Connection('https://api.mainnet-beta.solana.com', "confirmed")//or use your own RPC and commitment level(I use <confirmed> as default)
 
-    account = Keypair.fromSecretKey(new Uint8Array([])),//if you want to track your acccounts-you can get PubKey via Private
+    // account = Keypair.fromSecretKey(new Uint8Array([])),//if you want to track your acccounts-you can get PubKey via Private
 
-    PUBKEY = new PublicKey(account.publicKey.toString())//Or decode pubkey from base58 address
+    // PUBKEY = new PublicKey(account.publicKey.toString())//Or decode pubkey from base58 address
 
 
 
@@ -38,10 +38,15 @@ let {Keypair,PublicKey,Connection} = Web3,
 
 
 */
-connection.onLogs(account.publicKey,(logs,ctx)=>{
+// connection.onLogs(PUBKEY,(logs,ctx)=>{
   
-    console.log('Logs ',logs)//Retrieve useful logs from there
+//     console.log('Logs ',logs)//Retrieve useful logs from there
     
-    console.log('Ctx ',ctx)//Mostly useless
+//     console.log('Ctx ',ctx)//Mostly useless
 
-})
+// })
+
+
+let txs = await connection.getSignaturesForAddress(new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),{})
+
+console.log(txs)

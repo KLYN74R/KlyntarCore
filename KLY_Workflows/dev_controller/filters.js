@@ -51,17 +51,6 @@ export default {
         false
     ,
 
-
-    //payload is a single string(hash)
-    NEWSTX:async(symbiote,event)=>
-    
-        typeof event.p==='string' && event.p.length===64
-        &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-        
-    ,
-
-
     OFFSPRING:async(symbiote,event)=>
     
         typeof event.p==='string'

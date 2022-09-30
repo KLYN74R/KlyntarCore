@@ -134,25 +134,6 @@ export let VERIFIERS = {
     },
 
 
-    
-    NEWSTX:async (event,blockCreator)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
-    
-        if(event.p.length===64 && await MAIN_VERIFY(event,sender)){
-    
-            sender.ACCOUNT.B-=event.f
-    
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-        
-            blockCreator.fees+=event.f
-    
-        }
-        
-    },
-
-
-
 
     OFFSPRING:async (event,blockCreator)=>{
     

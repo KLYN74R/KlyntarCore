@@ -111,25 +111,6 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
     }
 
-
-    // let block = await getBlockByIndex(btcFork,SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM,true).catch(e=>LOG(`Can't get block(${e})`,'W'))
-        
-    // if(block) {
-
-    //     SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[btcFork].START_FROM++
-
-    //     console.log('Block is ',block)
-
-    //     // block.tx.forEach(async hash=>{
-
-    //     //     let tx = await getTransaction(btcFork,hash,true)
-
-    //     //     console.log(tx)
-
-    //     // })
-
-    // }
-
 }
 
 
@@ -140,8 +121,13 @@ export default (btcFork) => {
 
     if(configs.MODE==='PARANOIC'){
 
-        FIND_FIRST_BLOCK_OF_DAY(btcFork).then(block=>console.log('********* FOUND **********\n',block))
-    
+        FIND_FIRST_BLOCK_OF_DAY(btcFork).then(block=>console.log(block))
+
+        setInterval(()=>{
+
+            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+
+        },3000)
 
     }else if(configs.MODE==='TRUST'){
 
@@ -149,7 +135,7 @@ export default (btcFork) => {
 
         setInterval(()=>{
 
-
+            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
         },3000)
 

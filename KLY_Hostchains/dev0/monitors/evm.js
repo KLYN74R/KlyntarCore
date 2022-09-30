@@ -63,6 +63,8 @@
 
     ?ABI - JSON'ed ABI of contract
 
+    ?FIRST_BLOCK_FIND_STEP - step to find first block of the day
+
 
     The following options must be in section MONITORING_PRESET
 
@@ -100,7 +102,57 @@ GET_CONTRACT_EVENTS = evmChainTicker => {
     
     return contractInstance.getPastEvents('Checkpoint',options)
 
+},
+
+
+
+
+FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
+
+    let startOfDay = new Date()
+        
+    startOfDay.setUTCHours(0,0,0,0)
+
+    let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
+
+        bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()).catch(e=>false),
+
+        step = CONFIG.SYMBIOTE.MONITORS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
+
+        candidateIndex = bestBlock.number - step
+
+
+    //Go through the chain from the top block to the latest block yesterday(UTC)
+
+    while(true){
+
+        let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>false)
+
+        if(candidate.timestamp>dayStartTimestampInSeconds){
+
+            candidateIndex-=step
+
+        }else{
+
+            let possibleIndex = candidate.number
+
+            //Start another reversed cycle to find really first block
+            while(true){
+
+                let block = await web3.eth.getBlock(possibleIndex).catch(e=>false)
+
+                if(block.timestamp>dayStartTimestampInSeconds) return block
+                
+                else possibleIndex++
+
+            }
+
+        }
+
+    }
+
 }
+
 
 
 
@@ -114,6 +166,8 @@ export default (evmChainTicker) => {
     if(configs.MODE==='PARANOIC'){
 
         GET_CONTRACT_EVENTS(evmChainTicker).then(events=>console.log(events))
+
+        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(block))
 
     }else if(configs.MODE==='TRUST'){
 

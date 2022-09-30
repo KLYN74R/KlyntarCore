@@ -36,7 +36,10 @@
 
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
+
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
+
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VERIFY} from '../../KLY_Utils/utils.js'
 
@@ -44,6 +47,8 @@ import {VERIFY} from '../../KLY_Utils/utils.js'
 
 
 export default {
+
+    //__________________Default payment methods__________________
     
     TX:async(symbiote,event)=>
 
@@ -71,6 +76,34 @@ export default {
 
 
 
+    THRESHOLD:async(symbiote,event)=>
+    
+        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
+        &&
+        await tbls.verifyTBLS(event.c,event.s,symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f)
+        ?
+        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
+        :
+        false
+    ,
+
+
+    MULTISIG:async(symbiote,event)=>
+
+        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
+        &&
+        await bls.singleVerify(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.c,event.s)
+        ?
+        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
+        :
+        false
+
+    ,
+
+
+    //________________________Operations_________________________
+
+
     ATTACH_TO_VALIDATOR:async(symbiote,event)=>
 
         typeof event.p === 'string'
@@ -82,15 +115,6 @@ export default {
         false
     ,
 
-
-    OFFSPRING:async(symbiote,event)=>
-    
-        typeof event.p==='string'
-        && 
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-        
-    ,
-
     DELEGATION:async(symbiote,event)=>
     
         typeof event.p==='string'
@@ -98,6 +122,10 @@ export default {
         await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
         
     ,
+
+    ALIAS:async (symbiote,event)=>{},
+
+    UNOBTANIUM:async (symbiote,event)=>{},
 
     SERVICE_DEPLOY:async(symbiote,event)=>
     
@@ -115,48 +143,18 @@ export default {
 
     ,
 
-    THRESHOLD:async(symbiote,event)=>
-    
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0
-        &&
-        await tbls.verifyTBLS(event.c,event.s,symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f)
-        ?
-        {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s}
-        :
-        false
-    ,
-
-    //payload is a single string(hash)
-    NEWSTX:async(symbiote,event)=>
-    
-        typeof event.p==='string' && event.p.length===64
-        &&
-        await VERIFY(symbiote+event.v+event.t+JSON.stringify(event.p)+event.n+event.f,event.s,event.c) ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
-        
-    ,
-
 
     VALIDATORS_DEALS:async (symbiote,event)=>{
         
 
     },
 
-    MULTISIG:async (symbiote,event)=>{},
+
+    //_______________________________________Unimplemented section_______________________________________
 
     RINGSIG:async (symbiote,event)=>{},
 
-
-    //Unimplemented
-
-    ALIAS:async (symbiote,event)=>{},
-
-    UNOBTANIUM:async (symbiote,event)=>{},
-    
-    RL_OWNSHIP_APPRV:async (symbiote,event)=>{},
-
     QUANTUMSWAP:async (symbiote,event)=>{},
-
-    WORKFLOW_CHANGE:async (symbiote,event)=>{},
 
     SERVICE_COMMIT:async (symbiote,event)=>{}
 

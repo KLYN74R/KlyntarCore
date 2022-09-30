@@ -1,4 +1,19 @@
-//Here will be the implementation of VM for KLYNTAR to allow workflows to import it and use in code
+/*
+
+██╗  ██╗██╗  ██╗   ██╗███╗   ██╗████████╗ █████╗ ██████╗     ██╗   ██╗███╗   ███╗
+██║ ██╔╝██║  ╚██╗ ██╔╝████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗    ██║   ██║████╗ ████║
+█████╔╝ ██║   ╚████╔╝ ██╔██╗ ██║   ██║   ███████║██████╔╝    ██║   ██║██╔████╔██║
+██╔═██╗ ██║    ╚██╔╝  ██║╚██╗██║   ██║   ██╔══██║██╔══██╗    ╚██╗ ██╔╝██║╚██╔╝██║
+██║  ██╗███████╗██║   ██║ ╚████║   ██║   ██║  ██║██║  ██║     ╚████╔╝ ██║ ╚═╝ ██║
+╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝      ╚═══╝  ╚═╝     ╚═╝
+                                                                                 
+
+Here will be the implementation of VM for KLYNTAR to allow workflows to import it and use in code
+
+*/
+
+
+
 
 import loader from '@assemblyscript/loader'
 
@@ -72,7 +87,6 @@ export let VM = {
         if(type==='RUST'){
 
             result = EXECUTE(contractInstance,serializedContractStateChunk,functionName)
-
 
         }else if(type==='ASC'){
 

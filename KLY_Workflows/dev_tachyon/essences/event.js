@@ -1,10 +1,10 @@
 export default class{
     
-    constructor(version,sender,eventType,nonce,fee,payload){
+    constructor(version,creator,eventType,nonce,fee,payload){
     
         this.v=version
 
-        this.c=sender
+        this.c=creator
 
         this.t=eventType
     
@@ -17,4 +17,5 @@ export default class{
         //this.s=signature
         
     }
+    
 }

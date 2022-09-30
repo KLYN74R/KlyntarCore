@@ -58,45 +58,55 @@ let MAIN_VERIFY=async(event,senderStorageObject)=>{
 }
 
 
-
+//Type of event defined in "t" property
 
 export let SPENDERS = {
-    
+
+    //__________________Default payment methods__________________
+
+    //Ed25519 Base58 encoded
     TX:event=>event.p.a+event.f,
 
-    PQC_TX:event=>event.p.a+event.f,
+    //Dilithium | BLISS
+    PQC_TX:event=>event.p.a+event.f+0.01,
 
+    //TBLS - for T/N or N/N solutions
+    THRESHOLD:event=>event.p.a+event.f+0.01,
+
+    //BLS - more UX friendly to use. Used in T/N or N/N cases
+    MULTISIG:event=>event.p.a+event.f,
+
+    //________________________Operations_________________________
+
+    //Method to attach your account to a single thread for extreme speed. You can use any payment method you want
     ATTACH_TO_VALIDATOR:event=>event.f+0.01,
 
-    OFFSPRING:event=>event.f,
+    //Method to delegate your assets to some validator | pool
+    DELEGATION:event=>event.f,
 
+    //Method to get aliases you own from Internet and attach your account to to this. You can use any payment method you want
     ALIAS:event=>event.p.length*0.001+event.f,
 
+    //Method to mint unobtanium on symbiote. Use BLS multisig, because it's offchain service
     UNOBTANIUM:event=>JSON.stringify(event.p).length*0.001+event.f,
 
+    //Method to deploy rules & manifest for service. You can use any payment method you want
     SERVICE_DEPLOY:event=>JSON.stringify(event.p).length*0.01+event.f,
 
+    //Method to deploy onchain contract and callmap to VM. You can use any payment method you want
     CONTRACT_DEPLOY:event=>JSON.stringify(event.p).length+event.f,
 
     VALIDATORS_DEALS:event=>JSON.stringify(event.p).length*0.01+event.f,
 
-    THRESHOLD:event=>event.p.a+event.f,
+
+    //_______________________________________Unimplemented section_______________________________________
 
     //Coming soon
     RINGSIG:event=>event.p.a+event.f,
 
-
-    //_______________________________________Unimplemented section_______________________________________
-
-    RL_OWNSHIP_APPRV:(_event,symbiote)=>{},
-
     QUANTUMSWAP:async event=>{},
 
-    WORKFLOW_CHANGE:async event=>{},
-
     SERVICE_COMMIT:async event=>{},
-
-    MULTISIG:async event=>{},
 
 }
 
@@ -110,6 +120,7 @@ export let SPENDERS = {
 export let VERIFIERS = {
 
 
+    //__________________Default payment methods__________________
 
 
     TX:async (event,rewardBox)=>{
@@ -182,119 +193,6 @@ export let VERIFIERS = {
     
     },
 
-
-    ATTACH_TO_VALIDATOR:async (event,rewardBox)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
-
-        if(await MAIN_VERIFY(event,sender)){
-    
-            sender.ACCOUNT.B-=event.f+0.01
-
-            sender.ACCOUNT.V=event.p//payload - it's validators pubkey
-                        
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-            
-            rewardBox.fees+=event.f
-        
-        }
-    
-    },
-
-    
-    NEWSTX:async (event,rewardBox)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
-    
-        if(event.p.length===64 && await MAIN_VERIFY(event,sender)){
-    
-            sender.ACCOUNT.B-=event.f
-    
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-        
-            rewardBox.fees+=event.f
-    
-        }
-        
-    },
-
-
-    OFFSPRING:async(event,rewardBox)=>{
-    
-        //Добавить проверку--->если в делегатах есть некий узел,то отминусовать у делегата ставку(чтоб не нарушать стейкинг)
-    
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
-        
-        if(await MAIN_VERIFY(event,sender)){
-    
-            sender.ACCOUNT.B-=event.f+CONFIG.SYMBIOTE.MANIFEST.CONTROLLER_FREEZE
-    
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)//update maximum nonce
-        
-            rewardBox.fees+=event.f
-    
-        }
-    
-    },
-
-
-    DELEGATION:async (event,rewardBox)=>{
-
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
-
-        if(await MAIN_VERIFY(event,sender)){
-
-            sender.ACCOUNT.B-=event.f
-        
-            //Make changes only for bigger nonces.This way in async mode all nodes will have common state
-            if(sender.ACCOUNT.N<event.n){
-
-                sender.ACCOUNT.D=event.p
-
-                sender.ACCOUNT.N=event.n
-
-            }
-    
-            rewardBox.fees+=event.f
-
-        }
-
-    },
-
-
-    //Common mechanisms as with delegation
-    //It's because we perform operations asynchronously
-    SERVICE_DEPLOY:async (event,rewardBox)=>{
-        
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
-        
-            payloadJson=JSON.stringify(event.p),
-
-            payloadHash=BLAKE3(payloadJson),
-
-            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(e=>false))
-
-
-
-
-        if(await MAIN_VERIFY(event,sender) && noSuchService){
-
-            sender.ACCOUNT.B-=event.f+payloadJson.length*0.01
-        
-            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
-            
-
-            //Store service manifest
-            //!Add to stage zone before
-            // SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
-
-            rewardBox.fees+=event.f
-        
-        }
-        
-    },
-
-
     THRESHOLD:async (event,rewardBox)=>{
 
         let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
@@ -333,36 +231,124 @@ export let VERIFIERS = {
     
     },
 
-
-    CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
-
+    MULTISIG:async (symbiote,event)=>{},
 
 
-    VALIDATORS_DEALS:async (event,rewardBox,symbiote)=>{
+
+
+    //________________________Operations_________________________
+
+
+
+
+    //Diff
+    ATTACH_TO_VALIDATOR:async (event,rewardBox)=>{
+
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
+
+        if(await MAIN_VERIFY(event,sender)){
+    
+            sender.ACCOUNT.B-=event.f+0.01
+
+            sender.ACCOUNT.V=event.p//payload - it's validators pubkey
+                        
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
+            
+            rewardBox.fees+=event.f
         
+        }
+    
+    },
+
+    //Diff
+    DELEGATION:async (event,rewardBox)=>{
+
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c)
+
+        if(await MAIN_VERIFY(event,sender)){
+
+            sender.ACCOUNT.B-=event.f
+        
+            //Make changes only for bigger nonces.This way in async mode all nodes will have common state
+            if(sender.ACCOUNT.N<event.n){
+
+                sender.ACCOUNT.D=event.p
+
+                sender.ACCOUNT.N=event.n
+
+            }
+    
+            rewardBox.fees+=event.f
+
+        }
 
     },
 
-
+    //BLS, coz service
     ALIAS:async (event,rewardBox,symbiote)=>{
 
         
 
     },
 
-
+    //BLS, coz service
     UNOBTANIUM:async (event,rewardBox,symbiote)=>{
 
     },
 
 
-    //Unimplemented
-    RL_OWNSHIP_APPRV:async(event,rewardBox,symbiote)=>{},
+    //Common mechanisms as with delegation
+    //It's because we perform operations asynchronously
+    //Diff
+    SERVICE_DEPLOY:async (event,rewardBox)=>{
+        
+        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.c),
+        
+            payloadJson=JSON.stringify(event.p),
+
+            payloadHash=BLAKE3(payloadJson),
+
+            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(e=>false))
+
+
+
+
+        if(await MAIN_VERIFY(event,sender) && noSuchService){
+
+            sender.ACCOUNT.B-=event.f+payloadJson.length*0.01
+        
+            sender.ACCOUNT.N<event.n&&(sender.ACCOUNT.N=event.n)
+            
+
+            //Store service manifest
+            //!Add to stage zone before
+            // SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
+
+            rewardBox.fees+=event.f
+        
+        }
+        
+    },
+
+
+    //Diff
+    CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
+
+    //BLS multisig,coz validators
+    VALIDATORS_DEALS:async (event,rewardBox,symbiote)=>{
+        
+
+    },
+
+
+    //_______________________________________Unimplemented section_______________________________________
+    
+    RINGSIG:async (event,rewardBox,symbiote)=>{
+
+    },
 
     QUANTUMSWAP:async (event,rewardBox,symbiote)=>{},
-    
-    MULTISIG:async (symbiote,event)=>{},
 
-    SERVICE_COMMIT:async (symbiote,event)=>{},
+    SERVICE_COMMIT:async (symbiote,event)=>{}
 
 }
