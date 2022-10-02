@@ -122,26 +122,33 @@ FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
         candidateIndex = bestBlock.number - step
 
 
+    if(candidateIndex<0) candidateIndex = 0
+
     //Go through the chain from the top block to the latest block yesterday(UTC)
 
     while(true){
 
         let candidate = await web3.eth.getBlock(candidateIndex).catch(e=>false)
 
-        if(candidate.timestamp>dayStartTimestampInSeconds){
+        if(candidate.timestamp>=dayStartTimestampInSeconds){
+
+            if(candidateIndex===0) return candidate //if even the initial block(0 in probably all the cryptos,at least in EVM compatible) was generated today - no sense to assume that there is earlier blocks
 
             candidateIndex-=step
+
+            if(candidateIndex<0) candidateIndex = 0
 
         }else{
 
             let possibleIndex = candidate.number
+
 
             //Start another reversed cycle to find really first block
             while(true){
 
                 let block = await web3.eth.getBlock(possibleIndex).catch(e=>false)
 
-                if(block.timestamp>dayStartTimestampInSeconds) return block
+                if(block.timestamp>=dayStartTimestampInSeconds) return block
                 
                 else possibleIndex++
 
@@ -165,9 +172,17 @@ export default (evmChainTicker) => {
 
     if(configs.MODE==='PARANOIC'){
 
-        GET_CONTRACT_EVENTS(evmChainTicker).then(events=>console.log(events))
+        GET_CONTRACT_EVENTS(evmChainTicker).then(events=>{
 
-        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>console.log(block))
+            
+
+        })
+
+        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
+
+
+
+        })
 
     }else if(configs.MODE==='TRUST'){
 

@@ -75,12 +75,15 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
     let dayStartTimestampInSeconds=startOfDay.getTime()/1000,
 
-        bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true).catch(e=>console.log('ERR ',e)),
+        bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true).catch(e=>false),
 
         step = CONFIG.SYMBIOTE.MONITORS[btcFork].FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.height - step
 
+
+
+    if(candidateIndex<0) candidateIndex = 0
     
     //Go through the chain from the top block to the latest block yesterday(UTC)
 
@@ -88,9 +91,13 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
         let candidate = await getBlockByIndex('ltc',candidateIndex,true).catch(e=>console.log('ERR ',e))
 
-        if(candidate.time>dayStartTimestampInSeconds){
+        if(candidate.time>=dayStartTimestampInSeconds){
+
+            if(candidateIndex===0) return candidate //if even the initial block(0 in probably all the cryptos,at least in EVM compatible) was generated today - no sense to assume that there is earlier blocks
 
             candidateIndex-=step
+
+            if(candidateIndex<0) candidateIndex = 0
 
         }else{
 
@@ -99,9 +106,9 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
             //Start another reversed cycle to find really first block
             while(true){
 
-                let block = await getBlockByIndex('ltc',possibleIndex,true).catch(e=>console.log('ERR ',e))
+                let block = await getBlockByIndex('ltc',possibleIndex,true).catch(e=>false)
 
-                if(block.time>dayStartTimestampInSeconds) return block
+                if(block.time>=dayStartTimestampInSeconds) return block
                 
                 else possibleIndex++
 
@@ -112,6 +119,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
     }
 
 }
+
 
 
 
