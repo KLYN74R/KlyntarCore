@@ -1,4 +1,4 @@
-import {VM} from '../../KLY_VMs/default/vm.js'
+import {VM} from '../../../KLY_VMs/default/vm.js'
 
 import fs from 'fs'
 
@@ -16,13 +16,13 @@ let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(bytes,
 
 let exampleJSON = JSON.stringify({alias1:"Cool",alias2:"KLY",x:1337,y:777})
 
-let result = VM.callContract(contractInstance,contractMetadata,exampleJSON,'getCoordsSum')
+let result = VM.callContract(contractInstance,contractMetadata,exampleJSON,'getCoordsSum','RUST')
 
 console.log('(1) Execution result ',result)
 
 let attempt2 = JSON.stringify({alias1:"Cool",alias2:"KLYKLYKLY",x:1337,y:result.result})
 
-let result2 = VM.callContract(contractInstance,contractMetadata,attempt2,'getCoordsSum')
+let result2 = VM.callContract(contractInstance,contractMetadata,attempt2,'getCoordsSum','RUST')
 
 console.log('(2) Execution result ',result2)
 
@@ -32,7 +32,7 @@ try{
     
     let attempt2 = JSON.stringify({alias1:"Cool",alias2:"KLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLY",x:1337,y:result.result})
 
-    let result2 = VM.callContract(contractInstance,contractMetadata,attempt2,'getCoordsSum')
+    let result2 = VM.callContract(contractInstance,contractMetadata,attempt2,'getCoordsSum','RUST')
 
 
 
@@ -48,7 +48,7 @@ console.time('PERFORMANCE')
 
 for(let i=0;i<200000;i++){
 
-    VM.callContract(contractInstance,contractMetadata,perform,'getCoordsSum')
+    VM.callContract(contractInstance,contractMetadata,perform,'getCoordsSum','RUST')
 
 }
 console.timeEnd('PERFORMANCE')

@@ -24,13 +24,14 @@ import EXECUTE from './rustBase.js'
 
 
 
+
 let {TYPE,FUNCTION_NAME,MODULE_NAME}=CONFIG.VM.METERING
 
 
 export let VM = {
 
     //Function to create a contract instance from WASM bytecode with injected metering function 
-    bytesToMeteredContract:async (contractBuffer,energyLimit)=>{
+    bytesToMeteredContract:async (contractBuffer,energyLimit,extraModules)=>{
 
         //Modify contract to inject metering functions
         let prePreparedContractBytecode = metering.meterWASM(contractBuffer,{
@@ -69,7 +70,7 @@ export let VM = {
             
             },
 
-            CROSS_CONTRACT //* 02.10.2022  - add cross-contract abilities for KLYNTAR VM
+            ...extraModules
         
         }).then(contract=>contract.exports)
 
@@ -78,8 +79,16 @@ export let VM = {
     },
 
 
-
- 
+    /**
+     * 
+     *  
+     * @param {*} contractInstance - WASM contract instance with injected modules e.g. "metering" and another extra functionality 
+     * @param {*} contractMetadata - handler for energy used metering
+     * @param {*} serializedContractStateChunk - JSON'ed string with state that we should pass to contract
+     * @param {*} functionName - function name of contract that we should call
+     * @param {'RUST'|'ASC'} type
+     * @returns 
+     */
     callContract:(contractInstance,contractMetadata,serializedContractStateChunk,functionName,type)=>{
 
         contractMetadata.energyUsed=0 //make null before call contract
