@@ -14,13 +14,13 @@ Here will be the implementation of VM for KLYNTAR to allow workflows to import i
 
 
 
+import CROSS_CONTRACT from './modules/crossContractCall.js'
 
 import loader from '@assemblyscript/loader'
 
 import metering from 'wasm-metering'
 
 import EXECUTE from './rustBase.js'
-
 
 
 
@@ -67,7 +67,9 @@ export let VM = {
           
                 }
             
-            }
+            },
+
+            CROSS_CONTRACT //* 02.10.2022  - add cross-contract abilities for KLYNTAR VM
         
         }).then(contract=>contract.exports)
 

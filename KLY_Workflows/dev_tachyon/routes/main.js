@@ -194,9 +194,9 @@ setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=
 
         shouldAccept = 
         
-        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_PROOFS
+        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_COMMITMENTS
         &&
-        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v) || CONFIG.SYMBIOTE.TRUST_POOL_TO_ACCEPT_VALIDATORS_PROOFS.includes(payload.v))//to prevent spam - accept proofs only
+        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v))//to prevent spam - accept proofs only
         &&
         SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
 
@@ -284,7 +284,7 @@ getCommitments=async(a,q)=>{
         else{
 
             //Try to find proof from db - it should be aggregated proof
-            let aggregatedProof = await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockID).catch(e=>false)
+            let aggregatedProof = await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(blockID).catch(e=>false)
 
             if(aggregatedProof) !a.aborted && a.end(JSON.stringify(aggregatedProof))
 
@@ -300,9 +300,9 @@ getCommitments=async(a,q)=>{
 
                     let blockHash = Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
                     
-                        proofSignature = await SIG(blockID+":"+blockHash)
+                        commitmentSignature = await SIG(blockID+":"+blockHash)
 
-                        !a.aborted && a.end(JSON.stringify({S:proofSignature}))
+                        !a.aborted && a.end(JSON.stringify({S:commitmentSignature}))
 
                         
                 } else !a.aborted && a.end('No block')

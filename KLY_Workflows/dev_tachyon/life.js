@@ -642,7 +642,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         'HOSTCHAINS_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
     
-        'VALIDATORS_PROOFS',// BLS signatures of epoches/ranges
+        'VALIDATORS_COMMITMENTS',// commitments by quorum
 
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
@@ -735,6 +735,8 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
+                VALIDATORS_METADATA_PROTECTOR:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}. The same as VALIDATORS_METADATA but updates each time we found new checkpoint. We need it to load blocks between checkpoints
+
                 HOSTCHAINS_MONITORING:{},
 
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
@@ -1151,6 +1153,8 @@ RUN_SYMBIOTE=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
 
         ,3000)
+
+
 
         //Run another thread to ask for blocks
         // UPD:We have decied to speed up this procedure during parallelism & plugins

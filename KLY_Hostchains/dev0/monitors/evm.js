@@ -174,7 +174,11 @@ export default (evmChainTicker) => {
 
         GET_CONTRACT_EVENTS(evmChainTicker).then(events=>{
 
-            
+            events.forEach(event=>{
+
+                console.log('Find checkpoints ',event.returnValues.payload)
+
+            })
 
         })
 

@@ -47,7 +47,7 @@ PERFORM_BLOCK_MULTISET=blocksAndProofs=>{
     
             }
     
-            if(bftProof) SYMBIOTE_META.VALIDATORS_PROOFS.put(block.c+":"+block.i,bftProof).catch(e=>{})
+            if(bftProof) SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(block.c+":"+block.i,bftProof).catch(e=>{})
     
         }
     
@@ -311,7 +311,7 @@ START_TO_FIND_PROOFS_FOR_BLOCK = async blockID => {
         
     //     if(itsProbablyProofs){            
 
-    //         SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,itsProbablyProofs).catch(e=>false)                
+    //         SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(blockID,itsProbablyProofs).catch(e=>false)                
 
     //     }
 
@@ -349,10 +349,10 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    let proofs = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_PROOFS.get(blockId).catch(e=>false),
+    let commitments = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockId) || await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(blockId).catch(e=>false),
 
         //We should skip the block in case when skipPoint exsists in validators proofs and it equal to checksum of VERIFICATION_THREAD state
-        shouldSkip = proofs.P && BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) === proofs.P
+        shouldSkip = commitments.P && BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)) === commitments.P
 
 
 
@@ -365,7 +365,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
 
-    if(proofs){
+    if(commitments){
 
         
     /*    
@@ -412,7 +412,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
 
         let bftProofsIsOk=false, // so optimistically
     
-            {V:votes,S:skipPoint} = proofs,
+            {V:votes,S:skipPoint} = commitments,
 
             aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
 
@@ -425,7 +425,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
  
 
 
-        if (proofs.A && validatorsWhoVoted.length===1){
+        if (commitments.A && validatorsWhoVoted.length===1){
 
             /*
 
@@ -474,7 +474,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
             majority = majority > validatorsNumber ? validatorsNumber : majority
 
 
-            bftProofsIsOk = (validatorsNumber-proofs.A.length)>=majority && await VERIFY(metadataToVerify,votes[validatorsWhoVoted[0]],validatorsWhoVoted[0])
+            bftProofsIsOk = (validatorsNumber-commitments.A.length)>=majority && await VERIFY(metadataToVerify,votes[validatorsWhoVoted[0]],validatorsWhoVoted[0])
 
     
         }else{
@@ -529,7 +529,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
                 let aggregatedProof = {V:{[aggregatedValidatorsPublicKey]:aggregatedSignature},A:[]}
 
                 //And store proof locally
-                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,aggregatedProof).catch(e=>{})
+                await SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(blockId,aggregatedProof).catch(e=>{})
 
                 bftProofsIsOk=true
 
@@ -560,7 +560,7 @@ CHECK_BFT_COMMITMENTS_FOR_BLOCK = async (blockId,blockHash) => {
 
 
                 //And store proof locally
-                await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockId,aggregatedProof).catch(e=>{})
+                await SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(blockId,aggregatedProof).catch(e=>{})
 
                 bftProofsIsOk=true
 
@@ -945,7 +945,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
             //And store proof locally
-            await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>LOG(`Can't store proof locally \n${e}`,'I'))
+            await SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(blockID,aggregatedProof).catch(e=>LOG(`Can't store proof locally \n${e}`,'I'))
 
 
         }else {
@@ -971,7 +971,7 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 
             //And store proof locally
-            await SYMBIOTE_META.VALIDATORS_PROOFS.put(blockID,aggregatedProof).catch(e=>{})
+            await SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(blockID,aggregatedProof).catch(e=>{})
         
         }
 
@@ -1175,11 +1175,11 @@ START_VERIFICATION_THREAD=async()=>{
 
                 blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
-                validatorsSolution = await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash)
+                quorumSolution = await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash)
         
 
 
-            if(validatorsSolution.shouldSkip){
+            if(quorumSolution.shouldSkip){
 
                 /*
                         
@@ -1206,7 +1206,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
                 let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
-                if(block && validatorsSolution.bftProofsIsOk){
+                if(block && quorumSolution.bftProofsIsOk){
 
                     await verifyBlock(block)
             
@@ -1356,15 +1356,15 @@ verifyBlock=async block=>{
         await VERIFY(blockHash,block.sig,block.c)
 
 
-    if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
+    // if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
 
-        LOG(`SYMBIOTE_CHECKPOINT verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
+    //     LOG(`SYMBIOTE_CHECKPOINT verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
 
-        LOG('Going to stop...','W')
+    //     LOG('Going to stop...','W')
 
-        process.emit('SIGINT')
+    //     process.emit('SIGINT')
 
-    }
+    // }
 
 
     if(overviewOk){
