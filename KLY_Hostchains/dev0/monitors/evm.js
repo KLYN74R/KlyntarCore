@@ -46,6 +46,7 @@
 
 /*
 
+
 !MANIFEST OPTIONS:
 
     ?CONTRACT:"0x77D4e0dc185409B9f20f58127146692A81272799" - address of contract to grab VM logs
@@ -184,7 +185,7 @@ export default (evmChainTicker) => {
 
         FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
 
-
+            console.log('First is ',block)
 
         })
 
