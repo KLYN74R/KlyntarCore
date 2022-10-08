@@ -24,9 +24,12 @@
   },
   "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
   "dependencies": {
+    "@assemblyscript/loader": "^0.20.13",
     "@chainsafe/bls": "^7.1.1",
+    "@ethereumjs/common": "^3.0.0",
     "@idena/vrf-js": "^1.0.1",
     "@noble/bls12-381": "^1.2.0",
+    "assemblyscript": "^0.19.9",
     "base-58": "^0.0.1",
     "bigi": "^1.4.2",
     "bip-schnorr": "^0.6.4",
@@ -42,8 +45,6 @@
     "ora": "^6.0.1",
     "secp256k1": "^4.0.2",
     "uWebSockets.js": "github:uNetworking/uWebSockets.js#v20.3.0",
-    "@assemblyscript/loader": "^0.20.13",
-    "assemblyscript": "^0.19.9",
     "wasm-metering": "^0.2.1",
     "web3": "^1.8.0"
   },
