@@ -735,7 +735,11 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
-                VALIDATORS_METADATA_PROTECTOR:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}. The same as VALIDATORS_METADATA but updates each time we found new checkpoint. We need it to load blocks between checkpoints
+                CHECKPOINT_METADATA:{
+
+                    
+
+                },
 
                 HOSTCHAINS_MONITORING:{},
 

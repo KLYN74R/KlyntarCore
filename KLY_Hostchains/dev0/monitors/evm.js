@@ -39,7 +39,7 @@
  *  
  * ] 
  * 
- *                                       IMPLEMENTATION OF MONITOR FOR EVM TYPE 0(via tracks in data field of txs when interact with simple contract with a single event)
+ *                                       IMPLEMENTATION OF MONITOR FOR EVM PACK_0(via events by EVM when we push a checkpoint to some chain)
  * 
  */
 
@@ -74,6 +74,8 @@
 */
 
 
+
+import {LOG} from '../../../KLY_Utils/utils.js'
 import Web3 from 'web3'
 
 
@@ -85,24 +87,39 @@ let configs,web3,
 
 
 
-GET_CONTRACT_EVENTS = evmChainTicker => {
+GET_CONTRACT_EVENTS = async evmChainTicker => {
 
 
     let {ABI,CONTRACT} = CONFIG.SYMBIOTE.MONITORS[evmChainTicker],
     
         contractInstance = new web3.eth.Contract(ABI,CONTRACT),
-    
+
+        lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>false)
+
+
+    if(lastKnownBlockNumber){
+
+
+        console.log(lastKnownBlockNumber)
+
+        LOG(`Found new latest known block on hostchain \x1b[35;1m${evmChainTicker}\x1b[36;1m => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+
         //Get from the height we stopped till the last known block
-        options = {
-    
-            fromBlock: SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM,
         
-            toBlock:'latest',
+        let options = {
+    
+            fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM,
+
+            toBlock:lastKnownBlockNumber,
     
         };
     
-    return contractInstance.getPastEvents('Checkpoint',options)
+        let events = await contractInstance.getPastEvents('Checkpoint',options).catch(e=>false)
 
+        return [lastKnownBlockNumber,events]
+
+    }
+        
 },
 
 
@@ -164,30 +181,92 @@ FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
 
 
-export default (evmChainTicker) => {
+/*
+
+Checkpoint structure
+
+{
+    ROOT_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
+    
+    QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
+
+    QUORUM_AGGREGATED_SIGNATURE:<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
+
+    AFK_SIGNERS:<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
+
+}
+
+If QUORUM SIZE=127 and threshold is 2/3N+1 (required by typical BFT), then count the worst case - when N/3 is AFK, malicious activity or some other problem(poor connection,fault and so on)
+
+N/3=42
+
+Then, the biggest possible checkpoint size is:
+
+32 - checkpoint payload hash.
++
+48 - aggregated BLS pubkey of signers
++
+96 - aggregated signature
++
+48*42
+______________________
+
+2192 bytes - the biggest possible checkpoint size in case QUORUM SIZE=127(validators number might be infinite)
+
+
+-------------------------------------------------------------Checkpoint payload-------------------------------------------------------------
+
+Checkpoint payload contains:
+
+OTHER_CHECKPOINTS (KEY=>VALUE) => (SYMBIOTE_ID=>CHECKPOINT) - object with checkpoints from other symbiotes to perform Hivemind activity
+
+VALIDATORS_METADATA - object like this
+
+        {
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
+                INDEX: -1,
+                HASH: 'Poyekhali!@Y.A.Gagarin',
+                BLOCKS_GENERATOR: true
+            }
+    
+        }
+
+    Key - BLS pubkey of validator
+    Value - object to track progress to verify blocks step-by-step
+
+
+
+    
+
+*/
+
+
+export default async(evmChainTicker) => {
 
     configs = CONFIG.SYMBIOTE.MONITORS[evmChainTicker]
 
     web3 = new Web3(configs.URL)
-    
 
     if(configs.MODE==='PARANOIC'){
 
-        GET_CONTRACT_EVENTS(evmChainTicker).then(events=>{
+        let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS(evmChainTicker)
 
-            events.forEach(event=>{
+        if(lastKnownBlockNumber && events){
 
-                console.log('Find checkpoints ',event.returnValues.payload)
+            console.log(lastKnownBlockNumber,' => ',events)
 
-            })
+            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-        })
+            
 
-        FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
+        }else LOG(`Can't get events from the current provider.Try to make troubleshouting of your node provider`,'F')
 
-            console.log('First is ',block)
 
-        })
+        // FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
+
+        //     console.log('First is ',block)
+
+        // })
 
     }else if(configs.MODE==='TRUST'){
 
@@ -197,4 +276,4 @@ export default (evmChainTicker) => {
 
     }
 
-}
+} 
