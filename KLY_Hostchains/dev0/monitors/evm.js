@@ -110,7 +110,7 @@ GET_CONTRACT_EVENTS = async evmChainTicker => {
     
             fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM,
 
-            toBlock:lastKnownBlockNumber,
+            toBlock:lastKnownBlockNumber
     
         };
     
@@ -118,8 +118,20 @@ GET_CONTRACT_EVENTS = async evmChainTicker => {
 
         return [lastKnownBlockNumber,events]
 
-    }
+    }else return []
         
+},
+
+
+
+CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
+
+    let date1 = new Date(timestamp1*1000),
+        
+        date2 = new Date(timestamp2*1000)
+
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+
 },
 
 
@@ -236,7 +248,7 @@ VALIDATORS_METADATA - object like this
 
 
 
-    
+
 
 */
 
@@ -248,6 +260,9 @@ export default async(evmChainTicker) => {
     web3 = new Web3(configs.URL)
 
     if(configs.MODE==='PARANOIC'){
+
+
+
 
         let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS(evmChainTicker)
 

@@ -737,7 +737,18 @@ PREPARE_SYMBIOTE=async()=>{
                 
                 CHECKPOINT_METADATA:{
 
-                    
+                    SHOULD_FIND_NEXT:false,
+
+                    LATEST_FOUND:{
+                        /*
+                        
+                        Here will be checkpoint last found on hostchain. Otherwise - genesis checkpoint will be loaded
+                        
+
+
+                        
+                        */
+                    }
 
                 },
 
@@ -1164,15 +1175,6 @@ RUN_SYMBIOTE=async()=>{
         // UPD:We have decied to speed up this procedure during parallelism & plugins
         // GET_BLOCKS_FOR_FUTURE_WRAPPER()
 
-
-        //______________________________________________________RUN MONITORS FOR HOSTCHAINS____________________________________________________________
-
-
-        HOSTCHAINS.MONITORS.forEach(
-            
-            (monitor,ticker) => monitor && monitor(ticker)
-            
-        )
 
     }
 
