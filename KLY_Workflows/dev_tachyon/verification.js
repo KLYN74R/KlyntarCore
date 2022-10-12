@@ -1119,35 +1119,30 @@ START_TO_COUNT_COMMITMENTS=async()=>{
 
 START_VERIFICATION_THREAD=async()=>{
 
-
     //This option will stop workflow of verification for each symbiote
+    
     if(!SYSTEM_SIGNAL_ACCEPTED){
-
 
         THREADS_STILL_WORKS.VERIFICATION=true
 
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-        //if we sill load "events", no sense to verify smth until confirmation
-        if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT_METADATA.SHOULD_FIND_NEXT){
-
-            setTimeout(START_VERIFICATION_THREAD,CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
-
-            return
-
-        }
+        console.log(SYMBIOTE_META)
 
 
-        //Check if we reach checkpoint
-        let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+        //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-            checkpointValidatorsMetadataHash = BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT_METADATA.LATEST_FOUND.PAYLOAD.VALIDATORS_METADATA)
+        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-        if(validatorsMetadataHash===checkpointValidatorsMetadataHash){
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
-            //Set trigger to start monitor
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT_METADATA.SHOULD_FIND_NEXT=true
 
-            return
+        //If equal - find new checkpoint, verify it and follow it
+        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint){
+
+            let nextCheckpoint = true//HOSTCHAINS.MONITORS.get()
+
+            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint         
 
         }
 
@@ -1252,20 +1247,11 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification thread
+        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
 
-        else if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT_METADATA.SHOULD_FIND_NEXT){
+        //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
+        setTimeout(START_VERIFICATION_THREAD,(nextBlock||!currentSessionMetadata.BLOCKS_GENERATOR)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
-            //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-            setTimeout(START_VERIFICATION_THREAD,CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
-
-
-        }else {
-
-            //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-            setTimeout(START_VERIFICATION_THREAD,(nextBlock||!currentSessionMetadata.BLOCKS_GENERATOR)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
-
-        }
         
         //Probably no sense to stop polling via .clearTimeout()
         //UPD:Do it to provide dynamic functionality for start/stop Verification Thread

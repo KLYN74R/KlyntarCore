@@ -130,7 +130,7 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
         
         date2 = new Date(timestamp2*1000)
 
-    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
 
 },
 
@@ -197,8 +197,10 @@ FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
 Checkpoint structure
 
+Header:
+
 {
-    ROOT_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
+    PAYLOAD_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
     
     QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
 
@@ -230,7 +232,7 @@ ______________________
 
 Checkpoint payload contains:
 
-OTHER_CHECKPOINTS (KEY=>VALUE) => (SYMBIOTE_ID=>CHECKPOINT) - object with checkpoints from other symbiotes to perform Hivemind activity
+OTHER_CHECKPOINTS (KEY=>VALUE) => (SYMBIOTE_ID=>CHECKPOINT_HEADER) - object with checkpoints from other symbiotes to perform Hivemind activity
 
 VALIDATORS_METADATA - object like this
 
@@ -261,9 +263,6 @@ export default async(evmChainTicker) => {
 
     if(configs.MODE==='PARANOIC'){
 
-
-
-
         let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS(evmChainTicker)
 
         if(lastKnownBlockNumber && events){
@@ -272,7 +271,6 @@ export default async(evmChainTicker) => {
 
             console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-            
 
         }else LOG(`Can't get events from the current provider.Try to make troubleshouting of your node provider`,'F')
 

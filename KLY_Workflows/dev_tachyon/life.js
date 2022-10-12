@@ -497,6 +497,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
 
+
 LOAD_GENESIS=async()=>{
 
     let atomicBatch = SYMBIOTE_META.STATE.batch()
@@ -735,23 +736,37 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
-                CHECKPOINT_METADATA:{
+                CURRENT_CHECKPOINT:{
 
-                    SHOULD_FIND_NEXT:false,
+                    //Header should be included to hostchain in cleartext to determine valid checkpoints from previous quorum
+                    HEADER:{
 
-                    LATEST_FOUND:{
-                        /*
+                        PAYLOAD_HASH:'',//<32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
+    
+                        QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',//<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
+                    
+                        QUORUM_AGGREGATED_SIGNATURE:'',//<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
+                    
+                        AFK_SIGNERS:[]//<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
+
+                    },
+
+                    PAYLOAD:{
+
+                        VALIDATORS_METADATA:{}, //The same as VALIDATORS_METADATA
+                        
+                        OTHER_CHECKPOINTS:{} //(SYMBIOTE_ID => CHECKPOINTS_HEADERS_OF_OTHER_SYMBIOTES)
+
+                    }                  
+                    
+                    /*
                         
                         Here will be checkpoint last found on hostchain. Otherwise - genesis checkpoint will be loaded
                         
-
-
-                        
-                        */
-                    }
+                    */
 
                 },
-
+                
                 HOSTCHAINS_MONITORING:{},
 
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
