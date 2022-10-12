@@ -1127,7 +1127,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-        console.log(SYMBIOTE_META)
+        console.log(SYMBIOTE_META) //QUORUM_COMMITMENTS_CACHE also here
 
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________

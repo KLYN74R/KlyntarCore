@@ -564,15 +564,15 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    let cachedProofs
+    let cachedCommitments
     
     try{
 
-        cachedProofs = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json'))
+        cachedCommitments = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json'))
 
     }catch{
 
-        cachedProofs = {}
+        cachedCommitments = {}
 
     }
 
@@ -596,7 +596,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
-        QUORUM_COMMITMENTS_CACHE:new Map(Object.entries(cachedProofs)),
+        FINALIZATION_PROOFS:new Map(), //aggregated proofs which proof that 2/3N+1 have 2/3N+1 commitments for some block PubX:Y with hash H. ONLY WHEN NODE HAS FINALIZATION_PROOF BLOCK OR BLOCK RANGE CAN BE PROCESSED
+
+        QUORUM_COMMITMENTS_CACHE:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
     }
 
