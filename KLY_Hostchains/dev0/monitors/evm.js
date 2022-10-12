@@ -87,10 +87,10 @@ let configs,web3,
 
 
 
-GET_CONTRACT_EVENTS = async evmChainTicker => {
+GET_CONTRACT_EVENTS = async () => {
 
 
-    let {ABI,CONTRACT} = CONFIG.SYMBIOTE.MONITORS[evmChainTicker],
+    let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
     
         contractInstance = new web3.eth.Contract(ABI,CONTRACT),
 
@@ -102,13 +102,13 @@ GET_CONTRACT_EVENTS = async evmChainTicker => {
 
         console.log(lastKnownBlockNumber)
 
-        LOG(`Found new latest known block on hostchain \x1b[35;1m${evmChainTicker}\x1b[36;1m => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+        LOG(`Found new latest known block on hostchain \x1b[35;1m${TICKER}\x1b[36;1m => \x1b[32;1m${lastKnownBlockNumber}`,'I')
 
         //Get from the height we stopped till the last known block
         
         let options = {
     
-            fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[evmChainTicker].START_FROM,
+            fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING.START_FROM,
 
             toBlock:lastKnownBlockNumber
     
@@ -137,7 +137,7 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
 
 
-FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
+FIND_FIRST_BLOCK_OF_DAY = async () => {
 
     let startOfDay = new Date()
         
@@ -147,7 +147,7 @@ FIND_FIRST_BLOCK_OF_DAY = async evmChainTicker => {
 
         bestBlock = await web3.eth.getBlock(await web3.eth.getBlockNumber()).catch(e=>false),
 
-        step = CONFIG.SYMBIOTE.MONITORS[evmChainTicker].FIRST_BLOCK_FIND_STEP,
+        step = CONFIG.SYMBIOTE.MONITOR.FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.number - step
 
@@ -255,15 +255,15 @@ VALIDATORS_METADATA - object like this
 */
 
 
-export default async(evmChainTicker) => {
+export default async() => {
 
-    configs = CONFIG.SYMBIOTE.MONITORS[evmChainTicker]
+    configs = CONFIG.SYMBIOTE.MONITOR
 
     web3 = new Web3(configs.URL)
 
     if(configs.MODE==='PARANOIC'){
 
-        let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS(evmChainTicker)
+        let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS()
 
         if(lastKnownBlockNumber && events){
 

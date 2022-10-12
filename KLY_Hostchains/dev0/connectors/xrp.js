@@ -52,7 +52,7 @@ import{RippleAPI} from 'ripple-lib'
  */
 let connection,
 
-    server=CONFIG.SYMBIOTE.CONNECTORS.xrp?.URL
+    server=CONFIG.SYMBIOTE.CONNECTOR?.URL
         
 if(server) connection=new RippleAPI({server})
 
@@ -92,7 +92,7 @@ export default {
         connection.connect().then(async()=>{
 
             
-            let {PUB,PRV,AMOUNT,TO,MAX_LEDGER_VERSION_OFFSET} = CONFIG.SYMBIOTE.CONNECTORS.xrp,
+            let {PUB,PRV,AMOUNT,TO,MAX_LEDGER_VERSION_OFFSET} = CONFIG.SYMBIOTE.CONNECTOR,
 
             
                 //0st script in config means MEMO transaction
@@ -146,7 +146,7 @@ export default {
 
         let balance=await connection.connect().then(()=>
       
-            connection.getAccountInfo(CONFIG.SYMBIOTE.CONNECTORS.xrp.PUB).then(acc=>acc.xrpBalance)
+            connection.getAccountInfo(CONFIG.SYMBIOTE.CONNECTOR.PUB).then(acc=>acc.xrpBalance)
         
         ).catch(e=>`No data\x1b[31;1m (${e})\x1b[0m`)
 

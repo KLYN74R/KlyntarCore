@@ -740,6 +740,12 @@ PREPARE_SYMBIOTE=async()=>{
                 
                 CURRENT_CHECKPOINT:{
 
+                    /*
+                        
+                        Here will be checkpoint last found on hostchain. Otherwise - genesis checkpoint will be loaded
+                        
+                    */
+
                     //Header should be included to hostchain in cleartext to determine valid checkpoints from previous quorum
                     HEADER:{
 
@@ -759,17 +765,14 @@ PREPARE_SYMBIOTE=async()=>{
                         
                         OTHER_CHECKPOINTS:{} //(SYMBIOTE_ID => CHECKPOINTS_HEADERS_OF_OTHER_SYMBIOTES)
 
-                    }                  
-                    
-                    /*
-                        
-                        Here will be checkpoint last found on hostchain. Otherwise - genesis checkpoint will be loaded
-                        
-                    */
+                    },
+
+                    TIMESTAMP:0 //we set the timestamp from hostchains to track days changes
+                
 
                 },
                 
-                HOSTCHAINS_MONITORING:{},
+                HOSTCHAIN_MONITORING:{},
 
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
             
@@ -795,57 +798,36 @@ PREPARE_SYMBIOTE=async()=>{
     SYMBIOTE_META.STUFF_CACHE.set('VALIDATORS_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))))
 
 
-
     //__________________________________Load modules to work with hostchains_________________________________________
 
-
-    let tickers=Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS), EvmHostChainConnector
-
-
-    //Add hostchains to mapping
-    //Load way to communicate with hostchain via appropriate type
-    for(let i=0,l=tickers.length;i<l;i++){
-
+    let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER,
     
-        let ticker = tickers[i],
-
-            packID=CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
+        packID = CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
 
 
-        //Depending on packID load appropriate module
-        if(CONFIG.EVM.includes(ticker)){
+    //Depending on packID load appropriate module
+    if(CONFIG.EVM.includes(ticker)){
         
-            EvmHostChainConnector=(await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
-            
-            //Set connector
-            HOSTCHAINS.CONNECTORS.set(ticker,new EvmHostChainConnector(ticker))
+        let EvmHostChainConnector = (await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
+        
+        //Set connector
+        HOSTCHAIN.CONNECTOR=new EvmHostChainConnector(ticker)
 
-            //Set monitor
-            HOSTCHAINS.MONITORS.set(ticker,
-            
-                (await import(`../../KLY_Hostchains/${packID}/monitors/evm.js`)).default
-                
-            )
-
-    
-        }else {
-
-            //Also, set connector
-            HOSTCHAINS.CONNECTORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default)
-
-            //Also, set monitor
-            HOSTCHAINS.MONITORS.set(ticker,(await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`)).default)
-
-        }
+        //Set monitor
+        HOSTCHAIN.MONITOR=(await import(`../../KLY_Hostchains/${packID}/monitors/evm.js`)).default
         
 
-        if(!SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]){
+    }else {
 
-            SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAINS_MONITORING[ticker]=CONFIG.SYMBIOTE.MONITORS[ticker].MONITORING_PRESET
+        //Also, set connector
+        HOSTCHAIN.CONNECTOR=(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default
 
-        }
-    
+        //Also, set monitor
+        HOSTCHAIN.MONITOR=(await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`)).default
+
     }
+
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING) SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING=CONFIG.SYMBIOTE.MONITOR.MONITORING_PRESET
 
 
 
@@ -853,6 +835,7 @@ PREPARE_SYMBIOTE=async()=>{
     //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
 
     
+
 
     await DECRYPT_KEYS(initSpinner).then(()=>
     
@@ -869,40 +852,35 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    //___________________________________________Load data from hostchains___________________________________________
+    //___________________________________________Load data from hostchain___________________________________________
 
 
-
-
-    for(let i=0,l=tickers.length;i<l;i++){
         
-        let balance
-        
-        if(CONFIG.SYMBIOTE.BALANCE_VIEW){
-            
-            let spinner = ora({
-           
-                color:'red',
-           
-                prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${tickers[i]}\x1b[36;1m - keep waiting\x1b[0m`
-           
-            }).start()
+    if(CONFIG.SYMBIOTE.BALANCE_VIEW){
 
-            balance = await HOSTCHAINS.CONNECTORS.get(tickers[i]).getBalance()
-            
-            spinner.stop()
-            
-            LOG(`Balance on hostchain \x1b[32;1m${
-            
-                tickers[i]
-            
-            }\x1b[36;1m is \x1b[32;1m${
-                
-                CONFIG.SYMBIOTE.BALANCE_VIEW?balance:'<disabled>'
-            
-            }   \x1b[36;1m[${CONFIG.SYMBIOTE.STOP_HOSTCHAINS[tickers[i]]?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
+        let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER
         
-        }
+        let spinner = ora({
+       
+            color:'red',
+       
+            prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${ticker}\x1b[36;1m - keep waiting\x1b[0m`
+       
+        }).start()
+
+        let balance = await HOSTCHAIN.CONNECTOR.getBalance()
+        
+        spinner.stop()
+        
+        LOG(`Balance on hostchain \x1b[32;1m${
+        
+            ticker
+        
+        }\x1b[36;1m is \x1b[32;1m${
+            
+            CONFIG.SYMBIOTE.BALANCE_VIEW?balance:'<disabled>'
+        
+        }   \x1b[36;1m[${CONFIG.SYMBIOTE.STOP_HOSTCHAIN?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
     
     }
 

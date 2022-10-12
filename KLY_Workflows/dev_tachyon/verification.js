@@ -1134,13 +1134,15 @@ START_VERIFICATION_THREAD=async()=>{
 
         let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)),
+
+            currentTimestamp = new Date().getTime()/1000 //due to UTC timestamp format
 
 
         //If equal - find new checkpoint, verify it and follow it
-        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint){
+        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint || !HOSTCHAIN.MONITOR){
 
-            let nextCheckpoint = true//HOSTCHAINS.MONITORS.get()
+            let nextCheckpoint = true//HOSTCHAIN.MONITOR.get()
 
             SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint         
 

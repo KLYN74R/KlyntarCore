@@ -9,14 +9,8 @@ import readline from 'readline'
 import fetch from 'node-fetch'
 
 
-//Mapping to work with hostchains
-global.HOSTCHAINS = {
-
-    CONNECTORS:new Map(),
-
-    MONITORS:new Map()
-
-}
+//Object to work with hostchain
+global.HOSTCHAIN = {}
 
 
 
@@ -59,7 +53,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 //*UPD:Sign with our pubkey to avoid certifications
 SEND_REPORT = alertInfo =>
 
-    fetch(CONFIG.SYMBIOTE.MONITORS[alertInfo.hostchain].REPORT_TO,{
+    fetch(CONFIG.SYMBIOTE.MONITOR.REPORT_TO,{
 
         method:'POST',
         body:JSON.stringify(alertInfo)
@@ -315,27 +309,20 @@ DECRYPT_KEYS=async spinner=>{
     if(CONFIG.PRELUDE.DECRYPTED){
 
         spinner?.stop()
-
         
         // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
         let keys=JSON.parse(fs.readFileSync(CONFIG.DECRYPTED_KEYS_PATH))//use full path
         
+        let ticker=CONFIG.SYMBIOTE.CONNECTOR.TICKER 
+
         //Main key
         global.PRIVATE_KEY=keys.kly
 
-        //...and decrypt for hostchains(if you role on appropriate workflow require it)
-        Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(
-            
-            ticker => {
-                
-                if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+
+        if(CONFIG.EVM.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
-                else CONFIG.SYMBIOTE.CONNECTORS[ticker].PRV=keys[ticker]
-    
-            
-            }
+        else CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
         
-        )
 
         return
       
@@ -383,23 +370,20 @@ DECRYPT_KEYS=async spinner=>{
 
 
 
-    //____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAINS_______________________________________
+    //_____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAIN_______________________________________
 
 
-    Object.keys(symbioteRef.CONNECTORS).forEach(ticker=>{
-        
-        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
-
-        
-        if(CONFIG.EVM.includes(ticker)) symbioteRef.CONNECTORS[ticker].PRV=Buffer.from(privateKey,'hex')
-        
-        else symbioteRef.CONNECTORS[ticker].PRV=privateKey
-        
-
-
-        LOG(`Hostchain [\x1b[36;1m${ticker}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
+    let decipherHostchain = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV),
     
-    })
+        privateKey=decipherHostchain.update(symbioteRef.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
+
+        
+    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) symbioteRef.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
+        
+    else symbioteRef.CONNECTOR.PRV=privateKey
+        
+    LOG(`Hostchain [\x1b[36;1m${CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
+
     
     rl.close()
 

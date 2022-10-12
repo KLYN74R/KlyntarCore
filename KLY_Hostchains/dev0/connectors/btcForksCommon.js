@@ -102,12 +102,12 @@ export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
 export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
 
 
-    let {PUB,PRV,FEE}=CONFIG.SYMBIOTE.CONNECTORS[btcFork],
+    let {PUB,PRV,FEE}=CONFIG.SYMBIOTE.CONNECTOR,
         
         inputs=[],        
         
         //Fetch available from utxo pool
-        nodeUtxos=await REQUEST_TO_NODE(btcFork,'listunspent').then(
+        nodeUtxos=await REQUEST_TO_NODE('listunspent').then(
             
             utxos => utxos.filter(utxo=>utxo.address===PUB) //to get inputs for address format
             

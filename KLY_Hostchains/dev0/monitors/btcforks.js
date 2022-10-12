@@ -68,7 +68,7 @@ import {LOG} from '../../../KLY_Utils/utils.js'
 
 
 
-let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
+let FIND_FIRST_BLOCK_OF_DAY = async () => {
 
     let startOfDay = new Date()
         
@@ -78,7 +78,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
         bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true).catch(e=>false),
 
-        step = CONFIG.SYMBIOTE.MONITORS[btcFork].FIRST_BLOCK_FIND_STEP,
+        step = CONFIG.SYMBIOTE.MONITOR.FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.height - step
 
@@ -126,7 +126,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async btcFork => {
 
 export default (btcFork) => {
 
-    let configs = CONFIG.SYMBIOTE.MONITORS[btcFork]
+    let configs = CONFIG.SYMBIOTE.MONITOR
 
     if(configs.MODE==='PARANOIC'){
 

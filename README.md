@@ -229,13 +229,7 @@ Insofar as KLYNTAR has many chains ( known as <b>symbiotes</b>) which symbiotica
 
 //Somewhere inside symbiotes.json
 
-   "STOP_HOSTCHAINS":{
-                
-        "ltc":true,
-        "bsc":true,
-        "eth":true
-    
-    }
+"STOP_HOSTCHAIN":true
 
 
 ```

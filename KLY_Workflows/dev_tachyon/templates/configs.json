@@ -39,12 +39,6 @@
                     "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
                 }
                 
-            },
-            "eth":{
-                "PACK":"dev0",
-                "MANIFEST_OPTIONS":{
-                    "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
-                }
             }
                     
         },
@@ -65,118 +59,37 @@
         "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     },
     
-    "CONNECTORS":{
-                
-        "ltc":{
+    "CONNECTOR":{
 
-            "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-            "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
-            "NET":"TEST",
-            "PROVIDER_TYPE":"NODE",
-            "URL":"http://localhost:2339",
-            "CONFIRMATIONS":1,
-            "CREDS":"Vlad:ltcpassword",
-            "FEE":192666
-                    
-        },
-
-        "bsc":{
-
-            "URL":"https://data-seed-prebsc-1-s1.binance.org:8545/",
-            "PROVIDER_TYPE":"API",
-            "PUB":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-            "PRV":"fbd0739ef27de0efa663b375ecb2ffb2ba2ac68e3825737eb6e9e39192cbb8994ae6ba5d34d7f630deaeb9be7da8bad231f3b8b460fcec68aa63a2724df4309f78431a907c3b2e728f6dad65fe93ec1e",
-            "TO":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-            "GAS_LIMIT":25000,
-            "GAS_PRICE":"10",
-            "AMOUNT":"0",
-            "NET":"mainnet",
-            "CHAIN_ID":97,
-            "HARDFORK":"petersburg"
+        "TICKER":"ltc",
+        "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
+        "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
+        "NET":"TEST",
+        "PROVIDER_TYPE":"NODE",
+        "URL":"http://localhost:2339",
+        "CONFIRMATIONS":1,
+        "CREDS":"Vlad:ltcpassword",
+        "FEE":192666            
         
-        },
-
-        "eth":{
-            "URL":"https://ropsten.infura.io/v3/221ec7661021452ab89a4a5fa29ebf68",
-            "PROVIDER_TYPE":"NAAS",
-            "PUB":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-            "PRV":"8db9279e332ebd4e098fbba039019ca90b7a45e4c433bc1542ce9e56058eb5a66db9df0fce8ffbfec41f74440fb1a010727b0db46e2a0cba25143c485bae7002a4b4ba48137177536e1a5e2007c573ce",
-            "TO":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-            "GAS_LIMIT":30000,
-            "GAS_PRICE":"100",
-            "AMOUNT":"0",
-            "NET":"mainnet",
-            "CHAIN_ID":3,
-            "HARDFORK":"london",
-            "MAX_FEE_PER_GAS":"30",
-            "MAX_PRIORITY_FEE_PER_GAS":"30"
-        }
-
     },
 
-    "STOP_HOSTCHAINS":{
-        "ltc":true,
-        "bsc":true,
-        "eth":true
-    },
+    "STOP_HOSTCHAIN":true,
 
+    "MONITOR":{
 
-    "MONITORS":{
+        "TICKER":"ltc",
+        "PACK":"dev0",
+        "MODE":"PARANOIC",
+        "URL":"http://localhost:7777",
+        "CREDS":"Vlad:ltcpassword",
+        "FIRST_BLOCK_FIND_STEP":30,
+        
+        "MONITORING_PRESET":{
 
-        "ltc":{
-            
-            "MODE":"PARANOIC",
-            "URL":"http://localhost:7777",
-            "CREDS":"Vlad:ltcpassword",
-            "FIRST_BLOCK_FIND_STEP":30,
-            
-            "MONITORING_PRESET":{
-
-                "START_FROM":2000000
-
-            }
-            
-        },
-        "bsc":{
-            
-            "MODE":"PARANOIC",
-            "URL":"http://localhost:7777",
-            "FIRST_BLOCK_FIND_STEP":30,
-
-            "RANGE":10,
-            "STORE":true,
-            "CACHE_SIZE":10000,
-            "TARGET":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
-            
-            "REPORT_TO":"http://localhost:7777/alert",
-            
-            "MONITORING_PRESET":{
-
-                "START_FROM":2000000
-
-            }
-
-        },
-        "eth":{
-            
-            "MODE":"PARANOIC",
-            "URL":"http://localhost:7777",
-            "FIRST_BLOCK_FIND_STEP":30,
-            
-            "RANGE":10,
-            "STORE":true,
-            "CACHE_SIZE":10000,
-            "TARGET":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
-            "REPORT_TO":"http://localhost:7777/alert",
-            
-            "MONITORING_PRESET":{
-
-                "START_FROM":2000000
-
-            }
+            "START_FROM":2000000
 
         }
-
+    
     },
 
     "VT_GT_NORMAL_DIFFERENCE":100,

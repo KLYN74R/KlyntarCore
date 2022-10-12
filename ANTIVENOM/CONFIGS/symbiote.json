@@ -110,11 +110,7 @@
                 }
             },
 
-            "STOP_HOSTCHAINS":{
-                "ltc":true,
-                "bsc":true,
-                "eth":true
-            },
+            "STOP_HOSTCHAIN":true,
 
             "MONITORS":{
 
