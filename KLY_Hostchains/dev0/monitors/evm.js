@@ -254,39 +254,97 @@ VALIDATORS_METADATA - object like this
 
 */
 
-
-export default async() => {
-
-    configs = CONFIG.SYMBIOTE.MONITOR
-
-    web3 = new Web3(configs.URL)
-
-    if(configs.MODE==='PARANOIC'){
-
-        let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS()
-
-        if(lastKnownBlockNumber && events){
-
-            console.log(lastKnownBlockNumber,' => ',events)
-
-            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+export default {
 
 
-        }else LOG(`Can't get events from the current provider.Try to make troubleshouting of your node provider`,'F')
+    GET_CONTRACT_EVENTS:async()=>{
 
+        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+        
+            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+    
+            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>false)
+    
+    
+        if(lastKnownBlockNumber){
+    
+    
+            console.log(lastKnownBlockNumber)
+    
+            LOG(`Found new latest known block on hostchain \x1b[35;1m${TICKER}\x1b[36;1m => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+    
+            //Get from the height we stopped till the last known block
+            
+            let options = {
+        
+                fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING.START_FROM,
+    
+                toBlock:lastKnownBlockNumber
+        
+            };
+        
+            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(e=>false)
+    
+            return [lastKnownBlockNumber,events]
+    
+        }else return []
+            
+    },
 
-        // FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
+    GET_NEXT_VALID_CHECKPOINT:currentCheckpoint=>{
 
-        //     console.log('First is ',block)
+        
 
-        // })
+    },
 
-    }else if(configs.MODE==='TRUST'){
+    CHECK_IF_THE_SAME_DAY:(timestamp1,timestamp2)=>{
 
-        //Ask some node(or gateway) about checkpoints to avoid enumerating itself
-
-        setInterval(()=>{})
-
+        let date1 = new Date(timestamp1*1000),
+            
+            date2 = new Date(timestamp2*1000)
+    
+        return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
+    
     }
 
-} 
+
+    
+
+}
+
+
+// export let async() => {
+
+//     configs = CONFIG.SYMBIOTE.MONITOR
+
+//     web3 = new Web3(configs.URL)
+
+//     if(configs.MODE==='PARANOIC'){
+
+//         let [lastKnownBlockNumber,events] = await GET_CONTRACT_EVENTS()
+
+//         if(lastKnownBlockNumber && events){
+
+//             console.log(lastKnownBlockNumber,' => ',events)
+
+//             console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+
+
+//         }else LOG(`Can't get events from the current provider.Try to make troubleshouting of your node provider`,'F')
+
+
+//         // FIND_FIRST_BLOCK_OF_DAY(evmChainTicker).then(block=>{
+
+//         //     console.log('First is ',block)
+
+//         // })
+
+//     }else if(configs.MODE==='TRUST'){
+
+//         //Ask some node(or gateway) about checkpoints to avoid enumerating itself
+
+//         setInterval(()=>{})
+
+//     }
+
+// } 

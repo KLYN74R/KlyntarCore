@@ -361,7 +361,8 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-
+//Share SUPER_FINALIZATION_PROOF(aggregated FINALIZATION_PROOFs from other validators)
+//! ONLY IF YOU HAVE THIS SUPER_FINALIZATION_PROOF YOU CAN PROCEED THE BLOCK WITH 100% GARANTEE
 getFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
@@ -369,7 +370,7 @@ getFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
 
 
 
-
+//Accept and verify FINALIZATION_PROOF from some validator from quorum that 2/3N+1 validators from quorum have produced commitments for some block PubX:Y with hash H
 setFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 

@@ -1125,29 +1125,50 @@ START_VERIFICATION_THREAD=async()=>{
 
         THREADS_STILL_WORKS.VERIFICATION=true
 
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+        // console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-        console.log(SYMBIOTE_META) //QUORUM_COMMITMENTS_CACHE also here
+        // console.log(SYMBIOTE_META) //QUORUM_COMMITMENTS_CACHE also here
 
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
         let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)),
-
-            currentTimestamp = new Date().getTime()/1000 //due to UTC timestamp format
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
 
-        //If equal - find new checkpoint, verify it and follow it
-        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint || !HOSTCHAIN.MONITOR){
+        //Also, another reason to find new checkpoint if your current timestamp(UTC) related to the next day
+        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint){
 
-            let nextCheckpoint = true//HOSTCHAIN.MONITOR.get()
+            //If equal - find new(next) checkpoint, verify it and follow it
 
-            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint         
+            let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT)
+
+            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
 
         }
 
+
+        let currentTimestamp = new Date().getTime()/1000,//due to UTC timestamp format
+
+            checkpointIsFresh = HOSTCHAIN.MONITOR.CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,currentTimestamp)
+
+        // console.log(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint)
+
+        // console.log(checkpointIsFresh)
+
+        
+        /*
+
+            ! Glossary - SUPER_FINALIZATION_PROOF on high level is proof that for block Y created by validator PubX with hash H exists at least 2/3N+1 validators who has 2/3N+1 commitments for this block
+
+                [+] If our current checkpoint are "too old", no sense to find SUPER_FINALIZATION_PROOF. Just find & process block
+        
+                [+] If latest checkpoint was created & published on hostchains(primary and other hostchains via HiveMind) we should find SUPER_FINALIZATION_PROOF to proceed the block
+        
+
+        */
+        
 
         let prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
 
@@ -1197,7 +1218,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
-                quorumSolution = await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash)
+                quorumSolution = checkpointIsFresh ? await CHECK_BFT_COMMITMENTS_FOR_BLOCK(blockID,blockHash) : {bftProofsIsOk:true,shouldSkip:false}
         
 
 
