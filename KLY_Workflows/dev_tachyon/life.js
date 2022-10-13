@@ -767,7 +767,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                     },
 
-                    TIMESTAMP:0 //we set the timestamp from hostchains to track days changes
+                    TIMESTAMP:1665663019 //we set the timestamp from hostchains to track days changes
                 
 
                 },
