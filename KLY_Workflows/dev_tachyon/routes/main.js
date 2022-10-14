@@ -148,14 +148,10 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 //____________________________________________________________CONSENSUS STUFF__________________________________________________________________
 
 
-//Function to accept updates of GT from validators,check,sign and share our agreement
-//TODO:Provide some extra communication to prevent potential problems with forks
-
-
 /*
 
 
-To accept signatures of phantom blocks from validators
+To accept signatures of blocks from validators in quorum
 
 Here we receive the object with validator's pubkey and his array of commitments
 
@@ -175,6 +171,8 @@ Commitment is object
 {
     
     B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>
+
+    H:<Block hash>
     
     S:<Signature => SIG(BLOCK_ID+":"+HASH)>
         
@@ -184,10 +182,23 @@ To verify that ValidatorX has received and confirmed block BLOCK_ID from Validat
 
 VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
 
+
+***********************************************************************************
+
+We put these commitments to local mapping SYMBIOTE_META.COMMITMENTS. The key is blockID:HASH and value is mapping like this
+
+{
+    "<VALIDATOR-WHO-CREATE-COMMITMENT>":"<HIS_BLS_SIGNATURE>"
+}
+
+Once we notice that inner mapping size is 2/3N+1 where N is quorum size, we can create FINALIZATION_PROOF,aggregate these values and flush mapping
+
+More info about FINALIZATION_PROOF available in description to POST /finalization
+
+
 */
 
-            
-setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+commitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
     let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
 
@@ -263,61 +274,6 @@ setCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=
 
 
 
-// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-// return simpleSignature
-
-getCommitments=async(a,q)=>{
-
-    //Check trigger
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
-
-        let blockID = q.getParameter(0)
-
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_COMMITMENTS}`).onAborted(()=>a.aborted=true)
-
-        //Check if our proof presents in cache
-        let ourProof = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(blockID)?.V[CONFIG.SYMBIOTE.PUB]
-
-
-        if(ourProof) !a.aborted && a.end(JSON.stringify({S:ourProof}))
-
-        else{
-
-            //Try to find proof from db - it should be aggregated proof
-            let aggregatedProof = await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(blockID).catch(e=>false)
-
-            if(aggregatedProof) !a.aborted && a.end(JSON.stringify(aggregatedProof))
-
-            else {
-
-                //Else, check if block present localy and create a proof
-                let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>false), // or get from cache
-
-                    threadID = blockID?.split(":")?.[0]
-
-                //*✅ Add synchronization flag here to avoid giving proofs when validator decided to prepare to <SKIP_BLOCK> procedure
-                if(block && SYMBIOTE_META.PROGRESS_CHECKER.BLOCK_TO_SKIP!==blockID && (CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS[threadID] || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.SHARE_PROOFS.ALL)){
-
-                    let blockHash = Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
-                    
-                        commitmentSignature = await SIG(blockID+":"+blockHash)
-
-                        !a.aborted && a.end(JSON.stringify({S:commitmentSignature}))
-
-                        
-                } else !a.aborted && a.end('No block')
-
-            }
-            
-        }
-           
-    }else !a.aborted && a.end('Route is off')
-
-},
-
-
-
-
 //Function to allow validator to back to the game
 //Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
 awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
@@ -361,33 +317,112 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-//Share SUPER_FINALIZATION_PROOF(aggregated FINALIZATION_PROOFs from other validators)
-//! ONLY IF YOU HAVE THIS SUPER_FINALIZATION_PROOF YOU CAN PROCEED THE BLOCK WITH 100% GARANTEE
-getFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+/*
 
+Accept other FINALIZATION_PROOF from other quorum members and returns own FINALIZATION_PROOF if exists in local cache
+
+We get FINALIZATION_PROOF from SYMBIOTE_META.FINALIZATION_PROOF mapping. We fullfilled this mapping inside POST /commitment mapping when some block PubX:Y:H(height=Y,creator=PubX,hash=H)
+receive 2/3N+1 commitments
+
+Structure of FINALIZATION_PROOF
+
+{
+
+    blockID:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
+
+    hash:"0123456701234567012345670123456701234567012345670123456701234567",
+    
+    validator:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta", //creator of FINALIZATION_PROOF
+
+    finalization_signa:SIG(blockID+hash+"FINALIZATION")
+
+}
+
+*****************************************************
+
+To verify FINALIZATION_PROOF from some ValidatorX we need to do this steps:
+
+1)Verify the finalization signa
+
+    VERIFY(blockID+hash+"FINALIZATION",finalization_signa,ValidatorX)
+
+
+If verification is ok, add this FINALIZATION_PROOF to cache mapping SYMBIOTE_META.FINALIZATON_PROOFS
+
+Key is blockID:Hash and value is inner mapping like this:
+
+{
+    "<VALIDATOR-WHO-CREATE-FINALIZATION-PROOF>":"<finalization_signa>"
+}
+
+*****************************************************
+
+Also, when we notice that there are 2/3N+1 mapping size, we can aggregate it and create SUPER_FINALIZATION_PROOF.After that, we can clear these FINALIZATION_PROOFS from SYMBIOTE_META.FINALIZATON_PROOFS
+
+More detailed about it in description to the next route
+
+
+
+*/
+
+finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    
 
 }),
 
 
 
-//Accept and verify FINALIZATION_PROOF from some validator from quorum that 2/3N+1 validators from quorum have produced commitments for some block PubX:Y with hash H
-setFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+/*
 
 
-}),
+    Latest bastion. This POST /superfinalization route share SUPER_FINALIZATION_PROOF from SYMBIOTE_META.SUPER_FINALIZATION_PROOFS
 
+    If we have SUPER_FINZALIZATION_PROOF - response with it
 
-
-
-getCheckpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
-
-}),
+    If we incoming payload is SUPER_FINZALIZATION_PROOF - then verify it and if OK,
+        
+        store locally and delete other FINALIZATION_PROOFS from local caches(because no more sense to store them when we already have SUPER_FINALIZATION_PROOF)
 
 
 
 
-setCheckpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    Key is blockID:Hash and value is object like this
+
+{
+    
+    aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+
+    aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+
+    afkValidators:[]
+
+}
+
+
+To verify SUPER_FINALIZATION_PROOF we should follow several steps:
+
+1) Verify aggregated FINALIZATION_PROOFs
+
+    VERIFY(blockID+hash+"FINALIZATION",aggregatedPub,aggregatedSigna)
+
+
+2) Make sure, that QUORUM_ROOT_KEY === Aggregate(aggregatedPub,afkValidators)
+
+
+3) Make sure that it's majority solution by doing QUORUM_SIZE-afkValidators >= 2/3N+1
+
+*/
+superFinalization=async(a,q)=>{
+
+
+
+},
+
+
+//Accept checkpoints from other validators in quorum and returns own version as answer
+//! Check the trigger START_SHARING_CHECKPOINT
+checkpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
 }),
@@ -444,30 +479,21 @@ UWS_SERVER
 //If validator from quorum has this finalization-proof - it'll never vote for another solution to add to checkpoint 
 //If 2/3*N+1 of validators from quorum has such finalization proof - then, it's 100% garantee of non-rollback
 
-//Returns aggregated FinalizationProof
-.get('/getfinalization/:blockID',getFinalization)
-
-//Accept FinalizationProof from external source. Verify it, and if OK - store locally
-.post('/setfinalization',setFinalization)
-
 
 //To accept/get commitments about accepting block X by ValidatorY with hash <HASH>
 //Finalization proof consists of these commitments. If more than 2/3*N from QUORUM have produced such commitment for block X by ValidatorY with hash <HASH> - then,you can aggregate it
 //and share to validators in QUORUM to prevent changes to checkpoints which will be published on hostchains
 
-//Return own commitment for early accepted blockX by ValdatorY with hash <HASH>
-.get('/getcommitments/:blockID',getCommitments)
-
 //To accept commitments for blockX by ValdatorY with hash <HASH> from another validators in QUORUM
-.post('/setcommitments',setCommitments)
+.post('/commitments',commitments)
 
+//Accept FinalizationProof from external source. Verify it, and if OK - store locally
+.post('/finalization',finalization)
 
+.get('/superfinalization',superFinalization)
 
 //To get/set pointers on hostchains to track progress of verification thread
-
-.post('/setcheckpoint',setCheckpoint)
-
-.get('/getcheckpoint',getCheckpoint)
+.post('/checkpoint',checkpoint)
 
 
 

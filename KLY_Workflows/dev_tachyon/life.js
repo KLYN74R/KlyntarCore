@@ -596,9 +596,13 @@ PREPARE_SYMBIOTE=async()=>{
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
-        FINALIZATION_PROOFS:new Map(), //aggregated proofs which proof that 2/3N+1 have 2/3N+1 commitments for some block PubX:Y with hash H. ONLY WHEN NODE HAS FINALIZATION_PROOF BLOCK OR BLOCK RANGE CAN BE PROCESSED
+        COMMITMENTS:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
-        QUORUM_COMMITMENTS_CACHE:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+        FINALIZATION_PROOFS:new Map(), //aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+
+        SUPER_FINALIZATION_PROOFS:new Map(), //the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
+
+        CHECKPOINTS:new Map()
 
     }
 
