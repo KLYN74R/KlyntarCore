@@ -145,13 +145,63 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 
 
+//Function to allow validator to back to the game
+//Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
+awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+    
+    /*
+    
+        AwakeRequestMessage looks like this
+     
+        {
+            "V":<Pubkey of validator>
+            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
+        }
+
+    */
+    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
+
+        validatorVTMetadataHash=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V])),
+
+        shouldSignToAlive =
+
+            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES.AWAKE
+            &&
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(helloMessage?.V)
+            &&
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
+            &&
+            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].BLOCKS_GENERATOR//Also,check if validator was marked as ACTIVE:false
+            &&
+            await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
+
+
+    if(shouldSignToAlive){
+
+        let myAgreement = await SIG(validatorVTMetadataHash)
+
+        !a.aborted&&a.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
+    
+    }else !a.aborted&&a.end('Overview failed')
+
+}),
+
+
+
+
 //____________________________________________________________CONSENSUS STUFF__________________________________________________________________
 
 
 /*
 
+********************************************************************************
+                                                                               *
+To accept signatures of blocks from validators in quorum                       *
+                                                                               *
+Accept payload and answer with payload if exists in db or cache                *
+                                                                               *
+********************************************************************************
 
-To accept signatures of blocks from validators in quorum
 
 Here we receive the object with validator's pubkey and his array of commitments
 
@@ -205,7 +255,7 @@ commitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.
 
         shouldAccept = 
         
-        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_COMMITMENTS
+        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS
         &&
         (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v))//to prevent spam - accept proofs only
         &&
@@ -274,52 +324,15 @@ commitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.
 
 
 
-//Function to allow validator to back to the game
-//Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
-awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-    
-    /*
-    
-        AwakeRequestMessage looks like this
-     
-        {
-            "V":<Pubkey of validator>
-            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
-        }
-
-    */
-    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
-
-        validatorVTMetadataHash=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V])),
-
-        shouldSignToAlive =
-
-            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VOTE_TO_ALIVE
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(helloMessage?.V)
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
-            &&
-            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].BLOCKS_GENERATOR//Also,check if validator was marked as ACTIVE:false
-            &&
-            await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
-
-
-    if(shouldSignToAlive){
-
-        let myAgreement = await SIG(validatorVTMetadataHash)
-
-        !a.aborted&&a.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
-    
-    }else !a.aborted&&a.end('Overview failed')
-
-}),
-
-
-
 /*
 
-Accept other FINALIZATION_PROOF from other quorum members and returns own FINALIZATION_PROOF if exists in local cache
+
+*************************************************************************************************************************
+                                                                                                                        * 
+Accept other FINALIZATION_PROOF from other quorum members and returns own FINALIZATION_PROOF if exists in local cache   *
+                                                                                                                        *
+*************************************************************************************************************************
+
 
 We get FINALIZATION_PROOF from SYMBIOTE_META.FINALIZATION_PROOF mapping. We fullfilled this mapping inside POST /commitment mapping when some block PubX:Y:H(height=Y,creator=PubX,hash=H)
 receive 2/3N+1 commitments
@@ -344,7 +357,7 @@ To verify FINALIZATION_PROOF from some ValidatorX we need to do this steps:
 
 1)Verify the finalization signa
 
-    VERIFY(blockID+hash+"FINALIZATION",finalization_signa,ValidatorX)
+    VERIFY(blockID+hash+"FINALIZATION",finalization_signa,Validator)
 
 
 If verification is ok, add this FINALIZATION_PROOF to cache mapping SYMBIOTE_META.FINALIZATON_PROOFS
@@ -375,6 +388,11 @@ finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 /*
 
+****************************************************************
+                                                               *
+Accept SUPER_FINALIZATION_PROOF or send it if exists locally   *
+                                                               *
+****************************************************************
 
     Latest bastion. This POST /superfinalization route share SUPER_FINALIZATION_PROOF from SYMBIOTE_META.SUPER_FINALIZATION_PROOFS
 
@@ -420,8 +438,15 @@ superFinalization=async(a,q)=>{
 },
 
 
-//Accept checkpoints from other validators in quorum and returns own version as answer
-//! Check the trigger START_SHARING_CHECKPOINT
+/*
+
+
+Accept checkpoints from other validators in quorum and returns own version as answer
+! Check the trigger START_SHARING_CHECKPOINT
+
+We take checkpoints from SYMBIOTE_META.CHECKPOINTS
+
+*/
 checkpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
 
@@ -472,31 +497,13 @@ UWS_SERVER
 
 .post('/awakerequest',awakeRequestMessageHandler)
 
+.post('/superfinalization',superFinalization)
 
-
-
-//To accept/get aggregated object-proof where 2/3N+1 from QUORUM have produced commitments for block X by ValidatorY with hash <HASH>
-//If validator from quorum has this finalization-proof - it'll never vote for another solution to add to checkpoint 
-//If 2/3*N+1 of validators from quorum has such finalization proof - then, it's 100% garantee of non-rollback
-
-
-//To accept/get commitments about accepting block X by ValidatorY with hash <HASH>
-//Finalization proof consists of these commitments. If more than 2/3*N from QUORUM have produced such commitment for block X by ValidatorY with hash <HASH> - then,you can aggregate it
-//and share to validators in QUORUM to prevent changes to checkpoints which will be published on hostchains
-
-//To accept commitments for blockX by ValdatorY with hash <HASH> from another validators in QUORUM
-.post('/commitments',commitments)
-
-//Accept FinalizationProof from external source. Verify it, and if OK - store locally
 .post('/finalization',finalization)
 
-.get('/superfinalization',superFinalization)
+.post('/commitments',commitments)
 
-//To get/set pointers on hostchains to track progress of verification thread
 .post('/checkpoint',checkpoint)
-
-
-
 
 .post('/block',acceptBlocks)
 

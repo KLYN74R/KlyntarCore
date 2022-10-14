@@ -111,6 +111,7 @@ block=(a,q)=>{
 
 
 
+//Returns current validators pool
 getValidators=a=>{
 
     //Set triggers
@@ -125,6 +126,20 @@ getValidators=a=>{
 },
 
 
+
+//Returns quorum for today
+getCurrentQuorum=a=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
+
+        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>a.aborted=true)
+
+        a.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
+
+    }else !a.aborted && a.end('Symbiote not supported')
+
+},
 
 
 /*

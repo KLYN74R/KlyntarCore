@@ -191,7 +191,6 @@
         "API_MULTI":600,
 
         "GET_STUFF":600,
-        "GET_COMMITMENTS":600,
         "GET_VALIDATORS":600
     },
     
@@ -203,16 +202,11 @@
         "API_BLOCK":1,
         "API_MULTI":1,
         "API_SHARE_STUFF":1,
-        "GET_COMMITMENTS":1,
         
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
-        "ACCEPT_HOSTCHAINS_PROOFS":1,
-        "ACCEPT_VALIDATORS_COMMITMENTS":1,
         "ACCEPT_COMMITMENTS":1,
-        "ACCEPT_VOTE_TO_ALIVE":1,
-        "ACCEPT_SKIP_PROOFS":1,
         "ACCEPT_VALIDATORS_MESSAGES":{
             "AWAKE":1
         },

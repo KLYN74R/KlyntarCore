@@ -83,7 +83,7 @@ let graceful=()=>{
 
             if(CONFIG.SYMBIOTE.STORE_QUORUM_COMMITMENTS_CACHE){
                 
-                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE)),()=>{
+                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.COMMITMENTS)),()=>{
 
                     LOG('Validators proofs stored to cache','I')
 
@@ -578,7 +578,9 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
+
     //____________________________________________Prepare structures_________________________________________________
+
 
 
 
@@ -602,7 +604,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SUPER_FINALIZATION_PROOFS:new Map(), //the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
 
-        CHECKPOINTS:new Map()
+        CHECKPOINTS:new Map() //used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
 
     }
 
