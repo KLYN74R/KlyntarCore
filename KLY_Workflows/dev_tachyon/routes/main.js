@@ -1,11 +1,12 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
+
 import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
 import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
 
 import Block from '../essences/block.js'
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 
 
