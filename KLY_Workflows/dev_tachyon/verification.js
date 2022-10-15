@@ -11,151 +11,12 @@ import fetch from 'node-fetch'
 
 
 
-global.GETTING_BLOCK_FROM_NETWORK_PROCESS=false
-
-
-
-
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
 
 
 export let
-
-
-
-//blocksAndProofs - array like this [{b:blockX,p:Proof_for_blockX}, {b:blockY,p:Proof_for_blockY}, ...]
-PERFORM_BLOCK_MULTISET=blocksAndProofs=>{
-
-    blocksAndProofs.forEach(
-            
-        //blockAndProof - {b:<block object>,p:<proof object>}
-        async blockAndProof => {
-    
-            let {b:block,p:bftProof} = blockAndProof,
-    
-                blockHash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
-    
-            if(await VERIFY(blockHash,block.sig,block.c)){
-    
-                SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>{})
-    
-            }
-    
-            if(bftProof) SYMBIOTE_META.VALIDATORS_COMMITMENTS.put(block.c+":"+block.i,bftProof).catch(e=>{})
-    
-        }
-    
-    )
-
-    //Reset flag
-    GETTING_BLOCK_FROM_NETWORK_PROCESS=false
-
-},
-
-
-
-
-/*
-
-? Initially we ask blocks from CONFIG.SYMBIOTE.GET_MULTI node. It might be some CDN service, special API, private fast node and so on
-
-We need to send an array of block IDs e.g. [Validator1:1337,Validator2:1337,Validator3:1337,Validator1337:1337, ... ValidatorX:2294]
-
-*/
-
-GET_BLOCKS_FOR_FUTURE = () => {
-
-    //Set locker
-    global.GETTING_BLOCK_FROM_NETWORK_PROCESS=true
-
-
-    let blocksIDs=[],
-
-        currentValidators=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
-    
-        limitedPool = currentValidators.slice(0,CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT)
-
-    
-    if(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT>currentValidators.length){
-
-        let perValidator = Math.floor(CONFIG.SYMBIOTE.GET_MULTIPLY_BLOCKS_LIMIT/currentValidators.length)
-
-        for(let index=0;index<perValidator;index++){
-
-            for(let validator of currentValidators){
-
-                if(validator===CONFIG.SYMBIOTE.PUB) continue
-
-                blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+index))
-
-            }
-
-        }
-
-
-    }else{
-
-        //If number of validators is bigger than our configurated limit to ask in advance blocks, then we ask 1 block per validator(according to VERIFICATION_THREAD state)
-        for(let validator of limitedPool) blocksIDs.push(validator+":"+(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].INDEX+1))
-
-    }    
-
-
-    let blocksIDsInJSON = JSON.stringify(blocksIDs)
-
- 
-    fetch(CONFIG.SYMBIOTE.GET_MULTI+`/multiplicity`,{
-    
-        method:'POST',
-    
-        body: blocksIDsInJSON
-    
-    
-    }).then(r=>r.json()).then(PERFORM_BLOCK_MULTISET).catch(async error=>{
-        
-        LOG(`Some problem when load multiplicity of blocks on \x1b[32;1m${SYMBIOTE_ALIAS()}\n${error}`,'I')
-    
-        LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_MULTI\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
-
-        //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
-
-
-        for(let url of allVisibleNodes){
-
-            let itsProbablyArrayOfBlocksAndProofs=await fetch(url+'/multiplicity',{method:'POST',body:blocksIDsInJSON}).then(r=>r.json()).catch(e=>false)
-
-            if(itsProbablyArrayOfBlocksAndProofs){
-
-                PERFORM_BLOCK_MULTISET(itsProbablyArrayOfBlocksAndProofs)
-
-                break
-                
-            }
-
-        }
-
-        //Reset flag
-        GETTING_BLOCK_FROM_NETWORK_PROCESS=false
-
-    })
-
-},
-
-
-
-
-GET_BLOCKS_FOR_FUTURE_WRAPPER = async() => {
-
-    !GETTING_BLOCK_FROM_NETWORK_PROCESS //if flag is not disabled - then we still find blocks in another thread
-    &&
-    await GET_BLOCKS_FOR_FUTURE()
-
-    setTimeout(GET_BLOCKS_FOR_FUTURE_WRAPPER,CONFIG.SYMBIOTE.GET_BLOCKS_FOR_FUTURE_TIMEOUT)
-
-},
 
 
 
@@ -228,6 +89,7 @@ GET_BLOCK = (blockCreator,index) => {
 
 
 
+
 CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
 
     //Method which create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
@@ -292,6 +154,37 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockId,blockHash) => {
 
+    // "/getsuperfinalization"
+
+    //Go through known hosts and find SUPER_FINALIZATION_PROOF
+
+    let allVisibleNodes=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
+            
+
+
+    for(let url of allVisibleNodes){
+
+        if(url===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+                
+        let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
+                
+        if(itsProbablyBlock){
+    
+            let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
+                
+            if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
+    
+                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+
+                SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(e=>{})
+    
+                return itsProbablyBlock
+    
+            }
+    
+        }
+    
+    }
 
 },
 

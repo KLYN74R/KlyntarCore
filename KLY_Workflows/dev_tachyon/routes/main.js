@@ -277,14 +277,37 @@ postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
                 //Check if appropriate pool exist(related to blockID and hash)
                 let poolID = singleCommitment.B+"/"+singleCommitment.H
 
-                if(!SYMBIOTE_META.COMMITMENTS.has(poolID)) SYMBIOTE_META.COMMITMENTS.set(poolID,new Map())
+                if(!SYMBIOTE_META.COMMITMENTS.has(poolID)) {
+
+                    if(SYMBIOTE_META.COMMITMENTS.size>=CONFIG.SYMBIOTE.COMMITMENTS_POOL_LIMIT) return
+
+                    SYMBIOTE_META.COMMITMENTS.set(poolID,new Map())
+
+                }
 
                 let mapping = SYMBIOTE_META.COMMITMENTS.get(poolID)
 
                 mapping.set(commitmentsSet.validator,singleCommitment.S)
 
-            }
 
+                let majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1), majorityNumberOfCommitments = SYMBIOTE_META.QUORUM.length-mapping.size >= majority
+
+                if(majorityNumberOfCommitments){
+
+                    //If we have more than 2/3N+1 commitments - we can generate FINALIZATION_PROOF
+
+                    let finalizationProofSignature = await SIG(singleCommitment.B+singleCommitment.H+"FINALIZATION")
+
+                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
+
+                    SYMBIOTE_META.FINALIZATION_PROOFS.get(poolID).set(CONFIG.SYMBIOTE.PUB,finalizationProofSignature)
+
+                    //Flush commitments because no more sense to store it when we have FINALIZATION_PROOF
+                    SYMBIOTE_META.COMMITMENTS.delete(poolID)
+    
+                }
+
+            }
         
         }
         
@@ -315,7 +338,24 @@ getCommitment=async(a,q)=>{
 
             a.end(commitmentsPoolExists.get(CONFIG.SYMBIOTE.PUB))
 
-        }else a.end('No such pool')
+        }else {
+
+            let block = await SYMBIOTE_META.BLOCKS.get(blockCreator+':'+index).catch(e=>false)
+
+            if(block){
+
+                let blockHash = Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
+
+                if(blockHash===hash){
+
+                    //Generete commitment
+
+
+                }else a.end('Hash mismatch')
+
+            }
+
+        }
 
     }else a.end('Route is off')
 
@@ -326,11 +366,11 @@ getCommitment=async(a,q)=>{
 /*
 
 
-*************************************************************
-                                                            * 
-Accept FINALIZATION_PROOF from other quorum members and     *
-                                                            *
-*************************************************************
+*****************************************************
+                                                    * 
+Accept FINALIZATION_PROOF from other quorum members *
+                                                    *
+*****************************************************
 
 
 We get FINALIZATION_PROOF from SYMBIOTE_META.FINALIZATION_PROOF mapping. We fullfilled this mapping inside POST /commitment mapping when some block PubX:Y:H(height=Y,creator=PubX,hash=H)
@@ -387,7 +427,6 @@ postFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted((
 
         !a.aborted&&a.end('OK')
 
-        
         let signatureIsOk = await VERIFY(finalizationProof.blockID+finalizationProof.hash+"FINALIZATION",finalizationProof.finalizationSigna,finalizationProof.validator)
 
         if(signatureIsOk){
@@ -395,11 +434,57 @@ postFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted((
             //Check if appropriate pool exist(related to blockID and hash)
             let poolID = finalizationProof.blockID+"/"+finalizationProof.hash
 
-            if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
+            if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) {
+
+                if(SYMBIOTE_META.FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.FINALIZATION_PROOFS_POOL_LIMIT) return
+
+                SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
+
+            }
 
             let mapping = SYMBIOTE_META.FINALIZATION_PROOFS.get(poolID)
 
             mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
+
+            
+            let majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1), majorityVotedForFinalization = SYMBIOTE_META.QUORUM.length-mapping.size >= majority
+
+
+            //If more than 2/3N+1 finalization proofs exists - we can aggregate them to build SUPER_FINALIZATION_PROOF
+            if(majorityVotedForFinalization){
+
+                let pubkeys=[], signatures=[], afkValidators = []
+
+                SYMBIOTE_META.QUORUM.forEach(pubKey=>{
+
+                    if(mapping.has(pubKey)){
+
+                        pubkeys.push(Base58.decode(pubKey))
+                    
+                        signatures.push(Buffer.from(signa,'base64'))
+
+                    }else afkValidators.push(pubKey)
+
+                })
+
+                let superFinalizationProof={
+
+                    aggregatedPub:Base58.encode(await bls.aggregatePublicKeys(pubkeys)),
+
+                    aggregatedSignature:Buffer.from(await bls.aggregateSignatures(signatures)).toString('base64'),
+
+                    afkValidators
+
+                }
+
+                //Add SUPER_FINALIZATION_PROOF to cache
+                SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.set(poolID,superFinalizationProof)
+
+                //...and delete appropriate pool from FINALIZATION_PROOFS because lack of sense in it when we already have SUPER_FINALIZATION_PROOF
+                SYMBIOTE_META.FINALIZATION_PROOFS.delete(poolID)
+
+
+            }
 
         }
 
@@ -426,6 +511,8 @@ getFinalization=async(a,q)=>{
     }else a.end('Route is off')
 
 },
+
+
 
 
 /*
@@ -486,7 +573,11 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
         return
 
-    }else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
+    } 
+    
+    else if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.SUPER_FINALIZATION_PROOFS_POOL_LIMIT) return
+    
+    else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
 
         !a.aborted&&a.end('OK')
     
@@ -510,6 +601,9 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
                 afkValidators:superFinalizationProof.afkValidators
 
             })
+
+            //And delete pool with the finalization proofs from other quorum members because we don't need it anymore
+            SYMBIOTE_META.FINALIZATION_PROOFS.delete(poolID)
 
         }
         
