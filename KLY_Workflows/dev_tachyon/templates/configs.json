@@ -206,11 +206,18 @@
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
+
         "ACCEPT_COMMITMENTS":1,
+        "ACCEPT_FINALIZATION_PROOFS":1,
+        "ACCEPT_SUPER_FINALIZATION_PROOFS":1,
+        
         "ACCEPT_VALIDATORS_MESSAGES":{
             "AWAKE":1
         },
 
+        "GET_COMMITMENTS":1,
+        "GET_FINALIZATION_PROOFS":1,
+        "GET_SUPER_FINALIZATION_PROOFS":1,
         "GET_VALIDATORS":1
     },
     

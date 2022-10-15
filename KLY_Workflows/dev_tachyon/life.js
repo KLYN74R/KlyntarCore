@@ -302,19 +302,23 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
 
-        //To send to other validators and get signatures as a commitment of acception this part of blocks
+        //________________________________Create commitments________________________________
 
         let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index,
 
-            meta={
+            commitmentTemplate={
         
                 B:blockID,
+
+                H:hash,
+
+                O:blockCandidate.sig,
             
-                S:await SIG(blockID+":"+hash)//self-sign our commitment as one of the validator
+                S:await SIG(blockID+hash)//self-sign our commitment as one of the validator
         
             }
         
-        commitmentsArray.push(meta)
+        commitmentsArray.push(commitmentTemplate)
 
 
 
@@ -323,13 +327,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
 
-        promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
-
-            // Validators proofs will be stored in V property as object with PublicKey=>Signature(BLOCK_ID+":"+BLOCK_HASH)
-            SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(blockID,{V:{[CONFIG.SYMBIOTE.PUB]:meta.S}})
-             
-
-        ).then(()=>blockCandidate).catch(error=>{
+        promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>blockCandidate).catch(error=>{
                 
             LOG(`Failed to store block ${blockCandidate.index} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
 
@@ -339,12 +337,16 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
            
     }
 
-
-    //______________________________________ WORKING WITH PROOFS & GENERATION THREAD METADATA ______________________________________
+    
+    commitmentsArray={
+        
+        validator:CONFIG.SYMBIOTE.PUB,
+        
+        payload:commitmentsArray
+    
+    }
 
     
-    commitmentsArray={v:CONFIG.SYMBIOTE.PUB,p:commitmentsArray}
-
     //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
     //?NOTE - we use setTimeout here to delay sending our commitments. We need to give some time for network to share blocks
     setTimeout(async()=>{
@@ -352,7 +354,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         let promises = []
 
         //0. Initially,try to get pubkey => node_ip binding 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+        SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
             
             pubkey => promises.push(GET_STUFF(pubkey))
             
@@ -366,9 +368,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         for(let validatorNode of pureUrls) {
 
-            if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
-
-            fetch(validatorNode+'/setcommitments',{
+            fetch(validatorNode+'/acceptcommitments',{
                 
                 method:'POST',
                 
@@ -381,7 +381,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         //You can also share proofs over the network, not only to validators
         CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
         &&
-        BROADCAST('/setcommitments',payload)
+        BROADCAST('/acceptcommitments',payload)
 
 
     },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)
@@ -392,7 +392,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     //_______________________________________________COMMIT CHANGES___________________________________________________
 
 
-    //Commit group of blocks by setting hash and index of the last one
+
 
     await Promise.all(promises.splice(0)).then(arr=>
         
@@ -407,85 +407,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                     
                 )
 
-
-                //_____________________________________________PUSH TO HOSTCHAINS_______________________________________________
-    
-                // //Push to hostchains due to appropriate symbiote
-                // Object.keys(CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS).forEach(async ticker=>{
-    
-                //     //TODO:Add more advanced logic
-                //     if(!CONFIG.SYMBIOTE.STOP_HOSTCHAINS[ticker]){
-    
-                //         let control=SYMBIOTE_META.HOSTCHAINS_MONITORING[ticker],
-                        
-                //             hostchain=HOSTCHAINS.CONNECTORS.get(ticker),
-    
-                //             //If previous push is still not accepted-then no sense to push new symbiote update
-                //             isAlreadyAccepted=await hostchain.checkCommit(control.HOSTCHAIN_HASH,control.INDEX,control.KLYNTAR_HASH).catch(e=>false)
-                        
-
-
-                //         LOG(`Check if previous commit is accepted for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m on \x1b[32;1m${ticker}\x1b[36;1m ~~~> \x1b[32;1m${
-                                
-                //             control.KLYNTAR_HASH===''?'Just start':isAlreadyAccepted
-                            
-                //         }`,'I')
-    
-
-
-                //         if(control.KLYNTAR_HASH===''||isAlreadyAccepted){
-
-                //             //If accpted-we can share to the rest
-                //             isAlreadyAccepted
-                //             &&
-                //             Promise.all(BROADCAST('/checkpoints',{...control,symbiote:CONFIG.SYMBIOTE.SYMBIOTE_ID,ticker}))
-                        
-
-                //             let index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1,
-
-                //                 symbioticHash=await hostchain.makeCommit(index,SYMBIOTE_META.GENERATION_THREAD.PREV_HASH).catch(e=>{
-                                    
-                //                     LOG(`Error on \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m with push to \x1b[36;1m${ticker} \n${e}`,'W')
-                                
-                //                     return false
-                //                 })
-                    
-
-                //             if(symbioticHash){
-
-                //                 LOG(`Commit on ${SYMBIOTE_ALIAS()}\x1b[32;1m to \x1b[36;1m${ticker}\x1b[32;1m for block \x1b[36;1m${index}\x1b[32;1m is \x1b[36;1m${symbioticHash}`,'S')
-                                
-                //                 //Commit localy that we have send it
-                //                 control.KLYNTAR_HASH=SYMBIOTE_META.GENERATION_THREAD.PREV_HASH
-                    
-                //                 control.INDEX=index
-                        
-                //                 control.HOSTCHAIN_HASH=symbioticHash
-
-                //                 control.SIG=await SIG(control.KLYNTAR_HASH+control.INDEX+control.HOSTCHAIN_HASH+ticker)
-                                
-                //                 await SYMBIOTE_META.HOSTCHAINS_DATA.put(index+ticker,{KLYNTAR_HASH:control.KLYNTAR_HASH,HOSTCHAIN_HASH:control.HOSTCHAIN_HASH,SIG:control.SIG})
-                                            
-                //                     .then(()=>SYMBIOTE_META.HOSTCHAINS_DATA.put(ticker,control))//set such canary to avoid duplicates when quick reboot daemon
-                        
-                //                     .then(()=>LOG(`Locally store pointer for \x1b[36;1m${index}\x1b[32;1m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on \x1b[36;1m${ticker}`,'S'))
-                        
-                //                     .catch(e=>LOG(`Error-impossible to store pointer for \x1b[36;1m${index}\u001b[38;5;3m block of \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m on \x1b[36;1m${ticker}`,'W'))
-    
-    
-                //             }
-
-                //             LOG(`Balance on hostchain \x1b[32;1m${ticker}\x1b[36;1m is \x1b[32;1m${await hostchain.getBalance()}`,'I')
-                            
-                //         }
-    
-                //     }
-                        
-                // })
-
-
                 resolve()
-
 
             })
             
@@ -651,8 +573,6 @@ PREPARE_SYMBIOTE=async()=>{
         
         'HOSTCHAINS_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
     
-        'VALIDATORS_COMMITMENTS',// commitments by quorum
-
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
         'CONTRACTS' //Storage of WASM contracts for KLYNTAR VM
@@ -742,6 +662,8 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
     
+                QUORUM:[],
+
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
                 CURRENT_CHECKPOINT:{
@@ -801,7 +723,7 @@ PREPARE_SYMBIOTE=async()=>{
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
-    SYMBIOTE_META.STUFF_CACHE.set('VALIDATORS_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))))
+    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________

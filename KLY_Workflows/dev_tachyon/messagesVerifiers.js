@@ -29,11 +29,11 @@ export default {
 
     AWAKE:async(messagePayload,notJustOverview)=>{
 
-        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('VALIDATORS_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(Base58.decode))),
+        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))),
 
             rootPub = Base58.encode(await bls.aggregatePublicKeys([...messagePayload.A.map(Base58.decode),Base58.decode(messagePayload.P)])),
 
-            validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
+            validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
             majority = Math.floor(validatorsNumber*(2/3))+1
 

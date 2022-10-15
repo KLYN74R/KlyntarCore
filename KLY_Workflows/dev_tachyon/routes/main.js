@@ -5,6 +5,7 @@ import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
 
 import Block from '../essences/block.js'
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 
 
@@ -194,20 +195,18 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
 /*
 
-********************************************************************************
-                                                                               *
-To accept signatures of blocks from validators in quorum                       *
-                                                                               *
-Accept payload and answer with payload if exists in db or cache                *
-                                                                               *
-********************************************************************************
+*************************************************************
+                                                            *
+To accept signatures of blocks from validators in quorum    *
+                                                            *
+*************************************************************
 
 
 Here we receive the object with validator's pubkey and his array of commitments
 
 {
-    v:<PUBKEY>,
-    p:[
+    validator:<PUBKEY>,
+    payload:[
         <Commitment1>,
         <Commitment2>,
         <Commitment3>,
@@ -223,19 +222,21 @@ Commitment is object
     B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>
 
     H:<Block hash>
+
+    O:<Origin -> the signature by block's creator to make sure that creator indeed created it's block>
     
-    S:<Signature => SIG(BLOCK_ID+":"+HASH)>
+    S:<Signature => SIG(BLOCK_ID+HASH)>
         
 }
 
 To verify that ValidatorX has received and confirmed block BLOCK_ID from ValidatorY we check
 
-VERIFY(BLOCK_ID+":"+HASH,Signature,Validator's pubkey)
+VERIFY(BLOCK_ID+HASH,Signature,Validator's pubkey)
 
 
 ***********************************************************************************
 
-We put these commitments to local mapping SYMBIOTE_META.COMMITMENTS. The key is blockID:HASH and value is mapping like this
+We put these commitments to local mapping SYMBIOTE_META.COMMITMENTS. The key is blockID/HASH and value is mapping like this
 
 {
     "<VALIDATOR-WHO-CREATE-COMMITMENT>":"<HIS_BLS_SIGNATURE>"
@@ -248,90 +249,87 @@ More info about FINALIZATION_PROOF available in description to POST /finalizatio
 
 */
 
-commitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-    let payload=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE),
-
-
-        shouldAccept = 
-        
-        CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS
-        &&
-        (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(payload.v))//to prevent spam - accept proofs only
-        &&
-        SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.size<CONFIG.SYMBIOTE.PROOFS_CACHE_SIZE
+    
+    let commitmentsSet=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-
-    if(shouldAccept){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(commitmentsSet.validator)){
 
         !a.aborted&&a.end('OK')
 
-        //Go through the set of proofs
-        for(let proof of payload.p){
+        //Go through the set of commitments
+        for(let singleCommitment of commitmentsSet.payload){
 
-            let proofRefInCache = SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(proof.B)
-
-            //If some proofs from other validators exists - then reference to object in mapping should exist
-            if(proofRefInCache){
-
-                let checkIfVoteFromThisValidatorExists = proofRefInCache[proof.v]
-
-                if(!checkIfVoteFromThisValidatorExists){
-
-                    //If no votes from this validator - accept it
-                    let [blockCreator,height] = proof.B.split(':'),
             
-                        blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)).catch(e=>false),//await GET_STUFF('HASH:'+proof.B) || 
-    
-                        //Not to waste memory - don't accept block too far from current state of VERIFICATION_THREAD
-                        shouldAcceptDueToHeight = (SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE)>(+height)    
+            let signaturesIsOk =    await VERIFY(singleCommitment.B+singleCommitment.H,singleCommitment.S,commitmentsSet.validator)
+            
+                                    &&
+                                
+                                    await VERIFY(singleCommitment.H,singleCommitment.O,singleCommitment.B.split(':')[0])
 
 
-                    if(shouldAcceptDueToHeight && await VERIFY(proof.B+":"+blockHash,proof.S,payload.v) && CONFIG.SYMBIOTE.VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK>Object.keys(proofRefInCache).length){
+            
+            if(signaturesIsOk){
 
-                        proofRefInCache.V[proof.v]=proof.S
+                //Check if appropriate pool exist(related to blockID and hash)
+                let poolID = singleCommitment.B+"/"+singleCommitment.H
 
-                    }
+                if(!SYMBIOTE_META.COMMITMENTS.has(poolID)) SYMBIOTE_META.COMMITMENTS.set(poolID,new Map())
 
-                }
+                let mapping = SYMBIOTE_META.COMMITMENTS.get(poolID)
 
-            }else{
-
-                
-                let blockHash = await SYMBIOTE_META.BLOCKS.get(proof.B).then(block=>Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)).catch(e=>false)//await GET_STUFF('HASH:'+proof.B) || 
-    
-
-                if(await VERIFY(proof.B+":"+blockHash,proof.S,payload.v)){
-
-                    let proofTemplate = {V:{}}
-                    
-                    proofTemplate.V[payload.v]=proof.S
-                    
-                    SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.set(proof.B,proofTemplate)
-                    
-                }
+                mapping.set(commitmentsSet.validator,singleCommitment.S)
 
             }
 
+        
         }
-            
+        
+        
+        !a.aborted&&a.end('OK')
+
+
     }else !a.aborted&&a.end('Route is off')
     
 
 }),
 
 
+/*
+
+Return commitment by blockID:Hash
+
+0 - blockID:Hash
+
+*/
+getCommitment=async(a,q)=>{
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
+
+        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'), commitmentsPoolExists = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
+
+        if(commitmentsPoolExists){
+
+            a.end(commitmentsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+
+        }else a.end('No such pool')
+
+    }else a.end('Route is off')
+
+},
+
 
 
 /*
 
 
-*************************************************************************************************************************
-                                                                                                                        * 
-Accept other FINALIZATION_PROOF from other quorum members and returns own FINALIZATION_PROOF if exists in local cache   *
-                                                                                                                        *
-*************************************************************************************************************************
+*************************************************************
+                                                            * 
+Accept FINALIZATION_PROOF from other quorum members and     *
+                                                            *
+*************************************************************
 
 
 We get FINALIZATION_PROOF from SYMBIOTE_META.FINALIZATION_PROOF mapping. We fullfilled this mapping inside POST /commitment mapping when some block PubX:Y:H(height=Y,creator=PubX,hash=H)
@@ -347,7 +345,7 @@ Structure of FINALIZATION_PROOF
     
     validator:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta", //creator of FINALIZATION_PROOF
 
-    finalization_signa:SIG(blockID+hash+"FINALIZATION")
+    finalizationSigna:SIG(blockID+hash+"FINALIZATION")
 
 }
 
@@ -362,7 +360,7 @@ To verify FINALIZATION_PROOF from some ValidatorX we need to do this steps:
 
 If verification is ok, add this FINALIZATION_PROOF to cache mapping SYMBIOTE_META.FINALIZATON_PROOFS
 
-Key is blockID:Hash and value is inner mapping like this:
+Key is blockID/Hash and value is inner mapping like this:
 
 {
     "<VALIDATOR-WHO-CREATE-FINALIZATION-PROOF>":"<finalization_signa>"
@@ -378,19 +376,62 @@ More detailed about it in description to the next route
 
 */
 
-finalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+postFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
 
-    
+
+    let finalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(finalizationProof.validator)){
+
+        !a.aborted&&a.end('OK')
+
+        
+        let signatureIsOk = await VERIFY(finalizationProof.blockID+finalizationProof.hash+"FINALIZATION",finalizationProof.finalizationSigna,finalizationProof.validator)
+
+        if(signatureIsOk){
+
+            //Check if appropriate pool exist(related to blockID and hash)
+            let poolID = finalizationProof.blockID+"/"+finalizationProof.hash
+
+            if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
+
+            let mapping = SYMBIOTE_META.FINALIZATION_PROOFS.get(poolID)
+
+            mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
+
+        }
+
+    }else !a.aborted&&a.end('Route is off')
+
 
 }),
 
+
+
+
+getFinalization=async(a,q)=>{
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_FINALIZATION_PROOFS){
+
+        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'), proofsPoolExists = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
+
+        if(proofsPoolExists){
+
+            a.end(proofsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+
+        }else a.end('No such pool')
+
+    }else a.end('Route is off')
+
+},
 
 
 /*
 
 ****************************************************************
                                                                *
-Accept SUPER_FINALIZATION_PROOF or send it if exists locally   *
+Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
                                                                *
 ****************************************************************
 
@@ -398,7 +439,7 @@ Accept SUPER_FINALIZATION_PROOF or send it if exists locally   *
 
     If we have SUPER_FINZALIZATION_PROOF - response with it
 
-    If we incoming payload is SUPER_FINZALIZATION_PROOF - then verify it and if OK,
+    If the incoming payload is SUPER_FINZALIZATION_PROOF - then verify it and if OK,
         
         store locally and delete other FINALIZATION_PROOFS from local caches(because no more sense to store them when we already have SUPER_FINALIZATION_PROOF)
 
@@ -428,14 +469,76 @@ To verify SUPER_FINALIZATION_PROOF we should follow several steps:
 2) Make sure, that QUORUM_ROOT_KEY === Aggregate(aggregatedPub,afkValidators)
 
 
-3) Make sure that it's majority solution by doing QUORUM_SIZE-afkValidators >= 2/3N+1
+3) Make sure that it's majority solution by checking QUORUM_SIZE-afkValidators >= 2/3N+1
 
 */
-superFinalization=async(a,q)=>{
+postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+
+    let superFinalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+
+    //Check if appropriate pool exist(related to blockID and hash)
+    let poolID = superFinalizationProof.blockID+"/"+superFinalizationProof.hash
+
+    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(poolID)){
+
+        a.end('SUPER_FINALIZATION_PROOF already exists')
+
+        return
+
+    }else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
+
+        !a.aborted&&a.end('OK')
+    
+        let aggregatedSignatureIsOk = await VERIFY(superFinalizationProof.blockID+superFinalizationProof.hash+"FINALIZATION",superFinalizationProof.aggregatedSigna,superFinalizationProof.aggregatedPub),
+
+            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === await bls.aggregatePublicKeys([Base58.decode(superFinalizationProof.aggregatedPub),...superFinalizationProof.afkValidators.map(Base58.decode)]),
+
+            majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1),
+
+            majorityVotedForFinalization = SYMBIOTE_META.QUORUM.length-superFinalizationProof.afkValidators.length >= majority
 
 
+        if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForFinalization){
+
+            SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.set(poolID,{
+
+                aggregatedPub:superFinalizationProof.aggregatedPub,
+
+                aggregatedSigna:superFinalizationProof.aggregatedSignature,
+            
+                afkValidators:superFinalizationProof.afkValidators
+
+            })
+
+        }
+        
+    }else !a.aborted&&a.end('Route is off')
+
+}),
+
+
+
+
+// 0 - blockID:hash
+getSuperFinalization=async(a,q)=>{
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
+
+        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'),
+
+            superProof = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockCreator+':'+index+'/'+hash)
+
+        if(superProof){
+
+            a.end(JSON.stringify(superProof))
+
+        }else a.end('No proof')
+
+    }else a.end('Route is off')
 
 },
+
+
 
 
 /*
@@ -497,11 +600,26 @@ UWS_SERVER
 
 .post('/awakerequest',awakeRequestMessageHandler)
 
-.post('/superfinalization',superFinalization)
 
-.post('/finalization',finalization)
+//1st stage - logic with commitments
+.get('/getcommitments',getCommitment)
 
-.post('/commitments',commitments)
+.post('/commitments',postCommitments)
+
+
+//2nd stage - logic with finalization
+.get('/getfinalization',getFinalization)
+
+.post('/finalization',postFinalization)
+
+
+//3rd stage - logic with super finalization proofs
+.get('/getsuperfinalization',getSuperFinalization)
+
+.post('/superfinalization',postSuperFinalization)
+
+
+
 
 .post('/checkpoint',checkpoint)
 
