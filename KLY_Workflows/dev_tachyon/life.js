@@ -275,7 +275,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         promises=[],//to push blocks to storage
 
-        commitmentsArray=[]//to share among other validators and get proofs from them
+        commitmentsArray=[]//to share commitments among other quorun members
 
 
     phantomBlocksNumber++//DELETE after tests
@@ -302,9 +302,15 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
 
+        SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
+ 
+        SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
+    
         //________________________________Create commitments________________________________
 
-        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index,
+        if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+
+            let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index,
 
             commitmentTemplate={
         
@@ -318,14 +324,15 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         
             }
         
-        commitmentsArray.push(commitmentTemplate)
+            commitmentsArray.push(commitmentTemplate)
 
+            //Create local pool and push our commitment if we're in quorum
 
+            SYMBIOTE_META.COMMITMENTS.set(blockID+'/'+hash,new Map())
 
-        SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
- 
-        SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
-    
+            SYMBIOTE_META.COMMITMENTS.get(blockID+'/'+hash).set(CONFIG.SYMBIOTE.PUB,commitmentTemplate.S)
+
+        }
 
         promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>blockCandidate).catch(error=>{
                 
@@ -368,7 +375,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
         for(let validatorNode of pureUrls) {
 
-            fetch(validatorNode+'/acceptcommitments',{
+            fetch(validatorNode+'/commitments',{
                 
                 method:'POST',
                 
@@ -381,7 +388,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         //You can also share proofs over the network, not only to validators
         CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
         &&
-        BROADCAST('/acceptcommitments',payload)
+        BROADCAST('/commitments',payload)
 
 
     },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)

@@ -8,7 +8,7 @@ import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
 
 import Block from '../essences/block.js'
 
-
+import Base58 from 'base-58'
 
 
 let
@@ -583,7 +583,7 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
     
         let aggregatedSignatureIsOk = await VERIFY(superFinalizationProof.blockID+superFinalizationProof.hash+"FINALIZATION",superFinalizationProof.aggregatedSigna,superFinalizationProof.aggregatedPub),
 
-            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === await bls.aggregatePublicKeys([Base58.decode(superFinalizationProof.aggregatedPub),...superFinalizationProof.afkValidators.map(Base58.decode)]),
+            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(superFinalizationProof.aggregatedPub),...superFinalizationProof.afkValidators.map(Base58.decode)])),
 
             majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1),
 

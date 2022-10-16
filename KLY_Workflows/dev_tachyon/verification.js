@@ -1,12 +1,16 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
+
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import MESSAGE_VERIFIERS from './messagesVerifiers.js'
 
 import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
+
+import Base58 from 'base-58'
 
 
 
@@ -152,38 +156,59 @@ Verification process:
     If this both conditions is ok - then you can accept block with 100% garantee of irreversibility
 
 */
-GET_SUPER_FINALIZATION_PROOF = async (blockId,blockHash) => {
+GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
+    
+    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /getsuperfinalization route
+    
+    let promises=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL] //immediately push custom URL as the first node we'll communicate. It might be server runned in cooperation with some plugin for custom exchange logic
+    
 
-    // "/getsuperfinalization"
+    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+        
+        pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+            url => ({pubKey,pureUrl:url.payload.url})
+        
+        ))
 
-    //Go through known hosts and find SUPER_FINALIZATION_PROOF
-
-    let allVisibleNodes=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
+    )
             
+    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+    
+    for(let memberURL of quorumMembersURLs){
+
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/getsuperfinalization'+blockID+':'+blockHash).catch(e=>false),
+
+            generalAndTypeCheck =   itsProbablySuperFinalizationProof
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.aggregatedPub === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.aggregatedSigna === 'string'
+                                    &&
+                                    Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
 
-    for(let url of allVisibleNodes){
+        if(generalAndTypeCheck){
 
-        if(url===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
-                
-        let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
-                
-        if(itsProbablyBlock){
-    
-            let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
-                
-            if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
-    
-                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+            //Verify it before return
 
-                SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(e=>{})
-    
-                return itsProbablyBlock
-    
+            let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION",itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
+
+                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(itsProbablySuperFinalizationProof.aggregatedPub),...itsProbablySuperFinalizationProof.afkValidators.map(Base58.decode)])),
+
+                majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1),
+            
+                majorityVotedForThis = SYMBIOTE_META.QUORUM.length-itsProbablySuperFinalizationProof.afkValidators.length >= majority
+
+
+            if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
+
+                return {bftProofsIsOk:true}
+
             }
-    
+
         }
-    
+
     }
 
 },
