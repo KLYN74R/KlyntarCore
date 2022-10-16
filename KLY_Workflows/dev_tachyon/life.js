@@ -281,6 +281,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
            
     }
 
+
+    await Promise.all(promises.splice(0))
+
     
     commitmentsArray={
         
@@ -311,6 +314,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 
         for(let validatorNode of pureUrls) {
+
+            if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
 
             fetch(validatorNode+'/commitments',{
                 
@@ -371,12 +376,11 @@ LOAD_GENESIS=async()=>{
     //Load all the configs
     fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
 
-        //Load genesis state or data from backups(not to load state from the beginning)
         let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
     
-        Object.keys(genesis).forEach(
+        Object.keys(genesis.ACCOUNTS).forEach(
         
-            address => atomicBatch.put(address,genesis[address])
+            address => atomicBatch.put(address,genesis.ACCOUNTS[address])
             
         )
 

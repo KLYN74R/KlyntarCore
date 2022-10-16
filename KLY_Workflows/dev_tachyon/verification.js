@@ -28,10 +28,9 @@ export let
 //Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URL" node for new blocks
 //If no answer - try to find blocks somewhere else
 
-GET_BLOCK = (blockCreator,index) => {
+GET_BLOCK = async(blockCreator,index) => {
 
     let blockID=blockCreator+":"+index
-
     
     return SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>
 
@@ -449,8 +448,8 @@ START_VERIFICATION_THREAD=async()=>{
                         nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
                 
                     }
-                    //If verification failed - delete block. It will force to find another(valid) block from network
-                    else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
+                    // //If verification failed - delete block. It will force to find another(valid) block from network
+                    // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
                 
                 }
                 
@@ -581,8 +580,7 @@ verifyBlock=async block=>{
     overviewOk=
     
         block.events?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
-        &&
-        block.validatorsStuff?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
+        //block.validatorsStuff?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
         &&
@@ -681,11 +679,11 @@ verifyBlock=async block=>{
         let validatorsStuffOperations = []
 
 
-        for(let operation of block.validatorsStuff){
+        // for(let operation of block.validatorsStuff){
 
-            validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.T]?.(operation,true).catch(e=>''))
+        //     validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.T]?.(operation,true).catch(e=>''))
 
-        }
+        // }
 
 
         await Promise.all(validatorsStuffOperations.splice(0))
@@ -696,10 +694,11 @@ verifyBlock=async block=>{
 
         let shareFeesPromises=[], 
 
-            payToValidator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
+            payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
         
-            payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToValidator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
+            payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
 
+        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToSingleNonCreatorValidator = rewardBox.fees - payToCreator
 
 
 
@@ -707,7 +706,11 @@ verifyBlock=async block=>{
 
             shareFeesPromises.push(
 
-                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountRef=>accountRef.ACCOUNT.B+=payToSingleNonCreatorValidator)
+                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountRef=>
+
+                    accountRef.ACCOUNT.B+=payToSingleNonCreatorValidator
+
+                )
 
             )
             
