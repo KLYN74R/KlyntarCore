@@ -266,7 +266,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(commitmentsSet.validator)){
 
-        !response.aborted&&response.end('OK')
+        !response.aborted && response.end('OK')
 
         //Go through the set of commitments
         for(let singleCommitment of commitmentsSet.payload){
@@ -317,9 +317,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
         
         }
         
-        
         !response.aborted&&response.end('OK')
-
 
     }else !response.aborted&&response.end('Route is off')
     
@@ -331,6 +329,8 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
 
 Return own commitment by blockID:Hash
 
+We return single signature where sign => SIG(blockID+hash)
+
 0 - blockID:Hash
 
 */
@@ -338,11 +338,11 @@ getCommitment=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
 
-        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), commitmentsPoolExists = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
+        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), commitmentsPool = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
 
-        if(commitmentsPoolExists.has(CONFIG.SYMBIOTE.PUB)){
+        if(commitmentsPool.has(CONFIG.SYMBIOTE.PUB)){
 
-            response.end(commitmentsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+            response.end(commitmentsPool.get(CONFIG.SYMBIOTE.PUB))
 
         }else if(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS[blockCreator]){
 
@@ -505,15 +505,16 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
 
 //Returns only own FINALIZATION_PROOF
+//Will be returned single signature where CONFIG.SYMBIOTE.PUB signed SIG(blockID+"FINALIZATION")
 getFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_FINALIZATION_PROOFS){
 
-        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), proofsPoolExists = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
+        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), proofsPool = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
 
-        if(proofsPoolExists){
+        if(proofsPool){
 
-            response.end(proofsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+            response.end(proofsPool.get(CONFIG.SYMBIOTE.PUB))
 
         }else response.end('No such pool')
 
@@ -623,7 +624,20 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
 
 
-// 0 - blockID:hash
+/*
+
+0 - blockID:hash
+
+Return
+
+    {
+        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+        aggregatedPub:<>,
+        afkValidators
+        
+    }
+
+*/
 getSuperFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
@@ -646,7 +660,6 @@ getSuperFinalization=async(response,request)=>{
 
 
 /*
-
 
 Accept checkpoints from other validators in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT

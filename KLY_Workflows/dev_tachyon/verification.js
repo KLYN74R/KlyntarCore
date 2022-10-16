@@ -41,7 +41,7 @@ GET_BLOCK = (blockCreator,index) => {
     
             let hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
                 
-            if(typeof block.e==='object'&&typeof block.p==='string'&&typeof block.sig==='string' && block.i===index && block.c === blockCreator){
+            if(typeof block.events==='object'&&typeof block.prevHash==='string'&&typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
     
                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
@@ -71,7 +71,7 @@ GET_BLOCK = (blockCreator,index) => {
     
                     let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
                 
-                    if(typeof itsProbablyBlock.e==='object'&&typeof itsProbablyBlock.p==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.i===index && itsProbablyBlock.c===blockCreator){
+                    if(typeof itsProbablyBlock.events==='object'&&typeof itsProbablyBlock.prevHash==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.index===index && itsProbablyBlock.creator===blockCreator){
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
@@ -157,6 +157,19 @@ Verification process:
 
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
+
+    /*
+    
+        Check local cache if SUPER_FINALIZATION_PROOF exists. Will be returned object 
+
+        {
+            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+            aggregatedPub:<>,
+            afkValidators
+        }
+    
+    */
+    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return {bftProofsIsOk:true}
     
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /getsuperfinalization route
     
@@ -224,9 +237,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         THREADS_STILL_WORKS.VERIFICATION=true
 
-        // console.log(SYMBIOTE_META.VERIFICATION_THREAD)
-
-        console.log(SYMBIOTE_META) //QUORUM_COMMITMENTS_CACHE also here
+        console.log(SYMBIOTE_META)
 
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
@@ -279,7 +290,7 @@ START_VERIFICATION_THREAD=async()=>{
             //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
 
-            blockID =  currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1),
+            blockID = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1),
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator
             nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
@@ -317,7 +328,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
-                quorumSolution = checkpointIsFresh ? await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash) : {bftProofsIsOk:true,shouldSkip:false}
+                quorumSolution = checkpointIsFresh ? await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash) : {bftProofsIsOk:true}
         
 
 
@@ -489,13 +500,13 @@ verifyBlock=async block=>{
 
     overviewOk=
     
-        block.e?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
+        block.events?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
         &&
-        block.v?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
+        block.validatorsStuff?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
         &&
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH === block.p//it should be a chain
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
         &&
-        await VERIFY(blockHash,block.sig,block.c)
+        await VERIFY(blockHash,block.sig,block.creator)
 
 
     // if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
@@ -522,7 +533,7 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
         
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
-        block.e.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
+        block.events.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
         
         //Push accounts of validators
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
@@ -534,7 +545,7 @@ verifyBlock=async block=>{
         //______________________________________CALCULATE TOTAL FEES AND AMOUNTS________________________________________
 
 
-        block.e.forEach(event=>{
+        block.events.forEach(event=>{
 
             //O(1),coz it's set
             if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
@@ -565,7 +576,7 @@ verifyBlock=async block=>{
         let eventsPromises=[]
 
 
-        block.e.forEach(event=>
+        block.events.forEach(event=>
                 
             //If verifier to such event exsist-then verify it!
             SYMBIOTE_META.VERIFIERS[event.t]
@@ -576,7 +587,7 @@ verifyBlock=async block=>{
         
         await Promise.all(eventsPromises.splice(0))
 
-        LOG(`Blacklist size(\u001b[38;5;177m${block.c+":"+block.i}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
+        LOG(`Blacklist size(\u001b[38;5;177m${block.creator+":"+block.index}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
 
 
         //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
@@ -590,7 +601,7 @@ verifyBlock=async block=>{
         let validatorsStuffOperations = []
 
 
-        for(let operation of block.v){
+        for(let operation of block.validatorsStuff){
 
             validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.T]?.(operation,true).catch(e=>''))
 
@@ -630,14 +641,14 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.c+":"+block.i,block).catch(e=>LOG(`Failed to store block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(e=>LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
 
         }else{
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.BLOCKS.del(block.c+":"+block.i).catch(
+            SYMBIOTE_META.BLOCKS.del(block.creator+":"+block.index).catch(
                 
-                e => LOG(`Failed to delete block ${block.i} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
+                e => LOG(`Failed to delete block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
                 
             )
 
@@ -681,17 +692,17 @@ verifyBlock=async block=>{
 
 
         //Change finalization pointer
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.c
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.creator
 
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.i
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
                 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
         
         //Change metadata per validator's thread
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].INDEX=block.i
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].INDEX=block.index
 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c].HASH=blockHash
+        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH=blockHash
 
 
         //Finally - decrease the counter to snapshot
@@ -713,7 +724,7 @@ verifyBlock=async block=>{
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
 
 
-        block.i!==0//no sense to snaphost if no blocks yet
+        block.index!==0//no sense to snaphost if no blocks yet
         &&
         CONFIG.SYMBIOTE.SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
         &&
