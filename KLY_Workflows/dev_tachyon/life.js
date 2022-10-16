@@ -132,71 +132,6 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
-    QUICK_SORT = arr => {
-    
-        if (arr.length < 2) return arr
-        
-        let min = 1,
-            
-            max = arr.length - 1,
-            
-            rand = Math.floor(min + Math.random() * (max + 1 - min)),
-            
-            pivot = arr[rand],
-    
-            left = [], right = []
-        
-
-        arr.splice(arr.indexOf(pivot),1)
-        
-        arr = [pivot].concat(arr)
-        
-
-        for (let i = 1; i < arr.length; i++) pivot > arr[i] ? left.push(arr[i]):right.push(arr[i])
-
-
-        return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
-      
-    },
-
-    GET_QUORUM = () => {
-
-        //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
-
-
-            let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)+'0'),
-
-                mapping = new Map(),
-
-                sortedChallenges = QUICK_SORT(
-
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
-                    
-                        validatorPubKey => {
-
-                            let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
-
-                            mapping.set(challenge,validatorPubKey)
-
-                            return challenge
-
-                        }
-                        
-                    )
-
-                )
-
-            return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
-
-
-        } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
-
-
-    },
-
-
-
 
 GEN_BLOCKS_START_POLLING=async()=>{
 
@@ -306,13 +241,15 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
  
         SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
-        //________________________________Create commitments________________________________
+        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
+
+        
 
         if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
-            let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index,
-
-            commitmentTemplate={
+            //________________________________Create commitments________________________________
+            
+            let commitmentTemplate={
         
                 B:blockID,
 
@@ -582,7 +519,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
-        'CONTRACTS' //Storage of WASM contracts for KLYNTAR VM
+        'CONTRACTS' //Storage of contracts for VMs
 
     ].forEach(
         
@@ -730,8 +667,12 @@ PREPARE_SYMBIOTE=async()=>{
     //_____________________________________Set some values to stuff cache___________________________________________
 
 
-    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
+    //Because if we don't have quorum, we'll get it later after discovering checkpoints
+    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length!==0){
 
+        SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
+
+    }
 
     //__________________________________Load modules to work with hostchains_________________________________________
 
@@ -941,14 +882,14 @@ START_AWAKENING_PROCEDURE=()=>{
         //Here we have verified signatures from validators
         
 
-        let validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length,
+        let quorumNumbers=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
-            majority = Math.floor(validatorsNumber*(2/3))+1
+            majority = Math.floor(quorumNumbers*(2/3))+1
 
 
         //Check if majority is not bigger than number of validators. It possible when there is small number of validators
 
-        majority = majority > validatorsNumber ? validatorsNumber : majority
+        majority = majority > quorumNumbers ? quorumNumbers : majority
 
 
 

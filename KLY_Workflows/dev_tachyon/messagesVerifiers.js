@@ -33,19 +33,19 @@ export default {
 
             rootPub = Base58.encode(await bls.aggregatePublicKeys([...messagePayload.A.map(Base58.decode),Base58.decode(messagePayload.P)])),
 
-            validatorsNumber=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+            quorumSize=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
-            majority = Math.floor(validatorsNumber*(2/3))+1
+            majority = Math.floor(quorumSize*(2/3))+1
 
 
         //Check if majority is not bigger than number of validators. It possible when there is small number of validators
 
-        majority = majority > validatorsNumber ? validatorsNumber : majority
+        majority = majority > quorumSize ? quorumSize : majority
             
-        let isMajority = ((SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-messagePayload.A.length)>=majority)
+        let isMajority = ((SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length-messagePayload.A.length)>=majority)
 
 
-        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
+        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
 
             if(notJustOverview){
 

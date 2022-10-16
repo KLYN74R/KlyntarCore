@@ -209,9 +209,14 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
                 rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(itsProbablySuperFinalizationProof.aggregatedPub),...itsProbablySuperFinalizationProof.afkValidators.map(Base58.decode)])),
 
-                majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1),
+                quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+
+                majority = Math.floor(quorumSize*(2/3)+1)
+
             
-                majorityVotedForThis = SYMBIOTE_META.QUORUM.length-itsProbablySuperFinalizationProof.afkValidators.length >= majority
+            majority = majority > quorumSize ? quorumSize : majority
+            
+            let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkValidators.length >= majority
 
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
@@ -229,6 +234,74 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
 
+QUICK_SORT = arr => {
+    
+    if (arr.length < 2) return arr
+    
+    let min = 1,
+        
+        max = arr.length - 1,
+        
+        rand = Math.floor(min + Math.random() * (max + 1 - min)),
+        
+        pivot = arr[rand],
+
+        left = [], right = []
+    
+
+    arr.splice(arr.indexOf(pivot),1)
+    
+    arr = [pivot].concat(arr)
+    
+
+    for (let i = 1; i < arr.length; i++) pivot > arr[i] ? left.push(arr[i]):right.push(arr[i])
+
+
+    return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
+  
+},
+
+
+
+
+GET_QUORUM = () => {
+
+    //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
+
+        let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+
+            mapping = new Map(),
+
+            sortedChallenges = QUICK_SORT(
+
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
+                
+                    validatorPubKey => {
+
+                        let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
+
+                        mapping.set(challenge,validatorPubKey)
+
+                        return challenge
+
+                    }
+                    
+                )
+
+            )
+
+        return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
+
+
+    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
+
+
+},
+
+
+
+
 START_VERIFICATION_THREAD=async()=>{
 
     //This option will stop workflow of verification for each symbiote
@@ -237,8 +310,12 @@ START_VERIFICATION_THREAD=async()=>{
 
         THREADS_STILL_WORKS.VERIFICATION=true
 
-        console.log(SYMBIOTE_META)
+        //If no QUORUM - then it's the initial run. We need to set the current quorum to know what the valid checkpoint in hostchain
+        if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length===0){
 
+            SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
+
+        }
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
@@ -246,6 +323,9 @@ START_VERIFICATION_THREAD=async()=>{
 
             validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
+
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
         //Also, another reason to find new checkpoint if your current timestamp(UTC) related to the next day
         if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint){

@@ -266,7 +266,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(commitmentsSet.validator)){
 
-        !response.aborted && response.end('OK')
+        // !response.aborted && response.end('OK')
 
         //Go through the set of commitments
         for(let singleCommitment of commitmentsSet.payload){
@@ -298,7 +298,13 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
                 mapping.set(commitmentsSet.validator,singleCommitment.S)
 
 
-                let majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1), majorityNumberOfCommitments = SYMBIOTE_META.QUORUM.length-mapping.size >= majority
+                let quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+                
+                    majority = Math.floor(quorumSize*(2/3)+1)
+
+                majority = majority > quorumSize ? quorumSize : majority
+            
+                let majorityNumberOfCommitments = mapping.size >= majority
 
                 if(majorityNumberOfCommitments){
 
@@ -306,7 +312,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
 
                     let finalizationProofSignature = await SIG(singleCommitment.B+singleCommitment.H+"FINALIZATION")
 
-                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map([CONFIG.SYMBIOTE.PUB,finalizationProofSignature]))
+                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map([[CONFIG.SYMBIOTE.PUB,finalizationProofSignature]]))
 
                     //Flush commitments because no more sense to store it when we have FINALIZATION_PROOF
                     SYMBIOTE_META.COMMITMENTS.delete(poolID)
@@ -358,7 +364,7 @@ getCommitment=async(response,request)=>{
 
                     let commitmentSig = await SIG(blockCreator+':'+index+hash)
                     
-                    SYMBIOTE_META.COMMITMENTS.set(blockCreator+':'+index+'/'+hash,new Map([CONFIG.SYMBIOTE.PUB,commitmentSig]))
+                    SYMBIOTE_META.COMMITMENTS.set(blockCreator+':'+index+'/'+hash,new Map([[CONFIG.SYMBIOTE.PUB,commitmentSig]]))
 
                     response.end(commitmentSig)
 
@@ -456,7 +462,13 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
             mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
 
             
-            let majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1), majorityVotedForFinalization = SYMBIOTE_META.QUORUM.length-mapping.size >= majority
+            let quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length, 
+            
+                majority = Math.floor(quorumSize*(2/3)+1)
+
+            majority = majority > quorumSize ? quorumSize : majority
+            
+            let majorityVotedForFinalization = mapping.size >= majority
 
 
             //If more than 2/3N+1 finalization proofs exists - we can aggregate them to build SUPER_FINALIZATION_PROOF
@@ -464,7 +476,7 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
                 let pubkeys=[], signatures=[], afkValidators = []
 
-                SYMBIOTE_META.QUORUM.forEach(pubKey=>{
+                SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(pubKey=>{
 
                     if(mapping.has(pubKey)){
 
@@ -585,7 +597,7 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
     } 
     
-    else if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.SUPER_FINALIZATION_PROOFS_POOL_LIMIT) return
+    else if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.SUPER_FINALIZATION_PROOFS_POOL_LIMIT) !response.aborted&&response.end('Too many pools')
     
     else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
 
@@ -595,9 +607,13 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
             rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(superFinalizationProof.aggregatedPub),...superFinalizationProof.afkValidators.map(Base58.decode)])),
 
-            majority = Math.floor(SYMBIOTE_META.QUORUM.length*(2/3)+1),
+            quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
-            majorityVotedForFinalization = SYMBIOTE_META.QUORUM.length-superFinalizationProof.afkValidators.length >= majority
+            majority = Math.floor(quorumSize*(2/3)+1)
+
+        majority = majority > quorumSize ? quorumSize : majority
+
+        let majorityVotedForFinalization = quorumSize-superFinalizationProof.afkValidators.length >= majority
 
 
         if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForFinalization){
