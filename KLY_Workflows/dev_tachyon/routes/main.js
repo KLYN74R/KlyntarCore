@@ -18,57 +18,65 @@ let
 
 
 
-acceptBlocks=a=>{
+acceptBlocks=response=>{
     
     let total=0,buf=Buffer.alloc(0)
     
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
         
-        !a.aborted&&a.end('Route is off')
+        !response.aborted && response.end('Route is off')
         
         return
     
     }
     
-    a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async(chunk,last)=>{
+    response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
         if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
         
-            buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+            buf=await SAFE_ADD(buf,chunk,response)//build full data from chunks
     
             total+=chunk.byteLength
         
             if(last){
             
-                let block=await PARSE_JSON(buf)
+                let block=await PARSE_JSON(buf), hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
                 
                 //No sense to verify & accept own block
-                if(block.c===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.QUORUM_COMMITMENTS_CACHE.get(block.с+":"+block.i) || block.i<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX){
+                if(block.creator===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index+'/'+hash) || block.index<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX){
 
-                    !a.aborted&&a.end('OK')
+                    !response.aborted && response.end('OK')
 
                     return
                 
                 }
                 
+                //Check if we can accept this block
                 
-                let hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
-                
-                
-                    //Check if we can accept this block
-                    allow=
+                let allow=
             
-                    typeof block.e==='object'&&typeof block.i==='number'&&typeof block.p==='string'&&typeof block.sig==='string'//make general lightweight overview
+                    typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                     &&
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.c]?.INDEX+CONFIG.SYMBIOTE.BLOCK_ACCEPTION_NORMAL_DIFFERENCE>block.i //check if block index is not too far from verification thread
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX+CONFIG.SYMBIOTE.BLOCK_ACCEPTION_NORMAL_DIFFERENCE>block.index //check if block index is not too far from verification thread
                     &&
-                    await VERIFY(hash,block.sig,block.c)//and finally-the most CPU intensive task
-                    
+                    await VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
+                    &&
+                    await SYMBIOTE_META.BLOCKS.get(block.creator+":"+block.index-1).then(prevBlock=>{
+
+                        //Compare hashes to make sure it's a chain
+
+                        let prevHash = Block.genHash(prevBlock.creator,prevBlock.time,prevBlock.events,prevBlock.index,prevBlock.prevHash)
+
+                        return prevHash === block.prevHash
+
+                    })
+
+
                 
                 if(allow){
                 
-                    let blockID = block.c+":"+block.i
+                    let blockID = block.creator+":"+block.index
 
                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                     
@@ -85,13 +93,13 @@ acceptBlocks=a=>{
                          
                     )
 
-                   !a.aborted&&a.end('OK')
+                   !response.aborted&&response.end('OK')
 
-                }else !a.aborted&&a.end('Overview failed')
+                }else !response.aborted&&response.end('Overview failed')
             
             }
         
-        }else !a.aborted&&a.end('Payload limit')
+        }else !response.aborted&&response.end('Payload limit')
     
     })
 
@@ -102,14 +110,14 @@ acceptBlocks=a=>{
 
 //Format of body : {symbiote,body}
 //There is no 'c'(creator) field-we get it from tx
-acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
     let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
     if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
         
-        !a.aborted&&a.end('Overview failed')
+        !response.aborted&&response.end('Overview failed')
         
         return
         
@@ -134,13 +142,13 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
         if(filtered){
 
-            !a.aborted&&a.end('OK')
+            !response.aborted&&response.end('OK')
 
             SYMBIOTE_META.MEMPOOL.push(event)
                         
-        }else !a.aborted&&a.end('Post overview failed')
+        }else !response.aborted&&response.end('Post overview failed')
 
-    }else !a.aborted&&a.end('Mempool is fullfilled or no such filter')
+    }else !response.aborted&&response.end('Mempool is fullfilled or no such filter')
 
 }),
 
@@ -149,7 +157,7 @@ acceptEvents=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a
 
 //Function to allow validator to back to the game
 //Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
-awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
     
     /*
     
@@ -182,9 +190,9 @@ awakeRequestMessageHandler=a=>a.writeHeader('Access-Control-Allow-Origin','*').o
 
         let myAgreement = await SIG(validatorVTMetadataHash)
 
-        !a.aborted&&a.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
+        !response.aborted&&response.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
     
-    }else !a.aborted&&a.end('Overview failed')
+    }else !response.aborted&&response.end('Overview failed')
 
 }),
 
@@ -250,7 +258,7 @@ More info about FINALIZATION_PROOF available in description to POST /finalizatio
 
 */
 
-postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
     
     let commitmentsSet=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
@@ -258,7 +266,7 @@ postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(commitmentsSet.validator)){
 
-        !a.aborted&&a.end('OK')
+        !response.aborted&&response.end('OK')
 
         //Go through the set of commitments
         for(let singleCommitment of commitmentsSet.payload){
@@ -298,9 +306,7 @@ postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
 
                     let finalizationProofSignature = await SIG(singleCommitment.B+singleCommitment.H+"FINALIZATION")
 
-                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
-
-                    SYMBIOTE_META.FINALIZATION_PROOFS.get(poolID).set(CONFIG.SYMBIOTE.PUB,finalizationProofSignature)
+                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map([CONFIG.SYMBIOTE.PUB,finalizationProofSignature]))
 
                     //Flush commitments because no more sense to store it when we have FINALIZATION_PROOF
                     SYMBIOTE_META.COMMITMENTS.delete(poolID)
@@ -312,10 +318,10 @@ postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
         }
         
         
-        !a.aborted&&a.end('OK')
+        !response.aborted&&response.end('OK')
 
 
-    }else !a.aborted&&a.end('Route is off')
+    }else !response.aborted&&response.end('Route is off')
     
 
 }),
@@ -323,22 +329,22 @@ postCommitments=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()
 
 /*
 
-Return commitment by blockID:Hash
+Return own commitment by blockID:Hash
 
 0 - blockID:Hash
 
 */
-getCommitment=async(a,q)=>{
+getCommitment=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
 
-        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'), commitmentsPoolExists = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
+        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), commitmentsPoolExists = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
 
-        if(commitmentsPoolExists){
+        if(commitmentsPoolExists.has(CONFIG.SYMBIOTE.PUB)){
 
-            a.end(commitmentsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+            response.end(commitmentsPoolExists.get(CONFIG.SYMBIOTE.PUB))
 
-        }else {
+        }else if(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS[blockCreator]){
 
             let block = await SYMBIOTE_META.BLOCKS.get(blockCreator+':'+index).catch(e=>false)
 
@@ -350,14 +356,19 @@ getCommitment=async(a,q)=>{
 
                     //Generete commitment
 
+                    let commitmentSig = await SIG(blockCreator+':'+index+hash)
+                    
+                    SYMBIOTE_META.COMMITMENTS.set(blockCreator+':'+index+'/'+hash,new Map([CONFIG.SYMBIOTE.PUB,commitmentSig]))
 
-                }else a.end('Hash mismatch')
+                    response.end(commitmentSig)
 
-            }
+                }else response.end('Hash mismatch')
 
-        }
+            }else response.end('Block not found')
 
-    }else a.end('Route is off')
+        }else response.end('Not my responsibility zone')
+
+    }else response.end('Route is off')
 
 },
 
@@ -417,15 +428,13 @@ More detailed about it in description to the next route
 
 */
 
-postFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
-
+postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
     let finalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
-
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(finalizationProof.validator)){
 
-        !a.aborted&&a.end('OK')
+        !response.aborted && response.end('OK')
 
         let signatureIsOk = await VERIFY(finalizationProof.blockID+finalizationProof.hash+"FINALIZATION",finalizationProof.finalizationSigna,finalizationProof.validator)
 
@@ -488,27 +497,27 @@ postFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted((
 
         }
 
-    }else !a.aborted&&a.end('Route is off')
+    }else !response.aborted&&response.end('Route is off')
 
 
 }),
 
 
 
-
-getFinalization=async(a,q)=>{
+//Returns only own FINALIZATION_PROOF
+getFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_FINALIZATION_PROOFS){
 
-        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'), proofsPoolExists = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
+        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), proofsPoolExists = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
 
         if(proofsPoolExists){
 
-            a.end(proofsPoolExists.get(CONFIG.SYMBIOTE.PUB))
+            response.end(proofsPoolExists.get(CONFIG.SYMBIOTE.PUB))
 
-        }else a.end('No such pool')
+        }else response.end('No such pool')
 
-    }else a.end('Route is off')
+    }else response.end('Route is off')
 
 },
 
@@ -560,7 +569,7 @@ To verify SUPER_FINALIZATION_PROOF we should follow several steps:
 3) Make sure that it's majority solution by checking QUORUM_SIZE-afkValidators >= 2/3N+1
 
 */
-postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
     let superFinalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -569,7 +578,7 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(poolID)){
 
-        a.end('SUPER_FINALIZATION_PROOF already exists')
+        response.end('SUPER_FINALIZATION_PROOF already exists')
 
         return
 
@@ -579,7 +588,7 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
     
     else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
 
-        !a.aborted&&a.end('OK')
+        !response.aborted&&response.end('OK')
     
         let aggregatedSignatureIsOk = await VERIFY(superFinalizationProof.blockID+superFinalizationProof.hash+"FINALIZATION",superFinalizationProof.aggregatedSigna,superFinalizationProof.aggregatedPub),
 
@@ -607,7 +616,7 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
         }
         
-    }else !a.aborted&&a.end('Route is off')
+    }else !response.aborted&&response.end('Route is off')
 
 }),
 
@@ -615,21 +624,21 @@ postSuperFinalization=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 
 // 0 - blockID:hash
-getSuperFinalization=async(a,q)=>{
+getSuperFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
-        let [blockCreator,index,hash] = a.getParameter(0)?.split(':'),
+        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'),
 
             superProof = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockCreator+':'+index+'/'+hash)
 
         if(superProof){
 
-            a.end(JSON.stringify(superProof))
+            response.end(JSON.stringify(superProof))
 
-        }else a.end('No proof')
+        }else response.end('No proof')
 
-    }else a.end('Route is off')
+    }else response.end('Route is off')
 
 },
 
@@ -645,7 +654,7 @@ Accept checkpoints from other validators in quorum and returns own version as an
 We take checkpoints from SYMBIOTE_META.CHECKPOINTS
 
 */
-checkpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
 
 }),
@@ -659,7 +668,7 @@ checkpoint=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.a
 
 
 //[symbioteID,hostToAdd(initiator's valid and resolved host)]
-addPeer=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>reponse.aborted=true).onData(async v=>{
     
     let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
     
@@ -676,11 +685,11 @@ addPeer=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abor
             :
             nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
     
-            !a.aborted&&a.end('OK')
+            !reponse.aborted&&reponse.end('OK')
     
-        }else !a.aborted&&a.end('Your node already in scope')
+        }else !reponse.aborted&&reponse.end('Your node already in scope')
     
-    }else !a.aborted&&a.end('Wrong types')
+    }else !reponse.aborted&&reponse.end('Wrong types')
 
 })
 

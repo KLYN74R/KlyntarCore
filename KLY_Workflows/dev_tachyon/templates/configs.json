@@ -294,13 +294,7 @@
 
     "RESPONSIBILITY_ZONES":{
 
-        "SHARE_PROOFS":{
-
-            "ALL":true
-
-        },
-
-        "SHARE_COMMITMENTS":{
+        "COMMITMENTS":{
 
             "ALL":true
 

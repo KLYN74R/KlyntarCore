@@ -9,15 +9,15 @@ let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=
 
 
 //Only this one function available for ordinary users(the others can be called by node owner)
-services=(a)=>{
+services=response=>{
         
         let total=0,buf=Buffer.alloc(0)
         
-        a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async(chunk,last)=>{
+        response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async(chunk,last)=>{
          
             if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
             
-                buf=await SAFE_ADD(buf,chunk,a)//build full data from chunks
+                buf=await SAFE_ADD(buf,chunk,response)//build full data from chunks
     
                 total+=chunk.byteLength
                 
@@ -25,7 +25,7 @@ services=(a)=>{
 
                     let body=await PARSE_JSON(buf)
 
-                    a.end(body?'OK':'ERR')
+                    response.end(body?'OK':'ERR')
 
                     //Run further stage
                     SERVICE_RUNNER(body)

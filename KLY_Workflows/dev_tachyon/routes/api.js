@@ -22,23 +22,23 @@ let
  * @returns {Account} Account instance
  * 
  * */
-account=async(a,q)=>{
+account=async(response,request)=>{
     
-    a.onAborted(()=>a.aborted=true)
+    response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===request.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
 
         let data={
         
-            ...await SYMBIOTE_META.STATE.get(q.getParameter(1)).catch(e=>''),
+            ...await SYMBIOTE_META.STATE.get(request.getParameter(1)).catch(e=>''),
         
             COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
         }
 
-        !a.aborted&&WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
+        !response.aborted&&WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
 
-    }else !a.aborted&&a.end('Symbiote not supported or BALANCE trigger is off')
+    }else !response.aborted&&response.end('Symbiote not supported or BALANCE trigger is off')
 
 },
 
@@ -52,7 +52,7 @@ account=async(a,q)=>{
  * @returns {String} Info in JSON
  * 
  * */
-info=a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
+info=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 
 
@@ -71,17 +71,17 @@ info=a=>WRAP_RESPONSE(a,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
  * 
  * */
 
-nodes=(a,q)=>{
+nodes=(response,request)=>{
 
-    CONFIG.SYMBIOTE.SYMBIOTE_ID===q.getParameter(0)
+    CONFIG.SYMBIOTE.SYMBIOTE_ID===request.getParameter(0)
     ?
-    a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API_NODES).end(
+    response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API_NODES).end(
 
-        CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(q.getParameter(1)))
+        CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(request.getParameter(1)))
 
     )
     :
-    !a.aborted&&a.end('Symbiote not supported')
+    !response.aborted&&response.end('Symbiote not supported')
 
 },
 
@@ -89,22 +89,22 @@ nodes=(a,q)=>{
 
 
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-block=(a,q)=>{
+block=(response,request)=>{
 
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
 
 
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>a.aborted=true)
+        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>response.aborted=true)
 
-        SYMBIOTE_META.BLOCKS.get(q.getParameter(0)).then(block=>
+        SYMBIOTE_META.BLOCKS.get(request.getParameter(0)).then(block=>
 
-            !a.aborted && a.end(JSON.stringify(block))
+            !response.aborted && response.end(JSON.stringify(block))
             
-        ).catch(_=>a.end('No block'))
+        ).catch(_=>response.end('No block'))
 
 
-    }else !a.aborted && a.end('Symbiote not supported')
+    }else !response.aborted && response.end('Symbiote not supported')
 
 },
 
@@ -112,32 +112,32 @@ block=(a,q)=>{
 
 
 //Returns current validators pool
-getValidators=a=>{
+getValidators=response=>{
 
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
 
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>a.aborted=true)
+        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>response.aborted=true)
 
-        a.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
+        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
 
-    }else !a.aborted && a.end('Symbiote not supported')
+    }else !response.aborted && response.end('Symbiote not supported')
 
 },
 
 
 
 //Returns quorum for today
-getCurrentQuorum=a=>{
+getCurrentQuorum=response=>{
 
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
 
-        a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>a.aborted=true)
+        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>response.aborted=true)
 
-        a.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM))
+        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM))
 
-    }else !a.aborted && a.end('Symbiote not supported')
+    }else !response.aborted && response.end('Symbiote not supported')
 
 },
 
@@ -154,7 +154,7 @@ And you ask for a blocks:
 
 */
 
-multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`).onAborted(()=>a.aborted=true).onData(async v=>{
+multiplicity=response=>response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`).onAborted(()=>response.aborted=true).onData(async v=>{
    
     let blocksIDs=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -197,9 +197,9 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
        
         await Promise.all(promises.splice(0))
         
-        !a.aborted && a.end(JSON.stringify(response))
+        !response.aborted && response.end(JSON.stringify(response))
 
-    }else !a.aborted && a.end(JSON.stringify({e:'Symbiote not supported'}))
+    }else !response.aborted && response.end(JSON.stringify({e:'Symbiote not supported'}))
 
        
 }),
@@ -211,11 +211,11 @@ multiplicity=a=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Ca
 //Return useful data from stuff cache. It might be array of BLS pubkeys associated with some BLS aggregated pubkey, binding URL-PUBKEY and so on
 //Also, it's a big opportunity for cool plugins e.g. dyncamically track changes in STUFF_CACHE and modify it or share to other endpoints
 
-stuff=async(a,q)=>{
+stuff=async(response,request)=>{
     
-    a.onAborted(()=>a.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_STUFF}`)
+    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_STUFF}`)
     
-    let stuffID=q.getParameter(0)
+    let stuffID=request.getParameter(0)
 
     if(CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
 
@@ -227,19 +227,19 @@ stuff=async(a,q)=>{
         
         })
 
-        !a.aborted && a.end(JSON.stringify(stuff))
+        !response.aborted && response.end(JSON.stringify(stuff))
 
-    }else !a.aborted && a.end('Symbiote not supported or route is off')
+    }else !response.aborted && response.end('Symbiote not supported or route is off')
 
 },
 
 
 
 
-stuffAdd=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
     
     //Unimplemented
-    a.end('')
+    response.end('')
 
 }),
 
@@ -247,10 +247,10 @@ stuffAdd=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.abo
 
 
 //Coming soon
-alert=a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async v=>{
+alert=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
     
     //Unimplemented
-    a.end('')
+    response.end('')
 
 })
 
