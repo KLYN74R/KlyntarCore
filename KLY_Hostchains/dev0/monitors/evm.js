@@ -299,10 +299,10 @@ export default {
 
     CHECK_IF_THE_SAME_DAY:(timestamp1,timestamp2)=>{
 
-        let date1 = new Date(timestamp1*1000),
+        let date1 = new Date(timestamp1),
             
-            date2 = new Date(timestamp2*1000)
-    
+            date2 = new Date(timestamp2)
+        
         return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
     
     }

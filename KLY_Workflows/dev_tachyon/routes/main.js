@@ -735,19 +735,19 @@ UWS_SERVER
 
 
 //1st stage - logic with commitments
-.get('/getcommitments',getCommitment)
+.get('/getcommitments/:BLOCK_ID_WITH_HASH',getCommitment)
 
 .post('/commitments',postCommitments)
 
 
 //2nd stage - logic with finalization
-.get('/getfinalization',getFinalization)
+.get('/getfinalization/:BLOCK_ID_WITH_HASH',getFinalization)
 
 .post('/finalization',postFinalization)
 
 
 //3rd stage - logic with super finalization proofs
-.get('/getsuperfinalization',getSuperFinalization)
+.get('/getsuperfinalization/:BLOCK_ID_WITH_HASH',getSuperFinalization)
 
 .post('/superfinalization',postSuperFinalization)
 

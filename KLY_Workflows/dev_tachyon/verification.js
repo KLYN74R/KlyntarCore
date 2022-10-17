@@ -180,17 +180,17 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         
         pubKey => promises.push(GET_STUFF(pubKey).then(
         
-            url => ({pubKey,pureUrl:url.payload.url})
+            stuffData => stuffData.payload.url
         
         ))
 
     )
             
     let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-    
+
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/getsuperfinalization'+blockID+':'+blockHash).catch(e=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/getsuperfinalization/'+blockID+':'+blockHash).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&
@@ -200,7 +200,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     &&
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
-
+         
         if(generalAndTypeCheck){
 
             //Verify it before return
@@ -218,7 +218,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             
             let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkValidators.length >= majority
 
-
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
                 return {bftProofsIsOk:true}
@@ -229,32 +228,36 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     }
 
+    //If we can't find - try next time
+
+    return {bftProofsIsOk:false}
+
 },
 
 
 
 
-QUICK_SORT = arr => {
+QUICK_SORT = array => {
     
-    if (arr.length < 2) return arr
+    if (array.length < 2) return array
     
     let min = 1,
         
-        max = arr.length - 1,
+        max = array.length - 1,
         
         rand = Math.floor(min + Math.random() * (max + 1 - min)),
         
-        pivot = arr[rand],
+        pivot = array[rand],
 
         left = [], right = []
     
 
-    arr.splice(arr.indexOf(pivot),1)
+    array.splice(array.indexOf(pivot),1)
     
-    arr = [pivot].concat(arr)
+    array = [pivot].concat(array)
     
 
-    for (let i = 1; i < arr.length; i++) pivot > arr[i] ? left.push(arr[i]):right.push(arr[i])
+    for (let i = 1; i < array.length; i++) pivot > array[i] ? left.push(array[i]):right.push(array[i])
 
 
     return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
@@ -301,6 +304,41 @@ GET_QUORUM = () => {
 
 
 
+//Function to find,validate and process logic with new checkpoint
+SET_UP_NEW_CHECKPOINT=async checkpointIsFresh=>{
+
+    //Add extra logic to remove/add new validators, assign/reassign account to some thread, set QUORUM and so on
+
+
+    /*
+    
+        currentSessionMetadata.BLOCKS_GENERATOR=false
+    
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+                                        
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
+
+        LOG(`Going to skip \x1b[31;1m${currentValidatorToCheck}:${currentSessionMetadata.INDEX+1}`,'S')
+    
+    */
+
+    //if checkpoint is not fresh - find "fresh" one on hostchain
+    if(!checkpointIsFresh){
+
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT).catch(e=>false)
+
+        if(nextCheckpoint) SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
+
+        else LOG(`Checkpoint is old, but we can't find a new one`,'W')
+    
+    }
+
+},
+
+
+
 
 START_VERIFICATION_THREAD=async()=>{
 
@@ -316,38 +354,26 @@ START_VERIFICATION_THREAD=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
 
         }
-        
+
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
         let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)),
+
+            currentTimestamp = new Date().getTime(),//due to UTC timestamp format
+
+            checkpointIsFresh = HOSTCHAIN.MONITOR.CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
 
 
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
+            // console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+            // console.log(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
+    
 
         //Also, another reason to find new checkpoint if your current timestamp(UTC) related to the next day
-        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint){
-
-            //If equal - find new(next) checkpoint, verify it and follow it
-
-            let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT)
-
-            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
-
-        }
-
-
-        let currentTimestamp = new Date().getTime()/1000,//due to UTC timestamp format
-
-            checkpointIsFresh = HOSTCHAIN.MONITOR.CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,currentTimestamp)
-
-        // console.log(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint)
-
-        // console.log(checkpointIsFresh)
+        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint) await SET_UP_NEW_CHECKPOINT(checkpointIsFresh)
 
         
         /*
@@ -377,12 +403,13 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator
             nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
 
-            nextBlock//to verify block as fast as possible
+            nextBlock//to verify block ASAP
 
 
 
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
+        //Change the state of validator activity only via checkpoints
         if(!currentSessionMetadata.BLOCKS_GENERATOR){
 
             /*
@@ -405,73 +432,48 @@ START_VERIFICATION_THREAD=async()=>{
 
         }else {
 
-            //Try to get block
-            let block=await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
+            //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
+
+            let block = await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
                 blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
-                quorumSolution = checkpointIsFresh ? await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash) : {bftProofsIsOk:true}
+                quorumSolution,
+
+                currentBlockPresentInCurrentCheckpoint = true||SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX > currentSessionMetadata.INDEX
         
             
-            if(checkpointIsFresh){
+            if(currentBlockPresentInCurrentCheckpoint) quorumSolution = {bftProofsIsOk:true}
+            
+            else if(checkpointIsFresh && !currentBlockPresentInCurrentCheckpoint) quorumSolution = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+        
+            else if(!currentBlockPresentInCurrentCheckpoint && !checkpointIsFresh) {
 
-                quorumSolution = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
-
-            }else {
-
-                //In old checkpoints we should check if appropriate index for validator's thread is lower than in checkpoint
-
-                let nextBlockShouldBeIncluded = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+                //Find or wait for a new checkpoint. Because in this case we can't trust to
+                //QUORUM in current checkpoint and we can't be sure that we should process this block because we don't have it checkpoint
 
             }
 
+            let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
-            if(quorumSolution.shouldSkip){
 
-                /*
-                        
-                    Here we do everything to skip this block and move to the next validator's block
-                            
-                    If 2/3+1 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
-                        
-                    Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
-    
-                */
+            if(block && quorumSolution.bftProofsIsOk){
 
-                currentSessionMetadata.BLOCKS_GENERATOR=false
-    
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
-
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                        
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
-
-                LOG(`Going to skip \x1b[31;1m${currentValidatorToCheck}:${currentSessionMetadata.INDEX+1}`,'S')
-
-    
-            }else{
-                
-                let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
-
-                if(block && quorumSolution.bftProofsIsOk){
-
-                    await verifyBlock(block)
+                await verifyBlock(block)
             
-                    //Signal that verification was successful
-                    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+                //Signal that verification was successful
+                if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
                 
-                        nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
-                
-                    }
-                    // //If verification failed - delete block. It will force to find another(valid) block from network
-                    // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
+                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
                 
                 }
+                    
+                // If verification failed - delete block. It will force to find another(valid) block from network
+                // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
                 
             }
 
         }
-
 
 
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
