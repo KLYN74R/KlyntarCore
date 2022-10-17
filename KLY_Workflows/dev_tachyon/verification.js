@@ -168,6 +168,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         }
     
     */
+
     if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return {bftProofsIsOk:true}
     
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /getsuperfinalization route
@@ -315,6 +316,7 @@ START_VERIFICATION_THREAD=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
 
         }
+        
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
@@ -326,8 +328,9 @@ START_VERIFICATION_THREAD=async()=>{
         console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
         console.log(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
+
         //Also, another reason to find new checkpoint if your current timestamp(UTC) related to the next day
-        if(currentValidatorsMetadataHash===validatorsMetadataHashFromCheckpoint){
+        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint){
 
             //If equal - find new(next) checkpoint, verify it and follow it
 
@@ -383,7 +386,7 @@ START_VERIFICATION_THREAD=async()=>{
         if(!currentSessionMetadata.BLOCKS_GENERATOR){
 
             /*
-                    
+            
                 Here we do everything to skip this block and move to the next validator's block
                         
                 If 2/3+1 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
@@ -409,6 +412,18 @@ START_VERIFICATION_THREAD=async()=>{
 
                 quorumSolution = checkpointIsFresh ? await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash) : {bftProofsIsOk:true}
         
+            
+            if(checkpointIsFresh){
+
+                quorumSolution = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+
+            }else {
+
+                //In old checkpoints we should check if appropriate index for validator's thread is lower than in checkpoint
+
+                let nextBlockShouldBeIncluded = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+
+            }
 
 
             if(quorumSolution.shouldSkip){
