@@ -106,10 +106,6 @@
     "EVENTS_MEMPOOL_SIZE":300000,         
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
-    "PROGRESS_CHECKER_INTERVAL":60000,
-    "COUNT_COMMITMENTS_INTERVAL":3000,
-    
-
     "NODES":{
     
         "AF":[
@@ -230,31 +226,12 @@
     "GET_MULTI":"http://localhost:6666",
     
     "BLOCKS_EXPORT_PORTION":100,
-    "GET_MULTIPLY_BLOCKS_LIMIT":100,
-
-    "GET_BLOCKS_FOR_FUTURE_TIMEOUT":10000,
-
-    "TRUST_POOL_TO_ACCEPT_BLOCKS":[
-        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
-        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
-        "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
-    ],
 
     "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
 
     "GET_STUFF_URL":"http://localhost:6666",
 
     "STUFF_CACHE_SIZE":100000,
-
-    "TRUST_POOL_TO_ACCEPT_STUFF":[
-        
-        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-        "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT",
-        "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu",
-        "7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X"
-    
-    ],
     
     "LOAD_STUFF":{
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
@@ -277,12 +254,9 @@
         }
     },
 
-    "GET_VALIDATORS_PROOFS_URL":"http://localhost:6666",
     "STORE_QUORUM_COMMITMENTS_CACHE":true,
 
     "ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES":true,
-
-    "VALIDATORS_PROOFS_TEMP_LIMIT_PER_BLOCK":200,
     
     "SKIP_BFT_PROOFS":{
 
@@ -302,27 +276,7 @@
 
     },
 
-    "PROOFS_CACHE_SIZE":100000,
-
     "TIMEOUT_TO_PRE_SHARE_COMMITMENTS":2000,
-
-    "ENABLE_ASK_OPTIMIZERS":true,
-
-    "NODES_OPTIMIZERS":[
-        {
-            "url":"http://kly-node.io",
-            "pub":"BLS_PUBKEY"
-        },
-        {
-            "url":"http://localhost:6665",
-            "pub":"BLS_PUBKEY"
-        },
-        {
-            "url":"http://localhost:6664",
-            "pub":"BLS_PUBKEY"
-        }
-    
-    ],
 
     "AWAKE_HELPER_NODE":"http://localhost:6666",
 
