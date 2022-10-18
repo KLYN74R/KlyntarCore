@@ -169,7 +169,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     */
 
-    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return {bftProofsIsOk:true}
+    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return true
     
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /getsuperfinalization route
     
@@ -220,7 +220,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
-                return {bftProofsIsOk:true}
+                return true
 
             }
 
@@ -230,16 +230,35 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //If we can't find - try next time
 
-    return {bftProofsIsOk:false}
+    return false
 
 },
 
 
 
+
 //Function to find,validate and process logic with new checkpoint
-SET_UP_NEW_CHECKPOINT=async ()=>{
+SET_UP_NEW_CHECKPOINT=async()=>{
 
+    if(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT==='genesis'){
 
+        SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT={
+        
+            PAYLOAD:{
+
+                VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+
+            },
+
+            TIMESTAMP:new Date().getTime()/1000, //UPDATE. We set the genesis timestamp of checkpoint in CONFIGS/GENESIS
+
+            COMPLETED:true
+        
+        }
+
+        return
+
+    }
 
     //When we reach the limits of current checkpoint - then we need to do extra logic
 
@@ -270,7 +289,7 @@ SET_UP_NEW_CHECKPOINT=async ()=>{
 
     if(!checkpointIsFresh){
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT).catch(e=>false)
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT).catch(_=>false)
 
         if(nextCheckpoint) SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
 
@@ -299,13 +318,10 @@ START_VERIFICATION_THREAD=async()=>{
     
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-
         THREADS_STILL_WORKS.VERIFICATION=true
-
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
         if(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT==='genesis'){
 
@@ -356,9 +372,9 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator
             nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
 
-            nextBlock//to verify next block ASAP if it's available
+            nextBlock,//to verify next block ASAP if it's available
 
-
+            shouldSkip = false
 
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
@@ -391,19 +407,17 @@ START_VERIFICATION_THREAD=async()=>{
 
                 blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
 
-                quorumSolution,
+                quorumSolutionToVerifyBlock = false, //by default
 
                 currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX > currentSessionMetadata.INDEX,
 
-                checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED,
-
-                shouldSkip = false
+                checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED
         
             
             //We can simplify this branch
-            if(currentBlockPresentInCurrentCheckpoint) quorumSolution = {bftProofsIsOk:true}
+            if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
             
-            else if(updatedIsFreshCheckpoint && checkPointCompleted && !currentBlockPresentInCurrentCheckpoint) quorumSolution = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+            else if(updatedIsFreshCheckpoint && checkPointCompleted && !currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
         
             else if(!currentBlockPresentInCurrentCheckpoint && !checkPointCompleted) {
 
@@ -413,7 +427,6 @@ START_VERIFICATION_THREAD=async()=>{
             }
 
             let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
-
 
             //We skip the block if checkpoint is not completed and no such block in checkpoint
             //No matter if checkpoint is fresh or not
@@ -425,7 +438,7 @@ START_VERIFICATION_THREAD=async()=>{
                                         
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
-            }else if(block && quorumSolution.bftProofsIsOk){
+            }else if(block && quorumSolutionToVerifyBlock){
 
                 await verifyBlock(block)
             

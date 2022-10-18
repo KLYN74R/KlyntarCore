@@ -291,9 +291,9 @@ export default {
             
     },
 
-    GET_NEXT_VALID_CHECKPOINT:currentCheckpoint=>{
+    GET_NEXT_VALID_CHECKPOINT:async currentCheckpoint=>{
 
-        
+        //implement
 
     },
 
