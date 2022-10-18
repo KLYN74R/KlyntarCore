@@ -236,74 +236,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
 
-
-QUICK_SORT = array => {
-    
-    if (array.length < 2) return array
-    
-    let min = 1,
-        
-        max = array.length - 1,
-        
-        rand = Math.floor(min + Math.random() * (max + 1 - min)),
-        
-        pivot = array[rand],
-
-        left = [], right = []
-    
-
-    array.splice(array.indexOf(pivot),1)
-    
-    array = [pivot].concat(array)
-    
-
-    for (let i = 1; i < array.length; i++) pivot > array[i] ? left.push(array[i]):right.push(array[i])
-
-
-    return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
-  
-},
-
-
-
-
-GET_QUORUM = () => {
-
-    //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
-
-        let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
-
-            mapping = new Map(),
-
-            sortedChallenges = QUICK_SORT(
-
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
-                
-                    validatorPubKey => {
-
-                        let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
-
-                        mapping.set(challenge,validatorPubKey)
-
-                        return challenge
-
-                    }
-                    
-                )
-
-            )
-
-        return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
-
-
-    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
-
-
-},
-
-
-
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async ()=>{
 
@@ -367,28 +299,30 @@ START_VERIFICATION_THREAD=async()=>{
     
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
+
         THREADS_STILL_WORKS.VERIFICATION=true
-
-        //If no QUORUM - then it's the initial run. We need to set the current quorum to know what the valid checkpoint in hostchain
-        if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length===0){
-
-            SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
-
-        }
 
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD)
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
+        if(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT==='genesis'){
 
+            await SET_UP_NEW_CHECKPOINT()
+
+        }else {
+
+            let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+
+                validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
         
-        
-        //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+            //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
+            if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
 
+
+        }
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
@@ -466,6 +400,7 @@ START_VERIFICATION_THREAD=async()=>{
                 shouldSkip = false
         
             
+            //We can simplify this branch
             if(currentBlockPresentInCurrentCheckpoint) quorumSolution = {bftProofsIsOk:true}
             
             else if(updatedIsFreshCheckpoint && checkPointCompleted && !currentBlockPresentInCurrentCheckpoint) quorumSolution = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)

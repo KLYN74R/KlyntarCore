@@ -1,4 +1,4 @@
-import {LOG,SYMBIOTE_ALIAS,COLORS} from "../../KLY_Utils/utils.js"
+import {LOG,SYMBIOTE_ALIAS,COLORS, BLAKE3} from "../../KLY_Utils/utils.js"
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -142,6 +142,73 @@ GET_NODES=region=>{
         
 },
 
+
+
+
+QUICK_SORT = array => {
+    
+    if (array.length < 2) return array
+    
+    let min = 1,
+        
+        max = array.length - 1,
+        
+        rand = Math.floor(min + Math.random() * (max + 1 - min)),
+        
+        pivot = array[rand],
+
+        left = [], right = []
+    
+
+    array.splice(array.indexOf(pivot),1)
+    
+    array = [pivot].concat(array)
+    
+
+    for (let i = 1; i < array.length; i++) pivot > array[i] ? left.push(array[i]):right.push(array[i])
+
+
+    return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
+  
+},
+
+
+
+
+GET_QUORUM = () => {
+
+    //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
+
+        let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+
+            mapping = new Map(),
+
+            sortedChallenges = QUICK_SORT(
+
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
+                
+                    validatorPubKey => {
+
+                        let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
+
+                        mapping.set(challenge,validatorPubKey)
+
+                        return challenge
+
+                    }
+                    
+                )
+
+            )
+
+        return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
+
+
+    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
+
+
+},
 
 
 

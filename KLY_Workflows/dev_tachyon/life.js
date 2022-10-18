@@ -1,6 +1,6 @@
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM} from './utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -409,6 +409,10 @@ LOAD_GENESIS=async()=>{
     
     }
 
+    //We get the initial(genesis) quorum from the hash of VALIDATORS_METADATA(currently,from genesis, it's empty template)
+
+    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
+
 },
 
 
@@ -614,41 +618,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
-                CURRENT_CHECKPOINT:{
-
-                    /*
-                        
-                        Here will be checkpoint last found on hostchain. Otherwise - genesis checkpoint will be loaded
-                        
-                    */
-
-                    //Header should be included to hostchain in cleartext to determine valid checkpoints from previous quorum
-                    HEADER:{
-
-                        PAYLOAD_HASH:'',//<32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
-    
-                        QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',//<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
-                    
-                        QUORUM_AGGREGATED_SIGNATURE:'',//<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
-                    
-                        AFK_SIGNERS:[]//<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
-
-                    },
-
-                    PAYLOAD:{
-
-                        VALIDATORS_METADATA:{}, //The same as VALIDATORS_METADATA
-                        
-                        OTHER_CHECKPOINTS:{} //(SYMBIOTE_ID => CHECKPOINTS_HEADERS_OF_OTHER_SYMBIOTES)
-
-                    },
-
-                    TIMESTAMP:1666017233//we set the timestamp from hostchains to track days changes
-                
-
-                },
-                
-                HOSTCHAIN_MONITORING:{},
+                CURRENT_CHECKPOINT:'genesis',
 
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
             
