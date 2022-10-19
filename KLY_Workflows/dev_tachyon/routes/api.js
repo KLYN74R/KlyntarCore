@@ -131,7 +131,7 @@ getValidators=response=>{
 getCurrentQuorum=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM){
 
         response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>response.aborted=true)
 
@@ -263,6 +263,8 @@ UWS_SERVER
 
 .get('/getvalidators',getValidators)
 
+.get('/getquorum',getCurrentQuorum)
+
 .post('/multiplicity',multiplicity)
 
 .get('/account/:address',account)
@@ -275,4 +277,4 @@ UWS_SERVER
 
 .post('/alert',alert)
 
-.get('/i',info)
+.get('/info',info)

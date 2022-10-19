@@ -371,7 +371,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
 
 LOAD_GENESIS=async()=>{
 
-    let atomicBatch = SYMBIOTE_META.STATE.batch()
+    let atomicBatch = SYMBIOTE_META.STATE.batch(), checkpointTimestamp
 
     //Load all the configs
     fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
@@ -386,6 +386,8 @@ LOAD_GENESIS=async()=>{
 
         //Push the initial validators to verification thread
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
+
+        checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
     })
 
@@ -412,6 +414,21 @@ LOAD_GENESIS=async()=>{
     //We get the initial(genesis) quorum from the hash of VALIDATORS_METADATA(currently,from genesis, it's empty template)
 
     SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
+
+
+    SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT={
+        
+        PAYLOAD:{
+
+            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+
+        },
+
+        TIMESTAMP:checkpointTimestamp,
+
+        COMPLETED:true
+    
+    }
 
 },
 

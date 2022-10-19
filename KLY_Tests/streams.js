@@ -48,7 +48,7 @@ setInterval(()=>{
 
 
 //Imitation of simple server
-UWS.App().get('/state',res=>{
+UWS.App().get(state',res=>{
 
     if(!stopQuant){
 
@@ -74,7 +74,7 @@ UWS.App().get('/state',res=>{
 
 })
 
-.get('/data',a=>a.end(JSON.stringify({stopQuant,currentIndex})))
+.get(data',a=>a.end(JSON.stringify({stopQuant,currentIndex})))
 
 
 .listen(9001,ok=>ok&&console.log('Started on 9001'))

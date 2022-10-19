@@ -38,7 +38,7 @@ UWS.App()
 
 
 //To get the pure transaction to check commit of symbiote on appropriate hostchain,number of confirmations and another data
-.post('/tx',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
+.post(tx',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
 
     let auth=await BODY(data,100000)
 
@@ -63,7 +63,7 @@ UWS.App()
 
 
 //To get an array of utxos for specific address
-.post('/utxos',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
+.post(utxos',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
 
     
     let auth=await BODY(data,100000)
@@ -80,7 +80,7 @@ UWS.App()
 
 
 //To accept sended txs and broadcast to network
-.post('/send',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
+.post(send',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
 
     
     let auth=await BODY(data,100000)
@@ -108,7 +108,7 @@ UWS.App()
 
 
 //To accept sended txs and broadcast to network
-.post('/balance',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
+.post(balance',a=>a.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>a.aborted=true).onData(async data=>{
 
     
     let auth=await BODY(data,100000)
@@ -135,7 +135,7 @@ UWS.App()
 }))
 
 
-.get('/health',a=>a.end('1'))
+.get(health',a=>a.end('1'))
 
 
 .listen(2339,ok=>console.log(`Gateway started on 2339 port`))

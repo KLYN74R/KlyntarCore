@@ -240,26 +240,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async()=>{
 
-    if(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT==='genesis'){
-
-        SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT={
-        
-            PAYLOAD:{
-
-                VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
-
-            },
-
-            TIMESTAMP:new Date().getTime()/1000, //UPDATE. We set the genesis timestamp of checkpoint in CONFIGS/GENESIS
-
-            COMPLETED:true
-        
-        }
-
-        return
-
-    }
-
     //When we reach the limits of current checkpoint - then we need to do extra logic
 
     //Add extra logic to remove/add new validators, assign/reassign account to some thread, set QUORUM and so on
@@ -322,23 +302,14 @@ START_VERIFICATION_THREAD=async()=>{
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
+        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-        if(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT==='genesis'){
-
-            await SET_UP_NEW_CHECKPOINT()
-
-        }else {
-
-            let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
-
-                validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
-
-        
-            //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-            if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
 
-        }
+        //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
+        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
