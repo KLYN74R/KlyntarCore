@@ -1,6 +1,6 @@
-import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
-
 import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM} from './utils.js'
+
+import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -13,8 +13,6 @@ import UWS from 'uWebSockets.js'
 import readline from 'readline'
 
 import fetch from 'node-fetch'
-
-import Base58 from 'base-58'
 
 import ora from 'ora'
 
@@ -244,13 +242,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally
-        await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
-        
-            //store latest known block index to recover it after shutdown and add to checkpoints manager
-            SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+'_latest',{id:blockCandidate.index,hash})
-        
-        )
-        
+        await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate)
+
 
         if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
@@ -277,11 +270,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             SYMBIOTE_META.COMMITMENTS.set(blockID+'/'+hash,new Map())
 
             SYMBIOTE_META.COMMITMENTS.get(blockID+'/'+hash).set(CONFIG.SYMBIOTE.PUB,commitmentTemplate.S)
-
-            //block.creator,{id:block.index,hash}
-            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(CONFIG.SYMBIOTE.PUB,{id:blockCandidate.index,hash})
-
-
 
         }
            
@@ -403,10 +391,16 @@ LOAD_GENESIS=async()=>{
 
 
     SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT={
+
+        HEADER:{},
         
         PAYLOAD:{
 
             VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+
+            //OPERATIONS
+
+            //OTHER_SYMBIOTES
 
         },
 
@@ -482,8 +476,6 @@ PREPARE_SYMBIOTE=async()=>{
         SUPER_FINALIZATION_PROOFS:new Map(), //the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
 
         CHECKPOINTS:new Map(), //used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
-
-        CHECKPOINTS_MANAGER:new Map() //blockCreator => {latest known valid height,hash}. Use it to build checkpoint 
     
     }
 
@@ -649,28 +641,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
-    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
-
-
-    //____________________________Load latest known blocks to generate checkpoints__________________________________
-
-    let promisesForCheckpointManager = []
-    
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-        
-        pubkey => promisesForCheckpointManager.push(
-            
-            SYMBIOTE_META.BLOCKS.get(pubkey+'_latest').then(
-                
-                value => SYMBIOTE_META.CHECKPOINTS_MANAGER.set(pubkey,value)
-                
-            ).catch(_=>{})
-            
-        )
-    
-    )
-
-    await Promise.all(promisesForCheckpointManager.splice(0))
+    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________
@@ -795,14 +766,14 @@ PREPARE_SYMBIOTE=async()=>{
 */
 START_AWAKENING_PROCEDURE=()=>{
     
-    fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/getvalidators').then(r=>r.json()).then(async currentValidators=>{
+    fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/getquorum').then(r=>r.json()).then(async currentQuorum=>{
 
         LOG(`Received list of current validators.Preparing to \x1b[31;1m<ALIVE_VALIDATOR>\x1b[32;1m procedure`,'S')
 
         let promises=[]
 
         //0. Initially,try to get pubkey => node_ip binding 
-        currentValidators.forEach(
+        currentQuorum.forEach(
         
             pubkey => promises.push(GET_STUFF(pubkey))
             
@@ -907,7 +878,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
             answers.forEach(descriptor=>{
 
-                pubkeys.push(Base58.decode(descriptor.P))
+                pubkeys.push(descriptor.P)
 
                 nonDecoded.push(descriptor.P)
 
@@ -916,16 +887,16 @@ START_AWAKENING_PROCEDURE=()=>{
             })
 
 
-            currentValidators.forEach(validator=>
+            currentQuorum.forEach(validator=>
 
                 !nonDecoded.includes(validator)&&afkValidators.push(validator)
 
             )
 
 
-            let aggregatedPub = Base58.encode(await bls.aggregatePublicKeys(pubkeys)),
+            let aggregatedPub = bls.aggregatePublicKeys(pubkeys),
 
-                aggregatedSignatures = Buffer.from(await bls.aggregateSignatures(signatures)).toString('base64')
+                aggregatedSignatures = bls.aggregateSignatures(signatures)
 
 
             //Make final verification

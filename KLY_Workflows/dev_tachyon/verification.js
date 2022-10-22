@@ -10,8 +10,6 @@ import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
 
-import Base58 from 'base-58'
-
 
 
 
@@ -262,7 +260,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return true
     
-    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /getsuperfinalization route
+    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
     let promises=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL] //immediately push custom URL as the first node we'll communicate. It might be server runned in cooperation with some plugin for custom exchange logic
     
@@ -290,7 +288,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/getsuperfinalization/'+blockID+':'+blockHash).then(r=>r.json()).catch(_=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID+':'+blockHash).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&
@@ -307,7 +305,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION",itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
 
-                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(itsProbablySuperFinalizationProof.aggregatedPub),...itsProbablySuperFinalizationProof.afkValidators.map(Base58.decode)])),
+                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 
                 quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
@@ -335,6 +333,15 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 },
 
 
+CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
+
+    let date1 = new Date(timestamp1),
+        
+        date2 = new Date(timestamp2)
+    
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
+
+},
 
 
 //Function to find,validate and process logic with new checkpoint
@@ -359,11 +366,11 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
     
     */
-   
+
 
     let currentTimestamp = new Date().getTime(),//due to UTC timestamp format
 
-        checkpointIsFresh = HOSTCHAIN.MONITOR.CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,currentTimestamp)
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -372,9 +379,22 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         //Also,if we're in quourm - start process of generating checkpoints,
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT).catch(_=>false)
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_CHECKPOINT_FOR_VERIFICATION_THREAD().catch(_=>false)
 
-        if(nextCheckpoint) SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
+        if(nextCheckpoint) {
+
+
+            let operations = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.OPERATIONS
+    
+            for(let operation of operations){
+        
+                //Perform changes here before move to the next checkpoint
+        
+            }
+
+            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
+
+        }
 
         else {
 
@@ -417,7 +437,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = HOSTCHAIN.MONITOR.CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
+        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,new Date().getTime())
 
         /*
 

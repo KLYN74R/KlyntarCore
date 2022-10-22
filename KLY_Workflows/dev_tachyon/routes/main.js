@@ -8,7 +8,7 @@ import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
 
 import Block from '../essences/block.js'
 
-import Base58 from 'base-58'
+
 
 
 let
@@ -85,17 +85,11 @@ acceptBlocks=response=>{
                             
                         _ =>
                             
-                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(async()=>{
-
-                                await SYMBIOTE_META.BLOCKS.put(block.creator+'_latest',{id:block.index,hash}) //store latest known block index to recover it after shutdown and add to checkpoints manager
-
-                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(block.creator,{id:block.index,hash})
-
-                            }).then(()=>
+                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
                             
                                 Promise.all(BROADCAST('/block',block))
                                 
-                            ).then(START_TO_GRAB_COMMITMENTS).catch(_=>{})
+                            ).catch(_=>{})
                          
                     )
 
@@ -495,9 +489,9 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
                     if(mapping.has(pubKey)){
 
-                        pubkeys.push(Base58.decode(pubKey))
+                        pubkeys.push(pubKey)
                     
-                        signatures.push(Buffer.from(signa,'base64'))
+                        signatures.push(signa)
 
                     }else afkValidators.push(pubKey)
 
@@ -505,9 +499,9 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
                 let superFinalizationProof={
 
-                    aggregatedPub:Base58.encode(await bls.aggregatePublicKeys(pubkeys)),
+                    aggregatedPub:bls.aggregatePublicKeys(pubkeys),
 
-                    aggregatedSignature:Buffer.from(await bls.aggregateSignatures(signatures)).toString('base64'),
+                    aggregatedSignature:bls.aggregateSignatures(signatures),
 
                     afkValidators
 
@@ -560,7 +554,7 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
                                                                *
 ****************************************************************
 
-    Latest bastion. This POST /superfinalization route share SUPER_FINALIZATION_PROOF from SYMBIOTE_META.SUPER_FINALIZATION_PROOFS
+    Latest bastion. This POST /super_finalization route share SUPER_FINALIZATION_PROOF from SYMBIOTE_META.SUPER_FINALIZATION_PROOFS
 
     If we have SUPER_FINZALIZATION_PROOF - response with it
 
@@ -620,7 +614,7 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
     
         let aggregatedSignatureIsOk = await VERIFY(superFinalizationProof.blockID+superFinalizationProof.hash+"FINALIZATION",superFinalizationProof.aggregatedSigna,superFinalizationProof.aggregatedPub),
 
-            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === Base58.encode(await bls.aggregatePublicKeys([Base58.decode(superFinalizationProof.aggregatedPub),...superFinalizationProof.afkValidators.map(Base58.decode)])),
+            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([superFinalizationProof.aggregatedPub,...superFinalizationProof.afkValidators]),
 
             quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
@@ -706,6 +700,25 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
 
 
+getPayloadForCheckpoint=async(response,request)=>{
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
+
+        let payloadHash = request.getParameter(0)
+
+        if(superProof){
+
+            response.end(JSON.stringify(superProof))
+
+        }else response.end('No proof')
+
+    }else response.end('Route is off')
+
+},
+
+
+
+
 //_____________________________________________________________AUXILARIES________________________________________________________________________
 
 
@@ -750,22 +763,24 @@ UWS_SERVER
 
 
 //1st stage - logic with commitments
-.get('/getcommitments/:BLOCK_ID_WITH_HASH',getCommitment)
+.get('/get_commitments/:BLOCK_ID_WITH_HASH',getCommitment)
 
 .post('/commitments',postCommitments)
 
 
 //2nd stage - logic with finalization
-.get('/getfinalization/:BLOCK_ID_WITH_HASH',getFinalization)
+.get('/get_finalization/:BLOCK_ID_WITH_HASH',getFinalization)
 
 .post('/finalization',postFinalization)
 
 
 //3rd stage - logic with super finalization proofs
-.get('/getsuperfinalization/:BLOCK_ID_WITH_HASH',getSuperFinalization)
+.get('/get_super_finalization/:BLOCK_ID_WITH_HASH',getSuperFinalization)
 
-.post('/superfinalization',postSuperFinalization)
+.post('/super_finalization',postSuperFinalization)
 
+
+.get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 
 

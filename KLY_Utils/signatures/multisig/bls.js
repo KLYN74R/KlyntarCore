@@ -33,13 +33,24 @@ export default {
         
     ).then(b=>Buffer.from(b,'utf-8').toString('base64')),
 
-    
     singleVerify:(msg,pubKey,signa)=>bls.verify(Buffer.from(signa,'base64'),Buffer.from(msg,'utf-8').toString('hex'),Base58.decode(pubKey)),
 
+    aggregatePublicKeys:publicKeysArray=>Base58.encode(bls.aggregatePublicKeys(publicKeysArray.map(Base58.decode))),
 
-    aggregatePublicKeys:publicKeysArray=>bls.aggregatePublicKeys(publicKeysArray),
+    aggregateSignatures:signaturesArray=>Buffer.from(
+        
+        bls.aggregateSignatures(
+            
+            signaturesArray.map(
+                
+                sig => Buffer.from(sig,'base64')
+                
+            )
+            
+        )
+        
+    ).toString('base64'),
 
-    aggregateSignatures:signaturesArray=>bls.aggregateSignatures(signaturesArray),
 
 
   /**

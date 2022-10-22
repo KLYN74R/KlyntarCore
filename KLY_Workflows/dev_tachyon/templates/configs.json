@@ -188,7 +188,8 @@
 
         "GET_STUFF":600,
         "GET_VALIDATORS":600,
-        "GET_QUORUM":600
+        "GET_QUORUM":600,
+        "GET_PAYLOAD_FOR_CHECKPOINT":600
     },
     
     "TRIGGERS":{
@@ -216,7 +217,8 @@
         "GET_FINALIZATION_PROOFS":1,
         "GET_SUPER_FINALIZATION_PROOFS":1,
         "GET_VALIDATORS":1,
-        "GET_QUORUM":1
+        "GET_QUORUM":1,
+        "GET_PAYLOAD_FOR_CHECKPOINT":1
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,
@@ -226,6 +228,7 @@
     "GET_BLOCKS_URL":"http://localhost:6666",
     "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:6666",
     "GET_MULTI":"http://localhost:6666",
+    "GET_CHECKPOINT_PAYLOAD_URL":"http://localhost:6666",
     
     "BLOCKS_EXPORT_PORTION":100,
 

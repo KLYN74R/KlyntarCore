@@ -253,21 +253,21 @@ alert=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborte
 
 UWS_SERVER
 
-.get('/stuff/:stuffID/:stuffType',stuff)
+.get('/stuff/:STUFF_ID/:STUFF_TYPE',stuff)
 
-.get('/getvalidators',getValidators)
+.get('/get_validators',getValidators)
 
-.get('/getquorum',getCurrentQuorum)
+.get('/get_quorum',getCurrentQuorum)
 
 .post('/multiplicity',multiplicity)
 
-.get('/account/:address',account)
+.get('/account/:ADDRESS',account)
 
 .post('/stuff_add',stuffAdd)
 
-.get('/nodes/:region',nodes)
+.get('/nodes/:REGION',nodes)
 
-.get('/block/:id',block)
+.get('/block/:ID',block)
 
 .post('/alert',alert)
 

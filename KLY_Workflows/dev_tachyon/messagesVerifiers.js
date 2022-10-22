@@ -2,8 +2,6 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VERIFY} from './utils.js'
 
-import Base58 from 'base-58'
-
 
 
 
@@ -29,9 +27,9 @@ export default {
 
     AWAKE:async(messagePayload,notJustOverview)=>{
 
-        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))),
+        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM),
 
-            rootPub = Base58.encode(await bls.aggregatePublicKeys([...messagePayload.A.map(Base58.decode),Base58.decode(messagePayload.P)])),
+            rootPub = bls.aggregatePublicKeys([...messagePayload.A,messagePayload]),
 
             quorumSize=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
 
