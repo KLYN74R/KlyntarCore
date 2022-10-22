@@ -13,10 +13,9 @@ let
  * 
  *  Returns account's state
  * 
- *  0 - symbioteID, 1 - account
+ *  0 - accountID
  * 
  * 
- * @param {string} symbioteID 32-bytes hexadecimal hash of symbiote's manifest. It's SYMBIOTE_ID
  * @param {string} account publicKey/address of account(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on)
  * 
  * @returns {Account} Account instance
@@ -26,11 +25,11 @@ account=async(response,request)=>{
     
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===request.getParameter(0)&&CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
 
         let data={
         
-            ...await SYMBIOTE_META.STATE.get(request.getParameter(1)).catch(e=>''),
+            ...await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(e=>''),
         
             COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
@@ -61,10 +60,9 @@ info=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
  * 
  *  Returns set of nodes for P2P communications
  * 
- *  0 - symbioteID, 1 - preffered region(close to another node)
+ *  0 - preffered region(close to another node)
  * 
- * 
- * @param {string} symbioteID 32-bytes hexadecimal hash of symbiote's manifest. It's SYMBIOTE_ID
+ *
  * @param {string} prefferedRegion Continent,Country code and so on
  * 
  * @returns {Array} Array of urls. Example [http://somenode.io,https://dead::beaf,...]
@@ -73,15 +71,11 @@ info=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 nodes=(response,request)=>{
 
-    CONFIG.SYMBIOTE.SYMBIOTE_ID===request.getParameter(0)
-    ?
     response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API_NODES).end(
 
-        CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(request.getParameter(1)))
+        CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(request.getParameter(0)))
 
     )
-    :
-    !response.aborted&&response.end('Symbiote not supported')
 
 },
 
@@ -133,7 +127,7 @@ getCurrentQuorum=response=>{
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM){
 
-        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>response.aborted=true)
+        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`).onAborted(()=>response.aborted=true)
 
         response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM))
 

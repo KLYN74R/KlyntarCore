@@ -208,7 +208,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
                 
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
     
-        promises=[],//to push blocks to storage
+        blocksPool=[],//to push blocks to storage
 
         commitmentsArray=[]//to share commitments among other quorun members
 
@@ -243,6 +243,13 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     
         let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
+        //Store block locally
+        await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>
+        
+            //store latest known block index to recover it after shutdown and add to checkpoints manager
+            SYMBIOTE_META.BLOCKS.put(CONFIG.SYMBIOTE.PUB+'_latest',{id:blockCandidate.index,hash})
+        
+        )
         
 
         if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
@@ -263,106 +270,85 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         
             commitmentsArray.push(commitmentTemplate)
 
+
+            
             //Create local pool and push our commitment if we're in quorum
 
             SYMBIOTE_META.COMMITMENTS.set(blockID+'/'+hash,new Map())
 
             SYMBIOTE_META.COMMITMENTS.get(blockID+'/'+hash).set(CONFIG.SYMBIOTE.PUB,commitmentTemplate.S)
 
+            //block.creator,{id:block.index,hash}
+            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(CONFIG.SYMBIOTE.PUB,{id:blockCandidate.index,hash})
+
+
+
         }
-
-        promises.push(SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate).then(()=>blockCandidate).catch(error=>{
-                
-            LOG(`Failed to store block ${blockCandidate.index} on ${SYMBIOTE_ALIAS()} \n${error}`,'F')
-
-            process.emit('SIGINT',122)
-            
-        }))
            
     }
 
+  
+    //Update the GENERATION_THREAD after all
+    await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
 
-    await Promise.all(promises.splice(0))
 
-    
-    commitmentsArray={
+    blocksPool.forEach(block=>BROADCAST('/block',block))
+
+
+    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+
+
+        commitmentsArray={
         
-        validator:CONFIG.SYMBIOTE.PUB,
+            validator:CONFIG.SYMBIOTE.PUB,
+            
+            payload:commitmentsArray
         
-        payload:commitmentsArray
-    
-    }
-
-    
-    //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
-    //?NOTE - we use setTimeout here to delay sending our commitments. We need to give some time for network to share blocks
-    setTimeout(async()=>{
-
-        let promises = []
-
-        //0. Initially,try to get pubkey => node_ip binding 
-        SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
-            
-            pubkey => promises.push(GET_STUFF(pubkey))
-            
-        )
-
-
-        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
-        
-            payload = JSON.stringify(commitmentsArray)//this will be send to validators and to other nodes & endpoints
-
-
-        for(let validatorNode of pureUrls) {
-
-            if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
-
-            fetch(validatorNode+'/commitments',{
-                
-                method:'POST',
-                
-                body:payload
-            
-            }).catch(_=>{})//doesn't matter if error
-
         }
-
-        //You can also share proofs over the network, not only to validators
-        CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
-        &&
-        BROADCAST('/commitments',payload)
-
-
-    },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)
-
-
-
-
-    //_______________________________________________COMMIT CHANGES___________________________________________________
-
-
-
-
-    await Promise.all(promises.splice(0)).then(arr=>
+    
         
-        SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD).then(()=>
-
-            new Promise(resolve=>{
-
-                //And here we should broadcast blocks
-                arr.forEach(block=>
-                    
-                    Promise.all(BROADCAST('/block',block))
-                    
-                )
-
-                resolve()
-
-            })
+        //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
+        //?NOTE - we use setTimeout here to delay sending our commitments. We need to give some time for network to share blocks
+        setTimeout(async()=>{
+    
+            let promises = []
+    
+            //0. Initially,try to get pubkey => node_ip binding 
+            SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+                
+                pubkey => promises.push(GET_STUFF(pubkey))
+                
+            )
+    
+    
+            let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
             
-        )
+                payload = JSON.stringify(commitmentsArray)//this will be send to validators and to other nodes & endpoints
+    
+    
+            for(let validatorNode of pureUrls) {
+    
+                if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+    
+                fetch(validatorNode+'/commitments',{
+                    
+                    method:'POST',
+                    
+                    body:payload
+                
+                }).catch(_=>{})//doesn't matter if error
+    
+            }
+    
+            //You can also share proofs over the network, not only to validators
+            CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
+            &&
+            BROADCAST('/commitments',payload)
+    
+    
+        },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)    
 
-    )
+    }
 
 },
 
@@ -495,8 +481,10 @@ PREPARE_SYMBIOTE=async()=>{
 
         SUPER_FINALIZATION_PROOFS:new Map(), //the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
 
-        CHECKPOINTS:new Map() //used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
+        CHECKPOINTS:new Map(), //used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
 
+        CHECKPOINTS_MANAGER:new Map() //blockCreator => {latest known valid height,hash}. Use it to build checkpoint 
+    
     }
 
 
@@ -512,6 +500,7 @@ PREPARE_SYMBIOTE=async()=>{
     )
 
 
+    
     
 
     //___________________________Load functionality to verify/filter/transform events_______________________________
@@ -659,11 +648,30 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
-    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length!==0){
 
-        SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
+    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',Base58.encode(await bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.map(Base58.decode))))
 
-    }
+
+    //____________________________Load latest known blocks to generate checkpoints__________________________________
+
+    let promisesForCheckpointManager = []
+    
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
+        
+        pubkey => promisesForCheckpointManager.push(
+            
+            SYMBIOTE_META.BLOCKS.get(pubkey+'_latest').then(
+                
+                value => SYMBIOTE_META.CHECKPOINTS_MANAGER.set(pubkey,value)
+                
+            ).catch(_=>{})
+            
+        )
+    
+    )
+
+    await Promise.all(promisesForCheckpointManager.splice(0))
+
 
     //__________________________________Load modules to work with hostchains_________________________________________
 

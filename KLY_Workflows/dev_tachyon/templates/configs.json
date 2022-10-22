@@ -187,7 +187,8 @@
         "API_MULTI":600,
 
         "GET_STUFF":600,
-        "GET_VALIDATORS":600
+        "GET_VALIDATORS":600,
+        "GET_QUORUM":600
     },
     
     "TRIGGERS":{
@@ -214,7 +215,8 @@
         "GET_COMMITMENTS":1,
         "GET_FINALIZATION_PROOFS":1,
         "GET_SUPER_FINALIZATION_PROOFS":1,
-        "GET_VALIDATORS":1
+        "GET_VALIDATORS":1,
+        "GET_QUORUM":1
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,

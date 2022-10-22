@@ -85,11 +85,17 @@ acceptBlocks=response=>{
                             
                         _ =>
                             
-                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(async()=>{
+
+                                await SYMBIOTE_META.BLOCKS.put(block.creator+'_latest',{id:block.index,hash}) //store latest known block index to recover it after shutdown and add to checkpoints manager
+
+                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(block.creator,{id:block.index,hash})
+
+                            }).then(()=>
                             
                                 Promise.all(BROADCAST('/block',block))
                                 
-                            ).catch(_=>{})
+                            ).then(START_TO_GRAB_COMMITMENTS).catch(_=>{})
                          
                     )
 
@@ -342,6 +348,14 @@ We return single signature where sign => SIG(blockID+hash)
 */
 getCommitment=async(response,request)=>{
 
+    if(SYMBIOTE_META.START_CHECKPOINT_CREATION_PROCESS){
+
+        response.end('Checkpoint creating process has been started')
+
+        return
+
+    }
+
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
 
         let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), commitmentsPool = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
@@ -377,6 +391,7 @@ getCommitment=async(response,request)=>{
     }else response.end('Route is off')
 
 },
+
 
 
 

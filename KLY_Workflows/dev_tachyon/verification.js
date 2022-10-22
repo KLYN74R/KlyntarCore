@@ -97,8 +97,98 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
 
     //Method which create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
 
+    //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
+
+    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true}
+
+    let metadata = {}
+
+    SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
+
+        metadata[validator]={
+            
+            INDEX:descriptor.id,
+            
+            HASH:descriptor.hash,
+            
+            BLOCKS_GENERATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].BLOCKS_GENERATOR
+        
+        }
+
+    })
+
+    let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
+
+    //Exchange with other quorum members
+
+    let promises=[]
+
+
+    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+        
+        pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+            stuffData => stuffData.payload.url
+        
+        ))
+
+    )
+
+
+    console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
+
+    console.log(metadata)
+            
+    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+    for(let memberURL of quorumMembersURLs){
+
+        //query here
+
+    }
+
 },
 
+
+
+
+START_TO_GRAB_COMMITMENTS=async block=>{
+
+
+
+    
+    setTimeout()
+
+       //Exchange with other quorum members
+
+       let promises=[]
+
+
+       SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+           
+           pubKey => promises.push(GET_STUFF(pubKey).then(
+           
+               stuffData => stuffData.payload.url
+           
+           ))
+   
+       )
+   
+   
+       console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
+   
+       console.log(metadata)
+               
+       let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+   
+       for(let memberURL of quorumMembersURLs){
+   
+           //query here
+   
+       }
+   
+
+},
 
 
 /*
@@ -157,6 +247,7 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
+
     /*
     
         Check local cache if SUPER_FINALIZATION_PROOF exists. Will be returned object 
@@ -187,6 +278,15 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     )
             
     let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+
+    //if we're in quorum - start to grab commitments => finalization_proofs => super finalization_proofs
+    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+
+
+
+    }
+
 
     for(let memberURL of quorumMembersURLs){
 
@@ -259,6 +359,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
     
     */
+   
 
     let currentTimestamp = new Date().getTime(),//due to UTC timestamp format
 
@@ -268,6 +369,8 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     //If checkpoint is not fresh - find "fresh" one on hostchain
 
     if(!checkpointIsFresh){
+
+        //Also,if we're in quourm - start process of generating checkpoints,
 
         let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_NEXT_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT).catch(_=>false)
 
@@ -386,6 +489,7 @@ START_VERIFICATION_THREAD=async()=>{
         
             
             //We can simplify this branch
+
             if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
             
             else if(updatedIsFreshCheckpoint && checkPointCompleted && !currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)

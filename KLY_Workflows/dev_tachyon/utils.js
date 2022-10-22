@@ -205,7 +205,7 @@ GET_QUORUM = () => {
         return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
 
 
-    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length
+    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
 
 
 },
@@ -222,7 +222,7 @@ BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
         console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(1)+`${color}│`)
 
-        let verbose='Height:'+block.index+` \x1b[33m#${color} Events:`+block.events.length+` \x1b[33m#${color} Validator:`+block.creator+` \x1b[33m#${color} Time:`+new Date(block.time).toUTCString()
+        let verbose='Height:'+block.index+` \x1b[33m#${color} Events:`+block.events.length+` \x1b[33m#${color} Creator:`+block.creator+` \x1b[33m#${color} Time:`+new Date(block.time).toUTCString()
             
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(76),`${color}│ ${verbose}`)
     

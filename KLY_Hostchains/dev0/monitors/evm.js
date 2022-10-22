@@ -75,6 +75,8 @@
 
 
 
+
+import {GET_QUORUM} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import {LOG} from '../../../KLY_Utils/utils.js'
 import Web3 from 'web3'
 
@@ -293,7 +295,91 @@ export default {
 
     GET_NEXT_VALID_CHECKPOINT:async currentCheckpoint=>{
 
-        //implement
+        /*
+        
+        Reminder: Checkpoint structure
+
+        Header:
+
+            {
+                PAYLOAD_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
+    
+                QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
+
+                QUORUM_AGGREGATED_SIGNATURE:<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
+
+                AFK_SIGNERS:<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
+
+            }
+
+            
+        Payload:
+
+            {
+                VALIDATORS_METADATA:{
+                
+                    VALIDATOR_0 : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool},
+
+                    VALIDATOR_1 : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool},
+
+                    ...
+
+                    VALIDATOR_N : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool}
+                
+                }
+
+                
+                OTHER_SYMBIOTES:{
+
+                    SYMBIOTE_ID_X: CHECKPOINTS_HEADERS_OF_OTHER_SYMBIOTES,
+
+                    SYMBIOTE_ID_Y: CHECKPOINTS_HEADERS_OF_OTHER_SYMBIOTES,
+
+                    ...
+
+                }
+
+            }
+
+        Timestamp:number(we set the timestamp from hostchains to track days changes)
+
+        Completed:bool(required by VERIFICATION_THREAD)
+
+
+
+        **************************************************************************************************************
+
+        In checkpoint on hostchain(no matter what hostchain you use) we receive raw version of checkpoint in hexademical format
+
+        First 32 bytes - checkpoint payload hash
+
+        Next 48 bytes - aggregated BLS pubkey of signers(it should be 2/3N+1 of current quorum)
+
+        Next 96 bytes - aggregated signature
+
+        The rest - splitted for 48 bytes BLS pubkeys of members whose signatures we hadn't get(due to network issues or order in cycle)
+
+
+        ==> { hash, aggregatedPub, aggregatedSigna, afkValidators }
+        
+        ***************************************************************************************************************
+
+        To verify checkpoint is valid(so we can accept it and continue verification thread):
+
+            [+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
+
+            [+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1)
+
+            [+] VERIFY(aggregatedPub,aggregatedSigna,hash)
+
+
+        */
+
+
+        let getCurrentQuorum = GET_QUORUM()
+
+        //Find next checkpoint and verify signatures
+
 
     },
 
