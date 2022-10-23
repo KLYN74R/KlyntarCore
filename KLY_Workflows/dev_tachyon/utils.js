@@ -93,7 +93,7 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
         LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
 
         //Combine all nodes we know about and try to find block there
-        let allVisibleNodes=[CONFIG.SYMBIOTE.GET_MULTI,...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS]
+        let allVisibleNodes = GET_ALL_KNOWN_PEERS()
 
         for(let url of allVisibleNodes){
 
@@ -343,7 +343,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='1'&&SYMBIOTE_META.PEERS.splice(index,1)
+                value!=='OK'&&SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(_=>{
                 
@@ -366,6 +366,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
 
 
+GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS],
 
 
 

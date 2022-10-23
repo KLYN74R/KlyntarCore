@@ -158,11 +158,21 @@ GEN_BLOCKS_START_POLLING=async()=>{
     //leave function
     THREADS_STILL_WORKS.GENERATION=false
     
+},
+
+
+
+
+//Use it to find checkpoints on hostchains, proceed it and join to generation
+START_GENERATION_THREAD_CHECKPOINT_TRACKER=async()=>{
+
+    console.log('Finding new checkpoint for GENERATION_THREAD on symbiote')
+
+    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_CHECKPOINT_FOR_GENERATION_THREAD()
+
+    setTimeout(START_GENERATION_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_GENERATION_THREAD)
+
 }
-
-
-
-
 
 
 
@@ -412,6 +422,28 @@ LOAD_GENESIS=async()=>{
     
     }
 
+
+    SYMBIOTE_META.GENERATION_THREAD.CURRENT_CHECKPOINT={
+
+        HEADER:{},
+        
+        PAYLOAD:{
+
+            //PREV_CHECKPOINT_PAYLOAD_HASH
+
+            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+
+            //OPERATIONS
+
+            //OTHER_SYMBIOTES
+
+        },
+
+        TIMESTAMP:checkpointTimestamp
+    
+    }
+
+
 },
 
 
@@ -529,7 +561,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         'CONTRACTS' //Storage of contracts for VMs
 
-        
+
     ].forEach(
         
         dbName => SYMBIOTE_META[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
@@ -968,7 +1000,9 @@ RUN_SYMBIOTE=async()=>{
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
         //0.Start verification process
-        await START_VERIFICATION_THREAD()
+        START_VERIFICATION_THREAD()
+
+        START_GENERATION_THREAD_CHECKPOINT_TRACKER()
 
         // setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
@@ -1012,7 +1046,6 @@ RUN_SYMBIOTE=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
 
         ,3000)
-
 
 
         //Run another thread to ask for blocks

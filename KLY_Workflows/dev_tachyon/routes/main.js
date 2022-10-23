@@ -731,7 +731,7 @@ addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborte
     
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
         
-        //Add more advanced logic in future
+        //Add more advanced logic in future(or use plugins - it's even better)
         let nodes=SYMBIOTE_META.PEERS
         
         if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
