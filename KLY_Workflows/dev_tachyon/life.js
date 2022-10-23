@@ -396,6 +396,8 @@ LOAD_GENESIS=async()=>{
         
         PAYLOAD:{
 
+            //PREV_CHECKPOINT_PAYLOAD_HASH
+
             VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
 
             //OPERATIONS
@@ -527,6 +529,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         'CONTRACTS' //Storage of contracts for VMs
 
+        
     ].forEach(
         
         dbName => SYMBIOTE_META[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})

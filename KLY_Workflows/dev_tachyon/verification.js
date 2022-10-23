@@ -351,26 +351,10 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
     //Add extra logic to remove/add new validators, assign/reassign account to some thread, set QUORUM and so on
 
-    /*
-    
-        currentSessionMetadata.BLOCKS_GENERATOR=false
-    
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
-
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                        
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
-
-        LOG(`Going to skip \x1b[31;1m${currentValidatorToCheck}:${currentSessionMetadata.INDEX+1}`,'S')
-
-        SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
-    
-    */
-
 
     let currentTimestamp = new Date().getTime(),//due to UTC timestamp format
 
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,currentTimestamp)
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -673,7 +657,6 @@ verifyBlock=async block=>{
     overviewOk=
     
         block.events?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
-        //block.validatorsStuff?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATORS_STUFF_LIMIT_PER_BLOCK
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
         &&
@@ -759,27 +742,6 @@ verifyBlock=async block=>{
         await Promise.all(eventsPromises.splice(0))
 
         LOG(`Blacklist size(\u001b[38;5;177m${block.creator+":"+block.index}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
-
-
-        //____________________________________________PERFORM SYNC OPERATIONS___________________________________________
-
-        // Some events must be synchronized
-
-        //_______________________________________PERFORM VALIDATORS_STUFF OPERATIONS____________________________________
-
-        // We need it for consensus too, so do it in a separate structure
-
-        let validatorsStuffOperations = []
-
-
-        // for(let operation of block.validatorsStuff){
-
-        //     validatorsStuffOperations.push(MESSAGE_VERIFIERS[operation.T]?.(operation,true).catch(e=>''))
-
-        // }
-
-
-        await Promise.all(validatorsStuffOperations.splice(0))
 
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
