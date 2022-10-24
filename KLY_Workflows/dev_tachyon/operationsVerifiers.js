@@ -27,11 +27,11 @@ export default {
 
     AWAKE:async(messagePayload,notJustOverview)=>{
 
-        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM),
+        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM),
 
             rootPub = bls.aggregatePublicKeys([...messagePayload.A,messagePayload]),
 
-            quorumSize=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+            quorumSize=SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumSize*(2/3))+1
 
@@ -40,10 +40,10 @@ export default {
 
         majority = majority > quorumSize ? quorumSize : majority
             
-        let isMajority = ((SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length-messagePayload.A.length)>=majority)
+        let isMajority = ((SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length-messagePayload.A.length)>=majority)
 
 
-        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
+        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
 
             if(notJustOverview){
 
@@ -66,20 +66,20 @@ export default {
 
 
     //To add/remove validators from VALIDATORS_POOL
-    VALIDATOR_STUFF:async event=>{},
+    VALIDATOR_STUFF:async operation=>{},
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    FREEZING:async event=>{},
+    FREEZING:async operation=>{},
     
     //To bind/unbind account/contract to a single(to multiple in future releases) validator
-    BINDING:async event=>{},
+    BINDING:async operation=>{},
 
     //To mint unobtanium for validators for their voting power
-    UNOBTANIUM_MINT:async event=>{},
+    UNOBTANIUM_MINT:async operation=>{},
 
     //To do staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    STAKE:async event=>{},
+    STAKE:async operation=>{},
 
     //To update version of workflow
-    VERSION_UPDATE:async event=>{}
+    VERSION_UPDATE:async operation=>{}
 }

@@ -1,10 +1,10 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF, GET_ALL_KNOWN_PEERS} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import MESSAGE_VERIFIERS from './operationsVerifiers.js'
+import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import Block from './essences/block.js'
 
@@ -30,7 +30,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
     let blockID=blockCreator+":"+index
     
-    return SYMBIOTE_META.BLOCKS.get(blockID).catch(e=>
+    return SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
 
         fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
     
@@ -167,7 +167,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let promises=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL] //immediately push custom URL as the first node we'll communicate. It might be server runned in cooperation with some plugin for custom exchange logic
     
 
-    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
         
         pubKey => promises.push(GET_STUFF(pubKey).then(
         
@@ -181,7 +181,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
     //if we're in quorum - start to grab commitments => finalization_proofs => super finalization_proofs
-    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+    if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
 
 
@@ -209,7 +209,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
                 rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 
-                quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+                quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
 
                 majority = Math.floor(quorumSize*(2/3)+1)
 
@@ -235,6 +235,8 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 },
 
 
+
+
 CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
     let date1 = new Date(timestamp1),
@@ -244,6 +246,8 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
     return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
 
 },
+
+
 
 
 //Function to find,validate and process logic with new checkpoint
@@ -265,7 +269,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         //Also,if we're in quourm - start process of generating checkpoints,
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_CHECKPOINT_FOR_VERIFICATION_THREAD().catch(_=>false)
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD).catch(_=>false)
 
         if(nextCheckpoint) {
 
@@ -274,9 +278,23 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     
             for(let operation of operations){
         
-                //Perform changes here before move to the next checkpoint
+                /*
+                
+                Perform changes here before move to the next checkpoint
+                
+                OPERATION in checkpoint has the following structure
+
+                {
+                    T:<TYPE> - type from './operationsVerifiers.js' to perform this operation
+                    P:<PAYLOAD> - operation body. More detailed here => ./operationsVerifiers.js
+                }
+                
+                */
+                await OPERATIONS_VERIFIERS[operation.T](operation)
         
             }
+
+            //Commit changes after operations here
 
             SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
 

@@ -264,7 +264,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
     let commitmentsSet=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(commitmentsSet.validator)){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(commitmentsSet.validator)){
 
         // !response.aborted && response.end('OK')
 
@@ -298,7 +298,7 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
                 mapping.set(commitmentsSet.validator,singleCommitment.S)
 
 
-                let quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+                let quorumSize = SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
                 
                     majority = Math.floor(quorumSize*(2/3)+1)
 
@@ -447,7 +447,7 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
     let finalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(finalizationProof.validator)){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(finalizationProof.validator)){
 
         !response.aborted && response.end('OK')
 
@@ -471,7 +471,7 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
             mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
 
             
-            let quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length, 
+            let quorumSize = SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length, 
             
                 majority = Math.floor(quorumSize*(2/3)+1)
 
@@ -485,7 +485,7 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
                 let pubkeys=[], signatures=[], afkValidators = []
 
-                SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(pubKey=>{
+                SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.forEach(pubKey=>{
 
                     if(mapping.has(pubKey)){
 
@@ -616,7 +616,7 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
             rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([superFinalizationProof.aggregatedPub,...superFinalizationProof.afkValidators]),
 
-            quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+            quorumSize = SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumSize*(2/3)+1)
 

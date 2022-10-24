@@ -76,9 +76,9 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS,GET_QUORUM} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-import {LOG} from '../../../KLY_Utils/utils.js'
+import {BLAKE3, LOG} from '../../../KLY_Utils/utils.js'
 import Web3 from 'web3'
 
 
@@ -88,34 +88,95 @@ import Web3 from 'web3'
 let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
 
 
-GET_CONTRACT_EVENTS=async()=>{
 
-    let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+//threadID - VERIFICATION_THREAD | GENERATION_THREAD
+GET_CONTRACT_EVENTS=async threadID=>{
+
+
+    //threadID.MONITORING_START_FROM
+    if(SYMBIOTE_META[threadID].CURRENT_SET_COMPLETED){
+
+        //If we already complete this set of events on hostchains - then we can find next set in range (SYMBIOTE_META[threadID].MONITORING_START_FROM,<LATEST_BLOCK_ID>)
+
+        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
     
-        contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
 
-        lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>false)
+            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>{
+
+                LOG(`Some error occured with hostchain node => ${e}`,'W')
+
+                return false
+
+            })
 
 
-    if(lastKnownBlockNumber){
+        if(lastKnownBlockNumber){
 
-        LOG(`Found new latest known block on hostchain \x1b[35;1m${TICKER}\x1b[36;1m => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+            LOG(`Found new latest known block on hostchain [\x1b[35;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
 
-        //Get from the height we stopped till the last known block
+            //Get from the height we stopped till the last known block
         
-        let options = {
+            let options = {
     
-            fromBlock:SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING.START_FROM,
+                fromBlock:SYMBIOTE_META[threadID].MONITORING_START_FROM,
 
-            toBlock:lastKnownBlockNumber
+                toBlock:lastKnownBlockNumber
     
-        };
+            };
     
-        let events = await contractInstance.getPastEvents('Checkpoint',options).catch(e=>false)
+            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
 
-        return [lastKnownBlockNumber,events]
+                LOG(`Received this error when asking for events => ${error}`,'W')
 
-    }else return []
+                return false
+
+            })
+
+            if(events){
+
+                //Update thread data and store locally not to make requests too frequently
+
+                await SYMBIOTE_META.HOSTCHAIN_DATA.put(threadID+'_EVENTS',events).catch(error=>LOG(`Error occured when trying to store events => ${error}`))
+
+                SYMBIOTE_META[threadID].MONITORING_START_FROM = lastKnownBlockNumber
+
+                SYMBIOTE_META[threadID].CURRENT_SET_COMPLETED = false
+
+                await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+
+                SYMBIOTE_META[threadID+'_EVENTS_CACHE']=events
+
+            }
+
+            return [lastKnownBlockNumber,events]
+
+
+        }else return []
+
+
+    }else{
+
+        //Otherwise - take data from local storage and complete check
+
+        let currentEventsSet = SYMBIOTE_META[threadID+'_EVENTS_CACHE'] || await SYMBIOTE_META.HOSTCHAIN_DATA.get(threadID+'_EVENTS').catch(error=>{
+
+            LOG(`Can't get events from local storage,however range (X;${SYMBIOTE_META[threadID].MONITORING_START_FROM}) is not completed \n ${error}`,'W')
+
+            return false
+
+        })
+
+
+        if(currentEventsSet){
+
+            SYMBIOTE_META.EVENTS_FOR_GENERATION_THREAD=currentEventsSet
+
+        }
+
+        return currentEventsSet
+
+    }
         
 },
 
@@ -135,6 +196,107 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 
     return startOfDayLater-startOfDayEarlier >= 86400
+
+},
+
+
+
+
+VERIFY_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
+
+    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
+
+        //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
+
+        let [payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
+
+        afkValidators = afkValidators.split('*')
+
+        //_________________________ VERIFY _________________________
+
+
+        //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
+        let isEqualToRootPub = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
+
+        //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
+        let isMajority = quorumNumber-afkValidators.length >= majority
+
+        //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
+        let signaIsOk = await bls.singleVerify(payloadHash,aggregatedPub,aggregatedSigna)
+
+
+        if(isEqualToRootPub && isMajority && signaIsOk) {
+
+            let validCheckpoint = {
+
+                HEADER:{    
+
+                    PAYLOAD_HASH:payloadHash,
+
+                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:aggregatedPub,
+
+                    QUORUM_AGGREGATED_SIGNATURE:aggregatedSigna,
+
+                    AFK_VALIDATORS:afkValidators
+
+                },
+
+                //We'll add checkpoint payload once find it
+
+                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum
+
+                TIMESTAMP:event.returnValues.blocktime,
+
+                COMPLETED:false
+
+            }
+
+            /*
+        
+            Then,find pure PAYLOAD having hash in header
+        
+            PAYLOAD IS {
+
+                PREV_PAYLOAD_HASH
+
+                VALIDATORS_METADATA:{},
+
+                OPERATIONS:{},
+
+                OTHER_SYMBIOTES:{}
+
+            }
+
+            To verify: BLAKE3(JSON.stringify(PAYLOAD)) === HASH_IN_HEADER
+        
+            */
+
+            // /get_payload_for_checkpoint/:PAYLOAD_HASH
+
+            let initURLs = [CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
+
+
+            for(let url of initURLs){
+
+                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+payloadHash).then(r=>r.json()).catch(e=>false)
+
+                if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload))===payloadHash){
+
+                    validCheckpoint.PAYLOAD = checkpointPayload
+
+                    validCheckpoint.QUORUM = GET_QUORUM(checkpointPayload.VALIDATORS_METADATA) //set the QUORUM for the next checkpoint
+
+                    break
+
+                }
+
+            }
+
+            return validCheckpoint
+
+        }
+
+    }
 
 }
 
@@ -202,37 +364,11 @@ VALIDATORS_METADATA - object like this
 
 export default {
 
-    GET_CHECKPOINT_FOR_GENERATION_THREAD:async()=>{
-
-        //Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the VALIDATORS_METADATA state in checkpoint
-
-        let generationThreadCheckpoint = SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT
-
-        let result = await GET_CONTRACT_EVENTS()
-
-        if(result.length!==0){
-
-            let events = result[1]
-
-
-            for(let event of events){
-
-                //Knowing the quorum, we can step-by-step enumerate events and find the latest valid checkpoint
-
-            }
-
-        }
-
-    },
-
-
-
-
-    GET_CHECKPOINT_FOR_VERIFICATION_THREAD:async()=>{
-
-        /*
-        
-        Reminder: Checkpoint structure
+    // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.GENERATION_THREAD
+    //  GENERATION_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the VALIDATORS_METADATA state in checkpoint
+    /*
+    
+     Reminder: Checkpoint structure
 
         Header:
 
@@ -317,11 +453,15 @@ export default {
             [+] VERIFY(aggregatedPub,aggregatedSigna,hash)
 
 
-        */
+    
+    */
+    
+    GET_VALID_CHECKPOINT:async threadID => {
 
-        let currentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT,
+        
+        let currentCheckpoint = SYMBIOTE_META[threadID].CHECKPOINT,
 
-            quorumNumber=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+            quorumNumber=SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumNumber*(2/3))+1
 
@@ -329,7 +469,6 @@ export default {
         //Check if majority is not bigger than number of validators. It possible when there is small number of validators
 
         majority = majority > quorumNumber ? quorumNumber : majority
-
 
         //Find next checkpoint and verify signatures
 
@@ -342,103 +481,13 @@ export default {
 
             for(let event of events){
 
-                try{
+                let possibleValidCheckpoint = await VERIFY_CHECKPOINT(event,currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
-                    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
+                if(possibleValidCheckpoint.PAYLOAD){
 
-                        //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
-    
-                        let [payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
-    
-                        afkValidators = afkValidators.split('*')
-    
-                        //_________________________ VERIFY _________________________
-    
-    
-                        //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
-                        let isEqualToRootPub = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB')
-    
-                        //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
-                        let isMajority = quorumNumber-afkValidators.length >= majority
-    
-                        //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-                        let signaIsOk = await bls.singleVerify(payloadHash,aggregatedPub,aggregatedSigna)
-    
-    
-                        if(isEqualToRootPub && isMajority && signaIsOk) {
-    
-                            validCheckpoint = {
-    
-                                HEADER:{    
-    
-                                    PAYLOAD_HASH:payloadHash,
-    
-                                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:aggregatedPub,
-    
-                                    QUORUM_AGGREGATED_SIGNATURE:aggregatedSigna,
-    
-                                    AFK_VALIDATORS:afkValidators
-    
-                                },
-                            
-                                PAYLOAD:{
-    
-                                },
-    
-                                TIMESTAMP:event.returnValues.blocktime,
-    
-                                COMPLETED:false
-    
-                            }
-    
-                            /*
-                        
-                            Then,find pure PAYLOAD having hash in header
-                        
-                            PAYLOAD IS {
-    
-                                PREV_PAYLOAD_HASH
-    
-                                VALIDATORS_METADATA:{},
-    
-                                OPERATIONS:{},
-    
-                                OTHER_SYMBIOTES:{}
-    
-                            }
-    
-                            To verify: BLAKE3(JSON.stringify(PAYLOAD)) === HASH_IN_HEADER
-                        
-                            */
-    
-                            // /get_payload_for_checkpoint/:PAYLOAD_HASH
-    
-                            let initURLs = [CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
-    
-    
-                            for(let url of initURLs){
-    
-                                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+payloadHash).then(r=>r.json()).catch(e=>false)
-    
-                                if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload))===payloadHash){
-    
-                                    validCheckpoint.PAYLOAD=checkpointPayload
-    
-                                    break
-    
-                                }
-    
-                            }
-    
-    
-                        }
-    
-                    }
+                    validCheckpoint=possibleValidCheckpoint
 
-                }catch(e){console.log('Error occured ',e)}
-                finally {
-
-                    if(validCheckpoint.PAYLOAD.PREV_PAYLOAD_HASH) break
+                    break
 
                 }
 

@@ -175,18 +175,22 @@ QUICK_SORT = array => {
 
 
 
-GET_QUORUM = () => {
+//We get the quorum based on validators' metadata(pass via parameter)
+
+GET_QUORUM = validatorsMetadata => {
+
+    let validators = Object.keys(validatorsMetadata)
 
     //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
+    if(validators.length<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE){
 
-        let validatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+        let validatorsMetadataHash = BLAKE3(JSON.stringify(validatorsMetadata)),
 
             mapping = new Map(),
 
             sortedChallenges = QUICK_SORT(
 
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.map(
+                validators.map(
                 
                     validatorPubKey => {
 
@@ -205,7 +209,7 @@ GET_QUORUM = () => {
         return sortedChallenges.slice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
 
 
-    } else return SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+    } else return validators
 
 
 },

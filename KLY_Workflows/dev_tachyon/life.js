@@ -168,7 +168,7 @@ START_GENERATION_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     console.log('Finding new checkpoint for GENERATION_THREAD on symbiote')
 
-    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_CHECKPOINT_FOR_GENERATION_THREAD()
+    // let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.GENERATION_THREAD)
 
     setTimeout(START_GENERATION_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_GENERATION_THREAD)
 
@@ -185,7 +185,7 @@ START_TO_GRAB_COMMITMENTS=async block=>{
        let promises=[]
 
 
-       SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+       SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
            
            pubKey => promises.push(GET_STUFF(pubKey).then(
            
@@ -245,7 +245,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
     let promises=[]
 
 
-    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
         
         pubKey => promises.push(GET_STUFF(pubKey).then(
         
@@ -278,7 +278,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
 
 
 
-export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
+export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
@@ -351,7 +351,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
         await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate)
 
 
-        if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+        if(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
             //________________________________Create commitments________________________________
             
@@ -389,7 +389,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
     blocksPool.forEach(block=>BROADCAST('/block',block))
 
 
-    if(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+    if(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
 
         commitmentsArray={
@@ -408,7 +408,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async () => {
             let promises = []
     
             //0. Initially,try to get pubkey => node_ip binding 
-            SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+            SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.forEach(
                 
                 pubkey => promises.push(GET_STUFF(pubkey))
                 
@@ -491,12 +491,7 @@ LOAD_GENESIS=async()=>{
     
     }
 
-    //We get the initial(genesis) quorum from the hash of VALIDATORS_METADATA(currently,from genesis, it's empty template)
-
-    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM = GET_QUORUM()
-
-
-    SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT={
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
         HEADER:{},
         
@@ -519,7 +514,7 @@ LOAD_GENESIS=async()=>{
     }
 
 
-    SYMBIOTE_META.GENERATION_THREAD.CURRENT_CHECKPOINT={
+    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT={
 
         HEADER:{},
         
@@ -538,6 +533,12 @@ LOAD_GENESIS=async()=>{
         TIMESTAMP:checkpointTimestamp
     
     }
+
+    //We get the initial(genesis) quorum from the hash of VALIDATORS_METADATA(currently,from genesis, it's empty template)
+
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+
+    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.VALIDATORS_METADATA)
 
 },
 
@@ -650,7 +651,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'BLOCKS',//For blocks(key is index)
         
-        'HOSTCHAINS_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
+        'HOSTCHAIN_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
     
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
@@ -741,8 +742,6 @@ PREPARE_SYMBIOTE=async()=>{
                 FINALIZED_POINTER:{VALIDATOR:'',INDEX:-1,HASH:''},//pointer to know where we should start to process further blocks
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
-    
-                QUORUM:[],
 
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
@@ -771,7 +770,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
-    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.QUORUM))
+    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________
@@ -803,7 +802,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
-    if(!SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING) SYMBIOTE_META.VERIFICATION_THREAD.HOSTCHAIN_MONITORING=CONFIG.SYMBIOTE.MONITOR.MONITORING_PRESET
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.MONITORING_START_FROM) SYMBIOTE_META.VERIFICATION_THREAD.MONITORING_START_FROM=CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM
 
 
 
@@ -982,7 +981,7 @@ START_AWAKENING_PROCEDURE=()=>{
         //Here we have verified signatures from validators
         
 
-        let quorumNumbers=SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.length,
+        let quorumNumbers=SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumNumbers*(2/3))+1
 
