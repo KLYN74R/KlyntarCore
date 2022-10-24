@@ -172,6 +172,102 @@ START_GENERATION_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     setTimeout(START_GENERATION_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_GENERATION_THREAD)
 
+},
+
+
+
+
+START_TO_GRAB_COMMITMENTS=async block=>{
+
+
+    //Exchange with other quorum members
+
+       let promises=[]
+
+
+       SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+           
+           pubKey => promises.push(GET_STUFF(pubKey).then(
+           
+               stuffData => stuffData.payload.url
+           
+           ))
+   
+       )
+   
+   
+       console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
+   
+       console.log(metadata)
+               
+       let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+   
+       for(let memberURL of quorumMembersURLs){
+   
+           //query here
+   
+       }
+   
+
+},
+
+
+
+
+CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
+
+    //Method which create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
+
+    //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
+
+    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true}
+
+    let metadata = {}
+
+    SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
+
+        metadata[validator]={
+            
+            INDEX:descriptor.id,
+            
+            HASH:descriptor.hash,
+            
+            BLOCKS_GENERATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].BLOCKS_GENERATOR
+        
+        }
+
+    })
+
+    let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
+
+    //Exchange with other quorum members
+
+    let promises=[]
+
+
+    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
+        
+        pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+            stuffData => stuffData.payload.url
+        
+        ))
+
+    )
+
+
+    console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
+
+    console.log(metadata)
+            
+    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+    for(let memberURL of quorumMembersURLs){
+
+        //query here
+
+    }
+
 }
 
 
@@ -442,7 +538,6 @@ LOAD_GENESIS=async()=>{
         TIMESTAMP:checkpointTimestamp
     
     }
-
 
 },
 

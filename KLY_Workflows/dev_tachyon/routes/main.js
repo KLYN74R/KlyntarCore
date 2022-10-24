@@ -4,7 +4,7 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
-import MESSAGE_VERIFIERS from '../messagesVerifiers.js'
+import MESSAGE_VERIFIERS from '../operationsVerifiers.js'
 
 import Block from '../essences/block.js'
 

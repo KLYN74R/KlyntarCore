@@ -4,7 +4,7 @@ import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import MESSAGE_VERIFIERS from './messagesVerifiers.js'
+import MESSAGE_VERIFIERS from './operationsVerifiers.js'
 
 import Block from './essences/block.js'
 
@@ -89,104 +89,6 @@ GET_BLOCK = async(blockCreator,index) => {
 },
 
 
-
-
-CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
-
-    //Method which create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
-
-    //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
-
-    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true}
-
-    let metadata = {}
-
-    SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
-
-        metadata[validator]={
-            
-            INDEX:descriptor.id,
-            
-            HASH:descriptor.hash,
-            
-            BLOCKS_GENERATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].BLOCKS_GENERATOR
-        
-        }
-
-    })
-
-    let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
-
-    //Exchange with other quorum members
-
-    let promises=[]
-
-
-    SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
-        
-        pubKey => promises.push(GET_STUFF(pubKey).then(
-        
-            stuffData => stuffData.payload.url
-        
-        ))
-
-    )
-
-
-    console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
-
-    console.log(metadata)
-            
-    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-
-    for(let memberURL of quorumMembersURLs){
-
-        //query here
-
-    }
-
-},
-
-
-
-
-START_TO_GRAB_COMMITMENTS=async block=>{
-
-
-
-    
-    setTimeout()
-
-       //Exchange with other quorum members
-
-       let promises=[]
-
-
-       SYMBIOTE_META.VERIFICATION_THREAD.QUORUM.forEach(
-           
-           pubKey => promises.push(GET_STUFF(pubKey).then(
-           
-               stuffData => stuffData.payload.url
-           
-           ))
-   
-       )
-   
-   
-       console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
-   
-       console.log(metadata)
-               
-       let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-   
-       for(let memberURL of quorumMembersURLs){
-   
-           //query here
-   
-       }
-   
-
-},
 
 
 /*
