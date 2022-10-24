@@ -260,7 +260,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
     let currentTimestamp = new Date().getTime(),//due to UTC timestamp format
 
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -274,7 +274,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         if(nextCheckpoint) {
 
 
-            let operations = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.OPERATIONS
+            let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
     
             for(let operation of operations){
         
@@ -296,21 +296,21 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             //Commit changes after operations here
 
-            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT=nextCheckpoint
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
         }
 
         else {
 
             //Even if we can't find new valid checkpoint and current checkpoint is non fresh - mark it as completed
-            SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED=true
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
 
         }
     
     }else{
 
         //If we reach the limits of checkpoint but it's still fresh - then mark it as "completed"
-        SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED=true
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
 
     }
 
@@ -331,17 +331,17 @@ START_VERIFICATION_THREAD=async()=>{
 
         let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
 
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
 
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.TIMESTAMP,new Date().getTime())
+        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,new Date().getTime())
 
         /*
 
@@ -407,9 +407,9 @@ START_VERIFICATION_THREAD=async()=>{
 
                 quorumSolutionToVerifyBlock = false, //by default
 
-                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX > currentSessionMetadata.INDEX,
+                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX > currentSessionMetadata.INDEX,
 
-                checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CURRENT_CHECKPOINT.COMPLETED
+                checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
             
             //We can simplify this branch

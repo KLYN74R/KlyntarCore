@@ -745,7 +745,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                 VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
                 
-                CURRENT_CHECKPOINT:'genesis',
+                CHECKPOINT:'genesis',
 
                 SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
             
