@@ -64,22 +64,23 @@ export default {
 
     //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
 
+    
 
     //To add/remove validators from VALIDATORS_POOL
-    VALIDATOR_STUFF:async operation=>{},
+    VALIDATOR_STUFF:async (operation,isJustVerify)=>{},
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    FREEZING:async operation=>{},
+    FREEZING:async (operation,isJustVerify)=>{},
     
     //To bind/unbind account/contract to a single(to multiple in future releases) validator
-    BINDING:async operation=>{},
+    BINDING:async (operation,isJustVerify)=>{},
 
     //To mint unobtanium for validators for their voting power
-    UNOBTANIUM_MINT:async operation=>{},
+    UNOBTANIUM_MINT:async (operation,isJustVerify)=>{},
 
     //To do staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    STAKE:async operation=>{},
+    STAKE:async (operation,isJustVerify)=>{},
 
     //To update version of workflow
-    VERSION_UPDATE:async operation=>{}
+    VERSION_UPDATE:async (operation,isJustVerify)=>{}
 }
