@@ -3,7 +3,7 @@ import {SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
 
 
 
-let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=>m.default).catch(e=>console.log(e)),
+let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=>m.default).catch(error=>console.log(error)),
 
 
 

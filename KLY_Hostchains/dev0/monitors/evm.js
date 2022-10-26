@@ -202,7 +202,7 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 
 
-VERIFY_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
+VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
     if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
 
@@ -243,9 +243,9 @@ VERIFY_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
                 //We'll add checkpoint payload once find it
 
-                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum
+                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for GENERATION_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
-                TIMESTAMP:event.returnValues.blocktime,
+                TIMESTAMP:+event.returnValues.blocktime,
 
                 COMPLETED:false
 
@@ -253,9 +253,9 @@ VERIFY_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
             /*
         
-            Then,find pure PAYLOAD having hash in header
+            Then,find pure PAYLOAD related to hash in header
         
-            PAYLOAD IS {
+            PAYLOAD is {
 
                 PREV_PAYLOAD_HASH
 
@@ -270,8 +270,6 @@ VERIFY_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
             To verify: BLAKE3(JSON.stringify(PAYLOAD)) === HASH_IN_HEADER
         
             */
-
-            // /get_payload_for_checkpoint/:PAYLOAD_HASH
 
             let initURLs = [CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
 
@@ -481,8 +479,9 @@ export default {
 
             for(let event of events){
 
-                let possibleValidCheckpoint = await VERIFY_CHECKPOINT(event,currentCheckpoint,quorumNumber,majority).catch(_=>false)
+                let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(event,currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
+                //If returned value has payload - it's signal that everything is ok
                 if(possibleValidCheckpoint.PAYLOAD){
 
                     validCheckpoint=possibleValidCheckpoint

@@ -62,7 +62,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
                 if(url===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(e=>false)
+                let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(_=>false)
                 
                 if(itsProbablyBlock){
     
@@ -72,7 +72,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
-                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(e=>{})
+                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
     
                         return itsProbablyBlock
     
@@ -273,7 +273,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         if(nextCheckpoint) {
 
-
             let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
     
             for(let operation of operations){
@@ -286,17 +285,19 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
                 {
                     T:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                    P:<PAYLOAD> - operation body. More detailed here => ./operationsVerifiers.js
+                    P:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
                 }
                 
                 */
-                await OPERATIONS_VERIFIERS[operation.T](operation)
+                await OPERATIONS_VERIFIERS[operation.T](operation,false) //pass isJustVerify=false to make changes to state
         
             }
 
             //Commit changes after operations here
 
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
+
+            // Create new quorum based on new VALIDATORS_METADATA state
 
         }
 
@@ -505,9 +506,9 @@ MAKE_SNAPSHOT=async()=>{
             
                             .on('close',resolve)
             
-        ).catch(e=>{
+        ).catch(error=>{
     
-                LOG(`Snapshot creation failed on state copying stage for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
+                LOG(`Snapshot creation failed on state copying stage for ${SYMBIOTE_ALIAS()}\n${error}`,'W')
                 
                 process.emit('SIGINT',130)
     
@@ -554,9 +555,9 @@ MAKE_SNAPSHOT=async()=>{
     
         .then(()=>LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on point \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR}:${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S'))
         
-        .catch(e=>{
+        .catch(error=>{
 
-            LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
+            LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS()}\n${error}`,'W')
         
             process.emit('SIGINT',130)
 
@@ -699,7 +700,7 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(e=>LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(error=>LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W'))
 
         }else{
 

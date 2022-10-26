@@ -240,7 +240,7 @@ export let VERIFIERS = {
 
             payloadHash=BLAKE3(payloadJson),
 
-            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(e=>false))
+            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(_=>false))
 
 
 

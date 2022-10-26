@@ -29,7 +29,7 @@ account=async(response,request)=>{
 
         let data={
         
-            ...await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(e=>''),
+            ...await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(_=>''),
         
             COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
@@ -121,7 +121,7 @@ getValidators=response=>{
 
 
 
-//Returns quorum for today
+//Returns quorum for today(based on GENERATION_THREAD because it shows really current quorum)
 getCurrentQuorum=response=>{
 
     //Set triggers
@@ -129,7 +129,7 @@ getCurrentQuorum=response=>{
 
         response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`).onAborted(()=>response.aborted=true)
 
-        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+        response.end(JSON.stringify(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
 
     }else !response.aborted && response.end('Symbiote not supported')
 
@@ -175,7 +175,7 @@ multiplicity=response=>response.writeHeader('Access-Control-Allow-Origin','*').w
                 
                 async block => {
 
-                    let proof = await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(id).catch(e=>'')
+                    let proof = await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(id).catch(_=>'')
 
                     response.push({b:block,p:proof})
 

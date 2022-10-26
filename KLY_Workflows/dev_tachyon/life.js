@@ -493,17 +493,27 @@ LOAD_GENESIS=async()=>{
 
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
-        HEADER:{},
+        HEADER:{
+
+            PAYLOAD_HASH:'',
+
+            QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
+
+            QUORUM_AGGREGATED_SIGNATURE:'',
+
+            AFK_VALIDATORS:[]
+
+        },
         
         PAYLOAD:{
 
-            //PREV_CHECKPOINT_PAYLOAD_HASH
+            PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA},
 
-            //OPERATIONS
+            OPERATIONS:[],
 
-            //OTHER_SYMBIOTES
+            OTHER_SYMBIOTES:{}
 
         },
 
@@ -514,19 +524,30 @@ LOAD_GENESIS=async()=>{
     }
 
 
+    //Make template, but anyway - we'll find checkpoints on hostchains
     SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT={
 
-        HEADER:{},
+        HEADER:{
+
+            PAYLOAD_HASH:'',
+
+            QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
+
+            QUORUM_AGGREGATED_SIGNATURE:'',
+
+            AFK_VALIDATORS:[]
+
+        },
         
         PAYLOAD:{
 
-            //PREV_CHECKPOINT_PAYLOAD_HASH
+            PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+            VALIDATORS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA},
 
-            //OPERATIONS
+            OPERATIONS:[],
 
-            //OTHER_SYMBIOTES
+            OTHER_SYMBIOTES:{}
 
         },
 
@@ -534,11 +555,12 @@ LOAD_GENESIS=async()=>{
     
     }
 
-    //We get the initial(genesis) quorum from the hash of VALIDATORS_METADATA(currently,from genesis, it's empty template)
 
+    //We get the quorum for VERIFICATION_THREAD based on own local copy of VALIDATORS_METADATA state
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
 
-    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.VALIDATORS_METADATA)
+    //...However, quorum for GENERATION_THREAD might be retrieved from VALIDATORS_METADATA of checkpoints. It's because both threads are async
+    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
 },
 
@@ -590,6 +612,8 @@ PREPARE_SYMBIOTE=async()=>{
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
         
+        SPECIAL_OPERATIONS_MEMPOOL:[], //to hold operations which should be included to checkpoints
+
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         ACCOUNTS:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
 
@@ -695,23 +719,23 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.STATE.get('GT').catch(e=>
+    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.STATE.get('GT').catch(error=>
         
-        e.notFound
+        error.notFound
         ?
         {
             PREV_HASH:`Poyekhali!@Y.A.Gagarin`,//Genesis hash
             NEXT_INDEX:0//So the first block will be with index 0
         }
         :
-        (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F'),process.exit(106))
+        (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${error}`,'F'),process.exit(106))
                         
     )
 
 
-    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(e=>false),//OK is in case of absence of next block
+    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
 
-        previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(e=>false)//but current block should present at least locally
+        previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
 
 
     if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
@@ -732,9 +756,9 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(e=>{
+    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(error=>{
 
-        if(e.notFound){
+        if(error.notFound){
 
             //Default initial value
             return {
@@ -753,7 +777,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         }else{
 
-            LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${e}`,'F')
+            LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${error}`,'F')
             
             process.exit(105)
 
@@ -817,9 +841,9 @@ PREPARE_SYMBIOTE=async()=>{
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
         LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m was decrypted successfully`,'S')        
     
-    ).catch(e=>{
+    ).catch(error=>{
     
-        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${e}`,'F')
+        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,'F')
  
         process.exit(107)
 
@@ -957,13 +981,13 @@ START_AWAKENING_PROCEDURE=()=>{
 
                     */
 
-                    VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(e=>false)
+                    VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(_=>false)
 
                 )
 
-                .catch(e=>
+                .catch(error=>
                 
-                    LOG(`Validator ${url} send no data to <ALIVE>. Caused error \n${e}`,'W')
+                    LOG(`Validator ${url} send no data to <ALIVE>. Caused error \n${error}`,'W')
 
                 )
 
@@ -1068,9 +1092,9 @@ START_AWAKENING_PROCEDURE=()=>{
                     :
                     LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
 
-                ).catch(e=>
+                ).catch(error=>
 
-                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT\n${e}`,'W')
+                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT\n${error}`,'W')
                 
                 )
 
@@ -1079,7 +1103,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
         }
 
-    }).catch(e=>LOG(`Can't get current validators set\n${e}`,'W'))
+    }).catch(error=>LOG(`Can't get current validators set\n${error}`,'W'))
 
 },
 

@@ -35,7 +35,7 @@ GET_ACCOUNT_ON_SYMBIOTE = async addr =>
        //Get and push to cache
        ACCOUNT.T==='A' && SYMBIOTE_META.ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
    
-   ).catch(e=>false),
+   ).catch(_=>false),
 
 
 
@@ -45,24 +45,6 @@ GET_ACCOUNT_ON_SYMBIOTE = async addr =>
 
 
 WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl),
-
-
-
-
-//Recepient must support HTTPS
-//*UPD:Sign with our pubkey to avoid certifications
-SEND_REPORT = alertInfo =>
-
-    fetch(CONFIG.SYMBIOTE.MONITOR.REPORT_TO,{
-
-        method:'POST',
-        body:JSON.stringify(alertInfo)
-    
-    }).then(()=>{}).catch(e=>
-        
-        LOG(`No response from report mananger\n CASE \n Symbiote:\x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m AlertInfo:\x1b[36;1m${alertInfo}\u001b[38;5;3m Error:\x1b[36;1m${e}\x1b[0m`,'W')
-        
-    ),
 
 
 
@@ -77,12 +59,12 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
 
     LOG(`Can't find stuff with ID=\x1b[32;1m${stuffID}\x1b[36;1m in cache. Going to ask \x1b[32;1mGET_STUFF_URL\x1b[36;1m node`,'I')
 
-    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${stuffID}/${cache_type}`).then(r=>r.json()).catch(e=>false)
+    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${stuffID}/${cache_type}`).then(r=>r.json()).catch(_=>false)
 
     if(stuff){
 
 
-        SYMBIOTE_META.STUFF.put(stuffID,stuff).catch(e=>LOG(`Can't store stuff ${stuffID} to local storage`,'W'))        
+        SYMBIOTE_META.STUFF.put(stuffID,stuff).catch(_=>LOG(`Can't store stuff ${stuffID} to local storage`,'W'))
 
     
         if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,stuff)
@@ -302,7 +284,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
                     
                     body:JSON.stringify({data,sig})
                 
-                }).catch(e=>
+                }).catch(_=>
                     
                     CONFIG.SYMBIOTE.LOGS.OFFLINE
                     &&

@@ -360,7 +360,7 @@ getCommitment=async(response,request)=>{
 
         }else if(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS[blockCreator]){
 
-            let block = await SYMBIOTE_META.BLOCKS.get(blockCreator+':'+index).catch(e=>false)
+            let block = await SYMBIOTE_META.BLOCKS.get(blockCreator+':'+index).catch(_=>false)
 
             if(block){
 
@@ -689,17 +689,30 @@ getSuperFinalization=async(response,request)=>{
 Accept checkpoints from other validators in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
 
-We take checkpoints from SYMBIOTE_META.CHECKPOINTS
+
+Body format:{
+
+
+
+}
+
+
+Response:{
+
+
+
+}
 
 */
 checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
+    let checkpointProposition=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
 }),
 
 
 
-
+//0-hash of payload of checkpoint
 getPayloadForCheckpoint=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
@@ -719,7 +732,12 @@ getPayloadForCheckpoint=async(response,request)=>{
 
 
 
-//_____________________________________________________________AUXILARIES________________________________________________________________________
+operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+
+    let superFinalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+}),
 
 
 
@@ -780,8 +798,11 @@ UWS_SERVER
 .post('/super_finalization',postSuperFinalization)
 
 
+//Used to get payload by hash to progress in GENERATION_THREAD
 .get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
+
+.post('/operations',operationsAccept)
 
 
 .post('/checkpoint',checkpoint)

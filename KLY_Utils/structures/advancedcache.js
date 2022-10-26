@@ -16,7 +16,7 @@ export default class{
         
         //Get account if account is NOT in debounce zone or in stoplist
         //Even if address in buffer zone to be commited to db-anyway we have separate set "debounce" which prevents spam
-        let acc = !(this.debounce.has(addr) || this.stoplist.has(addr)) && (this.cache.get(addr) || await this.db.get(addr).catch(e=>false))
+        let acc = !(this.debounce.has(addr) || this.stoplist.has(addr)) && (this.cache.get(addr) || await this.db.get(addr).catch(_=>false))
         
         if (acc) {
             
