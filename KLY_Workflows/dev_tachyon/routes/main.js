@@ -2,9 +2,9 @@ import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
-import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
+import OPERATIONS_VERIFIERS from '../operationsVerifiers.js'
 
-import MESSAGE_VERIFIERS from '../operationsVerifiers.js'
+import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -17,7 +17,25 @@ let
 
 
 
-
+/******
+ * ## Accept blocks
+ * 
+ * ### Body format
+ * 
+ * {
+ *      creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+ *      time:1666744452126,
+ *      events:[
+ *          event1,
+ *          event2,
+ *          event3,
+ *      ]
+ *      index:1337,
+ *      prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+ *      sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+ * }
+ * 
+ */
 acceptBlocks=response=>{
     
     let total=0,buf=Buffer.alloc(0)
@@ -734,8 +752,23 @@ getPayloadForCheckpoint=async(response,request)=>{
 
 operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
 
-    let superFinalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let operation=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
+    //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.length<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.T]){
+
+        let isOk = await OPERATIONS_VERIFIERS[operation.T](operation,true) //it's just verify without state changes
+
+        if(isOk){
+
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push(operation)
+
+            response.end('OK')
+        
+        }else response.end('Verification failed')
+
+    }else response.end('Route is off')
 
 }),
 

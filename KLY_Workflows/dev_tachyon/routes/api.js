@@ -88,8 +88,12 @@ block=(response,request)=>{
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
 
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`)
+            .onAborted(()=>response.aborted=true)
 
-        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`).onAborted(()=>response.aborted=true)
 
         SYMBIOTE_META.BLOCKS.get(request.getParameter(0)).then(block=>
 
@@ -111,7 +115,12 @@ getValidators=response=>{
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
 
-        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`).onAborted(()=>response.aborted=true)
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`)
+            .onAborted(()=>response.aborted=true)
+
 
         response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
 
@@ -127,7 +136,11 @@ getCurrentQuorum=response=>{
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM){
 
-        response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`).onAborted(()=>response.aborted=true)
+        response
+            
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`)
+            .onAborted(()=>response.aborted=true)
 
         response.end(JSON.stringify(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
 
@@ -148,7 +161,15 @@ And you ask for a blocks:
 
 */
 
-multiplicity=response=>response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`).onAborted(()=>response.aborted=true).onData(async v=>{
+multiplicity=response=>
+
+    response.writeHeader('Access-Control-Allow-Origin','*')
+    
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`)
+            
+            .onAborted(()=>response.aborted=true)
+            
+.onData(async v=>{
    
     let blocksIDs=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -235,17 +256,6 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
     //Unimplemented
     response.end('')
 
-}),
-
-
-
-
-//Coming soon
-alert=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
-    
-    //Unimplemented
-    response.end('')
-
 })
 
 
@@ -268,7 +278,5 @@ UWS_SERVER
 .get('/nodes/:REGION',nodes)
 
 .get('/block/:ID',block)
-
-.post('/alert',alert)
 
 .get('/info',info)
