@@ -54,10 +54,7 @@
             "VALIDATOR_REWARD_PERCENTAGE":0.5,
             "QUORUM_SIZE":127,
             "EVENTS_LIMIT_PER_BLOCK":30000,
-            "DEFAULT_PAYMENT_IF_WRONG_TYPE":{
-                "KLY":5,
-                "UNO":10
-            }
+            "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
         
         },
         

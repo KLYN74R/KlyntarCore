@@ -627,22 +627,29 @@ verifyBlock=async block=>{
             //O(1),coz it's set
             if(!SYMBIOTE_META.BLACKLIST.has(event.creator)){
 
-                let accountHandler=GET_ACCOUNT_ON_SYMBIOTE(event.creator),
-                    
-                    spend=SYMBIOTE_META.SPENDERS[event.type]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE.KLY
+                let accountHandler=GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
-
-                    
                 //If it's not default account - return
-                if(accountHandler.type!=='account') return;
+                if(accountHandler.account.type!=='account') return;
                 
+                    
+                let spend=SYMBIOTE_META.SPENDERS[event.type]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE
+
 
                 if(event.nonce<=accountHandler.account.nonce||accountHandler.nonceSet.has(event.nonce)) accountHandler.nonceDuplicates.add(event.nonce)
                 
-                else accountHandler.nonceSet.add(event.nonce);
+                else accountHandler.nonceSet.add(event.nonce)
     
 
-                if((accountHandler.outBalance-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.type]) SYMBIOTE_META.BLACKLIST.add(event.creator)
+
+                let userTriesToSpendMoreThanHave = (accountHandler.outBalance-=spend)<0,
+
+                    noSpender = !SYMBIOTE_META.SPENDERS[event.type],
+                    
+                    accountNotBindedToCurrentValidator = accountHandler.account.bind!=='' && accountHandler.account.bind!==block.creator 
+
+
+                if(userTriesToSpendMoreThanHave||noSpender||accountNotBindedToCurrentValidator) SYMBIOTE_META.BLACKLIST.add(event.creator)
 
             }
 
