@@ -37,10 +37,10 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
-import {VERIFY_BASED_ON_SIG_AND_ACCOUNT_TYPE} from './verifiers.js'
+import {VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
 
-let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_AND_ACCOUNT_TYPE(event,'FILTER') ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
+let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE(event,'FILTER') ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
 
 
 export default {

@@ -606,12 +606,8 @@ verifyBlock=async block=>{
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
-
         let sendersAccounts=[]
-        
-        //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
-        block.events.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.creator)))
-        
+    
         //Push accounts of validators
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
 
@@ -619,68 +615,20 @@ verifyBlock=async block=>{
         await Promise.all(sendersAccounts.splice(0))
 
 
-        //______________________________________CALCULATE TOTAL FEES AND AMOUNTS________________________________________
-
-
-        block.events.forEach(event=>{
-
-            //O(1),coz it's set
-            if(!SYMBIOTE_META.BLACKLIST.has(event.creator)){
-
-                let accountHandler=GET_ACCOUNT_ON_SYMBIOTE(event.creator)
-
-                //If it's not default account - return
-                if(accountHandler.account.type!=='account') return;
-                
-                    
-                let spend=SYMBIOTE_META.SPENDERS[event.type]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE
-
-
-                if(event.nonce<=accountHandler.account.nonce||accountHandler.nonceSet.has(event.nonce)) accountHandler.nonceDuplicates.add(event.nonce)
-                
-                else accountHandler.nonceSet.add(event.nonce)
-    
-
-
-                let userTriesToSpendMoreThanHave = (accountHandler.outBalance-=spend)<0,
-
-                    noSpender = !SYMBIOTE_META.SPENDERS[event.type],
-                    
-                    accountNotBindedToCurrentValidator = accountHandler.account.bind!=='' && accountHandler.account.bind!==block.creator 
-
-
-                if(userTriesToSpendMoreThanHave||noSpender||accountNotBindedToCurrentValidator) SYMBIOTE_META.BLACKLIST.add(event.creator)
-
-            }
-
-        })
-
-
         //___________________________________________START TO PERFORM EVENTS____________________________________________
 
-        
-        let eventsPromises=[]
+        for(let event of block.events){
 
+            if(SYMBIOTE_META.VERIFIERS[event.type]) await SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox)
 
-        block.events.forEach(event=>
-                
-            //If verifier to such event exsist-then verify it!
-            SYMBIOTE_META.VERIFIERS[event.type]
-            &&
-            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox))
-
-        )
-        
-        await Promise.all(eventsPromises.splice(0))
-
-        LOG(`Blacklist size(\u001b[38;5;177m${block.creator+":"+block.index}\x1b[32;1m ### \u001b[38;5;177m${blockHash}\u001b[38;5;3m) ———> \x1b[36;1m${SYMBIOTE_META.BLACKLIST.size}`,'W')
-
+        }
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
+
         // *add mechanism for auto fees distribution or allow everyone to write contract for "custom" distribution mechanism
 
-        let shareFeesPromises=[], 
+        let shareFeesPromises = [], 
 
             payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
         
@@ -731,36 +679,16 @@ verifyBlock=async block=>{
 
         let atomicBatch = SYMBIOTE_META.STATE.batch()
 
+
+        SYMBIOTE_META.ACCOUNTS_CACHE.forEach((account,addr)=>
+
+            atomicBatch.put(addr,account)
+
+        )
         
-        //Change state of accounts & contracts
-        //Use caching(such primitive for the first time)
-        if(SYMBIOTE_META.ACCOUNTS_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE){
+        if(SYMBIOTE_META.ACCOUNTS_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.ACCOUNTS_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
-            SYMBIOTE_META.ACCOUNTS_CACHE.forEach((acc,addr)=>
-
-                atomicBatch.put(addr,acc.account)
-
-            )
-            
-            SYMBIOTE_META.ACCOUNTS_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
         
-        }else{
-            
-            SYMBIOTE_META.ACCOUNTS_CACHE.forEach((acc,addr)=>{
-
-                atomicBatch.put(addr,acc.account)
-
-                //Update urgent balance for the next blocks
-                acc.outBalance=acc.account.balance
-
-                //Clear sets of nonces(NOTE: Optional chaining here because some accounts are newly created)
-                acc.nonceSet?.clear()
-                acc.nonceDuplicates?.clear()
-
-            })
-        
-        }
-
 
         //Change finalization pointer
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.creator
@@ -786,10 +714,6 @@ verifyBlock=async block=>{
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
-
-
-        //Also just clear and add some advanced logic later-it will be crucial important upgrade for process of phantom blocks
-        SYMBIOTE_META.BLACKLIST.clear()
         
 
         //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________

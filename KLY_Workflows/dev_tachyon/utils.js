@@ -33,7 +33,7 @@ GET_ACCOUNT_ON_SYMBIOTE = async addrID =>{
     
     .then(account=>{
  
-        if(account.type==='account') SYMBIOTE_META.ACCOUNTS_CACHE.set(addrID,{account,nonceSet:new Set(),nonceDuplicates:new Set(),outBalance:account.balance})
+        if(account.type==='account') SYMBIOTE_META.ACCOUNTS_CACHE.set(addrID,account)
 
         return SYMBIOTE_META.ACCOUNTS_CACHE.get(addrID)
  

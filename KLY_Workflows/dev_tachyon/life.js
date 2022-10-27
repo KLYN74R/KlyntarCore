@@ -617,8 +617,6 @@ PREPARE_SYMBIOTE=async()=>{
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         ACCOUNTS_CACHE:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
 
-        BLACKLIST:new Set(), //To sift addresses which spend more than has when we check another block
-
         PEERS:[], //Peers to exchange data with
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
