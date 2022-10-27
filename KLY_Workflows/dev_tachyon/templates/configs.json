@@ -47,12 +47,17 @@
         "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
         "WORKFLOW_OPTIONS":{
 
-            "VALIDATOR_STAKE":10000,
+            "VALIDATOR_STAKE":{
+                "KLY":10000,
+                "UNO":50000
+            },
             "VALIDATOR_REWARD_PERCENTAGE":0.5,
             "QUORUM_SIZE":127,
-            "VALIDATORS_STUFF_LIMIT_PER_BLOCK":100,
             "EVENTS_LIMIT_PER_BLOCK":30000,
-            "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
+            "DEFAULT_PAYMENT_IF_WRONG_TYPE":{
+                "KLY":5,
+                "UNO":10
+            }
         
         },
         

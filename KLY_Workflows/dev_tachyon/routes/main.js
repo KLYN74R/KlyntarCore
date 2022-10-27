@@ -38,7 +38,7 @@ let
  */
 acceptBlocks=response=>{
     
-    let total=0,buf=Buffer.alloc(0)
+    let total=0,buffer=Buffer.alloc(0)
     
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
@@ -53,13 +53,13 @@ acceptBlocks=response=>{
 
         if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
         
-            buf=await SAFE_ADD(buf,chunk,response)//build full data from chunks
+            buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
     
             total+=chunk.byteLength
         
             if(last){
             
-                let block=await PARSE_JSON(buf), hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
+                let block=await PARSE_JSON(buffer), hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
                 
                 //No sense to verify & accept own block
                 if(block.creator===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index+'/'+hash) || block.index<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX){
@@ -128,12 +128,12 @@ acceptBlocks=response=>{
 
 //Format of body : {symbiote,body}
 //There is no 'c'(creator) field-we get it from tx
-acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {symbiote,event}=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    let {symbiote,event}=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
-    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.c!=='string' || typeof event.n!=='number' || typeof event.s!=='string'){
+    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
         
         !response.aborted&&response.end('Overview failed')
         
@@ -154,9 +154,9 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     */
     
-    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.t]){
+    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.type]){
 
-        let filtered=await SYMBIOTE_META.FILTERS[event.t](event)
+        let filtered=await SYMBIOTE_META.FILTERS[event.type](event)
 
         if(filtered){
 
@@ -175,7 +175,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 //Function to allow validator to back to the game
 //Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
-awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
     
     /*
     
@@ -187,7 +187,7 @@ awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-
         }
 
     */
-    let helloMessage=await BODY(v,CONFIG.PAYLOAD_SIZE),
+    let helloMessage=await BODY(bytes,CONFIG.PAYLOAD_SIZE),
 
         validatorVTMetadataHash=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V])),
 
@@ -276,10 +276,10 @@ More info about FINALIZATION_PROOF available in description to POST /finalizatio
 
 */
 
-postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     
-    let commitmentsSet=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let commitmentsSet=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(commitmentsSet.validator)){
@@ -461,9 +461,9 @@ More detailed about it in description to the next route
 
 */
 
-postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let finalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let finalizationProof=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(finalizationProof.validator)){
 
@@ -609,9 +609,9 @@ To verify SUPER_FINALIZATION_PROOF we should follow several steps:
 3) Make sure that it's majority solution by checking QUORUM_SIZE-afkValidators >= 2/3N+1
 
 */
-postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let superFinalizationProof=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let superFinalizationProof=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     //Check if appropriate pool exist(related to blockID and hash)
     let poolID = superFinalizationProof.blockID+"/"+superFinalizationProof.hash
@@ -722,9 +722,9 @@ Response:{
 }
 
 */
-checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointProposition=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
 }),
 
@@ -750,9 +750,9 @@ getPayloadForCheckpoint=async(response,request)=>{
 
 
 
-operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let operation=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
+    let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
 
@@ -776,9 +776,9 @@ operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
 
 //[symbioteID,hostToAdd(initiator's valid and resolved host)]
-addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>reponse.aborted=true).onData(async v=>{
+addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>reponse.aborted=true).onData(async bytes=>{
     
-    let [symbiote,domain]=await BODY(v,CONFIG.PAYLOAD_SIZE)
+    let [symbiote,domain]=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
     if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
         

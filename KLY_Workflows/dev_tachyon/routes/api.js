@@ -31,7 +31,7 @@ account=async(response,request)=>{
         
             ...await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(_=>''),
         
-            COLLAPSE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
+            FINALIZATION_STAGE:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
     
         }
 

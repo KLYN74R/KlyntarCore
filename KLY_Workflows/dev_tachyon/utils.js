@@ -25,21 +25,22 @@ export let
 * Symbiote level data.Used when we check blocks
 * Here we read from cache or get data about event initiator from state,push to cache and return
 */
-GET_ACCOUNT_ON_SYMBIOTE = async addr =>
+GET_ACCOUNT_ON_SYMBIOTE = async addrID =>{
 
-   //We get from db only first time-the other attempts will be gotten from ACCOUNTS
-   SYMBIOTE_META.ACCOUNTS.get(addr)||SYMBIOTE_META.STATE.get(addr)
-   
-   .then(ACCOUNT=>
-       
-       //Get and push to cache
-       ACCOUNT.T==='A' && SYMBIOTE_META.ACCOUNTS.set(addr,{ACCOUNT,NS:new Set(),ND:new Set(),OUT:ACCOUNT.B}).get(addr)
-   
-   ).catch(_=>false),
+    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
+    return SYMBIOTE_META.ACCOUNTS_CACHE.get(addrID)||SYMBIOTE_META.STATE.get(addrID)
+    
+    .then(account=>{
+ 
+        if(account.type==='account') SYMBIOTE_META.ACCOUNTS_CACHE.set(addrID,{account,nonceSet:new Set(),nonceDuplicates:new Set(),outBalance:account.balance})
 
-
-
+        return SYMBIOTE_META.ACCOUNTS_CACHE.get(addrID)
+ 
+    
+    }).catch(_=>false)
+ 
+},
 
 
 

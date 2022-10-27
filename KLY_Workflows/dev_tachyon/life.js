@@ -458,9 +458,9 @@ LOAD_GENESIS=async()=>{
 
         let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
     
-        Object.keys(genesis.ACCOUNTS).forEach(
+        Object.keys(genesis.STATE).forEach(
         
-            address => atomicBatch.put(address,genesis.ACCOUNTS[address])
+            address => atomicBatch.put(address,genesis.STATE[address])
             
         )
 
@@ -615,7 +615,7 @@ PREPARE_SYMBIOTE=async()=>{
         SPECIAL_OPERATIONS_MEMPOOL:[], //to hold operations which should be included to checkpoints
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
-        ACCOUNTS:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT , TYPE }
+        ACCOUNTS_CACHE:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
 
         BLACKLIST:new Set(), //To sift addresses which spend more than has when we check another block
 

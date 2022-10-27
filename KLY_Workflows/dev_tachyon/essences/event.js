@@ -4,17 +4,17 @@ export default class{
     
         this.v=version
 
-        this.c=creator
+        this.creator=creator
 
-        this.t=eventType
+        this.type=eventType
     
-        this.n=nonce
+        this.nonce=nonce
         
-        this.f=fee
+        this.fee=fee
 
-        this.p=payload
+        this.payload=payload
 
-        //this.s=signature
+        //this.sig=signature
         
     }
     

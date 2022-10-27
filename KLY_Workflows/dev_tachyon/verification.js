@@ -284,12 +284,12 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                 OPERATION in checkpoint has the following structure
 
                 {
-                    T:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                    P:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+                    type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
+                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
                 }
                 
                 */
-                await OPERATIONS_VERIFIERS[operation.T](operation,false) //pass isJustVerify=false to make changes to state
+                await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isJustVerify=false to make changes to state
         
             }
 
@@ -610,7 +610,7 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
         
         //Go through each event,get accounts of initiators from state by creating promise and push to array for faster resolve
-        block.events.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.c)))
+        block.events.forEach(event=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(event.creator)))
         
         //Push accounts of validators
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
@@ -625,22 +625,24 @@ verifyBlock=async block=>{
         block.events.forEach(event=>{
 
             //O(1),coz it's set
-            if(!SYMBIOTE_META.BLACKLIST.has(event.c)){
+            if(!SYMBIOTE_META.BLACKLIST.has(event.creator)){
 
-                
-                let acc=GET_ACCOUNT_ON_SYMBIOTE(event.c),
+                let accountHandler=GET_ACCOUNT_ON_SYMBIOTE(event.creator),
                     
-                    spend=SYMBIOTE_META.SPENDERS[event.t]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE
+                    spend=SYMBIOTE_META.SPENDERS[event.type]?.(event) || CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.DEFAULT_PAYMENT_IF_WRONG_TYPE.KLY
 
 
+                    
+                //If it's not default account - return
+                if(accountHandler.type!=='account') return;
+                
 
-                        
-                //If no such address-it's a signal that transaction can't be accepted
-                if(!acc) return;
-             
-                (event.n<=acc.ACCOUNT.N||acc.NS.has(event.n)) ? acc.ND.add(event.n) : acc.NS.add(event.n);
+                if(event.nonce<=accountHandler.account.nonce||accountHandler.nonceSet.has(event.nonce)) accountHandler.nonceDuplicates.add(event.nonce)
+                
+                else accountHandler.nonceSet.add(event.nonce);
     
-                if((acc.OUT-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.t] || event.p.r==='GT' || event.p.r==='VT') SYMBIOTE_META.BLACKLIST.add(event.c)
+
+                if((accountHandler.outBalance-=spend)<0 || !SYMBIOTE_META.SPENDERS[event.type]) SYMBIOTE_META.BLACKLIST.add(event.creator)
 
             }
 
@@ -656,9 +658,9 @@ verifyBlock=async block=>{
         block.events.forEach(event=>
                 
             //If verifier to such event exsist-then verify it!
-            SYMBIOTE_META.VERIFIERS[event.t]
+            SYMBIOTE_META.VERIFIERS[event.type]
             &&
-            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.t](event,rewardBox))
+            eventsPromises.push(SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox))
 
         )
         
@@ -669,6 +671,7 @@ verifyBlock=async block=>{
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
+        // *add mechanism for auto fees distribution or allow everyone to write contract for "custom" distribution mechanism
 
         let shareFeesPromises=[], 
 
@@ -684,9 +687,9 @@ verifyBlock=async block=>{
 
             shareFeesPromises.push(
 
-                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountRef=>
+                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountHandler=>
 
-                    accountRef.ACCOUNT.B+=payToSingleNonCreatorValidator
+                    accountHandler.account.balance+=payToSingleNonCreatorValidator
 
                 )
 
@@ -724,28 +727,28 @@ verifyBlock=async block=>{
         
         //Change state of accounts & contracts
         //Use caching(such primitive for the first time)
-        if(SYMBIOTE_META.ACCOUNTS.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE){
+        if(SYMBIOTE_META.ACCOUNTS_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE){
 
-            SYMBIOTE_META.ACCOUNTS.forEach((acc,addr)=>
+            SYMBIOTE_META.ACCOUNTS_CACHE.forEach((acc,addr)=>
 
-                atomicBatch.put(addr,acc.ACCOUNT)
+                atomicBatch.put(addr,acc.account)
 
             )
             
-            SYMBIOTE_META.ACCOUNTS.clear()//flush cache.NOTE-some kind of advanced upgrade soon
+            SYMBIOTE_META.ACCOUNTS_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
         
         }else{
             
-            SYMBIOTE_META.ACCOUNTS.forEach((acc,addr)=>{
+            SYMBIOTE_META.ACCOUNTS_CACHE.forEach((acc,addr)=>{
 
-                atomicBatch.put(addr,acc.ACCOUNT)
+                atomicBatch.put(addr,acc.account)
 
                 //Update urgent balance for the next blocks
-                acc.OUT=acc.ACCOUNT.B
+                acc.outBalance=acc.account.balance
 
                 //Clear sets of nonces(NOTE: Optional chaining here because some accounts are newly created)
-                acc.NS?.clear()
-                acc.ND?.clear()
+                acc.nonceSet?.clear()
+                acc.nonceDuplicates?.clear()
 
             })
         

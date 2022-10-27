@@ -37,10 +37,10 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
-import {VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
+import {VERIFY_BASED_ON_SIG_AND_ACCOUNT_TYPE} from './verifiers.js'
 
 
-let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE(event,'FILTER') ? {v:event.v,f:event.f,c:event.c,t:event.t,n:event.n,p:event.p,s:event.s} : false
+let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_AND_ACCOUNT_TYPE(event,'FILTER') ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
 
 
 export default {
@@ -48,38 +48,37 @@ export default {
     
     TX:async event=>
 
-        typeof event.p?.a==='number' && typeof event.p.r==='string' && event.p.a>0 && (!event.p.rev_t || typeof event.p.rev_t==='number')
+        typeof event.payload?.amount==='number' && typeof event.payload.to==='string' && event.payload.amount>0 && (!event.payload.rev_t || typeof event.payload.rev_t==='number')
         &&
         await VERIFY_WRAP(event)
     ,
 
-    //Payload(event.p) is validators BLS pubkey
-    ATTACH_TO_VALIDATOR:async event=>
+    //Payload is validators' BLS pubkey
+    BIND_TO_VALIDATOR:async event=>
 
-        typeof event.p === 'string'
+        typeof event.payload === 'string'
         &&
         await VERIFY_WRAP(event)
     ,
 
-    //Payload(event.p) is validators BLS pubkey
-    DELEGATION:async event=>
+    //Payload is validators' BLS pubkey
+    STAKE:async event=>
     
-        typeof event.p==='string'
+        typeof event.payload==='string'
         &&
         await VERIFY_WRAP(event)
         
     ,
 
-    
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        typeof event.payload.payload==='object' && typeof event.payload.map==='string' && typeof event.payload.s==='object' && typeof event.payload.creator==='string'
         &&
         await VERIFY_WRAP(event)
 
     ,
 
-    CONTRACT_CALL:async(symbiote,event)=>
+    CONTRACT_CALL:async event=>
     
         typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
         &&
@@ -99,7 +98,6 @@ export default {
     SERVICE_COMMIT:async (symbiote,event)=>{},
 
     QUANTUMSWAP:async (symbiote,event)=>{},
-
 
 
     //BLS only,because it's offchain service

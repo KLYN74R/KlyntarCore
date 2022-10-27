@@ -64,23 +64,66 @@ export default {
 
     //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
 
+    /*
     
+    We need to do this ops on/via checkpoints in order to make threads async
+    
+    */
 
-    //To add/remove validators from VALIDATORS_POOL
-    VALIDATOR_STUFF:async (operation,isJustVerify)=>{},
+
+    //For staking process(so we need such pointers in GENERATION_THREAD for super total async work)
+    STAKE:async (operation,isJustVerify)=>{
+
+        /*
+        
+        Assign someone's stake to validatorX staking pool
+
+        Structure
+        {
+            T:"STAKE",
+            P:{
+                T:"UNSTAKE" | "STAKE"
+                A:<amount in KLY or UNOBTANIUM>
+                R:<"KLY" | "UNOBTANIUM"> - resource type
+                V:<Validator> - validator to know the poolID to remove stake from pool
+                S:
+            }
+        }
+
+        We just check 2/3N+1 from quorum signed it and add to own checkpoint version
+
+        If "stake":
+            0)Check if previously created tx with TXID still don't used on GENERATION_THREAD
+            1)
+        
+        If "unstake" => check if stake wasn't withdrawed earlier from GENERATION_THREAD to VERIFICATION_THREAD
+        
+        */
+
+    },
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    FREEZING:async (operation,isJustVerify)=>{},
+    FREEZING:async (operation,isJustVerify)=>{
+
+        
+
+    },
     
     //To bind/unbind account/contract to a single(to multiple in future releases) validator
-    BINDING:async (operation,isJustVerify)=>{},
+    BINDING:async (operation,isJustVerify)=>{
 
-    //To mint unobtanium for validators for their voting power
-    UNOBTANIUM_MINT:async (operation,isJustVerify)=>{},
+        /*
+        
+        If bind - check if account still free(isn't binded to some thread) and bind to some validator
 
-    //To do staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    STAKE:async (operation,isJustVerify)=>{},
+        If unbind - check if binded to some validator
+        
+        */
+        
+    },
 
     //To update version of workflow
     VERSION_UPDATE:async (operation,isJustVerify)=>{}
+
+
 }

@@ -1,10 +1,46 @@
 {
-    "ACCOUNTS":{
+    "STATE":{
 
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
-            "B":200000,
-            "T":"A",
-            "N":0
+            
+            "type":"account",
+            "balance":200000,
+            "uno":0,
+            "nonce":0,
+            "bind":""
+        },
+
+        "0000000000000000000000000000000000000000000000000000000000000000":{
+            
+            "type":"contract",
+            "balance":0,
+            "uno":0,
+            "storage":{
+                "key":"value"
+            },
+            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>"
+
+        },
+
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)":{
+            
+            "type":"pool",
+            "pool":{
+
+                "8QFX2B5x6G75CrGP2vEaFfCKE26QUyKv1WE8R92eNn21":{
+                    "UNO":0,
+                    "KLY":0
+                },
+
+                "7U7HvFnge819uoYk9GFptPuqncutpwsGGTqsHEoV4L8CaKsr2XAU3HsNS5iNKzCao1":{
+                    "UNO":0,
+                    "KLY":0
+                }
+
+            },
+            
+            "total":0
+        
         }
 
     },
