@@ -16,6 +16,9 @@
             "lang":"RUST",
             "balance":0,
             "uno":0,
+            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>",
+            "callMap":{},
+            
             "storage":{
                 "key1":"value",
                 "key2":{
@@ -23,9 +26,7 @@
                     "test":"OK"
                 }
             },
-            
-            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>",
-            "callMap":{},
+        
             "bytecode":"00"
 
         },

@@ -451,7 +451,10 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 LOAD_GENESIS=async()=>{
 
-    let atomicBatch = SYMBIOTE_META.STATE.batch(), checkpointTimestamp
+    let atomicBatch = SYMBIOTE_META.STATE.batch(),
+    
+        checkpointTimestamp
+
 
     //Load all the configs
     fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
@@ -460,7 +463,39 @@ LOAD_GENESIS=async()=>{
     
         Object.keys(genesis.STATE).forEach(
         
-            address => atomicBatch.put(address,genesis.STATE[address])
+            address => {
+
+                if(genesis.STATE[address].type==='contract'){
+
+                    let contractMeta = {
+
+                        type:"contract",
+                        lang:genesis.STATE[address].lang,
+                        balance:genesis.STATE[address].balance,
+                        uno:genesis.STATE[address].uno,
+                        master:genesis.STATE[address].master,
+                        callMap:genesis.STATE[address].callMap
+                    
+                    } 
+
+                    //Write metadata first
+                    atomicBatch.put(address,contractMeta)
+                    
+                    //Then bytecode as a separate
+                    atomicBatch.put(address+'_BYTECODE',genesis.STATE[address].bytecode)
+
+                    //Finally - write genesis storage sharded by storageID => {}(object)
+                    for(let key in genesis.STATE[address].storage){
+
+                        let hashKey = BLAKE3(address+key)
+
+                        atomicBatch.put(hashKey,genesis.STATE[address].storage)
+
+                    }
+
+                } else atomicBatch.put(address,genesis.STATE[address])
+
+            }
             
         )
 
@@ -609,6 +644,8 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Contains default set of properties for major part of potential use-cases on symbiote
     global.SYMBIOTE_META={
+
+        VERSION:fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString(),
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
         
