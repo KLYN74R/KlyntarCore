@@ -64,22 +64,39 @@ let GET_SPEND_BY_SIG_TYPE = event => {
 }
 
 
+let EVENT_VERSION_CHECK_IS_OK=eventVersion=>{
+
+    //If event has another version than previous checkpoint - we can't process it
+
+    let [major]=SYMBIOTE_META.VERIFICATION_THREAD.VERSION.split('.'),
+    
+        [majorEventVersion]=eventVersion.split('.')
+
+    return major===majorEventVersion
+
+}
 
 
-export let VERIFY_BASED_ON_SIG_TYPE = event=>{
 
-    //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
-    let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.type+JSON.stringify(event.payload)+event.nonce+event.fee
+
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event=>{
+
+    if(EVENT_VERSION_CHECK_IS_OK(event.v)){
+
+        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
+        let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.type+JSON.stringify(event.payload)+event.nonce+event.fee
     
-    if(event.payload.type==='D') return VERIFY(signedData,event.sig,event.creator)
-    
-    if(event.payload.type==='T') return tbls.verifyTBLS(event.creator,event.sig,signedData)
-    
-    if(event.payload.type==='P/D') return ADDONS['verify_DIL'](signedData,event.creator,event.sig)
-    
-    if(event.payload.type==='P/B') return ADDONS['verify_BLISS'](signedData,event.creator,event.sig)
-    
-    if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.account.rev_t)   
+        if(event.payload.type==='D') return VERIFY(signedData,event.sig,event.creator)
+        
+        if(event.payload.type==='T') return tbls.verifyTBLS(event.creator,event.sig,signedData)
+        
+        if(event.payload.type==='P/D') return ADDONS['verify_DIL'](signedData,event.creator,event.sig)
+        
+        if(event.payload.type==='P/B') return ADDONS['verify_BLISS'](signedData,event.creator,event.sig)
+        
+        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.account.rev_t)       
+
+    }else return false
 
 }
 
@@ -153,7 +170,7 @@ export let VERIFIERS = {
         }
         
     
-        if(await VERIFY_BASED_ON_SIG_TYPE(event)){
+        if(await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
 
             sender.balance-=goingToSpend
             
@@ -175,7 +192,7 @@ export let VERIFIERS = {
             goingToSpendForFees = SPENDERS.BIND_TO_VALIDATOR(event)
 
 
-        if(sender.balance-goingToSpendForFees >=0 && sender.nonce<event.nonce && await VERIFY_BASED_ON_SIG_TYPE(event)){
+        if(sender.balance-goingToSpendForFees >=0 && sender.nonce<event.nonce && await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
     
             sender.balance-=goingToSpendForFees
 
@@ -197,7 +214,7 @@ export let VERIFIERS = {
             goingToSpendForFees = SPENDERS.STAKE(event)
 
 
-        if(sender.balance-goingToSpendForFees >=0 && await VERIFY_BASED_ON_SIG_TYPE(event)){
+        if(sender.balance-goingToSpendForFees >=0 && await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
 
             sender.balance-=goingToSpendForFees
 

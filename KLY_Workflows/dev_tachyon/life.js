@@ -504,6 +504,25 @@ LOAD_GENESIS=async()=>{
 
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
+
+        /*
+        
+        Set the initial workflow version from genesis
+
+        We keep the official semver notation x.y.z(major.minor.patch)
+
+        You can't continue to work if QUORUM and major part of VALIDATORS decided to vote for major update.
+        
+        However, if workflow_version has differences in minor or patch values - you can continue to work
+
+        */
+
+        //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
+        SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
+
+        //We update this during the work on GENERATION_THREAD
+        SYMBIOTE_META.GENERATION_THREAD.VERSION=genesis.VERSION
+
     })
 
     await atomicBatch.write()
@@ -714,8 +733,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
-        'CONTRACTS' //Storage of contracts for VMs
-
+        'STATE'//Contains state of accounts, contracts, services, metadata and so on
 
     ].forEach(
         
@@ -734,17 +752,6 @@ PREPARE_SYMBIOTE=async()=>{
         id => SYMBIOTE_META.STUFF.put(id,CONFIG.SYMBIOTE.LOAD_STUFF[id])
         
     )
-
-    /*
-    
-    _____________________________________________State of symbiote___________________________________________________
-
-    Contains state of accounts, contracts, services, metadata and so on
-    
-    */
-
-    SYMBIOTE_META.STATE=l(process.env.CHAINDATA_PATH+`/STATE`,{valueEncoding:'json'})
-    
    
 
     //...and separate dirs for state and metadata snapshots
@@ -1149,15 +1156,14 @@ RUN_SYMBIOTE=async()=>{
 
     await PREPARE_SYMBIOTE()
 
-
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
-        //0.Start verification process
+        //0.Start verification process - process blocks and find new checkpoints step-by-step
         START_VERIFICATION_THREAD()
 
+        //1.Also, GENERATION_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
         START_GENERATION_THREAD_CHECKPOINT_TRACKER()
 
-        // setInterval(PROGRESS_CHECKER,CONFIG.SYMBIOTE.PROGRESS_CHECKER_INTERVAL)
 
         let promises=[]
 
@@ -1194,11 +1200,12 @@ RUN_SYMBIOTE=async()=>{
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
 
-        setTimeout(()=>
+        // TODO: Move this function to the moment when we'll get the current QUORUM(via GENERATION_THREAD)
+        // setTimeout(()=>
 
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
+        //     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
 
-        ,3000)
+        // ,3000)
 
 
         //Run another thread to ask for blocks

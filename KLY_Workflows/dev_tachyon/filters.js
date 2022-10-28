@@ -37,10 +37,10 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here(for example, if prices are changes)
 
 
-import {VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
+import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
 
 
-let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE(event) ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
+let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event) ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
 
 
 export default {

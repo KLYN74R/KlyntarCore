@@ -236,6 +236,9 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
 
+VERSION_CHECK_FOR_CHECKPOINT=()=>{},
+
+
 
 CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
