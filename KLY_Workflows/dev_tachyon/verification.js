@@ -574,6 +574,12 @@ MAKE_SNAPSHOT=async()=>{
 },
 
 
+//Function to distribute stakes among validators/blockCreator/staking pool
+DISTRIBUTE_FEES=async(totalFees,)=>{
+
+
+
+},
 
 
 verifyBlock=async block=>{
@@ -633,31 +639,35 @@ verifyBlock=async block=>{
 
         // *add mechanism for auto fees distribution or allow everyone to write contract for "custom" distribution mechanism
 
-        let shareFeesPromises = [], 
 
-            payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_REST_VALIDATORS, //the biggest part is usually delegated to creator of block
+        await DISTRIBUTE_FEES()
+
+
+        // let shareFeesPromises = [], 
+
+        //     payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_REST_VALIDATORS, //the biggest part is usually delegated to creator of block
         
-            payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
+        //     payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
 
-        if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToSingleNonCreatorValidator = rewardBox.fees - payToCreator
+        // if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToSingleNonCreatorValidator = rewardBox.fees - payToCreator
 
 
 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(validatorPubKey=>
+        // SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(validatorPubKey=>
 
-            shareFeesPromises.push(
+        //     shareFeesPromises.push(
 
-                GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountHandler=>
+        //         GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountHandler=>
 
-                    accountHandler.account.balance+=payToSingleNonCreatorValidator
+        //             accountHandler.account.balance+=payToSingleNonCreatorValidator
 
-                )
+        //         )
 
-            )
+        //     )
             
-        )
+        // )
      
-        await Promise.all(shareFeesPromises.splice(0))
+        // await Promise.all(shareFeesPromises.splice(0))
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely

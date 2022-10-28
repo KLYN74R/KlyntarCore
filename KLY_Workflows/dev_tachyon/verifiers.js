@@ -106,9 +106,7 @@ export let SPENDERS = {
     CONTRACT_DEPLOY:event=>GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.payload).length+event.fee,
 
     //Method to call contract
-    CONTRACT_CALL:event=>JSON.stringify(event.payload).length+event.fee,
-
-    QUANTUMSWAP:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001+event.fee
+    CONTRACT_CALL:event=>JSON.stringify(event.payload).length+event.fee
 
 }
 
@@ -218,10 +216,6 @@ export let VERIFIERS = {
 
     CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
 
-    CONTRACT_CALL:async (event,rewardBox,symbiote)=>{},
-
-    QUANTUMSWAP:async (event,rewardBox,symbiote)=>{
-        
-    }
+    CONTRACT_CALL:async (event,rewardBox,symbiote)=>{}
     
 }

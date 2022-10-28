@@ -40,7 +40,27 @@
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
 
 
-let VERIFY_WRAP=event=>VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event) ? {v:event.v,fee:event.fee,creator:event.creator,type:event.type,nonce:event.nonce,payload:event.payload,sig:event.sig} : false
+let VERIFY_WRAP=event=>{
+
+    if(VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
+        
+        return {
+            
+            v:event.v,
+            fee:event.fee,
+            creator:event.creator,
+            type:event.type,
+            nonce:event.nonce,
+            payload:event.payload,
+            sig:event.sig
+        
+        }
+
+    }else return false
+
+}
+
+
 
 
 export default {
@@ -80,9 +100,7 @@ export default {
         pool:<BLS validator's pubkey>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         type:<KLY|UNO>
-
         Optional(if it's pool creation)
-
         percent:?<0 to 1>
 
     }
@@ -122,7 +140,7 @@ export default {
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && typeof event.payload.map==='string' && typeof event.payload.s==='object' && typeof event.payload.creator==='string'
+        typeof event.payload.bytecode==='string' && (event.payload.type==='RUST'||event.payload.type==='ASC') && typeof event.payload.callMap==='object' && typeof event.payload.master==='string'
         &&
         await VERIFY_WRAP(event)
 
@@ -134,7 +152,7 @@ export default {
 
         {
 
-            contractID:<BLAKE3 hashID of contract>,
+            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, SPECIAL_CONTRACTS)>,
             method:<string method to call>,
             params:[] params to pass to function
 
@@ -143,28 +161,11 @@ export default {
     */
     CONTRACT_CALL:async event=>
     
-        typeof event.p.p==='object' && typeof event.p.m==='string' && typeof event.p.s==='object' && typeof event.p.c==='string'
+        typeof event.payload.contractID==='string' && event.payload.contractID.length<256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params)
         &&
         await VERIFY_WRAP(event)
 
     ,
-
-
-    /*
-    
-    Payload is
-
-        {
-
-            to:<Pubkey of destination>,
-            amount:<amount in KLY>,
-            hash:<BLAKE3 of secret>
-
-        }
-
-    */
-    QUANTUMSWAP:async event=>{}
-
 
 }
 

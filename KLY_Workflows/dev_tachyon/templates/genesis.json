@@ -37,28 +37,6 @@
         
             "bytecode":"00"
 
-        },
-
-        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)":{
-            
-            "type":"pool",
-            "percent":0.1,
-            "pool":{
-
-                "8QFX2B5x6G75CrGP2vEaFfCKE26QUyKv1WE8R92eNn21":{
-                    "UNO":0,
-                    "KLY":0
-                },
-
-                "7U7HvFnge819uoYk9GFptPuqncutpwsGGTqsHEoV4L8CaKsr2XAU3HsNS5iNKzCao1":{
-                    "UNO":0,
-                    "KLY":0
-                }
-
-            },
-            
-            "total":0
-        
         }
 
     }
