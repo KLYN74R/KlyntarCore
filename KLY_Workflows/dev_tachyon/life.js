@@ -664,7 +664,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Contains default set of properties for major part of potential use-cases on symbiote
     global.SYMBIOTE_META={
 
-        VERSION:fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString(),
+        VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
         

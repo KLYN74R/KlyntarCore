@@ -1,4 +1,12 @@
 {
+    "VERSION":0,
+
+    "VALIDATORS":[
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
+    ],
+
+    "CHECKPOINT_TIMESTAMP":1666188167,
+    
     "STATE":{
 
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
@@ -53,12 +61,6 @@
         
         }
 
-    },
-
-    "VALIDATORS":[
-        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    ],
-
-    "CHECKPOINT_TIMESTAMP":1666188167
+    }
 
 }

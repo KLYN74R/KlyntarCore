@@ -235,8 +235,10 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 },
 
 
-
-VERSION_CHECK_FOR_CHECKPOINT=()=>{},
+//SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
+//We use this function on VERIFICATION_THREAD and GENERATION_THREAD to make sure we can continue to work
+//If major version was changed and we still has an old version - we should stop node and update software
+IS_MY_VERSION_STILL_OK = newMajorVersionFromSpecOps => SYMBIOTE_META.VERSION >= newMajorVersionFromSpecOps,
 
 
 

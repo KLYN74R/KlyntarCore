@@ -64,24 +64,11 @@ let GET_SPEND_BY_SIG_TYPE = event => {
 }
 
 
-let EVENT_VERSION_CHECK_IS_OK=eventVersion=>{
-
-    //If event has another version than previous checkpoint - we can't process it
-
-    let [major]=SYMBIOTE_META.VERIFICATION_THREAD.VERSION.split('.'),
-    
-        [majorEventVersion]=eventVersion.split('.')
-
-    return major===majorEventVersion
-
-}
-
-
 
 
 export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event=>{
 
-    if(EVENT_VERSION_CHECK_IS_OK(event.v)){
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION === event.v){
 
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
         let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.type+JSON.stringify(event.payload)+event.nonce+event.fee
