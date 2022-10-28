@@ -104,24 +104,7 @@ export let SPENDERS = {
     //Method to call contract
     CONTRACT_CALL:event=>JSON.stringify(event.payload).length+event.fee,
 
-    //Method to deploy rules & manifest for service. You can use any payment method you want
-    SERVICE_DEPLOY:event=>GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.payload).length*0.01+event.fee,
-
-    SERVICE_COMMIT:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001+event.fee,
-
-    QUANTUMSWAP:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001+event.fee,
-
-
-
-
-    //BLS only.Method to mint unobtanium on symbiote. Use BLS multisig, because it's offchain service
-    UNOBTANIUM_MINT:event=>JSON.stringify(event.payload).length*0.001+event.fee,
-
-    //BLS only.Method to pin aliases you own from Internet and attach your account to to this. You can use any payment method you want
-    ALIAS:event=>event.payload.length*0.001+event.fee,
-
-    //BLS only
-    VALIDATORS_DEALS:event=>JSON.stringify(event.payload).length*0.01+event.fee
+    QUANTUMSWAP:event=>GET_SPEND_BY_SIG_TYPE(event)+0.001+event.fee
 
 }
 
@@ -231,68 +214,10 @@ export let VERIFIERS = {
 
     CONTRACT_DEPLOY:async (event,rewardBox,symbiote)=>{},
 
-
     CONTRACT_CALL:async (event,rewardBox,symbiote)=>{},
-
-
-    //Common mechanisms as with delegation
-    //It's because we perform operations asynchronously
-    SERVICE_DEPLOY:async (event,rewardBox)=>{
-        
-        let sender=GET_ACCOUNT_ON_SYMBIOTE(event.creator),
-        
-            payloadJson=JSON.stringify(event.payload),
-
-            payloadHash=BLAKE3(payloadJson),
-
-            noSuchService=!(await SYMBIOTE_META.STATE.get(payloadHash).catch(_=>false))
-
-
-
-
-        if(await VERIFY_BASED_ON_SIG_TYPE(event,sender) && noSuchService){
-
-            sender.account.balance-=SPENDERS.SERVICE_DEPLOY(event)
-        
-            if(sender.account.nonce<event.nonce) sender.account.nonce=event.nonce
-            
-
-            //Store service manifest
-            //!Add to stage zone before
-            // SYMBIOTE_META.EVENTS_STATE.put(payloadHash,event.p)
-
-            rewardBox.fees+=event.fee
-        
-        }
-        
-    },
-
-
-    SERVICE_COMMIT:async (symbiote,event)=>{},
-
-
-    //BLS, coz service
-    UNOBTANIUM_MINT:async (event,rewardBox,symbiote)=>{
-
-    },
-
-    //BLS, coz service
-    ALIAS:async (event,rewardBox,symbiote)=>{
-
-        
-
-    },
-
-
-    //BLS multisig,coz validators
-    VALIDATORS_DEALS:async (event,rewardBox,symbiote)=>{
-        
-
-    },
-    
 
     QUANTUMSWAP:async (event,rewardBox,symbiote)=>{
         
     }
-
+    
 }

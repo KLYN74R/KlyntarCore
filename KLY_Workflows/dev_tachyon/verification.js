@@ -630,7 +630,7 @@ verifyBlock=async block=>{
 
         let shareFeesPromises = [], 
 
-            payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_REWARD_PERCENTAGE, //the biggest part is usually delegated to creator of block
+            payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_REST_VALIDATORS, //the biggest part is usually delegated to creator of block
         
             payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
 
@@ -688,7 +688,7 @@ verifyBlock=async block=>{
         
         if(SYMBIOTE_META.ACCOUNTS_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.ACCOUNTS_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
-        
+
 
         //Change finalization pointer
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.creator

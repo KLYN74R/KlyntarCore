@@ -51,9 +51,14 @@
                 "KLY":10000,
                 "UNO":50000
             },
-            "VALIDATOR_REWARD_PERCENTAGE":0.5,
+            "REWARD_PERCENTAGE_FOR_REST_VALIDATORS":0.2,
+            "MINIMAL_STAKE":{
+                "KLY":5,
+                "UNO":20
+            },
             "QUORUM_SIZE":127,
             "EVENTS_LIMIT_PER_BLOCK":30000,
+            "CHECKPOINT_SPEC_OPS_LIMIT":1000,
             "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
         
         },

@@ -13,18 +13,27 @@
         "0000000000000000000000000000000000000000000000000000000000000000":{
             
             "type":"contract",
+            "lang":"RUST",
             "balance":0,
             "uno":0,
             "storage":{
-                "key":"value"
+                "key1":"value",
+                "key2":{
+                    "subkey":1,
+                    "test":"OK"
+                }
             },
-            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>"
+            
+            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>",
+            "callMap":{},
+            "bytecode":"00"
 
         },
 
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)":{
             
             "type":"pool",
+            "percent":0.1,
             "pool":{
 
                 "8QFX2B5x6G75CrGP2vEaFfCKE26QUyKv1WE8R92eNn21":{
