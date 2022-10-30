@@ -100,6 +100,7 @@ export default {
         pool:<BLS validator's pubkey>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         type:<KLY|UNO>
+        
         Optional(if it's pool creation)
         percent:?<0 to 1>
 

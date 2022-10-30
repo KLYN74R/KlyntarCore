@@ -575,7 +575,7 @@ MAKE_SNAPSHOT=async()=>{
 
 
 //Function to distribute stakes among validators/blockCreator/staking pool
-DISTRIBUTE_FEES=async(totalFees,)=>{
+DISTRIBUTE_FEES=async(totalFees)=>{
 
 
 
