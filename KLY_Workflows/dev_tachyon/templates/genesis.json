@@ -23,21 +23,27 @@
             "lang":"RUST",
             "balance":0,
             "uno":0,
-            "master":"<Address of someone who can make some special ops over the contract e.g. bind to some validator and so on(in future)>",
-            "callMap":{},
-            
-            "storage":{
-                "key1":"value",
-                "key2":{
-                    "subkey":1,
-                    "test":"OK"
-                }
-            },
-        
-            "bytecode":"00"
+            "storages":["storageID_N"],
+            "bytecode":"00",
+
+            "storageID_N":{
+                "key1":"value1",
+                "keyN":"valueN"
+            }
 
         }
 
+    },
+
+    "EVM":{
+
+        "0x407d73d8a49eeb85d32cf465507dd71d507100c1":{
+            
+            "nonce": 2,
+            "balance":1
+
+        }
+    
     }
 
 }

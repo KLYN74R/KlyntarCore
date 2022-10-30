@@ -463,37 +463,32 @@ LOAD_GENESIS=async()=>{
     
         Object.keys(genesis.STATE).forEach(
         
-            address => {
+            addressOrContractID => {
 
-                if(genesis.STATE[address].type==='contract'){
+                if(genesis.STATE[addressOrContractID].type==='contract'){
 
                     let contractMeta = {
 
                         type:"contract",
-                        lang:genesis.STATE[address].lang,
-                        balance:genesis.STATE[address].balance,
-                        uno:genesis.STATE[address].uno,
-                        master:genesis.STATE[address].master,
-                        callMap:genesis.STATE[address].callMap
+                        lang:genesis.STATE[addressOrContractID].lang,
+                        balance:genesis.STATE[addressOrContractID].balance,
+                        uno:genesis.STATE[addressOrContractID].uno,
+                        storages:genesis.STATE[addressOrContractID].storages,
+                        bytecode:genesis.STATE[addressOrContractID].bytecode
                     
                     } 
 
                     //Write metadata first
-                    atomicBatch.put(address,contractMeta)
-                    
-                    //Then bytecode as a separate
-                    atomicBatch.put(address+'_BYTECODE',genesis.STATE[address].bytecode)
+                    atomicBatch.put(addressOrContractID,contractMeta)
 
-                    //Finally - write genesis storage sharded by storageID => {}(object)
-                    for(let key in genesis.STATE[address].storage){
+                    //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+                    for(let storageID of genesis.STATE[addressOrContractID].storages){
 
-                        let hashKey = BLAKE3(address+key)
-
-                        atomicBatch.put(hashKey,genesis.STATE[address].storage)
+                        atomicBatch.put(addressOrContractID+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
 
                     }
 
-                } else atomicBatch.put(address,genesis.STATE[address])
+                } else atomicBatch.put(addressOrContractID,genesis.STATE[addressOrContractID]) //else - it's default account
 
             }
             
@@ -707,13 +702,11 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Importnat and must be the same for symbiote at appropriate chunks of time
-    await import(`./verifiers.js`).then(mod=>{
+    await import(`./verifiers.js`).then(mod=>
     
         SYMBIOTE_META.VERIFIERS=mod.VERIFIERS
         
-        SYMBIOTE_META.SPENDERS=mod.SPENDERS    
-        
-    })
+    )
 
     //Might be individual for each node
     SYMBIOTE_META.FILTERS=(await import(`./filters.js`)).default;
@@ -733,7 +726,9 @@ PREPARE_SYMBIOTE=async()=>{
     
         'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
-        'STATE'//Contains state of accounts, contracts, services, metadata and so on
+        'STATE',//Contains state of accounts, contracts, services, metadata and so on
+
+        'EVM' //Contains state of EVM
 
     ].forEach(
         

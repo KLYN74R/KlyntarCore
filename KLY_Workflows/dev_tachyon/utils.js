@@ -386,12 +386,12 @@ DECRYPT_KEYS=async spinner=>{
     //Stop loading
     spinner?.stop()
 
-    let symbioteRef=CONFIG.SYMBIOTE,
+    let symbioteConfigReference=CONFIG.SYMBIOTE,
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1m${symbioteConfigReference.MANIFEST.WORKFLOW}(major version:${SYMBIOTE_META.VERSION}) / ${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
 
 
@@ -421,7 +421,7 @@ DECRYPT_KEYS=async spinner=>{
 
     let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV)
     
-    global.PRIVATE_KEY=decipher.update(symbioteRef.PRV,'hex','utf8')+decipher.final('utf8')
+    global.PRIVATE_KEY=decipher.update(symbioteConfigReference.PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
@@ -430,12 +430,12 @@ DECRYPT_KEYS=async spinner=>{
 
     let decipherHostchain = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV),
     
-        privateKey=decipherHostchain.update(symbioteRef.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
+        privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
 
         
-    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) symbioteRef.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
+    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) symbioteConfigReference.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
         
-    else symbioteRef.CONNECTOR.PRV=privateKey
+    else symbioteConfigReference.CONNECTOR.PRV=privateKey
         
     LOG(`Hostchain [\x1b[36;1m${CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
 

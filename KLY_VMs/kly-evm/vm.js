@@ -18,7 +18,21 @@ import { Level } from 'level'
 
 
 
+const trie = new Trie({
+    
+    db:new LevelDB(new Level('./PUT_TEST')),
 
+    useKeyHashing:true
+
+})
+
+
+const common = new Common({ chain: Chain.Rinkeby, hardfork: Hardfork.Istanbul })
+
+
+const stateManager = new DefaultStateManager({trie})
+
+const vm = await VM.create({ common,stateManager })
 
 
 
@@ -27,7 +41,10 @@ export let VM = {
     /*
     
         Implementation here
+
+        Only callContract function because EVM has full own logic
     
     */
+    callContract:(tx,block)=>{}
     
 }

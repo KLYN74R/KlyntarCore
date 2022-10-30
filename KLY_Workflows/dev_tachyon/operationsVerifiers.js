@@ -108,19 +108,6 @@ export default {
         
 
     },
-    
-    //To bind/unbind account/contract to a single(to multiple in future releases) validator
-    BINDING:async (operation,isJustVerify)=>{
-
-        /*
-        
-        If bind - check if account still free(isn't binded to some thread) and bind to some validator
-
-        If unbind - check if binded to some validator
-        
-        */
-        
-    },
 
     //To update version of workflow
     VERSION_UPDATE:async (operation,isJustVerify)=>{}

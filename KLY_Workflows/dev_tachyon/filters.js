@@ -126,16 +126,19 @@ export default {
         {
             bytecode:<hexString>,
             type:<RUST|ASC>
-            callMap:{},
-            master:<pubkey or empty>
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
 
+    {
+        bytecode:'',(empty)
+        type:'SPEC/<name of contract>'
+    }
+
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && (event.payload.type==='RUST'||event.payload.type==='ASC') && typeof event.payload.callMap==='object' && typeof event.payload.master==='string'
+        typeof event.payload.bytecode==='string' && (event.payload.type==='RUST'||event.payload.type==='ASC'||event.payload.type.startsWith('SPEC/'))
         &&
         await VERIFY_WRAP(event)
 

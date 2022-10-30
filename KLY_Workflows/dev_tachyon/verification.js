@@ -577,7 +577,7 @@ MAKE_SNAPSHOT=async()=>{
 //Function to distribute stakes among validators/blockCreator/staking pools
 DISTRIBUTE_FEES=async(totalFees)=>{
 
-    
+
 
 },
 
@@ -615,6 +615,9 @@ verifyBlock=async block=>{
         let rewardBox={fees:0}
 
 
+        //To change the state atomically
+        let atomicBatch = SYMBIOTE_META.STATE.batch()
+
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
         let sendersAccounts=[]
@@ -630,7 +633,7 @@ verifyBlock=async block=>{
 
         for(let event of block.events){
 
-            if(SYMBIOTE_META.VERIFIERS[event.type]) await SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox)
+            if(SYMBIOTE_META.VERIFIERS[event.type]) await SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox,atomicBatch)
 
         }
 
@@ -690,9 +693,6 @@ verifyBlock=async block=>{
 
 
         //________________________________________________COMMIT STATE__________________________________________________    
-
-
-        let atomicBatch = SYMBIOTE_META.STATE.batch()
 
 
         SYMBIOTE_META.ACCOUNTS_CACHE.forEach((account,addr)=>

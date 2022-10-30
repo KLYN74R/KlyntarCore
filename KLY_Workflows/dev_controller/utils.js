@@ -278,12 +278,12 @@ DECRYPT_KEYS=async(spinner,role)=>{
     //Stop loading
     spinner?.stop()
 
-    let symbioteRef=CONFIG.SYMBIOTE,
+    let symbioteConfigurationReference=CONFIG.SYMBIOTE,
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
+        
 
-
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteRef.MANIFEST.WORKFLOW}(v.${symbioteRef.VERSION}) / ${symbioteRef.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m as \x1b[32;1m${role} \x1b[32;1m(\x1b[36;1m${symbioteConfigurationReference.MANIFEST.WORKFLOW}(v.${SYMBIOTE_META.VERSION}) / ${symbioteConfigurationReference.PUB}\x1b[32;1m)`,'I')
        
 
     
@@ -312,24 +312,24 @@ DECRYPT_KEYS=async(spinner,role)=>{
 
     let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV)
     
-    global.PRIVATE_KEY=decipher.update(symbioteRef.PRV,'hex','utf8')+decipher.final('utf8')
+    global.PRIVATE_KEY=decipher.update(symbioteConfigurationReference.PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
     //____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAINS_______________________________________
 
 
-    symbioteRef.CONTROLLER.ME
+    symbioteConfigurationReference.CONTROLLER.ME
     &&
-    Object.keys(symbioteRef.CONNECTORS).forEach(ticker=>{
+    Object.keys(symbioteConfigurationReference.CONNECTORS).forEach(ticker=>{
         
-        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteRef.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
+        let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV), privateKey=decipher.update(symbioteConfigurationReference.CONNECTORS[ticker].PRV,'hex','utf8')+decipher.final('utf8')
 
 
 
         if(CONFIG.EVM.includes(ticker)) HOSTCHAINS.CONNECTORS.get(ticker).PRV=Buffer.from(privateKey,'hex')
         
-        else symbioteRef.CONNECTORS[ticker].PRV=privateKey
+        else symbioteConfigurationReference.CONNECTORS[ticker].PRV=privateKey
         
 
 
