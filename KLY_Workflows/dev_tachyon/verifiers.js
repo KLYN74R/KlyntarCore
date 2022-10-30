@@ -96,9 +96,6 @@ export let SPENDERS = {
 
     TX:event=>GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee,
 
-    //Method to attach your account to a single thread for extreme speed. You can use any payment method you want
-    BIND_TO_VALIDATOR:event=>GET_SPEND_BY_SIG_TYPE(event)+event.fee+0.01,
-
     //Method to delegate your assets to some validator | pool
     STAKE:event=>GET_SPEND_BY_SIG_TYPE(event)+event.fee,
 
@@ -142,8 +139,7 @@ export let VERIFIERS = {
                 type:'account',
                 balance:0,
                 uno:0,
-                nonce:0,
-                bind:''
+                nonce:0
             
             }
             
@@ -165,28 +161,6 @@ export let VERIFIERS = {
         
             rewardBox.fees+=event.fee
     
-        }
-    
-    },
-
-
-    BIND_TO_VALIDATOR:async (event,rewardBox)=>{
-
-        let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
-        
-            goingToSpendForFees = SPENDERS.BIND_TO_VALIDATOR(event)
-
-
-        if(sender.balance-goingToSpendForFees >=0 && sender.nonce<event.nonce && await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
-    
-            sender.balance-=goingToSpendForFees
-
-            sender.bind=event.payload//payload - it's validators pubkey
-                        
-            sender.nonce=event.nonce
-            
-            rewardBox.fees+=event.fee
-        
         }
     
     },

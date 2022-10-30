@@ -84,14 +84,6 @@ export default {
         await VERIFY_WRAP(event)
     ,
 
-    //Payload is validators' BLS pubkey to bind to(soon we'll add more advanced stuff)
-    BIND_TO_VALIDATOR:async event=>
-
-        typeof event.payload === 'string'
-        &&
-        await VERIFY_WRAP(event)
-    ,
-
     /*
 
     Payload
@@ -137,6 +129,8 @@ export default {
             callMap:{},
             master:<pubkey or empty>
         }
+
+    If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
 
     */
     CONTRACT_DEPLOY:async event=>

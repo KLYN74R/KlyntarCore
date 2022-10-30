@@ -574,10 +574,10 @@ MAKE_SNAPSHOT=async()=>{
 },
 
 
-//Function to distribute stakes among validators/blockCreator/staking pool
+//Function to distribute stakes among validators/blockCreator/staking pools
 DISTRIBUTE_FEES=async(totalFees)=>{
 
-
+    
 
 },
 
