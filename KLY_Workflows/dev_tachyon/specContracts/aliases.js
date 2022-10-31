@@ -1,5 +1,40 @@
-export default contractPayload => {
+export default {
 
-    //Check BLS signature to bind some account to alias
+    setAlias:async payload=>{
+
+        
+
+    },
+
+    unSetAlias:async payload=>{
+
+        
+
+    },
+
+    changeRoot:async payload=>{
+
+        
+
+    },
+
+
+    stake:async payload=>{
+
+        
+
+    },
+
+    unstake:async payload=>{
+
+        
+
+    },
+
+    slash:async payload=>{
+
+        
+
+    },
 
 }

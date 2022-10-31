@@ -1,5 +1,9 @@
-export default contractPayload => {
+export default {
 
-    //
+    constructor:async payload=>{
+
+        
+
+    },
 
 }

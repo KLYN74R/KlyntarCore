@@ -1,5 +1,40 @@
-export default contractPayload => {
+export default {
 
-    //Check BLS signature to add/remove unobtanium from some account
+    mintUnobtanium:async payload=>{
+
+        
+
+    },
+
+    burnUnobtanium:async payload=>{
+
+        
+
+    },
+
+    changeRoot:async payload=>{
+
+        
+
+    },
+
+
+    stake:async payload=>{
+
+        
+
+    },
+
+    unstake:async payload=>{
+
+        
+
+    },
+
+    slash:async payload=>{
+
+        
+
+    },
 
 }

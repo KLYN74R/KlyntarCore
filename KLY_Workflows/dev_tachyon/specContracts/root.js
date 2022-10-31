@@ -1,10 +1,10 @@
 global.SPECIAL_CONTRACTS=new Map()
 
 
-let set = ['aliases','mintUnobtanium','deployService']
+let specContracts = ['aliases','mintUnobtanium','deployService','stakingPool']
 
-for(let filename of set){
+for(let name of specContracts){
 
-    await import(`./${filename}.js`).then(func=>SPECIAL_CONTRACTS.set(filename,func))
+    await import(`./${name}.js`).then(contract=>SPECIAL_CONTRACTS.set(name,contract))
 
 }

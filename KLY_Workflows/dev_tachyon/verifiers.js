@@ -172,9 +172,21 @@ export let VERIFIERS = {
         
     },
 
+    /*
+    
+    
+    Method to delegate your assets to some validator | pool
+    
 
+    Payload
 
-    //Method to delegate your assets to some validator | pool
+    {
+        pool:<id of special contract - BLS validator's pubkey'>
+        amount:<amount in KLY or UNO> | NOTE:must be int - not float
+        type:<KLY|UNO>
+    }
+
+    */
     STAKE:async (event,rewardBox,atomicBatch)=>{
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
