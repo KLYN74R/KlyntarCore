@@ -88,27 +88,6 @@ export default {
     ,
 
     /*
-
-    Payload
-
-    {
-        pool:<id of special contract - BLS validator's pubkey'>
-        amount:<amount in KLY or UNO> | NOTE:must be int - not float
-        type:<KLY|UNO>
-    }
-
-    */
-    STAKE:async event=>
-
-        typeof event.payload?.pool==='string'
-        &&
-        event.payload.amount >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE[event.payload.type] //depends on type of stake (KLY | UNO)
-        &&
-        await VERIFY_WRAP(event)
-
-    ,
-
-    /*
     
     Payload is
 

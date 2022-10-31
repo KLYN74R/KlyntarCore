@@ -48,6 +48,8 @@ import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 import {VM} from '../../KLY_VMs/default/vm.js'
 
+import * as _ from './specContracts/root.js'
+
 import FILTERS from './filters.js'
 
 
@@ -129,7 +131,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (event,rewardBox,atomicBatch)=>{
+    TX:async (event,rewardBox,_)=>{
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
         
@@ -172,42 +174,7 @@ export let VERIFIERS = {
         
     },
 
-    /*
-    
-    
-    Method to delegate your assets to some validator | pool
-    
 
-    Payload
-
-    {
-        pool:<id of special contract - BLS validator's pubkey'>
-        amount:<amount in KLY or UNO> | NOTE:must be int - not float
-        type:<KLY|UNO>
-    }
-
-    */
-    STAKE:async (event,rewardBox,atomicBatch)=>{
-
-        let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
-            
-            goingToSpendForFees = GET_SPEND_BY_SIG_TYPE(event)+event.fee
-
-        event = await FILTERS.STAKE(event) //pass through the filter
-
-        if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
-
-            sender.balance-=goingToSpendForFees
-
-            sender.nonce=event.nonce
-        
-            //Logic here
-
-            rewardBox.fees+=event.fee
-
-        }
-
-    },
 
 
     /*
@@ -242,26 +209,47 @@ export let VERIFIERS = {
 
         if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
-            let contractID = BLAKE3(JSON.stringify(event))
 
-            let contractTemplate = {
+            if(event.payload.lang.startsWith('SPEC/')){
 
-                type:"contract",
-                lang:event.payload.lang,
-                balance:0,
-                uno:0,
-                storages:[],
-                bytecode:event.payload.bytecode
+                let typeofContract = event.payload.lang.split('/')[1]
 
-            }
-        
-            atomicBatch.put(contractID,contractTemplate)
+                if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-            sender.balance-=goingToSpend
-        
-            sender.nonce=event.nonce
+                    SPECIAL_CONTRACTS[typeofContract].constructor(event.payload) // do deployment logic
+
+                    sender.balance-=goingToSpend
             
-            rewardBox.fees+=event.fee
+                    sender.nonce=event.nonce
+                    
+                    rewardBox.fees+=event.fee
+
+                }
+
+            }else{
+
+                let contractID = BLAKE3(JSON.stringify(event))
+
+                let contractTemplate = {
+    
+                    type:"contract",
+                    lang:event.payload.lang,
+                    balance:0,
+                    uno:0,
+                    storages:[],
+                    bytecode:event.payload.bytecode
+    
+                }
+            
+                atomicBatch.put(contractID,contractTemplate)
+    
+                sender.balance-=goingToSpend
+            
+                sender.nonce=event.nonce
+                
+                rewardBox.fees+=event.fee
+    
+            }
 
         }
 
@@ -299,33 +287,55 @@ export let VERIFIERS = {
 
             if(contractMeta){
 
-                //Create contract instance
-                let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy
 
-                    /*
-                    
-                    TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
-                    
-                    */
-                    {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(contractMeta.bytecode,energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports)),
+                if(contractMeta.lang.startsWith('SPEC/')){
 
-                    result
+                    let typeofContract = contractMeta.lang.split('/')[1]
+
+                    if(SPECIAL_CONTRACTS.has(typeofContract)){
+
+                        SPECIAL_CONTRACTS[typeofContract][event.payload.method](event.payload.params,atomicBatch)
+
+                        sender.balance-=goingToSpend
+            
+                        sender.nonce=event.nonce
+                    
+                        rewardBox.fees+=event.fee
+
+                    }
+
+                }else {
+
+                    //Create contract instance
+                    let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy
+
+                        /*
                 
-                try{
+                        TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
+                
+                        */
+                        {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(contractMeta.bytecode,energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports)),
 
-                    result = VM.callContract(contractInstance,contractMetadata,'',event.payload.method,contractMeta.type)
+                        result
+            
 
-                }catch(err){
+                    try{
 
-                    result = err.message
+                        result = VM.callContract(contractInstance,contractMetadata,'',event.payload.method,contractMeta.type)
+
+                    }catch(err){
+
+                        result = err.message
+
+                    }
+            
+                    sender.balance-=goingToSpend
+    
+                    sender.nonce=event.nonce
+            
+                    rewardBox.fees+=event.fee
 
                 }
-                
-                sender.balance-=goingToSpend
-        
-                sender.nonce=event.nonce
-                
-                rewardBox.fees+=event.fee
 
             }
 

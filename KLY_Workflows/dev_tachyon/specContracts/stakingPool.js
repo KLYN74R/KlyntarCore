@@ -11,7 +11,20 @@ export default {
 
     },
 
-    //Used by stakers to stake their KLY or UNO on pool
+    /*
+     
+    Method to delegate your assets to some validator | pool
+
+    Payload
+
+    {
+        pool:<id of special contract - BLS validator's pubkey'>
+        amount:<amount in KLY or UNO> | NOTE:must be int - not float
+        type:<KLY|UNO>
+    }
+    
+    */
+    
     stake:async payload=>{
 
         
