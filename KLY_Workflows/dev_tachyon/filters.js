@@ -71,8 +71,11 @@ export default {
     Payload
 
     {
-        to:<address to send KLY to>
-        amount:<KLY to transfer>
+        to:<address to send KLY to> default base58-ecoded ed25519 pubkey | base58 encoded BLS multisig | hex-encoded TBLS rootPub | hex-encoded pos-quantum Dilithium or BLISS address
+        amount:<KLY to transfer(float)>
+        
+        Optional:
+
         rev_t:<if recepient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig who'se votes can be ignored)>
     }
 
@@ -170,10 +173,37 @@ export default {
 
     /*
     
-        Payload is hexadecimal evm bytecode
+        Payload is hexadecimal EVM bytecode
     
     */
     EVM_CALL:async event=>typeof event.payload==='string' && await VERIFY_WRAP(event),
 
+
+    /*
+    
+        To move funds between KLY <-> EVM
+
+        Payload is
+
+        {
+            address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
+            amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
+            type:< KLY=>EVM | EVM=>KLY > - string const to understand what we should do:migrate from EVM to KLY or vice versa
+        }
+    
+    */
+    MIGRATE_BETWEEN_VM:async event=>
+    
+        typeof event.payload.address==='string'
+        &&
+        typeof event.payload.amount==='number'
+        &&
+        event.payload.amount>0
+        &&
+        (event.payload.type==='KLY=>EVM'||event.payload.type==='EVM=>KLY')
+        &&
+        await VERIFY_WRAP(event)
+
+        
 }
 
