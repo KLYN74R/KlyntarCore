@@ -34,7 +34,7 @@
 */
 
 
-//You can also provide DDoS protection & WAFs & Caches & Advanced filters here(for example, if prices are changes)
+//You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
@@ -125,20 +125,20 @@ export default {
 
         {
             bytecode:<hexString>,
-            type:<RUST|ASC>
+            lang:<RUST|ASC>
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
 
     {
         bytecode:'',(empty)
-        type:'SPEC/<name of contract>'
+        lang:'SPEC/<name of contract>'
     }
 
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && (event.payload.type==='RUST'||event.payload.type==='ASC'||event.payload.type.startsWith('SPEC/'))
+        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('SPEC/'))
         &&
         await VERIFY_WRAP(event)
 
@@ -152,18 +152,28 @@ export default {
 
             contractID:<BLAKE3 hashID of contract OR alias of contract(for example, SPECIAL_CONTRACTS)>,
             method:<string method to call>,
-            params:[] params to pass to function
+            energyLimit:<maximum allowed in KLY to execute contract>,
+            params:[] params to pass to function,
+            imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
 
         }
 
     */
     CONTRACT_CALL:async event=>
     
-        typeof event.payload.contractID==='string' && event.payload.contractID.length<256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params)
+        typeof event.payload.contractID==='string' && event.payload.contractID.length<=256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params) && Array.isArray(event.payload.imports)
         &&
         await VERIFY_WRAP(event)
 
     ,
+
+
+    /*
+    
+        Payload is hexadecimal evm bytecode
+    
+    */
+    EVM_CALL:async event=>typeof event.payload==='string' && await VERIFY_WRAP(event),
 
 }
 

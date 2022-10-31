@@ -494,6 +494,12 @@ LOAD_GENESIS=async()=>{
             
         )
 
+        Object.keys(genesis.EVM).forEach(address=>{
+
+            //Put KLY-EVM to KLY-EVM state db which will be used by Trie
+
+        })
+
         //Push the initial validators to verification thread
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
 
@@ -728,7 +734,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         'STATE',//Contains state of accounts, contracts, services, metadata and so on
 
-        'EVM' //Contains state of EVM
+        'KLY-EVM', //Contains state of EVM
+
+        'KLY-EVM-META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
     ].forEach(
         

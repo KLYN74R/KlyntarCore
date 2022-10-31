@@ -68,6 +68,12 @@ let GET_SPEND_BY_SIG_TYPE = event => {
 }
 
 
+//Load required modules and inject to contract
+let GET_METHODS_TO_INJECT=imports=>{
+
+    return {}
+
+}
 
 
 let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,event,goingToSpend)=>
@@ -200,14 +206,14 @@ export let VERIFIERS = {
 
         {
             bytecode:<hexString>,
-            type:<RUST|ASC>
+            lang:<RUST|ASC>
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
 
     {
         bytecode:'',(empty)
-        type:'SPEC/<name of contract>'
+        lang:'SPEC/<name of contract>'
     }
 
     */
@@ -229,7 +235,7 @@ export let VERIFIERS = {
             let contractTemplate = {
 
                 type:"contract",
-                lang:event.payload.type,
+                lang:event.payload.lang,
                 balance:0,
                 uno:0,
                 storages:[],
@@ -262,7 +268,8 @@ export let VERIFIERS = {
             method:<string method to call>,
             energyLimit:<maximum allowed in KLY to execute contract>
             params:[] params to pass to function
-
+            imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
+        
         }
 
 
@@ -271,25 +278,55 @@ export let VERIFIERS = {
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.payload).length+event.fee
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.fee+event.payload.energyLimit
 
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
-            let contractMeta = await SYMBIOTE_META.STATE.get(event.payload.contractID).catch(e=>false)
+            let contractMeta = await SYMBIOTE_META.STATE.get(event.payload.contractID).catch(_=>false)
 
             if(contractMeta){
 
                 //Create contract instance
-                let energyLimit = event.payload.energyLimit * 10_000_000 //1 KLY=
+                let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy
 
-                let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(contractMeta.bytecode,9000000)
+                    /*
+                    
+                    TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
+                    
+                    */
+                    {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(contractMeta.bytecode,energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports)),
 
+                    result
+                
+                try{
 
+                    result = VM.callContract(contractInstance,contractMetadata,'',event.payload.method,contractMeta.type)
+
+                }catch(err){
+
+                    result = err.message
+
+                }
+                
+                sender.balance-=goingToSpend
+        
+                sender.nonce=event.nonce
+                
+                rewardBox.fees+=event.fee
 
             }
 
         }
+
+    },
+
+    /*
+    
+        Payload is hexadecimal evm bytecode
+    
+    */
+    EVM_CALL:async (event,rewardBox,atomicBatch)=>{
 
     }
     
