@@ -185,7 +185,8 @@ export let VERIFIERS = {
 
         {
             bytecode:<hexString>,
-            lang:<RUST|ASC>
+            lang:<RUST|ASC>,
+            constructorParams:[]
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
@@ -193,6 +194,7 @@ export let VERIFIERS = {
     {
         bytecode:'',(empty)
         lang:'SPEC/<name of contract>'
+        constructorParams:[]
     }
 
     */
@@ -216,7 +218,7 @@ export let VERIFIERS = {
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    SPECIAL_CONTRACTS[typeofContract].constructor(event.payload) // do deployment logic
+                    SPECIAL_CONTRACTS[typeofContract].constructor(event.payload,atomicBatch) // do deployment logic
 
                     sender.balance-=goingToSpend
             

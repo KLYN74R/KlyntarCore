@@ -93,7 +93,8 @@ export default {
 
         {
             bytecode:<hexString>,
-            lang:<RUST|ASC>
+            lang:<RUST|ASC>,
+            constructorParams:[]
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
@@ -101,12 +102,13 @@ export default {
     {
         bytecode:'',(empty)
         lang:'SPEC/<name of contract>'
+        constructorParams:[]
     }
 
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('SPEC/'))
+        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('SPEC/')) && Array.isArray(event.payload.constructorParams)
         &&
         await VERIFY_WRAP(event)
 

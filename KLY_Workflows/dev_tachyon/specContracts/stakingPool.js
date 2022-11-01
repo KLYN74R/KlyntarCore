@@ -3,12 +3,32 @@ export default {
     /*
     
     Used by pool creators to create contract instance and a single storage with id="POOL"
+
+    Payload is
+    
+    {
+        bytecode:'',(empty)
+        lang:'SPEC/stakingPool'
+        constructorParams:[]
+    }
+
+    Required params:['BLS pool rootKey','BLS signa SIG('KLYNTAR')',percentage,initPool]
+
+    initPool is object like
+
+    {
+        "PUBKEY":{
+            KLY:<amount>,
+            UNO:<amoun>
+        }
+    }
     
     */
-    constructor:async payload=>{
+    constructor:async (payload,atomicBatch)=>{
 
         
 
+        
     },
 
     /*
