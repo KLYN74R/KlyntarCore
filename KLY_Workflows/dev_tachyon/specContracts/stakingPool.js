@@ -9,7 +9,7 @@ export default {
 
     /*
     
-    Used by pool creators to create contract instance and a single storage with id="POOL"
+    Used by pool creators to create contract instance and a storage "POOL"
 
     Payload is
     
@@ -75,7 +75,7 @@ export default {
 
                         }
     
-                    })
+                    }).catch(e=>false)
 
                 )
 
@@ -95,8 +95,12 @@ export default {
             let onlyOnePossibleStorageForStakingContract={
                 
                 percentage,
+
+                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO
                 
-                pool:filteredPool
+                POOL:filteredPool,
+
+                WAITING_ROOM:{}
 
             }
 

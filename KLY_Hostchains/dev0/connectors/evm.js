@@ -169,4 +169,40 @@ export default class {
     
     }
 
+
+    makeCheckpoint = async checkpoint => { 
+
+        this.web3.eth.getTransactionCount(this.PUB,async(err,txCount)=>{
+			
+    		if(err) return
+
+    		// Build a transaction
+    		let txObject = {
+
+        		nonce: this.web3.utils.toHex(txCount),
+        
+            	to:this.TO,
+
+				//Set enough limit and price for gas
+        		gasLimit: web3.utils.toHex(800000),
+        
+        		gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+				
+        		data: contract.methods.change(checkpoint).encodeABI()
+    
+    		}
+
+    		let tx = new OldLibTransaction(txObject,{common:this.COMMON})
+
+		    //Sign the transaction
+    		tx.sign(privateKey)
+
+		    let raw = '0x' + tx.serialize().toString('hex')
+
+		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+
+		})
+
+    }
+
 }
