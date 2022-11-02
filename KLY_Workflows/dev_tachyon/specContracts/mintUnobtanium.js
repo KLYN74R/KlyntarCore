@@ -1,18 +1,26 @@
 export default {
 
-    mintUnobtanium:async payload=>{
+
+    constructor:async (payload,atomicBatch)=>{
 
         
 
     },
 
-    burnUnobtanium:async payload=>{
+    mintUnobtanium:async (payload,atomicBatch)=>{
 
         
 
     },
 
-    changeRoot:async payload=>{
+    //To decrease number of UNO from some account
+    burnUnobtanium:async (payload,atomicBatch)=>{
+
+        
+
+    },
+
+    changeRoot:async (payload,atomicBatch)=>{
 
         
 

@@ -72,7 +72,7 @@ export default {
 
 
     //For staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    STAKE:async (operation,isJustVerify)=>{
+    POOL_CONTRACT_CALL:async (operation,isJustVerify)=>{
 
         /*
         
@@ -80,13 +80,13 @@ export default {
 
         Structure
         {
-            T:"STAKE",
+            T:"POOL_CONTRACT_CALL",
             P:{
                 T:"UNSTAKE" | "STAKE"
                 A:<amount in KLY or UNOBTANIUM>
                 R:<"KLY" | "UNOBTANIUM"> - resource type
                 V:<Validator> - validator to know the poolID to remove stake from pool
-                S:
+                TX_REF:<'SIGNATURE'> - reference in state to know if this so-called "output" still valid
             }
         }
 

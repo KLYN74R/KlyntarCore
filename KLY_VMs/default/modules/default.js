@@ -1,6 +1,6 @@
 export let DEFAULT = {
 
-    CONTRACT_CALL:contractID=>{
+    CONTRACT_CALL:(contractID,params)=>{
         
     },
 

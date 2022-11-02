@@ -1,6 +1,6 @@
 export default {
 
-    constructor:async payload=>{
+    constructor:async (payload,atomicBatch)=>{
 
         
 

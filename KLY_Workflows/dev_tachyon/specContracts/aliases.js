@@ -1,37 +1,43 @@
 export default {
 
-    setAlias:async payload=>{
+    constructor:async(payload,atomicBatch)=>{
 
         
 
     },
 
-    unSetAlias:async payload=>{
+    setAlias:async(payload,atomicBatch)=>{
 
         
 
     },
 
-    changeRoot:async payload=>{
+    unSetAlias:async(payload,atomicBatch)=>{
+
+        
+
+    },
+
+    changeRoot:async(payload,atomicBatch)=>{
 
         
 
     },
 
 
-    stake:async payload=>{
+    stake:async (payload,atomicBatch)=>{
 
         
 
     },
 
-    unstake:async payload=>{
+    unstake:async (payload,atomicBatch)=>{
 
         
 
     },
 
-    slash:async payload=>{
+    slash:async (payload,atomicBatch)=>{
 
         
 

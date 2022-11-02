@@ -14,7 +14,8 @@ Here will be the implementation of VM for KLYNTAR to allow workflows to import i
 
 
 
-import CROSS_CONTRACT from './modules/crossContractCall.js'
+
+import {DEFAULT} from './modules/default.js'
 
 import loader from '@assemblyscript/loader'
 
@@ -55,6 +56,7 @@ export let VM = {
 
         }
 
+        
         //Inject metering function
         let contractInstance = await loader.instantiate(prePreparedContractBytecode,{
 
