@@ -87,14 +87,14 @@ export let CONTRACT = {
     {
         pool:<id of special contract - BLS validator's pubkey'>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
-        type:<KLY|UNO>
+        units:<KLY|UNO>
     }
     
     */
     
     stake:async (event,atomicBatch) => {
 
-        let {pool,amount,type}=event.payload,
+        let {pool,amount,units}=event.payload,
 
             poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
@@ -109,35 +109,40 @@ export let CONTRACT = {
             
                 let stakeIsOk=false
             
-                if(type==='KLY'){
+                if(units==='KLY'){
 
                     let klyStakingPower = amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO //convert KLY to UNO
 
-                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
             
-                }else if(type==='UNO'){
+                }else if(units==='UNO'){
 
-                    stakeIsOk = amount <= stakerAccount.uno && amount>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.uno && amount >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
 
                 }
 
                 if(stakeIsOk){
 
-                    let totalStakedPower = type==='UNO' ? amount : amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+                    let totalStakedPower = units==='UNO' ? amount : amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
 
-                    if(poolStorage.totalPower+totalStakedPower <= poolStorage.overStake+CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                    if(poolStorage.totalPower + totalStakedPower <= poolStorage.overStake+CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
-                        //Add to waiting room with staked KLY(converted to UNO)
                         poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
-                            staker:event.creator,
-                        
-                            stake:{type,amount}
+                            timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
 
+                            staker:event.creator,
+
+                            amount,
+
+                            units,
+
+                            type:'+' //means "STAKE"
+                        
                         }
 
                         //Reduce number of KLY/UNO from account
-                        if(type==='KLY') stakerAccount.balance-=amount
+                        if(units==='KLY') stakerAccount.balance-=amount
                         
                         else stakerAccount.uno-=amount
 
@@ -165,63 +170,76 @@ export let CONTRACT = {
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             type:<KLY|UNO>
         }
+
     
     */
     unstake:async (event,atomicBatch) => {
 
-        let {pool,amount,type}=event.payload,
+        let {pool,amount,units}=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+
+            stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
+
+            wishedAmountIsOk = stakerInfo[units==='KLY'?'KLY':'UNO']>=amount
 
 
-        //Here we also need to check if pool is still not fullfilled
-        if(poolStorage){
+        if(poolStorage && wishedAmountIsOk){
 
-            if(stakerAccount){
-            
-                let stakeIsOk=false
-            
-                if(type==='KLY'){
+            poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
-                    let klyStakingPower = amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO //convert KLY to UNO
+                timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
 
-                    stakeIsOk = amount <= account.balance && klyStakingPower>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
-            
-                }else if(type==='UNO'){
+                staker:event.creator,
 
-                    stakeIsOk = amount <= account.uno && amount>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                amount,
 
-                }
+                units,
 
-                if(stakeIsOk){
+                type:'-' //means "UNSTAKE"
 
-                    let totalStakedPower = type==='UNO' ? amount : amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
-
-                    if(poolStorage.totalPower+totalStakedPower <= poolStorage.overStake+CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
-
-                        //Add to waiting room with staked KLY(converted to UNO)
-                        poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
-
-                            staker:event.creator,
-                        
-                            stake:{type,amount}
-
-                        }
-
-                        //Increase general staking power for pool
-                        poolStorage.totalPower+=totalStakedPower
-
-                        //Finally, put changes to atomic batch
-                        atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
-
-                    }
-
-                }
-        
             }
+
+            //Finally, put changes to atomic batch
+            atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
+    
+        }
+
+    },
+
+
+    /*
+     
+        Method to withdraw your money by staking
+
+        Payload is PoolID(because we send instantly full reward)
+
+    
+    */
+    getReward:async(event,atomicBatch)=>{
+
+        let pool=event.payload,
+
+            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+
+            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
+
+            stakerInfo = poolStorage.STAKERS[event.creator] // Pubkey => {KLY,UNO,REWARD}
+
+
+        if(poolStorage && stakerAccount && stakerInfo.REWARD>0){
+
+            stakerAccount.balance+=stakerInfo.REWARD
+
+            stakerInfo.REWARD=0
+
+            //Finally, put changes to atomic batch
+            atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
     
         }
 
     }
+        
+
 
 }
