@@ -159,6 +159,15 @@ export let CONTRACT = {
 
     },
 
+    checkpointStake:async (event,atomicBatch) => {
+
+        let {pool,amount,units}=event.payload,
+
+            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+       
+        
+    },
+
     /*
      
         Method to delegate your assets to some validator | pool
@@ -207,6 +216,15 @@ export let CONTRACT = {
 
     },
 
+
+    checkpointUnstake:async (event,atomicBatch) => {
+
+        let {pool,amount,units}=event.payload,
+
+            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+       
+        
+    },
 
     /*
      

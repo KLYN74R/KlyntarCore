@@ -89,7 +89,7 @@ let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
 
 
 
-//threadID - VERIFICATION_THREAD | GENERATION_THREAD
+//threadID - VERIFICATION_THREAD | QUORUM_THREAD
 GET_CONTRACT_EVENTS=async threadID=>{
 
 
@@ -143,7 +143,7 @@ GET_CONTRACT_EVENTS=async threadID=>{
 
                 SYMBIOTE_META[threadID].CURRENT_SET_COMPLETED = false
 
-                await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+                // await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
 
                 SYMBIOTE_META[threadID+'_EVENTS_CACHE']=events
 
@@ -170,7 +170,7 @@ GET_CONTRACT_EVENTS=async threadID=>{
 
         if(currentEventsSet){
 
-            SYMBIOTE_META.EVENTS_FOR_GENERATION_THREAD=currentEventsSet
+            // SYMBIOTE_META.EVENTS_FOR_GENERATION_THREAD=currentEventsSet
 
         }
 
@@ -243,7 +243,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 //We'll add checkpoint payload once find it
 
-                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for GENERATION_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
+                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
                 TIMESTAMP:+event.returnValues.blocktime,
 
@@ -362,8 +362,8 @@ VALIDATORS_METADATA - object like this
 
 export default {
 
-    // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.GENERATION_THREAD
-    //  GENERATION_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the VALIDATORS_METADATA state in checkpoint
+    // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.QUORUM_THREAD
+    //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the VALIDATORS_METADATA state in checkpoint
     /*
     
      Reminder: Checkpoint structure

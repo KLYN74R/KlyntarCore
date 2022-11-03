@@ -25,13 +25,21 @@ export default class {
         this.web3=new Web3(URL)
         
         this.TICKER=ticker
+        
         this.PUB=PUB
+        
         this.PRV=''//firstly we decrypt it
+        
         this.GAS_LIMIT=GAS_LIMIT
+        
         this.GAS_PRICE=GAS_PRICE
+        
         this.AMOUNT=AMOUNT
+        
         this.TO=TO
+        
         this.CHAIN_ID=CHAIN_ID
+        
         this.HARDFORK=HARDFORK
 
         if(this.HARDFORK==='london'){

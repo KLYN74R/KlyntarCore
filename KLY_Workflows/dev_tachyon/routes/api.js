@@ -130,7 +130,7 @@ getValidators=response=>{
 
 
 
-//Returns quorum for today(based on GENERATION_THREAD because it shows really current quorum)
+//Returns quorum for today(based on QUORUM_THREAD because it shows really current quorum)
 getCurrentQuorum=response=>{
 
     //Set triggers
@@ -142,7 +142,7 @@ getCurrentQuorum=response=>{
             .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`)
             .onAborted(()=>response.aborted=true)
 
-        response.end(JSON.stringify(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
+        response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
 
     }else !response.aborted && response.end('Symbiote not supported')
 

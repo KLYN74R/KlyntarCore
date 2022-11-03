@@ -27,11 +27,11 @@ export default {
 
     AWAKE:async(messagePayload,notJustOverview)=>{
 
-        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM),
+        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM),
 
             rootPub = bls.aggregatePublicKeys([...messagePayload.A,messagePayload]),
 
-            quorumSize=SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
+            quorumSize=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumSize*(2/3))+1
 
@@ -40,10 +40,10 @@ export default {
 
         majority = majority > quorumSize ? quorumSize : majority
             
-        let isMajority = ((SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length-messagePayload.A.length)>=majority)
+        let isMajority = ((SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-messagePayload.A.length)>=majority)
 
 
-        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
+        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
 
             if(notJustOverview){
 
@@ -71,45 +71,63 @@ export default {
     */
 
 
-    //For staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    STAKING_CONTRACT_CALL:async (operation,isJustVerify)=>{
+    //Function to move stakes between pool <=> waiting room of pool
+    STAKING_CONTRACT_CALL:async (payload,isJustVerify,usedOnQuorumThread)=>{
 
-        /*
-        
-        Assign someone's stake to validatorX staking pool
+    /*
+    
+        Full
 
-        Structure
         {
-            T:"POOL_CONTRACT_CALL",
-            P:{
-                T:"UNSTAKE" | "STAKE"
-                A:<amount in KLY or UNOBTANIUM>
-                R:<"KLY" | "UNOBTANIUM"> - resource type
-                V:<Validator> - validator to know the poolID to remove stake from pool
-                TX_REF:<'SIGNATURE'> - reference in state to know if this so-called "output" still valid
-            }
+            type:'STAKING_CONTRACT_CALL',
+            payload
         }
 
-        We just check 2/3N+1 from quorum signed it and add to own checkpoint version
+        Structure of payload
 
-        If "stake":
-            0)Check if previously created tx with TXID still don't used on GENERATION_THREAD
-            1)
-        
-        If "unstake" => check if stake wasn't withdrawed earlier from GENERATION_THREAD to VERIFICATION_THREAD
-        
-        */
+        {
+            id:<id in WAITING_ROOM in contract storage>,
+            pool:<BLS pubkey of pool>,
+            type:<'-' for unstake and '+' for stake>
+            units:<integer>
+
+        }
+    
+        Also, we check if operation in WAITING_ROOM still valid(timestamp is not so old).
+
+    
+    */
+
+        let {id,pool,type,units}=payload
+
+
+        if(isJustVerify){
+
+            //To check payload received from route
+
+        }
+        else if(usedOnQuorumThread){
+
+            // Basic ops on QUORUM_THREAD
+
+        }
+        else{
+
+            // Logic on VERIFICATION_THREAD
+
+        }
+
 
     },
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    FREEZING:async (operation,isJustVerify)=>{
+    FREEZING:async (payload,isJustVerify)=>{
 
         
 
     },
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (operation,isJustVerify)=>{}
+    WORKFLOW_UPDATE:async (payload,isJustVerify)=>{}
 
 }

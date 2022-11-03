@@ -164,13 +164,13 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 //Use it to find checkpoints on hostchains, proceed it and join to generation
-START_GENERATION_THREAD_CHECKPOINT_TRACKER=async()=>{
+START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
-    console.log('Finding new checkpoint for GENERATION_THREAD on symbiote')
+    console.log('Finding new checkpoint for QUORUM_THREAD on symbiote')
 
-    // let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.GENERATION_THREAD)
+    // let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.QUORUM_THREAD)
 
-    setTimeout(START_GENERATION_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_GENERATION_THREAD)
+    setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)
 
 },
 
@@ -351,7 +351,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
         await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate)
 
 
-        if(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+        if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
             //________________________________Create commitments________________________________
             
@@ -389,7 +389,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     blocksPool.forEach(block=>BROADCAST('/block',block))
 
 
-    if(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
 
         commitmentsArray={
@@ -408,7 +408,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
             let promises = []
     
             //0. Initially,try to get pubkey => node_ip binding 
-            SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.forEach(
+            SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(
                 
                 pubkey => promises.push(GET_STUFF(pubkey))
                 
@@ -521,8 +521,8 @@ LOAD_GENESIS=async()=>{
         //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
         SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
 
-        //We update this during the work on GENERATION_THREAD
-        SYMBIOTE_META.GENERATION_THREAD.VERSION=genesis.VERSION
+        //We update this during the work on QUORUM_THREAD
+        SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
 
     })
 
@@ -580,7 +580,7 @@ LOAD_GENESIS=async()=>{
 
 
     //Make template, but anyway - we'll find checkpoints on hostchains
-    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT={
+    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
 
         HEADER:{
 
@@ -614,8 +614,8 @@ LOAD_GENESIS=async()=>{
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VALIDATORS_METADATA state
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
 
-    //...However, quorum for GENERATION_THREAD might be retrieved from VALIDATORS_METADATA of checkpoints. It's because both threads are async
-    SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
+    //...However, quorum for QUORUM_THREAD might be retrieved from VALIDATORS_METADATA of checkpoints. It's because both threads are async
+    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
 },
 
@@ -1050,7 +1050,7 @@ START_AWAKENING_PROCEDURE=()=>{
         //Here we have verified signatures from validators
         
 
-        let quorumNumbers=SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT.QUORUM.length,
+        let quorumNumbers=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
 
             majority = Math.floor(quorumNumbers*(2/3))+1
 
@@ -1164,8 +1164,8 @@ RUN_SYMBIOTE=async()=>{
         //0.Start verification process - process blocks and find new checkpoints step-by-step
         START_VERIFICATION_THREAD()
 
-        //1.Also, GENERATION_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
-        START_GENERATION_THREAD_CHECKPOINT_TRACKER()
+        //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
+        START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
 
         let promises=[]
@@ -1203,7 +1203,7 @@ RUN_SYMBIOTE=async()=>{
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
 
-        // TODO: Move this function to the moment when we'll get the current QUORUM(via GENERATION_THREAD)
+        // TODO: Move this function to the moment when we'll get the current QUORUM(via QUORUM_THREAD)
         // setTimeout(()=>
 
         //     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
