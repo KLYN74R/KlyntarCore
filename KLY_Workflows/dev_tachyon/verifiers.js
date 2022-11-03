@@ -89,7 +89,7 @@ let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,event,goingToSpend)=>
 
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event=>{
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event => {
 
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION === event.v){
 
@@ -218,7 +218,7 @@ export let VERIFIERS = {
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    SPECIAL_CONTRACTS[typeofContract].constructor(event.payload,atomicBatch) // do deployment logic
+                    SPECIAL_CONTRACTS[typeofContract].constructor(event,atomicBatch) // do deployment logic
 
                     sender.balance-=goingToSpend
             
@@ -296,7 +296,7 @@ export let VERIFIERS = {
 
                     if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                        SPECIAL_CONTRACTS[typeofContract][event.payload.method](event.payload.params,atomicBatch)
+                        SPECIAL_CONTRACTS[typeofContract][event.payload.method](event.payload,atomicBatch)
 
                         sender.balance-=goingToSpend
             
@@ -309,7 +309,7 @@ export let VERIFIERS = {
                 }else {
 
                     //Create contract instance
-                    let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy
+                    let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
 
                         /*
                 

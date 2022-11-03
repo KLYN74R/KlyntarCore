@@ -1,5 +1,5 @@
 {
-    
+
     "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     
     "INFO":{
@@ -46,15 +46,10 @@
         "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
         "WORKFLOW_OPTIONS":{
 
-            "VALIDATOR_STAKE":{
-                "KLY":10000,
-                "UNO":50000
-            },
+            "VALIDATOR_STAKE":50000,
             "REWARD_PERCENTAGE_FOR_REST_VALIDATORS":0.2,
-            "MINIMAL_STAKE":{
-                "KLY":5,
-                "UNO":20
-            },
+            "KLY_UNO_RATIO":5,
+            "MINIMAL_STAKE":20,
             "QUORUM_SIZE":127,
             "EVENTS_LIMIT_PER_BLOCK":30000,
             "CHECKPOINT_SPEC_OPS_LIMIT":1000,
