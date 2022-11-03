@@ -72,7 +72,7 @@ export default {
 
 
     //For staking process(so we need such pointers in GENERATION_THREAD for super total async work)
-    POOL_CONTRACT_CALL:async (operation,isJustVerify)=>{
+    STAKING_CONTRACT_CALL:async (operation,isJustVerify)=>{
 
         /*
         
@@ -109,8 +109,7 @@ export default {
 
     },
 
-    //To update version of workflow
-    VERSION_UPDATE:async (operation,isJustVerify)=>{}
-
+    //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
+    WORKFLOW_UPDATE:async (operation,isJustVerify)=>{}
 
 }
