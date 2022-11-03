@@ -120,7 +120,7 @@ export default {
 
         {
 
-            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, SPECIAL_CONTRACTS)>,
+            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, PANDORA(mint unobtanium), ALIAS_BIND and so on)>,
             method:<string method to call>,
             energyLimit:<maximum allowed in KLY to execute contract>,
             params:[] params to pass to function,

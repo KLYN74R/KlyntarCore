@@ -218,7 +218,7 @@ export let VERIFIERS = {
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    SPECIAL_CONTRACTS[typeofContract].constructor(event,atomicBatch) // do deployment logic
+                    SPECIAL_CONTRACTS[typeofContract].CONTRACT.constructor(event,atomicBatch) // do deployment logic
 
                     sender.balance-=goingToSpend
             
@@ -296,7 +296,7 @@ export let VERIFIERS = {
 
                     if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                        SPECIAL_CONTRACTS[typeofContract][event.payload.method](event.payload,atomicBatch)
+                        SPECIAL_CONTRACTS[typeofContract].CONTRACT[event.payload.method](event,atomicBatch)
 
                         sender.balance-=goingToSpend
             
@@ -369,6 +369,7 @@ export let VERIFIERS = {
             type:< KLY=>EVM | EVM=>KLY > - string const to understand what we should do:migrate from EVM to KLY or vice versa
         }
     
+
     */
     MIGRATE_BETWEEN_VM:async (event,rewardBox,atomicBatch)=>{
 
