@@ -111,13 +111,13 @@ acceptBlocks=response=>{
                          
                     )
 
-                   !response.aborted&&response.end('OK')
+                   !response.aborted && response.end('OK')
 
-                }else !response.aborted&&response.end('Overview failed')
+                }else !response.aborted && response.end('Overview failed')
             
             }
         
-        }else !response.aborted&&response.end('Payload limit')
+        }else !response.aborted && response.end('Payload limit')
     
     })
 
@@ -135,7 +135,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     //Reject all txs if route is off and other guards methods
     if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
         
-        !response.aborted&&response.end('Overview failed')
+        !response.aborted && response.end('Overview failed')
         
         return
         
@@ -160,13 +160,13 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         if(filtered){
 
-            !response.aborted&&response.end('OK')
+            !response.aborted && response.end('OK')
 
             SYMBIOTE_META.MEMPOOL.push(event)
                         
-        }else !response.aborted&&response.end('Post overview failed')
+        }else !response.aborted && response.end('Post overview failed')
 
-    }else !response.aborted&&response.end('Mempool is fullfilled or no such filter')
+    }else !response.aborted && response.end('Mempool is fullfilled or no such filter')
 
 }),
 
@@ -199,7 +199,7 @@ awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-
             &&
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
             &&
-            !SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].BLOCKS_GENERATOR//Also,check if validator was marked as ACTIVE:false
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].FREEZED//Also,check if validator was marked as ACTIVE:false
             &&
             await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
 
@@ -351,11 +351,17 @@ postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*'
 
 /*
 
-Return own commitment by blockID:Hash
+To return own commitment by blockID:Hash
 
 We return single signature where sign => SIG(blockID+hash)
 
-0 - blockID:Hash
+Params:
+
+    [0] - blockID:Hash
+
+Returns:
+
+    SIG(blockID+hash)
 
 */
 getCommitment=async(response,request)=>{
@@ -669,9 +675,15 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
 /*
 
-0 - blockID:hash
+To return SUPER_FINALIZATION_PROOF related to some block PubX:Index with hash <HASH>
 
-Return
+Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+
+Params:
+
+    [0] - blockID:hash
+
+Returns:
 
     {
         aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
@@ -730,18 +742,39 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
 
 
-//0-hash of payload of checkpoint
+
+/*
+
+To return payload of some checkpoint by hash
+
+Params:
+
+    [0] - checkpoint payload hash
+
+
+Returns:
+
+    {
+      PREV_CHECKPOINT_PAYLOAD_HASH: '',
+      VALIDATORS_METADATA: [Object],
+      OPERATIONS: [],
+      OTHER_SYMBIOTES: {}
+    }
+
+*/
 getPayloadForCheckpoint=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
 
-        let payloadHash = request.getParameter(0)
+        let payloadHash = request.getParameter(0),
 
-        if(superProof){
+            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).catch(_=>false)
 
-            response.end(JSON.stringify(superProof))
+        if(checkpoint){
 
-        }else response.end('No proof')
+            response.end(JSON.stringify(checkpoint.PAYLOAD))
+
+        }response.end('No checkpoint')
 
     }else response.end('Route is off')
 
@@ -774,9 +807,26 @@ operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
 
 
+/*
 
-//[symbioteID,hostToAdd(initiator's valid and resolved host)]
-addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>reponse.aborted=true).onData(async bytes=>{
+To add node to local set of peers to exchange data with
+
+Params:
+
+    [symbioteID,hostToAdd(initiator's valid and resolved host)]
+
+    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
+
+
+Returns:
+
+    'OK' - if node was added to local peers
+    '<MSG>' - if some error occured
+
+*/
+
+addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
     
     let [symbiote,domain]=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
@@ -793,11 +843,11 @@ addPeer=reponse=>reponse.writeHeader('Access-Control-Allow-Origin','*').onAborte
             :
             nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
     
-            !reponse.aborted&&reponse.end('OK')
+            !response.aborted && response.end('OK')
     
-        }else !reponse.aborted&&reponse.end('Your node already in scope')
+        }else !response.aborted && response.end('Your node already in scope')
     
-    }else !reponse.aborted&&reponse.end('Wrong types')
+    }else !response.aborted && response.end('Wrong types')
 
 })
 
@@ -831,7 +881,6 @@ UWS_SERVER
 .post('/super_finalization',postSuperFinalization)
 
 
-//Used to get payload by hash to progress in QUORUM_THREAD
 .get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 

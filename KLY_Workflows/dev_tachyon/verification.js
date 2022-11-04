@@ -274,7 +274,12 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         //Also,if we're in quourm - start process of generating checkpoints,
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.VERIFICATION_THREAD).catch(_=>false)
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(e=>{
+
+            console.log(e)
+
+        })
+
 
         if(nextCheckpoint) {
 
@@ -385,7 +390,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
-        if(!currentSessionMetadata.BLOCKS_GENERATOR){
+        if(currentSessionMetadata.FREEZED){
 
             /*
             
@@ -467,7 +472,7 @@ START_VERIFICATION_THREAD=async()=>{
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(START_VERIFICATION_THREAD,(nextBlock||shouldSkip||!currentSessionMetadata.BLOCKS_GENERATOR)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
+        setTimeout(START_VERIFICATION_THREAD,(nextBlock||shouldSkip||currentSessionMetadata.FREEZED)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
         
         //Probably no sense to stop polling via .clearTimeout()
@@ -478,7 +483,7 @@ START_VERIFICATION_THREAD=async()=>{
     
     }else{
 
-        LOG(`Polling for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Polling for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         SIG_PROCESS.VERIFY=true
 

@@ -54,7 +54,7 @@ let graceful=()=>{
 
     console.log('\n')
 
-    LOG('KLYNTAR stop has been initiated.Keep waiting...','I')
+    LOG('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...','I')
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
     
@@ -69,7 +69,7 @@ let graceful=()=>{
             //Close logs streams
             await new Promise( resolve => SYMBIOTE_LOGS_STREAM.close( error => {
 
-                LOG(`Logging was stopped for ${SYMBIOTE_ALIAS()} ${error?'\n'+error:''}`,'I')
+                LOG(`Logging was stopped for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m ${error?'\n'+error:''}`,'I')
 
                 resolve()
             
@@ -170,6 +170,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     // let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.QUORUM_THREAD)
 
+    console.log('================ QT ================')
+
+    console.log(SYMBIOTE_META.QUORUM_THREAD)
+
+    console.log('================ VT ================')
+
+    console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+
     setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)
 
 },
@@ -220,7 +228,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
 
     //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
 
-    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true}
+    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false}
 
     let metadata = {}
 
@@ -232,7 +240,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
             
             HASH:descriptor.hash,
             
-            BLOCKS_GENERATOR:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].BLOCKS_GENERATOR
+            FREEZED:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].FREEZED
         
         }
 
@@ -530,7 +538,7 @@ LOAD_GENESIS=async()=>{
 
     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
         
-        pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',BLOCKS_GENERATOR:true} // set the initial values
+        pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false} // set the initial values
         
     )
 
@@ -547,6 +555,12 @@ LOAD_GENESIS=async()=>{
     }
 
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
+
+        RANGE_START_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+
+        RANGE_FINISH_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+
+        RANGE_POINTER:0,
 
         HEADER:{
 
@@ -581,6 +595,12 @@ LOAD_GENESIS=async()=>{
 
     //Make template, but anyway - we'll find checkpoints on hostchains
     SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
+
+        RANGE_START_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+
+        RANGE_FINISH_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+
+        RANGE_POINTER:0,
 
         HEADER:{
 
@@ -676,6 +696,10 @@ PREPARE_SYMBIOTE=async()=>{
 
         PEERS:[], //Peers to exchange data with
 
+        VERIFICATION_THREAD_EVENTS:[],
+
+        QUORUM_THREAD_EVENTS:[],
+
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 
         COMMITMENTS:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
@@ -736,7 +760,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         'KLY_EVM', //Contains state of EVM
 
-        'KLY_EVM_META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        'KLY_EVM_META', //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+
+        'CHECKPOINTS' //Contains object like {HEADER,PAYLOAD}
 
     ].forEach(
         
@@ -816,7 +842,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',BLOCKS_GENERATOR}
+                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',FREEZED}
                 
                 CHECKPOINT:'genesis',
 
@@ -874,10 +900,6 @@ PREPARE_SYMBIOTE=async()=>{
         HOSTCHAIN.MONITOR=(await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`)).default
 
     }
-
-    if(!SYMBIOTE_META.VERIFICATION_THREAD.MONITORING_START_FROM) SYMBIOTE_META.VERIFICATION_THREAD.MONITORING_START_FROM=CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM
-
-
 
 
     //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________

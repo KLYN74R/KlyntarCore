@@ -96,41 +96,67 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
     /*
     
         SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER - <index of array events not to start from 0 each time>
-        SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE - <id of the latest block in range>
+        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK - <id of the latest block in range>
     
     */
 
-    let nextRangeStartsFrom = SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE+1
 
-    //In this case, we check if we get the end of currently checked range
-    if(SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER+1 === SYMBIOTE_META[threadID+'_EVENTS'].length){
+    let isInitialLoad = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK === SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK,
+
+        nextRangeStartsFrom = isInitialLoad ? CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM : SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK+1,
+
+        wasLatestRangeEmpty = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === -1,
+
+        weFinishedToEnumThisRange = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === SYMBIOTE_META[threadID+'_EVENTS'].length && SYMBIOTE_META[threadID+'_EVENTS'].length !==0
+
+
+
+    if(weFinishedToEnumThisRange || isInitialLoad || wasLatestRangeEmpty){
 
         // We should find next range if no more range exists locally
         // Otherwise - get the range from local storage and add to cache
+        console.log('HERE because')
 
-        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+'_EVENTS').catch(_=>false)
+        console.log(weFinishedToEnumThisRange)
+        console.log(isInitialLoad)
+        console.log(wasLatestRangeEmpty)
+
+        console.log('ID is ',nextRangeStartsFrom+`_${threadID}_EVENTS`)
+
+        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+`_${threadID}_EVENTS`).catch(_=>false)
 
         if(range){
 
+            console.log('RANGE WAS IN DB')
+
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
-            SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE=range.latestBlockInRange
+            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
+
+            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=range.latestBlockInRange
 
             //Probably store changes of thread here
 
-            return range
+            SYMBIOTE_META[threadID+'_EVENTS']=range.events
+
+
+            console.log(SYMBIOTE_META[threadID])
+
+            return SYMBIOTE_META[threadID+'_EVENTS']
 
         }else{
 
             //Otherwise - query next range
+
+            console.log('Going to query')
             
             let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
     
                 contractInstance = new web3.eth.Contract(ABI,CONTRACT),
 
-                lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>{
+                lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
 
-                    LOG(`Some error occured with hostchain node => ${e}`,'W')
+                    LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
 
                     return false
 
@@ -150,7 +176,11 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
                     toBlock:lastKnownBlockNumber
     
                 };
-    
+
+                console.log('Going to ask ',options)
+
+                //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
+                if(nextRangeStartsFrom>=lastKnownBlockNumber) return
             
                 let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
 
@@ -161,36 +191,39 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
                 })
 
     
-                if(events){
+                if(Array.isArray(events)){
 
-                    //Update thread data and store locally not to make requests too frequently
+                    if(events.length){
 
-                    let range={
+                        //Update thread data and store locally not to make requests too frequently
+
+                        let range={
                         
-                        events,
+                            events,
 
-                        latestBlockInRange:lastKnownBlockNumber
+                            latestBlockInRange:lastKnownBlockNumber
+
+                        }
+
+                        await SYMBIOTE_META.HOSTCHAIN_DATA.put(nextRangeStartsFrom+`_${threadID}_EVENTS`,range).catch(
+                        
+                            error => LOG(`Error occured when trying to store events => ${error}`)
+                        
+                        )
+
+                    }else {
+
+                        //If no events on range [nextRangeStartsFrom;lastKnownBlockNumber] - change the range
+
+                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=-1 // -1 means that latest received range has no events 
+
+                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
+
+                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=lastKnownBlockNumber
 
                     }
 
-                    await SYMBIOTE_META.HOSTCHAIN_DATA.put(nextRangeStartsFrom+'_EVENTS',range).catch(
-                        
-                        error => LOG(`Error occured when trying to store events => ${error}`)
-                        
-                    )
-
-                    SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
-
-                    SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE=nextRangeStartsFrom //change the pointer to keep progress
-
-                    //Probably store changes of thread here
-
-                    SYMBIOTE_META[threadID+'_EVENTS']=events
-
-                    return events
-
                 }
-
 
             }
 
@@ -200,7 +233,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
         if(!SYMBIOTE_META[threadID+'_EVENTS']){
 
-            SYMBIOTE_META[threadID+'_EVENTS']=await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE+'_EVENTS').catch(_=>false)
+            SYMBIOTE_META[threadID+'_EVENTS']=await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK+`_${threadID}_EVENTS`).catch(_=>false)
 
         }
 
@@ -234,9 +267,13 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
+    console.log('One ',CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP))
+
     if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
+
+        console.log('One day difference found ',event)
 
         let [payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
 
@@ -376,7 +413,7 @@ VALIDATORS_METADATA - object like this
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
                 INDEX: -1,
                 HASH: 'Poyekhali!@Y.A.Gagarin',
-                BLOCKS_GENERATOR: true
+                FREEZED: false
             }
     
         }
@@ -420,13 +457,13 @@ export default {
 
                 VALIDATORS_METADATA:{
                 
-                    VALIDATOR_0 : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool},
+                    VALIDATOR_0 : {INDEX:number,HASH:string,FREEZED:bool},
 
-                    VALIDATOR_1 : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool},
+                    VALIDATOR_1 : {INDEX:number,HASH:string,FREEZED:bool},
 
                     ...
 
-                    VALIDATOR_N : {INDEX:number,HASH:string,BLOCKS_GENERATOR:bool}
+                    VALIDATOR_N : {INDEX:number,HASH:string,FREEZED:bool}
                 
                 }
 
@@ -486,7 +523,7 @@ export default {
     
     GET_VALID_CHECKPOINT:async threadID => {
 
-        
+
         let currentCheckpoint = SYMBIOTE_META[threadID].CHECKPOINT,
 
             quorumNumber=SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
@@ -500,10 +537,12 @@ export default {
 
         //Find next checkpoint and verify signatures
 
-        let eventsRange = await GET_CONTRACT_EVENTS_RANGE()
+        let eventsRange = await GET_CONTRACT_EVENTS_RANGE(threadID)
 
 
         if(eventsRange){
+
+            console.log('Received events ',eventsRange)
         
             //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
@@ -511,6 +550,7 @@ export default {
 
                 startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
             
+            console.log('Range pointer ',startFrom)
 
             //Start to enumerate the range of events, starting from position <startFrom>
             for(let index in eventsRange){
@@ -541,7 +581,7 @@ export default {
             }
 
             //After the cycle over the range of events, check if valid checkpoint was found. If yes - return it, otherwise get the next range and start the cycle again
-            if(possibleValidCheckpoint.PAYLOAD){
+            if(possibleValidCheckpoint?.PAYLOAD){
 
                 return possibleValidCheckpoint
 

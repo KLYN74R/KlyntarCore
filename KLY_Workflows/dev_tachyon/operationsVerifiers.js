@@ -50,7 +50,7 @@ export default {
                 //Change the state
 
                 //Make active to turn back this validator's thread to VERIFICATION_THREAD
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].BLOCKS_GENERATOR=true
+                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].FREEZED=false
                 
                 //And increase index to avoid confusion
                 SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].INDEX++
