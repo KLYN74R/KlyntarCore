@@ -476,7 +476,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         
         //Probably no sense to stop polling via .clearTimeout()
-        //UPD:Do it to provide dynamic functionality for start/stop Verification Thread
+        //UPD:Do it to provide dynamic functionality to start/stop Verification Thread
         
         THREADS_STILL_WORKS.VERIFICATION=false
 

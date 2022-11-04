@@ -129,18 +129,14 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
             console.log('RANGE WAS IN DB')
 
+            
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
 
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=range.latestBlockInRange
 
-            //Probably store changes of thread here
-
             SYMBIOTE_META[threadID+'_EVENTS']=range.events
-
-
-            console.log(SYMBIOTE_META[threadID])
 
             return SYMBIOTE_META[threadID+'_EVENTS']
 
@@ -248,9 +244,9 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
 CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
-    let startOfDayLater = new Date(timestampLater),
+    let startOfDayLater = new Date(timestampLater*1000),
 
-        startOfDayEarlier = new Date(timestampEarlier)
+        startOfDayEarlier = new Date(timestampEarlier*1000)
 
 
     startOfDayLater.setUTCHours(0, 0, 0, 0)
@@ -267,13 +263,11 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
-    console.log('One ',CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP))
+    console.log('One ',CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(currentCheckpoint.TIMESTAMP,+event.returnValues.blocktime))
 
     if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
-
-        console.log('One day difference found ',event)
 
         let [payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
 
@@ -343,7 +337,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
             for(let url of initURLs){
 
-                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+payloadHash).then(r=>r.json()).catch(e=>false)
+                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+payloadHash).then(r=>r.json()).catch(_=>false)
 
                 if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload))===payloadHash){
 
