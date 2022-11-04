@@ -95,32 +95,26 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
     /*
     
-
-        {
-            events:[] //array
-            position:
-            nextRange:<id of next block to check>
-        }
-
         SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER - <index of array events not to start from 0 each time>
-        SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE - <id of the next to the latest in range block(to know the position from which we should start to query new range of events)>
+        SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE - <id of the latest block in range>
     
     */
 
+    let nextRangeStartsFrom = SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE+1
 
-    //In this case, we check if we get the end of range
+    //In this case, we check if we get the end of currently checked range
     if(SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER+1 === SYMBIOTE_META[threadID+'_EVENTS'].length){
 
         // We should find next range if no more range exists locally
         // Otherwise - get the range from local storage and add to cache
 
-        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE+'_EVENTS').catch(_=>false)
+        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+'_EVENTS').catch(_=>false)
 
         if(range){
 
-            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0
+            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
-            SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE=range.nextRange
+            SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE=range.latestBlockInRange
 
             //Probably store changes of thread here
 
@@ -151,7 +145,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
         
                 let options = {
     
-                    fromBlock:SYMBIOTE_META[threadID].NEXT_RANGE,
+                    fromBlock:nextRangeStartsFrom,
 
                     toBlock:lastKnownBlockNumber
     
@@ -171,28 +165,46 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
                     //Update thread data and store locally not to make requests too frequently
 
-                    await SYMBIOTE_META.HOSTCHAIN_DATA.put(lastKnownBlockNumber+'_EVENTS',events).catch(error=>LOG(`Error occured when trying to store events => ${error}`))
+                    let range={
+                        
+                        events,
 
-                    SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0
+                        latestBlockInRange:lastKnownBlockNumber
 
-                    SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE=lastKnownBlockNumber
+                    }
+
+                    await SYMBIOTE_META.HOSTCHAIN_DATA.put(nextRangeStartsFrom+'_EVENTS',range).catch(
+                        
+                        error => LOG(`Error occured when trying to store events => ${error}`)
+                        
+                    )
+
+                    SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
+
+                    SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE=nextRangeStartsFrom //change the pointer to keep progress
 
                     //Probably store changes of thread here
+
+                    SYMBIOTE_META[threadID+'_EVENTS']=events
 
                     return events
 
                 }
 
 
-            }else return []
+            }
 
         }
 
-    }else {
+    } else {
 
-        let range =  SYMBIOTE_META[threadID+'_EVENTS'] || await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE+'_EVENTS').catch(_=>false)
+        if(!SYMBIOTE_META[threadID+'_EVENTS']){
 
-        return range
+            SYMBIOTE_META[threadID+'_EVENTS']=await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.CURRENT_RANGE+'_EVENTS').catch(_=>false)
+
+        }
+
+        return SYMBIOTE_META[threadID+'_EVENTS']
 
     }
         
@@ -488,11 +500,10 @@ export default {
 
         //Find next checkpoint and verify signatures
 
-        let events = await GET_CONTRACT_EVENTS_RANGE()
+        let eventsRange = await GET_CONTRACT_EVENTS_RANGE()
 
 
-        if(events.length!==0){
-
+        if(eventsRange){
         
             //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
@@ -501,24 +512,33 @@ export default {
                 startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
             
 
-            for(let index in events){
+            //Start to enumerate the range of events, starting from position <startFrom>
+            for(let index in eventsRange){
 
                 if(index<startFrom) continue
 
                 else{
 
-                    let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(events[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
+                    let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
-                    //If returned value has payload - it's signal that everything is ok
-                    if(possibleValidCheckpoint.PAYLOAD){
+                    //If returned value has payload - it's signal that at least header was found
+                    
+                    if(possibleValidCheckpoint){
 
-                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=index
-    
-                        validCheckpoint=possibleValidCheckpoint
-    
+                        // If we've found a payload too - then we can continue to work
+                        if(possibleValidCheckpoint.PAYLOAD) validCheckpoint=possibleValidCheckpoint
+
+                        //We do break here, because valid checkpoint header was found, but we haven't found the payload, so we'll try to find next time
+
                         break
-    
-                    }
+
+                    } else {
+
+                        //If log is not a checkpoint - just increase counter for progress
+
+                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
+
+                    } 
     
                 }
 
