@@ -14,9 +14,9 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
-import ora from 'ora'
+import level from 'level'
 
-import l from 'level'
+import ora from 'ora'
 
 import fs from 'fs'
 
@@ -734,13 +734,13 @@ PREPARE_SYMBIOTE=async()=>{
 
         'STATE',//Contains state of accounts, contracts, services, metadata and so on
 
-        'KLY-EVM', //Contains state of EVM
+        'KLY_EVM', //Contains state of EVM
 
-        'KLY-EVM-META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        'KLY_EVM_META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
     ].forEach(
         
-        dbName => SYMBIOTE_META[dbName]=l(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
+        dbName => SYMBIOTE_META[dbName]=level(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
         
     )
     
@@ -759,7 +759,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     //...and separate dirs for state and metadata snapshots
 
-    SYMBIOTE_META.SNAPSHOT=l(process.env.SNAPSHOTS_PATH,{valueEncoding:'json'})
+    SYMBIOTE_META.SNAPSHOT=level(process.env.SNAPSHOTS_PATH,{valueEncoding:'json'})
 
 
 
@@ -777,6 +777,10 @@ PREPARE_SYMBIOTE=async()=>{
                         
     )
 
+
+    //Load from db or return empty object
+    SYMBIOTE_META.QUORUM_THREAD = await SYMBIOTE_META.HOSTCHAIN_DATA.get('QT').catch(_=>({}))
+        
 
     let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
 

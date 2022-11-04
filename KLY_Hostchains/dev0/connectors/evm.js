@@ -192,7 +192,7 @@ export default class {
             	to:this.TO,
 
 				//Set enough limit and price for gas
-        		gasLimit: web3.utils.toHex(800000),
+        		gasLimit: web3.utils.toHex(this.GAS_LIMIT),
         
         		gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
 				

@@ -148,26 +148,23 @@ export default {
 
     /*
     
-        To move funds between KLY <-> EVM
+        To move funds from KLY to EVM
 
         Payload is
 
         {
             address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
             amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
-            type:< KLY=>EVM | EVM=>KLY > - string const to understand what we should do:migrate from EVM to KLY or vice versa
         }
     
     */
-    MIGRATE_BETWEEN_VM:async event=>
+    MIGRATE_TO_EVM:async event=>
     
         typeof event.payload.address==='string'
         &&
         typeof event.payload.amount==='number'
         &&
         event.payload.amount>0
-        &&
-        (event.payload.type==='KLY=>EVM'||event.payload.type==='EVM=>KLY')
         &&
         await VERIFY_WRAP(event)
 

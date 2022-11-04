@@ -90,91 +90,109 @@ let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
 
 
 //threadID - VERIFICATION_THREAD | QUORUM_THREAD
-GET_CONTRACT_EVENTS=async threadID=>{
 
+GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
-    //threadID.MONITORING_START_FROM
-    if(SYMBIOTE_META[threadID].CURRENT_SET_COMPLETED){
-
-        //If we already complete this set of events on hostchains - then we can find next set in range (SYMBIOTE_META[threadID].MONITORING_START_FROM,<LATEST_BLOCK_ID>)
-
-        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+    /*
     
-            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
 
-            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>{
+        {
+            events:[] //array
+            position:
+            nextRange:<id of next block to check>
+        }
 
-                LOG(`Some error occured with hostchain node => ${e}`,'W')
+        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER - <index of array events not to start from 0 each time>
+        SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE - <id of the next to the latest in range block(to know the position from which we should start to query new range of events)>
+    
+    */
 
-                return false
 
-            })
+    //In this case, we check if we get the end of range
+    if(SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER+1 === SYMBIOTE_META[threadID+'_EVENTS'].length){
 
+        // We should find next range if no more range exists locally
+        // Otherwise - get the range from local storage and add to cache
 
-        if(lastKnownBlockNumber){
+        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE+'_EVENTS').catch(_=>false)
 
-            LOG(`Found new latest known block on hostchain [\x1b[35;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+        if(range){
 
-            //Get from the height we stopped till the last known block
+            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0
+
+            SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE=range.nextRange
+
+            //Probably store changes of thread here
+
+            return range
+
+        }else{
+
+            //Otherwise - query next range
+            
+            let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+    
+                contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+
+                lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(e=>{
+
+                    LOG(`Some error occured with hostchain node => ${e}`,'W')
+
+                    return false
+
+                })
+
+    
+            if(lastKnownBlockNumber){
+
+                LOG(`Found new latest known block on hostchain [\x1b[35;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+
+                //Get from the height we stopped till the last known block
         
-            let options = {
+                let options = {
     
-                fromBlock:SYMBIOTE_META[threadID].MONITORING_START_FROM,
+                    fromBlock:SYMBIOTE_META[threadID].NEXT_RANGE,
 
-                toBlock:lastKnownBlockNumber
+                    toBlock:lastKnownBlockNumber
     
-            };
+                };
     
-            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
+            
+                let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
 
-                LOG(`Received this error when asking for events => ${error}`,'W')
+                    LOG(`Received this error when asking for events => ${error}`,'W')
 
-                return false
+                    return false
 
-            })
+                })
 
-            if(events){
+    
+                if(events){
 
-                //Update thread data and store locally not to make requests too frequently
+                    //Update thread data and store locally not to make requests too frequently
 
-                await SYMBIOTE_META.HOSTCHAIN_DATA.put(threadID+'_EVENTS',events).catch(error=>LOG(`Error occured when trying to store events => ${error}`))
+                    await SYMBIOTE_META.HOSTCHAIN_DATA.put(lastKnownBlockNumber+'_EVENTS',events).catch(error=>LOG(`Error occured when trying to store events => ${error}`))
 
-                SYMBIOTE_META[threadID].MONITORING_START_FROM = lastKnownBlockNumber
+                    SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0
 
-                SYMBIOTE_META[threadID].CURRENT_SET_COMPLETED = false
+                    SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE=lastKnownBlockNumber
 
-                // await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+                    //Probably store changes of thread here
 
-                SYMBIOTE_META[threadID+'_EVENTS_CACHE']=events
+                    return events
 
-            }
-
-            return [lastKnownBlockNumber,events]
-
-
-        }else return []
+                }
 
 
-    }else{
-
-        //Otherwise - take data from local storage and complete check
-
-        let currentEventsSet = SYMBIOTE_META[threadID+'_EVENTS_CACHE'] || await SYMBIOTE_META.HOSTCHAIN_DATA.get(threadID+'_EVENTS').catch(error=>{
-
-            LOG(`Can't get events from local storage,however range (X;${SYMBIOTE_META[threadID].MONITORING_START_FROM}) is not completed \n ${error}`,'W')
-
-            return false
-
-        })
-
-
-        if(currentEventsSet){
-
-            // SYMBIOTE_META.EVENTS_FOR_GENERATION_THREAD=currentEventsSet
+            }else return []
 
         }
 
-        return currentEventsSet
+    }else {
+
+        let range =  SYMBIOTE_META[threadID+'_EVENTS'] || await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.NEXT_RANGE+'_EVENTS').catch(_=>false)
+
+        return range
 
     }
         
@@ -464,33 +482,48 @@ export default {
             majority = Math.floor(quorumNumber*(2/3))+1
 
 
-        //Check if majority is not bigger than number of validators. It possible when there is small number of validators
+        //Check if majority is not bigger than number of validators. It's possible when there is a small number of validators
 
         majority = majority > quorumNumber ? quorumNumber : majority
 
         //Find next checkpoint and verify signatures
 
-        let result = await GET_CONTRACT_EVENTS()
+        let events = await GET_CONTRACT_EVENTS_RANGE()
 
 
-        if(result.length!==0){
+        if(events.length!==0){
 
-            let events = result[1], validCheckpoint
+        
+            //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
-            for(let event of events){
+            let validCheckpoint,
 
-                let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(event,currentCheckpoint,quorumNumber,majority).catch(_=>false)
+                startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
+            
 
-                //If returned value has payload - it's signal that everything is ok
-                if(possibleValidCheckpoint.PAYLOAD){
+            for(let index in events){
 
-                    validCheckpoint=possibleValidCheckpoint
+                if(index<startFrom) continue
 
-                    break
+                else{
 
+                    let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(events[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
+
+                    //If returned value has payload - it's signal that everything is ok
+                    if(possibleValidCheckpoint.PAYLOAD){
+
+                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=index
+    
+                        validCheckpoint=possibleValidCheckpoint
+    
+                        break
+    
+                    }
+    
                 }
 
             }
+
 
             //Once we find - find the plaintext related to the hash of payload in checkpoint
 
