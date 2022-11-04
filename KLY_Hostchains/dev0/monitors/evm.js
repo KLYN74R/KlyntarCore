@@ -507,7 +507,7 @@ export default {
         
             //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
-            let validCheckpoint,
+            let possibleValidCheckpoint,
 
                 startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
             
@@ -519,16 +519,12 @@ export default {
 
                 else{
 
-                    let possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
+                    possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
-                    //If returned value has payload - it's signal that at least header was found
-                    
                     if(possibleValidCheckpoint){
 
-                        // If we've found a payload too - then we can continue to work
-                        if(possibleValidCheckpoint.PAYLOAD) validCheckpoint=possibleValidCheckpoint
-
-                        //We do break here, because valid checkpoint header was found, but we haven't found the payload, so we'll try to find next time
+                        //We do break here, because valid checkpoint header was found(at least header)
+                        //If no payload, we'll try to find next time
 
                         break
 
@@ -544,10 +540,12 @@ export default {
 
             }
 
+            //After the cycle over the range of events, check if valid checkpoint was found. If yes - return it, otherwise get the next range and start the cycle again
+            if(possibleValidCheckpoint.PAYLOAD){
 
-            //Once we find - find the plaintext related to the hash of payload in checkpoint
+                return possibleValidCheckpoint
 
-            return validCheckpoint
+            }
 
         }
 
