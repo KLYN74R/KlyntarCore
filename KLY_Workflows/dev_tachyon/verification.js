@@ -298,7 +298,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                     payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
                 }
                 
-                
+
                 */
                 await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isJustVerify=false to make changes to state
         
@@ -581,12 +581,82 @@ MAKE_SNAPSHOT=async()=>{
 },
 
 
-//Function to distribute stakes among validators/blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees)=>{
 
 
+SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay,atomicBatch)=>{
+
+    let mainStorageOfPool = await SYMBIOTE_META.STATE.get(poolId+'(POOL)_STORAGE_POOL')
+
+    //Iteration over the {KLY,UNO,REWARD,TOTAL_POWER}
+    Object.values(mainStorageOfPool.STAKERS).forEach(stakerStats=>{
+
+        let totalStakerPowerPercent = Math.floor(stakerStats.TOTAL_POWER/mainStorageOfPool.totalPower)
+
+        stakerStats.REWARD+=totalStakerPowerPercent*feeToPay
+
+    })
+
+    //Commit changes
+    atomicBatch.put(poolId+'(POOL)_STORAGE_POOL',mainStorageOfPool)
 
 },
+
+
+
+
+//Function to distribute stakes among validators/blockCreator/staking pools
+DISTRIBUTE_FEES=async(totalFees,blockCreator,atomicBatch)=>{
+
+    /*
+
+        _____________________Here we perform the following logic_____________________
+
+        [*] totalFees - number of total fees received in this block
+
+
+
+        1) Take all the validators from SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+
+        2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
+
+        3) Distribute the rest among all the other validators(excluding block creator)
+
+            For this, we should:
+
+            3.1)Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
+
+            3.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {KLY,UNO,REWARD}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
+
+    
+    */
+
+    let payToCreator = totalFees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+
+        payToEachPool = Math.floor((totalFees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1)), //and share the rest among other validators
+    
+        shareFeesPromises = []
+
+          
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToEachPool = totalFees - payToCreator
+
+
+    //___________________________________________ BLOCK_CREATOR ___________________________________________
+
+    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(blockCreator,payToCreator,atomicBatch))
+
+    //_____________________________________________ THE REST ______________________________________________
+
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(poolPubKey=>
+
+        poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool,atomicBatch))
+            
+    )
+     
+    await Promise.all(shareFeesPromises.splice(0))
+
+},
+
+
 
 
 verifyBlock=async block=>{
@@ -646,38 +716,7 @@ verifyBlock=async block=>{
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
-
-        // *add mechanism for auto fees distribution or allow everyone to write contract for "custom" distribution mechanism
-
-
-        await DISTRIBUTE_FEES()
-
-
-        // let shareFeesPromises = [], 
-
-        //     payToCreator = rewardBox.fees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_REST_VALIDATORS, //the biggest part is usually delegated to creator of block
-        
-        //     payToSingleNonCreatorValidator = Math.floor((rewardBox.fees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1))//and share the rest among other validators
-
-        // if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToSingleNonCreatorValidator = rewardBox.fees - payToCreator
-
-
-
-        // SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(validatorPubKey=>
-
-        //     shareFeesPromises.push(
-
-        //         GET_ACCOUNT_ON_SYMBIOTE(validatorPubKey).then(accountHandler=>
-
-        //             accountHandler.account.balance+=payToSingleNonCreatorValidator
-
-        //         )
-
-        //     )
-            
-        // )
-     
-        // await Promise.all(shareFeesPromises.splice(0))
+        await DISTRIBUTE_FEES(rewardBox.fees,block.creator,atomicBatch)
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely

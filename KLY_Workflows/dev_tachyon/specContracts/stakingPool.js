@@ -59,7 +59,7 @@ export let CONTRACT = {
 
                 totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
-                STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
+                STAKERS:{}, // Pubkey => {KLY,UNO,REWARD,TOTAL_POWER}
 
                 WAITING_ROOM:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
 

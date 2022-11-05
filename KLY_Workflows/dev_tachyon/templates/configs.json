@@ -47,7 +47,7 @@
         "WORKFLOW_OPTIONS":{
 
             "VALIDATOR_STAKE":50000,
-            "REWARD_PERCENTAGE_FOR_REST_VALIDATORS":0.2,
+            "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
             "KLY_UNO_RATIO":5,
             "MINIMAL_STAKE":20,
             "QUORUM_SIZE":127,
