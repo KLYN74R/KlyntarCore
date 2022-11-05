@@ -391,7 +391,7 @@ DECRYPT_KEYS=async spinner=>{
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Working on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1m${symbioteConfigReference.MANIFEST.WORKFLOW}(major version:${SYMBIOTE_META.VERSION}) / ${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[31;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1m${symbioteConfigReference.MANIFEST.WORKFLOW}(major version:${SYMBIOTE_META.VERSION}) / ${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
 
 

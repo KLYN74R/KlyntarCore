@@ -298,6 +298,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                     payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
                 }
                 
+                
                 */
                 await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isJustVerify=false to make changes to state
         
@@ -354,7 +355,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,new Date().getTime())
+        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
+
 
         /*
 

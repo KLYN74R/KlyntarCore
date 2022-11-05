@@ -113,8 +113,46 @@ export default {
         }
         else{
 
-            // Logic on VERIFICATION_THREAD
+            /*
+            
+            Logic on VERIFICATION_THREAD
+            
+            Here we should move stakers from WAITING_ROOMs to stakers
 
+            Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .timestamp property and compare to timestamp of current checkpoint on VT)
+
+            Then, delete record from WAITING_ROOM and add to "stakers"
+
+
+
+
+            Struct in POOL.WAITING_ROOM
+
+            {
+
+                timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+
+                staker:event.creator,
+
+                amount,
+
+                units,
+
+                type:'+' //means "STAKE" or "-" for "UNSTAKE"
+                        
+            }
+
+            Struct in POOL.STAKERS
+
+
+            PUBKEY => {
+                KLY,
+                UNO,
+                REWARD
+            }
+
+            
+            */
         }
 
 
