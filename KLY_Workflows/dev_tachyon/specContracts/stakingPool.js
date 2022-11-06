@@ -186,7 +186,7 @@ export let CONTRACT = {
 
             stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
-            wishedAmountIsOk = stakerInfo[units==='KLY'?'KLY':'UNO']>=amount
+            wishedAmountIsOk = stakerInfo[units==='KLY'?'KLY':'UNO'] >= amount
 
 
         if(poolStorage && wishedAmountIsOk){
@@ -210,6 +210,8 @@ export let CONTRACT = {
     },
 
 
+
+    
     checkpointUnstake:async (event,atomicBatch) => {
 
         let {pool,amount,units}=event.payload,

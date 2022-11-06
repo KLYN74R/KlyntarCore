@@ -1,6 +1,6 @@
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {VERIFY} from './utils.js'
+import {GET_FROM_STATE, VERIFY} from './utils.js'
 
 
 
@@ -72,7 +72,7 @@ export default {
 
 
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async (payload,isJustVerify,usedOnQuorumThread)=>{
+    STAKING_CONTRACT_CALL:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
     /*
     
@@ -86,11 +86,10 @@ export default {
         Structure of payload
 
         {
-            id:<id in WAITING_ROOM in contract storage>,
+            txid:<id in WAITING_ROOM in contract storage>,
             pool:<BLS pubkey of pool>,
             type:<'-' for unstake and '+' for stake>
-            units:<integer>
-
+            amount:<integer> - staking power in UNO
         }
     
         Also, we check if operation in WAITING_ROOM still valid(timestamp is not so old).
@@ -98,18 +97,108 @@ export default {
     
     */
 
-        let {id,pool,type,units}=payload
+        let {txid,pool,type,amount}=payload
 
 
-        if(isJustVerify){
+        if(isFromRoute && txid!=='QT'){
 
             //To check payload received from route
+
+            //Here we just need to check if operation wasn't spent till this current checkpoint and (soon) if record in WAITING_ROOM is not too old
+
+            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+
+            if(poolStorage){
+
+                /*
+                
+                TODO: Check if not too old
+
+                For this, take the age from POOL.WAITING_ROOM[txid].timestamp and compare with current checkpoint timestamp on
+                
+                */
+                //Check if in WAITING_ROOM
+                if(!poolStorage.WAITING_ROOM[txid]) return false
+
+                else {
+
+                    let wasSpent = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false)
+        
+                    return !wasSpent
+    
+                }                    
+
+            }
 
         }
         else if(usedOnQuorumThread){
 
             // Basic ops on QUORUM_THREAD
 
+
+            /*
+                
+                TODO: Check if not too old
+
+                For this, take the age from POOL.WAITING_ROOM[txid].timestamp and compare with current checkpoint timestamp on QT
+                
+            */
+
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+
+            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
+    
+                let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
+                    
+                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0}
+    
+                /*
+    
+                    queryFromWaitingRoom has the following structure
+    
+                    {
+    
+                        timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+    
+                        staker:event.creator,
+    
+                        amount,
+    
+                        units,
+    
+                        type:'+' //means "STAKE" or "-" for "UNSTAKE"
+                            
+                    }
+    
+                    
+                */
+    
+                //Count the power of this operation
+                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+    
+                if(queryFromWaitingRoom.type==='+'){
+    
+                    stakerAccount[queryFromWaitingRoom.units]+=queryFromWaitingRoom.amount
+    
+                    poolStorage.totalPower+=extraPower
+    
+                }else {
+    
+                    stakerAccount[queryFromWaitingRoom.units]-=queryFromWaitingRoom.amount
+    
+                    poolStorage.totalPower-=extraPower
+    
+                }
+    
+                //Assign updated state
+                poolStorage.STAKERS[queryFromWaitingRoom.staker]=stakerAccount
+    
+                //Remove from WAITING_ROOM
+    
+                delete poolStorage.WAITING_ROOM[txid]
+
+            }
+        
         }
         else{
 
@@ -122,8 +211,6 @@ export default {
             Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .timestamp property and compare to timestamp of current checkpoint on VT)
 
             Then, delete record from WAITING_ROOM and add to "stakers"
-
-
 
 
             Struct in POOL.WAITING_ROOM
@@ -153,8 +240,67 @@ export default {
 
             
             */
-        }
 
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+
+            //Check if record exists
+            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
+
+                let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
+                
+                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0}
+
+                /*
+
+                    queryFromWaitingRoom has the following structure
+
+                    {
+
+                        timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+
+                        staker:event.creator,
+
+                        amount,
+
+                        units,
+
+                        type:'+' //means "STAKE" or "-" for "UNSTAKE"
+                        
+                    }
+
+                
+                */
+
+                //Count the power of this operation
+                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+
+                //Check if we still don't overstake
+                if(poolStorage.totalPower+poolStorage.overStake < poolStorage.totalPower+extraPower) return
+
+                if(queryFromWaitingRoom.type==='+'){
+
+                    stakerAccount[queryFromWaitingRoom.units]+=queryFromWaitingRoom.amount
+
+                    poolStorage.totalPower+=extraPower
+
+                }else {
+
+                    stakerAccount[queryFromWaitingRoom.units]-=queryFromWaitingRoom.amount
+
+                    poolStorage.totalPower-=extraPower
+
+                }
+
+                //Assign updated state
+                poolStorage.STAKERS[queryFromWaitingRoom.staker]=stakerAccount
+
+                //Remove from WAITING_ROOM
+
+                delete poolStorage.WAITING_ROOM[txid]
+                
+            }
+        
+        }
 
     },
 

@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS, GET_QUORUM, GET_FROM_STATE} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -300,7 +300,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                 
 
                 */
-                await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isJustVerify=false to make changes to state
+                await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isFromRoute=false to make changes to state
         
             }
 

@@ -791,7 +791,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         'KLY_EVM_META', //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
-        'CHECKPOINTS' //Contains object like {HEADER,PAYLOAD}
+        'CHECKPOINTS', //Contains object like {HEADER,PAYLOAD}
+
+        'QUORUM_THREAD_METADATA' // QUORUM_THREAD itself and other stuff
 
     ].forEach(
         
@@ -834,7 +836,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Load from db or return empty object
-    SYMBIOTE_META.QUORUM_THREAD = await SYMBIOTE_META.HOSTCHAIN_DATA.get('QT').catch(_=>({}))
+    SYMBIOTE_META.QUORUM_THREAD = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(_=>({}))
         
 
     let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
