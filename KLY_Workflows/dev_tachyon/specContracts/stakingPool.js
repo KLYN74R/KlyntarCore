@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE} from '../utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from '../utils.js'
 
 import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
@@ -59,7 +59,7 @@ export let CONTRACT = {
 
                 totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
-                STAKERS:{}, // Pubkey => {KLY,UNO,REWARD,TOTAL_POWER}
+                STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
 
                 WAITING_ROOM:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
 
@@ -92,16 +92,16 @@ export let CONTRACT = {
     
     */
     
-    stake:async (event,atomicBatch) => {
+    stake:async event => {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
         //Also, instantly check if account is whitelisted
-        if(poolStorage && (poolStorage.whiteList[0]==='*' || poolStorage.whiteList.includes(event.creator))){
+        if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(event.creator))){
     
             let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
@@ -146,9 +146,6 @@ export let CONTRACT = {
                         
                         else stakerAccount.uno-=amount
 
-                        //Finally, put changes to atomic batch
-                        atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
-
                     }
 
                 }
@@ -159,12 +156,11 @@ export let CONTRACT = {
 
     },
 
-    checkpointStake:async (event,atomicBatch) => {
+    checkpointStake:async event => {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
-       
+            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')       
         
     },
 
@@ -182,11 +178,11 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (event,atomicBatch) => {
+    unstake:async event => {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
 
             stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
@@ -208,9 +204,6 @@ export let CONTRACT = {
                 type:'-' //means "UNSTAKE"
 
             }
-
-            //Finally, put changes to atomic batch
-            atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
     
         }
 
@@ -221,7 +214,7 @@ export let CONTRACT = {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
        
         
     },
@@ -234,11 +227,11 @@ export let CONTRACT = {
 
     
     */
-    getReward:async(event,atomicBatch)=>{
+    getReward:async event => {
 
         let pool=event.payload,
 
-            poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
 
             stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
@@ -250,9 +243,6 @@ export let CONTRACT = {
             stakerAccount.balance+=stakerInfo.REWARD
 
             stakerInfo.REWARD=0
-
-            //Finally, put changes to atomic batch
-            atomicBatch.put(pool+'(POOL)_STORAGE_POOL',poolStorage)
     
         }
 

@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS, GET_QUORUM} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS, GET_QUORUM, GET_FROM_STATE} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -583,21 +583,31 @@ MAKE_SNAPSHOT=async()=>{
 
 
 
-SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay,atomicBatch)=>{
+SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
-    let mainStorageOfPool = await SYMBIOTE_META.STATE.get(poolId+'(POOL)_STORAGE_POOL')
+    let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
 
-    //Iteration over the {KLY,UNO,REWARD,TOTAL_POWER}
+    if(mainStorageOfPool.percentage!==0){
+
+        //Get the pool percentage and send to appropriate BLS address
+        let poolBindedBLSPubKey = await GET_ACCOUNT_ON_SYMBIOTE(poolId)
+
+        poolBindedBLSPubKey.balance += mainStorageOfPool.percentage*feeToPay
+        
+    }
+
+    let restOfFees = feeToPay - mainStorageOfPool.percentage*feeToPay
+
+    //Iteration over the {KLY,UNO,REWARD}
     Object.values(mainStorageOfPool.STAKERS).forEach(stakerStats=>{
 
-        let totalStakerPowerPercent = Math.floor(stakerStats.TOTAL_POWER/mainStorageOfPool.totalPower)
+        let stakerTotalPower = stakerStats.UNO + stakerStats.KLY * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
 
-        stakerStats.REWARD+=totalStakerPowerPercent*feeToPay
+        let totalStakerPowerPercent = stakerTotalPower/mainStorageOfPool.totalPower
+
+        stakerStats.REWARD+=totalStakerPowerPercent*restOfFees
 
     })
-
-    //Commit changes
-    atomicBatch.put(poolId+'(POOL)_STORAGE_POOL',mainStorageOfPool)
 
 },
 
@@ -605,7 +615,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay,atomicBatch)=>{
 
 
 //Function to distribute stakes among validators/blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees,blockCreator,atomicBatch)=>{
+DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     /*
 
@@ -630,25 +640,25 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator,atomicBatch)=>{
     
     */
 
-    let payToCreator = totalFees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+    let payToCreatorAndHisPool = totalFees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        payToEachPool = Math.floor((totalFees - payToCreator)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1)), //and share the rest among other validators
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1)), //and share the rest among other validators
     
         shareFeesPromises = []
 
           
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToEachPool = totalFees - payToCreator
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
 
-    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(blockCreator,payToCreator,atomicBatch))
+    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(blockCreator,payToCreatorAndHisPool))
 
     //_____________________________________________ THE REST ______________________________________________
 
     SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(poolPubKey=>
 
-        poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool,atomicBatch))
+        poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool))
             
     )
      
@@ -716,7 +726,7 @@ verifyBlock=async block=>{
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
-        await DISTRIBUTE_FEES(rewardBox.fees,block.creator,atomicBatch)
+        await DISTRIBUTE_FEES(rewardBox.fees,block.creator)
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely

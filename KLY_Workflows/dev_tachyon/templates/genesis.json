@@ -1,9 +1,20 @@
 {
     "VERSION":0,
 
-    "VALIDATORS":[
-        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    ],
+    "VALIDATORS":{
+
+        "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+        
+            "percentage":0.5,
+            "overStake":10000,
+            "whiteList":[],
+            "totalPower":55000,
+            "STAKERS":{},
+            "WAITING_ROOM":{}
+        
+        }
+
+    },
 
     "CHECKPOINT_TIMESTAMP":1666188167,
     

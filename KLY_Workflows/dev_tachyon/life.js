@@ -508,9 +508,6 @@ LOAD_GENESIS=async()=>{
 
         })
 
-        //Push the initial validators to verification thread
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(...genesis.VALIDATORS)
-
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
 
@@ -524,23 +521,55 @@ LOAD_GENESIS=async()=>{
         
         However, if workflow_version has differences in minor or patch values - you can continue to work
 
+
+        KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and QUORUM_THREAD) because only this matter
+
         */
 
         //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
         SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
 
-        //We update this during the work on QUORUM_THREAD
+        //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
         SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
+
+
+        Object.keys(genesis.VALIDATORS).forEach(validatorPubKey=>{
+
+            //Push to array of validators on VERIFICATION_THREAD
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(validatorPubKey)
+    
+            //Add metadata
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false} // set the initial values
+    
+            //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
+            
+            let contractMetadataTemplate = {
+    
+                type:"contract",
+                lang:'spec/stakingPool',
+                balance:0,
+                uno:0,
+                storages:['POOL'],
+                bytecode:''
+    
+            }
+    
+            let onlyOnePossibleStorageForStakingContract=genesis.VALIDATORS[validatorPubKey]
+            
+            //Put metadata
+            atomicBatch.put(validatorPubKey+'(POOL)',contractMetadataTemplate)
+    
+            //Put storage
+            //NOTE: We just need a simple storage with ID="POOL"
+            atomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+    
+        })
 
     })
 
+
     await atomicBatch.write()
 
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(
-        
-        pubkey => SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pubkey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false} // set the initial values
-        
-    )
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
     

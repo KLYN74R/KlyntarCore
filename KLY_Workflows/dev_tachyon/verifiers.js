@@ -44,7 +44,7 @@ import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from './utils.js'
 
 import {VM} from '../../KLY_VMs/default/vm.js'
 
@@ -285,10 +285,11 @@ export let VERIFIERS = {
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
-            let contractMeta = await SYMBIOTE_META.STATE.get(event.payload.contractID).catch(_=>false)
+            
+            let contractMeta = await GET_FROM_STATE(event.payload.contractID)
+
 
             if(contractMeta){
-
 
                 if(contractMeta.lang.startsWith('SPEC/')){
 

@@ -45,6 +45,26 @@ GET_ACCOUNT_ON_SYMBIOTE = async addrID =>{
 
 
 
+GET_FROM_STATE = async recordID => {
+
+    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
+
+    return SYMBIOTE_META.ACCOUNTS_CACHE.get(recordID)||SYMBIOTE_META.STATE.get(recordID)
+    
+    .then(something=>{
+ 
+        SYMBIOTE_META.ACCOUNTS_CACHE.set(recordID,something)
+
+        return SYMBIOTE_META.ACCOUNTS_CACHE.get(recordID)
+ 
+    
+    }).catch(_=>false)
+
+},
+
+
+
+
 WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl),
 
 
