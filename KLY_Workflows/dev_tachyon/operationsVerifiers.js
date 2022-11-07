@@ -1,6 +1,6 @@
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD,VERIFY} from './utils.js'
 
-import {GET_FROM_STATE, VERIFY} from './utils.js'
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 
 
@@ -104,29 +104,20 @@ export default {
 
             //To check payload received from route
 
-            //Here we just need to check if operation wasn't spent till this current checkpoint and (soon) if record in WAITING_ROOM is not too old
-
             let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
             if(poolStorage){
 
-                /*
+                let overviewIsOk = 
                 
-                TODO: Check if not too old
+                    poolStorage.WAITING_ROOM[txid] // Check if in WAITING_ROOM on VERIFICATION_THREAD
+                    &&
+                    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME // If it's still valid
+                    &&
+                    !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>true)) //...and finally if it's still unspent
 
-                For this, take the age from POOL.WAITING_ROOM[txid].timestamp and compare with current checkpoint timestamp on
-                
-                */
-                //Check if in WAITING_ROOM
-                if(!poolStorage.WAITING_ROOM[txid]) return false
 
-                else {
-
-                    let wasSpent = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false)
-        
-                    return !wasSpent
-    
-                }                    
+                return overviewIsOk               
 
             }
 
@@ -135,68 +126,43 @@ export default {
 
             // Basic ops on QUORUM_THREAD
 
+            let poolStorageOfQT = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool),
+            
+                possibleSpentTx = await GET_FROM_STATE_FOR_QUORUM_THREAD(txid)
 
-            /*
-                
-                TODO: Check if not too old
+            /* 
+            
+            poolStorageOfQT is
 
-                For this, take the age from POOL.WAITING_ROOM[txid].timestamp and compare with current checkpoint timestamp on QT
-                
+                {
+                    totalPower:<number>
+                    isStopped:<boolean>
+                    stopTimestamp:<number>
+                    storedMetadata:{INDEX,HASH}
+                }
+            
             */
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+            let overviewIsOk = 
+            
+                poolStorageOfQT // Pool exists
+                &&
+                (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME) // If stopped - check if still can be resurrected
+                &&
+                !possibleSpentTx //...and finally if it's still unspent
 
-            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
-    
-                let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
-                    
-                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0}
-    
-                /*
-    
-                    queryFromWaitingRoom has the following structure
-    
-                    {
-    
-                        timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
-    
-                        staker:event.creator,
-    
-                        amount,
-    
-                        units,
-    
-                        type:'+' //means "STAKE" or "-" for "UNSTAKE"
-                            
-                    }
-    
-                    
-                */
-    
-                //Count the power of this operation
-                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
-    
-                if(queryFromWaitingRoom.type==='+'){
-    
-                    stakerAccount[queryFromWaitingRoom.units]+=queryFromWaitingRoom.amount
-    
-                    poolStorage.totalPower+=extraPower
-    
-                }else {
-    
-                    stakerAccount[queryFromWaitingRoom.units]-=queryFromWaitingRoom.amount
-    
-                    poolStorage.totalPower-=extraPower
-    
-                }
-    
-                //Assign updated state
-                poolStorage.STAKERS[queryFromWaitingRoom.staker]=stakerAccount
-    
-                //Remove from WAITING_ROOM
-    
-                delete poolStorage.WAITING_ROOM[txid]
 
+            if(overviewIsOk){
+
+                //If everything is ok - add or slash totalPower of the pool
+
+                if(type==='+') poolStorageOfQT.totalPower+=amount
+                
+                else poolStorageOfQT.totalPower-=amount
+
+                //Put to cache that this tx was spent
+                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+    
             }
         
         }
@@ -215,29 +181,23 @@ export default {
 
             Struct in POOL.WAITING_ROOM
 
-            {
+                {
 
-                timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+                    timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
 
-                staker:event.creator,
+                    staker:event.creator,
 
-                amount,
+                    amount,
 
-                units,
+                    units,
 
-                type:'+' //means "STAKE" or "-" for "UNSTAKE"
+                    type:'+' //means "STAKE" or "-" for "UNSTAKE"
                         
-            }
+                }
 
             Struct in POOL.STAKERS
 
-
-            PUBKEY => {
-                KLY,
-                UNO,
-                REWARD
-            }
-
+            PUBKEY => {KLY,UNO,REWARD}
             
             */
 
@@ -271,6 +231,9 @@ export default {
                 
                 */
 
+                //If record is too old - don't move it from WAITING_ROOM
+                if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - queryFromWaitingRoom.timestamp > CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME) return
+
                 //Count the power of this operation
                 let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
 
@@ -297,6 +260,25 @@ export default {
                 //Remove from WAITING_ROOM
 
                 delete poolStorage.WAITING_ROOM[txid]
+
+
+                if(poolStorage.totalPower>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+
+                    //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
+
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(pool)
+
+                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pool]={
+                        
+                        INDEX:-1,
+                    
+                        HASH:'Poyekhali!@Y.A.Gagarin',
+                    
+                        FREEZED:false
+                    
+                    }
+
+                }
                 
             }
         

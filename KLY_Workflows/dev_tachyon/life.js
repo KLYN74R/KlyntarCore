@@ -659,6 +659,12 @@ LOAD_GENESIS=async()=>{
     
     }
 
+    //Inital values of VALIDATORS and VALIDATORS_METADATA on QUORUM_THREAD are the same as on VERIFICATION_THREAD
+
+    SYMBIOTE_META.QUORUM_THREAD.VALIDATORS=[...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS]
+
+    SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA={...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
+
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VALIDATORS_METADATA state
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
@@ -721,13 +727,11 @@ PREPARE_SYMBIOTE=async()=>{
         SPECIAL_OPERATIONS_MEMPOOL:[], //to hold operations which should be included to checkpoints
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
-        ACCOUNTS_CACHE:new Map(), //ADDRESS => { ACCOUNT_STATE , NONCE_SET , NONCE_DUPLICATES , OUT }
+        ACCOUNTS_CACHE:new Map(), //ADDRESS => ACCOUNT_STATE
+
+        QUORUM_THREAD_CACHE:new Map(), //ADDRESS => ACCOUNT_STATE
 
         PEERS:[], //Peers to exchange data with
-
-        VERIFICATION_THREAD_EVENTS:[],
-
-        QUORUM_THREAD_EVENTS:[],
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
 

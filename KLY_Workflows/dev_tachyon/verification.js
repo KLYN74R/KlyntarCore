@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -304,6 +304,32 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         
             }
 
+            let toRemovePools = [], promises = []
+
+            //Check if current pools has enough total power
+            for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS){
+
+                let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+
+                    if(poolStorage.totalPower<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+
+                })
+
+                promises.push(promise)
+
+            }
+
+            await Promise.all(promises.splice(0))
+
+            //Now in toRemovePools we have IDs
+
+            for(let address of toRemovePools){
+
+
+
+            }
+
+
             //Commit changes after operations here
 
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
@@ -585,7 +611,7 @@ MAKE_SNAPSHOT=async()=>{
 
 SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
-    let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
+    let mainStorageOfPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolId+'(POOL)_STORAGE_POOL')
 
     if(mainStorageOfPool.percentage!==0){
 

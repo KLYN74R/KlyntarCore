@@ -44,7 +44,7 @@ import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {VM} from '../../KLY_VMs/default/vm.js'
 
@@ -285,8 +285,8 @@ export let VERIFIERS = {
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
-            
-            let contractMeta = await GET_FROM_STATE(event.payload.contractID)
+
+            let contractMeta = await GET_FROM_STATE_FOR_QUORUM_THREAD(event.payload.contractID)
 
 
             if(contractMeta){

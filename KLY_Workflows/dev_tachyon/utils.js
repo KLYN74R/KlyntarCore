@@ -64,6 +64,22 @@ GET_FROM_STATE = async recordID => {
 
 
 
+GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
+
+    return SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
+    
+    .then(something=>{
+ 
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.set(recordID,something)
+
+        return SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)
+ 
+    
+    }).catch(_=>false)
+
+},
+
+
 
 WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl),
 

@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from '../utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE_FOR_QUORUM_THREAD} from '../utils.js'
 
 import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
@@ -96,7 +96,7 @@ export let CONTRACT = {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -160,7 +160,7 @@ export let CONTRACT = {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')       
+            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')       
         
     },
 
@@ -182,7 +182,7 @@ export let CONTRACT = {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
 
             stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
@@ -211,12 +211,12 @@ export let CONTRACT = {
 
 
 
-    
+
     checkpointUnstake:async (event,atomicBatch) => {
 
         let {pool,amount,units}=event.payload,
 
-            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
        
         
     },
@@ -233,7 +233,7 @@ export let CONTRACT = {
 
         let pool=event.payload,
 
-            poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
 
             stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
