@@ -265,6 +265,18 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
 
 
+WAIT_SOME_TIME=async()=>
+
+    new Promise(resolve=>
+
+        setTimeout(()=>resolve(),CONFIG.SYMBIOTE.WAIT_SOME_TIME)
+
+    )
+,
+
+
+
+
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async()=>{
 
@@ -282,7 +294,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
     if(!checkpointIsFresh){
 
-        //Also,if we're in quourm - start process of generating checkpoints,
 
         let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(e=>{
 
@@ -354,6 +365,10 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             //Even if we can't find new valid checkpoint and current checkpoint is non fresh - mark it as completed
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
+
+            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ...`,'I')
+
+            await WAIT_SOME_TIME()
 
         }
     
@@ -787,13 +802,13 @@ verifyBlock=async block=>{
         //________________________________________________COMMIT STATE__________________________________________________    
 
 
-        SYMBIOTE_META.ACCOUNTS_CACHE.forEach((account,addr)=>
+        SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
 
             atomicBatch.put(addr,account)
 
         )
         
-        if(SYMBIOTE_META.ACCOUNTS_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.ACCOUNTS_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
+        if(SYMBIOTE_META.STATE_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
 
 

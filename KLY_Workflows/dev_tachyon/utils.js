@@ -29,13 +29,13 @@ GET_ACCOUNT_ON_SYMBIOTE = async addrID =>{
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return SYMBIOTE_META.ACCOUNTS_CACHE.get(addrID)||SYMBIOTE_META.STATE.get(addrID)
+    return SYMBIOTE_META.STATE_CACHE.get(addrID)||SYMBIOTE_META.STATE.get(addrID)
     
     .then(account=>{
  
-        if(account.type==='account') SYMBIOTE_META.ACCOUNTS_CACHE.set(addrID,account)
+        if(account.type==='account') SYMBIOTE_META.STATE_CACHE.set(addrID,account)
 
-        return SYMBIOTE_META.ACCOUNTS_CACHE.get(addrID)
+        return SYMBIOTE_META.STATE_CACHE.get(addrID)
  
     
     }).catch(_=>false)
@@ -49,13 +49,13 @@ GET_FROM_STATE = async recordID => {
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return SYMBIOTE_META.ACCOUNTS_CACHE.get(recordID)||SYMBIOTE_META.STATE.get(recordID)
+    return SYMBIOTE_META.STATE_CACHE.get(recordID)||SYMBIOTE_META.STATE.get(recordID)
     
     .then(something=>{
  
-        SYMBIOTE_META.ACCOUNTS_CACHE.set(recordID,something)
+        SYMBIOTE_META.STATE_CACHE.set(recordID,something)
 
-        return SYMBIOTE_META.ACCOUNTS_CACHE.get(recordID)
+        return SYMBIOTE_META.STATE_CACHE.get(recordID)
  
     
     }).catch(_=>false)

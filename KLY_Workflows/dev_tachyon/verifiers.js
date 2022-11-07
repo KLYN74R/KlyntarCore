@@ -158,7 +158,7 @@ export let VERIFIERS = {
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
                 if(event.payload.rev_t) recipient.rev_t=event.payload.rev_t
     
-                SYMBIOTE_META.ACCOUNTS_CACHE.set(event.payload.to,recipient)//add to cache to collapse after all events in blocks of block
+                SYMBIOTE_META.STATE_CACHE.set(event.payload.to,recipient)//add to cache to collapse after all events in blocks of block
             
             }
             

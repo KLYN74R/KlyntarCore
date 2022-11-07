@@ -751,13 +751,26 @@ PREPARE_SYMBIOTE=async()=>{
         SPECIAL_OPERATIONS_MEMPOOL:[], //to hold operations which should be included to checkpoints
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
-        ACCOUNTS_CACHE:new Map(), //ADDRESS => ACCOUNT_STATE
+        STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
 
         QUORUM_THREAD_CACHE:new Map(), //ADDRESS => ACCOUNT_STATE
 
+
+        //________________________ CACHES_FOR_MONITORS ________________________
+
+        VERIFICATION_THREAD_EVENTS:[],
+
+        QUORUM_THREAD_EVENTS:[],
+
+        //________________________ AUXILIARY_MAPPINGS ________________________
+        
         PEERS:[], //Peers to exchange data with
 
         STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
+
+
+
+        //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
         COMMITMENTS:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
