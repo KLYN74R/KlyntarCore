@@ -228,7 +228,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
 
     //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
 
-    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false}
+    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
 
     let metadata = {}
 
@@ -238,9 +238,7 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
             
             INDEX:descriptor.id,
             
-            HASH:descriptor.hash,
-            
-            FREEZED:SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validator].FREEZED
+            HASH:descriptor.hash
         
         }
 
@@ -539,7 +537,7 @@ LOAD_GENESIS=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(validatorPubKey)
     
             //Add metadata
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',FREEZED:false} // set the initial values
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'} // set the initial values
     
             //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
             
@@ -877,7 +875,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',FREEZED}
+                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:''}
                 
                 CHECKPOINT:'genesis',
 

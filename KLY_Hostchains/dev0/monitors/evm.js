@@ -406,8 +406,7 @@ VALIDATORS_METADATA - object like this
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
                 INDEX: -1,
-                HASH: 'Poyekhali!@Y.A.Gagarin',
-                FREEZED: false
+                HASH: 'Poyekhali!@Y.A.Gagarin'
             }
     
         }
@@ -451,13 +450,13 @@ export default {
 
                 VALIDATORS_METADATA:{
                 
-                    VALIDATOR_0 : {INDEX:number,HASH:string,FREEZED:bool},
+                    VALIDATOR_0 : {INDEX:number,HASH:string},
 
-                    VALIDATOR_1 : {INDEX:number,HASH:string,FREEZED:bool},
+                    VALIDATOR_1 : {INDEX:number,HASH:string},
 
                     ...
 
-                    VALIDATOR_N : {INDEX:number,HASH:string,FREEZED:bool}
+                    VALIDATOR_N : {INDEX:number,HASH:string}
                 
                 }
 

@@ -1,66 +1,9 @@
 import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD,VERIFY} from './utils.js'
 
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
 
 
 
 export default {
-
-    /*
-    
-        {
-
-            V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
-                   
-            P:aggregatedPub, //Approver's aggregated BLS pubkey
-
-            S:aggregatedSignatures,
-
-            H:myMetadataHash,
-
-            A:[] //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
-            
-        }
-    
-    */
-
-    AWAKE:async(messagePayload,notJustOverview)=>{
-
-        let aggregatedValidatorsPublicKey = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') || bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM),
-
-            rootPub = bls.aggregatePublicKeys([...messagePayload.A,messagePayload]),
-
-            quorumSize=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
-
-            majority = Math.floor(quorumSize*(2/3))+1
-
-
-        //Check if majority is not bigger than number of validators. It possible when there is small number of validators
-
-        majority = majority > quorumSize ? quorumSize : majority
-            
-        let isMajority = ((SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-messagePayload.A.length)>=majority)
-
-
-        if(aggregatedValidatorsPublicKey === rootPub && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(messagePayload.V) && await VERIFY(messagePayload.H,messagePayload.S,messagePayload.P) && isMajority){
-
-            if(notJustOverview){
-
-                //Change the state
-
-                //Make active to turn back this validator's thread to VERIFICATION_THREAD
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].FREEZED=false
-                
-                //And increase index to avoid confusion
-                SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[messagePayload.V].INDEX++
-
-            } else return true
-                
-        }
-
-    },
-
 
     //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
 
@@ -75,13 +18,6 @@ export default {
     STAKING_CONTRACT_CALL:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
     /*
-    
-        Full
-
-        {
-            type:'STAKING_CONTRACT_CALL',
-            payload
-        }
 
         Structure of payload
 
@@ -272,9 +208,7 @@ export default {
                         
                         INDEX:-1,
                     
-                        HASH:'Poyekhali!@Y.A.Gagarin',
-                    
-                        FREEZED:false
+                        HASH:'Poyekhali!@Y.A.Gagarin'
                     
                     }
 
@@ -287,13 +221,49 @@ export default {
     },
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    FREEZING:async (payload,isJustVerify)=>{
+    STOP_VALIDATOR:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
         
 
     },
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isJustVerify)=>{}
+    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+
+        /*
+        
+            Payload is
+
+            {
+                fieldName
+                newValue
+            }
+
+            Here we create the copy of CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS and add to cache (on QT or VT)
+
+            Each operation makes changes to WORKFLOW_OPTIONS
+
+            After all ops - we'll received final version of new WORKFLOW_OPTIONS
+        
+        */
+
+        let updatedOptions
+
+        if(usedOnQuorumThread){
+
+            updatedOptions = await GET_FROM_STATE_FOR_QUORUM_THREAD('WORKFLOW_OPTIONS')
+
+            updatedOptions[payload.fieldName]=payload.newValue
+
+        }
+        else if(isFromRoute){
+
+            //TODO
+            //Here we need to check if 2/3N+1 of validators have voted for changes(based on validators set of the latest checkpoint)
+
+        }
+        
+
+    }
 
 }

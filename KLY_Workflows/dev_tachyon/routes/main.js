@@ -173,50 +173,6 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-//Function to allow validator to back to the game
-//Accept simple signed message from "offline"(who has ACTIVE:false in metadata) validator to make his active again
-awakeRequestMessageHandler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-    
-    /*
-    
-        AwakeRequestMessage looks like this
-     
-        {
-            "V":<Pubkey of validator>
-            "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
-        }
-
-    */
-    let helloMessage=await BODY(bytes,CONFIG.PAYLOAD_SIZE),
-
-        validatorVTMetadataHash=BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage?.V])),
-
-        shouldSignToAlive =
-
-            CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_VALIDATORS_MESSAGES.AWAKE
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(helloMessage?.V)
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.includes(CONFIG.SYMBIOTE.PUB)
-            &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[helloMessage.V].FREEZED//Also,check if validator was marked as ACTIVE:false
-            &&
-            await VERIFY(validatorVTMetadataHash,helloMessage.S,helloMessage.V)
-
-
-    if(shouldSignToAlive){
-
-        let myAgreement = await SIG(validatorVTMetadataHash)
-
-        !response.aborted&&response.end(JSON.stringify({P:CONFIG.SYMBIOTE.PUB,S:myAgreement}))
-    
-    }else !response.aborted&&response.end('Overview failed')
-
-}),
-
-
-
-
 //____________________________________________________________CONSENSUS STUFF__________________________________________________________________
 
 
@@ -860,7 +816,6 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 UWS_SERVER
 
-.post('/awakerequest',awakeRequestMessageHandler)
 
 
 //1st stage - logic with commitments
