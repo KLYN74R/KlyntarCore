@@ -1,4 +1,4 @@
-import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD,VERIFY} from './utils.js'
+import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 
 

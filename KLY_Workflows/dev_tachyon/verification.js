@@ -242,6 +242,16 @@ IS_MY_VERSION_STILL_OK = newMajorVersionFromSpecOps => SYMBIOTE_META.VERSION >= 
 
 
 
+
+PROPOSE_TO_SKIP=(validator,metaDataToFreeze)=>{
+
+    
+
+},
+
+
+
+
 CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
     let date1 = new Date(timestamp1),

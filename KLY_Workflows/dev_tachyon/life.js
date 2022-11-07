@@ -6,6 +6,8 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
 
+import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
+
 import Block from './essences/block.js'
 
 import UWS from 'uWebSockets.js'
@@ -168,7 +170,31 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     console.log('Finding new checkpoint for QUORUM_THREAD on symbiote')
 
-    // let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT(SYMBIOTE_META.QUORUM_THREAD)
+    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD')
+
+    if(possibleCheckpoint){
+
+        //Perform SPEC_OPERATIONS
+
+        for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
+
+            await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
+
+        }
+
+        //After all ops - commit state and make changes to workflow
+
+        let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
+
+            atomicBatch.put(recordID,value)
+
+        })
+
+        await atomicBatch.write()
+
+    }
 
     console.log('================ QT ================')
 
