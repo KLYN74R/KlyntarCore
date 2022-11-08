@@ -76,7 +76,7 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS,GET_QUORUM} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import {BLAKE3, LOG} from '../../../KLY_Utils/utils.js'
 import Web3 from 'web3'
@@ -342,8 +342,6 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                 if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload))===payloadHash){
 
                     validCheckpoint.PAYLOAD = checkpointPayload
-
-                    validCheckpoint.QUORUM = GET_QUORUM(checkpointPayload.VALIDATORS_METADATA) //set the QUORUM for the next checkpoint
 
                     break
 

@@ -44,11 +44,11 @@ export default {
 
             if(poolStorage && poolStorage.WAITING_ROOM[txid]){
 
-                let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+                let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
-                let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
+                let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
 
-                let ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+                let ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
 
                 let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
@@ -90,37 +90,14 @@ export default {
 
             if(poolStorageOfQT){
 
-                let ifStakeThenCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+                //If everything is ok - add or slash totalPower of the pool
 
-                let stillUnspent = !(await GET_FROM_STATE_FOR_QUORUM_THREAD(txid))
-
-                
-                //TODO:Add timestamp to understand options bellow
-                
-                // let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
-
-                // let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
-
-
-                let overviewIsOk = 
-                
-                    ifStakeThenCheckIfPoolStillValid
-                    &&
-                    stillUnspent
-    
-    
-                if(overviewIsOk){
-    
-                    //If everything is ok - add or slash totalPower of the pool
-    
-                    if(type==='+') poolStorageOfQT.totalPower+=amount
+                if(type==='+') poolStorageOfQT.totalPower+=amount
                     
-                    else poolStorageOfQT.totalPower-=amount
-    
-                    //Put to cache that this tx was spent
-                    SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
-        
-                }    
+                else poolStorageOfQT.totalPower-=amount
+                    
+                //Put to cache that this tx was spent
+                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
             }
         
@@ -167,7 +144,9 @@ export default {
 
                 let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
                 
-                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0}
+                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0},
+
+                    workflowConfigs = YMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
                 /*
 
@@ -192,15 +171,15 @@ export default {
 
 
                 //Count the power of this operation
-                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO,
+                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * workflowConfigs.KLY_UNO_RATIO,
 
                     noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower,
 
-                    isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD,
+                    isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= workflowConfigs.UNSTAKING_PERIOD,
 
-                    isNotTooOldRecord = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME,
+                    isNotTooOldRecord = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= workflowConfigs.WAITING_ROOM_MAX_TIME,
 
-                    ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+                    ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.stopTimestamp <= workflowConfigs.POOL_AFK_MAX_TIME)
             
 
 
@@ -241,7 +220,7 @@ export default {
                 delete poolStorage.WAITING_ROOM[txid]
 
 
-                if(poolStorage.totalPower>=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE){
 
                     //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
 

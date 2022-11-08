@@ -113,11 +113,11 @@ export let CONTRACT = {
 
                     let klyStakingPower = amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO //convert KLY to UNO
 
-                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE
             
                 }else if(units==='UNO'){
 
-                    stakeIsOk = amount <= stakerAccount.uno && amount >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.uno && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE
 
                 }
 

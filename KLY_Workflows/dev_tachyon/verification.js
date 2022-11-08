@@ -1,4 +1,10 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE} from './utils.js'
+import {
+    
+    GET_ACCOUNT_ON_SYMBIOTE, BLOCKLOG, VERIFY, GET_STUFF, GET_ALL_KNOWN_PEERS,
+    
+    GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE
+
+} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -343,7 +349,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
                 let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-                    if(poolStorage.totalPower<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+                    if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
 
                 })
 
@@ -368,7 +374,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
             //Create new quorum based on new VALIDATORS_METADATA state
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
 
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
@@ -680,7 +686,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
     //Iteration over the {KLY,UNO,REWARD}
     Object.values(mainStorageOfPool.STAKERS).forEach(stakerStats=>{
 
-        let stakerTotalPower = stakerStats.UNO + stakerStats.KLY * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+        let stakerTotalPower = stakerStats.UNO + stakerStats.KLY * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.KLY_UNO_RATIO
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfPool.totalPower
 
@@ -719,7 +725,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
     
     */
 
-    let payToCreatorAndHisPool = totalFees * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+    let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
         payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1)), //and share the rest among other validators
     
@@ -756,7 +762,7 @@ verifyBlock=async block=>{
 
     overviewOk=
     
-        block.events?.length<=CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
+        block.events?.length<=SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
         &&
         SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
         &&
