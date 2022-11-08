@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_STUFF,GET_ALL_KNOWN_PEERS,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -330,7 +330,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Check if current pools has enough total power
             for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS){
 
-                let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+                let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
                     if(poolStorage.totalPower<CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
 
@@ -346,7 +346,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             for(let address of toRemovePools){
 
-
+                
 
             }
 

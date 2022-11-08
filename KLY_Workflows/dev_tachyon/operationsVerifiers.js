@@ -42,15 +42,26 @@ export default {
 
             let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
-            if(poolStorage){
+            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
+
+                let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+
+                let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
+
+                let ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+
+                let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+
 
                 let overviewIsOk = 
                 
-                    poolStorage.WAITING_ROOM[txid] // Check if in WAITING_ROOM on VERIFICATION_THREAD
+                    isNotTooOldRecord
                     &&
-                    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME // If it's still valid
+                    isOldEnoughForUnstakingOrItsStaking
                     &&
-                    !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>true)) //...and finally if it's still unspent
+                    ifStakeCheckIfPoolStillValid
+                    &&
+                    stillUnspent
 
 
                 return overviewIsOk               
@@ -62,9 +73,7 @@ export default {
 
             // Basic ops on QUORUM_THREAD
 
-            let poolStorageOfQT = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool),
-            
-                possibleSpentTx = await GET_FROM_STATE_FOR_QUORUM_THREAD(txid)
+            let poolStorageOfQT = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool)
 
             /* 
             
@@ -79,26 +88,40 @@ export default {
             
             */
 
-            let overviewIsOk = 
-            
-                poolStorageOfQT // Pool exists
-                &&
-                (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME) // If stopped - check if still can be resurrected
-                &&
-                !possibleSpentTx //...and finally if it's still unspent
+            if(poolStorageOfQT){
 
+                let ifStakeThenCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
 
-            if(overviewIsOk){
+                let stillUnspent = !(await GET_FROM_STATE_FOR_QUORUM_THREAD(txid))
 
-                //If everything is ok - add or slash totalPower of the pool
-
-                if(type==='+') poolStorageOfQT.totalPower+=amount
                 
-                else poolStorageOfQT.totalPower-=amount
+                //TODO:Add timestamp to understand options bellow
+                
+                // let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
 
-                //Put to cache that this tx was spent
-                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+                // let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+
+
+                let overviewIsOk = 
+                
+                    ifStakeThenCheckIfPoolStillValid
+                    &&
+                    stillUnspent
     
+    
+                if(overviewIsOk){
+    
+                    //If everything is ok - add or slash totalPower of the pool
+    
+                    if(type==='+') poolStorageOfQT.totalPower+=amount
+                    
+                    else poolStorageOfQT.totalPower-=amount
+    
+                    //Put to cache that this tx was spent
+                    SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+        
+                }    
+
             }
         
         }
@@ -167,14 +190,34 @@ export default {
                 
                 */
 
-                //If record is too old - don't move it from WAITING_ROOM
-                if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - queryFromWaitingRoom.timestamp > CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME) return
 
                 //Count the power of this operation
-                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO,
 
-                //Check if we still don't overstake
-                if(poolStorage.totalPower+poolStorage.overStake < poolStorage.totalPower+extraPower) return
+                    noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower,
+
+                    isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.UNSTAKING_PERIOD,
+
+                    isNotTooOldRecord = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME,
+
+                    ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.stopTimestamp <= CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+            
+
+
+                let overviewIsOk =
+                
+                    noOverStake
+                    &&
+                    isOldEnoughForUnstakingOrItsStaking
+                    &&
+                    isNotTooOldRecord
+                    &&
+                    ifStakeCheckIfPoolStillValid
+                    
+
+                
+                if(!overviewIsOk) return
+
 
                 if(queryFromWaitingRoom.type==='+'){
 
