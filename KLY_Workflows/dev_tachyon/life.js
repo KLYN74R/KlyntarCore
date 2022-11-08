@@ -556,6 +556,12 @@ LOAD_GENESIS=async()=>{
         //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
         SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
 
+        //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
+
+        SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
+
+        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
+
 
         Object.keys(genesis.VALIDATORS).forEach(validatorPubKey=>{
 

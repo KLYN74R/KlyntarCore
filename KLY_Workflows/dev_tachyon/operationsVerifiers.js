@@ -304,9 +304,15 @@ export default {
             //TODO
             //Here we need to check if 2/3N+1 of validators have voted for changes(based on validators set of the latest checkpoint)
 
+        }else{
+
+            //Used on VT
+            updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
+
+            updatedOptions[payload.fieldName]=payload.newValue
+
         }
         
-
     }
 
 }

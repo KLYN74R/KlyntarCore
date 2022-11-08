@@ -305,7 +305,15 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         if(nextCheckpoint) {
 
             let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
-    
+
+
+
+            let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS} //to change it via operations
+            
+            SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+
+            //____________________Go through the SPEC_OPERATIONS and perform it__________________
+
             for(let operation of operations){
         
                 /*
@@ -325,9 +333,12 @@ SET_UP_NEW_CHECKPOINT=async()=>{
         
             }
 
+
+            //_______________________Remove pools if lack of staking power_______________________
+
+
             let toRemovePools = [], promises = []
 
-            //Check if current pools has enough total power
             for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS){
 
                 let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
@@ -346,18 +357,35 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             for(let address of toRemovePools){
 
-                
+
 
             }
 
 
-            //Commit changes after operations here
+            //_______________________Commit changes after operations here________________________
+
+            //Updated WORKFLOW_OPTIONS
+            SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+            //Create new quorum based on new VALIDATORS_METADATA state
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+
 
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
-            // Create new quorum based on new VALIDATORS_METADATA state
 
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
+            //And commit changes of state and VT here(via atomic operations)
+            let atomicBatch = SYMBIOTE_META.STATE.batch()
+
+            SYMBIOTE_META.STATE_CACHE.forEach(
+                
+                (value,recordID)=>atomicBatch.put(recordID, value)
+                
+            )
+
+            atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+
+            await atomicBatch.write()
 
         }
 
@@ -684,7 +712,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
             For this, we should:
 
-            3.1)Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
+            3.1) Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
 
             3.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {KLY,UNO,REWARD}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
 
