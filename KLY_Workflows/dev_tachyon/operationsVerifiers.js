@@ -40,7 +40,7 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false), rubiconID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.RUBICON
+            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false), rubiconID = SYMBIOTE_META.QUORUM_THREAD.RUBICON
 
 
             if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
@@ -130,7 +130,7 @@ export default {
             
             */
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'), rubiconID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.RUBICON
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'), rubiconID = SYMBIOTE_META.VERIFICATION_THREAD.RUBICON
 
             //Check if record exists
             if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
@@ -236,12 +236,28 @@ export default {
 
 
     //To slash unstaking if validator gets rogue
-    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{},
+    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+
+    },
 
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{},
+    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{
+
+        if(isFromRoute){
+
+        }else if(usedOnQuorumThread){
+
+
+        }else{
+
+            //Used on VERIFICATION_THREAD
+
+
+        }
+
+    },
 
 
 
