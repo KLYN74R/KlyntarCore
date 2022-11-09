@@ -129,7 +129,7 @@ export let CONTRACT = {
 
                         poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
-                            timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+                            checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
                             staker:event.creator,
 
@@ -156,13 +156,6 @@ export let CONTRACT = {
 
     },
 
-    checkpointStake:async event => {
-
-        let {pool,amount,units}=event.payload,
-
-            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')       
-        
-    },
 
     /*
      
@@ -210,17 +203,6 @@ export let CONTRACT = {
     },
 
 
-
-
-    checkpointUnstake:async (event,atomicBatch) => {
-
-        let {pool,amount,units}=event.payload,
-
-            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
-       
-        
-    },
-
     /*
      
         Method to withdraw your money by staking
@@ -250,6 +232,4 @@ export let CONTRACT = {
 
     }
         
-
-
 }

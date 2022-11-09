@@ -40,26 +40,19 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false), rubiconID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.RUBICON
 
-            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
 
-                let isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+            if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
 
-                let isNotTooOldRecord = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.WAITING_ROOM_MAX_TIME
-
-                let ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorageOfQT.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP - poolStorageOfQT.stopTimestamp <= SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.POOL_AFK_MAX_TIME)
+                let ifStakeThenCheckIfPoolStillValid = type==='-' || (!poolStorage.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
 
                 let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
 
                 let overviewIsOk = 
                 
-                    isNotTooOldRecord
-                    &&
-                    isOldEnoughForUnstakingOrItsStaking
-                    &&
-                    ifStakeCheckIfPoolStillValid
+                    ifStakeThenCheckIfPoolStillValid
                     &&
                     stillUnspent
 
@@ -73,28 +66,28 @@ export default {
 
             // Basic ops on QUORUM_THREAD
 
-            let poolStorageOfQT = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool)
+            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool)
 
             /* 
             
-            poolStorageOfQT is
+            poolStorage is
 
                 {
                     totalPower:<number>
                     isStopped:<boolean>
-                    stopTimestamp:<number>
+                    stopCheckpointID:<number>
                     storedMetadata:{INDEX,HASH}
                 }
             
             */
 
-            if(poolStorageOfQT){
+            if(poolStorage){
 
                 //If everything is ok - add or slash totalPower of the pool
 
-                if(type==='+') poolStorageOfQT.totalPower+=amount
+                if(type==='+') poolStorage.totalPower+=amount
                     
-                else poolStorageOfQT.totalPower-=amount
+                else poolStorage.totalPower-=amount
                     
                 //Put to cache that this tx was spent
                 SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
@@ -119,9 +112,9 @@ export default {
 
                 {
 
-                    timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+                    checkpointID,
 
-                    staker:event.creator,
+                    staker,
 
                     amount,
 
@@ -137,16 +130,16 @@ export default {
             
             */
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'), rubiconID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.RUBICON
 
             //Check if record exists
-            if(poolStorage && poolStorage.WAITING_ROOM[txid]){
+            if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
 
                 let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
                 
                     stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0},
 
-                    workflowConfigs = YMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+                    workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
                 /*
 
@@ -154,7 +147,7 @@ export default {
 
                     {
 
-                        timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+                        checkpointID,
 
                         staker:event.creator,
 
@@ -175,11 +168,7 @@ export default {
 
                     noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower,
 
-                    isOldEnoughForUnstakingOrItsStaking = type==='+' || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp >= workflowConfigs.UNSTAKING_PERIOD,
-
-                    isNotTooOldRecord = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.WAITING_ROOM[txid].timestamp <= workflowConfigs.WAITING_ROOM_MAX_TIME,
-
-                    ifStakeCheckIfPoolStillValid = type==='+' && (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP - poolStorage.stopTimestamp <= workflowConfigs.POOL_AFK_MAX_TIME)
+                    ifStakeThenCheckIfPoolStillValid = type==='-' || (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
             
 
 
@@ -187,13 +176,8 @@ export default {
                 
                     noOverStake
                     &&
-                    isOldEnoughForUnstakingOrItsStaking
-                    &&
-                    isNotTooOldRecord
-                    &&
-                    ifStakeCheckIfPoolStillValid
+                    ifStakeThenCheckIfPoolStillValid
                     
-
                 
                 if(!overviewIsOk) return
 
@@ -248,6 +232,18 @@ export default {
         
 
     },
+
+
+
+    //To slash unstaking if validator gets rogue
+    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{},
+
+
+
+    //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
+    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{},
+
+
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
     WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
