@@ -220,7 +220,7 @@ export default {
                 delete poolStorage.WAITING_ROOM[txid]
 
 
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE){
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE_IN_UNO){
 
                     //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
 

@@ -623,6 +623,8 @@ LOAD_GENESIS=async()=>{
 
         HEADER:{
 
+            ID:-1,
+
             PAYLOAD_HASH:'',
 
             QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
@@ -662,6 +664,8 @@ LOAD_GENESIS=async()=>{
         RANGE_POINTER:0,
 
         HEADER:{
+
+            ID:-1,
 
             PAYLOAD_HASH:'',
 

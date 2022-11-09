@@ -57,7 +57,7 @@ export let CONTRACT = {
 
                 whiteList,
 
-                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO
                 
                 STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
 
@@ -113,11 +113,11 @@ export let CONTRACT = {
 
                     let klyStakingPower = amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO //convert KLY to UNO
 
-                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_FOR_USER_IN_UNO
             
                 }else if(units==='UNO'){
 
-                    stakeIsOk = amount <= stakerAccount.uno && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE
+                    stakeIsOk = amount <= stakerAccount.uno && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_FOR_USER_IN_UNO
 
                 }
 
@@ -125,7 +125,7 @@ export let CONTRACT = {
 
                     let totalStakedPower = units==='UNO' ? amount : amount * CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.KLY_UNO_RATIO
 
-                    if(poolStorage.totalPower + totalStakedPower <= poolStorage.overStake+CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                    if(poolStorage.totalPower + totalStakedPower <= poolStorage.overStake+CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO){
 
                         poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 

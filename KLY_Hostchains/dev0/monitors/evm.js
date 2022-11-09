@@ -269,12 +269,14 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
 
-        let [payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
+        let [id,payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
 
         afkValidators = afkValidators.split('*')
 
         //_________________________ VERIFY _________________________
 
+        //Make sure it's really next
+        let isNext = currentCheckpoint.ID+1 === +id
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         let isEqualToRootPub = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
@@ -286,11 +288,13 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         let signaIsOk = await bls.singleVerify(payloadHash,aggregatedPub,aggregatedSigna)
 
 
-        if(isEqualToRootPub && isMajority && signaIsOk) {
+        if(isNext && isEqualToRootPub && isMajority && signaIsOk) {
 
             let validCheckpoint = {
 
-                HEADER:{    
+                HEADER:{
+
+                    ID:+id,
 
                     PAYLOAD_HASH:payloadHash,
 

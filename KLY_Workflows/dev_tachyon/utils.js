@@ -1,4 +1,4 @@
-import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3} from "../../KLY_Utils/utils.js"
+import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -184,7 +184,7 @@ QUICK_SORT = array => {
     array = [pivot].concat(array)
     
 
-    for (let i = 1; i < array.length; i++) pivot > array[i] ? left.push(array[i]):right.push(array[i])
+    for (let i = 1; i < array.length; i++) pivot > array[i] ? left.push(array[i]) : right.push(array[i])
 
 
     return QUICK_SORT(left).concat(pivot,QUICK_SORT(right))
