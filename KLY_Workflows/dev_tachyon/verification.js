@@ -375,7 +375,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
                 let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-                    if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO) toRemovePools.push(validator)
+                    if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
 
                 })
 
@@ -717,7 +717,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
     //Iteration over the {KLY,UNO,REWARD}
     Object.values(mainStorageOfPool.STAKERS).forEach(stakerStats=>{
 
-        let stakerTotalPower = stakerStats.UNO + stakerStats.KLY * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.KLY_UNO_RATIO
+        let stakerTotalPower = stakerStats.UNO + stakerStats.KLY
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfPool.totalPower
 

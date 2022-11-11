@@ -5,6 +5,49 @@ import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
 
 
+let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadID,payload)=>{
+
+    let {type,amount}=payload
+
+    let workflowConfigs = SYMBIOTE_META[threadID].WORKFLOW_OPTIONS,
+        
+        isNotTooOld = stakeOrUnstakeTx.checkpointID >= SYMBIOTE_META[threadID].RUBICON,
+    
+        isMinimalRequiredAmount = stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY,
+
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
+
+        inWaitingRoomTheSameAsInPayload = stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
+
+
+    if(type==='+'){
+
+        let isStillPossibleBeActive = !poolStorage.isStopped || SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+
+        let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
+
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored = isStillPossibleBeActive && noOverStake
+
+    }else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
+
+
+    let overviewIsOk = 
+
+        isNotTooOld
+        &&
+        isMinimalRequiredAmount
+        &&
+        inWaitingRoomTheSameAsInPayload
+        &&
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored
+
+
+    return overviewIsOk
+
+}
+
+
+
 export default {
 
     //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
@@ -27,7 +70,7 @@ export default {
             txid:<id in WAITING_ROOM in contract storage>,
             pool:<BLS pubkey of pool>,
             type:<'-' for unstake and '+' for stake>
-            amount:<integer> - staking power in UNO
+            amount:<integer> - staking power
         }
     
         Also, we check if operation in WAITING_ROOM still valid(timestamp is not so old).
@@ -45,25 +88,31 @@ export default {
             //To check payload received from route
 
             let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+
+                stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
             
-                rubiconID = SYMBIOTE_META.QUORUM_THREAD.RUBICON
 
-
-            if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
-
-                let ifStakeThenCheckIfPoolStillValid = type==='-' || (!poolStorage.isStopped || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
+            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
 
                 let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
+                if(stillUnspent){
 
-                let overviewIsOk = 
-                
-                    ifStakeThenCheckIfPoolStillValid
-                    &&
-                    stillUnspent
+                    let specOpsTemplate = {
 
+                        type:'STAKING_CONTRACT_CALL',
 
-                return overviewIsOk               
+                        payload:{
+
+                            txid,pool,type,amount
+
+                        }
+
+                    }
+
+                    return specOpsTemplate
+
+                }
 
             }
 
@@ -138,80 +187,35 @@ export default {
             
             */
 
+     //To check payload received from route
+
             let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+
+                stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
+
             
-                rubiconID = SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
 
-                stakingContractCallTx = poolStorage?.WAITING_ROOM[txid]
-                
-
-            //Check if record exists
-            if(stakingContractCallTx && stakingContractCallTx.checkpointID >= rubiconID){
-
-                let stakerAccount = poolStorage.STAKERS[stakingContractCallTx.staker] || {KLY:0,UNO:0,REWARD:0},
-
-                    workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
-
-                /*
-
-                    queryFromWaitingRoom has the following structure
-
-                    {
-
-                        checkpointID,
-
-                        staker:event.creator,
-
-                        amount,
-
-                        units,
-
-                        type:'+' //means "STAKE" or "-" for "UNSTAKE"
-                        
-                    }
-
-                
-                */
+            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
 
 
-                //Count the power of this operation
-                let extraPower = stakingContractCallTx.units==='UNO' ? stakingContractCallTx.amount : stakingContractCallTx.amount * workflowConfigs.KLY_UNO_RATIO,
-                
-                    overviewIsOk=false
+                let stakerAccount = poolStorage.STAKERS[stakeOrUnstakeTx.staker] || {KLY:0,UNO:0,REWARD:0}
 
-                
-                if(type==='+'){
+                if(stakeOrUnstakeTx.type==='+'){
 
-                    let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower
+                    stakerAccount[stakeOrUnstakeTx.units]+=stakeOrUnstakeTx.amount
 
-                    let isPoolStillValid = !poolStorage.isStopped || (SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
-
-
-                    overviewIsOk = noOverStake && isPoolStillValid
-
-                    
-                } else overviewIsOk=true
-                
-
-                if(!overviewIsOk) return
-
-
-                if(stakingContractCallTx.type==='+'){
-
-                    stakerAccount[stakingContractCallTx.units]+=stakingContractCallTx.amount
-
-                    poolStorage.totalPower+=extraPower
+                    poolStorage.totalPower+=stakeOrUnstakeTx.amount
 
                 }else {
 
-                    stakerAccount[stakingContractCallTx.units]-=stakingContractCallTx.amount
+                    stakerAccount[stakeOrUnstakeTx.units]-=stakeOrUnstakeTx.amount
 
-                    poolStorage.totalPower-=extraPower
+                    poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
                 }
 
                 //Assign updated state
-                poolStorage.STAKERS[stakingContractCallTx.staker]=stakerAccount
+                poolStorage.STAKERS[stakeOrUnstakeTx.staker]=stakerAccount
 
                 //Remove from WAITING_ROOM
 
@@ -220,7 +224,7 @@ export default {
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE_IN_UNO && poolStorage.isStopped){
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.isStopped){
 
                     //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
 
@@ -243,7 +247,7 @@ export default {
                 }
                 
             }
-        
+
         }
 
     },
@@ -323,7 +327,7 @@ export default {
         if(overviewIfFromRoute){
 
             //In this case, <proposer> property is the address should be included to your whitelist in configs
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'UPDATE_RUBICON',payload:data})
+            return {type:'UPDATE_RUBICON',payload:data}
 
         }else if(usedOnQuorumThread){
     
@@ -389,7 +393,7 @@ export default {
 
             //In this case, <proposer> property is the address should be included to your whitelist in configs
 
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'WORKFLOW_UPDATE',payload:data})
+            return {type:'WORKFLOW_UPDATE',payload:data}
 
         }
         else if(usedOnQuorumThread){

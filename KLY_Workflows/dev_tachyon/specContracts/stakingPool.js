@@ -63,7 +63,7 @@ export let CONTRACT = {
                     
                 storedMetadata:{},
 
-                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO
+                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
 
@@ -113,25 +113,11 @@ export let CONTRACT = {
 
             if(stakerAccount){
             
-                let stakeIsOk=false
+                let stakeIsOk = (units==='KLY'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
             
-                if(units==='KLY'){
-
-                    let klyStakingPower = amount * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.KLY_UNO_RATIO //convert KLY to UNO
-
-                    stakeIsOk = amount <= stakerAccount.balance && klyStakingPower >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_FOR_USER_IN_UNO
-            
-                }else if(units==='UNO'){
-
-                    stakeIsOk = amount <= stakerAccount.uno && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_FOR_USER_IN_UNO
-
-                }
-
                 if(stakeIsOk){
 
-                    let totalStakedPower = units==='UNO' ? amount : amount * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.KLY_UNO_RATIO
-
-                    if(poolStorage.totalPower + totalStakedPower <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE_IN_UNO){
+                    if(poolStorage.totalPower + amount <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
                         poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
@@ -192,7 +178,7 @@ export let CONTRACT = {
 
             poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
-                timestamp:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,
+                checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
                 staker:event.creator,
 
