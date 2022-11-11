@@ -283,6 +283,31 @@ WAIT_SOME_TIME=async()=>
 
 
 
+DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
+
+    //Try to get storage "POOL" of appropriate pool
+
+    let poolStorage = await GET_FROM_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
+
+
+    poolStorage.isStopped=true
+
+    poolStorage.stopCheckpointID=SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+
+    poolStorage.storedMetadata=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]
+
+
+    //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
+
+    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.splice(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.indexOf(validatorPubKey),1)
+
+    delete SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]
+
+},
+
+
+
+
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async()=>{
 
@@ -310,13 +335,14 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         if(nextCheckpoint) {
 
+            
             let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
-
-
 
             let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS} //to change it via operations
             
+
             SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+
 
             //____________________Go through the SPEC_OPERATIONS and perform it__________________
 
@@ -359,13 +385,17 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             await Promise.all(promises.splice(0))
 
-            //Now in toRemovePools we have IDs
+            //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
+
+            let deleteValidatorsPoolsPromises=[]
 
             for(let address of toRemovePools){
 
-
+                deleteValidatorsPoolsPromises(DELETE_VALIDATOR_POOLS(address))
 
             }
+
+            await Promise.all(deleteValidatorsPoolsPromises.splice(0))
 
 
             //_______________________Commit changes after operations here________________________
@@ -373,11 +403,12 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Updated WORKFLOW_OPTIONS
             SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
+            //Set new checkpoint
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
+
+
             //Create new quorum based on new VALIDATORS_METADATA state
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
-
-
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
 
             //And commit changes of state and VT here(via atomic operations)

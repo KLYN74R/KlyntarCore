@@ -39,11 +39,14 @@ export default {
 
         if(txid==='QT') return
 
+
         if(isFromRoute){
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false), rubiconID = SYMBIOTE_META.QUORUM_THREAD.RUBICON
+            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+            
+                rubiconID = SYMBIOTE_META.QUORUM_THREAD.RUBICON
 
 
             if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
@@ -106,7 +109,9 @@ export default {
             
             Here we should move stakers from WAITING_ROOMs to stakers
 
-            Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .timestamp property and compare to timestamp of current checkpoint on VT)
+            Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .checkpointID property and compare to timestamp of current checkpoint on VT)
+
+            Also, check the minimal possible stake(in UNO), if pool still valid and so on
 
             Then, delete record from WAITING_ROOM and add to "stakers"
 
@@ -123,7 +128,7 @@ export default {
 
                     units,
 
-                    type:'+' //means "STAKE" or "-" for "UNSTAKE"
+                    type:'+' // "+" means "STAKE" or "-" for "UNSTAKE"
                         
                 }
 
@@ -138,6 +143,7 @@ export default {
                 rubiconID = SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
 
                 stakingContractCallTx = poolStorage?.WAITING_ROOM[txid]
+                
 
             //Check if record exists
             if(stakingContractCallTx && stakingContractCallTx.checkpointID >= rubiconID){
@@ -212,7 +218,9 @@ export default {
                 delete poolStorage.WAITING_ROOM[txid]
 
 
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE_IN_UNO){
+                // If required number of power is ok and pool was stopped - then make it <active> again
+
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE_IN_UNO && poolStorage.isStopped){
 
                     //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
 
@@ -225,6 +233,12 @@ export default {
                         HASH:'Poyekhali!@Y.A.Gagarin'
                     
                     }
+
+                    poolStorage.isStopped=false
+
+                    poolStorage.stopCheckpointID=-1
+
+                    poolStorage.storedMetadata={}
 
                 }
                 
@@ -313,12 +327,12 @@ export default {
 
         }else if(usedOnQuorumThread){
     
-            SYMBIOTE_META.QUORUM_THREAD.RUBICON=payload
+            if(SYMBIOTE_META.QUORUM_THREAD.RUBICON < payload) SYMBIOTE_META.QUORUM_THREAD.RUBICON=payload
 
         }else{
 
             //Used on VERIFICATION_THREAD
-            SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
+            if(SYMBIOTE_META.VERIFICATION_THREAD.RUBICON < payload) SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
 
         }
 
