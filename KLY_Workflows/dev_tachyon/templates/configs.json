@@ -102,6 +102,11 @@
     "STOP_GENERATE_BLOCKS":true,
     "STOP_VERIFY":false,
 
+    "TRUSTED_POOLS":{
+        "UPDATE_RUBICON":["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"],
+        "WORKFLOW_UPDATE":["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"]
+    },
+
     "STORE_BLOCKS":true,
     "BLOCK_GENERATION_INIT_DELAY":3000,
 

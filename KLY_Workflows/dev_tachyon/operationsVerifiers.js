@@ -231,6 +231,9 @@ export default {
 
     },
 
+
+
+
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
     STOP_VALIDATOR:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
@@ -243,18 +246,21 @@ export default {
     //To slash unstaking if validator gets rogue
     SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
+        //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
+
     },
 
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
 
         //Payload is the checkpointID of new value of rubicon
 
-        if(isFromRoute){
+        if(isFromRoute && CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(proposer)){
 
-            //In this case, payload also includes the .proposer property. This address should be included to your whitelist in configs
+            //In this case, <proposer> property is the address should be included to your whitelist in configs
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'UPDATE_RUBICON',payload})
 
         }else if(usedOnQuorumThread){
     
@@ -273,7 +279,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
 
         /*
         
@@ -294,9 +300,11 @@ export default {
 
         let updatedOptions
 
-        if(isFromRoute){
+        if(isFromRoute && CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(proposer)){
 
-            //In this case, payload also includes the .proposer property. This address should be included to your whitelist in configs
+            //In this case, <proposer> property is the address should be included to your whitelist in configs
+
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'WORKFLOW_UPDATE',payload})
 
         }
         else if(usedOnQuorumThread){
@@ -314,6 +322,10 @@ export default {
 
         }
         
-    }
+    },
+
+
+    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{}
+
 
 }

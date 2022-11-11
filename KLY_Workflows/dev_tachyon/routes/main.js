@@ -737,17 +737,33 @@ getPayloadForCheckpoint=async(response,request)=>{
 },
 
 
+/*
 
+Body is
+
+{
+    type:<SPEC_OPERATION type>. See operationsVerifiers.js
+    payload:<Payload is different for different operations>
+    
+    ?proposer:
+}
+
+
+*/
 
 operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
+    //If operation contains proposer - check signature
+    if(operation.proposer){
+
+    }
+
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
+    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.length<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.length<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.T]){
-
-        let isOk = await OPERATIONS_VERIFIERS[operation.T](operation,true) //it's just verify without state changes
+        let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false,operation.proposer) //it's just verify without state changes
 
         if(isOk){
 
