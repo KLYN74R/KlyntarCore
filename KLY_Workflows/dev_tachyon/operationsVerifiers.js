@@ -130,14 +130,16 @@ export default {
             
             */
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'), rubiconID = SYMBIOTE_META.VERIFICATION_THREAD.RUBICON
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+            
+                rubiconID = SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+
+                stakingContractCallTx = poolStorage?.WAITING_ROOM[txid]
 
             //Check if record exists
-            if(poolStorage && poolStorage.WAITING_ROOM[txid] && poolStorage.WAITING_ROOM[txid].checkpointID >= rubiconID){
+            if(stakingContractCallTx && stakingContractCallTx.checkpointID >= rubiconID){
 
-                let queryFromWaitingRoom = poolStorage.WAITING_ROOM[txid],
-                
-                    stakerAccount = poolStorage.STAKERS[queryFromWaitingRoom.staker] || {KLY:0,UNO:0,REWARD:0},
+                let stakerAccount = poolStorage.STAKERS[stakingContractCallTx.staker] || {KLY:0,UNO:0,REWARD:0},
 
                     workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
@@ -164,40 +166,43 @@ export default {
 
 
                 //Count the power of this operation
-                let extraPower = queryFromWaitingRoom.units==='UNO' ? queryFromWaitingRoom.amount : queryFromWaitingRoom.amount * workflowConfigs.KLY_UNO_RATIO,
-
-                    noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower,
-
-                    ifStakeThenCheckIfPoolStillValid = type==='-' || (!poolStorage.isStopped || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
-            
-
-
-                let overviewIsOk =
+                let extraPower = stakingContractCallTx.units==='UNO' ? stakingContractCallTx.amount : stakingContractCallTx.amount * workflowConfigs.KLY_UNO_RATIO,
                 
-                    noOverStake
-                    &&
-                    ifStakeThenCheckIfPoolStillValid
+                    overviewIsOk=false
+
+                
+                if(type==='+'){
+
+                    let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+extraPower
+
+                    let isPoolStillValid = !poolStorage.isStopped || (SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME)
+
+
+                    overviewIsOk = noOverStake && isPoolStillValid
+
                     
+                } else overviewIsOk=true
                 
+
                 if(!overviewIsOk) return
 
 
-                if(queryFromWaitingRoom.type==='+'){
+                if(stakingContractCallTx.type==='+'){
 
-                    stakerAccount[queryFromWaitingRoom.units]+=queryFromWaitingRoom.amount
+                    stakerAccount[stakingContractCallTx.units]+=stakingContractCallTx.amount
 
                     poolStorage.totalPower+=extraPower
 
                 }else {
 
-                    stakerAccount[queryFromWaitingRoom.units]-=queryFromWaitingRoom.amount
+                    stakerAccount[stakingContractCallTx.units]-=stakingContractCallTx.amount
 
                     poolStorage.totalPower-=extraPower
 
                 }
 
                 //Assign updated state
-                poolStorage.STAKERS[queryFromWaitingRoom.staker]=stakerAccount
+                poolStorage.STAKERS[stakingContractCallTx.staker]=stakerAccount
 
                 //Remove from WAITING_ROOM
 
@@ -245,19 +250,25 @@ export default {
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
     UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
+        //Payload is the checkpointID of new value of rubicon
+
         if(isFromRoute){
 
-        }else if(usedOnQuorumThread){
+            //In this case, payload also includes the .proposer property. This address should be included to your whitelist in configs
 
+        }else if(usedOnQuorumThread){
+    
+            SYMBIOTE_META.QUORUM_THREAD.RUBICON=payload
 
         }else{
 
             //Used on VERIFICATION_THREAD
-
+            SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
 
         }
 
     },
+
 
 
 
@@ -283,17 +294,16 @@ export default {
 
         let updatedOptions
 
-        if(usedOnQuorumThread){
+        if(isFromRoute){
+
+            //In this case, payload also includes the .proposer property. This address should be included to your whitelist in configs
+
+        }
+        else if(usedOnQuorumThread){
 
             updatedOptions = await GET_FROM_STATE_FOR_QUORUM_THREAD('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
-
-        }
-        else if(isFromRoute){
-
-            //TODO
-            //Here we need to check if 2/3N+1 of validators have voted for changes(based on validators set of the latest checkpoint)
 
         }else{
 

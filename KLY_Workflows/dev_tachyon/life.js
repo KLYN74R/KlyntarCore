@@ -700,7 +700,10 @@ LOAD_GENESIS=async()=>{
     SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA={...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
 
 
+    // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
+    // If your stake/unstake tx was bellow this line - it might be burned. However, the line is set by QUORUM, so it should be safe
     SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=-1
+    
     SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1
 
 
