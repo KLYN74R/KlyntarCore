@@ -1,5 +1,7 @@
 import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
+import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
+
 
 
 
@@ -35,8 +37,9 @@ export default {
 
         let {txid,pool,type,amount}=payload
 
+        if(txid==='QT') return
 
-        if(isFromRoute && txid!=='QT'){
+        if(isFromRoute){
 
             //To check payload received from route
 
@@ -252,15 +255,61 @@ export default {
 
 
 
+
+    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
+
+        
+
+    },
+
+
+    //___________________________________________________ Separate methods ___________________________________________________
+
+
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
+    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
-        //Payload is the checkpointID of new value of rubicon
+        /*
+        
+        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload=<ID of new checkpoint which will be rubicon>
+        
+        If received from route - then payload has the following structure
 
-        if(isFromRoute && CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(proposer)){
+            {
+                sigType,
+                pubKey,
+                signa,
+                data - new value of RUBICON
+            }
+
+
+        *data - new value of RUBICON for appropriate thread
+
+        Also, you must sign the data with the latest payload's header hash
+
+        SIG(data+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
+        
+        */
+
+        let {sigType,pubKey,signa,data} = payload
+
+        let overviewIfFromRoute = 
+
+            isFromRoute //method used on POST /operations
+            &&
+            typeof data === 'number' //new value of rubicon. Some previous checkpointID
+            &&
+            CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
+            &&
+            SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
+            &&
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+
+
+        if(overviewIfFromRoute){
 
             //In this case, <proposer> property is the address should be included to your whitelist in configs
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'UPDATE_RUBICON',payload})
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'UPDATE_RUBICON',payload:data})
 
         }else if(usedOnQuorumThread){
     
@@ -279,53 +328,71 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
+    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
         /*
         
-            Payload is
+        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload has the following structure:
 
-            {
+        {
+            fieldName
+            newValue
+        }
+        
+        If received from route - then payload has the following structure
+
+        {
+            sigType,
+            pubKey,
+            signa,
+            data:{
                 fieldName
                 newValue
             }
+        }
 
-            Here we create the copy of CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS and add to cache (on QT or VT)
+        *data - object with the new option(proposition) for WORKFLOW_OPTIONS
 
-            Each operation makes changes to WORKFLOW_OPTIONS
+        Also, you must sign the data with the latest payload's header hash
 
-            After all ops - we'll received final version of new WORKFLOW_OPTIONS
+        SIG(JSON.stringify(data)+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
+        
         
         */
 
-        let updatedOptions
+        let {sigType,pubKey,signa,data} = payload
 
-        if(isFromRoute && CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(proposer)){
+        let overviewIfFromRoute = 
+
+            isFromRoute //method used on POST /operations
+            &&
+            CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
+            &&
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+
+
+        if(overviewIfFromRoute){
 
             //In this case, <proposer> property is the address should be included to your whitelist in configs
 
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'WORKFLOW_UPDATE',payload})
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push({type:'WORKFLOW_UPDATE',payload:data})
 
         }
         else if(usedOnQuorumThread){
 
-            updatedOptions = await GET_FROM_STATE_FOR_QUORUM_THREAD('WORKFLOW_OPTIONS')
+            let updatedOptions = await GET_FROM_STATE_FOR_QUORUM_THREAD('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 
         }else{
 
             //Used on VT
-            updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
+            let updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 
         }
         
-    },
-
-
-    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{}
-
+    }
 
 }

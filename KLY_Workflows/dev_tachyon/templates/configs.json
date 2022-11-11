@@ -103,8 +103,8 @@
     "STOP_VERIFY":false,
 
     "TRUSTED_POOLS":{
-        "UPDATE_RUBICON":["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"],
-        "WORKFLOW_UPDATE":["7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"]
+        "UPDATE_RUBICON":["CiKNwFUB6xcu8NN1Jmz47jZiGggMRNgrn8wzCkccPJia"],
+        "WORKFLOW_UPDATE":["CiKNwFUB6xcu8NN1Jmz47jZiGggMRNgrn8wzCkccPJia"]
     },
 
     "STORE_BLOCKS":true,

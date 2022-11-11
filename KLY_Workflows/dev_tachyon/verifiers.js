@@ -113,6 +113,19 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event => {
 
 
 
+export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE=(type,pubkey,signa,data)=>{
+
+    if(type==='D') return VERIFY(data,signa,pubkey)
+    
+    if(type==='P/D') return ADDONS['verify_DIL'](data,pubkey,signa)
+    
+    if(type==='P/B') return ADDONS['verify_BLISS'](data,pubkey,signa)
+    
+}
+
+
+
+
 export let VERIFIERS = {
 
 
