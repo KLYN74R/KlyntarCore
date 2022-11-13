@@ -13,7 +13,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
         
         isNotTooOld = stakeOrUnstakeTx.checkpointID >= SYMBIOTE_META[threadID].RUBICON,
     
-        isMinimalRequiredAmount = stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY,
+        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
 
         ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
 
@@ -35,7 +35,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
         isNotTooOld
         &&
-        isMinimalRequiredAmount
+        isMinimalRequiredAmountOrItsUnstake
         &&
         inWaitingRoomTheSameAsInPayload
         &&
@@ -212,6 +212,8 @@ export default {
 
                     poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
+                    //Add KLY / UNO to the user's account
+
                 }
 
                 //Assign updated state
@@ -274,23 +276,111 @@ export default {
 
         if(isFromRoute){
 
-            
+            // Here we check if tx exists and its already in "delayed" pool
+
+        }else{
+
+            // On VERIFICATION_THREAD we should delete appropriate tx from "delayed" pool
 
         }
-        else if(usedOnQuorumThread){
-
-            // Basic ops on QUORUM_THREAD
-
-        
-        }
-        else{}
 
 
     },
 
-
-
     
+
+
+    //Only for "STAKE" operation
+    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread)=>{
+        
+        //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
+
+        let {txid,pool}=payload
+
+        
+        if(txid==='QT') return
+
+
+        if(isFromRoute){
+
+            //To check payload received from route
+
+            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+
+                stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+                    
+                isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.QUORUM_THREAD.RUBICON,
+
+                isStakeTx = stakingTx?.type === '+'
+            
+
+
+            if(stakingTx && isNotTooOld && isStakeTx){
+
+                let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+
+                if(stillUnspent){
+
+                    let specOpsTemplate = {
+
+                        type:'REMOVE_FROM_WAITING_ROOM',
+
+                        payload:{
+
+                            txid,pool
+
+                        }
+
+                    }
+
+                    return specOpsTemplate
+
+                }
+
+            }
+
+        }
+        else if(usedOnQuorumThread){
+
+            //Put to cache that this tx was spent
+            SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+
+        }
+        else{
+
+
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+
+                stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+
+                isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+
+                isStakeTx = stakingTx?.type === '+'
+
+            
+
+            if(stakingTx && isNotTooOld && isStakeTx){
+
+                //Remove from WAITING_ROOM
+                delete poolStorage.WAITING_ROOM[txid]
+
+                let stakerAccount = await GET_FROM_STATE(stakingTx.staker)
+
+                if(stakingTx.units === 'KLY'){
+
+                    stakerAccount.balance += stakingTx.amount
+
+                }else stakerAccount.uno += stakingTx.amount
+
+                
+            }            
+
+        }
+        
+
+    },
+
+
     //___________________________________________________ Separate methods ___________________________________________________
 
 
