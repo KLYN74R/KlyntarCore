@@ -349,10 +349,27 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
 
+            //___________________Create array of delayed unstaking transactions__________________
+
+            SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+
+            //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
+            for(let operation of operations){
+            
+                if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
+            
+            }
+
+
+            //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
+            
+            
             //____________________Go through the SPEC_OPERATIONS and perform it__________________
 
             for(let operation of operations){
         
+                if(operation.type==='SLASH_UNSTAKE') continue
+
                 /*
                 
                 Perform changes here before move to the next checkpoint
@@ -366,7 +383,8 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                 
 
                 */
-                await OPERATIONS_VERIFIERS[operation.type](operation.payload,false) //pass isFromRoute=false to make changes to state
+
+                await OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
         
             }
 
@@ -401,6 +419,44 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             }
 
             await Promise.all(deleteValidatorsPoolsPromises.splice(0))
+
+
+            //________________________________Remove rogue pools_________________________________
+
+            // These operations must be atomic
+            let atomicBatch = SYMBIOTE_META.STATE.batch()
+
+            let slashObject = await GET_FROM_STATE('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
+            
+            for(let poolIdentifier of slashObjectKeys){
+
+                //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+                atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+
+                let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
+
+                //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
+                for(let id of arrayOfDelayed){
+
+                    let delayedArray = await GET_FROM_STATE('DEL_OPER_'+id)
+
+                    // Each object in delayedArray has the following structure {fromPool,to,amount,units}
+                    let toDeleteArray = []
+
+                    for(let i=0;i<delayedArray.length;i++){
+
+                        if(delayedArray[i].fromPool===poolIdentifier) toDeleteArray.push(i)
+
+                    }
+
+                    // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
+                    
+                    for(let txid of delayedArray) delayedArray.splice(txid,1) //remove single tx
+
+                }
+
+
+            }
 
 
             //______________Perform earlier delayed operations & add new operations______________
@@ -498,12 +554,9 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
 
-            //And commit changes of state and VT here(via atomic operations)
-            let atomicBatch = SYMBIOTE_META.STATE.batch()
-
             SYMBIOTE_META.STATE_CACHE.forEach(
                 
-                (value,recordID)=>atomicBatch.put(recordID, value)
+                (value,recordID) => atomicBatch.put(recordID, value)
                 
             )
 

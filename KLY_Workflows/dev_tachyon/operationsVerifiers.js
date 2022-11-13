@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
@@ -121,6 +121,12 @@ export default {
 
             // Basic ops on QUORUM_THREAD
 
+            let slashHelper = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+
+            if(slashHelper[pool]) return
+
+
+
             let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool)
 
             /* 
@@ -188,6 +194,13 @@ export default {
             */
 
      //To check payload received from route
+
+
+            let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
+
+            if(slashHelper[pool]) return
+
+
 
             let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
 
@@ -281,27 +294,68 @@ export default {
 
 
 
+
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async (payload,isFromRoute,_)=>{
+    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
-        //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
+        /*
+        
+            Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
-        let {delayedId,poolID}=payload
+            Payload structure is
 
+            {
+                pool:<BLS pubkey - id of pool to clear>
+                delayedIds - array of IDs of delayed operations to get it and remove "UNSTAKE" txs from state
+            }
+
+        */
+
+        let {delayedIds,pool}=payload
 
         if(isFromRoute){
 
-            // Here we check if tx exists and its already in "delayed" pool
+            //Here we just check if pool exists
 
+            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
-
-        }else{
-
-            // On VERIFICATION_THREAD we should delete appropriate tx from "delayed" pool
+            return !!poolExists
 
         }
+        else if(usedOnQuorumThread){
 
+            // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
+            // That's why we need to push poolID to slash array because we need to do atomic ops
+            
+            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+
+            if(poolExists){
+
+                let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+
+                slashObject[pool]=true
+    
+            }
+
+        }
+        else{
+
+            // On VERIFICATION_THREAD we should delete the pool from VALIDATORS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
+
+            // We just get the special array from cache to push appropriate ids and poolID
+
+            let poolExists = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+
+            if(poolExists){
+
+                let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
+            
+                slashObject[pool]={delayedIds,pool}
+
+            }
+
+        }
 
     },
 
@@ -360,12 +414,17 @@ export default {
         }
         else if(usedOnQuorumThread){
 
+            let slashHelper = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+
             //Put to cache that this tx was spent
-            SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            if(!slashHelper[pool]) SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
         }
         else{
 
+            let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
+
+            if(slashHelper[pool]) return
 
             let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
 
