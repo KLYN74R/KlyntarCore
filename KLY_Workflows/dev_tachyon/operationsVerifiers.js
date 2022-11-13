@@ -269,20 +269,28 @@ export default {
 
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
+        let {txid,pool,type,amount}=payload
+
+
+        if(isFromRoute){
+
+            
+
+        }
+        else if(usedOnQuorumThread){
+
+            // Basic ops on QUORUM_THREAD
+
+        
+        }
+        else{}
+
+
     },
 
 
 
-
-    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,proposer)=>{
-        
     
-        //Start here
-        
-
-    },
-
-
     //___________________________________________________ Separate methods ___________________________________________________
 
 
