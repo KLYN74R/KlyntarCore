@@ -1,4 +1,4 @@
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -165,6 +165,31 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 
+DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
+
+    //Try to get storage "POOL" of appropriate pool
+
+    let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(validatorPubKey+'(POOL)_STORAGE_POOL')
+
+
+    poolStorage.isStopped=true
+
+    poolStorage.stopCheckpointID=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    poolStorage.storedMetadata=SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA[validatorPubKey]
+
+
+    //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
+
+    SYMBIOTE_META.QUORUM_THREAD.VALIDATORS.splice(SYMBIOTE_META.QUORUM_THREAD.VALIDATORS.indexOf(validatorPubKey),1)
+
+    delete SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA[validatorPubKey]
+
+},
+
+
+
+
 //Use it to find checkpoints on hostchains, proceed it and join to generation
 START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
@@ -176,15 +201,76 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //Perform SPEC_OPERATIONS
 
+
+        //_____________________________To change it via operations___________________________
+
+        let workflowOptionsTemplate = {...SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS}
+            
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+
+        SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+
+        //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
         for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
+         
+            if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
+
+        }
+
+        for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
+
+            if(operation.type==='SLASH_UNSTAKE') continue
 
             await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
 
         }
 
-        //After all ops - commit state and make changes to workflow
+        //_______________________Remove pools if lack of staking power_______________________
 
+        let toRemovePools = [], promises = []
+
+        for(let validator of SYMBIOTE_META.QUORUM_THREAD.VALIDATORS){
+
+            let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+
+                if(poolStorage.totalPower<SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+
+            })
+
+            promises.push(promise)
+
+        }
+
+        await Promise.all(promises.splice(0))
+
+        //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
+
+        let deleteValidatorsPoolsPromises=[]
+
+        for(let address of toRemovePools){
+
+            deleteValidatorsPoolsPromises(DELETE_VALIDATOR_POOLS(address))
+
+        }
+
+        await Promise.all(deleteValidatorsPoolsPromises.splice(0))
+
+
+        //________________________________Remove rogue pools_________________________________
+
+        // These operations must be atomic
         let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+
+        let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
+            
+        for(let poolIdentifier of slashObjectKeys){
+
+            //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+            atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+        
+        }
+
+        //After all ops - commit state and make changes to workflow
 
         SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
 

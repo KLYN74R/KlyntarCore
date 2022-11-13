@@ -414,7 +414,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             for(let address of toRemovePools){
 
-                deleteValidatorsPoolsPromises(DELETE_VALIDATOR_POOLS(address))
+                deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS(address))
 
             }
 
@@ -450,7 +450,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
                     }
 
                     // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
-                    
+
                     for(let txid of delayedArray) delayedArray.splice(txid,1) //remove single tx
 
                 }
