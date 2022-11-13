@@ -338,11 +338,16 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             
             let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
 
-            let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS} //to change it via operations
-            
 
+            //_____________________________To change it via operations___________________________
+
+            let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
+            
             SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
+            //___________________Create array of delayed unstaking transactions__________________
+
+            SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
 
             //____________________Go through the SPEC_OPERATIONS and perform it__________________
 
@@ -398,10 +403,92 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             await Promise.all(deleteValidatorsPoolsPromises.splice(0))
 
 
+            //______________Perform earlier delayed operations & add new operations______________
+
+            let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
+
+            //If it's first checkpoints - add this array
+            if(!delayedTableOfIds) delayedTableOfIds=[]
+
+            
+            let currentCheckpointID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID ,
+            
+                idsToDelete = []
+
+
+            for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
+
+                //Here we get the arrays of delayed operatins from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+
+                if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointID){
+
+                    let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
+
+                    if(oldDelayOperations){
+
+                        for(let delayedTX of oldDelayOperations){
+
+                            /*
+
+                                Get the accounts and add appropriate amount of KLY / UNO
+
+                                delayedTX has the following structure
+
+                                {
+                                    fromPool:<id of pool that staker withdraw stake from>,
+
+                                    to:<staker pubkey/address>,
+                        
+                                    amount:<number>,
+                        
+                                    units:< KLY | UNO >
+                        
+                                }
+                            
+                            */
+
+                            let account = await GET_ACCOUNT_ON_SYMBIOTE(delayedTX.to)
+
+                            //Return back staked KLY / UNO to the state of user's account
+                            if(delayedTX.units==='KLY') account.balance += delayedTX.amount
+
+                            else account.uno += delayedTX.amount
+                            
+
+                        }
+
+
+                        //Remove ID (delayedID) from delayed table of IDs because we already used it
+                        idsToDelete.push(i)
+
+                    }
+
+                }
+
+            }
+
+            //Remove "spent" ids
+            for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
+
+
+
+            //Also, add the array of delayed operations from THIS checkpoint if it's not empty
+            let currentArrayOfDelayedOperations = await GET_FROM_STATE('DELAYED_OPERATIONS')
+            
+            if(currentArrayOfDelayedOperations.length !== 0){
+
+                delayedTableOfIds.push(currentCheckpointID)
+
+                SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointID,currentArrayOfDelayedOperations)
+
+            }
+
             //_______________________Commit changes after operations here________________________
 
             //Updated WORKFLOW_OPTIONS
             SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+            //Set the delayed operations
 
             //Set new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
@@ -423,6 +510,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
 
             await atomicBatch.write()
+
 
         }
 

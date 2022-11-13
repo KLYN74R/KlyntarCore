@@ -1,4 +1,4 @@
-import {GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
@@ -213,6 +213,22 @@ export default {
                     poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
                     //Add KLY / UNO to the user's account
+                    let delayedOperationsArray = await GET_FROM_STATE('DELAYED_OPERATIONS')
+
+                    let txTemplate={
+
+                        fromPool:pool,
+
+                        to:stakeOrUnstakeTx.staker,
+                        
+                        amount:stakeOrUnstakeTx.amount,
+                        
+                        units:stakeOrUnstakeTx.units
+
+                    }
+
+                    //This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
+                    delayedOperationsArray.push(txTemplate)
 
                 }
 
@@ -220,7 +236,6 @@ export default {
                 poolStorage.STAKERS[stakeOrUnstakeTx.staker]=stakerAccount
 
                 //Remove from WAITING_ROOM
-
                 delete poolStorage.WAITING_ROOM[txid]
 
 
@@ -267,16 +282,19 @@ export default {
 
 
     //To slash unstaking if validator gets rogue
-    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    //Here we remove the pool storage and remove unstaking from delayed operations
+    SLASH_UNSTAKE:async (payload,isFromRoute,_)=>{
 
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
-        let {txid,pool,type,amount}=payload
+        let {delayedId,poolID}=payload
 
 
         if(isFromRoute){
 
             // Here we check if tx exists and its already in "delayed" pool
+
+
 
         }else{
 
@@ -364,7 +382,7 @@ export default {
                 //Remove from WAITING_ROOM
                 delete poolStorage.WAITING_ROOM[txid]
 
-                let stakerAccount = await GET_FROM_STATE(stakingTx.staker)
+                let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(stakingTx.staker)
 
                 if(stakingTx.units === 'KLY'){
 

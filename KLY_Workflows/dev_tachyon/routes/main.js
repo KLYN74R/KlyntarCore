@@ -127,7 +127,7 @@ acceptBlocks=response=>{
 
 
 //Format of body : {symbiote,body}
-//There is no 'c'(creator) field-we get it from tx
+//There is no <creator> field-we get it from tx
 acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let {symbiote,event}=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
