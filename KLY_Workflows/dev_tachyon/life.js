@@ -249,7 +249,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         for(let address of toRemovePools){
 
-            deleteValidatorsPoolsPromises(DELETE_VALIDATOR_POOLS(address))
+            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS(address))
 
         }
 
@@ -279,6 +279,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         })
 
         await atomicBatch.write()
+        
 
     }
 
