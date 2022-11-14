@@ -275,7 +275,7 @@ WAIT_SOME_TIME=async()=>
 
     new Promise(resolve=>
 
-        setTimeout(()=>resolve(),CONFIG.SYMBIOTE.WAIT_SOME_TIME)
+        setTimeout(()=>resolve(),CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT)
 
     )
 ,
@@ -544,8 +544,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Updated WORKFLOW_OPTIONS
             SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-            //Set the delayed operations
-
             //Set new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
@@ -572,7 +570,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Even if we can't find new valid checkpoint and current checkpoint is non fresh - mark it as completed
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
 
-            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ...`,'I')
+            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT/1000} seconds ...`,'I')
 
             await WAIT_SOME_TIME()
 

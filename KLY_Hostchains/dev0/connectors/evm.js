@@ -178,7 +178,7 @@ export default class {
     }
 
 
-    makeCheckpoint = async checkpoint => { 
+    makeCheckpoint = async checkpointHeader => { 
 
         this.web3.eth.getTransactionCount(this.PUB,async(err,txCount)=>{
 			
@@ -196,7 +196,7 @@ export default class {
         
         		gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
 				
-        		data: contract.methods.change(checkpoint).encodeABI()
+        		data: contract.methods.change(JSON.stringify(checkpointHeader)).encodeABI()
     
     		}
 

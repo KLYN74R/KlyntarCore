@@ -21,9 +21,8 @@
         },
     
         "HIVEMIND":[
-            "RqtrnrLAdxpUkjqKS42RKbgN1ryXad3NeJrPTBZpdyVL",
-            "NTma18DvP6VhoWJ427urWCJhNYq2zsr17dzF7mZrEgPr",
-            "G1axah5Ciidjo7HuHHvXJPzq3mpNHr3QRiQgiUrVYZ5P"
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         ],
                     
         "HOSTCHAINS":{
@@ -97,7 +96,7 @@
     "HEIGHT_ON_HOSTCHAIN_TO_JUMP_OVER":0,
 
     "BLOCK_TIME":3000,
-
+    
     "STOP_GENERATE_BLOCKS":true,
     "STOP_VERIFY":false,
 

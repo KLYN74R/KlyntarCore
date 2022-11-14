@@ -190,12 +190,17 @@ DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
 
 
 
-//Use it to find checkpoints on hostchains, proceed it and join to generation
+//Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     console.log('Finding new checkpoint for QUORUM_THREAD on symbiote')
 
-    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD')
+    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(e=>{
+
+        console.log(e)
+
+    })
+
 
     if(possibleCheckpoint){
 
@@ -208,6 +213,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
+        // Structure is <poolID> => true if pool should be deleted
         SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
 
         //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
@@ -217,9 +223,27 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         }
 
+        //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
+
+        //____________________Go through the SPEC_OPERATIONS and perform__________________
+
         for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
 
             if(operation.type==='SLASH_UNSTAKE') continue
+
+              /*
+                
+                Perform changes here before move to the next checkpoint
+                
+                OPERATION in checkpoint has the following structure
+
+                {
+                    type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
+                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+                }
+                
+
+            */
 
             await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
 
@@ -278,8 +302,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         })
 
-        await atomicBatch.write()
+        //Updated WORKFLOW_OPTIONS
+        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+        //Set new checkpoint
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT=possibleCheckpoint
         
+        //Create new quorum based on new VALIDATORS_METADATA state
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('QUORUM_THREAD')
+        
+        atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
+
+        await atomicBatch.write()
+
 
     }
 

@@ -78,7 +78,7 @@
 
 import {GET_ALL_KNOWN_PEERS} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-import {BLAKE3, LOG} from '../../../KLY_Utils/utils.js'
+import {BLAKE3,LOG} from '../../../KLY_Utils/utils.js'
 import Web3 from 'web3'
 
 
@@ -86,6 +86,7 @@ import Web3 from 'web3'
 
 //Make it global
 let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
+
 
 
 
@@ -115,7 +116,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
         // We should find next range if no more range exists locally
         // Otherwise - get the range from local storage and add to cache
-        console.log('HERE because')
+        console.log(`[${threadID}] HERE because`)
 
         console.log(weFinishedToEnumThisRange)
         console.log(isInitialLoad)
@@ -127,8 +128,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
         if(range){
 
-            console.log('RANGE WAS IN DB')
-
+            console.log(`[${threadID}] RANGE WAS IN DB`)
             
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
@@ -144,7 +144,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
             //Otherwise - query next range
 
-            console.log('Going to query')
+            console.log(`[${threadID}] Going to query`)
             
             let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
     
@@ -173,7 +173,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
     
                 };
 
-                console.log('Going to ask ',options)
+                console.log(`[${threadID}] Going to ask `,options)
 
                 //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
                 if(nextRangeStartsFrom>=lastKnownBlockNumber) return
@@ -206,6 +206,8 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
                             error => LOG(`Error occured when trying to store events => ${error}`)
                         
                         )
+
+                        //TODO:And probably - delete the previous range(not to take up much space)
 
                     }else {
 
@@ -269,23 +271,21 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
 
-        let [id,payloadHash,aggregatedPub,aggregatedSigna,afkValidators] = event.returnValues.payload.split('@')
-
-        afkValidators = afkValidators.split('*')
+        let {ID,PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE,AFK_VALIDATORS} = JSON.parse(event.returnValues.payload)
 
         //_________________________ VERIFY _________________________
 
         //Make sure it's really next
-        let isNext = currentCheckpoint.ID+1 === +id
+        let isNext = currentCheckpoint.ID+1 === ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
-        let isEqualToRootPub = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
+        let isEqualToRootPub = bls.aggregatePublicKeys([QUORUM_AGGREGATED_SIGNERS_PUBKEY,...AFK_VALIDATORS]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
 
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
-        let isMajority = quorumNumber-afkValidators.length >= majority
+        let isMajority = quorumNumber-AFK_VALIDATORS.length >= majority
 
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.singleVerify(payloadHash,aggregatedPub,aggregatedSigna)
+        let signaIsOk = await bls.singleVerify(PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE)
 
 
         if(isNext && isEqualToRootPub && isMajority && signaIsOk) {
@@ -294,15 +294,15 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 HEADER:{
 
-                    ID:+id,
+                    ID,
 
-                    PAYLOAD_HASH:payloadHash,
+                    PAYLOAD_HASH,
 
-                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:aggregatedPub,
+                    QUORUM_AGGREGATED_SIGNERS_PUBKEY,
 
-                    QUORUM_AGGREGATED_SIGNATURE:aggregatedSigna,
+                    QUORUM_AGGREGATED_SIGNATURE,
 
-                    AFK_VALIDATORS:afkValidators
+                    AFK_VALIDATORS
 
                 },
 
@@ -341,9 +341,9 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
             for(let url of initURLs){
 
-                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+payloadHash).then(r=>r.json()).catch(_=>false)
+                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
-                if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload))===payloadHash){
+                if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
 
                     validCheckpoint.PAYLOAD = checkpointPayload
 
