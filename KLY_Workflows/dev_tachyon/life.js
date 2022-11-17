@@ -315,18 +315,47 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         await atomicBatch.write()
 
+        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
+
+    }else{
+
+        // Wait for the new checkpoint will appear on hostchain
+
+        console.log('================ QT ================')
+
+        // console.log(SYMBIOTE_META.QUORUM_THREAD)
+    
+        console.log('Quorum thread payload hash is ',SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD)
+        
+        let hash = BLAKE3(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD)
+    
+    
+    
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID+1
+    
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH=hash
+    
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.QUORUM_AGGREGATED_SIGNERS_PUBKEY = await bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM)
+    
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.QUORUM_AGGREGATED_SIGNATURE = await bls.singleSig(hash,PRIVATE_KEY)
+    
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.AFK_VALIDATORS=[]
+    
+
+    
+        console.log('Wished header ',SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER)
+
+        console.log('Going to make checkpoint ')
+
+        await HOSTCHAIN.CONNECTOR.makeCheckpoint(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER)
+        
+        console.log('================ VT ================')
+    
+        // console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+    
+        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
 
     }
-
-    console.log('================ QT ================')
-
-    console.log(SYMBIOTE_META.QUORUM_THREAD)
-
-    console.log('================ VT ================')
-
-    console.log(SYMBIOTE_META.VERIFICATION_THREAD)
-
-    setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)
 
 },
 

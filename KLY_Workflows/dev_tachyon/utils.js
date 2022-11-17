@@ -414,7 +414,6 @@ DECRYPT_KEYS=async spinner=>{
         //Main key
         global.PRIVATE_KEY=keys.kly
 
-
         if(CONFIG.EVM.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
         else CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
@@ -473,10 +472,11 @@ DECRYPT_KEYS=async spinner=>{
     
         privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
 
+    console.log('PRIVATE IS => ',privateKey)
         
-    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) symbioteConfigReference.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
+    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
         
-    else symbioteConfigReference.CONNECTOR.PRV=privateKey
+    else HOSTCHAIN.CONNECTOR.PRV=privateKey
         
     LOG(`Hostchain [\x1b[36;1m${CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
 

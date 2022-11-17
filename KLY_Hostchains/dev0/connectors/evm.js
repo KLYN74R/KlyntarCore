@@ -20,7 +20,7 @@ export default class {
 
     constructor(ticker){
 
-        let {URL,PUB,GAS_LIMIT,GAS_PRICE,AMOUNT,TO,NET,CHAIN_ID,HARDFORK} = CONFIG.SYMBIOTE.CONNECTOR
+        let {URL,PUB,GAS_LIMIT,GAS_PRICE,AMOUNT,TO,NET,CHAIN_ID,HARDFORK,CONTRACT,ABI} = CONFIG.SYMBIOTE.CONNECTOR
         
         this.web3=new Web3(URL)
         
@@ -37,6 +37,10 @@ export default class {
         this.AMOUNT=AMOUNT
         
         this.TO=TO
+
+        this.CONTRACT=new(new Web3()).eth.Contract(ABI,CONTRACT)
+
+        this.ABI=ABI
         
         this.CHAIN_ID=CHAIN_ID
         
@@ -169,6 +173,7 @@ export default class {
                 
                 err=`No data\x1b[31;1m (${e})\x1b[0m`
                 
+                
                 return '0'
             
             }),'ether')
@@ -192,20 +197,24 @@ export default class {
             	to:this.TO,
 
 				//Set enough limit and price for gas
-        		gasLimit: web3.utils.toHex(this.GAS_LIMIT),
+        		gasLimit: this.web3.utils.toHex(this.GAS_LIMIT),
         
-        		gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+        		gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('10','gwei')),
 				
-        		data: contract.methods.change(JSON.stringify(checkpointHeader)).encodeABI()
+        		data: this.CONTRACT.methods.change(JSON.stringify(checkpointHeader)).encodeABI()
     
     		}
 
     		let tx = new OldLibTransaction(txObject,{common:this.COMMON})
 
+            console.log('PRIVATE US ',this.PRV)
+
 		    //Sign the transaction
-    		tx.sign(privateKey)
+    		tx.sign(this.PRV)
 
 		    let raw = '0x' + tx.serialize().toString('hex')
+
+            console.log('Raw tx is ',raw)
 
 		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
 
