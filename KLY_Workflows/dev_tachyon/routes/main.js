@@ -322,6 +322,8 @@ Returns:
 */
 getCommitment=async(response,request)=>{
 
+    response.onAborted(()=>response.aborted=true)
+
     if(SYMBIOTE_META.START_CHECKPOINT_CREATION_PROCESS){
 
         response.end('Checkpoint creating process has been started')
@@ -509,6 +511,8 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 //Will be returned single signature where CONFIG.SYMBIOTE.PUB signed SIG(blockID+"FINALIZATION")
 getFinalization=async(response,request)=>{
 
+    response.onAborted(()=>response.aborted=true)
+
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_FINALIZATION_PROOFS){
 
         let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), proofsPool = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
@@ -651,6 +655,8 @@ Returns:
 */
 getSuperFinalization=async(response,request)=>{
 
+    response.onAborted(()=>response.aborted=true)
+
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
         let [blockCreator,index,hash] = request.getParameter(0)?.split(':'),
@@ -719,6 +725,8 @@ Returns:
 
 */
 getPayloadForCheckpoint=async(response,request)=>{
+
+    response.onAborted(()=>response.aborted=true)
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
 

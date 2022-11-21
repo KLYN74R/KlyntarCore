@@ -471,8 +471,6 @@ DECRYPT_KEYS=async spinner=>{
     let decipherHostchain = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV),
     
         privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
-
-    console.log('PRIVATE IS => ',privateKey)
         
     if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
         

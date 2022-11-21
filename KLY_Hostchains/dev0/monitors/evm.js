@@ -79,6 +79,7 @@
 import {GET_ALL_KNOWN_PEERS} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import {BLAKE3,LOG} from '../../../KLY_Utils/utils.js'
+import fetch from 'node-fetch'
 import Web3 from 'web3'
 
 
@@ -163,7 +164,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
     
             if(lastKnownBlockNumber){
 
-                LOG(`Found new latest known block on hostchain [\x1b[35;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+                LOG(`Found new latest known block on hostchain [\x1b[33;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
 
                 //Get from the height we stopped till the last known block
         
@@ -267,7 +268,7 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
-    console.log('One ',CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(currentCheckpoint.TIMESTAMP,+event.returnValues.blocktime))
+
 
     if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
 
@@ -277,8 +278,12 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         //_________________________ VERIFY _________________________
 
+        console.log(currentCheckpoint)
+
+        console.log('Checking isNEXT => ',currentCheckpoint.HEADER.ID,' => ',ID)
+
         //Make sure it's really next
-        let isNext = currentCheckpoint.ID+1 === ID
+        let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         let isEqualToRootPub = bls.aggregatePublicKeys([QUORUM_AGGREGATED_SIGNERS_PUBKEY,...AFK_VALIDATORS]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
@@ -289,6 +294,8 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
         let signaIsOk = await bls.singleVerify(PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE)
 
+
+        console.log('Verifying checkpoint ',isNext,' => ',isEqualToRootPub,' => ',isMajority,' => ',signaIsOk)
 
         if(isNext && isEqualToRootPub && isMajority && signaIsOk) {
 
@@ -340,21 +347,40 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
             let initURLs = [CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
 
+            LOG(`Going to find body to checkpoint \x1b[34;1m${validCheckpoint.HEADER.ID} ### ${validCheckpoint.HEADER.PAYLOAD_HASH}`,'S')
 
-            for(let url of initURLs){
+            console.log(initURLs)
 
-                let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
+            //__________________________________Start the infinite loop to find the body to checkpoint__________________________________
+                
+            let shouldStopWhile=false
 
-                if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
+            while(true){
+                
+                for(let url of initURLs){
 
-                    validCheckpoint.PAYLOAD = checkpointPayload
+                    if(SYSTEM_SIGNAL_ACCEPTED) break
+                                
+                    let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
-                    break
+                    if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
+
+                        validCheckpoint.PAYLOAD = checkpointPayload
+
+                        //Change flag for outer(while) cycle
+                        shouldStopWhile=true
+
+                        //And break this <for> cycle
+                        break
+
+                    }
 
                 }
 
+                if(shouldStopWhile || SYSTEM_SIGNAL_ACCEPTED) break
+            
             }
-
+            
             return validCheckpoint
 
         }
@@ -550,6 +576,7 @@ export default {
             console.log('Range pointer ',startFrom)
 
             //Start to enumerate the range of events, starting from position <startFrom>
+            
             for(let index in eventsRange){
 
                 if(index<startFrom) continue
@@ -558,31 +585,18 @@ export default {
 
                     possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
-                    if(possibleValidCheckpoint){
+                    //We do break here, because valid checkpoint was found or system signal accepted
+                    if(possibleValidCheckpoint?.PAYLOAD||SYSTEM_SIGNAL_ACCEPTED) break
 
-                        //We do break here, because valid checkpoint header was found(at least header)
-                        //If no payload, we'll try to find next time
+                    //If log is not a checkpoint - just increase counter for progress
+                    else SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
 
-                        break
-
-                    } else {
-
-                        //If log is not a checkpoint - just increase counter for progress
-
-                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
-
-                    } 
     
                 }
 
             }
 
-            //After the cycle over the range of events, check if valid checkpoint was found. If yes - return it, otherwise get the next range and start the cycle again
-            if(possibleValidCheckpoint?.PAYLOAD){
-
-                return possibleValidCheckpoint
-
-            }
+            if(possibleValidCheckpoint?.PAYLOAD) return possibleValidCheckpoint 
 
         }
 

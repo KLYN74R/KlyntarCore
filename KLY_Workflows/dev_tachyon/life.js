@@ -79,7 +79,7 @@ let graceful=()=>{
 
             LOG('Server stopped','I')
 
-            global.UWS_DESC&&UWS.us_listen_socket_close(UWS_DESC)
+            global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
 
             if(CONFIG.SYMBIOTE.STORE_QUORUM_COMMITMENTS_CACHE){
                 
@@ -151,7 +151,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
     }else{
 
-        LOG(`Block generation for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Block generation for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         SIG_PROCESS.GENERATE=true
 
@@ -347,7 +347,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         console.log('Going to make checkpoint ')
 
-        await HOSTCHAIN.CONNECTOR.makeCheckpoint(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER)
+        // await HOSTCHAIN.CONNECTOR.makeCheckpoint(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER)
         
         console.log('================ VT ================')
     

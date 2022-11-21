@@ -173,7 +173,7 @@ export default class {
                 
                 err=`No data\x1b[31;1m (${e})\x1b[0m`
                 
-                
+
                 return '0'
             
             }),'ether')
@@ -207,16 +207,18 @@ export default class {
 
     		let tx = new OldLibTransaction(txObject,{common:this.COMMON})
 
-            console.log('PRIVATE US ',this.PRV)
-
 		    //Sign the transaction
     		tx.sign(this.PRV)
 
 		    let raw = '0x' + tx.serialize().toString('hex')
 
-            console.log('Raw tx is ',raw)
+		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => {
 
-		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+                if(err) LOG(`Oops,some has been occured ${err}`,'W')
+                
+                else LOG(`Checkpoint has been published via tx ${txHash}`,'I')
+
+            })
 
 		})
 
