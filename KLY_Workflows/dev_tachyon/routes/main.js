@@ -711,7 +711,7 @@ To return payload of some checkpoint by hash
 
 Params:
 
-    [0] - checkpoint payload hash
+    [0] - checkpointID
 
 
 Returns:
@@ -730,9 +730,9 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
 
-        let payloadHash = request.getParameter(0),
+        let checkpointID = request.getParameter(0),
 
-            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).catch(_=>false)
+            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(checkpointID).catch(_=>false)
 
         if(checkpoint){
 
@@ -859,7 +859,7 @@ UWS_SERVER
 .post('/super_finalization',postSuperFinalization)
 
 
-.get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
+.get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
 
 
 .post('/operations',operationsAccept)

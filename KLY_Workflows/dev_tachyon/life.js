@@ -4,7 +4,7 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {START_VERIFICATION_THREAD} from './verification.js'
+import {CHECK_IF_THE_SAME_DAY, START_VERIFICATION_THREAD} from './verification.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
@@ -197,7 +197,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(e=>{
 
-        console.log(e)
+        // console.log(e)
 
     })
 
@@ -315,6 +315,27 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         await atomicBatch.write()
 
+
+        //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
+
+
+        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
+
+        let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+
+        if(checkpointIsFresh && iAmInTheQuorum){
+
+            let nextCheckpointIdAlreadyGenerated = await SYMBIOTE_META.CHECKPOINTS.get(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID + 1).catch(_=>false)
+
+            if(!nextCheckpointIdAlreadyGenerated){
+
+                global.QUORUM_MEMBER_MODE=true
+
+            }
+
+        }
+
+        //Continue to find checkpoints
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
 
     }else{
