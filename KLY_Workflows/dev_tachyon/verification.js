@@ -2,7 +2,7 @@ import {
     
     GET_ACCOUNT_ON_SYMBIOTE, BLOCKLOG, VERIFY, GET_STUFF, GET_ALL_KNOWN_PEERS,
     
-    GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE
+    GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE, GET_QUORUM_MEMBERS_URLS
 
 } from './utils.js'
 
@@ -62,7 +62,8 @@ GET_BLOCK = async(blockCreator,index) => {
     
             //Combine all nodes we know about and try to find block there
             let allVisibleNodes=GET_ALL_KNOWN_PEERS()
-            
+    
+            let nodeOfBlockCreator = await 
     
             for(let url of allVisibleNodes){
 
@@ -163,6 +164,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             aggregatedPub:<>,
             afkValidators
         }
+
     
     */
 
@@ -170,20 +172,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
-    let promises=[CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL] //immediately push custom URL as the first node we'll communicate. It might be server runned in cooperation with some plugin for custom exchange logic
-    
-
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
-        
-        pubKey => promises.push(GET_STUFF(pubKey).then(
-        
-            stuffData => stuffData.payload.url
-        
-        ))
-
-    )
-            
-    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')]
 
 
     //if we're in quorum - start to grab commitments => finalization_proofs => super finalization_proofs

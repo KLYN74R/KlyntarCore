@@ -107,19 +107,6 @@ GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_
         if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,stuff)
 
 
-    }else{
-
-        LOG(`Can't find stuff with ID=\x1b[36;1m${stuffID}\x1b[0m in cache. Going to ask the network`,'I')
-
-        //Combine all nodes we know about and try to find block there
-        let allVisibleNodes = GET_ALL_KNOWN_PEERS()
-
-        for(let url of allVisibleNodes){
-
-            let answer = await fetch(url+'/stuff')
-
-        }
-
     }
 
 }),
@@ -395,6 +382,34 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
 
 GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS],
+
+
+
+
+GET_QUORUM_MEMBERS_URLS = async threadID => {
+
+    let promises=[]
+
+    SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.forEach(
+        
+        pubKey => promises.push(GET_STUFF(pubKey).then(
+        
+            stuffData => stuffData.payload.url
+        
+        ))
+
+    )
+
+    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+    return quorumMembersURLs
+
+},
+
+
+
+
+GET_URL_OF_VALIDATOR = pubKey => GET_STUFF(pubKey).then(stuffData => stuffData.payload.url),
 
 
 

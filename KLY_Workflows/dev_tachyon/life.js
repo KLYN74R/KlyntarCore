@@ -1,10 +1,10 @@
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {CHECK_IF_THE_SAME_DAY, START_VERIFICATION_THREAD} from './verification.js'
+import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
@@ -359,37 +359,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
-START_TO_GRAB_COMMITMENTS=async block=>{
+CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
+    // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
-    //Exchange with other quorum members
-
-       let promises=[]
-
-
-       SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
-           
-           pubKey => promises.push(GET_STUFF(pubKey).then(
-           
-               stuffData => stuffData.payload.url
-           
-           ))
-   
-       )
-   
-   
-       console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
-   
-       console.log(metadata)
-               
-       let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-   
-       for(let memberURL of quorumMembersURLs){
-   
-           //query here
-   
-       }
-   
+    let latestBlock = await HOSTCHAINS.
 
 },
 
@@ -421,32 +395,79 @@ CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
     let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
 
     //Exchange with other quorum members
-
-    let promises=[]
-
-
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.forEach(
-        
-        pubKey => promises.push(GET_STUFF(pubKey).then(
-        
-            stuffData => stuffData.payload.url
-        
-        ))
-
-    )
+    let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
 
 
     console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
 
     console.log(metadata)
-            
-    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
 
     for(let memberURL of quorumMembersURLs){
 
         //query here
 
     }
+
+},
+
+
+
+
+SEND_BLOCKS_AND_GRAB_COMMITMENTS = async block => {
+
+    // Descriptor has the following structure - {checkpointID,height}
+    let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+
+    if(!appropriateDescriptor || appropriateDescriptor.checkpointID!==SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
+
+        //If we still works on the old checkpoint - continue
+        //Otherwise,update the latest height/hash and send them to the new QUORUM
+
+        let myLatestSendBlockToThemInCurrentQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX
+
+        appropriateDescriptor = {
+
+            checkpointID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
+
+            height:myLatestSendBlockToThemInCurrentQuorum+1,
+
+            alreadyHas:[] //array of quorum_members who already received/send
+
+        }
+
+    }
+
+    let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+
+
+    for(let url of quorumMembersURLs){
+
+        /*
+        
+        0. Share the block via                 POST /block
+
+        1. Grab the commitments via            GET /get_commitments/:BLOCK_ID_WITH_HASH
+
+        2. After getting 2/3N+1 commitments, aggregate it and call          POST /finalization
+
+        3. 
+
+        */
+
+    }
+
+
+    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,0)
+
+},
+
+
+
+
+//Function to monitor the available block creators
+HEALTH_MONITORING=()=>{
+
+
 
 }
 
