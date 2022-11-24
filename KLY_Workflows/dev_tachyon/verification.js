@@ -1,10 +1,4 @@
-import {
-    
-    GET_ACCOUNT_ON_SYMBIOTE, BLOCKLOG, VERIFY, GET_STUFF, GET_ALL_KNOWN_PEERS,
-    
-    GET_QUORUM, GET_FROM_STATE_FOR_QUORUM_THREAD, GET_FROM_STATE, GET_QUORUM_MEMBERS_URLS
-
-} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -60,10 +54,10 @@ GET_BLOCK = async(blockCreator,index) => {
     
             LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
+
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes=GET_ALL_KNOWN_PEERS()
-    
-            let nodeOfBlockCreator = await 
+            let allVisibleNodes=await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+
     
             for(let url of allVisibleNodes){
 
@@ -74,8 +68,21 @@ GET_BLOCK = async(blockCreator,index) => {
                 if(itsProbablyBlock){
     
                     let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
+
+                    let overviewIsOk =
+                    
+                        typeof itsProbablyBlock.events==='object'
+                        &&
+                        typeof itsProbablyBlock.prevHash==='string'
+                        &&
+                        typeof itsProbablyBlock.sig==='string'
+                        &&
+                        itsProbablyBlock.index===index
+                        &&
+                        itsProbablyBlock.creator===blockCreator
                 
-                    if(typeof itsProbablyBlock.events==='object'&&typeof itsProbablyBlock.prevHash==='string'&&typeof itsProbablyBlock.sig==='string' && itsProbablyBlock.index===index && itsProbablyBlock.creator===blockCreator){
+
+                    if(overviewIsOk){
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 

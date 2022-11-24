@@ -195,12 +195,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     console.log('Finding new checkpoint for QUORUM_THREAD on symbiote')
 
-    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(e=>{
-
-        // console.log(e)
-
-    })
-
+    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
     if(possibleCheckpoint){
 
@@ -363,48 +358,51 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
-    let latestBlock = await HOSTCHAINS.
+    let canProposeCheckpoint = await HOSTCHAIN.MONITOR.CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT(),
 
-},
-
-
+        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
 
-CREATE_THE_MOST_SUITABLE_CHECKPOINT=async()=>{
+    if(canProposeCheckpoint && iAmInTheQuorum){
 
-    //Method which create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
+        // Stop to generate commitments/finalization proofs
+        global.QUORUM_MEMBER_MODE=false
 
-    //Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
+        // Create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
 
-    //{INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
+        // Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
 
-    let metadata = {}
+        // {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
 
-    SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
+        let metadata = {}
 
-        metadata[validator]={
+        SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
+
+            metadata[validator]={
             
-            INDEX:descriptor.id,
+                INDEX:descriptor.id,
             
-            HASH:descriptor.hash
+                HASH:descriptor.hash
         
+            }
+
+        })
+
+        let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
+
+        //Exchange with other quorum members
+        let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+
+
+        console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
+
+        console.log(metadata)
+
+        for(let memberURL of quorumMembersURLs){
+
+            //query here
+
         }
-
-    })
-
-    let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
-
-    //Exchange with other quorum members
-    let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
-
-
-    console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
-
-    console.log(metadata)
-
-    for(let memberURL of quorumMembersURLs){
-
-        //query here
 
     }
 

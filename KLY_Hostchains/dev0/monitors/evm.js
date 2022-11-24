@@ -600,6 +600,33 @@ export default {
 
         }
 
+    },
+
+
+
+
+    //This function gets the information from hostchain and if it's a new day - we can start proposing the checkpoint
+    CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT:async()=>{
+
+        let latestKnownBlock = await web3.eth.getBlockNumber().catch(_=>false)
+
+        if(latestKnownBlock){
+
+            // We should take previous blocks to make sure that new day has started
+
+            let severalBlocksAgo = CONFIG.SYMBIOTE.MONITOR.BLOCK_STOCK_TO_PROPOSE_CHECKPOINT,
+
+                block = await web3.eth.getBlock(latestKnownBlock-severalBlocksAgo).catch(_=>false)
+
+
+            if(block){
+
+                return CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,+block.timestamp)
+
+            }
+
+        }
+
     }
     
 }

@@ -70,8 +70,6 @@
 
                     "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
                     "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
-                    "NET":"TEST",
-                    "PROVIDER_TYPE":"NODE",
                     "URL":"http://localhost:2339",
                     "CONFIRMATIONS":1,
                     "CREDS":"Vlad:ltcpassword",
@@ -81,7 +79,6 @@
 
                 "bsc":{
                     "URL":"https://data-seed-prebsc-1-s1.binance.org:8545/",
-                    "PROVIDER_TYPE":"API",
                     "PUB":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
                     "PRV":"fbd0739ef27de0efa663b375ecb2ffb2ba2ac68e3825737eb6e9e39192cbb8994ae6ba5d34d7f630deaeb9be7da8bad231f3b8b460fcec68aa63a2724df4309f78431a907c3b2e728f6dad65fe93ec1e",
                     "TO":"0x4741c39e6096c192Db6E1375Ff32526512069dF5",
@@ -95,7 +92,6 @@
 
                 "eth":{
                     "URL":"https://ropsten.infura.io/v3/221ec7661021452ab89a4a5fa29ebf68",
-                    "PROVIDER_TYPE":"NAAS",
                     "PUB":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",
                     "PRV":"8db9279e332ebd4e098fbba039019ca90b7a45e4c433bc1542ce9e56058eb5a66db9df0fce8ffbfec41f74440fb1a010727b0db46e2a0cba25143c485bae7002a4b4ba48137177536e1a5e2007c573ce",
                     "TO":"0xAa044a5249d93dC7C967B6d7A2E5f92c9810741A",

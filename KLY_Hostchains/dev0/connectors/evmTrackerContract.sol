@@ -21,7 +21,6 @@ contract KlyntarHostchainDev0 {
         
     event Checkpoint(string payload,uint256 blocktime);
 
-
 	constructor(string memory initialCheckpoint){
 
 		emit Checkpoint(initialCheckpoint,block.timestamp);
