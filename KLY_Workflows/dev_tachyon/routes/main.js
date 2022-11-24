@@ -324,9 +324,9 @@ getCommitment=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(SYMBIOTE_META.START_CHECKPOINT_CREATION_PROCESS){
+    if(!QUORUM_MEMBER_MODE){
 
-        response.end('Checkpoint creating process has been started')
+        response.end(`Checkpoint creating process has been started or I'm not in quorum`)
 
         return
 

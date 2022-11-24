@@ -1,10 +1,10 @@
-import {BROADCAST,DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS} from './utils.js'
+import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS} from './utils.js'
+
+import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
-import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
@@ -442,13 +442,16 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async block => {
 
         /*
         
-        0. Share the block via                 POST /block
+        0. Share the block via POST /block
 
-        1. Grab the commitments via            GET /get_commitments/:BLOCK_ID_WITH_HASH
+        1. Grab the commitments via GET /get_commitments/:BLOCK_ID_WITH_HASH
 
-        2. After getting 2/3N+1 commitments, aggregate it and call          POST /finalization
+        2. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
 
-        3. 
+        3. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
+
+        
+        [RESULT]
 
         */
 
@@ -548,100 +551,11 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
         //Store block locally
         await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate)
-
-
-        if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
-
-            //________________________________Create commitments________________________________
-            
-            let commitmentTemplate={
-        
-                B:blockID,
-
-                H:hash,
-
-                O:blockCandidate.sig,
-            
-                S:await SIG(blockID+hash)//self-sign our commitment as one of the validator
-        
-            }
-        
-            commitmentsArray.push(commitmentTemplate)
-
-
-            
-            //Create local pool and push our commitment if we're in quorum
-
-            SYMBIOTE_META.COMMITMENTS.set(blockID+'/'+hash,new Map())
-
-            SYMBIOTE_META.COMMITMENTS.get(blockID+'/'+hash).set(CONFIG.SYMBIOTE.PUB,commitmentTemplate.S)
-
-        }
            
     }
 
-  
     //Update the GENERATION_THREAD after all
     await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
-
-
-    blocksPool.forEach(block=>BROADCAST('/block',block))
-
-
-    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
-
-
-        commitmentsArray={
-        
-            validator:CONFIG.SYMBIOTE.PUB,
-            
-            payload:commitmentsArray
-        
-        }
-    
-        
-        //Here we need to send metadata templates to other validators and get the signed proofs that they've successfully received blocks
-        //?NOTE - we use setTimeout here to delay sending our commitments. We need to give some time for network to share blocks
-        setTimeout(async()=>{
-    
-            let promises = []
-    
-            //0. Initially,try to get pubkey => node_ip binding 
-            SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(
-                
-                pubkey => promises.push(GET_STUFF(pubkey))
-                
-            )
-    
-    
-            let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url)),
-            
-                payload = JSON.stringify(commitmentsArray)//this will be send to validators and to other nodes & endpoints
-    
-    
-            for(let validatorNode of pureUrls) {
-    
-                if(validatorNode===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
-    
-                fetch(validatorNode+'/commitments',{
-                    
-                    method:'POST',
-                    
-                    body:payload
-                
-                }).catch(_=>{})//doesn't matter if error
-    
-            }
-    
-            //You can also share proofs over the network, not only to validators
-            CONFIG.SYMBIOTE.ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES
-            &&
-            BROADCAST('/commitments',payload)
-    
-    
-        },CONFIG.SYMBIOTE.TIMEOUT_TO_PRE_SHARE_COMMITMENTS)    
-
-    }
 
 },
 

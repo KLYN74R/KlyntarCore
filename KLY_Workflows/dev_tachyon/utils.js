@@ -294,11 +294,21 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
  * It's just for better efficiency
  * 
  */
- BROADCAST=(route,data)=>{
+ BROADCAST=async(route,data)=>{
 
     let promises=[]
 
 
+
+    let quorumMembers = await GET_QUORUM_MEMBERS_URLS()
+
+    quorumMembers.forEach(url=>
+    
+        fetch(url+route,{method:'POST',body:JSON.stringify(data)}).catch(_=>{})
+        
+    )
+
+    
     //First of all-send to important destination points - it might be lightweight retranslators, CDNs and so on
     Object.keys(CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
         
