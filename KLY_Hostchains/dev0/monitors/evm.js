@@ -76,7 +76,7 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS,GET_MAJORITY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import {BLAKE3,LOG} from '../../../KLY_Utils/utils.js'
 import fetch from 'node-fetch'
@@ -551,12 +551,8 @@ export default {
 
             quorumNumber=SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
 
-            majority = Math.floor(quorumNumber*(2/3))+1
+            majority = GET_MAJORITY(threadID)
 
-
-        //Check if majority is not bigger than number of validators. It's possible when there is a small number of validators
-
-        majority = majority > quorumNumber ? quorumNumber : majority
 
         //Find next checkpoint and verify signatures
 

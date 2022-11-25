@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS, GET_ALL_KNOWN_PEERS} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -213,10 +213,8 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
                 quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
 
-                majority = Math.floor(quorumSize*(2/3)+1)
+                majority = GET_MAJORITY('VERIFICATION_THREAD')
 
-            
-            majority = majority > quorumSize ? quorumSize : majority
             
             let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkValidators.length >= majority
 

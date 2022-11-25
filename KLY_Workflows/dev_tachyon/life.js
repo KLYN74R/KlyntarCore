@@ -1,4 +1,4 @@
-import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS} from './utils.js'
+import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS, GET_MAJORITY} from './utils.js'
 
 import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
@@ -477,59 +477,122 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     */
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(block)}
+    let optionsToSend = {method:'POST',body:JSON.stringify(block)},
 
-    let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
+        quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true),
 
-    let promises=[]
+        majority = GET_MAJORITY('QUORUM_THREAD'),
 
-    let blockIDAndHash = CONFIG.SYMBIOTE.PUB+':'+block.index+blockHash
+        blockID = CONFIG.SYMBIOTE.PUB+':'+block.index,
+
+        promises=[],
+
+        commitments
 
 
-    //Descriptor is {url,pubKey}
+    if(!SYMBIOTE_META.COMMITMENTS.has(blockID)){
 
-    for(let descriptor of quorumMembers){
+        SYMBIOTE_META.COMMITMENTS.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
 
-        // No sense to get the commitment if we already have
-
-        if(commitments.has(descriptor.pubKey)) continue
-
-        /*
-        
-        0. Share the block via POST /block
-
-        1. Grab the commitments via GET /get_commitments/:BLOCK_ID_WITH_HASH
-
-        2. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
-
-        3. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
-
-        */
-
-        let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
-
-            let commitmentIsOk = await bls.singleVerify(blockIDAndHash,descriptor.pubKey,possibleCommitment).catch(_=>false)
-
-            if(commitmentIsOk){
-
-                commitments.set(descriptor.pubKey,possibleCommitment)
-
-            }
-
-        })
-
-        // To make sharing async
-        promises.push(promise)
+        commitments = SYMBIOTE_META.COMMITMENTS.get(blockID)
 
     }
 
 
-    await Promise.all(promises)
 
-    // if()
+    if(commitments.size<majority){
+
+        //Descriptor is {url,pubKey}
+        for(let descriptor of quorumMembers){
+
+            // No sense to get the commitment if we already have
+    
+            if(commitments.has(descriptor.pubKey)) continue
+    
+            /*
+            
+            0. Share the block via POST /block and get the commitment as the answer
+       
+            1. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
+    
+            2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
+    
+            */
+    
+            let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
+    
+                let commitmentIsOk = await bls.singleVerify(blockID+blockHash,descriptor.pubKey,possibleCommitment).catch(_=>false)
+    
+                if(commitmentIsOk) commitments.set(descriptor.pubKey,possibleCommitment)
+    
+            })
+    
+            // To make sharing async
+            promises.push(promise)
+    
+        }
+    
+        await Promise.all(promises)
+
+    }
 
 
-    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,0)
+    //_______________________ It means that we now have enough commitments for appropriate block. Now we can start to generate FINALIZATION_PROOF _______________________
+
+    // On this step we should go through the quorum members and share FINALIZATION_PROOF to get the SUPER_FINALIZATION_PROOFS(and this way - finalize the block)
+
+    if(commitments.size>=majority){
+
+        let signers = [...commitments.keys()]
+
+        let signas = [...commitments.values()]
+
+        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
+
+
+        let finalizationProof = {
+
+
+
+        }
+
+
+        //Descriptor is {url,pubKey}
+        for(let descriptor of quorumMembers){
+
+            // No sense to get the commitment if we already have
+    
+            if(commitments.has(descriptor.pubKey)) continue
+    
+            /*
+            
+            0. Share the block via POST /block
+        
+            1. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
+    
+            2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
+    
+            */
+    
+            let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
+    
+                let commitmentIsOk = await bls.singleVerify(blockID+blockHash,descriptor.pubKey,possibleCommitment).catch(_=>false)
+    
+                if(commitmentIsOk) commitments.set(descriptor.pubKey,possibleCommitment)
+    
+            })
+    
+            // To make sharing async
+            promises.push(promise)
+    
+        }
+    
+        await Promise.all(promises)
+
+    }
+
+
+    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,1000)
 
 },
 
@@ -1311,17 +1374,8 @@ START_AWAKENING_PROCEDURE=()=>{
 
 
         //Here we have verified signatures from validators
-        
 
-        let quorumNumbers=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
-
-            majority = Math.floor(quorumNumbers*(2/3))+1
-
-
-        //Check if majority is not bigger than number of validators. It possible when there is small number of validators
-
-        majority = majority > quorumNumbers ? quorumNumbers : majority
-
+        let majority = GET_MAJORITY('QUORUM_THREAD')
 
 
         //If we have majority votes - we can aggregate and share to "ressuect" our node

@@ -1,10 +1,10 @@
-import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
+import {BROADCAST,VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
+
+import{BODY,SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import OPERATIONS_VERIFIERS from '../operationsVerifiers.js'
-
-import {BROADCAST,VERIFY,SIG,BLOCKLOG} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -59,28 +59,34 @@ acceptBlocks=response=>{
         
             if(last){
             
-                let block=await PARSE_JSON(buffer), hash=Block.genHash(block)
+                let block=await PARSE_JSON(buffer),
                 
-                //No sense to verify & accept own block
-                if(block.creator===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index+'/'+hash) || block.index<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX){
+                    hash=Block.genHash(block),
 
-                    !response.aborted && response.end('OK')
+                    myCommitment = SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index)?.get(CONFIG.SYMBIOTE.PUB),
+
+                    // index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
+
+                    isFreshEnough = block.index >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[block.creator]?.INDEX 
+                
+
+                if(myCommitment || !isFreshEnough){
+
+                    !response.aborted && response.end(myCommitment)
 
                     return
                 
                 }
                 
-                //Check if we can accept this block
+                //Otherwise - check if we can accept this block
                 
                 let allow=
             
                     typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                     &&
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX+CONFIG.SYMBIOTE.BLOCK_ACCEPTION_NORMAL_DIFFERENCE>block.index //check if block index is not too far from verification thread
-                    &&
                     await VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
                     &&
-                    await SYMBIOTE_META.BLOCKS.get(block.creator+":"+block.index-1).then(prevBlock=>{
+                    await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
 
                         //Compare hashes to make sure it's a chain
 
@@ -111,7 +117,11 @@ acceptBlocks=response=>{
                          
                     )
 
-                   !response.aborted && response.end('OK')
+                    
+                    let commitment = await SIG(blockID+hash)
+
+                    !response.aborted && response.end(commitment)
+
 
                 }else !response.aborted && response.end('Overview failed')
             
@@ -174,199 +184,6 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 //____________________________________________________________CONSENSUS STUFF__________________________________________________________________
-
-
-/*
-
-*************************************************************
-                                                            *
-To accept signatures of blocks from validators in quorum    *
-                                                            *
-*************************************************************
-
-
-Here we receive the object with validator's pubkey and his array of commitments
-
-{
-    validator:<PUBKEY>,
-    payload:[
-        <Commitment1>,
-        <Commitment2>,
-        <Commitment3>,
-        ...
-        <CommitmentN>,
-    ]
-}
-
-Commitment is object
-
-{
-    
-    B:<BLOCK ID => <Address of validator whose block we sign>:<Index of block>
-
-    H:<Block hash>
-
-    O:<Origin -> the signature by block's creator to make sure that creator indeed created it's block>
-    
-    S:<Signature => SIG(BLOCK_ID+HASH)>
-        
-}
-
-To verify that ValidatorX has received and confirmed block BLOCK_ID from ValidatorY we check
-
-VERIFY(BLOCK_ID+HASH,Signature,Validator's pubkey)
-
-
-***********************************************************************************
-
-We put these commitments to local mapping SYMBIOTE_META.COMMITMENTS. The key is blockID/HASH and value is mapping like this
-
-{
-    "<VALIDATOR-WHO-CREATE-COMMITMENT>":"<HIS_BLS_SIGNATURE>"
-}
-
-Once we notice that inner mapping size is 2/3N+1 where N is quorum size, we can create FINALIZATION_PROOF,aggregate these values and flush mapping
-
-More info about FINALIZATION_PROOF available in description to POST /finalization
-
-
-*/
-
-postCommitments=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    
-    let commitmentsSet=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
-
-
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_COMMITMENTS && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(commitmentsSet.validator)){
-
-        // !response.aborted && response.end('OK')
-
-        //Go through the set of commitments
-        for(let singleCommitment of commitmentsSet.payload){
-
-            
-            let signaturesIsOk =    await VERIFY(singleCommitment.B+singleCommitment.H,singleCommitment.S,commitmentsSet.validator)
-            
-                                    &&
-                                
-                                    await VERIFY(singleCommitment.H,singleCommitment.O,singleCommitment.B.split(':')[0])
-
-
-            
-            if(signaturesIsOk){
-
-                //Check if appropriate pool exist(related to blockID and hash)
-                let poolID = singleCommitment.B+"/"+singleCommitment.H
-
-                if(!SYMBIOTE_META.COMMITMENTS.has(poolID)) {
-
-                    if(SYMBIOTE_META.COMMITMENTS.size>=CONFIG.SYMBIOTE.COMMITMENTS_POOL_LIMIT) return
-
-                    SYMBIOTE_META.COMMITMENTS.set(poolID,new Map())
-
-                }
-
-                let mapping = SYMBIOTE_META.COMMITMENTS.get(poolID)
-
-                mapping.set(commitmentsSet.validator,singleCommitment.S)
-
-
-                let quorumSize = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
-                
-                    majority = Math.floor(quorumSize*(2/3)+1)
-
-                majority = majority > quorumSize ? quorumSize : majority
-            
-                let majorityNumberOfCommitments = mapping.size >= majority
-
-                if(majorityNumberOfCommitments){
-
-                    //If we have more than 2/3N+1 commitments - we can generate FINALIZATION_PROOF
-
-                    let finalizationProofSignature = await SIG(singleCommitment.B+singleCommitment.H+"FINALIZATION")
-
-                    if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map([[CONFIG.SYMBIOTE.PUB,finalizationProofSignature]]))
-
-                    //Flush commitments because no more sense to store it when we have FINALIZATION_PROOF
-                    SYMBIOTE_META.COMMITMENTS.delete(poolID)
-    
-                }
-
-            }
-        
-        }
-        
-        !response.aborted&&response.end('OK')
-
-    }else !response.aborted&&response.end('Route is off')
-    
-
-}),
-
-
-/*
-
-To return own commitment by blockID:Hash
-
-We return single signature where sign => SIG(blockID+hash)
-
-Params:
-
-    [0] - blockID:Hash
-
-Returns:
-
-    SIG(blockID+hash)
-
-*/
-getCommitment=async(response,request)=>{
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(!QUORUM_MEMBER_MODE){
-
-        response.end(`Checkpoint creating process has been started or I'm not in quorum`)
-
-        return
-
-    }
-
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_COMMITMENTS){
-
-        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), commitmentsPool = SYMBIOTE_META.COMMITMENTS.get(blockCreator+':'+index+'/'+hash)
-
-        if(commitmentsPool.has(CONFIG.SYMBIOTE.PUB)){
-
-            response.end(commitmentsPool.get(CONFIG.SYMBIOTE.PUB))
-
-        }else if(CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS.ALL || CONFIG.SYMBIOTE.RESPONSIBILITY_ZONES.COMMITMENTS[blockCreator]){
-
-            let block = await SYMBIOTE_META.BLOCKS.get(blockCreator+':'+index).catch(_=>false)
-
-            if(block){
-
-                let blockHash = Block.genHash(block)
-
-                if(blockHash===hash){
-
-                    //Generete commitment
-
-                    let commitmentSig = await SIG(blockCreator+':'+index+hash)
-                    
-                    SYMBIOTE_META.COMMITMENTS.set(blockCreator+':'+index+'/'+hash,new Map([[CONFIG.SYMBIOTE.PUB,commitmentSig]]))
-
-                    response.end(commitmentSig)
-
-                }else response.end('Hash mismatch')
-
-            }else response.end('Block not found')
-
-        }else response.end('Not my responsibility zone')
-
-    }else response.end('Route is off')
-
-},
 
 
 
@@ -453,11 +270,7 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
             mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
 
             
-            let quorumSize = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length, 
-            
-                majority = Math.floor(quorumSize*(2/3)+1)
-
-            majority = majority > quorumSize ? quorumSize : majority
+            let majority = GET_MAJORITY('QUORUM_THREAD')
             
             let majorityVotedForFinalization = mapping.size >= majority
 
@@ -507,8 +320,8 @@ postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
 
 
-//Returns only own FINALIZATION_PROOF
-//Will be returned single signature where CONFIG.SYMBIOTE.PUB signed SIG(blockID+"FINALIZATION")
+// Accept aggregated commitments which proofs us that 2/3N+1 has the same block and generate FINALIZATION_PROOF => SIG(blockID+hash+'FINALIZATION')
+
 getFinalization=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
@@ -602,9 +415,9 @@ postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origi
 
             quorumSize = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
 
-            majority = Math.floor(quorumSize*(2/3)+1)
+            majority = GET_MAJORITY('QUORUM_THREAD')
 
-        majority = majority > quorumSize ? quorumSize : majority
+
 
         let majorityVotedForFinalization = quorumSize-superFinalizationProof.afkValidators.length >= majority
 
@@ -840,11 +653,6 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 UWS_SERVER
 
 
-
-//1st stage - logic with commitments
-.get('/get_commitments/:BLOCK_ID_WITH_HASH',getCommitment)
-
-.post('/commitments',postCommitments)
 
 
 //2nd stage - logic with finalization

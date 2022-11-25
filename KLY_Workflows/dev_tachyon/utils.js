@@ -424,6 +424,22 @@ GET_URL_OF_VALIDATOR = pubKey => GET_STUFF(pubKey).then(stuffData => stuffData.p
 
 
 
+GET_MAJORITY=threadID=>{
+
+    let quorumNumber = SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
+
+        majority = Math.floor(quorumNumber*(2/3))+1
+
+
+    //Check if majority is not bigger than number of validators. It's possible when there is a small number of validators
+
+    return majority > quorumNumber ? quorumNumber : majority
+
+},
+
+
+
+
 DECRYPT_KEYS=async spinner=>{
 
     
