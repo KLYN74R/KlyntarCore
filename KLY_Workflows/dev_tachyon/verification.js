@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS, GET_ALL_KNOWN_PEERS} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -36,7 +36,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
         .then(r=>r.json()).then(block=>{
     
-            let hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
+            let hash=Block.genHash(block)
                 
             if(typeof block.events==='object'&&typeof block.prevHash==='string'&&typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
     
@@ -67,7 +67,7 @@ GET_BLOCK = async(blockCreator,index) => {
                 
                 if(itsProbablyBlock){
     
-                    let hash=Block.genHash(itsProbablyBlock.creator,itsProbablyBlock.time,itsProbablyBlock.events,itsProbablyBlock.index,itsProbablyBlock.prevHash)
+                    let hash=Block.genHash(itsProbablyBlock)
 
                     let overviewIsOk =
                     
@@ -179,7 +179,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
-    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')]
+    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD'),...GET_ALL_KNOWN_PEERS()]
 
 
     //if we're in quorum - start to grab commitments => finalization_proofs => super finalization_proofs
@@ -241,15 +241,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 //We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
 //If major version was changed and we still has an old version - we should stop node and update software
 IS_MY_VERSION_STILL_OK = newMajorVersionFromSpecOps => SYMBIOTE_META.VERSION >= newMajorVersionFromSpecOps,
-
-
-
-
-PROPOSE_TO_SKIP=(validator,metaDataToFreeze)=>{
-
-    
-
-},
 
 
 
@@ -669,7 +660,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             let block = await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
 
-                blockHash = block && Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
+                blockHash = block && Block.genHash(block),
 
                 quorumSolutionToVerifyBlock = false, //by default
 
@@ -923,16 +914,15 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 verifyBlock=async block=>{
 
 
-    let blockHash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash),
+    let blockHash=Block.genHash(block),
 
-
-    overviewOk=
+        overviewOk=
     
-        block.events?.length<=SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
-        &&
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
-        &&
-        await VERIFY(blockHash,block.sig,block.creator)
+            block.events?.length<=SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
+            &&
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
+            &&
+            await VERIFY(blockHash,block.sig,block.creator)
 
 
     // if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){

@@ -59,7 +59,7 @@ acceptBlocks=response=>{
         
             if(last){
             
-                let block=await PARSE_JSON(buffer), hash=Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
+                let block=await PARSE_JSON(buffer), hash=Block.genHash(block)
                 
                 //No sense to verify & accept own block
                 if(block.creator===CONFIG.SYMBIOTE.PUB || SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index+'/'+hash) || block.index<SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator]?.INDEX){
@@ -84,7 +84,7 @@ acceptBlocks=response=>{
 
                         //Compare hashes to make sure it's a chain
 
-                        let prevHash = Block.genHash(prevBlock.creator,prevBlock.time,prevBlock.events,prevBlock.index,prevBlock.prevHash)
+                        let prevHash = Block.genHash(prevBlock)
 
                         return prevHash === block.prevHash
 
@@ -346,7 +346,7 @@ getCommitment=async(response,request)=>{
 
             if(block){
 
-                let blockHash = Block.genHash(block.creator,block.time,block.events,block.index,block.prevHash)
+                let blockHash = Block.genHash(block)
 
                 if(blockHash===hash){
 

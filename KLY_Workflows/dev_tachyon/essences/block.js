@@ -21,6 +21,6 @@ export default class Block{
     
     }
     
-    static genHash=(creator,time,eventsSet,index,prevHash)=>BLAKE3( creator + time + JSON.stringify(eventsSet) + CONFIG.SYMBIOTE.SYMBIOTE_ID + index + prevHash)
+    static genHash=block=>BLAKE3( block.creator + block.time + JSON.stringify(block.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
 
 }

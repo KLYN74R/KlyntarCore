@@ -411,7 +411,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-SEND_BLOCKS_AND_GRAB_COMMITMENTS = async block => {
+SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     // Descriptor has the following structure - {checkpointID,height}
     let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
@@ -433,12 +433,66 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async block => {
 
         }
 
+        // And store new descriptor(till it will be old)
+        SYMBIOTE_META.STUFF_CACHE.set('BLOCK_SENDER_DESCRIPTOR',appropriateDescriptor)
+
+        // Also, clear non-valid caches
+
+        SYMBIOTE_META.COMMITMENTS.clear()
+
+        SYMBIOTE_META.FINALIZATION_PROOFS.clear()
+
+        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.clear()
+
     }
 
-    let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
 
 
-    for(let url of quorumMembersURLs){
+    let block = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height).catch(e=>false)
+
+    // Check for this block after a while
+    if(!block) setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,2000)
+
+    let blockHash = Block.genHash(block)
+
+
+    /*
+    
+    [Reminder]
+    
+    [+] Commitment structure for block PubX:Y with hash H is => SIG(blockID+hash,QuorumMemberPubKey)
+    
+    [+] Aggregated commitment === FINAZLIATION_PROOF === {
+
+                    aggregatedPub:bls.aggregatePublicKeys(pubkeys),
+
+                    aggregatedSignature:bls.aggregateSignatures(signatures), each signature in aggregation is SIG(blockID+hash,QuorumMemberXPubKey)
+
+                    afkValidators
+
+                }
+
+    [+]
+
+
+    */
+
+    let optionsToSend = {method:'POST',body:JSON.stringify(block)}
+
+    let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
+
+    let promises=[]
+
+    let blockIDAndHash = CONFIG.SYMBIOTE.PUB+':'+block.index+blockHash
+
+
+    //Descriptor is {url,pubKey}
+
+    for(let descriptor of quorumMembers){
+
+        // No sense to get the commitment if we already have
+
+        if(commitments.has(descriptor.pubKey)) continue
 
         /*
         
@@ -450,16 +504,43 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async block => {
 
         3. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
 
-        
-        [RESULT]
-
         */
+
+        let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
+
+            let commitmentIsOk = await bls.singleVerify(blockIDAndHash,descriptor.pubKey,possibleCommitment).catch(_=>false)
+
+            if(commitmentIsOk){
+
+                commitments.set(descriptor.pubKey,possibleCommitment)
+
+            }
+
+        })
+
+        // To make sharing async
+        promises.push(promise)
 
     }
 
 
+    await Promise.all(promises)
+
+    // if()
+
+
     setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,0)
 
+},
+
+
+
+
+PROPOSE_TO_SKIP=(validator,metaDataToFreeze)=>{
+
+    // If we agree that validator is offline and we can't get the block - then SIG('SKIP:<CURRENT_CHECKPOINT_ID>:<CURRENT_QUORUM_THREAD_CHECKPOINT_HASH(hash of previous payload)>:<VALIDATOR>:<BLOCK_ID>')
+    // If we receive the 2/3N+1 votes to skip - then we delete this validator from set and fix it
+    
 },
 
 
@@ -472,6 +553,15 @@ HEALTH_MONITORING=()=>{
 
 }
 
+
+
+
+//Function to ask for a new blocks from a valid checkpoint
+REQUEST_FOR_BLOCKS=()=>{
+
+    //Here we check if current QUORUM_THREAD.CHECKPOINT is fresh and if true - ask the blocks from the minimal height defined in checkpoint payload
+
+}
 
 
 
@@ -512,11 +602,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     */
 
                 
-    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
-    
-        blocksPool=[],//to push blocks to storage
-
-        commitmentsArray=[]//to share commitments among other quorun members
+    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
 
 
     phantomBlocksNumber++//DELETE after tests
@@ -535,7 +621,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
             
             blockCandidate=new Block(eventsArray),
                         
-            hash=Block.genHash(blockCandidate.creator,blockCandidate.time,blockCandidate.events,blockCandidate.index,blockCandidate.prevHash)
+            hash=Block.genHash(blockCandidate)
     
 
         blockCandidate.sig=await SIG(hash)
@@ -815,28 +901,9 @@ PREPARE_SYMBIOTE=async()=>{
         }).start()
 
     }
-    
-
-
-
-    let cachedCommitments
-    
-    try{
-
-        cachedCommitments = fs.existsSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json') && JSON.parse(fs.readFileSync(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json'))
-
-    }catch{
-
-        cachedCommitments = {}
-
-    }
-
-
 
 
     //____________________________________________Prepare structures_________________________________________________
-
-
 
 
     //Contains default set of properties for major part of potential use-cases on symbiote
@@ -870,7 +937,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
-        COMMITMENTS:new Map(Object.entries(cachedCommitments)), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+        COMMITMENTS:new Map(), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
         FINALIZATION_PROOFS:new Map(), //aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 

@@ -396,7 +396,7 @@ GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEE
 
 
 
-GET_QUORUM_MEMBERS_URLS = async threadID => {
+GET_QUORUM_MEMBERS_URLS = async (threadID,withPubkey) => {
 
     let promises=[]
 
@@ -404,7 +404,7 @@ GET_QUORUM_MEMBERS_URLS = async threadID => {
         
         pubKey => promises.push(GET_STUFF(pubKey).then(
         
-            stuffData => stuffData.payload.url
+            stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
         
         ))
 
