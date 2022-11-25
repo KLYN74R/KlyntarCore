@@ -519,7 +519,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
         //Share here
         BROADCAST('/super_finalization',superFinalizationProof)
 
-        
+
         // Repeat procedure for the next block
         let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
 
@@ -1181,6 +1181,8 @@ PREPARE_SYMBIOTE=async()=>{
 
         'CHECKPOINTS', //Contains object like {HEADER,PAYLOAD}
 
+        'SUPER_FINALIZATION_PROOFS', //Store aggregated proofs blockID => proof
+
         'QUORUM_THREAD_METADATA' // QUORUM_THREAD itself and other stuff
 
     ].forEach(
@@ -1599,12 +1601,16 @@ RUN_SYMBIOTE=async()=>{
 
     if(!CONFIG.SYMBIOTE.STOP_WORK){
 
+        //_________________________ RUN SEVERAL ASYNC THREADS _________________________
+
+        
         //0.Start verification process - process blocks and find new checkpoints step-by-step
         START_VERIFICATION_THREAD()
 
         //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
         START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
+        SEND_BLOCKS_AND_GRAB_COMMITMENTS()
 
         let promises=[]
 

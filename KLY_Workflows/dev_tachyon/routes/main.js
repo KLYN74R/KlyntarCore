@@ -276,95 +276,28 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
                                                                *
 ****************************************************************
 
-    Latest bastion. This POST /super_finalization route share SUPER_FINALIZATION_PROOF from SYMBIOTE_META.SUPER_FINALIZATION_PROOFS
-
-    If we have SUPER_FINZALIZATION_PROOF - response with it
-
-    If the incoming payload is SUPER_FINZALIZATION_PROOF - then verify it and if OK,
-        
-        store locally and delete other FINALIZATION_PROOFS from local caches(because no more sense to store them when we already have SUPER_FINALIZATION_PROOF)
-
-
-
-
-    Key is blockID:Hash and value is object like this
-
-{
-    
-    aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
-
-    aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
-
-    afkValidators:[]
-
-}
-
-
-To verify SUPER_FINALIZATION_PROOF we should follow several steps:
-
-1) Verify aggregated FINALIZATION_PROOFs
-
-    VERIFY(blockID+hash+"FINALIZATION",aggregatedPub,aggregatedSigna)
-
-
-2) Make sure, that QUORUM_ROOT_KEY === Aggregate(aggregatedPub,afkValidators)
-
-
-3) Make sure that it's majority solution by checking QUORUM_SIZE-afkValidators >= 2/3N+1
 
 */
 superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let superFinalizationProof=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+   
+    let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    //Check if appropriate pool exist(related to blockID and hash)
-    let poolID = superFinalizationProof.blockID+"/"+superFinalizationProof.hash
+    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSigna).catch(_=>false)
 
-    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(poolID)){
+    let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
 
-        response.end('SUPER_FINALIZATION_PROOF already exists')
-
-        return
-
-    } 
-    
-    else if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.SUPER_FINALIZATION_PROOFS_POOL_LIMIT) !response.aborted&&response.end('Too many pools')
-    
-    else if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SUPER_FINALIZATION_PROOFS){
-
-        !response.aborted&&response.end('OK')
-    
-        let aggregatedSignatureIsOk = await VERIFY(superFinalizationProof.blockID+superFinalizationProof.hash+"FINALIZATION",superFinalizationProof.aggregatedSigna,superFinalizationProof.aggregatedPub),
-
-            rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([superFinalizationProof.aggregatedPub,...superFinalizationProof.afkValidators]),
-
-            quorumSize = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length,
-
-            majority = GET_MAJORITY('QUORUM_THREAD')
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
 
 
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        let majorityVotedForFinalization = quorumSize-superFinalizationProof.afkValidators.length >= majority
+        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.put(possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
 
+        !response.aborted && response.end('OK')
 
-        if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForFinalization){
+    }else !response.aborted && response.end('Something wrong')
 
-            SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.set(poolID,{
-
-                aggregatedPub:superFinalizationProof.aggregatedPub,
-
-                aggregatedSigna:superFinalizationProof.aggregatedSignature,
-            
-                afkValidators:superFinalizationProof.afkValidators
-
-            })
-
-            //And delete pool with the finalization proofs from other quorum members because we don't need it anymore
-            SYMBIOTE_META.FINALIZATION_PROOFS.delete(poolID)
-
-        }
-        
-    }else !response.aborted&&response.end('Route is off')
 
 }),
 
@@ -397,13 +330,11 @@ getSuperFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
-        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'),
+        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(request.getParameter(0)).catch(_=>false)
 
-            superProof = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockCreator+':'+index+'/'+hash)
+        if(superFinalizationProof){
 
-        if(superProof){
-
-            response.end(JSON.stringify(superProof))
+            response.end(JSON.stringify(superFinalizationProof))
 
         }else response.end('No proof')
 
@@ -585,12 +516,13 @@ UWS_SERVER
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
+.get('/get_super_finalization',getSuperFinalization)
+
 
 .get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
 
 
 .post('/operations',operationsAccept)
-
 
 .post('/checkpoint',checkpoint)
 
