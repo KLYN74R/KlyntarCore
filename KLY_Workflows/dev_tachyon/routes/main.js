@@ -143,7 +143,7 @@ acceptBlocks=response=>{
     })
 
 },
-  
+
     
 
 
@@ -224,12 +224,7 @@ ___________________________Verification steps___________________________
 
 [+] Verify the signa
 
-    VERIFY(blockID+hash,aggregatedSigna,aggregatedPub)
-
-
 [+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkValidators array for this and QUORUM_THREAD.QUORUM
-
-    QUORUM_THREAD.QUORUM.length - afkValidators.length >= 2/3N+1
 
 [+] RootPub is equal to QUORUM_THREAD rootpub
 
@@ -247,13 +242,23 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
 
-        // [+] Verify the signa
         
-        let isSignaOk = await bls.singleVerify(aggregatedCommitments.blockID,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
+        let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
 
-        let isMajority = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
+        let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
-        let rootPubIsEqualToReal = await bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === 
+        let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
+
+
+        if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+            //TODO: Store aggregated commitments somewhere localy to have proofs in future
+
+            let finalizationSigna = await SIG(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+'FINALIZATION')
+
+            !response.aborted && response.end(finalizationSigna)
+
+        }else !response.aborted && response.end('Something wrong')
 
 
     }else !response.aborted && response.end('Route is off')
@@ -572,13 +577,12 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 UWS_SERVER
 
+//1st stage - accept block and response with the commitment
 
-
+//2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
 .post('/finalization',finalization)
 
-//3rd stage - logic with super finalization proofs
-.get('/get_super_finalization/:BLOCK_ID_WITH_HASH',getSuperFinalization)
-
+//3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
 
