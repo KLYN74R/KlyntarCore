@@ -305,6 +305,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
         //Create new quorum based on new VALIDATORS_METADATA state
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('QUORUM_THREAD')
+
+        //Get the new ROOTPUB
+        SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
         
         atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
@@ -1169,7 +1172,9 @@ PREPARE_SYMBIOTE=async()=>{
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
-    SYMBIOTE_META.STUFF_CACHE.set('QUORUM_AGGREGATED_PUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+    SYMBIOTE_META.STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+
+    SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________

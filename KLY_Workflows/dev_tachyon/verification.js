@@ -536,6 +536,9 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Create new quorum based on new VALIDATORS_METADATA state
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
+            //Get the new rootpub
+            SYMBIOTE_META.STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
+
 
             SYMBIOTE_META.STATE_CACHE.forEach(
                 

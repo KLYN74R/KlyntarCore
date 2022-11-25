@@ -17,25 +17,36 @@ let
 
 
 
-/******
- * ## Accept blocks
- * 
- * ### Body format
- * 
- * {
- *      creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
- *      time:1666744452126,
- *      events:[
- *          event1,
- *          event2,
- *          event3,
- *      ]
- *      index:1337,
- *      prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
- *      sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
- * }
- * 
- */
+/*
+
+[Description]:
+    Accept blocks
+  
+[Accept]:
+
+    Blocks
+  
+    {
+        creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+        time:1666744452126,
+        events:[
+            event1,
+            event2,
+            event3,
+        ]
+        index:1337,
+        prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+        sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+    }
+
+
+[Response]:
+
+    SIG(blockID+hash) => jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S
+
+    <OR> nothing
+
+*/
 acceptBlocks=response=>{
     
     let total=0,buffer=Buffer.alloc(0)
@@ -183,162 +194,71 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-//____________________________________________________________CONSENSUS STUFF__________________________________________________________________
-
-
-
-
 /*
 
-
-*****************************************************
-                                                    * 
-Accept FINALIZATION_PROOF from other quorum members *
-                                                    *
-*****************************************************
-
-
-We get FINALIZATION_PROOF from SYMBIOTE_META.FINALIZATION_PROOF mapping. We fullfilled this mapping inside POST /commitment mapping when some block PubX:Y:H(height=Y,creator=PubX,hash=H)
-receive 2/3N+1 commitments
-
-Structure of FINALIZATION_PROOF
-
-{
-
-    blockID:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
-
-    hash:"0123456701234567012345670123456701234567012345670123456701234567",
+[Description]:
     
-    validator:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta", //creator of FINALIZATION_PROOF
+    Accept aggregated commitments which proofs us that 2/3N+1 has the same block and generate FINALIZATION_PROOF => SIG(blockID+hash+'FINALIZATION')
 
-    finalizationSigna:SIG(blockID+hash+"FINALIZATION")
+[Accept]:
 
-}
+Aggregated version of commitments
 
-*****************************************************
+    {
+        
+        blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
 
-To verify FINALIZATION_PROOF from some ValidatorX we need to do this steps:
+        blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+        
+        aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
 
-1)Verify the finalization signa
+        aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-    VERIFY(blockID+hash+"FINALIZATION",finalization_signa,Validator)
+        afkValidators:[]
 
-
-If verification is ok, add this FINALIZATION_PROOF to cache mapping SYMBIOTE_META.FINALIZATON_PROOFS
-
-Key is blockID/Hash and value is inner mapping like this:
-
-{
-    "<VALIDATOR-WHO-CREATE-FINALIZATION-PROOF>":"<finalization_signa>"
-}
-
-*****************************************************
-
-Also, when we notice that there are 2/3N+1 mapping size, we can aggregate it and create SUPER_FINALIZATION_PROOF.After that, we can clear these FINALIZATION_PROOFS from SYMBIOTE_META.FINALIZATON_PROOFS
-
-More detailed about it in description to the next route
+    }
 
 
+___________________________Verification steps___________________________
 
+
+[+] Verify the signa
+
+    VERIFY(blockID+hash,aggregatedSigna,aggregatedPub)
+
+
+[+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkValidators array for this and QUORUM_THREAD.QUORUM
+
+    QUORUM_THREAD.QUORUM.length - afkValidators.length >= 2/3N+1
+
+[+] RootPub is equal to QUORUM_THREAD rootpub
+
+
+
+[Response]:
+
+    If everything is OK - response with signa SIG(blockID+hash+"FINALIZATION")
+
+    
 */
+finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-postFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+    let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
 
-    let finalizationProof=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+        // [+] Verify the signa
+        
+        let isSignaOk = await bls.singleVerify(aggregatedCommitments.blockID,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_FINALIZATION_PROOFS && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(finalizationProof.validator)){
+        let isMajority = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
-        !response.aborted && response.end('OK')
-
-        let signatureIsOk = await VERIFY(finalizationProof.blockID+finalizationProof.hash+"FINALIZATION",finalizationProof.finalizationSigna,finalizationProof.validator)
-
-        if(signatureIsOk){
-
-            //Check if appropriate pool exist(related to blockID and hash)
-            let poolID = finalizationProof.blockID+"/"+finalizationProof.hash
-
-            if(!SYMBIOTE_META.FINALIZATION_PROOFS.has(poolID)) {
-
-                if(SYMBIOTE_META.FINALIZATION_PROOFS.size>=CONFIG.SYMBIOTE.FINALIZATION_PROOFS_POOL_LIMIT) return
-
-                SYMBIOTE_META.FINALIZATION_PROOFS.set(poolID,new Map())
-
-            }
-
-            let mapping = SYMBIOTE_META.FINALIZATION_PROOFS.get(poolID)
-
-            mapping.set(finalizationProof.validator,finalizationProof.finalizationSigna)
-
-            
-            let majority = GET_MAJORITY('QUORUM_THREAD')
-            
-            let majorityVotedForFinalization = mapping.size >= majority
+        let rootPubIsEqualToReal = await bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === 
 
 
-            //If more than 2/3N+1 finalization proofs exists - we can aggregate them to build SUPER_FINALIZATION_PROOF
-            if(majorityVotedForFinalization){
-
-                let pubkeys=[], signatures=[], afkValidators = []
-
-                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(pubKey=>{
-
-                    if(mapping.has(pubKey)){
-
-                        pubkeys.push(pubKey)
-                    
-                        signatures.push(signa)
-
-                    }else afkValidators.push(pubKey)
-
-                })
-
-                let superFinalizationProof={
-
-                    aggregatedPub:bls.aggregatePublicKeys(pubkeys),
-
-                    aggregatedSignature:bls.aggregateSignatures(signatures),
-
-                    afkValidators
-
-                }
-
-                //Add SUPER_FINALIZATION_PROOF to cache
-                SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.set(poolID,superFinalizationProof)
-
-                //...and delete appropriate pool from FINALIZATION_PROOFS because lack of sense in it when we already have SUPER_FINALIZATION_PROOF
-                SYMBIOTE_META.FINALIZATION_PROOFS.delete(poolID)
-
-
-            }
-
-        }
-
-    }else !response.aborted&&response.end('Route is off')
-
+    }else !response.aborted && response.end('Route is off')
 
 }),
-
-
-
-// Accept aggregated commitments which proofs us that 2/3N+1 has the same block and generate FINALIZATION_PROOF => SIG(blockID+hash+'FINALIZATION')
-
-getFinalization=async(response,request)=>{
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_FINALIZATION_PROOFS){
-
-        let [blockCreator,index,hash] = request.getParameter(0)?.split(':'), proofsPool = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockCreator+':'+index+'/'+hash)
-
-        if(proofsPool){
-
-            response.end(proofsPool.get(CONFIG.SYMBIOTE.PUB))
-
-        }else response.end('No such pool')
-
-    }else response.end('Route is off')
-
-},
 
 
 
@@ -388,7 +308,7 @@ To verify SUPER_FINALIZATION_PROOF we should follow several steps:
 3) Make sure that it's majority solution by checking QUORUM_SIZE-afkValidators >= 2/3N+1
 
 */
-postSuperFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let superFinalizationProof=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -520,7 +440,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
 /*
 
-To return payload of some checkpoint by hash
+To return payload of some checkpoint by ID
 
 Params:
 
@@ -654,17 +574,12 @@ UWS_SERVER
 
 
 
-
-//2nd stage - logic with finalization
-.get('/get_finalization/:BLOCK_ID_WITH_HASH',getFinalization)
-
-.post('/finalization',postFinalization)
-
+.post('/finalization',finalization)
 
 //3rd stage - logic with super finalization proofs
 .get('/get_super_finalization/:BLOCK_ID_WITH_HASH',getSuperFinalization)
 
-.post('/super_finalization',postSuperFinalization)
+.post('/super_finalization',superFinalization)
 
 
 .get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
