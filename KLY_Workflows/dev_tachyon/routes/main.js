@@ -451,7 +451,7 @@ Body is
 
 */
 
-operationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -542,7 +542,7 @@ UWS_SERVER
 .get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
 
 
-.post('/operations',operationsAccept)
+.post('/special_operations',specialOperationsAccept)
 
 .post('/checkpoint',checkpoint)
 

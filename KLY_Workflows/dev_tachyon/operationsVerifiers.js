@@ -490,7 +490,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /operations
+            isFromRoute //method used on POST /special_operations
             &&
             typeof data === 'number' //new value of rubicon. Some previous checkpointID
             &&
@@ -559,7 +559,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /operations
+            isFromRoute //method used on POST /special_operations
             &&
             CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&

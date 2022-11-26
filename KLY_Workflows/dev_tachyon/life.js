@@ -423,17 +423,81 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         )
 
+        //Set locally
+        SYMBIOTE_META.CHECKPOINTS.set('MY',potentialCheckpointPayload)
+
+
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+        let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
 
-        console.log(potentialCheckpointPayload)
+        let promises=[]
 
-        for(let memberURL of quorumMembersURLs){
+        let sendOptions={
 
-            //query here
+            method:'POST',
+
+            body:JSON.stringify(potentialCheckpointPayload)
 
         }
+
+        for(let memberHandler of quorumMembersURLs){
+
+            let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(response=>{
+
+                response.pubKey=memberHandler.pubKey
+
+                return response
+
+            }).catch(_=>false)
+
+
+            promises.push(responsePromise)
+
+        }
+
+        //Run promises
+        let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
+
+        /*
+        
+            Responses might be various
+
+            [+] First of all - check if at least 2/3N+1 responses are
+            
+                {
+                    type:'OK',
+                    sig:<BLS signature>,
+                    pubKey
+                }
+
+            If yes - its signal that checkpoint is ready to be published
+
+
+            [+] Otherwise, response might be 
+
+            {
+                type:'DEL_SPEC_OP'
+                index:<index of special operation in potentialCheckpointPayload.OPERATIONS>
+                pubKey
+            }
+
+            {
+                type:'HEIGHT_UPDATE'
+                
+                index:<index of special operation in potentialCheckpointPayload.OPERATIONS>,
+                hash:<>,
+                aggregatedSig:<>,
+                aggregatedPub:<>,
+                afkValidators:<>
+
+                pubKey
+            }
+
+            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
+            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
+        
+        */
 
     }
 
@@ -1643,14 +1707,18 @@ RUN_SYMBIOTE=async()=>{
 
         //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-        
         //0.Start verification process - process blocks and find new checkpoints step-by-step
         START_VERIFICATION_THREAD()
 
         //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
         START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
+        //2.Share our blocks within quorum members and get the commitments / finalization proofs 
         SEND_BLOCKS_AND_GRAB_COMMITMENTS()
+
+        //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
+        CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
+
 
         let promises=[]
 
