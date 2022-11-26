@@ -1,4 +1,4 @@
-import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS, GET_MAJORITY, BROADCAST} from './utils.js'
+import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS,GET_MAJORITY,BROADCAST} from './utils.js'
 
 import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
@@ -301,7 +301,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
         //Set new checkpoint
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT=possibleCheckpoint
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
         
         //Create new quorum based on new VALIDATORS_METADATA state
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('QUORUM_THREAD')
@@ -373,9 +373,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         // Create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
 
-        // Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})
-
-        // {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
+        // Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})                             EXAMPLE => {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
 
         let metadata = {}
 
@@ -428,6 +426,8 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
     let aggregatedCommitments = SYMBIOTE_META.COMMITMENTS.get(blockID)
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
 
@@ -450,7 +450,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
     
             let promise = fetch(descriptor+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
     
-                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION',descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
+                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
     
@@ -552,7 +552,9 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 
         promises=[],
 
-        commitments
+        commitments,
+
+        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
     if(!SYMBIOTE_META.COMMITMENTS.has(blockID)){
@@ -586,7 +588,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
     
             let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.text()).then(async possibleCommitment=>{
     
-                let commitmentIsOk = await bls.singleVerify(blockID+blockHash,descriptor.pubKey,possibleCommitment).catch(_=>false)
+                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,descriptor.pubKey,possibleCommitment).catch(_=>false)
     
                 if(commitmentIsOk) commitments.set(descriptor.pubKey,possibleCommitment)
     
@@ -731,8 +733,9 @@ PROPOSE_TO_SKIP=(validator,metaDataToFreeze)=>{
 
 
 //Function to monitor the available block creators
-HEALTH_MONITORING=()=>{
+HEALTH_MONITORING=async()=>{
 
+    let quorumMembersURLS = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
 
 
 }
@@ -740,12 +743,17 @@ HEALTH_MONITORING=()=>{
 
 
 
-//Function to ask for a new blocks from a valid checkpoint
-REQUEST_FOR_BLOCKS=()=>{
+// REQUEST_FOR_BLOCKS=async()=>{
 
-    //Here we check if current QUORUM_THREAD.CHECKPOINT is fresh and if true - ask the blocks from the minimal height defined in checkpoint payload
+//     //Here we check if current QUORUM_THREAD.CHECKPOINT is fresh and if true - ask the blocks from the minimal height defined in checkpoint payload
+    
+//     let currentMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOIINT.PAYLOAD.VALIDATORS_METADATA
 
-}
+//     let quorumMembersURLS = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+
+//     for(let url of)
+
+// }
 
 
 

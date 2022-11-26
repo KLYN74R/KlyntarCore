@@ -128,8 +128,9 @@ acceptBlocks=response=>{
                          
                     )
 
+                    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
                     
-                    let commitment = await SIG(blockID+hash)
+                    let commitment = await SIG(blockID+hash+qtPayload)
 
                     !response.aborted && response.end(commitment)
 
@@ -242,8 +243,9 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
 
-        
-        let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
 
         let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
@@ -254,7 +256,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             //TODO: Store aggregated commitments somewhere localy to have proofs in future
 
-            let finalizationSigna = await SIG(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+'FINALIZATION')
+            let finalizationSigna = await SIG(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+'FINALIZATION'+qtPayload)
 
             !response.aborted && response.end(finalizationSigna)
 
@@ -280,10 +282,11 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 */
 superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSigna).catch(_=>false)
+    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSigna).catch(_=>false)
 
     let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
 

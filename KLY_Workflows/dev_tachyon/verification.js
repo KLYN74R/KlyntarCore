@@ -109,32 +109,11 @@ GET_BLOCK = async(blockCreator,index) => {
 
 <SUPER_FINALIZATION_PROOF> is an aggregated proof from 2/3N+1 validators from quorum that they each have 2/3N+1 commitments from other validators
 
-Once some validator receive 2/3N+1 commitments for some block PubX:Y:H(block Y with hash H created by validator PubX) he generate signature
-
-    [+] SIG(blockID+hash+"FINALIZATION")
-
-This signature will be included to some object which called <FINALIZATION_PROOF>
-
-
-Struture => {
-
-    blockID:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
-
-    hash:"0123456701234567012345670123456701234567012345670123456701234567",
-    
-    validator:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta", //creator of FINALIZATION_PROOF
-
-    finalization_signa:SIG(blockID+hash+"FINALIZATION")
-
-}
-
-Then, validators from quorum exchange with these proofs and once you have 2/3N+1 you can build SUPER_FINALIZATION_PROOF using aggregation
-
 Structure => {
     
     blockID:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
 
-    hash:"0123456701234567012345670123456701234567012345670123456701234567",
+    blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
 
     aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
 
@@ -162,43 +141,31 @@ Verification process:
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    /*
-    
-        Check local cache if SUPER_FINALIZATION_PROOF exists. Will be returned object 
+    let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(blockID).catch(_=>false)
 
-        {
-            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
-            aggregatedPub:<>,
-            afkValidators
-        }
-
+    //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
     
-    */
-
-    if(SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.has(blockID+'/'+blockHash)) return true
+    if(superFinalizationProof) return true
     
+
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
     let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD'),...GET_ALL_KNOWN_PEERS()]
 
 
-    //if we're in quorum - start to grab commitments => finalization_proofs => super finalization_proofs
-    if(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
-
-
-
-    }
-
-
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID+':'+blockHash).then(r=>r.json()).catch(_=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&
                                     typeof itsProbablySuperFinalizationProof.aggregatedPub === 'string'
                                     &&
                                     typeof itsProbablySuperFinalizationProof.aggregatedSigna === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.blockID === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.blockHash === 'string'
                                     &&
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
@@ -207,9 +174,12 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             //Verify it before return
 
-            let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION",itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
+            let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('QUORUM_AGGREGATED_PUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
+
+            let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION"+qtPayload,itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
+
+                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 
                 quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
 
