@@ -132,6 +132,8 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
+GET_SPEC_EVENTS = () => SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.splice(0,1000),
+
 
 GEN_BLOCKS_START_POLLING=async()=>{
 
@@ -304,10 +306,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
         
         //Create new quorum based on new VALIDATORS_METADATA state
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM = GET_QUORUM('QUORUM_THREAD')
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
         //Get the new ROOTPUB
-        SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
+        SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
         
         atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
@@ -319,7 +321,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
 
-        let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+        let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
         if(checkpointIsFresh && iAmInTheQuorum){
 
@@ -361,9 +363,37 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
+
+    /*
+    
+        Here we generate the checkpoint and go through the other quorum members to get signatures of proposed checkpoint PAYLOAD
+
+        Here is the structure we should build & distribute
+
+        {
+            
+            PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            
+            VALIDATORS_METADATA: {
+                
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+
+                /..other data
+            
+            },
+            OPERATIONS: GET_SPEC_EVENTS(),
+            OTHER_SYMBIOTES: {}
+        
+        }
+
+        To sign it => SIG(BLAKE3(JSON.stringify(<PROPOSED>)))
+    
+    */
+
+
     let canProposeCheckpoint = await HOSTCHAIN.MONITOR.CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT(),
 
-        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
 
     if(canProposeCheckpoint && iAmInTheQuorum){
@@ -371,33 +401,33 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         // Stop to generate commitments/finalization proofs
         global.QUORUM_MEMBER_MODE=false
 
-        // Create checkpoint based on some logic & available FINALIZATION_PROOFS and SUPER_FINALIZATION_PROOFS
 
-        // Use SYMBIOTE_META.CHECKPOINTS_MANAGER (validator=>{id,hash})                             EXAMPLE => {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'}
+        //____________________________________ Build the template of checkpoint's payload ____________________________________
 
-        let metadata = {}
 
-        SYMBIOTE_META.CHECKPOINTS_MANAGER.forEach((descriptor,validator)=>{
+        let potentialCheckpointPayload = {
 
-            metadata[validator]={
+            PREV_CHECKPOINT_PAYLOAD_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+
+            VALIDATORS_METADATA:{},
+
+            OPERATIONS:GET_SPEC_EVENTS(),
+
+            OTHER_SYMBIOTES:{} //don't need now
+
+        }
+
+        Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA).forEach(
             
-                INDEX:descriptor.id,
-            
-                HASH:descriptor.hash
-        
-            }
+            poolPubKey => potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(poolPubKey) //{INDEX,HASH}
 
-        })
+        )
 
-        let metaDataHashForCheckpoint = BLAKE3(JSON.stringify(metadata))
+        //________________________________________ Exchange with other quorum members ________________________________________
 
-        //Exchange with other quorum members
         let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
 
-
-        console.log('Checkpoint hash is ',metaDataHashForCheckpoint)
-
-        console.log(metadata)
+        console.log(potentialCheckpointPayload)
 
         for(let memberURL of quorumMembersURLs){
 
@@ -426,7 +456,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
     let aggregatedCommitments = SYMBIOTE_META.COMMITMENTS.get(blockID)
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
@@ -554,7 +584,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 
         commitments,
 
-        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
     if(!SYMBIOTE_META.COMMITMENTS.has(blockID)){
@@ -722,7 +752,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
-PROPOSE_TO_SKIP=(validator,metaDataToFreeze)=>{
+PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
 
     // If we agree that validator is offline and we can't get the block - then SIG('SKIP:<CURRENT_CHECKPOINT_ID>:<CURRENT_QUORUM_THREAD_CHECKPOINT_HASH(hash of previous payload)>:<VALIDATOR>:<BLOCK_ID>')
     // If we receive the 2/3N+1 votes to skip - then we delete this validator from set and fix it
@@ -1127,13 +1157,15 @@ PREPARE_SYMBIOTE=async()=>{
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
-        COMMITMENTS:new Map(), //the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+        COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
-        FINALIZATION_PROOFS:new Map(), //aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+        FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
-        SUPER_FINALIZATION_PROOFS:new Map(), //the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
+        SUPER_FINALIZATION_PROOFS:new Map(), // the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
 
-        CHECKPOINTS:new Map(), //used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
+        CHECKPOINTS_MANAGER:new Map(), // validatorID => {INDEX,HASH}. Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+
+        CHECKPOINTS:new Map(), // used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
     
     }
 

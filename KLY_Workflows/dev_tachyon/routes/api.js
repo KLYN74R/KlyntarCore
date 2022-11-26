@@ -142,7 +142,7 @@ getCurrentQuorum=response=>{
             .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`)
             .onAborted(()=>response.aborted=true)
 
-        response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.QUORUM))
+        response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
     }else !response.aborted && response.end('Symbiote not supported')
 

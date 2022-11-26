@@ -128,7 +128,7 @@ acceptBlocks=response=>{
                          
                     )
 
-                    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
@@ -243,7 +243,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
 
-        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
         let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
 
@@ -257,6 +257,23 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             //TODO: Store aggregated commitments somewhere localy to have proofs in future
 
             let finalizationSigna = await SIG(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+'FINALIZATION'+qtPayload)
+
+            // Put to the checkpoints manager
+            let [blockCreator,blockIndex] = aggregatedCommitments.blockID.split(':')
+
+            blockIndex = +blockIndex
+
+            if(!SYMBIOTE_META.CHECKPOINTS_MANAGER.has(blockCreator)) SYMBIOTE_META.CHECKPOINTS_MANAGER.set(blockCreator,{INDEX:-1,HASH:''})
+
+            let handler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(blockCreator)
+
+            if(blockIndex>handler.INDEX){
+
+                handler.INDEX = blockIndex
+
+                handler.HASH = aggregatedCommitments.blockHash
+
+            }
 
             !response.aborted && response.end(finalizationSigna)
 
@@ -282,7 +299,7 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 */
 superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PREV_CHECKPOINT_PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
