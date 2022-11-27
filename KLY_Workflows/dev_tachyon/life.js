@@ -478,7 +478,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             {
                 type:'DEL_SPEC_OP'
-                index:<index of special operation in potentialCheckpointPayload.OPERATIONS>
+                id:<id of special operation in potentialCheckpointPayload.OPERATIONS to delete>
                 pubKey
             }
 

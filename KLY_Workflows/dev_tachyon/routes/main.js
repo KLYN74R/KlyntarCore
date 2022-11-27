@@ -1,6 +1,6 @@
-import {BROADCAST,VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
+import{BODY,SAFE_ADD,PARSE_JSON, BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import{BODY,SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
+import {BROADCAST,VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -370,15 +370,68 @@ getSuperFinalization=async(response,request)=>{
 Accept checkpoints from other validators in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
 
-
-Body format:{
-
+[Accept]:
 
 
+{
+            
+            PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            
+            VALIDATORS_METADATA: {
+                
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+
+                /..other data
+            
+            },
+            OPERATIONS: GET_SPEC_EVENTS(),
+            OTHER_SYMBIOTES: {}
+        
 }
 
+To sign it => SIG(BLAKE3(JSON.stringify(<PROPOSED>)))
 
-Response:{
+
+[Response]
+
+Responses might be various
+
+[+] If we agree with everything        
+                
+{
+    type:'OK',
+    sig:<BLS signature>,
+    pubKey
+}
+
+[+] Otherwise, response might be 
+
+If there is no such operation in mempool
+
+{
+    type:'DEL_SPEC_OP'
+    id:<index of special operation in potentialCheckpointPayload.OPERATIONS>
+    pubKey
+}
+
+If we have proof that for a specific validator we have height with bigger index(longer chain)
+
+{
+    type:'HEIGHT_UPDATE'
+                
+    index:<index of special operation in potentialCheckpointPayload.OPERATIONS>,
+    hash:<>,
+    aggregatedSig:<>,
+    aggregatedPub:<>,
+    afkValidators:<>
+    pubKey
+            
+}
+
+    First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
+    We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
+
+{
 
 
 
@@ -462,6 +515,11 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
         if(isOk){
+
+            let payloadHash = BLAKE3(JSON.stringify(operation.payload))
+
+            operation.id = payloadHash
+
 
             SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push(operation)
 
