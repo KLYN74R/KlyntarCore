@@ -1,4 +1,12 @@
-import {DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_QUORUM_MEMBERS_URLS,GET_MAJORITY,BROADCAST} from './utils.js'
+import {
+    
+    DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,
+    
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
+    
+    GET_QUORUM_MEMBERS_URLS,GET_MAJORITY,BROADCAST
+
+} from './utils.js'
 
 import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
 
@@ -431,21 +439,36 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
 
+        let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
+
         let promises=[]
 
         let sendOptions={
 
             method:'POST',
 
-            body:JSON.stringify(potentialCheckpointPayload)
+            body:payloadInJSON
 
         }
 
+        // QUORUM members should sign the hash of payload related to the next checkpoint
+        let checkpointPayloadHash = BLAKE3(payloadInJSON)
+
+
+        /*
+        
+            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
+            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
+        
+        */
         for(let memberHandler of quorumMembersURLs){
 
-            let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(response=>{
+            let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
+ 
+                let checkpointSigIsOk = await bls.singleVerify(checkpointPayloadHash,memberHandler.pubKey,response).catch(_=>false)
+    
+                if(checkpointSigIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
 
-                response.pubKey=memberHandler.pubKey
 
                 return response
 
@@ -471,7 +494,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     pubKey
                 }
 
-            If yes - its signal that checkpoint is ready to be published
+            If yes - it's signal that checkpoint is ready to be published
 
 
             [+] Otherwise, response might be 

@@ -376,72 +376,134 @@ Accept checkpoints from other validators in quorum and returns own version as an
 
 {
             
-            PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+    PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-            VALIDATORS_METADATA: {
+    VALIDATORS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+        '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
 
-                /..other data
+        /..other data
             
-            },
-            OPERATIONS: GET_SPEC_EVENTS(),
-            OTHER_SYMBIOTES: {}
+    },
+    OPERATIONS: GET_SPEC_EVENTS(),
+    OTHER_SYMBIOTES: {}
         
 }
 
 To sign it => SIG(BLAKE3(JSON.stringify(<PROPOSED>)))
 
+We sign the BLAKE3 hash received from JSON'ed proposition of payload for the next checkpoint
+
+
+
 
 [Response]
 
-Responses might be various
-
-[+] If we agree with everything        
-                
-{
-    type:'OK',
-    sig:<BLS signature>,
-    pubKey
-}
-
-[+] Otherwise, response might be 
-
-If there is no such operation in mempool
-
-{
-    type:'DEL_SPEC_OP'
-    id:<index of special operation in potentialCheckpointPayload.OPERATIONS>
-    pubKey
-}
-
-If we have proof that for a specific validator we have height with bigger index(longer chain)
-
-{
-    type:'HEIGHT_UPDATE'
-                
-    index:<index of special operation in potentialCheckpointPayload.OPERATIONS>,
-    hash:<>,
-    aggregatedSig:<>,
-    aggregatedPub:<>,
-    afkValidators:<>
-    pubKey
-            
-}
-
-    First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
-    We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
+Response - it's object with the following structure:
 
 {
 
+    ? sig:<BLS signature>
 
+    ? excludeSpecOperations:[]
+
+    ? metadataUpdate:{}
 
 }
+
+
+[+] If we agree with everything - response with a signature. The <sig> here is SIG(BLAKE3(JSON.stringify(<PROPOSED>)))
+
+{
+    sig:<BLS signature>
+
+}
+
+[+] Otherwise, object might be
+
+    [@] If there is no such operation in mempool
+
+    {
+        excludeSpecOperations:[<ID1 of operation to exclude>,<ID2 of operation to exclude>,...]   
+    }
+
+    [@] If we have proof that for a specific validator we have height with bigger index(longer valid chain)
+
+        We compare the proposition of index:hash for subchain with own version in SYMBIOTE_META.CHECKPOINTS_MANAGER (validatorID => {INDEX,HASH})
+
+        If we have a bigger index - then we get the SUPER_FINALIZATION_PROOF from a local storage and send as a part of answer
+
+        {
+            metadataUpdate:[
+
+                {
+                    subchain:<id of subchain>
+                    index:<index of >,
+                    hash:<>,
+                    superFinalizationProof
+
+                },...
+
+            ]
+        
+        }
+
+    *superFinalizationProof - contains the aggregated signature SIG(blockID+hash+"FINALIZATION") signed by the current quorum
+
 
 */
 checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+    let responseTemplate={}
+
+
+    // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
+
+    let specOpsToExclude = checkpointProposition.OPERATIONS.filter(operation=>!SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)).map(operation=>operation.id)
+
+    if(specOpsToExclude.length !== 0){
+
+        responseTemplate.excludeSpecOperations=specOpsToExclude
+
+        response.end(JSON.stringify(responseTemplate))
+
+    }else{
+
+        // On this step we know that all of proposed operations were checked by us and present in local mempool.
+
+        // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINTS_MANAGER
+
+        let metadataUpdate = []
+
+        Object.keys(checkpointProposition.VALIDATORS_METADATA).forEach(subchain=>{
+
+            let localVersion = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+
+            if(localVersion.INDEX>checkpointProposition.VALIDATORS_METADATA[subchain]){
+
+                // Send the <HEIGHT UPDATE> notification
+
+                let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(subchain+":"+localVersion.INDEX).catch(_=>false)
+
+                let template = {
+                    
+                    subchain,
+                    index:localVersion.INDEX,
+                    hash:localVersion.HASH,
+                    superFinalizationProof
+
+                }
+
+                metadataUpdate.push(template)
+
+            }
+
+        })
+
+
+    }
 
 }),
 
@@ -460,10 +522,10 @@ Params:
 Returns:
 
     {
-      PREV_CHECKPOINT_PAYLOAD_HASH: '',
-      VALIDATORS_METADATA: [Object],
-      OPERATIONS: [],
-      OTHER_SYMBIOTES: {}
+        PREV_CHECKPOINT_PAYLOAD_HASH: '',
+        VALIDATORS_METADATA: [Object],
+        OPERATIONS: [],
+        OTHER_SYMBIOTES: {}
     }
 
 */
@@ -495,7 +557,7 @@ Body is
 
 {
     
-    type:<SPECIAL_OPERATION id> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See operationsVerifiers.js
+    type:<SPECIAL_OPERATION id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../operationsVerifiers.js
     
     payload:{}
 
@@ -517,11 +579,12 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(isOk){
 
+            // Assign the ID to operation to easily detect what we should exclude from checkpoints propositions
             let payloadHash = BLAKE3(JSON.stringify(operation.payload))
 
             operation.id = payloadHash
 
-
+            // Add to mempool
             SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push(operation)
 
             response.end('OK')
