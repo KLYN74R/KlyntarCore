@@ -456,18 +456,14 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let responseTemplate={}
-
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
 
-    let specOpsToExclude = checkpointProposition.OPERATIONS.filter(operation=>!SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)).map(operation=>operation.id)
+    let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(operation=>!SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)).map(operation=>operation.id)
 
-    if(specOpsToExclude.length !== 0){
+    if(excludeSpecOperations.length !== 0){
 
-        responseTemplate.excludeSpecOperations=specOpsToExclude
-
-        response.end(JSON.stringify(responseTemplate))
+        response.end(JSON.stringify({excludeSpecOperations}))
 
     }else{
 
@@ -475,7 +471,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
         // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINTS_MANAGER
 
-        let metadataUpdate = []
+        let metadataUpdate = [], promises=[]
 
         Object.keys(checkpointProposition.VALIDATORS_METADATA).forEach(subchain=>{
 
@@ -485,23 +481,60 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
                 // Send the <HEIGHT UPDATE> notification
 
-                let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(subchain+":"+localVersion.INDEX).catch(_=>false)
+                let promise = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(subchain+":"+localVersion.INDEX).then(superFinalizationProof=>{
 
-                let template = {
+                    let template = {
                     
-                    subchain,
-                    index:localVersion.INDEX,
-                    hash:localVersion.HASH,
-                    superFinalizationProof
+                        subchain,
+                        index:localVersion.INDEX,
+                        hash:localVersion.HASH,
+                        superFinalizationProof
+    
+                    }
+    
+                    metadataUpdate.push(template)
 
-                }
 
-                metadataUpdate.push(template)
+                }).catch(_=>false)
+
+                promises.push(promise)
+
 
             }
 
         })
 
+        //Execute promises on subchains where we have bigger height
+        await Promise.all(promises.splice(0))
+
+        //___________________________________ SUMMARY - WHAT WE HAVE ON THIS STEP ___________________________________
+
+        /* In metadataUpdate we have objects with the structure
+        
+            {
+                subchain:<id of subchain>
+                index:<index of >,
+                hash:<>,
+                superFinalizationProof
+
+            }
+
+            If this array is empty - then we can sign the checkpoint proposition(hash of received <checkpointProposition>)
+            Otherwise - send metadataUpdate
+
+        */
+
+        if(metadataUpdate.length!==0){
+
+            response.end(JSON.stringify({metadataUpdate}))
+
+        }else{
+
+            let sig = await SIG(BLAKE3(JSON.stringify(checkpointProposition)))
+
+            response.end(JSON.stringify({sig}))
+
+        }
 
     }
 
