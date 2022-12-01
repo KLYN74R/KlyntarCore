@@ -488,8 +488,12 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         // QUORUM members should sign the hash of payload related to the next checkpoint
         let checkpointPayloadHash = BLAKE3(payloadInJSON)
+        
+        let propositionsToUpdateMetadata=0
 
-        for(let {pubKey,sig,excludeSpecOperations,metadataUpdate} of checkpointsPingBacks){
+
+
+        for(let {pubKey,sig,metadataUpdate} of checkpointsPingBacks){
 
             /*
             
@@ -538,18 +542,47 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                             if(signaIsOk && rootPubIsOK){
         
                                 SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,{INDEX:updateOp.index,HASH:updateOp.index})
+
+                                propositionsToUpdateMetadata++
         
-                            }    
+                            }
 
                         }
 
                     }
 
                 }
-                
+
             }
 
         }
+
+        /*
+        
+        ___________________________ WHAT NEXT ? ___________________________
+        
+        On this step, sooner or later, the propositionsToUpdateMetadata will be equal to 0 - because in case the QUORUM majority is honest,
+        there were no SUPER_FINALIZATION_PROOF for another height/hash
+
+        On this step - we start to exclude the special operations from our proposition to get the wished 2/3N+1 signatures of checkpoint proposition
+
+        But, initialy we check if 2/3N+1 agreements we have. If no and no propositions to update metadata - then it's problem with the special operations, so we should exclude some of them
+        
+        */
+
+        if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
+
+            // Hooray - we can create checkpoint and publish to hostchain & share among other members
+
+        }else if(propositionsToUpdateMetadata===0){
+
+            // Delete the special operations due to which the rest could not agree with our version of checkpoints
+
+            
+
+        }
+
+        //Clear everything and repeat the attempt(round) of checkpoint proposition - with updated values of subchains' metadata & without special operations
 
     }
 
