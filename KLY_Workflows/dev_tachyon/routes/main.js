@@ -459,7 +459,16 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
 
-    let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(operation=>!SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)).map(operation=>operation.id)
+    let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(
+        
+        operation => !SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)
+        
+    ).map(
+        
+        operation => operation.id
+        
+    )
+
 
     if(excludeSpecOperations.length !== 0){
 
@@ -603,7 +612,6 @@ Body is
 specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
-
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
     if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.length<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){

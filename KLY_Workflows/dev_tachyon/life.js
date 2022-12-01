@@ -371,7 +371,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
-
     /*
     
         Here we generate the checkpoint and go through the other quorum members to get signatures of proposed checkpoint PAYLOAD
@@ -434,6 +433,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         //Set locally
         SYMBIOTE_META.CHECKPOINTS.set('MY',potentialCheckpointPayload)
 
+        SYMBIOTE_META.CHECKPOINTS.set('OTHER',new Map())
+
+        let otherAgreements = SYMBIOTE_META.CHECKPOINTS.get('OTHER')
+
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
@@ -451,9 +454,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }
 
-        // QUORUM members should sign the hash of payload related to the next checkpoint
-        let checkpointPayloadHash = BLAKE3(payloadInJSON)
-
 
         /*
         
@@ -465,10 +465,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
  
-                let checkpointSigIsOk = await bls.singleVerify(checkpointPayloadHash,memberHandler.pubKey,response).catch(_=>false)
-    
-                if(checkpointSigIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
-
+                response.pubKey = memberHandler.pubKey
 
                 return response
 
@@ -484,43 +481,75 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         /*
         
-            Responses might be various
-
-            [+] First of all - check if at least 2/3N+1 responses are
-            
-                {
-                    type:'OK',
-                    sig:<BLS signature>,
-                    pubKey
-                }
-
-            If yes - it's signal that checkpoint is ready to be published
-
-
-            [+] Otherwise, response might be 
-
-            {
-                type:'DEL_SPEC_OP'
-                id:<id of special operation in potentialCheckpointPayload.OPERATIONS to delete>
-                pubKey
-            }
-
-            {
-                type:'HEIGHT_UPDATE'
-                
-                index:<index of special operation in potentialCheckpointPayload.OPERATIONS>,
-                hash:<>,
-                aggregatedSig:<>,
-                aggregatedPub:<>,
-                afkValidators:<>
-
-                pubKey
-            }
-
             First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
             We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
         
         */
+
+        // QUORUM members should sign the hash of payload related to the next checkpoint
+        let checkpointPayloadHash = BLAKE3(payloadInJSON)
+
+        for(let {pubKey,sig,excludeSpecOperations,metadataUpdate} of checkpointsPingBacks){
+
+            /*
+            
+                checkpointPingback has the following structure
+
+                {
+                    pubKey  - we add it after answer
+                    
+                    ? sig:<> - if exists - then validator agree with the proposed checkpoint
+                        
+                    ? excludeSpecOperations:[] - array of ids of operation we should exclude from checkpoint proposition to get the agreement from validator
+
+                    ? metadataUpdate:{} - array of updated hash:index where index > than our local version, so we check the inner SUPER_FINALIZATION_PROOF and if OK - update the local CHECKPOINT_MANAGER to propose next checkpoint with the nex height
+
+                }
+            
+            */
+
+            if(sig){
+
+                let isSignaOk = await bls.singleVerify(checkpointPayloadHash,pubKey,sig)
+
+                if(isSignaOk) otherAgreements.set(pubKey,sig)
+
+            }else if(metadataUpdate.length!==0){
+
+                // Update the data of CHECKPOINTS_MANAGER if quorum voted for appropriate block:hash:index
+
+                for(let updateOp of metadataUpdate){
+
+                    let subchainMetadata = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(updateOp.subchain)
+
+                    if(!subchainMetadata) continue
+
+                    else{
+
+                        if(updateOp.index>subchainMetadata.INDEX){
+
+                            let {aggregatedSignature,aggregatedPub,afkValidators} = updateOp.superFinalizationProof
+    
+                            let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+'FINALIZATION',aggregatedPub,aggregatedSignature)
+        
+                            let rootPubIsOK = SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB') === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
+        
+        
+                            if(signaIsOk && rootPubIsOK){
+        
+                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,{INDEX:updateOp.index,HASH:updateOp.index})
+        
+                            }    
+
+                        }
+
+                    }
+
+                }
+                
+            }
+
+        }
 
     }
 

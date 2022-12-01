@@ -285,7 +285,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
-        let isEqualToRootPub = bls.aggregatePublicKeys([QUORUM_AGGREGATED_SIGNERS_PUBKEY,...AFK_VALIDATORS]) === bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
+        let isEqualToRootPub = bls.aggregatePublicKeys([QUORUM_AGGREGATED_SIGNERS_PUBKEY,...AFK_VALIDATORS]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB') //bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
 
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
         let isMajority = quorumNumber-AFK_VALIDATORS.length >= majority
