@@ -140,7 +140,13 @@ process.on('SIGHUP',graceful)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
-GET_SPEC_EVENTS = () => SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.splice(0,1000),
+    GET_SPEC_EVENTS = () => Array.from(SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL).map(subArr=>{
+
+        return {type:subArr[1].type,payload:subArr[1].payload}
+
+    }),
+
+
 
 
 GEN_BLOCKS_START_POLLING=async()=>{
@@ -430,12 +436,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         )
 
-        //Set locally
-        SYMBIOTE_META.CHECKPOINTS.set('MY',potentialCheckpointPayload)
 
-        SYMBIOTE_META.CHECKPOINTS.set('OTHER',new Map())
-
-        let otherAgreements = SYMBIOTE_META.CHECKPOINTS.get('OTHER')
+        let otherAgreements = new Map()
 
 
         //________________________________________ Exchange with other quorum members ________________________________________
@@ -574,11 +576,60 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             // Hooray - we can create checkpoint and publish to hostchain & share among other members
 
+            let signatures=[], pubKeys=[]
+
+            otherAgreements.forEach((signa,pubKey)=>{
+
+                signatures.push(signa)
+
+                pubKeys.push(pubKey)
+
+            })
+
+
+            let newCheckpoint = {
+
+                // Publish header to hostchain & share among the rest of network
+                HEADER:{
+
+                    ID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID+1,
+        
+                    PAYLOAD_HASH:checkpointPayloadHash,
+        
+                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:bls.aggregatePublicKeys(pubkeys),
+        
+                    QUORUM_AGGREGATED_SIGNATURE:bls.aggregateSignatures(signatures),
+        
+                    AFK_VALIDATORS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>otherAgreements.has(pubKey))
+        
+                },
+                
+                // Store & share among the rest of network
+                PAYLOAD:potentialCheckpointPayload,        
+
+            }
+
+
+            // Share via POST /checkpoint_template
+
+
         }else if(propositionsToUpdateMetadata===0){
 
             // Delete the special operations due to which the rest could not agree with our version of checkpoints
+            //! NOTE - we can't delete operations of SKIP_PROCEDURE, so check the type of operation too
 
-            
+            for(let {excludeSpecOperations} of checkpointsPingBacks){
+
+                for(let operationID of excludeSpecOperations){
+
+                    let operationToDelete = SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
+
+                    //We can't delete the 'STOP_VALIDATOR' operation
+                    if(operationToDelete.type!=='STOP_VALIDATOR') SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
+
+                }
+
+            }
 
         }
 
@@ -623,7 +674,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
         for(let descriptor of quorumMembers){
 
             // No sense to get the commitment if we already have
-    
             if(finalizationProofsMapping.has(descriptor.pubKey)) continue
     
     
@@ -1284,7 +1334,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
         
-        SPECIAL_OPERATIONS_MEMPOOL:[], //to hold operations which should be included to checkpoints
+        SPECIAL_OPERATIONS_MEMPOOL:new Map(), //to hold operations which should be included to checkpoints
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
@@ -1803,6 +1853,9 @@ RUN_SYMBIOTE=async()=>{
 
         //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
         CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
+
+        //4.Start checking the health of all the subchains
+        HEALTH_MONITORING()
 
 
         let promises=[]

@@ -461,7 +461,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
     let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(
         
-        operation => !SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.includes(operation.id)
+        operation => !SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.has(operation.id)
         
     ).map(
         
@@ -614,7 +614,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.length<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
+    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
@@ -626,7 +626,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
             operation.id = payloadHash
 
             // Add to mempool
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.push(operation)
+            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.set(payloadHash,operation)
 
             response.end('OK')
         
