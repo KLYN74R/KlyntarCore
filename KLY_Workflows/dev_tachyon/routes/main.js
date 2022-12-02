@@ -133,7 +133,7 @@ acceptBlocks=response=>{
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    !response.aborted && response.end(commitment)
+                    !response.aborted && response.end( QUORUM_MEMBER_MODE ? commitment : 'Not a quorum member to return commitment or checkpoint generation mode has been activated')
 
 
                 }else !response.aborted && response.end('Overview failed')
@@ -156,7 +156,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let {symbiote,event}=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
-    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote&&CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
+    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
         
         !response.aborted && response.end('Overview failed')
         
@@ -242,7 +242,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && !QUORUM_MEMBER_MODE){
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -362,6 +362,20 @@ getSuperFinalization=async(response,request)=>{
     }else response.end('Route is off')
 
 },
+
+
+
+/*
+
+Function to accept potential checkpoints
+
+*/
+potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let potentialCheckpoint=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+}),
 
 
 
@@ -614,7 +628,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
+    if(QUORUM_MEMBER_MODE && CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
@@ -706,6 +720,8 @@ UWS_SERVER
 
 
 .post('/special_operations',specialOperationsAccept)
+
+.post('/potential_checkpoint',potentialCheckpoint)
 
 .post('/checkpoint',checkpoint)
 

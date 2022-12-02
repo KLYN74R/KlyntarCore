@@ -316,6 +316,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //Updated WORKFLOW_OPTIONS
         SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
+        //CLear the map of SPECIAL_OPERATIONS
+        SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.clear()
+
         //Set new checkpoint
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
         
@@ -442,7 +445,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembersURLs = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
+        let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
 
         let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
 
@@ -463,7 +466,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
         
         */
-        for(let memberHandler of quorumMembersURLs){
+        for(let memberHandler of quorumMembers){
 
             let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
  
@@ -610,7 +613,25 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
 
 
-            // Share via POST /checkpoint_template
+            // Share via POST /potential_checkpoint
+
+            for(let memberHandler of quorumMembers){
+
+                let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
+     
+                    response.pubKey = memberHandler.pubKey
+    
+                    return response
+    
+                }).catch(_=>false)
+    
+    
+                promises.push(responsePromise)
+    
+            }
+    
+            //Run promises
+            let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
 
 
         }else if(propositionsToUpdateMetadata===0){
