@@ -613,26 +613,14 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
 
 
-            // Share via POST /potential_checkpoint
+            //____________________________________ Share via POST /potential_checkpoint ____________________________________
+
 
             for(let memberHandler of quorumMembers){
 
-                let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
-     
-                    response.pubKey = memberHandler.pubKey
-    
-                    return response
-    
-                }).catch(_=>false)
-    
-    
-                promises.push(responsePromise)
-    
+                fetch(memberHandler.url+'/potential_checkpoint',newCheckpoint).catch(_=>false)
+        
             }
-    
-            //Run promises
-            let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
-
 
         }else if(propositionsToUpdateMetadata===0){
 
@@ -657,6 +645,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         //Clear everything and repeat the attempt(round) of checkpoint proposition - with updated values of subchains' metadata & without special operations
 
     }
+
+    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 second - do monitoring
 
 },
 
@@ -985,8 +975,29 @@ PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
 //Function to monitor the available block creators
 HEALTH_MONITORING=async()=>{
 
-    let quorumMembersURLS = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+    let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
 
+
+    for(let memberHandler of quorumMembers){
+
+        let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
+
+            response.pubKey = memberHandler.pubKey
+
+            return response
+
+        }).catch(_=>false)
+
+
+        promises.push(responsePromise)
+
+    }
+
+    //Run promises
+    let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
+
+
+    setTimeout(HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
 }
 
