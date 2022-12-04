@@ -319,6 +319,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //CLear the map of SPECIAL_OPERATIONS
         SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.clear()
 
+        //Clear the QUORUM_THREAD_CACHE
+        //TODO:Make more advanced logic
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
+
         //Set new checkpoint
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
         
@@ -341,6 +345,16 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
         if(checkpointIsFresh && iAmInTheQuorum){
+
+            // Fill the checkpoints manager with the latest data
+
+            let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
+
+            Object.keys(validatorsMetadata).forEach(
+            
+                poolPubKey => SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX:validatorsMetadata[poolPubKey].INDEX,HASH:validatorsMetadata[poolPubKey].HASH}) //{INDEX,HASH}
+    
+            )
 
             let nextCheckpointIdAlreadyGenerated = await SYMBIOTE_META.CHECKPOINTS.get(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID + 1).catch(_=>false)
 
@@ -975,6 +989,20 @@ PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
+
+    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+
+        // Fill the HEALTH_MONITORING mapping with the latest known values
+        // Structure is SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+
+        for(let pubKey of SYMBIOTE_META.CHECKPOINTS_MANAGER.keys()){
+
+            SYMBIOTE_META.CHECKPOINTS_MANAGER
+
+        }
+
+    }
+
     // Get the appropriate pubkey & url to check and validate the answer
     let subchainsMetadata = await GET_VALIDATORS_URLS(true)
 
@@ -1433,8 +1461,8 @@ PREPARE_SYMBIOTE=async()=>{
         SUPER_FINALIZATION_PROOFS:new Map(), // the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
 
         CHECKPOINTS_MANAGER:new Map(), // validatorID => {INDEX,HASH}. Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
-
-        CHECKPOINTS:new Map(), // used to get the final consensus and get 2/3N+1 similar checkpoints to include to hostchain(s,if we talk about HiveMind)
+    
+        HEALTH_MONITORING:new Map() //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
     
     }
 
