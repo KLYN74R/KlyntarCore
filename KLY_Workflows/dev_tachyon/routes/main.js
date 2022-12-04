@@ -327,13 +327,13 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
 /*
 
-To return SUPER_FINALIZATION_PROOF related to some block PubX:Index with hash <HASH>
+To return SUPER_FINALIZATION_PROOF related to some block PubX:Index
 
 Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
 
 Params:
 
-    [0] - blockID:hash
+    [0] - blockID
 
 Returns:
 
@@ -362,6 +362,57 @@ getSuperFinalization=async(response,request)=>{
     }else response.end('Route is off')
 
 },
+
+
+
+
+/*
+
+To return SUPER_FINALIZATION_PROOF related to the latest block we have 
+
+Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+
+Params:
+
+Returns:
+
+    {
+        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+        aggregatedPub:<>,
+        afkValidators
+        
+    }
+
+*/
+healthChecker = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
+
+        // Get the latest SUPER_FINALIZATION_PROOF that we have
+        let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+
+        if(!appropriateDescriptor) response.end(`Still  haven't start the procedure of grabbing finalization proofs`)
+
+        let latestFullyFinalizedHeight = appropriateDescriptor.height-1
+
+        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+
+        if(superFinalizationProof){
+
+            let healthProof = {latestFullyFinalizedHeight,superFinalizationProof}
+
+            let sig = await SIG(JSON.stringify(healthProof))
+
+            response.end(JSON.stringify({healthProof,sig}))
+
+        }else response.end('No proof')
+
+    }else response.end('Route is off')
+
+},
+
 
 
 
@@ -718,12 +769,13 @@ UWS_SERVER
 
 .get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
 
-
 .post('/special_operations',specialOperationsAccept)
 
 .post('/potential_checkpoint',potentialCheckpoint)
 
 .post('/checkpoint',checkpoint)
+
+.get('/health',healthChecker)
 
 .post('/block',acceptBlocks)
 

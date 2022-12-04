@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_QUORUM_MEMBERS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -56,7 +56,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
 
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes=await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+            let allVisibleNodes=await GET_VALIDATORS_URLS('QUORUM_THREAD')
 
     
             for(let url of allVisibleNodes){
@@ -150,7 +150,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
-    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD'),...GET_ALL_KNOWN_PEERS()]
+    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_VALIDATORS_URLS('QUORUM_THREAD'),...GET_ALL_KNOWN_PEERS()]
 
 
     for(let memberURL of quorumMembersURLs){

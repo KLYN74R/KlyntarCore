@@ -4,7 +4,7 @@ import {
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
     
-    GET_QUORUM_MEMBERS_URLS,GET_MAJORITY,BROADCAST
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST
 
 } from './utils.js'
 
@@ -445,7 +445,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true)
+        let quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
 
         let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
 
@@ -672,7 +672,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
 
-        quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true),
+        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
 
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
@@ -786,7 +786,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(block)},
 
-        quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD',true),
+        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
 
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
@@ -973,31 +973,69 @@ PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
 
 
 //Function to monitor the available block creators
-HEALTH_MONITORING=async()=>{
+SUBCHAINS_HEALTH_MONITORING=async()=>{
 
-    let quorumMembers = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
+    // Get the appropriate pubkey & url to check and validate the answer
+    let subchainsMetadata = await GET_VALIDATORS_URLS(true)
 
 
-    for(let memberHandler of quorumMembers){
+    for(let handler of subchainsMetadata){
 
-        let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
+        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(async response=>{
 
-            response.pubKey = memberHandler.pubKey
+            response.pubKey = handler.pubKey
 
             return response
 
         }).catch(_=>false)
 
 
-        promises.push(responsePromise)
+        proofsPromises.push(responsePromise)
 
     }
 
     //Run promises
-    let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
+    let healthCheckPingbacks = (await Promise.all(proofsPromises)).filter(Boolean)
 
 
-    setTimeout(HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+    /*
+    
+        Each object in healthCheckPingbacks array has the following structure
+
+        {
+        
+            healthProof:{
+
+                latestFullyFinalizedHeight,
+                
+                superFinalizationProof
+
+            }
+            
+            sig:SIG(JSON(healthProof))
+        
+            pubKey
+
+        }
+    
+    */
+
+    let proposeToSkip = [], proofsPromises = []
+
+    for(let answer of healthCheckPingbacks){
+
+        let jsonedProof = JSON.stringify(answer.healthProof)
+
+        let promise = VERIFY(jsonedProof,answer.sig,answer.pubKey).then(isVerified => !isVerified && proposeToSkip.push(answer))
+
+        proofsPromises.push(promise)
+
+    }
+
+    await Promise.all(proofsPromises)
+
+
+    setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
 }
 
@@ -1887,7 +1925,7 @@ RUN_SYMBIOTE=async()=>{
         CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
         //4.Start checking the health of all the subchains
-        HEALTH_MONITORING()
+        SUBCHAINS_HEALTH_MONITORING()
 
 
         let promises=[]

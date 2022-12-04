@@ -300,7 +300,7 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
 
 
-    let quorumMembers = await GET_QUORUM_MEMBERS_URLS()
+    let quorumMembers = await GET_VALIDATORS_URLS()
 
     quorumMembers.forEach(url=>
     
@@ -392,6 +392,29 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
 
 GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS],
+
+
+
+
+GET_VALIDATORS_URLS = async withPubkey => {
+
+    let promises=[]
+
+    Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA).forEach(pubKey =>
+        
+        promises.push(GET_STUFF(pubKey).then(
+        
+            stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
+        
+        ))
+
+    )
+    
+    let validatorsURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+
+    return validatorsURLs
+
+},
 
 
 
