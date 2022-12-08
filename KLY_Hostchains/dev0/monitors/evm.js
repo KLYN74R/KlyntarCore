@@ -285,18 +285,12 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
-        let isEqualToRootPub = bls.aggregatePublicKeys([QUORUM_AGGREGATED_SIGNERS_PUBKEY,...AFK_VALIDATORS]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB') //bls.aggregatePublicKeys(currentCheckpoint.QUORUM)
-
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
-        let isMajority = quorumNumber-AFK_VALIDATORS.length >= majority
-
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.singleVerify(PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE)
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB'),PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
 
-
-        console.log('Verifying checkpoint ',isNext,' => ',isEqualToRootPub,' => ',isMajority,' => ',signaIsOk)
-
-        if(isNext && isEqualToRootPub && isMajority && signaIsOk) {
+        
+        if(isNext && signaIsOk) {
 
             let validCheckpoint = {
 

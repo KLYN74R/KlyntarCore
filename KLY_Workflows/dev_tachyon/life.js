@@ -1013,13 +1013,19 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let subchainsURLs = await GET_VALIDATORS_URLS()
+    let subchainsURLAndPubKey = await GET_VALIDATORS_URLS(true)
 
 
-    for(let handler of subchainsURLs){
+    for(let handler of subchainsURLAndPubKey){
 
-        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).catch(_=>false)
-        
+        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(r=>{
+
+            r.pubKey = handler.pubKey
+
+            return r
+
+        }).catch(_=>false)
+
         proofsPromises.push(responsePromise)
 
     }
@@ -1035,7 +1041,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         {
         
             latestFullyFinalizedHeight, // height of block that we already finalized. Also, below you can see the SUPER_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
-        
+            
+            latestHash:<>,
+
+            pubKey,
+
             superFinalizationProof:{
             
                 aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
@@ -1048,16 +1058,27 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     */
 
-    let proposeToSkip = [], proofsPromises = []
+    let proposeToSkip = [],
+    
+        proofsPromises = [],
+    
+        reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD'),
+
+        qtRootPub=SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
+
+        
 
     for(let answer of healthCheckPingbacks){
 
-        let jsonedProof = JSON.stringify(answer.healthProof)
+        let {aggregatedPub,aggregatedSignature,afkValidators} = answer.superFinalizationProof
 
-        let promise = VERIFY(jsonedProof,answer.sig,answer.pubKey).then(isVerified => !isVerified && proposeToSkip.push(answer))
+        let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
 
-        proofsPromises.push(promise)
+        // blockID+hash+"FINALIZATION"
+        let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+"FINALIZATION"
 
+        let isSuperFinalizedProofOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+        
     }
 
     await Promise.all(proofsPromises)
