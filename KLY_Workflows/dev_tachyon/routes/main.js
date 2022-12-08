@@ -472,20 +472,53 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 [Response]:
 
-    In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
-    For this - response with a signature like this
+    [+] In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
+        For this - response with a signature like this SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
 
-        SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
+    [+] If timeout of AFK from subchain is not too old - then response with 'OK'
 
-    If timeout of AFK from subchain is not too old - then response with 'OK'
-
-    Also, if we notice that requested height is lower than we have - then send own version as a proof
+    [+] Also, if we notice that requested height is lower than we have - then send own version as a proof
 
 */
 skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let skipProcedureRequest=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
+    if(await VERIFY(session+requestedSubchain+height,sig,initiator)){
+
+        let myLocalHealthCheckingHandler = SYMBIOTE_META.HEALTH_MONITORING.get(requestedSubchain)
+
+        if(myLocalHealthCheckingHandler){
+
+            let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
+
+            let currentTime = new Date().getTime()
+
+            if(currentTime-myLocalHealthCheckingHandler.LAST_SEEN >= afkLimit){
+
+                response.end(JSON.stringify({
+                    
+                    status:'SKIP',
+                    
+                    sig:await SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
+                
+                }))
+
+            }else if(myLocalHealthCheckingHandler.INDEX>height){
+
+                response.end(JSON.stringify({
+                    
+                    status:'UPDATE',
+                    
+                    data:myLocalHealthCheckingHandler
+                
+                }))
+
+            }else response.end(JSON.stringify({status:'OK'}))
+       
+        }else response.end('No such subchain')
+
+    }else response.end('Verification failed')
 
 }),
 

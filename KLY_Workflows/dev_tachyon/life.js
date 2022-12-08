@@ -1115,7 +1115,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let session = GET_RANDOM_BYTES_AS_HEX(32)
 
-    let lastSeen = new Date().getTime()
+    let currentTime = new Date().getTime()
 
     let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
 
@@ -1129,7 +1129,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(candidate)
         
-        if(lastSeen-localHealthHandler.LAST_SEEN >= afkLimit){
+        if(currentTime-localHealthHandler.LAST_SEEN >= afkLimit){
 
             /*
             
