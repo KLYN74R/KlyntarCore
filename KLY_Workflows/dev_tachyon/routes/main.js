@@ -380,6 +380,8 @@ Returns:
         
         latestFullyFinalizedHeight, // height of block that we already finalized. Also, below you can see the SUPER_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
+        latestHash:<>,
+
         superFinalizationProof:{
             
             aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
@@ -403,13 +405,21 @@ healthChecker = async response => {
 
         if(!appropriateDescriptor) response.end(`Still haven't start the procedure of grabbing finalization proofs`)
 
+
+        
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
+
+        let block = await SYMBIOTE_META.BLOCKS.get(latestFullyFinalizedHeight).catch(_=>false)
 
         let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
-        if(superFinalizationProof){
+        
+        
+        if(superFinalizationProof && block){
 
-            let healthProof = {latestFullyFinalizedHeight,superFinalizationProof}
+            let latestHash = Block.genHash(block)
+
+            let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
 
             response.end(JSON.stringify(healthProof))
 
@@ -442,7 +452,6 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     Route to accept requests from other quorum members about development of subchains.
 
-
     For this, we should response like this
 
 
@@ -450,9 +459,14 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     {
         session:<32-bytes random hex session ID>,
+        
         initiator:<BLS pubkey of quorum member who initiated skip procedure>,
+        
         requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
-        sig:SIG(session+requestedSubchain)
+        
+        height:<block height of subchain on which initiator stopped>
+        
+        sig:SIG(session+requestedSubchain+height)
     
     }
 
@@ -464,6 +478,8 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
         SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
 
     If timeout of AFK from subchain is not too old - then response with 'OK'
+
+    Also, if we notice that requested height is lower than we have - then send own version as a proof
 
 */
 skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{

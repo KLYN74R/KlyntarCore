@@ -4,7 +4,7 @@ import {
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
     
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST, GET_RANDOM_BYTES_AS_HEX
 
 } from './utils.js'
 
@@ -726,7 +726,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
     if(finalizationProofsMapping.size>=majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the SUPER_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR') to move to the next block
+        // Also, increase the counter of SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
@@ -928,13 +928,13 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
 
-        let myLatestSendBlockToThemInCurrentQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX
+        let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
 
         appropriateDescriptor = {
 
             checkpointID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
 
-            height:myLatestSendBlockToThemInCurrentQuorum+1
+            height:myLatestFinalizedHeight
 
         }
 
@@ -989,8 +989,7 @@ PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
-
-    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+    if(SYMBIOTE_META.HEALTH_MONITORING.size===0){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
         // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
@@ -1010,7 +1009,20 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         }
 
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
     }
+
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+
+        //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
+
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+    }
+
+
 
     // Get the appropriate pubkey & url to check and validate the answer
     let subchainsURLAndPubKey = await GET_VALIDATORS_URLS(true)
@@ -1058,15 +1070,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     */
 
-    let proposeToSkip = [],
-    
-        proofsPromises = [],
+    let candidatesForAnotherCheck = [],
     
         reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD'),
 
         qtRootPub=SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
 
-        
+
 
     for(let answer of healthCheckPingbacks){
 
@@ -1074,14 +1084,161 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
 
+
+        // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
+        let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(pubKey)
+
         // blockID+hash+"FINALIZATION"
         let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+"FINALIZATION"
 
-        let isSuperFinalizedProofOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+        let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+
+        //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
+
+        if(superFinalizationProofIsOk && localHealthHandler.INDEX < latestFullyFinalizedHeight){
+
+            localHealthHandler.LAST_SEEN = new Date().getTime()
+
+            localHealthHandler.INDEX = latestFullyFinalizedHeight
+
+            localHealthHandler.HASH = latestHash
+
+            localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+
+        }else candidatesForAnotherCheck.push(pubKey)
         
     }
 
-    await Promise.all(proofsPromises)
+    //______ ON THIS STEP - in <candidatesForAnotherCheck> we have subchains that required to be asked via other quorum members and probably start a SKIP_PROCEDURE_STAGE_1 _______
+
+    // Create the random session seed to ask another quorum members
+
+    let session = GET_RANDOM_BYTES_AS_HEX(32)
+
+    let lastSeen = new Date().getTime()
+
+    let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
+
+
+    let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
+
+
+    for(let candidate of candidatesForAnotherCheck){
+
+        //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
+
+        let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(candidate)
+        
+        if(lastSeen-localHealthHandler.LAST_SEEN >= afkLimit){
+
+            /*
+            
+            Send this to POST /skip_procedure_part_1
+
+            {
+                
+                session:<32-bytes random hex session ID>,
+                initiator:<BLS pubkey of quorum member who initiated skip procedure>,
+                requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
+                sig:SIG(session+requestedSubchain)
+    
+            }
+            
+            */
+
+            let payload={
+                
+                session,
+                
+                initiator:CONFIG.SYMBIOTE.PUB,
+                
+                requestedSubchain:candidate,
+
+                height:localHealthHandler.INDEX,
+                
+                sig:await SIG(session+candidate+localHealthHandler.INDEX)
+            
+            }
+
+            let sendOptions={
+
+                method:'POST',
+
+                body:JSON.stringify(payload)
+
+            }
+
+            let skipAgreements=[] //Each object will be {pubkey,sig}
+            
+            //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_1 _____________________
+
+
+            for(let validatorHandler of validatorsURLSandPubKeys){
+
+                let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_part_1',sendOptions).then(r=>r.json()).catch(_=>'<>')
+
+                /*
+                
+                    Potential answer might be
+                
+                    {status:'OK'}        OR          {status:'SKIP',sig:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)}     OR      {status:'UPDATE',data:{INDEX,HASH,SUPER_FINALIZATION_PROOF}}
+                
+                */
+
+                if(answerFromValidator.status==='UPDATE'){
+
+                    // In this case it means that validator we've requested has higher version of subchain, so we just accept it(if SUPER_FINALIZATION_PROOF verification is ok) and break the cycle
+
+                    let {INDEX,HASH} = answerFromValidator.data
+
+                    let {aggregatedPub,aggregatedSignature,afkValidators} = answerFromValidator.data.SUPER_FINALIZATION_PROOF
+
+                    let data = candidate+':'+INDEX+HASH+'FINALIZED'
+
+                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+
+                    if(superFinalizationProofIsOk){
+
+                        // Update the local version in HEALTH_MONITORING
+
+                        localHealthHandler.LAST_SEEN = new Date().getTime()
+
+                        localHealthHandler.INDEX = INDEX
+
+                        localHealthHandler.HASH = HASH
+
+                        localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+
+
+                        // And break the cycle for this subchain-candidate
+                        break
+
+                    }
+
+                }else if(answerFromValidator.status==='SKIP' && await VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB,answerFromValidator.sig,validatorHandler.pubKey)){
+
+                    // Grab the skip agreements to publish to hostchain
+
+                    skipAgreements.push({sig:answerFromValidator.sig,pubKey:validatorHandler.pubKey})
+
+                }
+
+            }
+
+
+            //______________________ On this step, hense we haven't break, we have a skip agreements in array ______________________
+
+            if(skipAgreements.length>=GET_MAJORITY('QUORUM_THREAD')){
+
+                // We can aggregate this agreements and publish to hostchain as a signal to start SKIP_PROCEDURE_STAGE_2
+
+            }
+
+            // Otherwise - do nothing
+
+        }
+
+    }
 
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
@@ -1090,6 +1247,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
+
+
+//! Deprecated
 
 // REQUEST_FOR_BLOCKS=async()=>{
 
