@@ -377,10 +377,18 @@ Params:
 Returns:
 
     {
-        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
-        aggregatedPub:<>,
-        afkValidators
         
+        latestFullyFinalizedHeight, // height of block that we already finalized. Also, below you can see the SUPER_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+        superFinalizationProof:{
+            
+            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+            aggregatedPub:<>,
+            afkValidators
+        
+        }
+    
+    
     }
 
 */
@@ -393,7 +401,7 @@ healthChecker = async response => {
         // Get the latest SUPER_FINALIZATION_PROOF that we have
         let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
 
-        if(!appropriateDescriptor) response.end(`Still  haven't start the procedure of grabbing finalization proofs`)
+        if(!appropriateDescriptor) response.end(`Still haven't start the procedure of grabbing finalization proofs`)
 
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
 
@@ -403,9 +411,7 @@ healthChecker = async response => {
 
             let healthProof = {latestFullyFinalizedHeight,superFinalizationProof}
 
-            let sig = await SIG(JSON.stringify(healthProof))
-
-            response.end(JSON.stringify({healthProof,sig}))
+            response.end(JSON.stringify(healthProof))
 
         }else response.end('No proof')
 
@@ -427,6 +433,55 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 
 }),
+
+
+
+/*
+
+[Info]:
+
+    Route to accept requests from other quorum members about development of subchains.
+
+
+    For this, we should response like this
+
+
+[Accept]:
+
+    {
+        session:<32-bytes random hex session ID>,
+        initiator:<BLS pubkey of quorum member who initiated skip procedure>,
+        requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
+        sig:SIG(session+requestedSubchain)
+    
+    }
+
+[Response]:
+
+    In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
+    For this - response with a signature like this
+
+        SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
+
+    If timeout of AFK from subchain is not too old - then response with 'OK'
+
+*/
+skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let skipProcedureRequest=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+}),
+
+
+
+
+skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+
+})
 
 
 
@@ -776,6 +831,14 @@ UWS_SERVER
 .post('/checkpoint',checkpoint)
 
 .get('/health',healthChecker)
+
+
+//_______________________________ 2 Routes related to the 2 stages of the skip procedure _______________________________
+
+.post('/skip_procedure_part_1',skipProcedurePart1)
+
+.post('/skip_procedure_part_2',skipProcedurePart2)
+
 
 .post('/block',acceptBlocks)
 

@@ -993,31 +993,33 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
-        // Structure is SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+        // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+
+        let LAST_SEEN = new Date().getTime()
 
         for(let pubKey of SYMBIOTE_META.CHECKPOINTS_MANAGER.keys()){
 
-            SYMBIOTE_META.CHECKPOINTS_MANAGER
+            let {INDEX,HASH}=SYMBIOTE_META.CHECKPOINTS_MANAGER.get(pubKey)
+
+            let baseBlockID = pubkey+":"+INDEX
+
+            let SUPER_FINALIZATION_PROOF = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(baseBlockID).catch(_=>false)
+
+            //Store to mapping
+            SYMBIOTE_META.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
 
         }
 
     }
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let subchainsMetadata = await GET_VALIDATORS_URLS(true)
+    let subchainsURLs = await GET_VALIDATORS_URLS()
 
 
-    for(let handler of subchainsMetadata){
+    for(let handler of subchainsURLs){
 
-        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(async response=>{
-
-            response.pubKey = handler.pubKey
-
-            return response
-
-        }).catch(_=>false)
-
-
+        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).catch(_=>false)
+        
         proofsPromises.push(responsePromise)
 
     }
@@ -1029,21 +1031,19 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     /*
     
         Each object in healthCheckPingbacks array has the following structure
-
+        
         {
         
-            healthProof:{
-
-                latestFullyFinalizedHeight,
-                
-                superFinalizationProof
-
-            }
-            
-            sig:SIG(JSON(healthProof))
+            latestFullyFinalizedHeight, // height of block that we already finalized. Also, below you can see the SUPER_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
-            pubKey
-
+            superFinalizationProof:{
+            
+                aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+                aggregatedPub:<>,
+                afkValidators
+        
+            }
+      
         }
     
     */
