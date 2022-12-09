@@ -1642,8 +1642,14 @@ PREPARE_SYMBIOTE=async()=>{
 
         CHECKPOINTS_MANAGER:new Map(), // validatorID => {INDEX,HASH}. Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
-        HEALTH_MONITORING:new Map() //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
     
+        //____________________ SKIP_PROCEDURE related sets ____________________
+
+        SKIP_PROCEDURE_STAGE_1:new Set(),   // here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
+
+        SKIP_PROCEDURE_STAGE_2:new Set(),   // here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
+
     }
 
 
