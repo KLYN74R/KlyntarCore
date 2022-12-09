@@ -524,13 +524,70 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 
 
 
+/*
 
+[Info]:
+
+    Route to accept requests from other quorum members about SKIP_PROCEDURE
+
+    But, in stage 2 we get the reference to hostchain where we'll see aggregated proof as result of SKIP_PROCEDURE_STAGE_1
+
+
+[Accept]:
+
+    {
+        subchain:<ID>
+        height:<block index of this subchain on which we're going to skip>
+        hash:<block hash>
+
+        superFinalizationProof:{
+
+            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+            aggregatedPub:<>,
+            afkValidators
+
+        }
+    }
+
+    * Your node will understand that hunting has started because we'll find SKIP_PROCEDURE_STAGE_1 on hostchain
+
+    Also, we add the SUPER_FINALIZATION_PROOF to body to force each qourum member to update local checkpoints manager
+
+[Response]:
+
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_1 from hostchain, we have this subchainID in appropriate set
+        1)We should add this subchain to SKIP_PROCEDURE_STAGE_2 set to stop sharing commitments/finalization proofs for this subchain
+        2)We generate appropriate signature with the data from CHECKPOINTS manager
+
+    Also, if height/hash/superFinalizationProof in request body is valid and height>our local version - update CHECKPOINTS_MANAGER and generate signature
+
+    [+] In case our local version of height for appropriate subchain > proposed height in request and we have a FINALIZATION_PROOF - send response with status "UPDATE" and our height/hash/finalizationproof
+
+        Soon or late, majority will get the common version of proofs for SKIP_PROCEDURE_STAGE_2 and generate an appropriate aggregated signature
+
+*/
 skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-})
+    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
+
+        // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
+        // We can vote to skip only for height over index that we already send commitment to
+        let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+
+        // Add this height to the local set to prevent produce commitments/finalization proofs for this subchain(at least till the next checkpoint session)
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(subchain)
+
+        let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}`)
+
+        response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
+
+    }else response.end(JSON.stringify({status:'NOT FOUND'}))
+
+
+}),
 
 
 

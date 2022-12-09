@@ -1217,8 +1217,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 }else if(answerFromValidator.status==='SKIP' && await VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB,answerFromValidator.sig,validatorHandler.pubKey)){
 
-                    // Grab the skip agreements to publish to hostchain
-
+                    // Grab the skip agreements to publish to hostchains
                     skipAgreements.push({sig:answerFromValidator.sig,pubKey:validatorHandler.pubKey})
 
                 }
