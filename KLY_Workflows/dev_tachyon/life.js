@@ -323,6 +323,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //TODO:Make more advanced logic
         SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
 
+        //Clear our sets
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.clear()
+
         //Set new checkpoint
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
         
