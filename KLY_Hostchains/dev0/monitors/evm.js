@@ -616,6 +616,64 @@ export default {
 
         }
 
-    }
+    },
+
+
+
+
+    GET_SKIP_PROCEDURE_STAGE_1_PROOFS:async()=>{
+
+        /*
+        
+        [+] Call this function periodically to find the proofs of SKIP_PROCEDURE_STAGE_1 on hostchain
+        [+] Once find, verify it. The structure of proof that 2/3N+1 have voted to exclude some subchain
+
+        {
+            session:'0123456701234567012345670123456701234567012345670123456701234567',
+            subchain:'7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X',
+            
+            sig:<signature by initiator to proof that "YES,I've grabbed this agreements and we(the quorum majority) is really want to exclude this subchain from verification process". SIG(session+session)>
+            initiator:<Your pubkey to verify this signature>
+
+            aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
+            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator),
+            afk:[<array of afk from quorum>]
+        }
+
+        [+] To verify => verify aggregated signature by quorum majority and initiator's signature
+        [+] Add subchain to SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1 set to response with the proofs for stage 2
+        
+        */
+
+    },
     
+
+    GET_SKIP_PROCEDURE_STAGE_2_PROOFS:async()=>{
+
+        /*
+        
+            [+] Call this function periodically to find the proofs of SKIP_PROCEDURE_STAGE_2 on hostchain
+            [+] This proof means that majority is going to exclude the subchain from verification thread. It contains the height/hash of the latest known segment of subchain
+            [+] During the work in function START_VERIFICATION_THREAD, we'll use this proof to skip appropriate subchain on appropriate height
+            [+] Format is
+
+            {
+                subchain:'<pubkey of subchain that we're going to skip>,
+                index:<latest block index that majority have voted for, but we can't get the index+1 block, that's why-skip>
+                hash:<hash of appropriate block>
+                
+                aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
+                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>`)
+                afk:[]
+            }
+
+            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain].
+                For this reasons, subchain will be deactivated at least untill the next checkpoint.
+                Also, it should has a valid timestamp(today) to make sure it's between <CURRENT_CHECKPOINT> <=> <NEXT_CHECKPOINT>
+            
+        */
+
+    }
+
+
 }
