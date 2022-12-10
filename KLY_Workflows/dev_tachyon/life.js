@@ -394,6 +394,21 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
+SKIP_PROCEDURE_MONITORING_START=async()=>{
+
+
+    await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_1_PROOFS().catch(_=>false)
+
+    await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
+
+    
+    setTimeout(SKIP_PROCEDURE_MONITORING_START,7000)
+
+},
+
+
+
+
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
@@ -2144,6 +2159,10 @@ RUN_SYMBIOTE=async()=>{
 
         //4.Start checking the health of all the subchains
         SUBCHAINS_HEALTH_MONITORING()
+
+
+        //5. Start checking SKIP_PROCEDURE proofs(for stages 1 and 2)
+        SKIP_PROCEDURE_MONITORING_START()
 
 
         let promises=[]

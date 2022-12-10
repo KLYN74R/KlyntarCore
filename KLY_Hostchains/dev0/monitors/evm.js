@@ -645,6 +645,55 @@ export default {
         
         */
 
+
+        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+    
+            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+
+            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
+
+                LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
+
+                return false
+
+            })
+
+
+        if(lastKnownBlockNumber){
+
+            LOG(`Found new latest known block on hostchain [\x1b[33;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+
+            //Get from the height we stopped till the last known block
+
+            let options = {
+
+                fromBlock:'CHOOSE',
+
+                toBlock:lastKnownBlockNumber
+
+            };
+
+
+            //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
+            if(nextRangeStartsFrom>=lastKnownBlockNumber) return
+            
+            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
+
+                LOG(`Received this error when asking for events => ${error}`,'W')
+
+                return false
+
+            })
+
+
+            if(events.length){
+
+                // Parse & verify logs here
+                
+            }
+    
+        }
+
     },
     
 
@@ -673,7 +722,56 @@ export default {
             
         */
 
-    }
 
+        
+        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+    
+            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+
+            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
+
+                LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
+
+                return false
+
+            })
+
+
+        if(lastKnownBlockNumber){
+
+            LOG(`Found new latest known block on hostchain [\x1b[33;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
+
+            //Get from the height we stopped till the last known block
+
+            let options = {
+
+                fromBlock:'CHOOSE',
+
+                toBlock:lastKnownBlockNumber
+
+            };
+
+
+            //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
+            if(nextRangeStartsFrom>=lastKnownBlockNumber) return
+            
+            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
+
+                LOG(`Received this error when asking for events => ${error}`,'W')
+
+                return false
+
+            })
+
+
+            if(events.length){
+
+                // Parse & verify logs here
+                
+            }
+    
+        }
+
+    }
 
 }

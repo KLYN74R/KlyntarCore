@@ -133,7 +133,9 @@ acceptBlocks=response=>{
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    !response.aborted && response.end( QUORUM_MEMBER_MODE ? commitment : 'Not a quorum member to return commitment or checkpoint generation mode has been activated')
+                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(block.creator) && !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(block.creator)
+
+                    !response.aborted && response.end( QUORUM_MEMBER_MODE && canShareCommitment ? commitment : 'Not a quorum member to return commitment or checkpoint generation mode has been activated')
 
 
                 }else !response.aborted && response.end('Overview failed')
