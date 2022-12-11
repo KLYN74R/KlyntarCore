@@ -90,34 +90,6 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 
 
-GET_STUFF = async stuffID => SYMBIOTE_META.STUFF_CACHE.get(stuffID) || SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
-
-    if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,obj)
-
-    return obj
-
-}).catch(async _ =>{
-
-    LOG(`Can't find stuff with ID=\x1b[32;1m${stuffID}\x1b[36;1m in cache. Going to ask \x1b[32;1mGET_STUFF_URL\x1b[36;1m node`,'I')
-
-    let stuff = await fetch(CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${stuffID}/${cache_type}`).then(r=>r.json()).catch(_=>false)
-
-    if(stuff){
-
-
-        SYMBIOTE_META.STUFF.put(stuffID,stuff).catch(_=>LOG(`Can't store stuff ${stuffID} to local storage`,'W'))
-
-    
-        if(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE>SYMBIOTE_META.STUFF_CACHE.size) SYMBIOTE_META.STUFF_CACHE.set(stuffID,stuff)
-
-
-    }
-
-}),
-
-
-
-
 GET_NODES=region=>{
 
     let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)

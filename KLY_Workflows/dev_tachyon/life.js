@@ -12,6 +12,8 @@ import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js
 
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
+import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
+
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
@@ -334,7 +336,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
         //Get the new ROOTPUB
-        SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
         
         atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
@@ -574,7 +576,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     
                             let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+'FINALIZATION',aggregatedPub,aggregatedSignature)
         
-                            let rootPubIsOK = SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB') === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
+                            let rootPubIsOK = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
         
         
                             if(signaIsOk && rootPubIsOK){
@@ -745,7 +747,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
     if(finalizationProofsMapping.size>=majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the SUPER_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR') to move to the next block and udpate the hash
+        // Also, increase the counter of SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
@@ -794,7 +796,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
 
         // Repeat procedure for the next block
-        let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
 
         appropriateDescriptor.height++
 
@@ -940,7 +942,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     // Descriptor has the following structure - {checkpointID,height}
-    let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+    let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
@@ -958,7 +960,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         }
 
         // And store new descriptor(till it will be old)
-        SYMBIOTE_META.STUFF_CACHE.set('BLOCK_SENDER_DESCRIPTOR',appropriateDescriptor)
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_DESCRIPTOR',appropriateDescriptor)
 
         // Also, clear invalid caches
 
@@ -1091,7 +1093,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
         reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD'),
 
-        qtRootPub=SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
+        qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
 
@@ -1647,7 +1649,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         PEERS:[], //Peers to exchange data with
 
-        STUFF_CACHE:new Map(), //BLS pubkey => destination(domain:port,node ip addr,etc.) | 
+        STATIC_STUFF_CACHE:new Map(),
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
@@ -1825,12 +1827,13 @@ PREPARE_SYMBIOTE=async()=>{
 
     //_____________________________________Set some values to stuff cache___________________________________________
 
+    SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,SYMBIOTE_META.STUFF),
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
-    SYMBIOTE_META.STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+    SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
-    SYMBIOTE_META.STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+    SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
     //__________________________________Load modules to work with hostchains_________________________________________

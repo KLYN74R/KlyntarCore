@@ -234,7 +234,7 @@ stuff=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
 
-        let stuff = SYMBIOTE_META.STUFF_CACHE.get(stuffID) || await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
+        let stuff = await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
             SYMBIOTE_META.STUFF_CACHE.set(stuffID,obj)
         

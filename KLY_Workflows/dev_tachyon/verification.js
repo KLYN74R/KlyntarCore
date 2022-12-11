@@ -179,7 +179,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION"+qtPayload,itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
 
-                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
+                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 
                 quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
 
@@ -507,7 +507,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
             //Get the new rootpub
-            SYMBIOTE_META.STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+            SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
             SYMBIOTE_META.STATE_CACHE.forEach(

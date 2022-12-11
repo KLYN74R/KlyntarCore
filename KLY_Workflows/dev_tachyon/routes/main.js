@@ -252,7 +252,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
-        let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
+        let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
         if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
@@ -310,7 +310,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
 
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STUFF_CACHE.get('QT_ROOTPUB')
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
@@ -403,7 +403,7 @@ healthChecker = async response => {
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
-        let appropriateDescriptor = SYMBIOTE_META.STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
 
         if(!appropriateDescriptor) response.end(`Still haven't start the procedure of grabbing finalization proofs`)
 
