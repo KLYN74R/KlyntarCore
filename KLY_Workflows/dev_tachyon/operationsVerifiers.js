@@ -523,7 +523,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    MAJOR_VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
         /*
         
@@ -550,7 +550,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
         
         
         */
@@ -585,6 +585,67 @@ export default {
             let updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
+
+        }
+        
+    },
+
+
+
+
+    VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+
+        /*
+        
+        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload has the following structure:
+
+        {
+            major:<typeof Number>
+        }
+        
+        If received from route - then payload has the following structure
+
+        {
+            sigType,
+            pubKey,
+            signa,
+            data:{
+                major:<typeof Number>
+            }
+        }
+
+        Also, you must sign the data with the latest payload's header hash
+
+        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)        
+        
+        */
+
+        let {sigType,pubKey,signa,data} = payload
+
+        let overviewIfFromRoute = 
+
+            isFromRoute //method used on POST /special_operations
+            &&
+            CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
+            &&
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+
+
+        if(overviewIfFromRoute){
+
+            //In this case, <proposer> property is the address should be included to your whitelist in configs
+
+            return {type:'VERSION_UPDATE',payload:data}
+
+        }
+        else if(usedOnQuorumThread && payload.major > SYMBIOTE_META.QUORUM_THREAD.VERSION){
+
+            SYMBIOTE_META.QUORUM_THREAD.VERSION=payload.major
+
+        }else if(payload.major > SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
+
+            //Used on VT
+            SYMBIOTE_META.VERIFICATION_THREAD.VERSION=payload.major
 
         }
         

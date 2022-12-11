@@ -1,4 +1,4 @@
-import{BODY,SAFE_ADD,PARSE_JSON, BLAKE3} from '../../../KLY_Utils/utils.js'
+import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
 import {BROADCAST,VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
 
@@ -75,7 +75,7 @@ acceptBlocks=response=>{
                 
                     hash=Block.genHash(block),
 
-                    myCommitment = SYMBIOTE_META.COMMITMENTS.get(block.сreator+":"+block.index)?.get(CONFIG.SYMBIOTE.PUB),
+                    myCommitment = await SYMBIOTE_META.MY_COMMITMENTS.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
 
                     // index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
 
@@ -135,8 +135,14 @@ acceptBlocks=response=>{
 
                     let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(block.creator) && !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(block.creator)
 
-                    !response.aborted && response.end( QUORUM_MEMBER_MODE && canShareCommitment ? commitment : 'Not a quorum member to return commitment or checkpoint generation mode has been activated')
+                    if(QUORUM_MEMBER_MODE && canShareCommitment){
 
+                        //Put to local storage to prevent double voting
+                        await SYMBIOTE_META.MY_COMMITMENTS.put(block.сreator+":"+block.index,commitment)
+
+                        !response.aborted && response.end(commitment)
+
+                    }else !response.aborted && response.end('Something wrong')
 
                 }else !response.aborted && response.end('Overview failed')
             
@@ -148,7 +154,7 @@ acceptBlocks=response=>{
 
 },
 
-    
+
 
 
 //Format of body : {symbiote,body}
@@ -236,7 +242,7 @@ ___________________________Verification steps___________________________
 
 [Response]:
 
-    If everything is OK - response with signa SIG(blockID+hash+"FINALIZATION")
+    If everything is OK - response with signa SIG(blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)
 
     
 */
@@ -253,7 +259,6 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
         let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
-
 
         if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 

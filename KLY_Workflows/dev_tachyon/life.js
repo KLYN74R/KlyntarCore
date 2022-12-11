@@ -1,16 +1,16 @@
 import {
     
-    DECRYPT_KEYS,BLOCKLOG,SIG,GET_STUFF,VERIFY,
+    DECRYPT_KEYS,BLOCKLOG,SIG,VERIFY,
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
     
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST, GET_RANDOM_BYTES_AS_HEX
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST, GET_RANDOM_BYTES_AS_HEX, CHECK_IF_THE_SAME_DAY
 
 } from './utils.js'
 
-import {CHECK_IF_THE_SAME_DAY,START_VERIFICATION_THREAD} from './verification.js'
+import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,IS_MY_VERSION_OLD} from '../../KLY_Utils/utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
+import {START_VERIFICATION_THREAD} from './verification.js'
 
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
@@ -91,25 +91,9 @@ let graceful=()=>{
 
             global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
 
-            if(CONFIG.SYMBIOTE.STORE_QUORUM_COMMITMENTS_CACHE){
+            LOG('Node was gracefully stopped','I')
                 
-                fs.writeFile(process.env[`CHAINDATA_PATH`]+'/commitmentsCache.json',JSON.stringify(Object.fromEntries(SYMBIOTE_META.COMMITMENTS)),()=>{
-
-                    LOG('Validators proofs stored to cache','I')
-
-                    LOG('Node was gracefully stopped','I')
-                    
-                    process.exit(0)
-
-                })    
-
-            }else{
-
-                LOG('Node was gracefully stopped','I')
-                
-                process.exit(0)    
-
-            }
+            process.exit(0)    
 
         }
 
@@ -341,6 +325,16 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
         await atomicBatch.write()
+
+
+
+        //_______________________Check the version required for the next checkpoint________________________
+
+        if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
+
+            // Stop the node to update the software
+
+        }
 
 
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
@@ -1707,23 +1701,34 @@ PREPARE_SYMBIOTE=async()=>{
     //Create subdirs due to rational solutions
     [
     
-        'BLOCKS',//For blocks(key is index)
+        'BLOCKS', //For blocks. BlockID => block
         
-        'HOSTCHAIN_DATA',//To store metadata from hostchains(proofs,refs,contract results and so on)
+        'HOSTCHAIN_DATA', //To store metadata from hostchains(proofs,refs,contract results and so on)
     
-        'STUFF',//Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
+        'STUFF', //Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
-        'STATE',//Contains state of accounts, contracts, services, metadata and so on
+        'STATE', //Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
+
+        'CHECKPOINTS', //Contains object like CHECKPOINT_ID => {HEADER,PAYLOAD}
+
+        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => {aggregatedPub:<BLS quorum majority aggregated pubkey>,aggregatedSignature:<SIG(blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)>,afkValidators}
+
+        'QUORUM_THREAD_METADATA', //QUORUM_THREAD itself and other stuff
+
+        //_______________________________ Temporary _______________________________
+
+        //* This storages will be cleared once we find next valid checkpoint during work on QUORUM_THREAD
+
+        'MY_COMMITMENTS', //Use it to not to vote for another version of a specific block(prevents of producing several version of commitments to avoid forks)
+
+        'FINALIZATION_PROOFS', //Use it to vote during SKIP_PROCEDURE to prove the other quorum members that the network have voted for higher subchain segment
+
+        //_______________________________ EVM storage _______________________________
 
         'KLY_EVM', //Contains state of EVM
 
-        'KLY_EVM_META', //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        'KLY_EVM_META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
-        'CHECKPOINTS', //Contains object like {HEADER,PAYLOAD}
-
-        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => proof
-
-        'QUORUM_THREAD_METADATA' // QUORUM_THREAD itself and other stuff
 
     ].forEach(
         
@@ -1963,7 +1968,7 @@ START_AWAKENING_PROCEDURE=()=>{
         //0. Initially,try to get pubkey => node_ip binding 
         currentQuorum.forEach(
         
-            pubkey => promises.push(GET_STUFF(pubkey))
+            pubkey => promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubkey))
             
         )
     

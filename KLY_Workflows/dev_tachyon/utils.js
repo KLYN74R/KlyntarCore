@@ -379,7 +379,7 @@ GET_VALIDATORS_URLS = async withPubkey => {
 
     Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA).forEach(pubKey =>
         
-        promises.push(GET_STUFF(pubKey).then(
+        promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
             stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
         
@@ -402,7 +402,7 @@ GET_QUORUM_MEMBERS_URLS = async (threadID,withPubkey) => {
 
     SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.forEach(
         
-        pubKey => promises.push(GET_STUFF(pubKey).then(
+        pubKey => promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
             stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
         
@@ -419,7 +419,26 @@ GET_QUORUM_MEMBERS_URLS = async (threadID,withPubkey) => {
 
 
 
-GET_URL_OF_VALIDATOR = pubKey => GET_STUFF(pubKey).then(stuffData => stuffData.payload.url),
+GET_URL_OF_VALIDATOR = pubKey => SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(stuffData => stuffData?.payload?.url),
+
+
+//SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
+//We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
+//If major version was changed and we still has an old version - we should stop node and update software
+IS_MY_VERSION_OLD = threadID => SYMBIOTE_META[threadID].VERSION >= SYMBIOTE_META.VERSION,
+
+
+
+
+CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
+
+    let date1 = new Date(timestamp1),
+        
+        date2 = new Date(timestamp2)
+    
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
+
+},
 
 
 

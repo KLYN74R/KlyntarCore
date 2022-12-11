@@ -1,4 +1,10 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,GET_FROM_STATE,GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY} from './utils.js'
+import {
+    
+    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
+    
+    GET_FROM_STATE,GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY
+
+} from './utils.js'
 
 import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -201,25 +207,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     //If we can't find - try next time
 
     return false
-
-},
-
-
-//SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
-//We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
-//If major version was changed and we still has an old version - we should stop node and update software
-IS_MY_VERSION_STILL_OK = newMajorVersionFromSpecOps => SYMBIOTE_META.VERSION >= newMajorVersionFromSpecOps,
-
-
-
-
-CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
-
-    let date1 = new Date(timestamp1),
-        
-        date2 = new Date(timestamp2)
-    
-    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
 
 },
 
@@ -520,6 +507,14 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             await atomicBatch.write()
 
+
+            //_______________________Check the version required for the next checkpoint________________________
+
+            if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
+
+                // Stop the node to update the software
+
+            }
 
         }
 
