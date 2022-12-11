@@ -401,8 +401,8 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
 
-    
-    setTimeout(SKIP_PROCEDURE_MONITORING_START,7000)
+
+    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
 },
 
@@ -960,13 +960,11 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         // And store new descriptor(till it will be old)
         SYMBIOTE_META.STUFF_CACHE.set('BLOCK_SENDER_DESCRIPTOR',appropriateDescriptor)
 
-        // Also, clear non-valid caches
+        // Also, clear invalid caches
 
         SYMBIOTE_META.COMMITMENTS.clear()
 
         SYMBIOTE_META.FINALIZATION_PROOFS.clear()
-
-        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.clear()
 
     }
 
@@ -1021,7 +1019,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let baseBlockID = pubkey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(baseBlockID).catch(_=>false)
+            let SUPER_FINALIZATION_PROOF = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(baseBlockID).catch(_=>false)
 
             //Store to mapping
             SYMBIOTE_META.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
@@ -1657,8 +1655,6 @@ PREPARE_SYMBIOTE=async()=>{
 
         FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
-        SUPER_FINALIZATION_PROOFS:new Map(), // the last stage of "proofs". Only when we receive this proof for some block <PubX:Y:Hash> we can proceed this block. Key is blockID and value is object described in routes file(routes/main.js)
-
         CHECKPOINTS_MANAGER:new Map(), // validatorID => {INDEX,HASH}. Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
         HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
@@ -1723,7 +1719,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         'CHECKPOINTS', //Contains object like {HEADER,PAYLOAD}
 
-        'SUPER_FINALIZATION_PROOFS', //Store aggregated proofs blockID => proof
+        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => proof
 
         'QUORUM_THREAD_METADATA' // QUORUM_THREAD itself and other stuff
 

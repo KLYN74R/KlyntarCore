@@ -141,7 +141,7 @@ Verification process:
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(blockID).catch(_=>false)
+    let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(blockID).catch(_=>false)
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
     

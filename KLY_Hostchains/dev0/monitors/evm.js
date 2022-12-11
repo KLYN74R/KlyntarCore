@@ -88,6 +88,11 @@ import Web3 from 'web3'
 //Make it global
 let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
 
+//Get the requiered stuff from configs
+{ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+
+//Create the contract instance
+contractInstance = new web3.eth.Contract(ABI,CONTRACT),
 
 
 
@@ -148,11 +153,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
             console.log(`[${threadID}] Going to query`)
             
-            let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
-    
-                contractInstance = new web3.eth.Contract(ABI,CONTRACT),
-
-                lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
+            let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
 
                     LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
 
@@ -646,17 +647,13 @@ export default {
         */
 
 
-        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
-    
-            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+        let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
 
-            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
+            LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
 
-                LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
+            return false
 
-                return false
-
-            })
+        })
 
 
         if(lastKnownBlockNumber){
@@ -677,7 +674,7 @@ export default {
             //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
             if(nextRangeStartsFrom>=lastKnownBlockNumber) return
             
-            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
+            let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
 
                 LOG(`Received this error when asking for events => ${error}`,'W')
 
@@ -696,6 +693,8 @@ export default {
 
     },
     
+
+
 
     GET_SKIP_PROCEDURE_STAGE_2_PROOFS:async()=>{
 
@@ -724,17 +723,13 @@ export default {
 
 
         
-        let {ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
-    
-            contractInstance = new web3.eth.Contract(ABI,CONTRACT),
+        let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
 
-            lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
+            LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
 
-                LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
+            return false
 
-                return false
-
-            })
+        })
 
 
         if(lastKnownBlockNumber){
@@ -755,7 +750,7 @@ export default {
             //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
             if(nextRangeStartsFrom>=lastKnownBlockNumber) return
             
-            let events = await contractInstance.getPastEvents('Checkpoint',options).catch(error=>{
+            let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
 
                 LOG(`Received this error when asking for events => ${error}`,'W')
 

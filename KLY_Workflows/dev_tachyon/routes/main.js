@@ -315,7 +315,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.put(possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
+        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.put(possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
 
         !response.aborted && response.end('OK')
 
@@ -353,7 +353,7 @@ getSuperFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
-        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(request.getParameter(0)).catch(_=>false)
+        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(request.getParameter(0)).catch(_=>false)
 
         if(superFinalizationProof){
 
@@ -413,7 +413,7 @@ healthChecker = async response => {
 
         let block = await SYMBIOTE_META.BLOCKS.get(latestFullyFinalizedHeight).catch(_=>false)
 
-        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
         
         
@@ -718,7 +718,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
                 // Send the <HEIGHT UPDATE> notification
 
-                let promise = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS.get(subchain+":"+localVersion.INDEX).then(superFinalizationProof=>{
+                let promise = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(subchain+":"+localVersion.INDEX).then(superFinalizationProof=>{
 
                     let template = {
                     
