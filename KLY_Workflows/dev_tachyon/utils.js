@@ -275,8 +275,6 @@ VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,s
 
     let promises=[]
 
-
-
     let quorumMembers = await GET_VALIDATORS_URLS()
 
     quorumMembers.forEach(url=>

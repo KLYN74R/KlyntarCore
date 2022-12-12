@@ -75,7 +75,7 @@ acceptBlocks=response=>{
                 
                     hash=Block.genHash(block),
 
-                    myCommitment = await SYMBIOTE_META.MY_COMMITMENTS.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
+                    myCommitment = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
 
                     // index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
 
@@ -138,7 +138,7 @@ acceptBlocks=response=>{
                     if(QUORUM_MEMBER_MODE && canShareCommitment){
 
                         //Put to local storage to prevent double voting
-                        await SYMBIOTE_META.MY_COMMITMENTS.put(block.сreator+":"+block.index,commitment)
+                        await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.put(block.сreator+":"+block.index,commitment)
 
                         !response.aborted && response.end(commitment)
 

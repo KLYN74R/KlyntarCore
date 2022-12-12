@@ -14,6 +14,8 @@ import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import Block from './essences/block.js'
 
+import {GRACEFUL_STOP} from './life.js'
+
 import fetch from 'node-fetch'
 
 
@@ -513,6 +515,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
 
                 // Stop the node to update the software
+                GRACEFUL_STOP()
 
             }
 
@@ -943,7 +946,7 @@ verifyBlock=async block=>{
 
             SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(error=>LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W'))
 
-        }else{
+        }else if(block.creator!==CONFIG.SYMBIOTE.PUB){
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             SYMBIOTE_META.BLOCKS.del(block.creator+":"+block.index).catch(

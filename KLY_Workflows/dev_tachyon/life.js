@@ -60,7 +60,7 @@ global.SIG_PROCESS={}
 
 
 
-let graceful=()=>{
+export let GRACEFUL_STOP=()=>{
     
     SYSTEM_SIGNAL_ACCEPTED=true
 
@@ -93,7 +93,7 @@ let graceful=()=>{
 
             LOG('Node was gracefully stopped','I')
                 
-            process.exit(0)    
+            process.exit(0)
 
         }
 
@@ -105,9 +105,9 @@ let graceful=()=>{
 
 
 //Define listeners on typical signals to safely stop the node
-process.on('SIGTERM',graceful)
-process.on('SIGINT',graceful)
-process.on('SIGHUP',graceful)
+process.on('SIGTERM',GRACEFUL_STOP)
+process.on('SIGINT',GRACEFUL_STOP)
+process.on('SIGHUP',GRACEFUL_STOP)
 
 
 //************************ END SUB ************************
@@ -309,7 +309,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //TODO:Make more advanced logic
         SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
 
-        //Clear our sets
+        //Clear our sets not to repeat the SKIP_PROCEDURE
         SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
         SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.clear()
 
@@ -321,11 +321,21 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //Get the new ROOTPUB
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
-        
+
+
+        //_______________________________________Commit changes____________________________________________
+
+
         atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
         await atomicBatch.write()
 
+
+        //___________________Clear databases with commitments & finalization proofs________________________
+
+        SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.clear()
+
+        //After clean - we can add the handlers to signal that "We're now working with checkpoint X"
 
 
         //_______________________Check the version required for the next checkpoint________________________
@@ -333,6 +343,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
             // Stop the node to update the software
+            GRACEFUL_STOP()
 
         }
 
@@ -1717,11 +1728,11 @@ PREPARE_SYMBIOTE=async()=>{
 
         //_______________________________ Temporary _______________________________
 
-        //* This storages will be cleared once we find next valid checkpoint during work on QUORUM_THREAD
+        //* This storage will be cleared once we find next valid checkpoint during work on QUORUM_THREAD
 
-        'MY_COMMITMENTS', //Use it to not to vote for another version of a specific block(prevents of producing several version of commitments to avoid forks)
-
-        'FINALIZATION_PROOFS', //Use it to vote during SKIP_PROCEDURE to prove the other quorum members that the network have voted for higher subchain segment
+        //Use it to not to vote for another version of a specific block(prevents of producing several version of commitments to avoid forks)
+        //Use it to vote during SKIP_PROCEDURE to prove the other quorum members that the network have voted for higher subchain segment
+        'COMMITMENTS_AND_FINALIZAION_PROOFS', 
 
         //_______________________________ EVM storage _______________________________
 
