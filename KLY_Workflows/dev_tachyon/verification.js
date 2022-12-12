@@ -169,7 +169,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     &&
                                     typeof itsProbablySuperFinalizationProof.aggregatedPub === 'string'
                                     &&
-                                    typeof itsProbablySuperFinalizationProof.aggregatedSigna === 'string'
+                                    typeof itsProbablySuperFinalizationProof.aggregatedSignature === 'string'
                                     &&
                                     typeof itsProbablySuperFinalizationProof.blockID === 'string'
                                     &&
@@ -185,7 +185,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
 
-            let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION"+qtPayload,itsProbablySuperFinalizationProof.aggregatedSigna,itsProbablySuperFinalizationProof.aggregatedPub),
+            let aggregatedSignatureIsOk = await VERIFY(blockID+blockHash+"FINALIZATION"+qtPayload,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
 
                 rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 

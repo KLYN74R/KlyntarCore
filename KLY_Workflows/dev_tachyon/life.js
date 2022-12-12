@@ -335,10 +335,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.clear()
 
-        //After clean - we can add the handlers to signal that "We're now working with checkpoint X"
-
+        //After clean - we can add the handlers to signal that "We're now working with the checkpoint X"
+        // If something gets wrong - we'll fill the CHECKPOINT_MANAGER with the values from the new checkpoint
+        SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.put('HANDLER',
+        
+            {
+                CHECKPOINT_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+                CHECKPOINT_ID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID         
+            }
+            
+        )
 
         //_______________________Check the version required for the next checkpoint________________________
+
 
         if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
@@ -475,7 +484,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA).forEach(
             
-            poolPubKey => potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(poolPubKey) //{INDEX,HASH}
+            poolPubKey => {
+
+                let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
+
+                potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = {INDEX,HASH}
+
+            }
 
         )
 
@@ -551,7 +566,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                         
                     ? excludeSpecOperations:[] - array of ids of operation we should exclude from checkpoint proposition to get the agreement from validator
 
-                    ? metadataUpdate:{} - array of updated hash:index where index > than our local version, so we check the inner SUPER_FINALIZATION_PROOF and if OK - update the local CHECKPOINT_MANAGER to propose next checkpoint with the nex height
+                    ? metadataUpdate:{} - array of updated hash:index where index > than our local version, so we check the inner FINALIZATION_PROOF and if OK - update the local CHECKPOINT_MANAGER to propose next checkpoint with the nex height
 
                 }
             
@@ -577,16 +592,18 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                         if(updateOp.index>subchainMetadata.INDEX){
 
-                            let {aggregatedSignature,aggregatedPub,afkValidators} = updateOp.superFinalizationProof
+                            let {aggregatedSignature,aggregatedPub,afkValidators} = updateOp.finalizationProof
+
+                            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
     
-                            let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+'FINALIZATION',aggregatedPub,aggregatedSignature)
+                            let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+qtPayload,aggregatedPub,aggregatedSignature)
         
                             let rootPubIsOK = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
         
         
                             if(signaIsOk && rootPubIsOK){
         
-                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,{INDEX:updateOp.index,HASH:updateOp.index})
+                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,{INDEX:updateOp.index,HASH:updateOp.index,FINALIZATION_PROOF:updateOp.finalizationProof})
 
                                 propositionsToUpdateMetadata++
         
@@ -639,7 +656,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                     PAYLOAD_HASH:checkpointPayloadHash,
         
-                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:bls.aggregatePublicKeys(pubkeys),
+                    QUORUM_AGGREGATED_SIGNERS_PUBKEY:bls.aggregatePublicKeys(pubKeys),
         
                     QUORUM_AGGREGATED_SIGNATURE:bls.aggregateSignatures(signatures),
         
@@ -790,7 +807,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
             
             aggregatedPub:bls.aggregatePublicKeys(signers),
             
-            aggregatedSigna:bls.aggregateSignatures(signatures),
+            aggregatedSignature:bls.aggregateSignatures(signatures),
             
             afkValidators
 
@@ -926,7 +943,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
             
             aggregatedPub:bls.aggregatePublicKeys(signers),
             
-            aggregatedSigna:bls.aggregateSignatures(signatures),
+            aggregatedSignature:bls.aggregateSignatures(signatures),
             
             afkValidators
 
@@ -1024,7 +1041,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let {INDEX,HASH}=SYMBIOTE_META.CHECKPOINTS_MANAGER.get(pubKey)
 
-            let baseBlockID = pubkey+":"+INDEX
+            let baseBlockID = pubKey+":"+INDEX
 
             let SUPER_FINALIZATION_PROOF = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(baseBlockID).catch(_=>false)
 
@@ -1084,7 +1101,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             superFinalizationProof:{
             
-                aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+                aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
                 aggregatedPub:<>,
                 afkValidators
         
@@ -1266,8 +1283,35 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
-}
+},
 
+
+
+
+FILL_THE_CHECKPOINTS_MANAGER=async handlerIsLatest=>{
+
+
+    let validatorsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
+
+    for(let poolPubKey of validatorsMetadata){
+
+        if(handlerIsLatest){
+
+            let {INDEX,HASH} = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
+
+            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH})
+
+        }else{
+
+            let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
+
+            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH})
+
+        }
+
+    }
+
+}
 
 
 
@@ -1850,6 +1894,15 @@ PREPARE_SYMBIOTE=async()=>{
     SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
     SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+
+
+    // Fill the CHECKPOINTS_MANAGER with the latest, locally stored data
+    
+    let checkpointManagerCommitmentsAndFinalizationHandler = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get('HANDLER').catch(_=>false) //{CHECKPOINT_ID,CHECKPOINT_HASH}
+
+    await FILL_THE_CHECKPOINTS_MANAGER(checkpointManagerCommitmentsAndFinalizationHandler && checkpointManagerCommitmentsAndFinalizationHandler.CHECKPOINT_ID===SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID)
+
+
 
 
     //__________________________________Load modules to work with hostchains_________________________________________

@@ -254,12 +254,18 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedCommitments.aggregatedPub,aggregatedCommitments.aggregatedSigna).catch(_=>false)
+        let {aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
 
-        let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-aggregatedCommitments.afkValidators.length
 
-        let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedCommitments.aggregatedPub,...aggregatedCommitments.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
+        let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
+
+        let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length
+
+        let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+
+        
         if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
             //TODO: Store aggregated commitments somewhere localy to have proofs in future
@@ -271,8 +277,6 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             blockIndex = +blockIndex
 
-            if(!SYMBIOTE_META.CHECKPOINTS_MANAGER.has(blockCreator)) SYMBIOTE_META.CHECKPOINTS_MANAGER.set(blockCreator,{INDEX:-1,HASH:''})
-
             let handler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(blockCreator)
 
             if(blockIndex>handler.INDEX){
@@ -280,6 +284,14 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
                 handler.INDEX = blockIndex
 
                 handler.HASH = aggregatedCommitments.blockHash
+
+                handler.FINALIZATION_PROOF = {
+
+                    aggregatedPub,
+                    aggregatedSignature,
+                    afkValidators
+
+                }
 
             }
 
@@ -311,7 +323,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSigna).catch(_=>false)
+    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSignature).catch(_=>false)
 
     let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
 
@@ -345,7 +357,7 @@ Params:
 Returns:
 
     {
-        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
         aggregatedPub:<>,
         afkValidators
         
@@ -391,7 +403,7 @@ Returns:
 
         superFinalizationProof:{
             
-            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
             aggregatedPub:<>,
             afkValidators
         
@@ -549,7 +561,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 
         superFinalizationProof:{
 
-            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"
+            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
             aggregatedPub:<>,
             afkValidators
 
@@ -662,18 +674,18 @@ Response - it's object with the following structure:
 
     [@] If we have proof that for a specific validator we have height with bigger index(longer valid chain)
 
-        We compare the proposition of index:hash for subchain with own version in SYMBIOTE_META.CHECKPOINTS_MANAGER (validatorID => {INDEX,HASH})
+        We compare the proposition of index:hash for subchain with own version in SYMBIOTE_META.CHECKPOINTS_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
 
-        If we have a bigger index - then we get the SUPER_FINALIZATION_PROOF from a local storage and send as a part of answer
+        If we have a bigger index - then we get the FINALIZATION_PROOF from a local storage and send as a part of answer
 
         {
             metadataUpdate:[
 
                 {
                     subchain:<id of subchain>
-                    index:<index of >,
+                    index:<index of block>,
                     hash:<>,
-                    superFinalizationProof
+                    finalizationProof
 
                 },...
 
@@ -681,7 +693,7 @@ Response - it's object with the following structure:
         
         }
 
-    *superFinalizationProof - contains the aggregated signature SIG(blockID+hash+"FINALIZATION") signed by the current quorum
+    *finalizationProof - contains the aggregated signature SIG(blockID+hash+qtPayload) signed by the current quorum
 
 
 */
@@ -713,7 +725,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
         // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINTS_MANAGER
 
-        let metadataUpdate = [], promises=[]
+        let metadataUpdate = []
 
         Object.keys(checkpointProposition.VALIDATORS_METADATA).forEach(subchain=>{
 
@@ -721,33 +733,22 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
             if(localVersion.INDEX>checkpointProposition.VALIDATORS_METADATA[subchain]){
 
-                // Send the <HEIGHT UPDATE> notification
+                // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 
-                let promise = SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(subchain+":"+localVersion.INDEX).then(superFinalizationProof=>{
-
-                    let template = {
+                let template = {
                     
-                        subchain,
-                        index:localVersion.INDEX,
-                        hash:localVersion.HASH,
-                        superFinalizationProof
-    
-                    }
-    
-                    metadataUpdate.push(template)
+                    subchain,
+                    index:localVersion.INDEX,
+                    hash:localVersion.HASH,
+                    finalizationProof:localVersion.FINALIZATION_PROOF
 
+                }
 
-                }).catch(_=>false)
-
-                promises.push(promise)
-
+                metadataUpdate.push(template)
 
             }
 
         })
-
-        //Execute promises on subchains where we have bigger height
-        await Promise.all(promises.splice(0))
 
         //___________________________________ SUMMARY - WHAT WE HAVE ON THIS STEP ___________________________________
 
@@ -757,7 +758,7 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
                 subchain:<id of subchain>
                 index:<index of >,
                 hash:<>,
-                superFinalizationProof
+                finalizationProof
 
             }
 
