@@ -769,7 +769,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
     if(finalizationProofsMapping.size>=majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the SUPER_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR') to move to the next block and udpate the hash
+        // Also, increase the counter of SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
@@ -818,7 +818,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
 
         // Repeat procedure for the next block
-        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         appropriateDescriptor.height++
 
@@ -964,7 +964,7 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     // Descriptor has the following structure - {checkpointID,height}
-    let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+    let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
@@ -982,7 +982,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         }
 
         // And store new descriptor(till it will be old)
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_DESCRIPTOR',appropriateDescriptor)
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
         // Also, clear invalid caches
 

@@ -420,7 +420,7 @@ healthChecker = async response => {
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
-        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_DESCRIPTOR')
+        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         if(!appropriateDescriptor) response.end(`Still haven't start the procedure of grabbing finalization proofs`)
 
@@ -540,6 +540,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
     }else response.end('Verification failed')
 
 }),
+
 
 
 
