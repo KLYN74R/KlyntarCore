@@ -199,7 +199,24 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
+
+    //__________________________Initially, we perform all the async operations for SKIP_PROCEDURE_STAGE_1__________________________
+
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    
+    let subchainsToSkip = SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+
+    for(let subchainID of subchainsToSkip.values()){
+
+        await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put('SKIP:'+subchainID,true).catch(_=>false)
+
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.add(subchainID)
+
+    }
+
+
     if(possibleCheckpoint){
+
 
         //Perform SPEC_OPERATIONS
 
@@ -309,12 +326,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //TODO:Make more advanced logic
         SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
 
-
-        let checkpointID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
         //Clear our sets not to repeat the SKIP_PROCEDURE
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.delete(checkpointID)
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.delete(checkpointID)
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.clear()
+
+        //Clear this mapping related to old checkpoint
+        SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(qtPayload)?.clear()
+
+        //Update the block height to keep progress on hostchain
+
+        global.SKIP_PROCEDURE_STAGE_1_BLOCK = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
+        global.SKIP_PROCEDURE_STAGE_2_BLOCK = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
 
         //Set new checkpoint
@@ -335,20 +359,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         await atomicBatch.write()
 
 
-        //___________________Clear databases with commitments & finalization proofs________________________
+        //___________________Clear databases with commitments & finalization proofs related to this ________________________
 
-        SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.clear()
-
-        //After clean - we can add the handlers to signal that "We're now working with the checkpoint X"
-        // If something gets wrong - we'll fill the CHECKPOINT_MANAGER with the values from the new checkpoint
-        SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.put('HANDLER',
-        
-            {
-                CHECKPOINT_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
-                CHECKPOINT_ID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID         
-            }
-            
-        )
+        await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.clear()
 
         //_______________________Check the version required for the next checkpoint________________________
 
@@ -616,8 +629,15 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
         
                             if(signaIsOk && rootPubIsOK){
-        
-                                SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,{INDEX:updateOp.index,HASH:updateOp.index,FINALIZATION_PROOF:updateOp.finalizationProof})
+
+                                let latestFinalized = {INDEX:updateOp.index,HASH:updateOp.index,FINALIZATION_PROOF:updateOp.finalizationProof}
+
+
+                                await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put(updateOp.subchain,latestFinalized).then(()=>{
+
+                                    SYMBIOTE_META.CHECKPOINTS_MANAGER.set(updateOp.subchain,latestFinalized)
+
+                                })
 
                                 propositionsToUpdateMetadata++
         
@@ -1305,26 +1325,25 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
-FILL_THE_CHECKPOINTS_MANAGER=async handlerIsLatest=>{
-
+FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_SET=async()=>{
 
     let validatorsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
     for(let poolPubKey of validatorsMetadata){
 
-        if(handlerIsLatest){
+        // If this value is related to the current checkpoint - set to manager, otherwise - take from the VALIDATORS_METADATA as a start point
+        // Returned value is {INDEX,HASH,FINALIZATION_PROOF}
 
-            let {INDEX,HASH} = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
+        let {INDEX,HASH,FINALIZATION_PROOF} = await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
 
-            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH})
+        SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
 
-        }else{
 
-            let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
+        //__________________________Also, check if SKIP_PROCEDURE proofs exists related to current checkpoint__________________________
 
-            SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH})
+        let skipProcedureProofs = await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.get('SKIP:'+poolPubKey).catch(_=>false)
 
-        }
+        if(skipProcedureProofs) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.add(poolPubKey)
 
     }
 
@@ -1640,7 +1659,9 @@ LOAD_GENESIS=async()=>{
 
         },
 
-        TIMESTAMP:checkpointTimestamp
+        TIMESTAMP:checkpointTimestamp,
+
+        FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM
     
     }
 
@@ -1729,9 +1750,12 @@ PREPARE_SYMBIOTE=async()=>{
     
         //____________________ SKIP_PROCEDURE related sets ____________________
 
-        SKIP_PROCEDURE_STAGE_1:new Map(),   // checkpointID => Set(subchain) here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
+        SKIP_PROCEDURE_STAGE_1:new Set(),   // here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
 
-        SKIP_PROCEDURE_STAGE_2:new Map(),   // checkpointID => Map(subchain=>{INDEX,HASH}) here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
+        ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1:new Map(), //checkpointID => Set(). Contains subchainIDs that should be added to SKIP_PROCEDURE_STAGE_1 set and to local storage COMMITMENTS_SKIP_AND_FINALIZATION related to current checkpoint
+
+        SKIP_PROCEDURE_STAGE_2:new Map(),   // here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
+
 
     }
 
@@ -1791,9 +1815,19 @@ PREPARE_SYMBIOTE=async()=>{
 
         //* This storage will be cleared once we find next valid checkpoint during work on QUORUM_THREAD
 
-        //Use it to not to vote for another version of a specific block(prevents of producing several version of commitments to avoid forks)
-        //Use it to vote during SKIP_PROCEDURE to prove the other quorum members that the network have voted for higher subchain segment
-        'COMMITMENTS_AND_FINALIZAION_PROOFS', 
+        /*
+        
+            Use it to not to vote for another version of a specific block(prevents of producing several version of commitments to avoid forks)
+            Use it to vote during SKIP_PROCEDURE to prove the other quorum members that the network have voted for higher subchain segment
+            Depending on key it stores different values
+
+            [+] If key is <SubchainID> => {INDEX,HASH,CHECKPOINT,FINALIZATION_PROOF} - we fill the CHECKPOINTS_MANAGER with this values
+            [+] If key is <SubchainID:blockIndex> => SIG(blockID+hash+qtPayload) - this is the commitments for blocks which we've created on current checkpoint
+            [+] If key is <SKIP:SubchainID> => true It's a pointer which we need to know that we shouldn't create commitments for this <SubchainID> at least in current checkpoint. We fill the SKIP_STAGE_1 set with this values
+
+        */
+
+        'COMMITMENTS_SKIP_AND_FINALIZATION', 
 
         //_______________________________ EVM storage _______________________________
 
@@ -1914,10 +1948,8 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     // Fill the CHECKPOINTS_MANAGER with the latest, locally stored data
-    
-    let checkpointManagerCommitmentsAndFinalizationHandler = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get('HANDLER').catch(_=>false) //{CHECKPOINT_ID,CHECKPOINT_HASH}
 
-    await FILL_THE_CHECKPOINTS_MANAGER(checkpointManagerCommitmentsAndFinalizationHandler && checkpointManagerCommitmentsAndFinalizationHandler.CHECKPOINT_ID===SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID)
+    await FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_SET()
 
 
 

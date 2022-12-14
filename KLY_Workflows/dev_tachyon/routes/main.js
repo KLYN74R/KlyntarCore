@@ -75,7 +75,7 @@ acceptBlocks=response=>{
                 
                     hash=Block.genHash(block),
 
-                    myCommitment = await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
+                    myCommitment = await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
 
                     // index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
 
@@ -133,12 +133,12 @@ acceptBlocks=response=>{
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)?.has(block.creator)
+                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(block.creator)
 
                     if(QUORUM_MEMBER_MODE && canShareCommitment){
 
                         //Put to local storage to prevent double voting
-                        await SYMBIOTE_META.COMMITMENTS_AND_FINALIZAION_PROOFS.put(block.сreator+":"+block.index,commitment)
+                        await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put(block.сreator+":"+block.index,commitment)
 
                         !response.aborted && response.end(commitment)
 
@@ -295,7 +295,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             }
 
-            !response.aborted && response.end(finalizationSigna)
+            await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put(blockCreator,handler).then(()=>{
+
+                !response.aborted && response.end(finalizationSigna)
+
+            }).catch(_=>!response.aborted && response.end('Something wrong'))
 
         }else !response.aborted && response.end('Something wrong')
 
@@ -582,13 +586,9 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 */
 skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE) 
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-    let subchainCanBeSkipped = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)?.has(subchain)
-
-    if(subchainCanBeSkipped){
+    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
         // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
         // We can vote to skip only for height over index that we already send commitment to
@@ -602,7 +602,7 @@ skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin',
                     
                 status:'UPDATE',
                 
-                data:SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+                data:SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain) //data is {INDEX,HASH,FINALIZATION_PROOF}
             
             }))
 
@@ -613,6 +613,8 @@ skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin',
             let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
             let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)
+
+            //Store locally
 
             response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
 

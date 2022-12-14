@@ -320,7 +320,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 TIMESTAMP:+event.returnValues.blocktime,
 
-                AT_BLOCK:event.blockNumber,
+                FOUND_AT_BLOCK:event.blockNumber,
 
                 COMPLETED:false
 
@@ -665,13 +665,13 @@ export default {
 
         if(lastKnownBlockNumber){
 
-            LOG(`Found new latest known block on hostchain [\x1b[33;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
-
             //Get from the height we stopped till the last known block
+
+            global.SKIP_PROCEDURE_STAGE_1_BLOCK ||= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
             let options = {
 
-                fromBlock:'CHOOSE',
+                fromBlock:global.SKIP_PROCEDURE_STAGE_1_BLOCK,
 
                 toBlock:lastKnownBlockNumber
 
@@ -679,8 +679,9 @@ export default {
 
 
             //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
-            if(nextRangeStartsFrom>=lastKnownBlockNumber) return
+            if(options.fromBlock>=lastKnownBlockNumber) return
             
+
             let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
 
                 LOG(`Received this error when asking for events => ${error}`,'W')
@@ -692,10 +693,12 @@ export default {
 
             if(events.length){
 
+                global.SKIP_PROCEDURE_STAGE_1_BLOCK=options.toBlock                
+
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
                 let currentCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
-
+                
                 
                 let currentCheckpointID = currentCheckpoint.HEADER.ID
 
@@ -728,13 +731,9 @@ export default {
 
                     if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
 
-                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(checkpointFullID)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(checkpointFullID,new Set())
+                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)
 
-                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)
-
-                        setOfSubchainsToSkipForCurrentCheckpoint.set(subchain)
-
-                        //TODO: Store skip's and progress on hostchain to db
+                        setOfSubchainsToSkipForCurrentCheckpoint.add(subchain)
 
                     }
 
@@ -787,13 +786,13 @@ export default {
 
         if(lastKnownBlockNumber){
 
-            LOG(`Found new latest known block on hostchain [\x1b[33;1m${TICKER}\x1b[36;1m] => \x1b[32;1m${lastKnownBlockNumber}`,'I')
-
             //Get from the height we stopped till the last known block
+
+            global.SKIP_PROCEDURE_STAGE_2_BLOCK ||= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
             let options = {
 
-                fromBlock:'CHOOSE',
+                fromBlock:global.SKIP_PROCEDURE_STAGE_2_BLOCK,
 
                 toBlock:lastKnownBlockNumber
 
@@ -801,7 +800,7 @@ export default {
 
 
             //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
-            if(nextRangeStartsFrom>=lastKnownBlockNumber) return
+            if(options.fromBlock>=lastKnownBlockNumber) return
             
             let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
 
@@ -813,6 +812,8 @@ export default {
 
 
             if(events.length){
+
+                global.SKIP_PROCEDURE_STAGE_2_BLOCK=options.toBlock
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
@@ -847,15 +848,10 @@ export default {
                     
                     if(majorityVotedForIt && isTheSameDay){
 
-                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(checkpointFullID)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(checkpointFullID,new Map())
-
                         let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointFullID)
 
                         // We'll need it inside START_VERIFICATION_THREAD function to know which blocks we should skip
                         mapOfSubchainsToSkipForCurrentCheckpoint.set(subchain,{INDEX:index,HASH:hash})
-
-
-                        //TODO: Store skip's and progress on hostchain to db
 
                     }
 
