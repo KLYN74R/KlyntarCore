@@ -139,7 +139,7 @@ Verification process:
 
     Once you find the candidate for SUPER_FINALIZATION_PROOF , you should verify
 
-        [+] let shouldAccept = await VERIFY(aggregatedPub,aggregatedSigna,"Andy:1337"+":cafe:"+"FINALIZATION")
+        [+] let shouldAccept = await VERIFY(aggregatedPub,aggregatedSigna,"Andy:1337"+":cafe:"+'FINALIZATION')
 
             Also, check if QUORUM_AGGREGATED_PUB === AGGREGATE(aggregatedPub,afkValidators)
 
@@ -185,7 +185,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
 
-            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+"FINALIZATION"+qtPayload,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
+            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+qtPayload,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
 
                 rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkValidators]),
 

@@ -1108,7 +1108,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             superFinalizationProof:{
             
-                aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
+                aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
                 aggregatedPub:<>,
                 afkValidators
         
@@ -1136,8 +1136,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
         let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(pubKey)
 
-        // blockID+hash+"FINALIZATION"
-        let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+"FINALIZATION"
+        // blockID+hash+'FINALIZATION'
+        let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'
 
         let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
 
@@ -1170,6 +1170,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
 
     for(let candidate of candidatesForAnotherCheck){
 
@@ -1188,7 +1190,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 session:<32-bytes random hex session ID>,
                 initiator:<BLS pubkey of quorum member who initiated skip procedure>,
                 requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
-                sig:SIG(session+requestedSubchain)
+                height:<block height of subchain on which initiator stopped>
+                sig:SIG(session+requestedSubchain+height+qtPayload)
     
             }
             
@@ -1204,7 +1207,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 height:localHealthHandler.INDEX,
                 
-                sig:await SIG(session+candidate+localHealthHandler.INDEX)
+                sig:await SIG(session+candidate+localHealthHandler.INDEX+qtPayload)
             
             }
 
@@ -1229,7 +1232,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 
                     Potential answer might be
                 
-                    {status:'OK'}        OR          {status:'SKIP',sig:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)}     OR      {status:'UPDATE',data:{INDEX,HASH,SUPER_FINALIZATION_PROOF}}
+                    {status:'OK'}        OR          {status:'SKIP',sig:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload)}     OR      {status:'UPDATE',data:{INDEX,HASH,SUPER_FINALIZATION_PROOF}}
                 
                 */
 
@@ -1241,7 +1244,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     let {aggregatedPub,aggregatedSignature,afkValidators} = answerFromValidator.data.SUPER_FINALIZATION_PROOF
 
-                    let data = candidate+':'+INDEX+HASH+'FINALIZED'
+                    let data = candidate+':'+INDEX+HASH+'FINALIZATION'+qtPayload
 
                     let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
 
@@ -1263,7 +1266,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     }
 
-                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB,answerFromValidator.sig,validatorHandler.pubKey)){
+                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB+qtPayload,answerFromValidator.sig,validatorHandler.pubKey)){
 
                     // Grab the skip agreements to publish to hostchains
                     skipAgreements.push({sig:answerFromValidator.sig,pubKey:validatorHandler.pubKey})
@@ -1773,7 +1776,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         'CHECKPOINTS', //Contains object like CHECKPOINT_ID => {HEADER,PAYLOAD}
 
-        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => {aggregatedPub:<BLS quorum majority aggregated pubkey>,aggregatedSignature:<SIG(blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)>,afkValidators}
+        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => {aggregatedPub:<BLS quorum majority aggregated pubkey>,aggregatedSignature:<SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)>,afkValidators}
 
         'QUORUM_THREAD_METADATA', //QUORUM_THREAD itself and other stuff
 

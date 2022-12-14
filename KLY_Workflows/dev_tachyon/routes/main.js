@@ -242,7 +242,7 @@ ___________________________Verification steps___________________________
 
 [Response]:
 
-    If everything is OK - response with signa SIG(blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)
+    If everything is OK - response with signa SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)
 
     
 */
@@ -357,7 +357,7 @@ Params:
 Returns:
 
     {
-        aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
+        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
         aggregatedPub:<>,
         afkValidators
         
@@ -403,7 +403,7 @@ Returns:
 
         superFinalizationProof:{
             
-            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
+            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
             aggregatedPub:<>,
             afkValidators
         
@@ -503,7 +503,9 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(await BLS_VERIFY(session+requestedSubchain+height,sig,initiator)){
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    if(await BLS_VERIFY(session+requestedSubchain+height+qtPayload,sig,initiator)){
 
         let myLocalHealthCheckingHandler = SYMBIOTE_META.HEALTH_MONITORING.get(requestedSubchain)
 
@@ -519,7 +521,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
                     
                     status:'SKIP',
                     
-                    sig:await SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
+                    sig:await SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload)
                 
                 }))
 
@@ -582,9 +584,9 @@ skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let subchainCanBeSkipped = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointID)?.has(subchain)
+    let subchainCanBeSkipped = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)?.has(subchain)
 
     if(subchainCanBeSkipped){
 

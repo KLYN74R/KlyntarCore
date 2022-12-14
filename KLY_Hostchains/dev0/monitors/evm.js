@@ -715,7 +715,7 @@ export default {
 
                     let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+checkpointFullID,aggregatedSignature,reverseThreshold)
                     
                     let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
