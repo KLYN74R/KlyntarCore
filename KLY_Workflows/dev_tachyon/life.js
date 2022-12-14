@@ -1954,7 +1954,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1:new Map(), //checkpointID => Set(). Contains subchainIDs that should be added to SKIP_PROCEDURE_STAGE_1 set and to local storage COMMITMENTS_SKIP_AND_FINALIZATION related to current checkpoint
 
-        SKIP_PROCEDURE_STAGE_2:new Map(),   // here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
+        SKIP_PROCEDURE_STAGE_2:new Set(),   // here we'll add subchainIDs with the block index & hash to know where we should skip this subchain
 
 
     }
