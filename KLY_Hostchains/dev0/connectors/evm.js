@@ -162,7 +162,7 @@ export default class {
     getBlock=blockIndex=>this.web3.eth.getBlock(blockIndex)
 
 
-    getTransaction=txHash=>this.web3.eth.getTransaction(txHash).catch(e=>false)
+    getTransaction=txHash=>this.web3.eth.getTransaction(txHash).catch(_=>false)
 
 
     getBalance=async()=>{
@@ -217,6 +217,48 @@ export default class {
                 if(err) LOG(`Oops,some has been occured ${err}`,'W')
                 
                 else LOG(`Checkpoint has been published via tx ${txHash}`,'I')
+
+            })
+
+		})
+
+    }
+
+
+    skipProcedure = async stageOneOrTwoPayload => { 
+
+        this.web3.eth.getTransactionCount(this.PUB,async(err,txCount)=>{
+			
+    		if(err) return
+
+    		// Build a transaction
+    		let txObject = {
+
+        		nonce: this.web3.utils.toHex(txCount),
+        
+            	to:this.TO,
+
+				//Set enough limit and price for gas
+        		gasLimit: this.web3.utils.toHex(this.GAS_LIMIT),
+        
+        		gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('10','gwei')),
+				
+        		data: this.CONTRACT.methods.change(JSON.stringify(stageOneOrTwoPayload)).encodeABI()
+    
+    		}
+
+    		let tx = new OldLibTransaction(txObject,{common:this.COMMON})
+
+		    //Sign the transaction
+    		tx.sign(this.PRV)
+
+		    let raw = '0x' + tx.serialize().toString('hex')
+
+		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => {
+
+                if(err) LOG(`Oops,some has been occured ${err}`,'W')
+                
+                else LOG(`Skip procedure payload has been published via tx ${txHash}`,'I')
 
             })
 

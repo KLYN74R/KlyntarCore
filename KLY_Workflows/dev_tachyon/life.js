@@ -1051,16 +1051,6 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
-PROPOSE_TO_SKIP=async(validator,metaDataToFreeze)=>{
-
-    // If we agree that validator is offline and we can't get the block - then SIG('SKIP:<CURRENT_CHECKPOINT_ID>:<CURRENT_QUORUM_THREAD_CHECKPOINT_HASH(hash of previous payload)>:<VALIDATOR>:<BLOCK_ID>')
-    // If we receive the 2/3N+1 votes to skip - then we delete this validator from set and fix it
-    
-},
-
-
-
-
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
@@ -1246,9 +1236,12 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             }
 
-            let skipAgreements=[] //Each object will be {pubkey,sig}
             
             //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_1 _____________________
+
+            // We'll potentially need it in code bellow
+            let signaturesForAggregation = [], pubKeysForAggregation = []
+
 
 
             for(let validatorHandler of validatorsURLSandPubKeys){
@@ -1275,6 +1268,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
 
+
                     if(superFinalizationProofIsOk){
 
                         // Update the local version in HEALTH_MONITORING
@@ -1296,7 +1290,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB+qtPayload,answerFromValidator.sig,validatorHandler.pubKey)){
 
                     // Grab the skip agreements to publish to hostchains
-                    skipAgreements.push({sig:answerFromValidator.sig,pubKey:validatorHandler.pubKey})
+
+                    signaturesForAggregation.push(answerFromValidator.sig)
+
+                    pubKeysForAggregation.push(validatorHandler.pubKey)
 
                 }
 
@@ -1305,10 +1302,52 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             //______________________ On this step, hense we haven't break, we have a skip agreements in array ______________________
 
-            if(skipAgreements.length>=GET_MAJORITY('QUORUM_THREAD')){
+            if(pubKeysForAggregation.length>=GET_MAJORITY('QUORUM_THREAD')){
 
-                // We can aggregate this agreements and publish to hostchain as a signal to start SKIP_PROCEDURE_STAGE_2
+                /*
+                
+                    We can aggregate this agreements and publish to hostchain as a signal to start SKIP_PROCEDURE_STAGE_2
 
+                    We need to build the following template
+
+                    {
+                        session:'0123456701234567012345670123456701234567012345670123456701234567',
+                        subchain:'7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X',
+            
+                        sig:<signature by initiator to proof that "YES,I've grabbed this agreements and we(the quorum majority) is really want to exclude this subchain from verification process". SIG(session+session)>
+                        initiator:<Your pubkey to verify this signature>
+
+                        aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
+                        aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator),
+                        afk:[<array of afk from quorum>]
+                    }
+
+                */
+
+                let aggregatedSignature = bls.aggregateSignatures(signaturesForAggregation)
+                
+                let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
+
+                let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+
+
+                let templateForSkipProcedurePart1 = {
+
+                    session,
+                    subchain:candidate,
+                
+                    sig:await SIG(session+session),
+                    initiator:CONFIG.SYMBIOTE.PUB,
+                    
+                    aggregatedPub,
+                    aggregatedSignature,
+                    afkValidators
+
+                }
+
+                //Send to hostchain
+                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedurePart1)
+                
             }
 
             // Otherwise - do nothing
