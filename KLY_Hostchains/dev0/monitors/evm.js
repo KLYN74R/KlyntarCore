@@ -851,7 +851,7 @@ export default {
                         let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointFullID)
 
                         // We'll need it inside START_VERIFICATION_THREAD function to know which blocks we should skip
-                        mapOfSubchainsToSkipForCurrentCheckpoint.set(subchain,{INDEX:index,HASH:hash})
+                        mapOfSubchainsToSkipForCurrentCheckpoint.add(subchain)
 
                     }
 

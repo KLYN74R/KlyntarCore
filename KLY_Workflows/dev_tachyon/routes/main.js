@@ -503,7 +503,7 @@ potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin'
     [+] Also, if we notice that requested height is lower than we have - then send own version as a proof
 
 */
-skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -584,7 +584,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
         Soon or late, majority will get the common version of proofs for SKIP_PROCEDURE_STAGE_2 and generate an appropriate aggregated signature
 
 */
-skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE) 
 
@@ -969,9 +969,9 @@ UWS_SERVER
 
 //_______________________________ 2 Routes related to the 2 stages of the skip procedure _______________________________
 
-.post('/skip_procedure_part_1',skipProcedurePart1)
+.post('/skip_procedure_stage_1',skipProcedureStage1)
 
-.post('/skip_procedure_part_2',skipProcedurePart2)
+.post('/skip_procedure_stage_2',skipProcedureStage2)
 
 
 .post('/block',acceptBlocks)

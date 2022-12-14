@@ -1051,6 +1051,165 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
+// This function is oriented on founded & valid SKIP_PROCEDURE_STAGE_1 proofs and starts SKIP_PROCEDURE_STAGE_2 - to grab appropriate proofs, aggregate and publish to hostchain to finally skip the subchain 
+SKIP_PROCEDURE_STAGE_2=async()=>{
+
+
+    let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
+
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+
+
+    for(let subchain of SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.values()){
+
+
+        let localFinalizationHandler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+        
+        /*
+            
+            Send this to POST /skip_procedure_stage_2
+
+            {
+                subchain:<ID>
+                height:<block index of this subchain on which we're going to skip>
+                hash:<block hash>
+            }
+            
+
+        */
+
+        let payload={
+            
+            subchain,
+            height:localFinalizationHandler.INDEX,
+            hash:localFinalizationHandler.HASH
+        
+        }
+
+        let sendOptions={
+        
+            method:'POST',
+
+            body:JSON.stringify(payload)
+        
+        }
+
+            
+        //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_2 _____________________
+        // We'll potentially need it in code bellow
+        let signaturesForAggregation = [], pubKeysForAggregation = []
+        
+        
+        for(let validatorHandler of validatorsURLSandPubKeys){
+        
+            let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_2',sendOptions).then(r=>r.json()).catch(_=>'<>')
+        
+            /*
+            
+                Potential answer might be
+            
+                {status:'NOT_FOUND'}        OR          {status:'SKIP_STAGE_2',sig:SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)}     OR      {status:'UPDATE',data:{INDEX,HASH,FINALIZATION_PROOF}}
+            
+            */
+        
+            if(answerFromValidator.status==='UPDATE'){
+            
+                // In this case it means that validator we've requested has higher version of subchain and a FINALIZATION_PROOF for it, so we just accept it if verification is ok and break the cycle
+                let {INDEX,HASH} = answerFromValidator.data
+            
+                let {aggregatedPub,aggregatedSignature,afkValidators} = answerFromValidator.data.FINALIZATION_PROOF
+            
+                let data = subchain+':'+INDEX+HASH+qtPayload
+            
+                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+    
+            
+                if(finalizationProofIsOk && localFinalizationHandler.INDEX < INDEX){
+            
+                    // Update the local version in CHECKPOINTS_MANAGER
+                    localFinalizationHandler.INDEX = INDEX
+                    localFinalizationHandler.HASH = HASH
+                    localFinalizationHandler.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+                    
+                    // And break the cycle for this subchain-candidate
+                    break
+    
+                }
+    
+            }else if(answerFromValidator.status==='SKIP_STAGE_2' && await BLS_VERIFY(`SKIP_STAGE_2:${subchain}:${localFinalizationHandler.INDEX}:${localFinalizationHandler.HASH}:${qtPayload}`,answerFromValidator.sig,validatorHandler.pubKey)){
+
+                // Grab the skip agreements to publish to hostchains
+
+                signaturesForAggregation.push(answerFromValidator.sig)
+
+                pubKeysForAggregation.push(validatorHandler.pubKey)
+
+            }
+    
+        }
+
+
+        //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
+
+        if(pubKeysForAggregation.length>=GET_MAJORITY('QUORUM_THREAD')){
+
+            /*
+                
+                We can aggregate this agreements and publish to hostchain as a signal to skip the subchain and finish the SKIP_PROCEDURE_STAGE_2
+
+                We need to build the following template
+
+                {
+                    subchain:'<pubkey of subchain that we're going to skip>,
+                    index:<latest block index that majority have voted for, but we can't get the index+1 block, that's why-skip>
+                    hash:<hash of appropriate block>
+                
+                    aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
+                    aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>:<QT.CHECKPOINT.HEADER.ID>`)
+                    afk:[]
+                }
+    
+            */
+
+            let aggregatedSignature = bls.aggregateSignatures(signaturesForAggregation)
+                
+            let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
+
+            let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+
+
+            let templateForSkipProcedureStage2 = {
+
+                subchain,
+                index:localFinalizationHandler.INDEX,
+                hash:localFinalizationHandler.HASH,
+
+                aggregatedPub,
+                aggregatedSignature,
+                afkValidators
+
+            }
+
+            //Send to hostchain
+            HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
+                
+        }
+
+        // Otherwise - do nothing and waiting for the next time
+
+    }
+
+
+},
+
+
+
+
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
@@ -1139,7 +1298,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
         reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD'),
 
-        qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+        qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),
+
+        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
 
@@ -1153,8 +1314,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
         let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(pubKey)
 
-        // blockID+hash+'FINALIZATION'
-        let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'
+        // blockID+hash+'FINALIZATION'+qtPayload
+        let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+qtPayload
 
         let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
 
@@ -1187,8 +1348,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
 
     for(let candidate of candidatesForAnotherCheck){
 
@@ -1200,7 +1359,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             /*
             
-            Send this to POST /skip_procedure_part_1
+            Send this to POST /skip_procedure_stage_1
 
             {
                 
@@ -1246,7 +1405,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             for(let validatorHandler of validatorsURLSandPubKeys){
 
-                let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_part_1',sendOptions).then(r=>r.json()).catch(_=>'<>')
+                let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_1',sendOptions).then(r=>r.json()).catch(_=>'<>')
 
                 /*
                 
@@ -1269,7 +1428,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
 
 
-                    if(superFinalizationProofIsOk){
+                    if(superFinalizationProofIsOk && localHealthHandler.INDEX < INDEX){
 
                         // Update the local version in HEALTH_MONITORING
 
@@ -1300,7 +1459,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             }
 
 
-            //______________________ On this step, hense we haven't break, we have a skip agreements in array ______________________
+            //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
 
             if(pubKeysForAggregation.length>=GET_MAJORITY('QUORUM_THREAD')){
 
@@ -1331,7 +1490,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
 
 
-                let templateForSkipProcedurePart1 = {
+                let templateForSkipProcedureStage1 = {
 
                     session,
                     subchain:candidate,
@@ -1346,7 +1505,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 }
 
                 //Send to hostchain
-                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedurePart1)
+                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
                 
             }
 
@@ -1358,6 +1517,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+    SKIP_PROCEDURE_STAGE_2()
 
 },
 
