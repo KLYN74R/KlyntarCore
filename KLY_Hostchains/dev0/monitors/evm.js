@@ -280,6 +280,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         let {ID,PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE,AFK_VALIDATORS} = JSON.parse(event.returnValues.payload)
 
+
         //_________________________ VERIFY _________________________
 
         console.log(currentCheckpoint)
@@ -318,6 +319,8 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                 //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
                 TIMESTAMP:+event.returnValues.blocktime,
+
+                AT_BLOCK:event.blockNumber,
 
                 COMPLETED:false
 

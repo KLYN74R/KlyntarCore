@@ -416,14 +416,21 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 SKIP_PROCEDURE_MONITORING_START=async()=>{
 
+    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
 
-    await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_1_PROOFS().catch(_=>false)
 
-    await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
+    // No sense to find skip proofs if checkpoint is not fresh
+    if(checkpointIsFresh){
 
-    //After monitoring - start SKIP_PROCEDURE_STAGE_2 if we've found proofs for SKIP_PROCEDURE_STAGE_1
+        await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_1_PROOFS().catch(_=>false)
 
-    // After all, here we'll have 
+        await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
+    
+        //After monitoring - start SKIP_PROCEDURE_STAGE_2 if we've found proofs for SKIP_PROCEDURE_STAGE_1
+    
+        // After all, here we'll have     
+
+    }
 
     setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
