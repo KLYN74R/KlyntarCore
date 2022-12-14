@@ -133,7 +133,7 @@ acceptBlocks=response=>{
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(block.creator) && !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(block.creator)
+                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)?.has(block.creator)
 
                     if(QUORUM_MEMBER_MODE && canShareCommitment){
 
@@ -582,14 +582,15 @@ skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
+    let checkpointID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let subchainCanBeSkipped = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointID)?.has(subchain)
+
+    if(subchainCanBeSkipped){
 
         // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
         // We can vote to skip only for height over index that we already send commitment to
         let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
-
-        // Add this height to the local set to prevent produce commitments/finalization proofs for this subchain(at least till the next checkpoint session)
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(subchain)
 
         // Compare with local version of subchain segment
         if(INDEX>height){

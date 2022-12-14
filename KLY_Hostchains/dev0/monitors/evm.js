@@ -691,14 +691,24 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let {INDEX,HASH,TIMESTAMP} = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+                let currentCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+
+                
+                let currentCheckpointID = currentCheckpoint.HEADER.ID
+
+                let currentCheckpointPayloadHash = currentCheckpoint.HEADER.PAYLOAD_HASH
+
+                let checkpointFullID = currentCheckpointPayloadHash+currentCheckpointID
+
+                let currentCheckpointTimestamp = currentCheckpoint.TIMESTAMP
+
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
                 let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
-                TIMESTAMP*=1000
+                currentCheckpointTimestamp*=1000
 
 
                 for(let event of events){
@@ -707,17 +717,17 @@ export default {
 
                     let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator,aggregatedSignature,reverseThreshold)
                     
-                    let initiatorSigIsOk = await BLS_VERIFY(sesssion+session,sig,initiator)
+                    let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
-                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(TIMESTAMP,(+event.returnValues.blocktime)*1000)
+                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 
 
 
                     if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
 
-                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(INDEX+HASH)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(INDEX+HASH,new Set())
+                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(checkpointFullID)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(checkpointFullID,new Set())
 
-                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(INDEX+HASH)
+                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)
 
                         setOfSubchainsToSkipForCurrentCheckpoint.set(subchain)
 
@@ -803,31 +813,40 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let {INDEX,HASH,TIMESTAMP} = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+                let currentCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+
+                
+                let currentCheckpointIndex = currentCheckpoint.HEADER.ID
+
+                let currentCheckpointPayloadHash = currentCheckpoint.HEADER.PAYLOAD_HASH
+
+                let checkpointFullID = currentCheckpointPayloadHash+currentCheckpointIndex
+
+                let currentCheckpointTimestamp = currentCheckpoint.TIMESTAMP
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
                 let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
-                TIMESTAMP*=1000
+                currentCheckpointTimestamp*=1000
 
 
                 for(let event of events){
 
                     let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${HASH}:${INDEX}`,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${currentCheckpointPayloadHash}:${currentCheckpointIndex}`,aggregatedSignature,reverseThreshold)
 
-                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(TIMESTAMP,(+event.returnValues.blocktime)*1000)
+                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 
 
                     
                     if(majorityVotedForIt && isTheSameDay){
 
-                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(INDEX+HASH)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(INDEX+HASH,new Map())
+                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(checkpointFullID)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(checkpointFullID,new Map())
 
-                        let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(INDEX+HASH)
+                        let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointFullID)
 
                         // We'll need it inside START_VERIFICATION_THREAD function to know which blocks we should skip
                         mapOfSubchainsToSkipForCurrentCheckpoint.set(subchain,{INDEX:index,HASH:hash})

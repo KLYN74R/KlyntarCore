@@ -423,6 +423,8 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     //After monitoring - start SKIP_PROCEDURE_STAGE_2 if we've found proofs for SKIP_PROCEDURE_STAGE_1
 
+    // After all, here we'll have 
+
     setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
 },
