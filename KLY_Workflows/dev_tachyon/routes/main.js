@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
+import {BROADCAST,BLS_VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -96,7 +96,7 @@ acceptBlocks=response=>{
             
                     typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                     &&
-                    await VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
+                    await BLS_VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
                     &&
                     await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
 
@@ -503,7 +503,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(await VERIFY(session+requestedSubchain+height,sig,initiator)){
+    if(await BLS_VERIFY(session+requestedSubchain+height,sig,initiator)){
 
         let myLocalHealthCheckingHandler = SYMBIOTE_META.HEALTH_MONITORING.get(requestedSubchain)
 
@@ -559,27 +559,19 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
         subchain:<ID>
         height:<block index of this subchain on which we're going to skip>
         hash:<block hash>
-
-        superFinalizationProof:{
-
-            aggregatedSignature:<>, // blockID+hash+"FINALIZATION"+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
-            aggregatedPub:<>,
-            afkValidators
-
-        }
     }
 
     * Your node will understand that hunting has started because we'll find SKIP_PROCEDURE_STAGE_1 on hostchain
 
-    Also, we add the SUPER_FINALIZATION_PROOF to body to force each qourum member to update local checkpoints manager
 
 [Response]:
 
     [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_1 from hostchain, we have this subchainID in appropriate set
+        
         1)We should add this subchain to SKIP_PROCEDURE_STAGE_2 set to stop sharing commitments/finalization proofs for this subchain
         2)We generate appropriate signature with the data from CHECKPOINTS manager
 
-    Also, if height/hash/superFinalizationProof in request body is valid and height>our local version - update CHECKPOINTS_MANAGER and generate signature
+        Also, if height/hash/superFinalizationProof in request body is valid and height>our local version - update CHECKPOINTS_MANAGER and generate signature
 
     [+] In case our local version of height for appropriate subchain > proposed height in request and we have a FINALIZATION_PROOF - send response with status "UPDATE" and our height/hash/finalizationproof
 
@@ -588,8 +580,7 @@ skipProcedurePart1=response=>response.writeHeader('Access-Control-Allow-Origin',
 */
 skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
-
+    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
@@ -600,9 +591,31 @@ skipProcedurePart2=response=>response.writeHeader('Access-Control-Allow-Origin',
         // Add this height to the local set to prevent produce commitments/finalization proofs for this subchain(at least till the next checkpoint session)
         SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(subchain)
 
-        let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}`)
+        // Compare with local version of subchain segment
+        if(INDEX>height){
 
-        response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
+            //Don't vote - send UPDATE response
+            response.end(JSON.stringify({
+                    
+                status:'UPDATE',
+                
+                data:SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+            
+            }))
+
+        }else if(INDEX===height && hash===HASH){
+
+            //Send signature
+
+            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+            let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)
+
+            response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
+
+        
+        }else response.end(JSON.stringify({status:'NOT FOUND'}))
+
 
     }else response.end(JSON.stringify({status:'NOT FOUND'}))
 

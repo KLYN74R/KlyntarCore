@@ -76,7 +76,7 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS,GET_MAJORITY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS,GET_MAJORITY, BLS_VERIFY, CHECK_IF_THE_SAME_DAY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -689,7 +689,43 @@ export default {
 
             if(events.length){
 
-                // Parse & verify logs here
+                // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
+
+                let {INDEX,HASH,TIMESTAMP} = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+
+                let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+
+                TIMESTAMP*=1000
+
+
+                for(let event of events){
+
+                    let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
+
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator,aggregatedSignature,reverseThreshold)
+                    
+                    let initiatorSigIsOk = await BLS_VERIFY(sesssion+session,sig,initiator)
+
+                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(TIMESTAMP,(+event.returnValues.blocktime)*1000)
+
+
+
+                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
+
+                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(INDEX+HASH)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(INDEX+HASH,new Set())
+
+                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(INDEX+HASH)
+
+                        setOfSubchainsToSkipForCurrentCheckpoint.set(subchain)
+
+                        //TODO: Store skip's and progress on hostchain to db
+
+                    }
+
+                }
                 
             }
     
@@ -715,7 +751,7 @@ export default {
                 hash:<hash of appropriate block>
                 
                 aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>`)
+                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>:<QT.CHECKPOINT.HEADER.ID>`)
                 afk:[]
             }
 
@@ -765,7 +801,43 @@ export default {
 
             if(events.length){
 
-                // Parse & verify logs here
+                // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
+
+                let {INDEX,HASH,TIMESTAMP} = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+
+                let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+
+                TIMESTAMP*=1000
+
+
+                for(let event of events){
+
+                    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
+
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${HASH}:${INDEX}`,aggregatedSignature,reverseThreshold)
+
+                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(TIMESTAMP,(+event.returnValues.blocktime)*1000)
+
+
+                    
+                    if(majorityVotedForIt && isTheSameDay){
+
+                        if(!SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(INDEX+HASH)) SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(INDEX+HASH,new Map())
+
+                        let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(INDEX+HASH)
+
+                        // We'll need it inside START_VERIFICATION_THREAD function to know which blocks we should skip
+                        mapOfSubchainsToSkipForCurrentCheckpoint.set(subchain,{INDEX:index,HASH:hash})
+
+
+                        //TODO: Store skip's and progress on hostchain to db
+
+                    }
+
+                }
                 
             }
     

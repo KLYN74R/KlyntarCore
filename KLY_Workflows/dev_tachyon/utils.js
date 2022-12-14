@@ -230,7 +230,7 @@ SIG=data=>BLS.singleSig(data,PRIVATE_KEY),
 
 
 
-VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
+BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
 

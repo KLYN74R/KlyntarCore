@@ -1,6 +1,6 @@
 import {
     
-    DECRYPT_KEYS,BLOCKLOG,SIG,VERIFY,
+    DECRYPT_KEYS,BLOCKLOG,SIG,BLS_VERIFY,
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
     
@@ -309,9 +309,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //TODO:Make more advanced logic
         SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
 
+
+        let checkpointID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
         //Clear our sets not to repeat the SKIP_PROCEDURE
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.clear()
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.delete(checkpointID)
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.delete(checkpointID)
+
 
         //Set new checkpoint
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
@@ -417,6 +421,7 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
 
+    //After monitoring - start SKIP_PROCEDURE_STAGE_2 if we've found proofs for SKIP_PROCEDURE_STAGE_1
 
     setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
@@ -1256,7 +1261,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     }
 
-                }else if(answerFromValidator.status==='SKIP' && await VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB,answerFromValidator.sig,validatorHandler.pubKey)){
+                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB,answerFromValidator.sig,validatorHandler.pubKey)){
 
                     // Grab the skip agreements to publish to hostchains
                     skipAgreements.push({sig:answerFromValidator.sig,pubKey:validatorHandler.pubKey})
@@ -1712,9 +1717,9 @@ PREPARE_SYMBIOTE=async()=>{
     
         //____________________ SKIP_PROCEDURE related sets ____________________
 
-        SKIP_PROCEDURE_STAGE_1:new Set(),   // here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
+        SKIP_PROCEDURE_STAGE_1:new Map(),   // checkpointID => Set(subchain) here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
 
-        SKIP_PROCEDURE_STAGE_2:new Set(),   // here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
+        SKIP_PROCEDURE_STAGE_2:new Map(),   // checkpointID => Map(subchain=>{INDEX,HASH}) here we'll add subchainIDs after we've voted to skip it. If subchain in this set - we can't generate commitments/finalization proofs for it in current checkpoint's session
 
     }
 
@@ -2085,7 +2090,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
                     */
 
-                    VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(_=>false)
+                    BLS_VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(_=>false)
 
                 )
 
@@ -2148,7 +2153,7 @@ START_AWAKENING_PROCEDURE=()=>{
 
 
             //Make final verification
-            if(await VERIFY(myMetadataHash,aggregatedSignatures,aggregatedPub)){
+            if(await BLS_VERIFY(myMetadataHash,aggregatedSignatures,aggregatedPub)){
 
                 LOG(`♛ Hooray!!! Going to share this TX to resurrect your node. Keep working :)`,'S')
 
@@ -2228,8 +2233,7 @@ RUN_SYMBIOTE=async()=>{
         //4.Start checking the health of all the subchains
         SUBCHAINS_HEALTH_MONITORING()
 
-
-        //5. Start checking SKIP_PROCEDURE proofs(for stages 1 and 2)
+        //5.Start checking SKIP_PROCEDURE proofs(for stages 1 and 2)
         SKIP_PROCEDURE_MONITORING_START()
 
 
