@@ -48,6 +48,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
 
 
+
 export default {
 
     //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
@@ -286,9 +287,38 @@ export default {
 
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    STOP_VALIDATOR:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    STOP_VALIDATOR:async(payload,isFromRoute,usedOnQuorumThread)=>{
 
+        /*
         
+            Payload structure is
+
+            {
+                subchain,
+                index,
+                hash
+            }
+        
+        */
+
+        if(isFromRoute){
+
+            // Set the "STOPPED" property to true/false in VT.VALIDATORS_METADATA[<subchain>]
+
+
+        }
+        
+        else if(usedOnQuorumThread){
+
+            // Set the "STOPPED" property to true/false in QT.VALIDATORS_METADATA[<subchain>]
+
+        }
+        
+        else{
+
+
+
+        }        
 
     },
 

@@ -722,6 +722,24 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
+    // [0.5] Also, we should check if all the SKIP_PROCEDURE[-] should be included
+
+    let localSetOfSkipSubchains = [...SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.values()].map(subchain=>{
+
+        return {
+            
+            type:'STOP_VALIDATOR',
+            payload:{
+                
+                subchain,
+                index,
+                hash
+            
+            }
+
+        }
+
+    })
 
     let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(
         

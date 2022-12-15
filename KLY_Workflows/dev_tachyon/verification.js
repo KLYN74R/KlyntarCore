@@ -293,8 +293,9 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
 
-            //___________________Create array of delayed unstaking transactions__________________
+            //_____________________________Create object for slashing____________________________
 
+            // Structure <pool> => <{delayedIds,pool}>
             SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
 
             //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
