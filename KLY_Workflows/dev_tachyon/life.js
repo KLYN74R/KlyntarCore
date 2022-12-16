@@ -439,6 +439,15 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
 
 
+// Once we've received 2/3N+1 signatures for checkpoint(HEADER,PAYLOAD) - we can start the next stage to get signatures to get another signature which will be valid for checkpoint
+INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,signedCheckpoint)=>{
+
+
+
+},
+
+
+
 
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
@@ -486,6 +495,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
         let potentialCheckpointPayload = {
+
+            ISSUER:CONFIG.SYMBIOTE.PUB,
 
             PREV_CHECKPOINT_PAYLOAD_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
 
@@ -694,12 +705,17 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
 
 
-            //____________________________________ Share via POST /potential_checkpoint ____________________________________
+            // Store to the SYMBIOTE_META.POTENTIAL_CHECKPOINTS
+
+            await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.put(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,potentialCheckpointPayload).catch(_=>{})
+
+
+            //____________________________________ Share via POST /checkpoint_stage_2 ____________________________________
 
 
             for(let memberHandler of quorumMembers){
 
-                fetch(memberHandler.url+'/potential_checkpoint',newCheckpoint).catch(_=>false)
+                fetch(memberHandler.url+'/checkpoint_stage_2',newCheckpoint).catch(_=>false)
         
             }
 

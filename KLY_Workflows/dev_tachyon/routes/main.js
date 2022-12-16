@@ -1107,15 +1107,13 @@ UWS_SERVER
 
 .post('/special_operations',specialOperationsAccept)
 
-// To accept valid checkpoints from proposer and store <PAYLOAD_HASH => PAYLOAD> and <PROPOSER_ID=>true>(to keep the 1proposer:1checkpoint ratio)
-.post('/potential_checkpoint',potentialCheckpoint)
 
 // To sign the checkpoints' payloads
 .post('/checkpoint_stage_1',checkpointStage1Handler)
 
-
 // To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
-.post('/checkpoint_stage_2',checkpointStage1Handler)
+.post('/checkpoint_stage_2',checkpointStage2Handler)
+
 
 .get('/health',healthChecker)
 
