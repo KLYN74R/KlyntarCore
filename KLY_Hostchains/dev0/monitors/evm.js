@@ -293,7 +293,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
 
         
         if(isNext && signaIsOk) {
@@ -331,6 +331,8 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
             Then,find pure PAYLOAD related to hash in header
         
             PAYLOAD is {
+
+                ISSUER
 
                 PREV_PAYLOAD_HASH
 

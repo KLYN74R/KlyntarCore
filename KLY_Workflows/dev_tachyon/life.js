@@ -347,6 +347,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.clear()
 
+        //Clear the storage with potential invalid checkpoints
+        await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.clear()
+
+
         //_______________________Check the version required for the next checkpoint________________________
 
 
@@ -536,7 +540,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         */
         for(let memberHandler of quorumMembers){
 
-            let responsePromise = fetch(memberHandler.url+'/checkpoint',sendOptions).then(r=>r.json()).then(async response=>{
+            let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_1',sendOptions).then(r=>r.json()).then(async response=>{
  
                 response.pubKey = memberHandler.pubKey
 
@@ -2010,6 +2014,8 @@ PREPARE_SYMBIOTE=async()=>{
         'STATE', //Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
         'CHECKPOINTS', //Contains object like CHECKPOINT_ID => {HEADER,PAYLOAD}
+
+        'POTENTIAL_CHECKPOINTS', //Contains object like <PAYLOAD_HASH => PAYLOAD> and <PROPOSER_ID=>true>(to keep the 1proposer:1checkpoint ratio), but we clear it every new checkpoint(because we don't need anymore to store invalid checkpoints)
 
         'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => {aggregatedPub:<BLS quorum majority aggregated pubkey>,aggregatedSignature:<SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)>,afkValidators}
 

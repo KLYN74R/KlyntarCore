@@ -639,9 +639,11 @@ Accept checkpoints from other validators in quorum and returns own version as an
 
 
 {
-            
+    
+    ISSUER:<BLS pubkey of checkpoint grabbing initiator>,
+
     PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
-            
+    
     VALIDATORS_METADATA: {
                 
         '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
@@ -716,7 +718,7 @@ Response - it's object with the following structure:
 
 
 */
-checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -806,13 +808,142 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
             response.end(JSON.stringify({metadataUpdate}))
 
-        }else{
+        }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
 
             let sig = await SIG(BLAKE3(JSON.stringify(checkpointProposition)))
 
             response.end(JSON.stringify({sig}))
 
-        }
+        }else response.end(JSON.stringify({error:'Everything failed'}))
+
+    }
+
+}),
+
+
+
+
+/*
+
+[Description]:
+
+    Route for the second stage of checkpoint distribution
+
+    [0] Here we accept the checkpoint's payload and a proof that majority has the same. Also, ISSUER_PROOF is a BLS signature of proposer of this checkpoint. We need this signature to prevent spam
+
+    [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
+
+    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to SYMBIOTE_META.POTENTIAL_CHECKPOINTS
+
+    [3] After we store it - generate the signature SIG('STAGE_2'+PAYLOAD_HASH) and response with it
+
+    This way, we prevent the spam and make sure that at least 2/3N+1 has stored the same payload related to appropriate checkpoint's header
+
+
+
+[Accept]:
+
+
+{
+    CHECKPOINT_FINALIZATION_PROOF:{
+
+        aggregatedPub:<2/3N+1 from QUORUM>,
+        aggregatedSigna:<SIG(PAYLOAD_HASH)>,
+        afkValidators:[]
+
+    }
+
+    ISSUER_PROOF:SIG(ISSUER+PAYLOAD_HASH)
+
+    CHECKPOINT_PAYLOAD:{
+
+        ISSUER:<BLS pubkey of checkpoint grabbing initiator>
+            
+        PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            
+        VALIDATORS_METADATA: {
+                
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+
+            /..other data
+            
+        },
+        OPERATIONS: GET_SPEC_EVENTS(),
+        OTHER_SYMBIOTES: {}
+        
+    }
+
+
+}
+
+To verify it => VERIFY(aggPub,aggSigna,afkValidators,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
+
+To sign it => SIG('STAGE_2'+BLAKE3(JSON.stringify(<PROPOSED>)))
+
+We sign the BLAKE3 hash received from JSON'ed proposition of payload for the next checkpoint
+
+
+[Response]
+
+Response - it's object with the following structure:
+
+{
+
+    ? sig:<BLS signature>
+
+    ? error:'Something gets wrong'
+
+}
+
+*/
+checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+
+    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+    let {aggregatedPub,aggregatedSignature,afkValidators} = CHECKPOINT_FINALIZATION_PROOF
+
+    let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
+
+    let alreadyInDb = await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(payloadHash).catch(_=>false)
+
+
+
+    if(alreadyInDb){
+
+        let sig = await SIG('STAGE_2'+payloadHash)
+
+        response.end(JSON.stringify({sig}))
+
+    }else{
+
+        let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+        //Verify 2 signatures
+
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),payloadHash,aggregatedSignature,reverseThreshold)
+
+        let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF)
+
+
+
+        if(majorityHasSignedIt && issuerSignatureIsOk){
+
+            // Store locally, mark that this issuer has already sent us a finalized version of checkpoint
+            let atomicBatch = SYMBIOTE_META.POTENTIAL_CHECKPOINTS.batch()
+
+            atomicBatch.put(CHECKPOINT_PAYLOAD.ISSUER,true)
+            atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
+
+            await atomicBatch.write()
+
+            // Generate the signature for the second stage
+
+            let sig = await SIG('STAGE_2'+payloadHash)
+
+            response.end(JSON.stringify({sig}))
+
+        }else response.end(JSON.stringify({error:'Something wrong'}))
 
     }
 
@@ -976,9 +1107,15 @@ UWS_SERVER
 
 .post('/special_operations',specialOperationsAccept)
 
+// To accept valid checkpoints from proposer and store <PAYLOAD_HASH => PAYLOAD> and <PROPOSER_ID=>true>(to keep the 1proposer:1checkpoint ratio)
 .post('/potential_checkpoint',potentialCheckpoint)
 
-.post('/checkpoint',checkpoint)
+// To sign the checkpoints' payloads
+.post('/checkpoint_stage_1',checkpointStage1Handler)
+
+
+// To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
+.post('/checkpoint_stage_2',checkpointStage1Handler)
 
 .get('/health',healthChecker)
 
