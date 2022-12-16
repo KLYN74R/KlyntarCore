@@ -481,13 +481,13 @@ export default {
 
                 VALIDATORS_METADATA:{
                 
-                    VALIDATOR_0 : {INDEX:number,HASH:string},
+                    VALIDATOR_0 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
-                    VALIDATOR_1 : {INDEX:number,HASH:string},
+                    VALIDATOR_1 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
                     ...
 
-                    VALIDATOR_N : {INDEX:number,HASH:string}
+                    VALIDATOR_N : {INDEX:number,HASH:string,IS_STOPPED:boolean}
                 
                 }
 

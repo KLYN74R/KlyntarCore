@@ -720,30 +720,25 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
+    let skipValidatorPropositions=0
+
+    let totalSkipOperations = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.size
+
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
-    // [0.5] Also, we should check if all the SKIP_PROCEDURE[-] should be included
-
-    let localSetOfSkipSubchains = [...SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.values()].map(subchain=>{
-
-        return {
-            
-            type:'STOP_VALIDATOR',
-            payload:{
-                
-                subchain,
-                index,
-                hash
-            
-            }
-
-        }
-
-    })
-
+    
     let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(
         
-        operation => !SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.has(operation.id)
+        operation => {
+
+            if(SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.has(operation.id)){
+
+                // If operation exists - check if it's STOP_VALIDATOR operation
+                if(operation.type==='STOP_VALIDATOR') skipValidatorPropositions++
+
+            }else return true // Exclude operations which we don't have
+        
+        }
         
     ).map(
         
@@ -756,10 +751,13 @@ checkpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onA
 
         response.end(JSON.stringify({excludeSpecOperations}))
 
-    }else{
+    }else if (totalSkipOperations===skipValidatorPropositions){
 
         // On this step we know that all of proposed operations were checked by us and present in local mempool.
+        // Also, we know that all the mandatory STOP_VALIDATOR operations are in current version of payload
 
+
+        
         // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINTS_MANAGER
 
         let metadataUpdate = []

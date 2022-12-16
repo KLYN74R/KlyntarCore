@@ -389,7 +389,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             Object.keys(validatorsMetadata).forEach(
             
-                poolPubKey => SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX:validatorsMetadata[poolPubKey].INDEX,HASH:validatorsMetadata[poolPubKey].HASH}) //{INDEX,HASH}
+                poolPubKey => SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,validatorsMetadata[poolPubKey]) // {INDEX,HASH,IS_STOPPED}
     
             )
 
@@ -515,7 +515,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = {INDEX,HASH}
+                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey].IS_STOPPED
+
+                potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED}
 
             }
 
@@ -1532,7 +1534,7 @@ FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_SET=async()=>{
     for(let poolPubKey of validatorsMetadata){
 
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the VALIDATORS_METADATA as a start point
-        // Returned value is {INDEX,HASH,FINALIZATION_PROOF}
+        // Returned value is {INDEX,HASH,(?)FINALIZATION_PROOF}
 
         let {INDEX,HASH,FINALIZATION_PROOF} = await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
 
@@ -1739,7 +1741,7 @@ LOAD_GENESIS=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(validatorPubKey)
     
             //Add metadata
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin'} // set the initial values
+            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
     
             //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
             
@@ -2114,7 +2116,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:''}
+                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED}
                 
                 CHECKPOINT:'genesis',
 

@@ -265,7 +265,9 @@ export default {
                         
                         INDEX:-1,
                     
-                        HASH:'Poyekhali!@Y.A.Gagarin'
+                        HASH:'Poyekhali!@Y.A.Gagarin',
+
+                        IS_STOPPED:false
                     
                     }
 
@@ -294,6 +296,7 @@ export default {
             Payload structure is
 
             {
+                stop:<true/false> - if true => stop the pool. If false - unfreeze and going to work with block <blockID+1> of this subchain
                 subchain,
                 index,
                 hash
@@ -301,10 +304,12 @@ export default {
         
         */
 
+        let {stop,subchain,index,hash}=payload
+
+
         if(isFromRoute){
 
-            // Set the "STOPPED" property to true/false in VT.VALIDATORS_METADATA[<subchain>]
-
+            //We don't use it via route. These operations are added to potential checkpoint automatically
 
         }
         
@@ -312,11 +317,35 @@ export default {
 
             // Set the "STOPPED" property to true/false in QT.VALIDATORS_METADATA[<subchain>]
 
+            let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+
+            if(stop){
+
+                validatorsMetadata.IS_STOPPED=true
+
+                validatorsMetadata.INDEX = index
+
+                validatorsMetadata.HASH = hash
+
+            }else validatorsMetadata.IS_STOPPED=false //unfreeze
+
         }
         
         else{
 
+            // Set the "STOPPED" property to true/false in VT.VALIDATORS_METADATA[<subchain>]
 
+            let validatorsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+
+            if(stop){
+
+                validatorsMetadata.IS_STOPPED=true
+
+                validatorsMetadata.INDEX = index
+
+                validatorsMetadata.HASH = hash
+
+            }else validatorsMetadata.IS_STOPPED=false //unfreeze
 
         }        
 
