@@ -551,7 +551,6 @@ START_VERIFICATION_THREAD=async()=>{
     
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        THREADS_STILL_WORKS.VERIFICATION=true
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
@@ -589,7 +588,7 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH,ACTIVE} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
 
             blockID = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1),
@@ -604,7 +603,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
-        if(currentSessionMetadata.FREEZED){
+        
+        if(currentSessionMetadata.IS_STOPPED){
 
             /*
             
@@ -688,18 +688,11 @@ START_VERIFICATION_THREAD=async()=>{
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
         setTimeout(START_VERIFICATION_THREAD,(nextBlock||shouldSkip||currentSessionMetadata.FREEZED)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
-        
-        //Probably no sense to stop polling via .clearTimeout()
-        //UPD:Do it to provide dynamic functionality to start/stop Verification Thread
-        
-        THREADS_STILL_WORKS.VERIFICATION=false
 
     
     }else{
 
         LOG(`Polling for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
-
-        SIG_PROCESS.VERIFY=true
 
     }
 

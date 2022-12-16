@@ -43,15 +43,10 @@ import fs from 'fs'
 //Open writestream in append mode
 global.SYMBIOTE_LOGS_STREAM=fs.createWriteStream(process.env.LOGS_PATH+`/symbiote.log`),{flags:'a+'}
 
-global.THREADS_STILL_WORKS={VERIFICATION:false,GENERATION:false}
-
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
 //Your decrypted private key
 global.PRIVATE_KEY=null
-
-global.SIG_PROCESS={}
-
 
 
 
@@ -73,29 +68,25 @@ export let GRACEFUL_STOP=()=>{
     //Probably stop logs on this step
     setInterval(async()=>{
 
-        //Each subprocess in each symbiote must be stopped
-        if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
+        console.log('\n')
 
-            console.log('\n')
+        //Close logs streams
+        await new Promise( resolve => SYMBIOTE_LOGS_STREAM.close( error => {
 
-            //Close logs streams
-            await new Promise( resolve => SYMBIOTE_LOGS_STREAM.close( error => {
+            LOG(`Logging was stopped for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m ${error?'\n'+error:''}`,'I')
 
-                LOG(`Logging was stopped for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m ${error?'\n'+error:''}`,'I')
+            resolve()
+        
+        }))
 
-                resolve()
+        LOG('Server stopped','I')
+
+        global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
+
+        LOG('Node was gracefully stopped','I')
             
-            }))
+        process.exit(0)
 
-            LOG('Server stopped','I')
-
-            global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
-
-            LOG('Node was gracefully stopped','I')
-                
-            process.exit(0)
-
-        }
 
     },200)
 
@@ -140,9 +131,6 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        //With this we say to system:"Wait,we still processing the block"
-        THREADS_STILL_WORKS.GENERATION=true
-
         await GENERATE_PHANTOM_BLOCKS_PORTION()    
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(GEN_BLOCKS_START_POLLING,CONFIG.SYMBIOTE.BLOCK_TIME)
@@ -155,12 +143,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
         LOG(`Block generation for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
-        SIG_PROCESS.GENERATE=true
-
     }
-
-    //leave function
-    THREADS_STILL_WORKS.GENERATION=false
     
 },
 
@@ -1096,7 +1079,6 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         let sendOptions={
         
             method:'POST',
-
             body:JSON.stringify(payload)
         
         }
@@ -1134,11 +1116,15 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 if(finalizationProofIsOk && localFinalizationHandler.INDEX < INDEX){
             
                     // Update the local version in CHECKPOINTS_MANAGER
+                    
                     localFinalizationHandler.INDEX = INDEX
+                    
                     localFinalizationHandler.HASH = HASH
+                    
                     localFinalizationHandler.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
                     
                     // And break the cycle for this subchain-candidate
+                    
                     break
     
                 }
@@ -1255,6 +1241,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     for(let handler of subchainsURLAndPubKey){
+
+        
+        let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[handler.pubKey]
+
+        //No sense to get the health of pool who has been stopped
+        if(metadataOfCurrentSubchain.IS_STOPPED) continue
+
 
         let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(r=>{
 
@@ -1514,6 +1507,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             // Otherwise - do nothing
 
         }
+
 
     }
 
@@ -2116,7 +2110,7 @@ PREPARE_SYMBIOTE=async()=>{
     
                 VALIDATORS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
-                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED}
+                VALIDATORS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:}
                 
                 CHECKPOINT:'genesis',
 
@@ -2259,9 +2253,6 @@ PREPARE_SYMBIOTE=async()=>{
         .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
     ).then(answer=>answer!=='YES'&& process.exit(108))
-
-    
-    SIG_PROCESS={VERIFY:false,GENERATE:false}//we should track events in both threads-as in verification,as in generation
 
 },
 

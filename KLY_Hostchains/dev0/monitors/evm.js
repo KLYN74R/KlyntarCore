@@ -359,8 +359,6 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
             while(true){
                 
                 for(let url of initURLs){
-
-                    if(SYSTEM_SIGNAL_ACCEPTED) break
                                 
                     let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
@@ -378,7 +376,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 }
 
-                if(shouldStopWhile || SYSTEM_SIGNAL_ACCEPTED) break
+                if(shouldStopWhile) break
             
             }
             
@@ -582,8 +580,8 @@ export default {
 
                     possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
 
-                    //We do break here, because valid checkpoint was found or system signal accepted
-                    if(possibleValidCheckpoint?.PAYLOAD||SYSTEM_SIGNAL_ACCEPTED) break
+                    //We do break here, because valid checkpoint was found
+                    if(possibleValidCheckpoint?.PAYLOAD) break
 
                     //If log is not a checkpoint - just increase counter for progress
                     else SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
