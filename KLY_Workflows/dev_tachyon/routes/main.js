@@ -457,7 +457,7 @@ healthChecker = async response => {
 
 /*
 
-Function to accept potential checkpoints
+Function to accept potential checkpoints' payload and store it
 
 */
 potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{

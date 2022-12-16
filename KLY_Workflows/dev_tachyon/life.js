@@ -193,7 +193,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put('SKIP:'+subchainID,true).catch(_=>false)
 
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.add(subchainID)
+        // Set true for this subchain as a sign that we've done
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(subchainID,true)
 
     }
 
@@ -698,6 +699,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
             }
 
+            //Send the header to hostchain
+            HOSTCHAIN.CONNECTOR.makeCheckpoint(newCheckpoint.HEADER)
+
+
         }else if(propositionsToUpdateMetadata===0){
 
             // Delete the special operations due to which the rest could not agree with our version of checkpoints
@@ -1050,7 +1055,10 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
 
-    for(let subchain of SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.values()){
+    for(let subchain of SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.keys()){
+
+        //No sense to do this procedure for subchain which is already skipped
+        if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(subchain)) continue
 
 
         let localFinalizationHandler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
@@ -1946,7 +1954,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         //____________________ SKIP_PROCEDURE related sets ____________________
 
-        SKIP_PROCEDURE_STAGE_1:new Set(),   // here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
+        SKIP_PROCEDURE_STAGE_1:new Map(),   // here we'll add subchainIDs of subchains which we have found on hostchains during SKIP_PROCEDURE_STAGE_1(quorum agreement to skip some subchain on some height)
 
         ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1:new Map(), //checkpointID => Set(). Contains subchainIDs that should be added to SKIP_PROCEDURE_STAGE_1 set and to local storage COMMITMENTS_SKIP_AND_FINALIZATION related to current checkpoint
 
