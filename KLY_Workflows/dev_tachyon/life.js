@@ -595,6 +595,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
         myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>otherAgreements.has(pubKey))
 
 
+        SYMBIOTE_META.TIME_TRACKER.set('HEADER_'+myCheckpoint.HEADER.ID,new Date().getTime())
+
         //Send the header to hostchain
         await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(_=>{})
     
@@ -613,9 +615,24 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let myPotentialCheckpoint = await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`).catch(_=>false)
 
+    let timestamp = SYMBIOTE_META.TIME_TRACKER.get('HEADER_'+myPotentialCheckpoint.HEADER.ID)
+
+
+    if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.COMMIT > new Date().getTime()){
+
+        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
+
+        return
+
+    }
+
+
+    //Delete the time tracker
+    SYMBIOTE_META.TIME_TRACKER.delete('HEADER_'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID)
+
 
     if(myPotentialCheckpoint){
-
+        
         await INITIATE_CHECKPOINT_STAGE_2_GRABBING(myPotentialCheckpoint)
 
         setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
@@ -1244,6 +1261,18 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         //No sense to do this procedure for subchain which is already skipped
         if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(subchain)) continue
 
+        //Also, no sense to perform this procedure for subchains which was recently skipped(by the second stage)
+        let timestamp = SYMBIOTE_META.TIME_TRACKER.get('SKIP_STAGE_2_'+subchain)
+
+        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > new Date().getTime()){
+    
+            continue
+    
+        }
+        
+        //Delete the time tracker
+        SYMBIOTE_META.TIME_TRACKER.delete('SKIP_STAGE_2_'+subchain)
+        
 
         let localFinalizationHandler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
         
@@ -1374,6 +1403,9 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 afkValidators
 
             }
+
+            //Add time tracker for event
+            SYMBIOTE_META.TIME_TRACKER.set('SKIP_STAGE_2_'+subchain,new Date().getTime())
 
             //Send to hostchain
             HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
@@ -1538,6 +1570,19 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     for(let candidate of candidatesForAnotherCheck){
 
+        let timestamp = SYMBIOTE_META.TIME_TRACKER.get('SKIP_STAGE_1_'+candidate)
+
+        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_1 > new Date().getTime()){
+    
+            continue
+    
+        }
+        
+        //Delete the time tracker
+        SYMBIOTE_META.TIME_TRACKER.delete('SKIP_STAGE_1_'+candidate)
+    
+
+
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
         let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(candidate)
@@ -1690,6 +1735,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     afkValidators
 
                 }
+
+
+                //Add time tracker for event
+                SYMBIOTE_META.TIME_TRACKER.set('SKIP_STAGE_1_'+candidate,new Date().getTime())
 
                 //Send to hostchain
                 HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
@@ -2144,7 +2193,11 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_PROCEDURE_STAGE_2:new Set(),   // here we'll add subchainIDs with the block index & hash to know where we should skip this subchain
 
+        
+        //____________________ To prevent frequent interactions with host chain(for connector) ____________________
 
+        TIME_TRACKER:new Map() // id => timestamp
+    
     }
 
 
