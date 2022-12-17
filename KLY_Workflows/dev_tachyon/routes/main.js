@@ -457,20 +457,6 @@ healthChecker = async response => {
 
 /*
 
-Function to accept potential checkpoints' payload and store it
-
-*/
-potentialCheckpoint=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let potentialCheckpoint=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
-
-
-}),
-
-
-
-/*
-
 [Info]:
 
     Route to accept requests from other quorum members about development of subchains.
@@ -979,7 +965,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let checkpointID = request.getParameter(0),
 
-            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(checkpointID).catch(_=>false)
+            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(checkpointID).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get('TEMP:'+checkpointID).catch(_=>false)
 
         if(checkpoint){
 

@@ -201,11 +201,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     if(possibleCheckpoint){
 
+        //_________Clear the db with potential checkpoints & store appropriate payload_______
 
-        //Perform SPEC_OPERATIONS
+        await SYMBIOTE_META.CHECKPOINTS.put('TEMP:'+possibleCheckpoint.HEADER.ID,possibleCheckpoint.PAYLOAD).then(()=>
+
+            // Now we can clear the POTENTIAL_CHECKPOINTS db
+            SYMBIOTE_META.POTENTIAL_CHECKPOINTS.clear()
+
+        ).catch(_=>false)
 
 
-        //_____________________________To change it via operations___________________________
+
+        //_______________________________Perform SPEC_OPERATIONS_____________________________
+
 
         let workflowOptionsTemplate = {...SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS}
             
@@ -222,8 +230,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
         //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
-
-        //____________________Go through the SPEC_OPERATIONS and perform__________________
 
         for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
 
@@ -343,13 +349,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         await atomicBatch.write()
 
 
-        //___________________Clear databases with commitments & finalization proofs related to this ________________________
+        //______________Clear databases with commitments & finalization proofs related to this_____________
 
         await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.clear()
 
-        //Clear the storage with potential invalid checkpoints
-        await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.clear()
 
+        let checkpointsAtomicBatch = SYMBIOTE_META.CHECKPOINTS.batch()
+
+        checkpointsAtomicBatch.put(possibleCheckpoint.HEADER.ID,possibleCheckpoint)
+
+        checkpointsAtomicBatch.del('TEMP:'+possibleCheckpoint.HEADER.ID)
+
+        await checkpointsAtomicBatch.write()
+        
 
         //_______________________Check the version required for the next checkpoint________________________
 
@@ -439,10 +451,153 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
 
 
+
 // Once we've received 2/3N+1 signatures for checkpoint(HEADER,PAYLOAD) - we can start the next stage to get signatures to get another signature which will be valid for checkpoint
-INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,signedCheckpoint)=>{
+INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,myCheckpoint)=>{
+
+    quorumMembersHandler ||= await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
+
+    myCheckpoint ||= await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`).catch(_=>false)
+
+    
+    //_____________________ Go through the quorum and share our pre-signed object with checkpoint payload and issuer proof____________________
+
+    /*
+    
+        We should send the following object to the POST /checkpoint_stage_2
+
+        {
+            CHECKPOINT_FINALIZATION_PROOF:{
+
+                aggregatedPub:<2/3N+1 from QUORUM>,
+                aggregatedSigna:<SIG(PAYLOAD_HASH)>,
+                afkValidators:[]
+
+            }
+
+            ISSUER_PROOF:SIG(ISSUER+PAYLOAD_HASH)
+
+            CHECKPOINT_PAYLOAD:{
+
+                ISSUER:<BLS pubkey of checkpoint grabbing initiator>
+            
+                PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            
+                VALIDATORS_METADATA: {
+                
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+
+                    /..other data
+            
+                },
+        
+                OPERATIONS: GET_SPEC_EVENTS(),
+                OTHER_SYMBIOTES: {}
+    
+            }
+
+        }
+    
+    */
 
 
+    // Structure is {CHECKPOINT_FINALIZATION_PROOF,ISSUER_PROOF,CHECKPOINT_PAYLOAD}
+    let everythingAtOnce={
+            
+        CHECKPOINT_FINALIZATION_PROOF:{
+
+            aggregatedPub:myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNERS_PUBKEY,
+            aggregatedSignature:myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE,
+            afkValidators:myCheckpoint.HEADER.AFK_VALIDATORS
+
+        },
+
+        ISSUER_PROOF:await SIG(CONFIG.SYMBIOTE.PUB+myCheckpoint.HEADER.PAYLOAD_HASH),
+
+        CHECKPOINT_PAYLOAD:myCheckpoint.PAYLOAD
+
+    }
+
+    let sendOptions={
+        
+        method:'POST',
+        
+        body:JSON.stringify(everythingAtOnce)
+
+    }
+
+    let promises=[]
+
+
+    //memberHandler is {pubKey,url}
+    for(let memberHandler of quorumMembersHandler){
+
+        let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_2',sendOptions).then(r=>r.json()).then(async response=>{
+ 
+            response.pubKey = memberHandler.pubKey
+
+            return response
+
+        }).catch(_=>false)
+
+
+        promises.push(responsePromise)
+
+    }
+
+
+    //Run promises
+    let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
+    
+    let otherAgreements = new Map()
+
+
+    
+    for(let {pubKey,sig} of checkpointsPingBacks){
+
+        if(sig){
+
+            let isSignaOk = await bls.singleVerify(myCheckpoint.HEADER.PAYLOAD_HASH,pubKey,sig)
+
+            if(isSignaOk) otherAgreements.set(pubKey,sig)
+
+        }
+
+    }
+
+
+
+
+    //______________________ Finally, once we have 2/3N+1 signatures - aggregate it, modify checkpoint header and publish to hostchain ______________________
+
+    if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
+
+        // Hooray - we can create checkpoint and publish to hostchain & share among other members
+
+        let signatures=[], pubKeys=[]
+
+        otherAgreements.forEach((signa,pubKey)=>{
+
+            signatures.push(signa)
+
+            pubKeys.push(pubKey)
+
+        })
+
+
+        // Modify the checkpoint header
+
+        myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNERS_PUBKEY=bls.aggregatePublicKeys(pubKeys)
+
+        myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE=bls.aggregateSignatures(signatures)
+
+        myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>otherAgreements.has(pubKey))
+
+
+        //Send the header to hostchain
+        await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(_=>{})
+    
+    }
 
 },
 
@@ -450,6 +605,14 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,signedCheckpoint
 
 
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
+
+
+    //__________________________ If we've runned the second stage - 
+
+
+
+
+
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
@@ -705,22 +868,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
 
 
-            // Store to the SYMBIOTE_META.POTENTIAL_CHECKPOINTS
-
-            await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.put(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,potentialCheckpointPayload).catch(_=>{})
-
-
-            //____________________________________ Share via POST /checkpoint_stage_2 ____________________________________
+            // Store to the SYMBIOTE_META.POTENTIAL_CHECKPOINTS. We'll delete after checkpoint commit
+            await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.put(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,newCheckpoint).catch(_=>{})
 
 
-            for(let memberHandler of quorumMembers){
+            //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
-                fetch(memberHandler.url+'/checkpoint_stage_2',newCheckpoint).catch(_=>false)
-        
-            }
-
-            //Send the header to hostchain
-            HOSTCHAIN.CONNECTOR.makeCheckpoint(newCheckpoint.HEADER)
+            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(quorumMembers,newCheckpoint)
 
 
         }else if(propositionsToUpdateMetadata===0){
@@ -747,7 +901,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 second - do monitoring
+    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
 
 },
 
