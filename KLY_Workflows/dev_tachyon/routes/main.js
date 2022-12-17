@@ -708,9 +708,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let skipValidatorPropositions=0
-
-    let totalSkipOperations = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.size
+    let subchainsToSkipThatCantBeExcluded = new Set(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1)
 
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
@@ -721,8 +719,8 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             if(SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.has(operation.id)){
 
-                // If operation exists - check if it's STOP_VALIDATOR operation
-                if(operation.type==='STOP_VALIDATOR') skipValidatorPropositions++
+                // If operation exists - check if it's STOP_VALIDATOR operation. Mark it if it's <SKIP> operation(i.e. stop=true)
+                if(operation.type==='STOP_VALIDATOR' && operation.payload.stop === true) subchainsToSkipThatCantBeExcluded.delete(operation.payload.subchain)
 
             }else return true // Exclude operations which we don't have
         
@@ -735,11 +733,13 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     )
 
 
+
+
     if(excludeSpecOperations.length !== 0){
 
         response.end(JSON.stringify({excludeSpecOperations}))
 
-    }else if (totalSkipOperations===skipValidatorPropositions){
+    }else if (subchainsToSkipThatCantBeExcluded.size===0){
 
         // On this step we know that all of proposed operations were checked by us and present in local mempool.
         // Also, we know that all the mandatory STOP_VALIDATOR operations are in current version of payload
@@ -1005,6 +1005,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
         if(isOk){
+            
 
             // Assign the ID to operation to easily detect what we should exclude from checkpoints propositions
             let payloadHash = BLAKE3(JSON.stringify(operation.payload))

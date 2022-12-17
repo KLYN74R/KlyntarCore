@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {BLS_VERIFY, GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
@@ -300,7 +300,11 @@ export default {
                 subchain,
                 index,
                 hash
+             (?)sig
             }
+
+
+            If it's operation to make subchain active again - verify signature also => VERIFY(stop+subchain+index+hash+qtPayload)
         
         */
 
@@ -309,7 +313,20 @@ export default {
 
         if(isFromRoute){
 
-            //We don't use it via route. These operations are added to potential checkpoint automatically
+            //Via routes we accept only the "stop:false" operations. This way, appropriate validator informs the quorum about his activity
+
+            let {sig} = payload
+
+            let {INDEX,HASH,IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+
+            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+   
+            if(stop===false && IS_STOPPED && INDEX===index && HASH===hash && await BLS_VERIFY(stop+subchain+index+hash+qtPayload,sig,subchain)){
+
+                return {stop,subchain,index,hash}
+
+            }
 
         }
         

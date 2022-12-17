@@ -401,6 +401,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             }
 
+
+            //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
+
+            if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
+
         }
 
         //Continue to find checkpoints
@@ -2510,184 +2515,49 @@ PREPARE_SYMBIOTE=async()=>{
     Function to get approvements from other validators to make your validator instance active again
 
 */
-START_AWAKENING_PROCEDURE=()=>{
+START_AWAKENING_PROCEDURE=async()=>{
     
-    fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/getquorum').then(r=>r.json()).then(async currentQuorum=>{
 
-        LOG(`Received list of current validators.Preparing to \x1b[31;1m<ALIVE_VALIDATOR>\x1b[32;1m procedure`,'S')
+    let quorumMembersURLs = await GET_VALIDATORS_URLS()
 
-        let promises=[]
+    let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]
 
-        //0. Initially,try to get pubkey => node_ip binding 
-        currentQuorum.forEach(
-        
-            pubkey => promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubkey))
-            
-        )
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let myPayload = {
     
-        let pureUrls = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean).map(x=>x.payload.url))
-        
-        //We'll use it to aggreage it to single tx and store locally to allow you to share over the network to include it to one of the block 
-        let pingBackMsgs = []
-
-        //Send message to each validator to return our generation thread "back to the game"
-
-        /*
+        stop:false,
+        subchain:CONFIG.SYMBIOTE.PUB,
+        index:INDEX,
+        hash:HASH,
+        sig:await SIG(false+CONFIG.SYMBIOTE.PUB+INDEX+HASH+qtPayload)
     
-            AwakeRequestMessage looks like this
-     
-            {
-                "V":<Pubkey of validator>
-                "S":<Signature of hash of his metadata from VALIDATORS_METADATA> e.g. SIG(BLAKE3(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[<PubKey>]))
-            }
+    }
 
-        */
-       
+    let sendOptions = {
 
-        let myMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]))
+        method: 'POST',
+        body: JSON.stringify(myPayload)
 
-        let awakeRequestMessage = {
-            
-            V:CONFIG.SYMBIOTE.PUB,
+    }
 
-            S:await SIG(myMetadataHash)
-        
-        },
+    let promises = [], numberOfOkStatus = 0
 
-        answers=[]
+    for(let url of quorumMembersURLs){
 
-        for(let url of pureUrls) {
+        let promise = fetch(url+'/special_operations',sendOptions).then(r=>r.text()).then(resp=>resp==='OK' && numberOfOkStatus++).catch(_=>{})
 
-            pingBackMsgs.push(fetch(url+'/awakerequest',{method:'POST',body:JSON.stringify(awakeRequestMessage)})
-            
-                .then(r=>r.json())
-                
-                .then(resp=>
+        promises.push(promise)
 
-                    /*
-                    
-                        Response is
+    }
 
-                            {P:CONFIG.SYMBIOTE.PUB,S:<Validator signa SIG(myMetadataHash)>}
+    let majority = GET_MAJORITY('QUORUM_THREAD')
 
-                        We collect this responses and aggregate to add to the blocks to return our validators thread to game
+    if(numberOfOkStatus >= majority){
 
-                    */
+        LOG('Ok, majority received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
 
-                    BLS_VERIFY(myMetadataHash,resp.S,resp.P).then(_=>answers.push(resp)).catch(_=>false)
-
-                )
-
-                .catch(error=>
-                
-                    LOG(`Validator ${url} send no data to <ALIVE>. Caused error \n${error}`,'W')
-
-                )
-
-            )
-
-        }
-
-
-
-        await Promise.all(pingBackMsgs.splice(0))
-
-        answers = answers.filter(Boolean)
-
-
-        //Here we have verified signatures from validators
-
-        let majority = GET_MAJORITY('QUORUM_THREAD')
-
-
-        //If we have majority votes - we can aggregate and share to "ressuect" our node
-        if(answers.length>=majority){
-
-
-            let pubkeys=[],
-
-                nonDecoded=[],
-            
-                signatures=[],
-                
-                afkValidators=[]
-
-
-            answers.forEach(descriptor=>{
-
-                pubkeys.push(descriptor.P)
-
-                nonDecoded.push(descriptor.P)
-
-                signatures.push(new Uint8Array(Buffer.from(descriptor.S,'base64')))
-
-            })
-
-
-            currentQuorum.forEach(validator=>
-
-                !nonDecoded.includes(validator)&&afkValidators.push(validator)
-
-            )
-
-
-            let aggregatedPub = bls.aggregatePublicKeys(pubkeys),
-
-                aggregatedSignatures = bls.aggregateSignatures(signatures)
-
-
-            //Make final verification
-            if(await BLS_VERIFY(myMetadataHash,aggregatedSignatures,aggregatedPub)){
-
-                LOG(`♛ Hooray!!! Going to share this TX to resurrect your node. Keep working :)`,'S')
-
-                //Create AwakeMessage here
-
-                let awakeMessage = {
-
-                    T:'AWAKE',
-
-                    V:CONFIG.SYMBIOTE.PUB, //AwakeMessage issuer(validator who want to activate his thread again)
-                   
-                    P:aggregatedPub, //Approver's aggregated BLS pubkey
-
-                    S:aggregatedSignatures,
-
-                    H:myMetadataHash,
-
-                    A:afkValidators //AFK validators who hadn't vote. Need to agregate it to the ROOT_VALIDATORS_KEYS
-
-                }
-
-
-                //And share it
-
-                fetch(CONFIG.SYMBIOTE.AWAKE_HELPER_NODE+'/vmessage',{
-
-                    method:'POST',
-
-                    body:JSON.stringify(awakeMessage)
-
-                }).then(r=>r.text()).then(async response=>
-
-                    response==='OK'
-                    ?
-                    LOG('Ok, validators received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
-                    :
-                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT`,'W')
-
-                ).catch(error=>
-
-                    LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - try to resend it manualy or change the endpoints(\u001b[38;5;167mAWAKE_HELPER_NODE\u001b[38;5;3m) to activate your \u001b[38;5;177mGT\n${error}`,'W')
-                
-                )
-
-
-            }else LOG(`Aggregated verification failed. Try to activate your node manually`,'W')
-
-        }
-
-    }).catch(error=>LOG(`Can't get current validators set\n${error}`,'W'))
+    }else LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - probably, less than majority agree with it`,'W')
 
 },
 
