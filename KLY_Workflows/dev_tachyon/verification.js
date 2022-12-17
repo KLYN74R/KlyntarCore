@@ -148,15 +148,20 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
+    let [subchain,index] = blockID.split(':')
+
+    index = +index
+
     let checkpointHashAndIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    // Initially, check if subchain was stopped from this height:hash on this checkpoint
-    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.has(blockID+':'+blockHash+':'+checkpointHashAndIndex)) {
+    let handler = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointHashAndIndex)?.get(subchain) //{INDEX,HASH}
 
-        let [subchain] = blockID.split(':')
+    // Initially, check if subchain was stopped from this height:hash on this checkpoint
+    
+    if(handler && handler.INDEX>=index){
 
         //Stop this subchain for the next iterations
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
+        if(handler.INDEX === index && handler.HASH === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
 
         return true
 

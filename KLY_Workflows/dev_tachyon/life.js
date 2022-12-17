@@ -318,9 +318,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        //Clear our sets not to repeat the SKIP_PROCEDURE
+        //Clear our sets/mappings not to repeat the SKIP_PROCEDURE
         SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.clear()
+
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)?.clear()
 
         //Clear this mapping related to old checkpoint
         SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(qtPayload)?.clear()
