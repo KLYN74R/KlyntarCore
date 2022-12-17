@@ -361,7 +361,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         checkpointsAtomicBatch.del('TEMP:'+possibleCheckpoint.HEADER.ID)
 
         await checkpointsAtomicBatch.write()
-        
+
 
         //_______________________Check the version required for the next checkpoint________________________
 
@@ -453,11 +453,12 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
 
 // Once we've received 2/3N+1 signatures for checkpoint(HEADER,PAYLOAD) - we can start the next stage to get signatures to get another signature which will be valid for checkpoint
-INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,myCheckpoint)=>{
+INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
-    quorumMembersHandler ||= await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
 
     myCheckpoint ||= await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`).catch(_=>false)
+
+    quorumMembersHandler ||= await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
 
     
     //_____________________ Go through the quorum and share our pre-signed object with checkpoint payload and issuer proof____________________
@@ -607,12 +608,21 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(quorumMembersHandler,myCheckpoint)=>{
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
-    //__________________________ If we've runned the second stage - 
+    //__________________________ If we've runned the second stage - skip the code bellow __________________________
 
 
+    let myPotentialCheckpoint = await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(`MY_CHECKPOINT:${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`).catch(_=>false)
 
 
+    if(myPotentialCheckpoint){
 
+        await INITIATE_CHECKPOINT_STAGE_2_GRABBING(myPotentialCheckpoint)
+
+        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
+
+        return
+
+    }
 
     // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
@@ -874,7 +884,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
-            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(quorumMembers,newCheckpoint)
+            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers)
 
 
         }else if(propositionsToUpdateMetadata===0){
