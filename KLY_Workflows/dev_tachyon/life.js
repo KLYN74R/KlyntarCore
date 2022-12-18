@@ -189,12 +189,24 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
     let subchainsToSkip = SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(qtPayload)
 
-    for(let subchainID of subchainsToSkip.values()){
+    for(let subchainID of subchainsToSkip){
 
         await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put('SKIP:'+subchainID,true).catch(_=>false)
 
         // Set true for this subchain as a sign that we've done
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(subchainID,true)
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.add(subchainID)
+
+        //Also, immediately fill the SPEC_OPERATIONS mempool with this procedure
+        let operation = {
+
+            stop:true,
+            subchain:subchainID,
+            index:,
+            hash:
+        
+        }
+        
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.add(subchainID)
 
     }
 
@@ -321,10 +333,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //Clear our sets/mappings not to repeat the SKIP_PROCEDURE
         SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.clear()
 
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)?.clear()
+        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.delete(qtPayload)
 
         //Clear this mapping related to old checkpoint
-        SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(qtPayload)?.clear()
+        SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.delete(qtPayload)
 
         //Update the block height to keep progress on hostchain
 
@@ -1262,12 +1274,12 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
 
-    for(let subchain of SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.keys()){
+    for(let subchain of SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1){
 
         //No sense to do this procedure for subchain which is already skipped
         if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(subchain)) continue
 
-        //Also, no sense to perform this procedure for subchains which was recently skipped(by the second stage)
+        //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
         let timestamp = SYMBIOTE_META.TIME_TRACKER.get('SKIP_STAGE_2_'+subchain)
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > new Date().getTime()){
