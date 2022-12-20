@@ -965,17 +965,24 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let alreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
+    let payloadIsAlreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
+
+    let proposerAlreadyInDB = await checkpointTemporaryDB.get('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
 
 
 
-    if(alreadyInDb){
+    if(payloadIsAlreadyInDb){
 
         let sig = await SIG('STAGE_2'+payloadHash)
 
         response.end(JSON.stringify({sig}))
 
-    }else{
+    }else if(proposerAlreadyInDB){
+
+        response.end(JSON.stringify({error:`You've already sent a majority agreed payload for checkpoint`}))
+
+    }
+    else{
 
         let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
@@ -992,7 +999,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             // Store locally, mark that this issuer has already sent us a finalized version of checkpoint
             let atomicBatch = checkpointTemporaryDB.batch()
 
-            atomicBatch.put(CHECKPOINT_PAYLOAD.ISSUER,true)
+            atomicBatch.put('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER,true)
             atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
 
             await atomicBatch.write()

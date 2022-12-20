@@ -410,6 +410,16 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
+// Function for secured and a sequently update of CHECKPOINTS_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
+FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
+
+
+
+},
+
+
+
+
 SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
@@ -1786,7 +1796,7 @@ FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_PROCEDURE_DATA=async()=>{
         if(skipStage1Proof) skipProcedureStage1Set.add(poolPubKey)
         if(skipStage2Proof) skipProcedureStage2Map.set(poolPubKey,skipStage2Proof)
 
-        
+
     }
 
 }
@@ -2186,9 +2196,16 @@ PREPARE_SYMBIOTE=async()=>{
 
         FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
-        CHECKPOINTS_MANAGER:new Map(), // validatorID => {INDEX,HASH}. Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
+        CHECKPOINTS_MANAGER:new Map(), //checkpointID => mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+    
+        CHECKPOINTS_MANAGER_SYNC_HELPER:new Map(), // checkpointID => map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
+
+        DELAYED_FINALIZATION_PROOFS:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
+
+
         HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+
 
         SKIP_PROCEDURE_STAGE_1:new Map(), // checkpointID => set(subchainID)
 

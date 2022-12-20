@@ -152,8 +152,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     index = +index
 
-
-
     let checkpointHashAndIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointHashAndIndex)
