@@ -414,6 +414,67 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 
+    /* 
+    
+        [*] Here we update the values in DB and CHECKPOINTS_MANAGER using values from CHECKPOINTS_MANAGER_SYNC_HELPER
+        [*] Also, take the finalization proof from FINALIZATION_PROOFS_REQUESTS, sign and push to FINALIZATION_PROOFS_RESPONSES
+
+
+        CHECKPOINTS_MANAGER_SYNC_HELPER:new Map(), // checkpointID => map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
+
+        FINALIZATION_PROOFS_REQUESTS:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
+
+        FINALIZATION_PROOFS_RESPONSES:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
+
+    */
+
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+
+    let currentCheckpointsManager = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(qtPayload) // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
+
+    let currentCheckpointSyncHelper = SYMBIOTE_META.CHECKPOINTS_MANAGER_SYNC_HELPER.get(qtPayload) // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
+
+    let currentFinalizationProofsRequests = SYMBIOTE_META.FINALIZATION_PROOFS_REQUESTS.get(qtPayload) // mapping(blockID=>blockHash)
+
+    let currentFinalizationProofsResponses = SYMBIOTE_META.FINALIZATION_PROOFS_RESPONSES.get(qtPayload) // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID))
+
+    let currentCheckpointDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+
+    for(let keyValue of currentCheckpointSyncHelper){
+
+        let subchain = keyValue[0]
+        let handlerWithMaximumHeight = keyValue[1] //Set({INDEX,HASH,FINALIZATION_PROOF})
+
+        //Store to DB
+        await currentCheckpointDB.put(subchain,handlerWithMaximumHeight).then(()=>{
+
+            // And only afte db - update the finalization height for CHECKPOINTS_MANAGER
+            currentCheckpointsManager.set(subchain,handlerWithMaximumHeight)
+
+        }).catch(_=>{})
+
+        currentCheckpointSyncHelper.delete(subchain)
+
+    }
+
+
+    // Now, check the requests, delete and add to responses
+    for(let keyValue of currentFinalizationProofsRequests){
+
+        let blockID = keyValue[0]
+        let blockHash = keyValue[1]
+
+        // Put to responses
+        currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+
+        currentFinalizationProofsRequests.delete(blockID)
+
+    }
+
+
+    setTimeout(FINALIZATION_PROOFS_SYNCHRONIZER,1000)
 
 },
 
@@ -2197,11 +2258,13 @@ PREPARE_SYMBIOTE=async()=>{
         FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
     
-        CHECKPOINTS_MANAGER:new Map(), //checkpointID => mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+        CHECKPOINTS_MANAGER:new Map(), //checkpointID => mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
         CHECKPOINTS_MANAGER_SYNC_HELPER:new Map(), // checkpointID => map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
 
-        DELAYED_FINALIZATION_PROOFS:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
+        FINALIZATION_PROOFS_REQUESTS:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF_REQUEST)
+
+        FINALIZATION_PROOFS_RESPONSES:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
 
 
         HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
@@ -2591,6 +2654,9 @@ RUN_SYMBIOTE=async()=>{
 
         //5.Start checking SKIP_PROCEDURE proofs(for stages 1 and 2)
         SKIP_PROCEDURE_MONITORING_START()
+
+        //6.Run function to work with finalization stuff and avoid async problems
+        FINALIZATION_PROOFS_SYNCHRONIZER()
 
 
         let promises=[]
