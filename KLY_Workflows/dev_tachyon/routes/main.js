@@ -75,7 +75,11 @@ acceptBlocks=response=>{
                 
                     hash=Block.genHash(block),
 
-                    myCommitment = await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
+                    qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
+
+                    checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload),
+
+                    myCommitment = await checkpointTemporaryDB.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment',
 
                     // index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
 
@@ -128,19 +132,23 @@ acceptBlocks=response=>{
                             ).catch(_=>{})
                          
                     )
-
-                    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                    
                     
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    let canShareCommitment = !SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(block.creator)
+                    let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+
+                    let canShareCommitment = !skipProcedureStage1Set.has(block.creator)
+
 
                     if(QUORUM_MEMBER_MODE && canShareCommitment){
 
                         //Put to local storage to prevent double voting
-                        await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put(block.сreator+":"+block.index,commitment)
+                        await checkpointTemporaryDB.put(block.сreator+":"+block.index,commitment).then(()=>
 
-                        !response.aborted && response.end(commitment)
+                            !response.aborted && response.end(commitment)
+
+                        ).catch(_=>!response.aborted && response.end('Something wrong'))
 
                     }else !response.aborted && response.end('Something wrong')
 
@@ -256,6 +264,8 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         let {aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
 
+        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
 
 
         let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
@@ -295,7 +305,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             }
 
-            await SYMBIOTE_META.COMMITMENTS_SKIP_AND_FINALIZATION.put(blockCreator,handler).then(()=>{
+            await checkpointTemporaryDB.put(blockCreator,handler).then(()=>{
 
                 !response.aborted && response.end(finalizationSigna)
 
@@ -572,9 +582,14 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 */
 skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE) 
+    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+
+
+    if(skipProcedureStage1Set.has(subchain)){
 
         // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
         // We can vote to skip only for height over index that we already send commitment to
@@ -595,8 +610,6 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
         }else if(INDEX===height && hash===HASH){
 
             //Send signature
-
-            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
             let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)
 
@@ -628,74 +641,38 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 [Accept]:
 
     {
-        subchain:<ID>
-        height:<block index of this subchain on which we're going to skip>
-        hash:<block hash>
-        skipStage2Proof:{
-
-            aggregatedPub,
-            aggregatedSignature:SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`),
-            afkValidators:[]
-
-        }
+        subchain:<ID> - the subchain for which we've found proofs for SKIP_PROCEDURE_STAGE_2 on hostchain to stop from height H with hash <HASH>
     }
-
-    * Your node will understand that hunting has started because we'll find SKIP_PROCEDURE_STAGE_1 on hostchain
 
 
 [Response]:
 
-    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_1 from hostchain, we have this subchainID in appropriate set
-        
-        1)We should add this subchain to SKIP_PROCEDURE_STAGE_2 set to stop sharing commitments/finalization proofs for this subchain
-        2)We generate appropriate signature with the data from CHECKPOINTS manager
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
+        Then,response with SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
 
-        Also, if height/hash/superFinalizationProof in request body is valid and height>our local version - update CHECKPOINTS_MANAGER and generate signature
-
-    [+] In case our local version of height for appropriate subchain > proposed height in request and we have a FINALIZATION_PROOF - send response with status "UPDATE" and our height/hash/finalizationproof
-
-        Soon or late, majority will get the common version of proofs for SKIP_PROCEDURE_STAGE_2 and generate an appropriate aggregated signature
+    [+] Otherwise - send NOT_FOUND status
 
 
 */
 skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE) 
+    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    if(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.has(subchain)){
+    let skipProcedureStage2Mapping = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
 
-        // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
-        // We can vote to skip only for height over index that we already send commitment to
-        let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+    let handler = skipProcedureStage2Mapping.get(subchain) //{INDEX,HASH}
+    
 
-        // Compare with local version of subchain segment
-        if(INDEX>height){
+    if(handler){
 
-            //Don't vote - send UPDATE response
-            response.end(JSON.stringify({
-                    
-                status:'UPDATE',
-                
-                data:SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain) //data is {INDEX,HASH,FINALIZATION_PROOF}
-            
-            }))
+        // If we've found proofs about subchain skip procedure stage 2(so we know the height/hash)- vote to SKIP to perform SKIP_PROCEDURE_STAGE_3
 
-        }else if(INDEX===height && hash===HASH){
+        let sig = await SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
 
-            //Send signature
-
-            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-            let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)
-
-            //Store locally
-
-            response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
-
+        response.end(JSON.stringify({status:'SKIP_STAGE_3',sig}))
         
-        }else response.end(JSON.stringify({status:'NOT FOUND'}))
-
-
     }else response.end(JSON.stringify({status:'NOT FOUND'}))
 
 
@@ -796,7 +773,12 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let subchainsToSkipThatCantBeExcluded = new Set(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1)
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+
+    // Create copy to delete from
+    let subchainsToSkipThatCantBeExcluded = new Set(skipProcedureStage1Set)
 
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
@@ -907,7 +889,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
 
-    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to SYMBIOTE_META.POTENTIAL_CHECKPOINTS
+    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
 
     [3] After we store it - generate the signature SIG('STAGE_2'+PAYLOAD_HASH) and response with it
 
@@ -979,7 +961,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
-    let alreadyInDb = await SYMBIOTE_META.POTENTIAL_CHECKPOINTS.get(payloadHash).catch(_=>false)
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    let alreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
 
 
 
@@ -1004,7 +990,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         if(majorityHasSignedIt && issuerSignatureIsOk){
 
             // Store locally, mark that this issuer has already sent us a finalized version of checkpoint
-            let atomicBatch = SYMBIOTE_META.POTENTIAL_CHECKPOINTS.batch()
+            let atomicBatch = checkpointTemporaryDB.batch()
 
             atomicBatch.put(CHECKPOINT_PAYLOAD.ISSUER,true)
             atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
@@ -1200,6 +1186,7 @@ UWS_SERVER
 .post('/skip_procedure_stage_2',skipProcedureStage2)
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
+
 
 .post('/block',acceptBlocks)
 

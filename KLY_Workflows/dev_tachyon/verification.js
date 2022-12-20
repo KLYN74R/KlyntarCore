@@ -152,21 +152,27 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     index = +index
 
+
+
     let checkpointHashAndIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    let handler = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointHashAndIndex)?.get(subchain) //{INDEX,HASH}
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointHashAndIndex)
+
+    //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+    let skipStage4Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
+
 
     // Initially, check if subchain was stopped from this height:hash on this checkpoint
-    
-    if(handler && handler.INDEX>=index){
+    if(skipStage4Proof && skipStage4Proof.index >= index){
 
         //Stop this subchain for the next iterations
-        if(handler.INDEX === index && handler.HASH === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
+        if(skipStage4Proof.index === index && skipStage4Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
 
         return true
 
     }
 
+    
     let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(blockID).catch(_=>false)
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler

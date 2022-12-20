@@ -644,7 +644,7 @@ export default {
             initiator:<Your pubkey to verify this signature>
 
             aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator),
+            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload),
             afk:[<array of afk from quorum>]
         }
 
@@ -731,9 +731,19 @@ export default {
 
                     if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
 
-                        let setOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.ASYNC_HELPER_FOR_SKIP_PROCEDURE_STAGE_1.get(checkpointFullID)
+                        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                        setOfSubchainsToSkipForCurrentCheckpoint.add(subchain)
+                        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+                        let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+
+                        checkpointTemporaryDB.put('SKIP_STAGE_1:'+subchain,true).then(
+
+                            //Now, we can add to set
+                            ()=> skipProcedureStage1Set.add(subchain)
+
+
+                        ).catch(_=>{})
 
                     }
 
@@ -763,7 +773,7 @@ export default {
                 hash:<hash of appropriate block>
                 
                 aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>:<QT.CHECKPOINT.HEADER.ID>`)
+                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>+<QT.CHECKPOINT.HEADER.ID>`)
                 afk:[]
             }
 
@@ -840,7 +850,7 @@ export default {
 
                     let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${currentCheckpointPayloadHash}:${currentCheckpointIndex}`,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${checkpointFullID}`,aggregatedSignature,reverseThreshold)
 
                     let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 
@@ -848,10 +858,19 @@ export default {
                     
                     if(majorityVotedForIt && isTheSameDay){
 
-                        let mapOfSubchainsToSkipForCurrentCheckpoint = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(checkpointFullID)
+                        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                        // We'll need it inside START_VERIFICATION_THREAD function to know which blocks we should skip
-                        mapOfSubchainsToSkipForCurrentCheckpoint.set(subchain,{INDEX:index,HASH:hash})
+                        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+                        let skipProcedureStage2Mapping = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
+
+                        checkpointTemporaryDB.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
+                            
+                            //Now, we can add the subchain to map
+                            () => skipProcedureStage2Mapping.set(subchain,{INDEX:index,HASH:hash})
+
+
+                        ).catch(_=>{})
 
                     }
 

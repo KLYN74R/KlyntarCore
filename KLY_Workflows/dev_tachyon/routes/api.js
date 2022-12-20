@@ -269,7 +269,7 @@ UWS_SERVER
 
 .get('/get_quorum',getCurrentQuorum)
 
-.post('/multiplicity',multiplicity)
+// .post('/multiplicity',multiplicity)
 
 .get('/account/:ADDRESS',account)
 
