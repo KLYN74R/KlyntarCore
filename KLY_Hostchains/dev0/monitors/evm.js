@@ -697,17 +697,9 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let currentCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
-                
-                
-                let currentCheckpointID = currentCheckpoint.HEADER.ID
+                let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                let currentCheckpointPayloadHash = currentCheckpoint.HEADER.PAYLOAD_HASH
-
-                let checkpointFullID = currentCheckpointPayloadHash+currentCheckpointID
-
-                let currentCheckpointTimestamp = currentCheckpoint.TIMESTAMP
-
+                let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
@@ -721,7 +713,7 @@ export default {
 
                     let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+checkpointFullID,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold)
                     
                     let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
@@ -731,19 +723,21 @@ export default {
 
                     if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
 
-                        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
                         let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
 
                         let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
 
-                        checkpointTemporaryDB.put('SKIP_STAGE_1:'+subchain,true).then(
+                        if(!skipProcedureStage1Set.has(subchain)){
 
-                            //Now, we can add to set
-                            ()=> skipProcedureStage1Set.add(subchain)
+                            checkpointTemporaryDB.put('SKIP_STAGE_1:'+subchain,true).then(
 
+                                //Now, we can add to set
+                                ()=> skipProcedureStage1Set.add(subchain)
+    
+    
+                            ).catch(_=>{})    
 
-                        ).catch(_=>{})
+                        }
 
                     }
 
@@ -827,21 +821,14 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let currentCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT}
+                let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                
-                let currentCheckpointIndex = currentCheckpoint.HEADER.ID
-
-                let currentCheckpointPayloadHash = currentCheckpoint.HEADER.PAYLOAD_HASH
-
-                let checkpointFullID = currentCheckpointPayloadHash+currentCheckpointIndex
-
-                let currentCheckpointTimestamp = currentCheckpoint.TIMESTAMP
+                let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
                 let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
-
+            
 
                 currentCheckpointTimestamp*=1000
 
@@ -850,7 +837,7 @@ export default {
 
                     let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${checkpointFullID}`,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold)
 
                     let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 
@@ -858,19 +845,21 @@ export default {
                     
                     if(majorityVotedForIt && isTheSameDay){
 
-                        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
                         let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
 
                         let skipProcedureStage2Mapping = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
 
-                        checkpointTemporaryDB.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
+                        if(!skipProcedureStage2Mapping.has(subchain)){
+
+                            checkpointTemporaryDB.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
                             
-                            //Now, we can add the subchain to map
-                            () => skipProcedureStage2Mapping.set(subchain,{INDEX:index,HASH:hash})
-
-
-                        ).catch(_=>{})
+                                //Now, we can add the subchain to map
+                                () => skipProcedureStage2Mapping.set(subchain,{INDEX:index,HASH:hash})
+    
+    
+                            ).catch(_=>{})
+    
+                        }
 
                     }
 

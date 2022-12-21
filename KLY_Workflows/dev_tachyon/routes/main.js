@@ -278,7 +278,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         
         if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-            //TODO: Store aggregated commitments somewhere localy to have proofs in future
+            //TODO: Store aggregated commitments somewhere locally to have proofs in future
 
             let finalizationSigna = await SIG(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+'FINALIZATION'+qtPayload)
 
