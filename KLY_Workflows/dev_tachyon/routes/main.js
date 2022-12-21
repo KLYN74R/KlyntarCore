@@ -343,10 +343,11 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
+    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload)
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.put(possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
+        checkpointTempDB.put('SFP:'+possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
 
         !response.aborted && response.end('OK')
 
@@ -384,7 +385,11 @@ getSuperFinalization=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
-        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(request.getParameter(0)).catch(_=>false)
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+       
+        let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload)
+    
+        let superFinalizationProof = await checkpointTempDB.get('SFP:'+request.getParameter(0)).catch(_=>false)
 
         if(superFinalizationProof){
 
@@ -444,7 +449,11 @@ healthChecker = async response => {
 
         let block = await SYMBIOTE_META.BLOCKS.get(latestFullyFinalizedHeight).catch(_=>false)
 
-        let superFinalizationProof = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+       
+        let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+        let superFinalizationProof = await checkpointTempDB.get('SPF:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
         
         

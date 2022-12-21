@@ -363,7 +363,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
 
-        
+
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
@@ -1521,6 +1521,17 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+       
+    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+    let checkpointsManager = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(qtPayload)
+
+
     if(SYMBIOTE_META.HEALTH_MONITORING.size===0){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
@@ -1528,13 +1539,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let LAST_SEEN = new Date().getTime()
 
-        for(let pubKey of SYMBIOTE_META.CHECKPOINTS_MANAGER.keys()){
+        for(let pubKey of checkpointsManager.keys()){
 
-            let {INDEX,HASH}=SYMBIOTE_META.CHECKPOINTS_MANAGER.get(pubKey)
+            let {INDEX,HASH}=checkpointsManager.get(pubKey)
 
             let baseBlockID = pubKey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await SYMBIOTE_META.SUPER_FINALIZATION_PROOFS_DB.get(baseBlockID).catch(_=>false)
+            let SUPER_FINALIZATION_PROOF = await checkpointTempDB.get('SPF:'+baseBlockID).catch(_=>false)
 
             //Store to mapping
             SYMBIOTE_META.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
@@ -1609,13 +1620,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     */
 
-    let candidatesForAnotherCheck = [],
-    
-        reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD'),
-
-        qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),
-
-        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let candidatesForAnotherCheck = []
 
 
 
@@ -2364,8 +2369,6 @@ PREPARE_SYMBIOTE=async()=>{
         'STATE', //Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
         'CHECKPOINTS', //Contains object like CHECKPOINT_ID => {HEADER,PAYLOAD}
-
-        'SUPER_FINALIZATION_PROOFS_DB', //Store aggregated proofs blockID => {aggregatedPub:<BLS quorum majority aggregated pubkey>,aggregatedSignature:<SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID)>,afkValidators}
 
         'QUORUM_THREAD_METADATA', //QUORUM_THREAD itself and other stuff
 
