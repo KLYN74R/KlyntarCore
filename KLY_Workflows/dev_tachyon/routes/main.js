@@ -283,9 +283,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
             
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
-    
-                //TODO: Store aggregated commitments somewhere locally to have proofs in future
-    
+
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,aggregatedCommitments.blockHash)
     
@@ -318,6 +316,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    
 
     let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSignature).catch(_=>false)
 
@@ -579,7 +578,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -765,10 +764,20 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+':'+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
     
+    if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
+
+        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+
+        return
+
+    }
+    
+
     // Create copy to delete from
     let subchainsToSkipThatCantBeExcluded = new Set(tempObject.SKIP_PROCEDURE_STAGE_1)
 
@@ -950,16 +959,30 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let {aggregatedPub,aggregatedSignature,afkValidators} = CHECKPOINT_FINALIZATION_PROOF
 
+    
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    
+    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload).PROOFS_RESPONSES
+
 
     let payloadIsAlreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
 
     let proposerAlreadyInDB = await checkpointTemporaryDB.get('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
 
+
+    
+    if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
+
+        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+
+        return
+
+    }
 
 
     if(payloadIsAlreadyInDb){

@@ -386,9 +386,17 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             let currentCheckpointManager = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER
 
+            let currentCheckpointSyncHelper = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER_SYNC_HELPER
+
             Object.keys(validatorsMetadata).forEach(
             
-                poolPubKey => currentCheckpointManager.set(poolPubKey,validatorsMetadata[poolPubKey])
+                poolPubKey => {
+
+                    currentCheckpointManager.set(poolPubKey,validatorsMetadata[poolPubKey])
+
+                    currentCheckpointSyncHelper.set(poolPubKey,validatorsMetadata[poolPubKey])
+
+                }
 
             )
 
@@ -1391,6 +1399,8 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         
 
         let localFinalizationHandler = temporaryObject.CHECKPOINT_MANAGER.get(subchain)
+
+        let localFinalizationHandlerSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(subchain)
         
         /*
             
@@ -1450,15 +1460,15 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
     
             
-                if(finalizationProofIsOk && localFinalizationHandler.INDEX < INDEX){
+                if(finalizationProofIsOk && localFinalizationHandlerSyncHelper.INDEX < INDEX){
             
                     // Update the local version in CHECKPOINT_MANAGER
                     
-                    localFinalizationHandler.INDEX = INDEX
+                    localFinalizationHandlerSyncHelper.INDEX = INDEX
                     
-                    localFinalizationHandler.HASH = HASH
+                    localFinalizationHandlerSyncHelper.HASH = HASH
                     
-                    localFinalizationHandler.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+                    localFinalizationHandlerSyncHelper.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
                     
                     // And break the cycle for this subchain-candidate
                     
@@ -1524,7 +1534,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             
             await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,new Date().getTime())
 
-            //Send to hostchain
+            //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
             HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
                 
         }
@@ -1707,6 +1717,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate)
+
         
         if(currentTime-localHealthHandler.LAST_SEEN >= afkLimit){
 
@@ -2532,9 +2543,9 @@ PREPARE_SYMBIOTE=async()=>{
 
     //__________________________________Load modules to work with hostchains_________________________________________
 
-    let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER,
+    let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER
     
-        packID = CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
+    let packID = CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
 
 
     //Depending on packID load appropriate module
