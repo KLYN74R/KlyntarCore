@@ -505,21 +505,45 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
         // Now, check the requests, delete and add to responses
         for(let keyValue of currentFinalizationProofsRequests){
 
-            let blockID = keyValue[0]
-            let blockHash = keyValue[1]
+            if(keyValue[0]==='NEXT_CHECKPOINT') continue
 
-            let [subchain] = blockID.split(':')
+            else if(keyValue[0].startsWith('SKIP_STAGE_2:')){
 
-            // We can't produce finalization proofs for subchains that are stopped
-            if(currentSkipProcedureStage1Set.has(subchain)) continue
+                // Generate signature for skip stage 2
+                let {SUBCHAIN,INDEX,HASH} = keyValue[1]
 
-            // Put to responses
-            currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+                
+                if(currentSkipProcedureStage1Set.has(SUBCHAIN)){
 
-            currentFinalizationProofsRequests.delete(blockID)
+                    let signa = await SIG(`SKIP_STAGE_2:${SUBCHAIN}:${INDEX}:${HASH}:${qtPayload}`)
+
+                    currentFinalizationProofsResponses.set(keyValue[0],signa)
+    
+                    currentFinalizationProofsRequests.delete(keyValue[0])
+    
+                }
+
+            }else{
+
+                // Generate signature for finalization proofs
+
+                let blockID = keyValue[0]
+                
+                let blockHash = keyValue[1]
+    
+                let [subchain] = blockID.split(':')
+    
+                // We can't produce finalization proofs for subchains that are stopped
+                if(currentSkipProcedureStage1Set.has(subchain)) continue
+    
+                // Put to responses
+                currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+    
+                currentFinalizationProofsRequests.delete(blockID)
+
+            }
 
         }
-
 
     }
 
@@ -1371,7 +1395,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') 
 
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -1419,7 +1443,8 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             
             subchain,
             height:localFinalizationHandler.INDEX,
-            hash:localFinalizationHandler.HASH
+            hash:localFinalizationHandler.HASH,
+            finalizationProof:localFinalizationHandler.FINALIZATION_PROOF
         
         }
 

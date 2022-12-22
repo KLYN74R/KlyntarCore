@@ -113,6 +113,94 @@ GET_BLOCK = async(blockCreator,index) => {
 
 
 
+GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
+
+    // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
+
+    let quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
+
+    let payloadInJSON = JSON.stringify({subchain})
+
+    let majority = GET_MAJORITY('QUORUM_THREAD')
+
+    let qtRootPub = SYMBIOTE_META.STATE_CACHE.get('QT_ROOTPUB')
+
+    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+
+    let promises=[]
+
+    let signatures=[]
+
+    let pubKeys=[]
+
+    let sendOptions={
+
+        method:'POST',
+
+        body:payloadInJSON
+
+    }
+
+    
+    for(let memberHandler of quorumMembers){
+
+        let responsePromise = fetch(memberHandler.url+'/skip_procedure_stage_3',sendOptions).then(r=>r.json()).then(async response=>{
+ 
+            response.pubKey = memberHandler.pubKey
+
+            return response
+
+        }).catch(_=>false)
+
+        promises.push(responsePromise)
+
+    }
+
+    //Run promises
+    let pingbacks = (await Promise.all(promises)).filter(Boolean)
+
+
+    for(let {status,sig,pubKey} of pingbacks){
+
+        if(status==='SKIP_STAGE_3'){
+
+            //Verify the signature
+            
+            let data =`SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`
+
+            if(await bls.singleVerify(data,pubKey,sig)){
+
+                signatures.push(sig)
+
+                pubKeys.push(pubKeys)
+
+            }
+
+        }
+
+    }
+
+
+    if(pubKeys.length>=majority){
+
+        let aggregatedSignature = bls.aggregateSignatures(signatures)
+
+        let aggregatedPub = bls.aggregatePublicKeys(pubKeys)
+
+        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.QUORUM.filter(pub=>!pubKeys.includes(pub))
+
+        let object={subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+
+        //Store locally in temp db
+        await checkpointTempDB.put('SKIP_STAGE_3:'+subchain,object).catch(_=>false)
+
+        return object
+
+    }
+
+},
+
+
 /*
 
 <SUPER_FINALIZATION_PROOF> is an aggregated proof from 2/3N+1 validators from quorum that they each have 2/3N+1 commitments from other validators
@@ -148,25 +236,32 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
+    let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+
+    let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2
+
     let [subchain,index] = blockID.split(':')
 
     index = +index
 
-    let checkpointHashAndIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    if(skipStage2Mapping.has(subchain)){
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointHashAndIndex).DATABASE
+        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    
+        //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+        
+        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,index,blockHash)
+    
 
-    //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
-    let skipStage4Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
-
-
-    // Initially, check if subchain was stopped from this height:hash on this checkpoint
-    if(skipStage4Proof && skipStage4Proof.index >= index){
-
-        //Stop this subchain for the next iterations
-        if(skipStage4Proof.index === index && skipStage4Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
-
-        return true
+        // Initially, check if subchain was stopped from this height:hash on this checkpoint
+        if(skipStage3Proof && skipStage3Proof.index >= index){
+    
+            //Stop this subchain for the next iterations
+            if(skipStage3Proof.index === index && skipStage3Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
+    
+            return true
+    
+        }    
 
     }
 

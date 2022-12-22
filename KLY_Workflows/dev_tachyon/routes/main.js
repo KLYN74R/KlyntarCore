@@ -50,8 +50,15 @@ let
 */
 acceptBlocks=response=>{
     
-    let total=0,buffer=Buffer.alloc(0)
+    let total=0
     
+    let buffer=Buffer.alloc(0)
+    
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
         
@@ -59,6 +66,14 @@ acceptBlocks=response=>{
         
         return
     
+    }
+
+    if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+        !response.aborted && response.end('Checkpoint is not fresh')
+        
+        return
+
     }
     
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
@@ -72,12 +87,18 @@ acceptBlocks=response=>{
             if(last){
             
                 let block=await PARSE_JSON(buffer)
+
+                let subchainIsSkippedForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator)
+
+                if(subchainIsSkippedForCurrentCheckpoint){
+
+                    !response.aborted && response.end('Subchain is skipped')
+        
+                    return                    
+
+                }
                 
                 let hash=Block.genHash(block)
-
-                let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-                let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
                 let myCommitment = await tempObject.DATABASE.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment'
 
@@ -136,18 +157,13 @@ acceptBlocks=response=>{
 
                     let commitment = await SIG(blockID+hash+qtPayload)
 
-                    let canShareCommitment = !tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) && !tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')
+                    //Put to local storage to prevent double voting
+                    await tempObject.DATABASE.put(block.сreator+":"+block.index,commitment).then(()=>
 
-                    if(canShareCommitment){
+                        !response.aborted && response.end(commitment)
+                
+                    ).catch(_=>!response.aborted && response.end('Something wrong'))
 
-                        //Put to local storage to prevent double voting
-                        await tempObject.DATABASE.put(block.сreator+":"+block.index,commitment).then(()=>
-
-                            !response.aborted && response.end(commitment)
-
-                        ).catch(_=>!response.aborted && response.end('Something wrong'))
-
-                    }else !response.aborted && response.end('Something wrong')
 
                 }else !response.aborted && response.end('Overview failed')
             
@@ -262,12 +278,17 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-        if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
+        if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+            !response.aborted && response.end('Checkpoint is not fresh')
+            
+    
+        }else if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
 
             // Instantly send response
             !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID))
 
-            //Clear the local storage
+            // Clear the local storage
             tempObject.PROOFS_RESPONSES.delete(aggregatedCommitments.blockID)
 
         }else{
@@ -499,6 +520,14 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+        !response.aborted && response.end('Checkpoint is not fresh')
+        
+        return
+
+    }
+
     if(await BLS_VERIFY(session+requestedSubchain+height+qtPayload,sig,initiator)){
 
         let myLocalHealthCheckingHandler = tempObject.HEALTH_MONITORING.get(requestedSubchain)
@@ -555,6 +584,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
         subchain:<ID>
         height:<block index of this subchain on which we're going to skip>
         hash:<block hash>
+        finalizationProof
     }
 
     * Your node will understand that hunting has started because we'll find SKIP_PROCEDURE_STAGE_1 on hostchain
@@ -576,18 +606,40 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 */
 skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain,height,hash}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {subchain,height,hash,finalizationProof}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    if(tempObject.SKIP_PROCEDURE_STAGE_1.has(subchain)){
+    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') 
+
+    let localSyncHandler = tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(subchain)
+
+
+
+    if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+        !response.aborted && response.end('Checkpoint is not fresh')
+    
+    }else if(tempObject.SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
         // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
         // We can vote to skip only for height over index that we already send commitment to
         let {INDEX,HASH} = tempObject.CHECKPOINT_MANAGER.get(subchain)
+
+        let sigResponse = tempObject.PROOFS_RESPONSES.get('SKIP_STAGE_2:'+subchain)
+
+        //Check if we has a signature response
+        
+        if(sigResponse){
+
+            response.end(JSON.stringify({status:'SKIP_STAGE_2',sig:sigResponse}))
+
+            return
+        }
 
         // Compare with local version of subchain segment
         if(INDEX>height){
@@ -603,15 +655,34 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         }else if(INDEX===height && hash===HASH){
 
-            //Send signature
+            // Add to PROOFS_REQUESTS
+            tempObject.PROOFS_REQUESTS.set('SKIP_STAGE_2:'+subchain,{SUBCHAIN:subchain,INDEX,HASH})
 
-            let sig = await SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${qtPayload}`)
-
-            //Store locally
-
-            response.end(JSON.stringify({status:'SKIP_STAGE_2',sig}))
+            response.end(JSON.stringify({status:'OK'}))
 
         
+        }else if(localSyncHandler.INDEX<height){
+
+            //Verify finalization proof and update the value
+
+            let {aggregatedPub,aggregatedSignature,afkValidators} = finalizationProof
+
+            let data = subchain+':'+height+hash+qtPayload
+
+            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+
+            if(finalizationProofIsOk){
+
+                localSyncHandler.INDEX = height
+
+                localSyncHandler.HASH = hash
+
+                localSyncHandler.FINALIZATION_PROOF = finalizationProof
+
+            }
+
+            response.end(JSON.stringify({status:'LOCAL_UPDATE'}))
+
         }else response.end(JSON.stringify({status:'NOT FOUND'}))
 
 
@@ -954,6 +1025,19 @@ Response - it's object with the following structure:
 */
 checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload).PROOFS_RESPONSES
+
+
+    if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
+
+        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+
+        return
+
+    }
+
 
     let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -962,27 +1046,14 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
-    
-    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload).PROOFS_RESPONSES
+
 
 
     let payloadIsAlreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
 
     let proposerAlreadyInDB = await checkpointTemporaryDB.get('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
 
-
-    
-    if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
-
-        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
-
-        return
-
-    }
 
 
     if(payloadIsAlreadyInDb){
