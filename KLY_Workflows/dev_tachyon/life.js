@@ -183,7 +183,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
 
-
     if(possibleCheckpoint){
 
 
@@ -303,31 +302,39 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.ID,possibleCheckpoint)
 
 
-        // Delete mapping & set of skip procedure related to old checkpoint
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.delete(qtPayload)
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.delete(qtPayload)
-        
-        SYMBIOTE_META.FINALIZATION_PROOFS_REQUESTS.delete(qtPayload)
-        SYMBIOTE_META.FINALIZATION_PROOFS_RESPONSES.delete(qtPayload)
-
-
-        let nextQTPayload = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
+        let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
 
         //Create new temporary db for next checkpoint
-        let nextTempDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${nextQTPayload}`),{valueEncoding:'json'})
+        let nextTempDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`),{valueEncoding:'json'})
 
 
         //Create mapping & set for the next checkpoint
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.set(nextQTPayload,new Set())
-        SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.set(nextQTPayload,new Map())
+        let nextTemporaryObject={
 
-        SYMBIOTE_META.FINALIZATION_PROOFS_REQUESTS.set(nextQTPayload,new Map())
-        SYMBIOTE_META.FINALIZATION_PROOFS_RESPONSES.set(nextQTPayload,new Map())
+            COMMITMENTS:new Map(), 
+            FINALIZATION_PROOFS:new Map(),
 
+            CHECKPOINT_MANAGER:new Map(),
+            CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
+ 
+            SKIP_PROCEDURE_STAGE_1:new Set(),
+            SKIP_PROCEDURE_STAGE_2:new Map(),
+
+            PROOFS_REQUESTS:new Map(),
+            PROOFS_RESPONSES:new Map(),
+    
+            HEALTH_MONITORING:new Map(), 
+      
+            DATABASE:nextTempDB
+            
+        }
         
+        //Set next temporary object
+        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
+
         //Set new checkpoint
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
-        
+
         //Create new quorum based on new VALIDATORS_METADATA state
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
@@ -344,12 +351,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         // Close & delete the temporary db        
-        await SYMBIOTE_META.TEMP.get(qtPayload).close()
+        await SYMBIOTE_META.TEMP.get(qtPayload).DATABASE.close()
 
         fs.rm(PATH_RESOLVE(`${qtPayload}`),{recursive:true},()=>{})
-                
-        SYMBIOTE_META.TEMP.set(nextQTPayload,nextTempDB)
         
+        SYMBIOTE_META.TEMP.delete(qtPayload)
 
 
         //_______________________Check the version required for the next checkpoint________________________
@@ -371,34 +377,20 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
+
         if(checkpointIsFresh && iAmInTheQuorum){
 
             // Fill the checkpoints manager with the latest data
 
             let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
 
-            let currentCheckpointManagerSyncHelper = SYMBIOTE_META.CHECKPOINTS_MANAGER_SYNC_HELPER
+            let currentCheckpointManager = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER
 
             Object.keys(validatorsMetadata).forEach(
             
-                poolPubKey => {
-
-                    let myData = currentCheckpointManagerSyncHelper.get(poolPubKey)
-
-                    //Update
-                    if(myData.INDEX<validatorsMetadata[poolPubKey].INDEX) currentCheckpointManagerSyncHelper.set(poolPubKey,validatorsMetadata[poolPubKey])
-
-                }
+                poolPubKey => currentCheckpointManager.set(poolPubKey,validatorsMetadata[poolPubKey])
 
             )
-
-            let nextCheckpointIdAlreadyGenerated = await SYMBIOTE_META.CHECKPOINTS.get(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID + 1).catch(_=>false)
-
-            if(!nextCheckpointIdAlreadyGenerated){
-
-                global.QUORUM_MEMBER_MODE=true
-
-            }
 
         }
 
@@ -431,39 +423,40 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
-// Function for secured and a sequently update of CHECKPOINTS_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
+// Function for secured and a sequently update of CHECKPOINT_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
 FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 
     /* 
     
-        [*] Here we update the values in DB and CHECKPOINTS_MANAGER using values from CHECKPOINTS_MANAGER_SYNC_HELPER
-        [*] Also, take the finalization proof from FINALIZATION_PROOFS_REQUESTS, sign and push to FINALIZATION_PROOFS_RESPONSES
-
-
-        CHECKPOINTS_MANAGER_SYNC_HELPER:new Map(), // checkpointID => map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
-
-        FINALIZATION_PROOFS_REQUESTS:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
-
-        FINALIZATION_PROOFS_RESPONSES:new Map(), //  checkpointID => mapping(blockID=>FINALIZATION_PROOF)
+        [*] Here we update the values in DB and CHECKPOINT_MANAGER using values from CHECKPOINT_MANAGER_SYNC_HELPER
+        
+        [*] Also, take the finalization proof from PROOFS_REQUESTS, sign and push to PROOFS_RESPONSES
 
     */
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    let currentTempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let currentCheckpointsManager = SYMBIOTE_META.CHECKPOINTS_MANAGER // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
+    let currentCheckpointsManager = currentTempObject.CHECKPOINT_MANAGER // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
 
-    let currentCheckpointSyncHelper = SYMBIOTE_META.CHECKPOINTS_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
+    let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
 
-    let currentFinalizationProofsRequests = SYMBIOTE_META.FINALIZATION_PROOFS_REQUESTS.get(qtPayload) // mapping(blockID=>blockHash)
+    let currentFinalizationProofsRequests = currentTempObject.PROOFS_REQUESTS // mapping(blockID=>blockHash)
 
-    let currentFinalizationProofsResponses = SYMBIOTE_META.FINALIZATION_PROOFS_RESPONSES.get(qtPayload) // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID))
-
-    let currentCheckpointDB = SYMBIOTE_META.TEMP.get(qtPayload)
+    let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID))
 
 
-    //____________________ UPDATE THE CHECKPOINTS_MANAGER ____________________
+    let currentSkipProcedureStage1Set = currentTempObject.SKIP_PROCEDURE_STAGE_1 // Set(subchainID)
+   
+    let currentSkipProcedureStage2Map = currentTempObject.SKIP_PROCEDURE_STAGE_2 // Map(subchain=>{INDEX,HASh})
+   
+
+    let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
+
+
+    //____________________ UPDATE THE CHECKPOINT_MANAGER ____________________
 
 
     for(let keyValue of currentCheckpointSyncHelper){
@@ -474,7 +467,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
         //Store to DB
         await currentCheckpointDB.put(subchain,handlerWithMaximumHeight).then(()=>{
 
-            // And only after db - update the finalization height for CHECKPOINTS_MANAGER
+            // And only after db - update the finalization height for CHECKPOINT_MANAGER
             currentCheckpointsManager.set(subchain,handlerWithMaximumHeight)
 
         }).catch(_=>{})
@@ -486,20 +479,54 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & SKIP_STAGE_2 proofs
 
+    if(currentFinalizationProofsRequests.get('NEXT_CHECKPOINT')){
 
-    //____________________ GENERATE THE FINALIZATION_PROOFS ____________________
+        await currentCheckpointDB.put('NEXT_CHECKPOINT',true).then(()=>{
+
+            // On this step, we have the latest info about finalization_proofs
+            currentFinalizationProofsResponses.set('READY_FOR_CHECKPOINT',true)
+
+        }).catch(_=>{})
 
 
-    // Now, check the requests, delete and add to responses
-    for(let keyValue of currentFinalizationProofsRequests){
+    }else {
 
-        let blockID = keyValue[0]
-        let blockHash = keyValue[1]
 
-        // Put to responses
-        currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+        //____________________ GENERATE THE FINALIZATION_PROOFS ____________________
 
-        currentFinalizationProofsRequests.delete(blockID)
+        // Now, check the requests, delete and add to responses
+        for(let keyValue of currentFinalizationProofsRequests){
+
+            let blockID = keyValue[0]
+            let blockHash = keyValue[1]
+
+            let [subchain] = blockID.split(':')
+
+            // We can't produce finalization proofs for subchains that are stopped
+            if(currentSkipProcedureStage1Set.has(subchain)) continue
+
+            // Put to responses
+            currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+
+            currentFinalizationProofsRequests.delete(blockID)
+
+        }
+
+
+    }
+
+
+    //____________________ GENERATE THE SKIP_PROCEDURE_STAGE_3 ____________________
+
+    // Go through the data in currentSkipProcedureStage2Map and sign it. Put the signatures to PROOFS_RESPONSES
+
+    for (let subchain of currentSkipProcedureStage2Map.keys()){
+
+        let handler = currentSkipProcedureStage2Map.get(subchain)
+
+        let sig = await SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
+
+        currentFinalizationProofsResponses.set(`SKIP_STAGE_3:${subchain}`,sig)
 
     }
 
@@ -526,7 +553,7 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     }
 
-    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
+    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING,300)
 
 },
 
@@ -538,7 +565,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
 
     myCheckpoint ||= await checkpointTemporaryDB.get('CHECKPOINT').catch(_=>false)
@@ -700,13 +727,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
-
-    let timestamp = await checkpointTemporaryDB.get(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
-
-    let myPotentialCheckpoint = await checkpointTemporaryDB.get(`CHECKPOINT`).catch(_=>false)
+    let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+
+    let timestamp = await temporaryObject.DATABASE.get(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
+
+    let myPotentialCheckpoint = await temporaryObject.DATABASE.get(`CHECKPOINT`).catch(_=>false)
 
 
 
@@ -721,7 +748,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
     //Delete the time tracker
-    await checkpointTemporaryDB.del(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
+    await temporaryObject.DATABASE.del(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
  
 
     if(myPotentialCheckpoint){
@@ -734,7 +761,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    // Get the latest known block and check if it's next day. In this case - make QUORUM_MEMBER_MODE=false to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
+    // Get the latest known block and check if it's next day. In this case - make currentFinalizationProofsRequests.set('NEXT_CHECKPOINT',true) to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
 
     /*
     
@@ -771,8 +798,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     if(canProposeCheckpoint && iAmInTheQuorum){
 
         // Stop to generate commitments/finalization proofs
-        global.QUORUM_MEMBER_MODE=false
-
+        temporaryObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
 
         //____________________________________ Build the template of checkpoint's payload ____________________________________
 
@@ -795,7 +821,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             poolPubKey => {
 
-                let {INDEX,HASH} = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
+                let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
                 let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey].IS_STOPPED
 
@@ -891,9 +917,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             }else if(metadataUpdate.length!==0){
 
-                // Update the data of CHECKPOINTS_MANAGER_SYNC_HELPER if quorum voted for appropriate block:hash:index
+                // Update the data of CHECKPOINT_MANAGER_SYNC_HELPER if quorum voted for appropriate block:hash:index
 
-                let currentSyncHelper = SYMBIOTE_META.CHECKPOINTS_MANAGER_SYNC_HELPER.get(qtPayload) // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
+                let currentSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(qtPayload) // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
 
 
                 for(let updateOp of metadataUpdate){
@@ -987,7 +1013,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             }
 
-            await checkpointTemporaryDB.put(`CHECKPOINT`,newCheckpoint).catch(_=>false)
+            await temporaryObject.DATABASE.put(`CHECKPOINT`,newCheckpoint).catch(_=>false)
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
@@ -1025,21 +1051,21 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
+RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
 
-    //Create the mapping to get the FINALIZATION_PROOFs from the quorum members
+    let {COMMITMENTS,FINALIZATION_PROOFS} = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
     
-    SYMBIOTE_META.FINALIZATION_PROOFS.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF
+    FINALIZATION_PROOFS.set(blockID,new Map())
 
-    let finalizationProofsMapping = SYMBIOTE_META.FINALIZATION_PROOFS.get(blockID)
+    let finalizationProofsMapping = FINALIZATION_PROOFS.get(blockID)
 
-    let aggregatedCommitments = SYMBIOTE_META.COMMITMENTS.get(blockID) //voterValidatorPubKey => his commitment 
-
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let aggregatedCommitments = COMMITMENTS.get(blockID) //voterValidatorPubKey => his commitment 
 
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
@@ -1144,7 +1170,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async blockID => {
 
 
 
-RUN_COMMITMENTS_GRABBING = async blockID => {
+RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
 
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
@@ -1158,22 +1184,22 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(block)},
 
-        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
-
+        commitmentsMapping = SYMBIOTE_META.TEMP.get(qtPayload).COMMITMENTS,
+        
         majority = GET_MAJORITY('QUORUM_THREAD'),
+
+        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
 
         promises=[],
 
-        commitmentsForCurrentBlock,
-
-        qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        commitmentsForCurrentBlock
 
 
-    if(!SYMBIOTE_META.COMMITMENTS.has(blockID)){
+    if(!commitmentsMapping.has(blockID)){
 
-        SYMBIOTE_META.COMMITMENTS.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
+        commitmentsMapping.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
 
-        commitmentsForCurrentBlock = SYMBIOTE_META.COMMITMENTS.get(blockID)
+        commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
 
     }
 
@@ -1265,9 +1291,9 @@ RUN_COMMITMENTS_GRABBING = async blockID => {
         }
 
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
-        SYMBIOTE_META.COMMITMENTS.set(blockID,aggregatedCommitments)
+        commitmentsMapping.set(blockID,aggregatedCommitments)
     
-        RUN_FINALIZATION_PROOFS_GRABBING(blockID)
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID)
 
     }
 
@@ -1280,6 +1306,10 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     // Descriptor has the following structure - {checkpointID,height}
     let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH + SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let {FINALIZATION_PROOFS} = SYMBIOTE_META.TEMP.get(qtPayload)
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
@@ -1299,29 +1329,23 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         // And store new descriptor(till it will be old)
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
-        // Also, clear invalid caches
-
-        SYMBIOTE_META.COMMITMENTS.clear()
-
-        SYMBIOTE_META.FINALIZATION_PROOFS.clear()
-
     }
 
 
     let blockID = CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
 
 
-    if(SYMBIOTE_META.FINALIZATION_PROOFS.has(blockID)){
+    if(FINALIZATION_PROOFS.has(blockID)){
 
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-        RUN_FINALIZATION_PROOFS_GRABBING()
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID)
 
     }else{
 
         // This option means that we already started to share block and going to find 2/3N+1 commitments
         // Once we get it - aggregate it and start finalization proofs grabbing(previous option) 
         
-        RUN_COMMITMENTS_GRABBING()
+        await RUN_COMMITMENTS_GRABBING(qtPayload,blockID)
 
     }
 
@@ -1335,29 +1359,26 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 // This function is oriented on founded & valid SKIP_PROCEDURE_STAGE_1 proofs and starts SKIP_PROCEDURE_STAGE_2 - to grab appropriate proofs, aggregate and publish to hostchain to finally skip the subchain 
 SKIP_PROCEDURE_STAGE_2=async()=>{
 
-
-    let validatorsURLsAndPubKeys = await GET_VALIDATORS_URLS(true)
-
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
     let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+    let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+    let validatorsURLsAndPubKeys = await GET_VALIDATORS_URLS(true)
 
 
-    for(let subchain of skipProcedureStage1Set){
+    for(let subchain of temporaryObject.SKIP_PROCEDURE_STAGE_1){
 
-        let skipStage3Handler = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
+        let skipStage3Handler = await temporaryObject.DATABASE.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
 
         //No sense to do this procedure for subchain which is already skipped
         if(skipStage3Handler) continue
 
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
-        let timestamp = checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
+        let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > new Date().getTime()){
     
@@ -1366,10 +1387,10 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         }
         
         //Delete the time tracker
-        await checkpointTemporaryDB.del('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
+        await temporaryObject.DATABASE.del('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
         
 
-        let localFinalizationHandler = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(subchain)
+        let localFinalizationHandler = temporaryObject.CHECKPOINT_MANAGER.get(subchain)
         
         /*
             
@@ -1431,7 +1452,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             
                 if(finalizationProofIsOk && localFinalizationHandler.INDEX < INDEX){
             
-                    // Update the local version in CHECKPOINTS_MANAGER
+                    // Update the local version in CHECKPOINT_MANAGER
                     
                     localFinalizationHandler.INDEX = INDEX
                     
@@ -1501,7 +1522,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
             //Add time tracker for event
             
-            await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,new Date().getTime())
+            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,new Date().getTime())
 
             //Send to hostchain
             HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
@@ -1522,33 +1543,31 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-       
-    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
-
-    let checkpointsManager = SYMBIOTE_META.CHECKPOINTS_MANAGER.get(qtPayload)
+    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
 
 
-    if(SYMBIOTE_META.HEALTH_MONITORING.size===0){
+    if(tempObject.HEALTH_MONITORING.size===0){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
         // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
 
         let LAST_SEEN = new Date().getTime()
 
-        for(let pubKey of checkpointsManager.keys()){
+        for(let pubKey of tempObject.CHECKPOINT_MANAGER.keys()){
 
-            let {INDEX,HASH}=checkpointsManager.get(pubKey)
+            let {INDEX,HASH}=tempObject.CHECKPOINT_MANAGER.get(pubKey)
 
             let baseBlockID = pubKey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await checkpointTempDB.get('SPF:'+baseBlockID).catch(_=>false)
+            let SUPER_FINALIZATION_PROOF = await tempObject.DATABASE.get('SPF:'+baseBlockID).catch(_=>false)
 
             //Store to mapping
-            SYMBIOTE_META.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
+            tempObject.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
 
         }
 
@@ -1632,7 +1651,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
         // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
-        let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(pubKey)
+        let localHealthHandler = tempObject.HEALTH_MONITORING.get(pubKey)
 
         // blockID+hash+'FINALIZATION'+qtPayload
         let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+qtPayload
@@ -1665,7 +1684,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
     let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
 
@@ -1687,7 +1706,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
-        let localHealthHandler = SYMBIOTE_META.HEALTH_MONITORING.get(candidate)
+        let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate)
         
         if(currentTime-localHealthHandler.LAST_SEEN >= afkLimit){
 
@@ -1864,20 +1883,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
-FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_PROCEDURE_DATA=async()=>{
+RESTORE_STATE=async()=>{
 
     let validatorsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA)
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let quorumDB = SYMBIOTE_META.TEMP.get(qtPayload)
-
-
-    let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
-
-    let skipProcedureStage2Map = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
-
-    let checkpointsManager = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     
     for(let poolPubKey of validatorsMetadata){
@@ -1885,22 +1897,29 @@ FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_PROCEDURE_DATA=async()=>{
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the VALIDATORS_METADATA as a start point
         // Returned value is {INDEX,HASH,(?)FINALIZATION_PROOF}
 
-        let {INDEX,HASH,FINALIZATION_PROOF} = await quorumDB.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
+        let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
 
-        SYMBIOTE_META.CHECKPOINTS_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
+        tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
 
 
         //______________________________ SKIP_PROCEDURE functionality ______________________________
 
-        let skipStage1Proof = await quorumDB.get('SKIP_STAGE_1:'+poolPubKey).catch(_=>false) // true/false
+        let skipStage1Proof = await tempObject.DATABASE.get('SKIP_STAGE_1:'+poolPubKey).catch(_=>false) // true / false
 
-        let skipStage2Proof = await quorumDB.get('SKIP_STAGE_2:'+poolPubKey).catch(_=>false) // {INDEX,HASH} / false
+        let skipStage2Proof = await tempObject.DATABASE.get('SKIP_STAGE_2:'+poolPubKey).catch(_=>false) // {INDEX,HASH} / false
 
-        if(skipStage1Proof) skipProcedureStage1Set.add(poolPubKey)
-        if(skipStage2Proof) skipProcedureStage2Map.set(poolPubKey,skipStage2Proof)
+        if(skipStage1Proof) tempObject.SKIP_PROCEDURE_STAGE_1.add(poolPubKey)
+        if(skipStage2Proof) tempObject.SKIP_PROCEDURE_STAGE_2.set(poolPubKey,skipStage2Proof)
 
 
     }
+
+    // Finally, once we've started the "next checkpoint generation" process - restore it
+
+    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('NEXT_CHECKPOINT').catch(_=>false)
+
+    if(itsTimeForTheNextCheckpoint) tempObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+
 
 }
 
@@ -2295,30 +2314,8 @@ PREPARE_SYMBIOTE=async()=>{
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
-        COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
-
-        FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
-
-    
-        CHECKPOINTS_MANAGER:new Map(), // checkpointID => mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
-    
-        CHECKPOINTS_MANAGER_SYNC_HELPER:new Map(), // checkpointID => map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
-
-        FINALIZATION_PROOFS_REQUESTS:new Map(), // checkpointID => mapping(blockID=>FINALIZATION_PROOF_REQUEST)
-
-        FINALIZATION_PROOFS_RESPONSES:new Map(), // checkpointID => mapping(blockID=>FINALIZATION_PROOF)
-
-
-        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
-
-
-        SKIP_PROCEDURE_STAGE_1:new Map(), // checkpointID => set(subchainID)
-
-        SKIP_PROCEDURE_STAGE_2:new Map(), // checkpointID => mapping(subchainID=>{INDEX,HASH})
-
-        //____________________ Mapping which contains temporary databases for   ____________________
-
-        TEMP:new Map() // checkpointID => DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on
+        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE}
+            
     
     }
 
@@ -2490,19 +2487,45 @@ PREPARE_SYMBIOTE=async()=>{
     SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
-    //_____________________________Add the db of current QT checkpoint to mapping___________________________________
+    //_________________________________Add the temporary dat of current QT__________________________________________
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
     
     let quorumTemporaryDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${qtPayload}`),{valueEncoding:'json'})
 
+    SYMBIOTE_META.TEMP.set(qtPayload,{
 
-    SYMBIOTE_META.TEMP.set(qtPayload,quorumTemporaryDB)
+        COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+
+        FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+
+    
+        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+    
+        CHECKPOINT_MANAGER_SYNC_HELPER:new Map(), // map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
+
+        PROOFS_REQUESTS:new Map(), // mapping(blockID=>FINALIZATION_PROOF_REQUEST)
+
+        PROOFS_RESPONSES:new Map(), // mapping(blockID=>FINALIZATION_PROOF)
 
 
-    // Fill the CHECKPOINTS_MANAGER with the latest, locally stored data
+        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
 
-    await FILL_THE_CHECKPOINTS_MANAGER_AND_SKIP_PROCEDURE_DATA()
+
+        SKIP_PROCEDURE_STAGE_1:new Map(), // set(subchainID)
+
+        SKIP_PROCEDURE_STAGE_2:new Map(), // mapping(subchainID=>{INDEX,HASH})
+
+        //____________________ Mapping which contains temporary databases for   ____________________
+
+        DATABASE:quorumTemporaryDB // DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on    
+
+    })
+
+
+    // Fill the CHECKPOINT_MANAGER with the latest, locally stored data
+
+    await RESTORE_STATE()
 
 
 

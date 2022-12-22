@@ -154,7 +154,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let checkpointHashAndIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointHashAndIndex)
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointHashAndIndex).DATABASE
 
     //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
     let skipStage4Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false)

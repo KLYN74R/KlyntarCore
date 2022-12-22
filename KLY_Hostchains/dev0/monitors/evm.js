@@ -723,16 +723,14 @@ export default {
 
                     if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
 
-                        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = SYMBIOTE_META.TEMP.get(qtPayload)
 
-                        let skipProcedureStage1Set = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1.get(qtPayload)
+                        if(!SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
-                        if(!skipProcedureStage1Set.has(subchain)){
-
-                            checkpointTemporaryDB.put('SKIP_STAGE_1:'+subchain,true).then(
+                            DATABASE.put('SKIP_STAGE_1:'+subchain,true).then(
 
                                 //Now, we can add to set
-                                ()=> skipProcedureStage1Set.add(subchain)
+                                ()=> SKIP_PROCEDURE_STAGE_1.add(subchain)
     
     
                             ).catch(_=>{})    
@@ -845,16 +843,14 @@ export default {
                     
                     if(majorityVotedForIt && isTheSameDay){
 
-                        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = SYMBIOTE_META.TEMP.get(qtPayload)
 
-                        let skipProcedureStage2Mapping = SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2.get(qtPayload)
+                        if(!SKIP_PROCEDURE_STAGE_2.has(subchain)){
 
-                        if(!skipProcedureStage2Mapping.has(subchain)){
-
-                            checkpointTemporaryDB.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
+                            DATABASE.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
                             
                                 //Now, we can add the subchain to map
-                                () => skipProcedureStage2Mapping.set(subchain,{INDEX:index,HASH:hash})
+                                () => SKIP_PROCEDURE_STAGE_2.set(subchain,{INDEX:index,HASH:hash})
     
     
                             ).catch(_=>{})
