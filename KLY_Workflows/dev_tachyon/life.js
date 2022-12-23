@@ -2,13 +2,13 @@ import {
     
     DECRYPT_KEYS,BLOCKLOG,SIG,BLS_VERIFY,
     
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD, IS_MY_VERSION_OLD,
     
     GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST, GET_RANDOM_BYTES_AS_HEX, CHECK_IF_THE_SAME_DAY
 
 } from './utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,IS_MY_VERSION_OLD} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
 
@@ -1157,7 +1157,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
     
-            })
+            }).catch(_=>false)
     
             // To make sharing async
             promises.push(promise)
@@ -1266,7 +1266,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
         commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
 
-    }
+    }else commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
 
 
 
@@ -1289,13 +1289,13 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     
             */
     
-            let promise = fetch(descriptor+'/block',optionsToSend).then(r=>r.text()).then(async possibleCommitment=>{
+            let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.text()).then(async possibleCommitment=>{
     
                 let commitmentIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,descriptor.pubKey,possibleCommitment).catch(_=>false)
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
     
-            })
+            }).catch(_=>false)
     
             // To make sharing async
             promises.push(promise)
@@ -1660,6 +1660,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     // Get the appropriate pubkey & url to check and validate the answer
     let subchainsURLAndPubKey = await GET_VALIDATORS_URLS(true)
 
+    let proofsPromises = []
 
     for(let handler of subchainsURLAndPubKey){
 
@@ -1962,7 +1963,6 @@ RESTORE_STATE=async()=>{
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
-
     
     for(let poolPubKey of validatorsMetadata){
 
@@ -2575,7 +2575,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     //_________________________________Add the temporary dat of current QT__________________________________________
     
-    let quorumTemporaryDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${qtPayload}`),{valueEncoding:'json'})
+    let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${qtPayload}`,{valueEncoding:'json'})
 
     SYMBIOTE_META.TEMP.set(qtPayload,{
 
@@ -2612,8 +2612,6 @@ PREPARE_SYMBIOTE=async()=>{
     // Fill the CHECKPOINT_MANAGER with the latest, locally stored data
 
     await RESTORE_STATE()
-
-
 
 
     //__________________________________Load modules to work with hostchains_________________________________________

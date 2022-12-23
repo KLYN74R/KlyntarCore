@@ -84,7 +84,7 @@ let instantBlock=a=>{
                         
                         text => console.log(`Tor routing success ${text}`)
                         
-                    ).catch(e=>{}))
+                    ).catch(_=>{}))
 
 
             } 

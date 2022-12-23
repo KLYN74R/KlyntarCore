@@ -379,7 +379,7 @@ GET_VALIDATORS_URLS = async withPubkey => {
         
         promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
-            stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
+            stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
         ))
 
