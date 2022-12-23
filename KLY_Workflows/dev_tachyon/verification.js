@@ -242,9 +242,10 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     index = +index
 
-    if(skipStage2Mapping.has(subchain)){
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
-        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+
+    if(skipStage2Mapping.has(subchain)){
     
         //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
         
@@ -264,7 +265,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     }
 
     
-    let superFinalizationProof = await checkpointTemporaryDB.get('SPF:'+blockID).catch(_=>false)
+    let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID+blockHash).catch(_=>false)
     
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler

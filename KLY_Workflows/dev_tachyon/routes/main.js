@@ -351,7 +351,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        checkpointTempDB.put('SFP:'+possibleSuperFinalizationProof.blockID,possibleSuperFinalizationProof)
+        checkpointTempDB.put('SFP:'+possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof)
 
         !response.aborted && response.end('OK')
 
@@ -371,7 +371,7 @@ Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 
 
 Params:
 
-    [0] - blockID
+    [0] - blockID+blockHash
 
 Returns:
 
@@ -453,17 +453,17 @@ healthChecker = async response => {
 
         let block = await SYMBIOTE_META.BLOCKS.get(latestFullyFinalizedHeight).catch(_=>false)
 
+        let latestHash = block && Block.genHash(block)
+
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
        
         let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
-        let superFinalizationProof = await checkpointTempDB.get('SPF:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let superFinalizationProof = await checkpointTempDB.get('SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
 
         
 
-        if(superFinalizationProof && block){
-
-            let latestHash = Block.genHash(block)
+        if(superFinalizationProof){
 
             let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
 

@@ -1635,7 +1635,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let baseBlockID = pubKey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await tempObject.DATABASE.get('SPF:'+baseBlockID).catch(_=>false)
+            let SUPER_FINALIZATION_PROOF = await tempObject.DATABASE.get('SFP:'+baseBlockID+HASH).catch(_=>false)
 
             //Store to mapping
             tempObject.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
