@@ -1151,7 +1151,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
             if(finalizationProofsMapping.has(descriptor.pubKey)) continue
     
     
-            let promise = fetch(descriptor+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
+            let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
     
                 let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
     
@@ -1167,6 +1167,8 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         await Promise.all(promises)
 
     }
+
+    console.log('SIZE IS ',finalizationProofsMapping)
 
 
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________

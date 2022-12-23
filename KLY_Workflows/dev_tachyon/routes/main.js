@@ -68,6 +68,7 @@ acceptBlocks=response=>{
     
     }
 
+
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
         !response.aborted && response.end('Checkpoint is not fresh')
@@ -75,6 +76,7 @@ acceptBlocks=response=>{
         return
 
     }
+
     
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
@@ -89,7 +91,7 @@ acceptBlocks=response=>{
                 let block=await PARSE_JSON(buffer)
 
                 let subchainIsSkippedForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator)
-
+                
                 if(subchainIsSkippedForCurrentCheckpoint){
 
                     !response.aborted && response.end('Subchain is skipped')
@@ -97,17 +99,14 @@ acceptBlocks=response=>{
                     return                    
 
                 }
+
                 
                 let hash=Block.genHash(block)
 
-                let myCommitment = await tempObject.DATABASE.get(block.сreator+":"+block.index).catch(_=>false)||'No commitment'
+                let myCommitment = await tempObject.DATABASE.get(block.сreator+":"+block.index).catch(_=>false)
+         
 
-                // Index must be bigger than in latest known height in checkpoint. Otherwise - no sense to generate commitment
-
-                let isFreshEnough = block.index >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[block.creator]?.INDEX 
-                
-
-                if(myCommitment || !isFreshEnough){
+                if(myCommitment){
 
                     !response.aborted && response.end(myCommitment)
 
@@ -115,26 +114,30 @@ acceptBlocks=response=>{
                 
                 }
                 
-                //Otherwise - check if we can accept this block
                 
+                let checkIfItsChain = block.index===0 || await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+
+                    //Compare hashes to make sure it's a chain
+
+                    let prevHash = Block.genHash(prevBlock)
+
+                    return prevHash === block.prevHash
+
+                }).catch(_=>false)
+
+
+                //Otherwise - check if we can accept this block
+
                 let allow=
             
                     typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                     &&
                     await BLS_VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
                     &&
-                    await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
-
-                        //Compare hashes to make sure it's a chain
-
-                        let prevHash = Block.genHash(prevBlock)
-
-                        return prevHash === block.prevHash
-
-                    })
-
-
+                    checkIfItsChain
                 
+
+
                 if(allow){
                 
                     let blockID = block.creator+":"+block.index
@@ -271,6 +274,7 @@ ___________________________Verification steps___________________________
 finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+
     
     if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
 
@@ -1174,7 +1178,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
+    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
