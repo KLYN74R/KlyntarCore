@@ -117,11 +117,13 @@ process.on('SIGHUP',GRACEFUL_STOP)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
-    GET_SPEC_EVENTS = () => Array.from(SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL).map(subArr=>{
+    GET_SPEC_EVENTS = qtPayload =>{
 
-        return {type:subArr[1].type,payload:subArr[1].payload}
+        let specialOperationsMempool = SYMBIOTE_META.TEMP.get(qtPayload).SPECIAL_OPERATIONS_MEMPOOL
 
-    }),
+        return Array.from(specialOperationsMempool).map(subArr=>subArr[1]) //{type,payload}
+
+    },
 
 
 
@@ -283,9 +285,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //Update the WORKFLOW_OPTIONS
         SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-        //CLear the map of SPECIAL_OPERATIONS -they are invalid for the next checkpoint(not all, but we don't repeat verification. Probably, you can do it via plugins)
-        SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.clear()
-
         //Clear the QUORUM_THREAD_CACHE
         //TODO:Make more advanced logic
         SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
@@ -310,6 +309,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //Create mapping & set for the next checkpoint
         let nextTemporaryObject={
+
+            SPECIAL_OPERATIONS_MEMPOOL:new Map(),
 
             COMMITMENTS:new Map(), 
             FINALIZATION_PROOFS:new Map(),
@@ -338,8 +339,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //Create new quorum based on new VALIDATORS_METADATA state
         SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
-        //Get the new ROOTPUB
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+        //Get the new ROOTPUB and delete the old one
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
 
 
         //_______________________________________Commit changes____________________________________________
@@ -464,6 +466,9 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
 
 
+    let currentCheckpointSkipSpecialOperationsMempool = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL // mapping(operationID=>{type,payload})
+
+
     //____________________ UPDATE THE CHECKPOINT_MANAGER ____________________
 
 
@@ -512,7 +517,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                 // Generate signature for skip stage 2
                 let {SUBCHAIN,INDEX,HASH} = keyValue[1]
 
-                
+
                 if(currentSkipProcedureStage1Set.has(SUBCHAIN)){
 
                     let signa = await SIG(`SKIP_STAGE_2:${SUBCHAIN}:${INDEX}:${HASH}:${qtPayload}`)
@@ -558,8 +563,36 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         let sig = await SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
 
-        currentFinalizationProofsResponses.set(`SKIP_STAGE_3:${subchain}`,sig)
+        //First of all - add to the mempool of special operations
+        let operation = {
 
+            type:'STOP_VALIDATOR',
+
+            payload:{
+
+                stop:true,
+                subchain,
+                index:handler.INDEX,
+                hash:handler.HASH
+
+            }
+
+        }
+
+
+        let operationID = BLAKE3(JSON.stringify(operation.payload))
+
+        await currentCheckpointDB.put('SPECIAL_OPERATION:'+subchain,operation).then(()=>{
+
+            // Only after that we can add it to mempool and create stage_3 proof
+
+            currentCheckpointSkipSpecialOperationsMempool.set(operationID,operation)
+
+            currentFinalizationProofsResponses.set(`SKIP_STAGE_3:${subchain}`,sig)    
+
+        }).catch(_=>{})
+
+    
     }
 
 
@@ -761,7 +794,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+    let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
     let timestamp = await temporaryObject.DATABASE.get(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
 
@@ -843,7 +876,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             VALIDATORS_METADATA:{},
 
-            OPERATIONS:GET_SPEC_EVENTS(),
+            OPERATIONS:GET_SPEC_EVENTS(qtPayload),
 
             OTHER_SYMBIOTES:{} //don't need now
 
@@ -1061,10 +1094,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 for(let operationID of excludeSpecOperations){
 
-                    let operationToDelete = SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
+                    let operationToDelete = temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
 
                     //We can't delete the 'STOP_VALIDATOR' operation
-                    if(operationToDelete.type!=='STOP_VALIDATOR') SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
+                    if(operationToDelete.type!=='STOP_VALIDATOR') temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
 
                 }
 
@@ -1395,7 +1428,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') 
+    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -1583,7 +1616,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+
+    let proofsRequests = tempObject.PROOFS_REQUESTS
+
 
 
     if(tempObject.HEALTH_MONITORING.size===0){
@@ -1610,8 +1646,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
-
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)){
+    // If we're not in quorum or checkpoint is outdated
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT')){
 
         //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
 
@@ -1947,6 +1983,19 @@ RESTORE_STATE=async()=>{
         if(skipStage1Proof) tempObject.SKIP_PROCEDURE_STAGE_1.add(poolPubKey)
         if(skipStage2Proof) tempObject.SKIP_PROCEDURE_STAGE_2.set(poolPubKey,skipStage2Proof)
 
+
+        let skipOperationRelatedToThisPool = await tempObject.DATABASE.put('SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
+
+        if(skipOperationRelatedToThisPool){
+
+            // Get the hash(id)
+            let operationID = BLAKE3(JSON.stringify(skipOperationRelatedToThisPool.payload))
+
+            //Store to mempool of special operations
+            
+            tempObject.SPECIAL_OPERATIONS_MEMPOOL.set(operationID,skipOperationRelatedToThisPool)
+
+        }
 
     }
 
@@ -2327,8 +2376,6 @@ PREPARE_SYMBIOTE=async()=>{
         VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
         
         MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
-        
-        SPECIAL_OPERATIONS_MEMPOOL:new Map(), //to hold operations which should be included to checkpoints
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
@@ -2350,7 +2397,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
-        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE}
+        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE,SPECIAL_OPERATIONS_MEMPOOL}
             
     
     }
@@ -2514,22 +2561,25 @@ PREPARE_SYMBIOTE=async()=>{
 
     //_____________________________________Set some values to stuff cache___________________________________________
 
-    SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,SYMBIOTE_META.STUFF),
+    SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,SYMBIOTE_META.STUFF)
+
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
     SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
-    SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+    SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+qtPayload,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
     //_________________________________Add the temporary dat of current QT__________________________________________
-
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
     
     let quorumTemporaryDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${qtPayload}`),{valueEncoding:'json'})
 
     SYMBIOTE_META.TEMP.set(qtPayload,{
+
+        SPECIAL_OPERATIONS_MEMPOOL:new Map(), //to hold operations which should be included to checkpoints
 
         COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 

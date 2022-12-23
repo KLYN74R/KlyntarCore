@@ -123,8 +123,6 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub = SYMBIOTE_META.STATE_CACHE.get('QT_ROOTPUB')
-
     let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
     let promises=[]

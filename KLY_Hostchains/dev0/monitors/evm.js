@@ -290,10 +290,12 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //Make sure it's really next
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
 
         
         if(isNext && signaIsOk) {
@@ -703,7 +705,7 @@ export default {
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
 
                 currentCheckpointTimestamp*=1000
@@ -825,7 +827,7 @@ export default {
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
             
 
                 currentCheckpointTimestamp*=1000

@@ -299,7 +299,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
     
             
@@ -343,7 +343,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
 
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB')
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
     let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
@@ -614,7 +614,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB') 
+    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload) 
 
     let localSyncHandler = tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(subchain)
 
@@ -839,7 +839,9 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    let specialOperationsMempool = tempObject.SPECIAL_OPERATIONS_MEMPOOL
     
+
     if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
 
         response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
@@ -850,7 +852,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     
 
     // Create copy to delete from
-    let subchainsToSkipThatCantBeExcluded = new Set(tempObject.SKIP_PROCEDURE_STAGE_1)
+    let subchainsToSkipThatCantBeExcluded = new Set(tempObject.SKIP_PROCEDURE_STAGE_2.keys())
 
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
     
@@ -858,7 +860,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
         operation => {
 
-            if(SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.has(operation.id)){
+            if(specialOperationsMempool.has(operation.id)){
 
                 // If operation exists - check if it's STOP_VALIDATOR operation. Mark it if it's <SKIP> operation(i.e. stop=true)
                 if(operation.type==='STOP_VALIDATOR' && operation.payload.stop === true) subchainsToSkipThatCantBeExcluded.delete(operation.payload.subchain)
@@ -1073,7 +1075,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         //Verify 2 signatures
 
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'),payloadHash,aggregatedSignature,reverseThreshold)
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold)
 
         let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF)
 
@@ -1166,8 +1168,13 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let operation=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let specialOperationsMempool = SYMBIOTE_META.TEMP.get(qtPayload).SPECIAL_OPERATIONS_MEMPOOL
+
+
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
+    if(CONFIG.SYMBIOTE.TRIGGERS.OPERATIONS_ACCEPT && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
@@ -1179,7 +1186,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
             operation.id = payloadHash
 
             // Add to mempool
-            SYMBIOTE_META.SPECIAL_OPERATIONS_MEMPOOL.set(payloadHash,operation)
+            specialOperationsMempool.set(payloadHash,operation)
 
             response.end('OK')
         
