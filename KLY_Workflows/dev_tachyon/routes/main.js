@@ -1,4 +1,4 @@
-import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
+import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 import {BROADCAST,BLS_VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
 
@@ -141,19 +141,21 @@ acceptBlocks=response=>{
                 if(allow){
                 
                     let blockID = block.creator+":"+block.index
-
-                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
                     
                     //Store it locally-we'll work with this block later
                     SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
                         _ =>
                             
-                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
-                            
+                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>{
+
                                 Promise.all(BROADCAST('/block',block))
-                                
-                            ).catch(_=>{})
+
+                                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+
+                            }
+                            
+                        ).catch(_=>{})
                          
                     )
                     
@@ -161,7 +163,7 @@ acceptBlocks=response=>{
                     let commitment = await SIG(blockID+hash+qtPayload)
 
                     //Put to local storage to prevent double voting
-                    await tempObject.DATABASE.put(block.сreator+":"+block.index,commitment).then(()=>
+                    await tempObject.DATABASE.put(blockID,commitment).then(()=>
 
                         !response.aborted && response.end(commitment)
                 
@@ -313,7 +315,6 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
                 tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,aggregatedCommitments.blockHash)
     
                 !response.aborted && response.end('OK')
-                
                 
             }else !response.aborted && response.end('Something wrong')    
 
@@ -540,7 +541,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
 
-            let currentTime = new Date().getTime()
+            let currentTime = GET_GMT_TIMESTAMP()
 
             if(currentTime-myLocalHealthCheckingHandler.LAST_SEEN >= afkLimit){
 

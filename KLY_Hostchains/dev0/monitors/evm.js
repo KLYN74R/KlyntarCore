@@ -76,7 +76,7 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS,GET_MAJORITY, BLS_VERIFY, CHECK_IF_THE_SAME_DAY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS,GET_MAJORITY,BLS_VERIFY,CHECK_IF_THE_SAME_DAY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -320,7 +320,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
-                TIMESTAMP:+event.returnValues.blocktime,
+                TIMESTAMP:(+event.returnValues.blocktime)*1000,
 
                 FOUND_AT_BLOCK:event.blockNumber,
 

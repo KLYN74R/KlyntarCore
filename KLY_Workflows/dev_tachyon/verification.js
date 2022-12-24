@@ -1,12 +1,12 @@
 import {
     
-    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,
+    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE,
     
-    GET_FROM_STATE,GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY
+    GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY
 
 } from './utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -240,9 +240,9 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let [subchain,index] = blockID.split(':')
 
-    index = +index
-
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+
+    index = +index
 
 
     if(skipStage2Mapping.has(subchain)){
@@ -250,7 +250,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
         
         let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,index,blockHash)
-    
 
         // Initially, check if subchain was stopped from this height:hash on this checkpoint
         if(skipStage3Proof && skipStage3Proof.index >= index){
@@ -266,7 +265,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID+blockHash).catch(_=>false)
-    
+
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
     
@@ -377,9 +376,9 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     //Add extra logic to remove/add new validators, assign/reassign account to some thread, set QUORUM and so on
 
 
-    let currentTimestamp = new Date().getTime(),//due to UTC timestamp format
+    let currentTimestamp = GET_GMT_TIMESTAMP(),//due to UTC timestamp format
 
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP*1000,currentTimestamp)
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,currentTimestamp)
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -668,7 +667,6 @@ START_VERIFICATION_THREAD=async()=>{
     
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
         let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
@@ -683,7 +681,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
+        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
         /*
@@ -755,7 +753,9 @@ START_VERIFICATION_THREAD=async()=>{
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
-            
+
+
+                
             //We can simplify this branch
 
             if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
@@ -783,6 +783,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(block && quorumSolutionToVerifyBlock){
 
+
                 await verifyBlock(block)
             
                 //Signal that verification was successful
@@ -791,6 +792,8 @@ START_VERIFICATION_THREAD=async()=>{
                     nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
                 
                 }
+
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
                     
                 // If verification failed - delete block. It will force to find another(valid) block from network
                 // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
@@ -907,7 +910,7 @@ MAKE_SNAPSHOT=async()=>{
 
 SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
-    let mainStorageOfPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolId+'(POOL)_STORAGE_POOL')
+    let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
 
     if(mainStorageOfPool.percentage!==0){
 

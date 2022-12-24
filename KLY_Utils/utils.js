@@ -64,7 +64,14 @@ BLAKE3=v=>hash(v).toString('hex'),
 
 SYMBIOTE_ALIAS=()=>CONFIG.ALIASES[CONFIG.SYMBIOTE.SYMBIOTE_ID]||CONFIG.SYMBIOTE.SYMBIOTE_ID,
 
+GET_GMT_TIMESTAMP=()=>{
 
+    var currentTime = new Date();
+    
+    //The offset is in minutes -- convert it to ms
+    //See https://stackoverflow.com/questions/9756120/how-do-i-get-a-utc-timestamp-in-javascript
+    return currentTime.getTime() + currentTime.getTimezoneOffset() * 60000;
+},
 
 
 /**# Verification

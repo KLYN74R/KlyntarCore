@@ -8,7 +8,7 @@ import {
 
 } from './utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
 
@@ -375,7 +375,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
+        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+
 
         let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
@@ -422,7 +423,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         console.log('================ VT ================')
     
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD)
+        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
     
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
 
@@ -606,8 +607,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 SKIP_PROCEDURE_MONITORING_START=async()=>{
 
-    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP*1000,new Date().getTime())
-
+    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
     // No sense to find skip proofs if checkpoint is not fresh
     if(checkpointIsFresh){
@@ -773,7 +773,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         
         //Store time tracker to DB
-        await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',new Date().getTime())
+        await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
 
         //Send the header to hostchain
         await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(_=>{})
@@ -803,7 +803,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-    if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.COMMIT > new Date().getTime()){
+    if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
 
         setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
 
@@ -1118,11 +1118,12 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
+
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
 
-    let {COMMITMENTS,FINALIZATION_PROOFS} = SYMBIOTE_META.TEMP.get(qtPayload)
+    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
     
@@ -1168,9 +1169,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     }
 
-    console.log('SIZE IS ',finalizationProofsMapping)
 
 
+    
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
 
 
@@ -1224,9 +1225,14 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         //Share here
         BROADCAST('/super_finalization',superFinalizationProof)
 
+        await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof)
 
-        // Repeat procedure for the next block
+
+        // Repeat procedure for the next block and store the progress
+
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+
+        await DATABASE.put('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
         appropriateDescriptor.height++
 
@@ -1243,7 +1249,8 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     // Check for this block after a while
-    if(!block) setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,2000)
+    if(!block) return
+
 
     let blockHash = Block.genHash(block)
 
@@ -1376,23 +1383,28 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH + SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let {FINALIZATION_PROOFS} = SYMBIOTE_META.TEMP.get(qtPayload)
+    let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
+        appropriateDescriptor = await DATABASE.get('BLOCK_SENDER_HANDLER').catch(_=>false)
 
-        let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
+        if(!appropriateDescriptor){
 
-        appropriateDescriptor = {
+            let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
 
-            checkpointID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
-
-            height:myLatestFinalizedHeight
-
+            appropriateDescriptor = {
+    
+                checkpointID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
+    
+                height:myLatestFinalizedHeight
+    
+            }
+    
         }
-
+        
         // And store new descriptor(till it will be old)
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
@@ -1447,7 +1459,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
         let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > new Date().getTime()){
+        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -1592,7 +1604,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
             //Add time tracker for event
             
-            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,new Date().getTime())
+            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP())
 
             //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
             HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
@@ -1629,7 +1641,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         // Fill the HEALTH_MONITORING mapping with the latest known values
         // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
 
-        let LAST_SEEN = new Date().getTime()
+        let LAST_SEEN = GET_GMT_TIMESTAMP()
 
         for(let pubKey of tempObject.CHECKPOINT_MANAGER.keys()){
 
@@ -1736,7 +1748,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         if(superFinalizationProofIsOk && localHealthHandler.INDEX < latestFullyFinalizedHeight){
 
-            localHealthHandler.LAST_SEEN = new Date().getTime()
+            localHealthHandler.LAST_SEEN = GET_GMT_TIMESTAMP()
 
             localHealthHandler.INDEX = latestFullyFinalizedHeight
 
@@ -1754,7 +1766,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let session = GET_RANDOM_BYTES_AS_HEX(32)
 
-    let currentTime = new Date().getTime()
+    let currentTime = GET_GMT_TIMESTAMP()
 
     let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
 
@@ -1767,7 +1779,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let timestamp = await checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_1_'+candidate)
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_1 > new Date().getTime()){
+        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -1860,7 +1872,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         // Update the local version in HEALTH_MONITORING
 
-                        localHealthHandler.LAST_SEEN = new Date().getTime()
+                        localHealthHandler.LAST_SEEN = GET_GMT_TIMESTAMP()
 
                         localHealthHandler.INDEX = INDEX
 
@@ -1934,7 +1946,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
                 //Add time tracker for event
-                await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_1_'+candidate,new Date().getTime())
+                await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP())
 
                 //Send to hostchain
                 HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
@@ -2558,12 +2570,23 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
 
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===0) await LOAD_GENESIS()
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===0){
 
+        await LOAD_GENESIS()
 
+        //______________________________________Commit the state of VT and QT___________________________________________
+
+        await SYMBIOTE_META.STATE.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+
+        await SYMBIOTE_META.QUORUM_THREAD_METADATA.put('QT',SYMBIOTE_META.QUORUM_THREAD)
+
+    }
+
+    
     //_____________________________________Set some values to stuff cache___________________________________________
 
     SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,SYMBIOTE_META.STUFF)
+
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -2703,10 +2726,6 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/syminfo.txt')).toString(),'S')
-
-    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}`,'I')
-
-
 
 
     //Ask to approve current set of hostchains
