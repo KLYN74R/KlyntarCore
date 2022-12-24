@@ -295,7 +295,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority)
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority).catch(_=>false)
 
         
         if(isNext && signaIsOk) {
@@ -715,7 +715,7 @@ export default {
 
                     let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold).catch(_=>false)
                     
                     let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
@@ -837,7 +837,7 @@ export default {
 
                     let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold).catch(_=>false)
 
                     let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 

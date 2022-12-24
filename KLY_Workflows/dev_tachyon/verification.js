@@ -1068,7 +1068,7 @@ verifyBlock=async block=>{
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             SYMBIOTE_META.BLOCKS.del(block.creator+":"+block.index).catch(
                 
-                e => LOG(`Failed to delete block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${e}`,'W')
+                error => LOG(`Failed to delete block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
                 
             )
 

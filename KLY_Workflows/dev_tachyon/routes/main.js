@@ -312,7 +312,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,aggregatedCommitments.blockHash)
+                tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,{hash:aggregatedCommitments.blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
     
                 !response.aborted && response.end('OK')
                 
@@ -450,13 +450,13 @@ healthChecker = async response => {
         // Get the latest SUPER_FINALIZATION_PROOF that we have
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        if(!appropriateDescriptor) response.end(`Still haven't start the procedure of grabbing finalization proofs`)
+        if(!appropriateDescriptor) response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
 
 
         
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
 
-        let block = await SYMBIOTE_META.BLOCKS.get(latestFullyFinalizedHeight).catch(_=>false)
+        let block = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
         let latestHash = block && Block.genHash(block)
 
@@ -466,17 +466,17 @@ healthChecker = async response => {
 
         let superFinalizationProof = await checkpointTempDB.get('SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
 
-        
 
+        
         if(superFinalizationProof){
 
             let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
 
             response.end(JSON.stringify(healthProof))
 
-        }else response.end('No proof')
+        }else response.end(JSON.stringify({err:'No proof'}))
 
-    }else response.end('Route is off')
+    }else response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -674,7 +674,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             let data = subchain+':'+height+hash+qtPayload
 
-            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
             if(finalizationProofIsOk){
 
@@ -1080,7 +1080,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         //Verify 2 signatures
 
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold)
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold).catch(_=>false)
 
         let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF)
 

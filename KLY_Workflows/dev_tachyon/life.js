@@ -478,7 +478,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         }).catch(_=>{})
 
-        currentCheckpointSyncHelper.delete(subchain)
+        // currentCheckpointSyncHelper.delete(subchain)
 
     }
 
@@ -527,17 +527,37 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
                 let blockID = keyValue[0]
                 
-                let blockHash = keyValue[1]
+                let {hash,finalizationProof} = keyValue[1]
     
-                let [subchain] = blockID.split(':')
+                let [subchain,index] = blockID.split(':')
+
+                index=+index
     
                 // We can't produce finalization proofs for subchains that are stopped
                 if(currentSkipProcedureStage1Set.has(subchain)) continue
     
                 // Put to responses
-                currentFinalizationProofsResponses.set(blockID,await SIG(blockID+blockHash+'FINALIZATION'+qtPayload))
+                currentFinalizationProofsResponses.set(blockID,await SIG(blockID+hash+'FINALIZATION'+qtPayload))
     
                 currentFinalizationProofsRequests.delete(blockID)
+
+
+
+                //Update the CHECKPOINTS_MANAGER
+                
+                let subchainState = currentCheckpointSyncHelper.get(subchain)
+
+                if(subchainState.INDEX<index){
+
+                    subchainState.INDEX=index
+                    
+                    subchainState.HASH=hash
+                    
+                    subchainState.FINALIZATION_PROOF=finalizationProof
+
+                    currentCheckpointSyncHelper.set(subchain,subchainState)
+
+                }
 
             }
 
@@ -1464,7 +1484,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         if(skipStage3Handler) continue
 
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
-        let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
+        let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
     
@@ -1473,7 +1493,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         }
         
         //Delete the time tracker
-        await temporaryObject.DATABASE.del('TIME_TRACKER_SKIP_STAGE_2_'+subchain)
+        await temporaryObject.DATABASE.del('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>{})
         
 
         let localFinalizationHandler = temporaryObject.CHECKPOINT_MANAGER.get(subchain)
@@ -1536,7 +1556,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             
                 let data = subchain+':'+INDEX+HASH+qtPayload
             
-                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
             
                 if(finalizationProofIsOk && localFinalizationHandlerSyncHelper.INDEX < INDEX){
@@ -1611,10 +1631,12 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
             //Add time tracker for event
             
-            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP())
+            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP()).then(()=>
 
-            //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
-            HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
+                //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
+                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
+
+            ).catch(_=>{})
                 
         }
 
@@ -1650,6 +1672,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let LAST_SEEN = GET_GMT_TIMESTAMP()
 
+        console.log('Checkpoint manager is ',tempObject.CHECKPOINT_MANAGER)
+
         for(let pubKey of tempObject.CHECKPOINT_MANAGER.keys()){
 
             let {INDEX,HASH}=tempObject.CHECKPOINT_MANAGER.get(pubKey)
@@ -1664,6 +1688,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         }
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+        console.log('INSIDE INITIAL ',tempObject.HEALTH_MONITORING)
+
+        return
 
     }
 
@@ -1685,6 +1713,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let proofsPromises = []
 
+    let candidatesForAnotherCheck = []
+
+
+    
     for(let handler of subchainsURLAndPubKey){
 
         
@@ -1700,7 +1732,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             return r
 
-        }).catch(_=>false)
+        }).catch(_=>{candidatesForAnotherCheck.push(handler.pubKey)})
 
         proofsPromises.push(responsePromise)
 
@@ -1734,13 +1766,12 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     */
 
-    let candidatesForAnotherCheck = []
-
-
 
     for(let answer of healthCheckPingbacks){
 
-        let {aggregatedPub,aggregatedSignature,afkValidators} = answer.superFinalizationProof
+        // console.log('Answer in health monitoring is => ',answer)
+
+        let {aggregatedPub,aggregatedSignature,afkValidators} = answer?.superFinalizationProof
 
         let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
 
@@ -1751,7 +1782,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         // blockID+hash+'FINALIZATION'+qtPayload
         let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+qtPayload
 
-        let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+        let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
         //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
 
@@ -1786,7 +1817,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     for(let candidate of candidatesForAnotherCheck){
 
-        let timestamp = await checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_1_'+candidate)
+        let timestamp = await checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
     
@@ -1795,10 +1826,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         }
         
         //Delete the time tracker
-        await checkpointTemporaryDB.del('TIME_TRACKER_SKIP_STAGE_1_'+candidate)
+        await checkpointTemporaryDB.del('TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>{})
     
-
-
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate)
@@ -1808,17 +1837,17 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             /*
             
-            Send this to POST /skip_procedure_stage_1
+                Send this to POST /skip_procedure_stage_1
 
-            {
+                {
                 
-                session:<32-bytes random hex session ID>,
-                initiator:<BLS pubkey of quorum member who initiated skip procedure>,
-                requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
-                height:<block height of subchain on which initiator stopped>
-                sig:SIG(session+requestedSubchain+height+qtPayload)
+                    session:<32-bytes random hex session ID>,
+                    initiator:<BLS pubkey of quorum member who initiated skip procedure>,
+                    requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
+                    height:<block height of subchain on which initiator stopped>
+                    sig:SIG(session+requestedSubchain+height+qtPayload)
     
-            }
+                }
             
             */
 
@@ -1874,7 +1903,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     let data = candidate+':'+INDEX+HASH+'FINALIZATION'+qtPayload
 
-                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold)
+                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
 
                     if(superFinalizationProofIsOk && localHealthHandler.INDEX < INDEX){
@@ -1907,10 +1936,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             }
 
+            console.log('NUM OF CHELS WHO IS READY TO SKIP_1 ',pubKeysForAggregation)
 
             //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
 
-            if(pubKeysForAggregation.length>=GET_MAJORITY('QUORUM_THREAD')){
+            if(pubKeysForAggregation.length >= GET_MAJORITY('QUORUM_THREAD')){
 
                 /*
                 
@@ -1955,10 +1985,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
                 //Add time tracker for event
-                await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP())
+                await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
 
-                //Send to hostchain
-                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
+                    //Send to hostchain
+                    HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
+
+                ).catch(_=>{})
+
                 
             }
 
@@ -1969,6 +2002,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
+
+    console.log('SYMBIOTE HEALTH STATE ',tempObject.HEALTH_MONITORING)
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -1995,6 +2030,7 @@ RESTORE_STATE=async()=>{
         let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey]
 
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
+        tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
 
 
         //______________________________ SKIP_PROCEDURE functionality ______________________________

@@ -104,7 +104,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event => {
         
         if(event.payload.type==='P/B') return ADDONS['verify_BLISS'](signedData,event.creator,event.sig)
         
-        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.account.rev_t)       
+        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.account.rev_t).catch(_=>false)      
 
     }else return false
 

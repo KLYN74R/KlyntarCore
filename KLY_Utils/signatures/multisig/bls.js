@@ -65,11 +65,11 @@ export default {
    */
     verifyThresholdSignature:async(aggregatedPubkeyWhoSign,afkPubkeysArray,masterPub,data,aggregatedSignature,reverseThreshold)=>{
 
-        let signersOut=bls.aggregatePublicKeys(afkPubkeysArray),//aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
+        let pubKeysAsRawBytes = [aggregatedPubkeyWhoSign,...afkPubkeysArray].map(Base58.decode)
 
-            generalPubKey=bls.aggregatePublicKeys([aggregatedPubkeyWhoSign,signersOut]),
+        let generalPubKey=Base58.encode(bls.aggregatePublicKeys(pubKeysAsRawBytes)) //aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
 
-            verifiedSignature=await bls.verify(aggregatedSignature,data,aggregatedPubkeyWhoSign)
+        let verifiedSignature=await bls.verify(Buffer.from(aggregatedSignature,'base64'),Buffer.from(data,'utf-8').toString('hex'),Base58.decode(aggregatedPubkeyWhoSign))
 
 
         return verifiedSignature && generalPubKey === masterPub && afkPubkeysArray.length <= reverseThreshold 
