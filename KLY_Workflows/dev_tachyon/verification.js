@@ -64,7 +64,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
 
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes=await GET_VALIDATORS_URLS('QUORUM_THREAD')
+            let allVisibleNodes=await GET_VALIDATORS_URLS()
 
     
             for(let url of allVisibleNodes){
@@ -117,7 +117,7 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
 
-    let quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
+    let quorumMembers = await GET_VALIDATORS_URLS(true)
 
     let payloadInJSON = JSON.stringify({subchain})
 
@@ -274,12 +274,13 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
-    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_VALIDATORS_URLS('QUORUM_THREAD'),...GET_ALL_KNOWN_PEERS()]
+    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_VALIDATORS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
 
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
+
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID+blockHash).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&
@@ -293,7 +294,9 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     &&
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
-         
+
+                                    
+                                    
         if(generalAndTypeCheck){
 
             //Verify it before return

@@ -149,7 +149,7 @@ acceptBlocks=response=>{
                             
                             SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>{
 
-                                Promise.all(BROADCAST('/block',block))
+                                BROADCAST('/block',block)
 
                                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
 
@@ -1265,7 +1265,7 @@ UWS_SERVER
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
-.get('/get_super_finalization',getSuperFinalization)
+.get('/get_super_finalization/:BLOCK_ID_AND_HASH',getSuperFinalization)
 
 
 .get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)

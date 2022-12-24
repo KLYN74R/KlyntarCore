@@ -627,7 +627,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     myCheckpoint ||= await checkpointTemporaryDB.get('CHECKPOINT').catch(_=>false)
 
-    quorumMembersHandler ||= await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
+    quorumMembersHandler ||= await GET_VALIDATORS_URLS(true)
 
     
     //_____________________ Go through the quorum and share our pre-signed object with checkpoint payload and issuer proof____________________
@@ -894,7 +894,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true)
+        let quorumMembers = await GET_VALIDATORS_URLS(true)
 
         let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
 
@@ -1128,7 +1128,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
 
-        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
+        quorumMembers = await GET_VALIDATORS_URLS(true),
 
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
@@ -1254,7 +1254,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
         
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
-        quorumMembers = await GET_VALIDATORS_URLS('QUORUM_THREAD',true),
+        quorumMembers = await GET_VALIDATORS_URLS(true),
 
         promises=[],
 
@@ -1369,6 +1369,15 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
 
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
+
+    // If we don't generate the blocks - skip this function
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[CONFIG.SYMBIOTE.PUB]){
+
+        setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
+
+        return
+
+    }
 
     // Descriptor has the following structure - {checkpointID,height}
     let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
@@ -1658,6 +1667,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+        return
 
     }
 
