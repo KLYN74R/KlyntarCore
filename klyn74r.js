@@ -371,7 +371,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
 
 
-
 //____________________________________________ASK FOR FINAL AGREEMENT____________________________________________
 
 

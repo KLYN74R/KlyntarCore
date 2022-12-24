@@ -849,10 +849,16 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let canProposeCheckpoint = await HOSTCHAIN.MONITOR.CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT(),
 
-        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB),
+
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
-    if(canProposeCheckpoint && iAmInTheQuorum){
+    if(canProposeCheckpoint && iAmInTheQuorum && !checkpointIsFresh){
+
+        console.log('IS IT TIME ',canProposeCheckpoint)
+
+        console.log('IS IN QUORUM ',iAmInTheQuorum)
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
