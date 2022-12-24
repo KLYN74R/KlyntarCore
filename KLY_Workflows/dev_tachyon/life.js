@@ -417,14 +417,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Wait for the new checkpoint will appear on hostchain
 
-        console.log('================ QT ================')
-
-        console.log(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD)
-            
-        console.log('================ VT ================')
-    
-        console.log(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)
-    
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
 
     }
@@ -1171,7 +1163,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
 
 
-    
+
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
 
 
@@ -1428,7 +1420,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     }
 
-    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,1000)
+    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,300)
 
 },
 
