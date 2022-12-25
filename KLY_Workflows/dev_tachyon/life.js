@@ -10,11 +10,11 @@ import {
 
 import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
-import {START_VERIFICATION_THREAD} from './verification.js'
-
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
+import {START_VERIFICATION_THREAD} from './verification.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
@@ -708,6 +708,10 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     }
 
+    console.log('======================= EVERYTHINT AT ONCE IS =======================')
+
+    console.log(everythingAtOnce)
+
     let sendOptions={
         
         method:'POST',
@@ -742,12 +746,15 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     let otherAgreements = new Map()
 
 
+    console.log('PINGBACKS IS ',checkpointsPingBacks)
+
+    console.log(myCheckpoint)
     
     for(let {pubKey,sig} of checkpointsPingBacks){
 
         if(sig){
 
-            let isSignaOk = await bls.singleVerify(myCheckpoint.HEADER.PAYLOAD_HASH,pubKey,sig)
+            let isSignaOk = await bls.singleVerify('STAGE_2'+myCheckpoint.HEADER.PAYLOAD_HASH,pubKey,sig)
 
             if(isSignaOk) otherAgreements.set(pubKey,sig)
 
@@ -756,9 +763,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     }
 
 
-
-
     //______________________ Finally, once we have 2/3N+1 signatures - aggregate it, modify checkpoint header and publish to hostchain ______________________
+
 
     if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
 
@@ -781,15 +787,23 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE=bls.aggregateSignatures(signatures)
 
-        myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>otherAgreements.has(pubKey))
+        myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
-        
-        //Store time tracker to DB
-        await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
+        console.log('=============== FINAL VERSION OF PROPOSED CHECKPOINT IS ')
 
-        //Send the header to hostchain
-        await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(_=>{})
-         
+        console.log(myCheckpoint)
+        console.log(myCheckpoint.PAYLOAD.VALIDATORS_METADATA)
+
+        if(CONFIG.SYMBIOTE.PUB==='7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'){
+
+            //Store time tracker to DB
+            await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
+
+            //Send the header to hostchain
+            await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
+
+        }
+                 
     }
 
 },
@@ -815,7 +829,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-    if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
+    if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
 
         setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
 
@@ -876,12 +890,21 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     if(canProposeCheckpoint && iAmInTheQuorum && !checkpointIsFresh){
 
-        console.log('IS IT TIME ',canProposeCheckpoint)
-
-        console.log('IS IN QUORUM ',iAmInTheQuorum)
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+
+
+        // Check the safety
+        if(!temporaryObject.PROOFS_RESPONSES.get('READY_FOR_CHECKPOINT')){
+
+            console.log('Still dont have. so return')
+
+            setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
+
+            return
+
+        }
 
         //____________________________________ Build the template of checkpoint's payload ____________________________________
 
@@ -959,6 +982,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         //Run promises
         let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
 
+        console.log('Checkpoints pingbacks is ',checkpointsPingBacks)
+
+        console.log(payloadInJSON)
+
         /*
         
             First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
@@ -998,11 +1025,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 if(isSignaOk) otherAgreements.set(pubKey,sig)
 
-            }else if(metadataUpdate.length!==0){
+            }else if(metadataUpdate && metadataUpdate.length!==0){
 
                 // Update the data of CHECKPOINT_MANAGER_SYNC_HELPER if quorum voted for appropriate block:hash:index
 
-                let currentSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(qtPayload) // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
+                let currentSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
 
 
                 for(let updateOp of metadataUpdate){
@@ -1026,7 +1053,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                             if(signaIsOk && rootPubIsOK){
 
-                                let latestFinalized = {INDEX:updateOp.index,HASH:updateOp.index,FINALIZATION_PROOF:updateOp.finalizationProof}
+                                let latestFinalized = {INDEX:updateOp.index,HASH:updateOp.hash,FINALIZATION_PROOF:updateOp.finalizationProof}
 
                                 // Send to synchronizer to update the local stats
 
@@ -1059,6 +1086,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
         */
 
+        console.log('OTHER AGREEMENTS ',otherAgreements)
+
+        console.log('Majority is ',GET_MAJORITY('QUORUM_THREAD'))
+
         if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
 
             // Hooray - we can create checkpoint and publish to hostchain & share among other members
@@ -1087,7 +1118,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                     QUORUM_AGGREGATED_SIGNATURE:bls.aggregateSignatures(signatures),
         
-                    AFK_VALIDATORS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>otherAgreements.has(pubKey))
+                    AFK_VALIDATORS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
         
                 },
                 
@@ -1100,6 +1131,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
+            console.log('========== GOING TO INITIATE STAGE2 FOR CHECKPOINT ==========')
+
             await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers)
 
 
@@ -1110,12 +1143,16 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             for(let {excludeSpecOperations} of checkpointsPingBacks){
 
-                for(let operationID of excludeSpecOperations){
+                if(excludeSpecOperations && excludeSpecOperations.length!==0){
 
-                    let operationToDelete = temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
+                    for(let operationID of excludeSpecOperations){
 
-                    //We can't delete the 'STOP_VALIDATOR' operation
-                    if(operationToDelete.type!=='STOP_VALIDATOR') temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
+                        let operationToDelete = temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
+    
+                        //We can't delete the 'STOP_VALIDATOR' operation
+                        if(operationToDelete.type!=='STOP_VALIDATOR') temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
+    
+                    }
 
                 }
 
@@ -1486,7 +1523,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
         let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
+        if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -1663,6 +1700,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let proofsRequests = tempObject.PROOFS_REQUESTS
 
+    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
     if(tempObject.HEALTH_MONITORING.size===0){
@@ -1695,8 +1733,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
-    // If we're not in quorum or checkpoint is outdated
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT')){
+
+
+    // If we're not in quorum or checkpoint is outdated - don't start health monitoring
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
 
         //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
 
@@ -1819,7 +1859,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let timestamp = await checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE_META.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
+        if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -2062,7 +2102,13 @@ RESTORE_STATE=async()=>{
 
     let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('NEXT_CHECKPOINT').catch(_=>false)
 
-    if(itsTimeForTheNextCheckpoint) tempObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+    if(itsTimeForTheNextCheckpoint) {
+
+        tempObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+
+        tempObject.PROOFS_RESPONSES.set('READY_FOR_CHECKPOINT',true)
+
+    }
 
 
 }

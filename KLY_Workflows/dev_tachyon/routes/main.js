@@ -467,7 +467,7 @@ healthChecker = async response => {
         let superFinalizationProof = await checkpointTempDB.get('SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
 
 
-        
+
         if(superFinalizationProof){
 
             let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
@@ -902,7 +902,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
 
-            if(localVersion.INDEX>checkpointProposition.VALIDATORS_METADATA[subchain]){
+            if(localVersion.INDEX > checkpointProposition.VALIDATORS_METADATA[subchain].INDEX){
 
                 // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 

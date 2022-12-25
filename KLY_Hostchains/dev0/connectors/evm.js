@@ -201,7 +201,7 @@ export default class {
         
         		gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('10','gwei')),
 				
-        		data: this.CONTRACT.methods.change(JSON.stringify(checkpointHeader)).encodeABI()
+        		data: this.CONTRACT.methods.checkpoint(JSON.stringify(checkpointHeader)).encodeABI()
     
     		}
 
@@ -216,7 +216,7 @@ export default class {
 
                 if(err) LOG(`Oops,some has been occured ${err}`,'W')
                 
-                else LOG(`Checkpoint has been published via tx ${txHash}`,'I')
+                else LOG(`Checkpoint has been published via tx \u001b[38;5;50m${txHash}`,'I')
 
             })
 
@@ -243,7 +243,7 @@ export default class {
         
         		gasPrice: this.web3.utils.toHex(this.web3.utils.toWei('10','gwei')),
 				
-        		data: this.CONTRACT.methods.change(JSON.stringify(stageOneOrTwoPayload)).encodeABI()
+        		data: this.CONTRACT.methods.skip(JSON.stringify(stageOneOrTwoPayload)).encodeABI()
     
     		}
 

@@ -63,7 +63,7 @@ export let CONTRACT = {
                     
                 storedMetadata:{},
 
-                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE_META.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
 
