@@ -293,13 +293,9 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
         }else if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
 
-            console.log('RESPONSE PRESENT HERE ',aggregatedCommitments.blockID)
-
             // Instantly send response
             !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID))
 
-            // Clear the local storage
-            tempObject.PROOFS_RESPONSES.delete(aggregatedCommitments.blockID)
 
         }else{
 
@@ -311,14 +307,10 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
-            console.log('GIVING PROOFS ')
-            console.log(signaIsOk)
-            console.log(majorityIsOk)
-            console.log(rootPubIsEqualToReal)
-            
-            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-                console.log('REQUESTS PRESENT HERE ',aggregatedCommitments.blockID)
+            
+
+            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,{hash:aggregatedCommitments.blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
@@ -409,7 +401,6 @@ getSuperFinalization=async(response,request)=>{
     
         let superFinalizationProof = await checkpointTempDB.get('SFP:'+request.getParameter(0)).catch(_=>false)
 
-        console.log('MY SPF IS ',superFinalizationProof)
 
         if(superFinalizationProof){
 

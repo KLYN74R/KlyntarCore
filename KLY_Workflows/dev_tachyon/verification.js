@@ -296,7 +296,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
 
-        console.log('IS KOK ',generalAndTypeCheck,' => ',itsProbablySuperFinalizationProof)
+
                                     
         if(generalAndTypeCheck){
 
@@ -316,7 +316,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             
             let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkValidators.length >= majority
 
-            console.log('GENERAL IS OK => ',blockID,' => ',blockHash,' => ',aggregatedSignatureIsOk,' => ',rootQuorumKeyIsEqualToProposed,' => ',majorityVotedForThis)
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
@@ -694,7 +693,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
-        
+
 
         /*
 

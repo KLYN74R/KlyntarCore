@@ -548,6 +548,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     
                 currentFinalizationProofsRequests.delete(blockID)
 
+                // Delete the response for the previous block from responses
+                currentFinalizationProofsResponses.delete(subchain+':'+(index-1))
 
 
                 //Update the CHECKPOINTS_MANAGER
@@ -1220,14 +1222,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
     
-            }).catch(e=>{
-
-                console.log('FP ERROR ',e)
-
-                return false
-
-            })
+            }).catch(_=>false)
     
+
             // To make sharing async
             promises.push(promise)
     
@@ -1238,9 +1235,8 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     }
 
 
-    console.log('FP FOR BLOCK ',blockID,' => ',finalizationProofsMapping)
 
-
+    
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
 
 
@@ -1390,8 +1386,6 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     // On this step we should go through the quorum members and share FINALIZATION_PROOF to get the SUPER_FINALIZATION_PROOFS(and this way - finalize the block)
 
     if(commitmentsForCurrentBlock.size>=majority){
-
-        console.log('COMMM FOR BLOCK ',commitmentsForCurrentBlock)
 
         let signers = [...commitmentsForCurrentBlock.keys()]
 
