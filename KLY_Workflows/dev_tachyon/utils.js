@@ -161,9 +161,9 @@ QUICK_SORT = array => {
 
 GET_QUORUM = threadID => {
 
-    let validatorsMetadata = threadID==='VERIFICATION_THREAD' ? SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA : SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA,
+    let subchainsMetadata = threadID==='VERIFICATION_THREAD' ? SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA : SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,
     
-        validators = Object.keys(validatorsMetadata),
+        validators = Object.keys(subchainsMetadata),
     
         workflowOptions = SYMBIOTE_META[threadID].WORKFLOW_OPTIONS
 
@@ -171,7 +171,7 @@ GET_QUORUM = threadID => {
     //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
     if(validators.length<workflowOptions.QUORUM_SIZE){
 
-        let validatorsMetadataHash = BLAKE3(JSON.stringify(validatorsMetadata)),
+        let validatorsMetadataHash = BLAKE3(JSON.stringify(subchainsMetadata)),
 
             mapping = new Map(),
 
@@ -375,7 +375,7 @@ GET_VALIDATORS_URLS = async withPubkey => {
 
     let promises=[]
 
-    Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA).forEach(pubKey =>
+    Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA).forEach(pubKey =>
         
         promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
@@ -490,7 +490,7 @@ DECRYPT_KEYS=async spinner=>{
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
+    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
 
     LOG(`Working on \x1b[31;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1mhostchain:${CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        

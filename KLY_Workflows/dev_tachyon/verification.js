@@ -256,7 +256,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         if(skipStage3Proof && skipStage3Proof.index >= index){
     
             //Stop this subchain for the next iterations
-            if(skipStage3Proof.index === index && skipStage3Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[subchain].IS_STOPPED=true
+            if(skipStage3Proof.index === index && skipStage3Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain].IS_STOPPED=true
     
             return true
     
@@ -359,14 +359,14 @@ DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
 
     poolStorage.stopCheckpointID=SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    poolStorage.storedMetadata=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]
+    poolStorage.storedMetadata=SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
 
     //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
 
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.splice(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.indexOf(validatorPubKey),1)
+    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.splice(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.indexOf(validatorPubKey),1)
 
-    delete SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[validatorPubKey]
+    delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
 },
 
@@ -460,7 +460,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             let toRemovePools = [], promises = []
 
-            for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS){
+            for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS){
 
                 let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
@@ -617,7 +617,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
 
-            //Create new quorum based on new VALIDATORS_METADATA state
+            //Create new quorum based on new SUBCHAINS_METADATA state
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
             //Get the new rootpub
@@ -679,9 +679,9 @@ START_VERIFICATION_THREAD=async()=>{
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA)),
+        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA))
+            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
@@ -707,20 +707,20 @@ START_VERIFICATION_THREAD=async()=>{
         */
         
 
-        let prevValidatorWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR,
+        let prevSubchainWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
-            validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS,
+            validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS,
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
-            currentValidatorToCheck = validatorsPool[validatorsPool.indexOf(prevValidatorWeChecked)+1] || validatorsPool[0],
+            currentSubchainToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
 
             //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck],
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck],
 
-            blockID = currentValidatorToCheck+":"+(currentSessionMetadata.INDEX+1),
+            blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1),
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator
-            nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentValidatorToCheck)+1] || validatorsPool[0],
+            nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentSubchainToCheck)+1] || validatorsPool[0],
 
             nextBlock,//to verify next block ASAP if it's available
 
@@ -734,7 +734,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             /*
             
-                Here we do everything to skip this block and move to the next validator's block
+                Here we do everything to skip this block and move to the next subchains's block
                         
                 If 2/3+1 validators have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
                     
@@ -743,7 +743,7 @@ START_VERIFICATION_THREAD=async()=>{
             */
 
                 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
 
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
@@ -754,13 +754,13 @@ START_VERIFICATION_THREAD=async()=>{
 
             //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
 
-            let block = await GET_BLOCK(currentValidatorToCheck,currentSessionMetadata.INDEX+1),
+            let block = await GET_BLOCK(currentSubchainToCheck,currentSessionMetadata.INDEX+1),
 
                 blockHash = block && Block.genHash(block),
 
                 quorumSolutionToVerifyBlock = false, //by default
 
-                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX > currentSessionMetadata.INDEX,
+                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentSubchainToCheck].INDEX > currentSessionMetadata.INDEX,
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
@@ -801,7 +801,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 // console.log('GOING TO SKIP => ',currentValidatorToCheck,' => ',currentSessionMetadata)
 
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
 
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                         
@@ -813,13 +813,13 @@ START_VERIFICATION_THREAD=async()=>{
                 await verifyBlock(block)
             
                 //Signal that verification was successful
-                if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[currentValidatorToCheck].INDEX===pointerThatVerificationWasSuccessful){
+                if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck].INDEX===pointerThatVerificationWasSuccessful){
                 
-                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[nextValidatorToCheck].INDEX+1)
+                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[nextValidatorToCheck].INDEX+1)
                 
                 }
 
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
                     
                 // If verification failed - delete block. It will force to find another(valid) block from network
                 // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
@@ -918,7 +918,7 @@ MAKE_SNAPSHOT=async()=>{
 
     await atomicBatch.write()
     
-        .then(()=>LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on point \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR}:${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S'))
+        .then(()=>LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on point \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN}:${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S'))
         
         .catch(error=>{
 
@@ -976,7 +976,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
 
 
-        1) Take all the validators from SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS
+        1) Take all the validators from SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS
 
         2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
 
@@ -993,12 +993,12 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length-1)), //and share the rest among other validators
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.length-1)), //and share the rest among other validators
     
         shareFeesPromises = []
 
           
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
+    if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
@@ -1007,7 +1007,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     //_____________________________________________ THE REST ______________________________________________
 
-    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(poolPubKey=>
+    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.forEach(poolPubKey=>
 
         poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool))
             
@@ -1029,7 +1029,7 @@ verifyBlock=async block=>{
     
             block.events?.length<=SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
             &&
-            SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
+            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
             &&
             await BLS_VERIFY(blockHash,block.sig,block.creator)
 
@@ -1060,7 +1060,7 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
     
         //Push accounts of validators
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
+        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
 
         //Now cache has all accounts and ready for the next cycles
         await Promise.all(sendersAccounts.splice(0))
@@ -1112,7 +1112,7 @@ verifyBlock=async block=>{
 
 
         //Change finalization pointer
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=block.creator
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
                 
@@ -1120,9 +1120,9 @@ verifyBlock=async block=>{
 
         
         //Change metadata per validator's thread
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].INDEX=block.index
+        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].INDEX=block.index
 
-        SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[block.creator].HASH=blockHash
+        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
 
         //Finally - decrease the counter to snapshot

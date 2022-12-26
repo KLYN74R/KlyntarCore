@@ -122,7 +122,7 @@ getValidators=response=>{
             .onAborted(()=>response.aborted=true)
 
 
-        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS))
+        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS))
 
     }else !response.aborted && response.end('Symbiote not supported')
 
@@ -190,7 +190,7 @@ multiplicity=response=>
 
             height=+height
 
-            if(Number.isInteger(height) && SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[blockCreator]?.INDEX+100<height) continue
+            if(Number.isInteger(height) && SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[blockCreator]?.INDEX+100<height) continue
 
             promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
                 
@@ -280,3 +280,19 @@ UWS_SERVER
 .get('/block/:ID',block)
 
 .get('/info',info)
+
+
+
+/*
+TODO:
+
+GET /health/:subchain - get own version about health of some subchain(pool)
+
+GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
+
+GET /checkpoint/:type - get the current checkpoint based on type(QT - quorum thread, VT - verification thread).
+
+
+
+
+*/

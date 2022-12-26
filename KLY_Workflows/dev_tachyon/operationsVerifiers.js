@@ -257,11 +257,11 @@ export default {
 
                 if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.isStopped){
 
-                    //Add to SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS and VALIDATORS_METADATA with the default empty template
+                    //Add to SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS and SUBCHAINS_METADATA with the default empty template
 
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS.push(pool)
+                    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.push(pool)
 
-                    SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA[pool]={
+                    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={
                         
                         INDEX:-1,
                     
@@ -317,7 +317,7 @@ export default {
 
             let {sig} = payload
 
-            let {INDEX,HASH,IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+            let {INDEX,HASH,IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
 
             let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -332,37 +332,37 @@ export default {
         
         else if(usedOnQuorumThread){
 
-            // Set the "STOPPED" property to true/false in QT.VALIDATORS_METADATA[<subchain>]
+            // Set the "STOPPED" property to true/false in QT.SUBCHAINS_METADATA[<subchain>]
 
-            let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+            let subchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
 
             if(stop){
 
-                validatorsMetadata.IS_STOPPED=true
+                subchainsMetadata.IS_STOPPED=true
 
-                validatorsMetadata.INDEX = index
+                subchainsMetadata.INDEX = index
 
-                validatorsMetadata.HASH = hash
+                subchainsMetadata.HASH = hash
 
-            }else validatorsMetadata.IS_STOPPED=false //unfreeze
+            }else subchainsMetadata.IS_STOPPED=false //unfreeze
 
         }
         
         else{
 
-            // Set the "STOPPED" property to true/false in VT.VALIDATORS_METADATA[<subchain>]
+            // Set the "STOPPED" property to true/false in VT.SUBCHAINS_METADATA[<subchain>]
 
-            let validatorsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain]
+            let subchainsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
 
             if(stop){
 
-                validatorsMetadata.IS_STOPPED=true
+                subchainsMetadata.IS_STOPPED=true
 
-                validatorsMetadata.INDEX = index
+                subchainsMetadata.INDEX = index
 
-                validatorsMetadata.HASH = hash
+                subchainsMetadata.HASH = hash
 
-            }else validatorsMetadata.IS_STOPPED=false //unfreeze
+            }else subchainsMetadata.IS_STOPPED=false //unfreeze
 
         }        
 
@@ -417,7 +417,7 @@ export default {
         }
         else{
 
-            // On VERIFICATION_THREAD we should delete the pool from VALIDATORS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
+            // On VERIFICATION_THREAD we should delete the pool from SUBCHAINS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
 
             // We just get the special array from cache to push appropriate ids and poolID
 

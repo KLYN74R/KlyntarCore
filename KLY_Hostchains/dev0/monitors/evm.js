@@ -318,7 +318,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 //We'll add checkpoint payload once find it
 
-                //Based on PAYLOAD.VALIDATORS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
+                //Based on PAYLOAD.SUBCHAINS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
                 TIMESTAMP:(+event.returnValues.blocktime)*1000,
 
@@ -338,7 +338,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 PREV_CHECKPOINT_PAYLOAD_HASH
 
-                VALIDATORS_METADATA:{},
+                SUBCHAINS_METADATA:{},
 
                 OPERATIONS:{},
 
@@ -446,7 +446,7 @@ Checkpoint payload contains:
 
 OTHER_CHECKPOINTS (KEY=>VALUE) => (SYMBIOTE_ID=>CHECKPOINT_HEADER) - object with checkpoints from other symbiotes to perform Hivemind activity
 
-VALIDATORS_METADATA - object like this
+SUBCHAINS_METADATA - object like this
 
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
@@ -469,7 +469,7 @@ VALIDATORS_METADATA - object like this
 export default {
 
     // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.QUORUM_THREAD
-    //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the VALIDATORS_METADATA state in checkpoint
+    //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the SUBCHAINS_METADATA state in checkpoint
     /*
     
      Reminder: Checkpoint structure
@@ -494,7 +494,7 @@ export default {
 
                 PREV_CHECKPOINT_PAYLOAD_HASH
 
-                VALIDATORS_METADATA:{
+                SUBCHAINS_METADATA:{
                 
                     VALIDATOR_0 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
@@ -784,7 +784,7 @@ export default {
                 afk:[]
             }
 
-            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[subchain].
+            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain].
                 For this reasons, subchain will be deactivated at least untill the next checkpoint.
                 Also, it should has a valid timestamp(today) to make sure it's between <CURRENT_CHECKPOINT> <=> <NEXT_CHECKPOINT>
             

@@ -56,7 +56,7 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtValidatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
+    let qtValidatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -764,7 +764,7 @@ Accept checkpoints from other validators in quorum and returns own version as an
 
     PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
     
-    VALIDATORS_METADATA: {
+    SUBCHAINS_METADATA: {
                 
         '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
 
@@ -896,18 +896,18 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
         
-        // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
+        // [1] Compare proposed SUBCHAINS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
 
         let metadataUpdate = [], wrongSkipStatusPresent=true
 
-        let subchains = Object.keys(checkpointProposition.VALIDATORS_METADATA)
+        let subchains = Object.keys(checkpointProposition.SUBCHAINS_METADATA)
 
 
         for(let subchain of subchains){
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
 
-            if(checkpointProposition.VALIDATORS_METADATA[subchain].IS_STOPPED !== localVersion.IS_STOPPED) {
+            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== localVersion.IS_STOPPED) {
 
                 wrongSkipStatusPresent=false
 
@@ -915,7 +915,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             }
 
-            if(localVersion.INDEX > checkpointProposition.VALIDATORS_METADATA[subchain].INDEX){
+            if(localVersion.INDEX > checkpointProposition.SUBCHAINS_METADATA[subchain].INDEX){
 
                 // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 
@@ -1014,7 +1014,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-        VALIDATORS_METADATA: {
+        SUBCHAINS_METADATA: {
                 
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
@@ -1144,7 +1144,7 @@ Returns:
 
     {
         PREV_CHECKPOINT_PAYLOAD_HASH: '',
-        VALIDATORS_METADATA: [Object],
+        SUBCHAINS_METADATA: [Object],
         OPERATIONS: [],
         OTHER_SYMBIOTES: {}
     }
