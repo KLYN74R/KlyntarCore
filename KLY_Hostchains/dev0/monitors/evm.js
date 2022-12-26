@@ -273,8 +273,8 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
 
+    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(currentCheckpoint.TIMESTAMP,+event.returnValues.blocktime)){
 
-    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(+event.returnValues.blocktime,currentCheckpoint.TIMESTAMP)){
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
 
@@ -290,7 +290,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //Make sure it's really next
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
-        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let qtPayload = currentCheckpoint.HEADER.PAYLOAD_HASH+currentCheckpoint.HEADER.ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
@@ -336,7 +336,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 ISSUER
 
-                PREV_PAYLOAD_HASH
+                PREV_CHECKPOINT_PAYLOAD_HASH
 
                 VALIDATORS_METADATA:{},
 
@@ -366,7 +366,19 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                                 
                     let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
-                    if(checkpointPayload && checkpointPayload.PREV_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
+                    console.log('RECEIVED PAYLOAD ',checkpointPayload)
+
+                    console.log(checkpointPayload)
+                    console.log(checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH)
+
+                    console.log('CP PREV => ',checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH)
+                    console.log('CURE => ',currentCheckpoint.HEADER.PAYLOAD_HASH);
+
+                    console.log(BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH)
+
+                    if(checkpointPayload && checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
+
+                        console.log('INSIDE')
 
                         validCheckpoint.PAYLOAD = checkpointPayload
 
@@ -439,7 +451,8 @@ VALIDATORS_METADATA - object like this
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
                 INDEX: -1,
-                HASH: 'Poyekhali!@Y.A.Gagarin'
+                HASH: 'Poyekhali!@Y.A.Gagarin',
+                IS_STOPPED:true/false
             }
     
         }

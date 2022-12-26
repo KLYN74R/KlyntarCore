@@ -162,15 +162,15 @@ DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
     poolStorage.isStopped=true
 
     poolStorage.stopCheckpointID=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-    poolStorage.storedMetadata=SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA[validatorPubKey]
+    
+    poolStorage.storedMetadata=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[validatorPubKey]
 
 
     //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
 
     SYMBIOTE_META.QUORUM_THREAD.VALIDATORS.splice(SYMBIOTE_META.QUORUM_THREAD.VALIDATORS.indexOf(validatorPubKey),1)
 
-    delete SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA[validatorPubKey]
+    delete SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[validatorPubKey]
 
 },
 
@@ -196,7 +196,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
         // Structure is <poolID> => true if pool should be deleted
-        SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
 
         //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
         for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
@@ -274,6 +274,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
         }
 
+
+        //Update the WORKFLOW_OPTIONS
+        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+
+
         //After all ops - commit state and make changes to workflow
 
         SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
@@ -281,9 +288,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             atomicBatch.put(recordID,value)
 
         })
-
-        //Update the WORKFLOW_OPTIONS
-        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
         //Clear the QUORUM_THREAD_CACHE
         //TODO:Make more advanced logic
@@ -298,13 +302,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         global.SKIP_PROCEDURE_STAGE_2_BLOCK = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
         // Store checkpoint locally
-        SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.ID,possibleCheckpoint)
+        SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
 
 
         let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
 
         //Create new temporary db for next checkpoint
-        let nextTempDB = level(PATH_RESOLVE(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`),{valueEncoding:'json'})
+        let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
 
 
         //Create mapping & set for the next checkpoint
@@ -352,10 +356,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         await atomicBatch.write()
 
 
-        // Close & delete the temporary db        
+        // Close & delete the old temporary db        
         await SYMBIOTE_META.TEMP.get(qtPayload).DATABASE.close()
-
-        fs.rm(PATH_RESOLVE(`${qtPayload}`),{recursive:true},()=>{})
+        
+        fs.rm(process.env.CHAINDATA_PATH+`/${qtPayload}`,{recursive:true},()=>{})
         
         SYMBIOTE_META.TEMP.delete(qtPayload)
 
@@ -364,6 +368,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
+
+            LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')
 
             // Stop the node to update the software
             GRACEFUL_STOP()
@@ -377,15 +383,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
-
         let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+
+        let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
 
 
         if(checkpointIsFresh && iAmInTheQuorum){
 
             // Fill the checkpoints manager with the latest data
-
-            let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
 
             let currentCheckpointManager = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER
 
@@ -411,6 +416,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //Continue to find checkpoints
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
+
+        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
 
 
     }else{
@@ -453,7 +460,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     let currentSkipProcedureStage1Set = currentTempObject.SKIP_PROCEDURE_STAGE_1 // Set(subchainID)
    
-    let currentSkipProcedureStage2Map = currentTempObject.SKIP_PROCEDURE_STAGE_2 // Map(subchain=>{INDEX,HASh})
+    let currentSkipProcedureStage2Map = currentTempObject.SKIP_PROCEDURE_STAGE_2 // Map(subchain=>{INDEX,HASH})
    
 
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
@@ -675,7 +682,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 VALIDATORS_METADATA: {
                 
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
                     /..other data
             
@@ -866,7 +873,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             VALIDATORS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
                 /..other data
             
@@ -929,7 +936,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey].IS_STOPPED
+                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA[poolPubKey].IS_STOPPED //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
                 potentialCheckpointPayload.VALIDATORS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED}
 
@@ -1213,7 +1220,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
     
-            }).catch(_=>false)
+            }).catch(e=>{
+
+                console.log('FP ERROR ',e)
+
+                return false
+
+            })
     
             // To make sharing async
             promises.push(promise)
@@ -1225,6 +1238,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     }
 
 
+    console.log('FP FOR BLOCK ',blockID,' => ',finalizationProofsMapping)
 
 
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
@@ -1376,6 +1390,8 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     // On this step we should go through the quorum members and share FINALIZATION_PROOF to get the SUPER_FINALIZATION_PROOFS(and this way - finalize the block)
 
     if(commitmentsForCurrentBlock.size>=majority){
+
+        console.log('COMMM FOR BLOCK ',commitmentsForCurrentBlock)
 
         let signers = [...commitmentsForCurrentBlock.keys()]
 
@@ -1811,7 +1827,14 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         // console.log('Answer in health monitoring is => ',answer)
 
-        let {aggregatedPub,aggregatedSignature,afkValidators} = answer?.superFinalizationProof
+        if(!answer.superFinalizationProof){
+
+            candidatesForAnotherCheck.push(answer.pubKey)
+
+            continue
+        }
+
+        let {aggregatedPub,aggregatedSignature,afkValidators} = answer.superFinalizationProof
 
         let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
 
@@ -2432,8 +2455,6 @@ LOAD_GENESIS=async()=>{
     //Inital values of VALIDATORS and VALIDATORS_METADATA on QUORUM_THREAD are the same as on VERIFICATION_THREAD
 
     SYMBIOTE_META.QUORUM_THREAD.VALIDATORS=[...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS]
-
-    SYMBIOTE_META.QUORUM_THREAD.VALIDATORS_METADATA={...SYMBIOTE_META.VERIFICATION_THREAD.VALIDATORS_METADATA}
 
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge

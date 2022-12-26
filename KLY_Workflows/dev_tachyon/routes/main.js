@@ -56,6 +56,8 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    let qtValidatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.VALIDATORS_METADATA
+
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
@@ -90,9 +92,9 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainIsSkippedForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator)
+                let subchainIsStoppedForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtValidatorsMetadata[block.creator].IS_STOPPED
                 
-                if(subchainIsSkippedForCurrentCheckpoint){
+                if(subchainIsStoppedForCurrentCheckpoint){
 
                     !response.aborted && response.end('Subchain is skipped')
         
@@ -291,6 +293,8 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
         }else if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
 
+            console.log('RESPONSE PRESENT HERE ',aggregatedCommitments.blockID)
+
             // Instantly send response
             !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID))
 
@@ -307,9 +311,14 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
-    
+            console.log('GIVING PROOFS ')
+            console.log(signaIsOk)
+            console.log(majorityIsOk)
+            console.log(rootPubIsEqualToReal)
             
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+                console.log('REQUESTS PRESENT HERE ',aggregatedCommitments.blockID)
 
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,{hash:aggregatedCommitments.blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
@@ -399,6 +408,8 @@ getSuperFinalization=async(response,request)=>{
         let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
     
         let superFinalizationProof = await checkpointTempDB.get('SFP:'+request.getParameter(0)).catch(_=>false)
+
+        console.log('MY SPF IS ',superFinalizationProof)
 
         if(superFinalizationProof){
 
@@ -896,11 +907,22 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
         // [1] Compare proposed VALIDATORS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
 
-        let metadataUpdate = []
+        let metadataUpdate = [], wrongSkipStatusPresent=true
 
-        Object.keys(checkpointProposition.VALIDATORS_METADATA).forEach(subchain=>{
+        let subchains = Object.keys(checkpointProposition.VALIDATORS_METADATA)
+
+
+        for(let subchain of subchains){
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
+
+            if(checkpointProposition.VALIDATORS_METADATA[subchain].IS_STOPPED !== localVersion.IS_STOPPED) {
+
+                wrongSkipStatusPresent=false
+
+                break
+
+            }
 
             if(localVersion.INDEX > checkpointProposition.VALIDATORS_METADATA[subchain].INDEX){
 
@@ -919,7 +941,8 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             }
 
-        })
+        }
+
 
         //___________________________________ SUMMARY - WHAT WE HAVE ON THIS STEP ___________________________________
 
@@ -938,7 +961,12 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         */
 
-        if(metadataUpdate.length!==0){
+        if(wrongSkipStatusPresent){
+
+            response.end(JSON.stringify({error:'Wrong <IS_STOPPED> status for subchain'}))
+
+        }
+        else if(metadataUpdate.length!==0){
 
             response.end(JSON.stringify({metadataUpdate}))
 
@@ -997,7 +1025,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         VALIDATORS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
             /..other data
             
@@ -1114,11 +1142,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 /*
 
-To return payload of some checkpoint by ID
+To return payload of some checkpoint by it's hash
 
 Params:
 
-    [0] - checkpointID
+    [0] - payloadHash
 
 
 Returns:
@@ -1137,15 +1165,22 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
 
-        let checkpointID = request.getParameter(0),
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-            checkpoint = await SYMBIOTE_META.CHECKPOINTS.get(checkpointID).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get('TEMP:'+checkpointID).catch(_=>false)
+        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+
+
+        let payloadHash = request.getParameter(0),
+
+            checkpoint = await checkpointTemporaryDB.get(payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).catch(_=>false)
 
         if(checkpoint){
 
-            response.end(JSON.stringify(checkpoint.PAYLOAD))
+            console.log('SEND PAYLOAD BODY ',checkpoint)
 
-        }response.end('No checkpoint')
+            response.end(JSON.stringify(checkpoint))
+
+        }else response.end('No checkpoint')
 
     }else response.end('Route is off')
 
@@ -1268,7 +1303,7 @@ UWS_SERVER
 .get('/get_super_finalization/:BLOCK_ID_AND_HASH',getSuperFinalization)
 
 
-.get('/get_payload_for_checkpoint/:CHECKPOINT_ID',getPayloadForCheckpoint)
+.get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 .post('/special_operations',specialOperationsAccept)
 

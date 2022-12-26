@@ -245,6 +245,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     index = +index
 
 
+
     if(skipStage2Mapping.has(subchain)){
     
         //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
@@ -295,7 +296,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
 
-                                    
+        console.log('IS KOK ',generalAndTypeCheck,' => ',itsProbablySuperFinalizationProof)
                                     
         if(generalAndTypeCheck){
 
@@ -314,6 +315,8 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             
             let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkValidators.length >= majority
+
+            console.log('GENERAL IS OK => ',blockID,' => ',blockHash,' => ',aggregatedSignatureIsOk,' => ',rootQuorumKeyIsEqualToProposed,' => ',majorityVotedForThis)
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
@@ -608,6 +611,9 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //Updated WORKFLOW_OPTIONS
             SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
+            SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+
+
             //Set new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
@@ -633,6 +639,8 @@ SET_UP_NEW_CHECKPOINT=async()=>{
             //_______________________Check the version required for the next checkpoint________________________
 
             if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
+
+                LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
 
                 // Stop the node to update the software
                 GRACEFUL_STOP()
@@ -686,6 +694,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
+        
 
         /*
 
@@ -756,27 +765,42 @@ START_VERIFICATION_THREAD=async()=>{
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
-
-
                 
-            //We can simplify this branch
+
+            //_________________________We can simplify this branch_________________________
+
+
+            // console.log('============ INSIDE BRANCH ============')
+
+            // console.log(currentBlockPresentInCurrentCheckpoint)
+
+            // console.log(updatedIsFreshCheckpoint)
+
+            // console.log(checkPointCompleted)
+
 
             if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
             
-            else if(updatedIsFreshCheckpoint && checkPointCompleted && !currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
-        
-            else if(!currentBlockPresentInCurrentCheckpoint && !checkPointCompleted) {
+            else if(updatedIsFreshCheckpoint && !currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+
+            else if(!currentBlockPresentInCurrentCheckpoint && !checkPointCompleted && !updatedIsFreshCheckpoint) {
 
                 //if no sush block in current uncompleted checkpoint - then we need to skip it.
                 shouldSkip = true
 
             }
 
+
             let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
             //We skip the block if checkpoint is not completed and no such block in checkpoint
             //No matter if checkpoint is fresh or not
+            
+            // console.log('QWERTY => ',block,' => ',quorumSolutionToVerifyBlock)
+            
             if(shouldSkip){
+
+                // console.log('GOING TO SKIP => ',currentValidatorToCheck,' => ',currentSessionMetadata)
 
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.VALIDATOR=currentValidatorToCheck
 
@@ -784,8 +808,8 @@ START_VERIFICATION_THREAD=async()=>{
                                         
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
-            }else if(block && quorumSolutionToVerifyBlock){
 
+            }else if(block && quorumSolutionToVerifyBlock){
 
                 await verifyBlock(block)
             
