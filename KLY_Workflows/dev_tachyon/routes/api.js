@@ -284,6 +284,8 @@ UWS_SERVER
 
 
 /*
+
+
 TODO:
 
 GET /health/:subchain - get own version about health of some subchain(pool)
@@ -292,7 +294,6 @@ GET /plugins - get the list of available plugins runned in the same instance. Vi
 
 GET /checkpoint/:type - get the current checkpoint based on type(QT - quorum thread, VT - verification thread).
 
-
-
+GET 
 
 */

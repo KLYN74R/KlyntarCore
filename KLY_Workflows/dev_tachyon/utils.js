@@ -1,4 +1,4 @@
-import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3, PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -10,7 +10,7 @@ import fetch from 'node-fetch'
 
 import crypto from 'crypto'
 
-
+import fs from 'fs'
 
 
 //Object to work with hostchain
@@ -423,7 +423,7 @@ GET_URL_OF_VALIDATOR = pubKey => SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(stuf
 //SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
 //We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
 //If major version was changed and we still has an old version - we should stop node and update software
-IS_MY_VERSION_OLD = threadID => SYMBIOTE_META[threadID].VERSION >= SYMBIOTE_META.VERSION,
+IS_MY_VERSION_OLD = threadID => SYMBIOTE_META[threadID].VERSION > SYMBIOTE_META.VERSION,
 
 
 

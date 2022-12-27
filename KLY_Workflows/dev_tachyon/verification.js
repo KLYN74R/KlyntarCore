@@ -234,7 +234,13 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
-    let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+
+    // Need for async safety
+    if(vtPayload!==qtPayload) return
+
 
     let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2
 
@@ -384,6 +390,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     let currentTimestamp = GET_GMT_TIMESTAMP(),//due to UTC timestamp format
 
         checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,currentTimestamp)
+
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -679,13 +686,13 @@ START_VERIFICATION_THREAD=async()=>{
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-        let currentValidatorsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
+        let currentSubchainsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
 
-            validatorsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+            subchainsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        if(currentValidatorsMetadataHash === validatorsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+        if(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
 
 
 

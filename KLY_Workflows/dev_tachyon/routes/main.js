@@ -844,6 +844,8 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    let currentPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     let specialOperationsMempool = tempObject.SPECIAL_OPERATIONS_MEMPOOL
@@ -898,7 +900,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
         // [1] Compare proposed SUBCHAINS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
 
-        let metadataUpdate = [], wrongSkipStatusPresent=true
+        let metadataUpdate = [], wrongSkipStatusPresent=false
 
         let subchains = Object.keys(checkpointProposition.SUBCHAINS_METADATA)
 
@@ -907,9 +909,9 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
 
-            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== localVersion.IS_STOPPED) {
+            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED) {
 
-                wrongSkipStatusPresent=false
+                wrongSkipStatusPresent=true
 
                 break
 
@@ -1166,8 +1168,6 @@ getPayloadForCheckpoint=async(response,request)=>{
             checkpoint = await checkpointTemporaryDB.get(payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).catch(_=>false)
 
         if(checkpoint){
-
-            console.log('SEND PAYLOAD BODY ',checkpoint)
 
             response.end(JSON.stringify(checkpoint))
 

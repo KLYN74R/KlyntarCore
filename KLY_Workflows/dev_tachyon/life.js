@@ -371,8 +371,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')
 
+            console.log('\n')
+            console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+        
+
             // Stop the node to update the software
             GRACEFUL_STOP()
+
+            return
 
         }
 
@@ -897,6 +903,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
+
     if(canProposeCheckpoint && iAmInTheQuorum && !checkpointIsFresh){
 
 
@@ -938,7 +945,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey].IS_STOPPED //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
                 potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED}
 
@@ -993,7 +1000,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         console.log('Checkpoints pingbacks is ',checkpointsPingBacks)
 
-        console.log(payloadInJSON)
 
         /*
         

@@ -253,9 +253,9 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
 CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
-    let startOfDayLater = new Date(timestampLater*1000),
+    let startOfDayLater = new Date(timestampLater),
 
-        startOfDayEarlier = new Date(timestampEarlier*1000)
+        startOfDayEarlier = new Date(timestampEarlier)
 
 
     startOfDayLater.setUTCHours(0, 0, 0, 0)
@@ -263,7 +263,7 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
     startOfDayEarlier.setUTCHours(0, 0, 0, 0)
 
 
-    return startOfDayLater-startOfDayEarlier >= 86400
+    return startOfDayLater-startOfDayEarlier >= 86400000
 
 },
 
@@ -273,7 +273,7 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
 
 
-    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(currentCheckpoint.TIMESTAMP,+event.returnValues.blocktime)){
+    if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE((+event.returnValues.blocktime)*1000),currentCheckpoint.TIMESTAMP){
 
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
@@ -633,7 +633,7 @@ export default {
 
             if(block){
 
-                return CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,+block.timestamp)
+                return CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE((+block.timestamp)*1000,SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP)
 
             }
 
