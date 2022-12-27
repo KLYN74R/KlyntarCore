@@ -1165,7 +1165,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let payloadHash = request.getParameter(0),
 
-            checkpoint = await checkpointTemporaryDB.get(payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).catch(_=>false)
+            checkpoint = await checkpointTemporaryDB.get(payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
 
         if(checkpoint){
 

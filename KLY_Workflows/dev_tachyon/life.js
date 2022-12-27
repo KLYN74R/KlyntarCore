@@ -414,14 +414,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             )
 
+            //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
+
+            if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
+
+            //Continue to find checkpoints
+            setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
+
         }
 
-        //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
-
-        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
-
-        //Continue to find checkpoints
-        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
 
         LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
 
@@ -1298,6 +1299,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
         await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof)
 
+        console.log('Added SFP to db ',superFinalizationProof)
 
         // Repeat procedure for the next block and store the progress
 
