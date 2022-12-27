@@ -398,11 +398,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     if(!checkpointIsFresh){
 
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(e=>{
-
-            console.log(e)
-
-        })
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
 
 
         if(nextCheckpoint) {
@@ -774,16 +770,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
 
             //_________________________We can simplify this branch_________________________
-
-
-            // console.log('============ INSIDE BRANCH ============')
-
-            // console.log(currentBlockPresentInCurrentCheckpoint)
-
-            // console.log(updatedIsFreshCheckpoint)
-
-            // console.log(checkPointCompleted)
-
+            
 
             if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
             
@@ -802,11 +789,8 @@ START_VERIFICATION_THREAD=async()=>{
             //We skip the block if checkpoint is not completed and no such block in checkpoint
             //No matter if checkpoint is fresh or not
             
-            // console.log('QWERTY => ',block,' => ',quorumSolutionToVerifyBlock)
             
             if(shouldSkip){
-
-                // console.log('GOING TO SKIP => ',currentValidatorToCheck,' => ',currentSessionMetadata)
 
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
 

@@ -127,19 +127,11 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
         // We should find next range if no more range exists locally
         // Otherwise - get the range from local storage and add to cache
-        console.log(`[${threadID}] HERE because`)
 
-        console.log(weFinishedToEnumThisRange)
-        console.log(isInitialLoad)
-        console.log(wasLatestRangeEmpty)
-
-        console.log('ID is ',nextRangeStartsFrom+`_${threadID}_EVENTS`)
 
         let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+`_${threadID}_EVENTS`).catch(_=>false)
 
         if(range){
-
-            console.log(`[${threadID}] RANGE WAS IN DB`)
             
             SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
@@ -154,8 +146,6 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
         }else{
 
             //Otherwise - query next range
-
-            console.log(`[${threadID}] Going to query`)
             
             let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
 
@@ -179,8 +169,6 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
                     toBlock:lastKnownBlockNumber
     
                 };
-
-                console.log(`[${threadID}] Going to ask `,options)
 
                 //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
                 if(nextRangeStartsFrom>=lastKnownBlockNumber) return
@@ -280,13 +268,6 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         let {ID,PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE,AFK_VALIDATORS} = JSON.parse(event.returnValues.payload)
 
-
-        //_________________________ VERIFY _________________________
-
-        console.log(currentCheckpoint)
-
-        console.log('Checking isNEXT => ',currentCheckpoint.HEADER.ID,' => ',ID)
-
         //Make sure it's really next
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
@@ -354,8 +335,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
             LOG(`Going to find body to checkpoint \x1b[34;1m${validCheckpoint.HEADER.ID} ### ${validCheckpoint.HEADER.PAYLOAD_HASH}`,'S')
 
-            console.log(initURLs)
-
+            
             //__________________________________Start the infinite loop to find the body to checkpoint__________________________________
                 
             let shouldStopWhile=false
@@ -366,19 +346,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                                 
                     let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
-                    console.log('RECEIVED PAYLOAD ',checkpointPayload)
-
-                    console.log(checkpointPayload)
-                    console.log(checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH)
-
-                    console.log('CP PREV => ',checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH)
-                    console.log('CURE => ',currentCheckpoint.HEADER.PAYLOAD_HASH);
-
-                    console.log(BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH)
-
                     if(checkpointPayload && checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
-
-                        console.log('INSIDE')
 
                         validCheckpoint.PAYLOAD = checkpointPayload
 
@@ -576,8 +544,6 @@ export default {
 
 
         if(eventsRange){
-
-            console.log('Received events ',eventsRange)
         
             //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
@@ -585,7 +551,6 @@ export default {
 
                 startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
             
-            console.log('Range pointer ',startFrom)
 
             //Start to enumerate the range of events, starting from position <startFrom>
             

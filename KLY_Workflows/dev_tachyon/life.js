@@ -180,7 +180,6 @@ DELETE_POOLS=async validatorPubKey=>{
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
-    console.log('Finding new checkpoint for QUORUM_THREAD on symbiote')
 
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
@@ -724,9 +723,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     }
 
-    console.log('======================= EVERYTHINT AT ONCE IS =======================')
 
-    console.log(everythingAtOnce)
 
     let sendOptions={
         
@@ -762,9 +759,6 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     let otherAgreements = new Map()
 
 
-    console.log('PINGBACKS IS ',checkpointsPingBacks)
-
-    console.log(myCheckpoint)
     
     for(let {pubKey,sig} of checkpointsPingBacks){
 
@@ -805,10 +799,6 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
-        console.log('=============== FINAL VERSION OF PROPOSED CHECKPOINT IS ')
-
-        console.log(myCheckpoint)
-        console.log(myCheckpoint.PAYLOAD.SUBCHAINS_METADATA)
 
         if(CONFIG.SYMBIOTE.PUB==='7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'){
 
@@ -915,8 +905,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         // Check the safety
         if(!temporaryObject.PROOFS_RESPONSES.get('READY_FOR_CHECKPOINT')){
 
-            console.log('Still dont have. so return')
-
             setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
 
             return
@@ -998,8 +986,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //Run promises
         let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
-
-        console.log('Checkpoints pingbacks is ',checkpointsPingBacks)
 
 
         /*
@@ -1102,10 +1088,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
         */
 
-        console.log('OTHER AGREEMENTS ',otherAgreements)
-
-        console.log('Majority is ',GET_MAJORITY('QUORUM_THREAD'))
-
         if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
 
             // Hooray - we can create checkpoint and publish to hostchain & share among other members
@@ -1146,8 +1128,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             await temporaryObject.DATABASE.put(`CHECKPOINT`,newCheckpoint).catch(_=>false)
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
-
-            console.log('========== GOING TO INITIATE STAGE2 FOR CHECKPOINT ==========')
 
             await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers)
 
@@ -1298,8 +1278,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         BROADCAST('/super_finalization',superFinalizationProof)
 
         await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof)
-
-        console.log('Added SFP to db ',superFinalizationProof)
 
         // Repeat procedure for the next block and store the progress
 
@@ -1728,8 +1706,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let LAST_SEEN = GET_GMT_TIMESTAMP()
 
-        console.log('Checkpoint manager is ',tempObject.CHECKPOINT_MANAGER)
-
         for(let pubKey of tempObject.CHECKPOINT_MANAGER.keys()){
 
             let {INDEX,HASH}=tempObject.CHECKPOINT_MANAGER.get(pubKey)
@@ -1744,8 +1720,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         }
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
-
-        console.log('INSIDE INITIAL ',tempObject.HEALTH_MONITORING)
 
         return
 
@@ -1827,7 +1801,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     for(let answer of healthCheckPingbacks){
 
-        // console.log('Answer in health monitoring is => ',answer)
 
         if(!answer.superFinalizationProof){
 
@@ -2001,7 +1974,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             }
 
-            console.log('NUM OF CHELS WHO IS READY TO SKIP_1 ',pubKeysForAggregation)
 
             //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
 
@@ -2067,8 +2039,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
-
-    console.log('SYMBIOTE HEALTH STATE ',tempObject.HEALTH_MONITORING)
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
