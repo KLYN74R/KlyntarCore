@@ -258,11 +258,10 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
 
 
 
-VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority)=>{
+VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority,rootPub)=>{
 
 
     if(CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE((+event.returnValues.blocktime)*1000),currentCheckpoint.TIMESTAMP){
-
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
 
@@ -271,12 +270,12 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         //Make sure it's really next
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
-        let qtPayload = currentCheckpoint.HEADER.PAYLOAD_HASH+currentCheckpoint.HEADER.ID
 
         //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
         //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
-        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority).catch(_=>false)
+
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,rootPub,'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority).catch(_=>false)
 
         
         if(isNext && signaIsOk) {
@@ -535,7 +534,11 @@ export default {
 
             quorumNumber=SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
 
-            majority = GET_MAJORITY(threadID)
+            majority = GET_MAJORITY(threadID),
+
+            qtPayload = currentCheckpoint.HEADER.PAYLOAD_HASH+currentCheckpoint.HEADER.ID,
+
+            rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+qtPayload)
 
 
         //Find next checkpoint and verify signatures
@@ -560,7 +563,7 @@ export default {
 
                 else{
 
-                    possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority).catch(_=>false)
+                    possibleValidCheckpoint = await VERIFY_AND_RETURN_CHECKPOINT(eventsRange[index],currentCheckpoint,quorumNumber,majority,rootPub).catch(_=>false)
 
                     //We do break here, because valid checkpoint was found
                     if(possibleValidCheckpoint?.PAYLOAD) break

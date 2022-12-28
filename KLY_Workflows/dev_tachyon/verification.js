@@ -393,12 +393,13 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
 
 
+
     //If checkpoint is not fresh - find "fresh" one on hostchain
 
     if(!checkpointIsFresh){
 
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(e=>console.log(e))
 
 
         if(nextCheckpoint) {
@@ -687,15 +688,20 @@ START_VERIFICATION_THREAD=async()=>{
             subchainsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
 
+        if(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint){
+
+            console.log('HASHES ARE EQUAL')
+            
+        }
+        
+
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
         if(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
-
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
         let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
-
 
 
         /*
@@ -767,19 +773,24 @@ START_VERIFICATION_THREAD=async()=>{
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
-                
-
-            //_________________________We can simplify this branch_________________________
             
 
-            if(currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = true
-            
-            else if(updatedIsFreshCheckpoint && !currentBlockPresentInCurrentCheckpoint) quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+            if(currentBlockPresentInCurrentCheckpoint){
 
-            else if(!currentBlockPresentInCurrentCheckpoint && !checkPointCompleted && !updatedIsFreshCheckpoint) {
+                quorumSolutionToVerifyBlock = true
+
+            }
+        
+            else if(!checkPointCompleted) {
 
                 //if no sush block in current uncompleted checkpoint - then we need to skip it.
                 shouldSkip = true
+
+            }
+
+            else if(updatedIsFreshCheckpoint){
+
+                quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
 
             }
 
