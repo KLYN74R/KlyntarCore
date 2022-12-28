@@ -269,8 +269,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
             //Stop this subchain for the next iterations
             SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain].IS_STOPPED=true
     
-            return true
-    
         }    
 
     }

@@ -800,15 +800,13 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
         myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
 
-        if(CONFIG.SYMBIOTE.PUB==='7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'){
 
-            //Store time tracker to DB
-            await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
+        //Store time tracker to DB
+        await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
 
-            //Send the header to hostchain
-            await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
+        //Send the header to hostchain
+        await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
 
-        }
                  
     }
 
@@ -1516,7 +1514,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         let skipStage3Handler = await temporaryObject.DATABASE.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
 
         //No sense to do this procedure for subchain which is already skipped
-        if(skipStage3Handler) continue
+        if(skipStage3Handler || temporaryObject.SKIP_PROCEDURE_STAGE_2.has(subchain)) continue
 
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
         let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
