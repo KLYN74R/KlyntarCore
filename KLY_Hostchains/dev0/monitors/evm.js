@@ -689,9 +689,6 @@ export default {
                 let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
 
-                currentCheckpointTimestamp*=1000
-
-
                 for(let event of events){
 
                     let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
@@ -713,7 +710,7 @@ export default {
                             DATABASE.put('SKIP_STAGE_1:'+subchain,true).then(
 
                                 //Now, we can add to set
-                                ()=> SKIP_PROCEDURE_STAGE_1.add(subchain)
+                                () => SKIP_PROCEDURE_STAGE_1.add(subchain)
     
     
                             ).catch(_=>{})    
@@ -809,9 +806,6 @@ export default {
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
                 let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
-            
-
-                currentCheckpointTimestamp*=1000
 
 
                 for(let event of events){

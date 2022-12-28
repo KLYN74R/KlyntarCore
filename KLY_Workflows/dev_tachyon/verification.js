@@ -117,6 +117,7 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
 
+
     let quorumMembers = await GET_VALIDATORS_URLS(true)
 
     let payloadInJSON = JSON.stringify({subchain})
@@ -125,11 +126,8 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
-    let promises=[]
+    let promises=[], signatures=[], pubKeys=[]
 
-    let signatures=[]
-
-    let pubKeys=[]
 
     let sendOptions={
 
@@ -170,7 +168,7 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
                 signatures.push(sig)
 
-                pubKeys.push(pubKeys)
+                pubKeys.push(pubKey)
 
             }
 
@@ -185,9 +183,10 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
         let aggregatedPub = bls.aggregatePublicKeys(pubKeys)
 
-        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.QUORUM.filter(pub=>!pubKeys.includes(pub))
+        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pub=>!pubKeys.includes(pub))
 
         let object={subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+
 
         //Store locally in temp db
         await checkpointTempDB.put('SKIP_STAGE_3:'+subchain,object).catch(_=>false)
@@ -253,16 +252,22 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
     if(skipStage2Mapping.has(subchain)){
-    
+
+        //{INDEX,HASH}
+        let skipStage2Data = skipStage2Mapping.get(subchain)
+
         //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
-        
-        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,index,blockHash)
+        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH)
+
+        //{INDEX,HASH,IS_STOPPED}
+        let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
+
 
         // Initially, check if subchain was stopped from this height:hash on this checkpoint
-        if(skipStage3Proof && skipStage3Proof.index >= index){
+        if(skipStage3Proof && skipStage3Proof.index === currentMetadata.INDEX && skipStage3Proof.hash === currentMetadata.HASH){
     
             //Stop this subchain for the next iterations
-            if(skipStage3Proof.index === index && skipStage3Proof.hash === blockHash) SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain].IS_STOPPED=true
+            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain].IS_STOPPED=true
     
             return true
     
@@ -399,7 +404,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
     if(!checkpointIsFresh){
 
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(e=>console.log(e))
+        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
 
 
         if(nextCheckpoint) {
@@ -687,12 +692,6 @@ START_VERIFICATION_THREAD=async()=>{
 
             subchainsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
-
-        if(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint){
-
-            console.log('HASHES ARE EQUAL')
-            
-        }
         
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
@@ -738,6 +737,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
+
+
         
         if(currentSessionMetadata.IS_STOPPED){
 

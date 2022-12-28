@@ -447,6 +447,14 @@ healthChecker = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
+    if(CONFIG.SYMBIOTE.PUB==='61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8'){
+
+        response.end(JSON.stringify({err:'No proof'}))
+
+        return
+
+    }
+
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
@@ -541,7 +549,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         if(myLocalHealthCheckingHandler){
 
-            let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
+            let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
             let currentTime = GET_GMT_TIMESTAMP()
 

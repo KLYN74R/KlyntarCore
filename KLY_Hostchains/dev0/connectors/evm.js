@@ -256,7 +256,7 @@ export default class {
 
 		    this.web3.eth.sendSignedTransaction(raw, (err, txHash) => {
 
-                if(err) LOG(`Oops,some has been occured ${err}`,'W')
+                if(err) LOG(`Oops,some error has been occured ${err}`,'W')
                 
                 else LOG(`Skip procedure payload has been published via tx ${txHash}`,'I')
 

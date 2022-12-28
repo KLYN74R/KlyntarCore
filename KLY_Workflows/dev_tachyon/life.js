@@ -645,7 +645,7 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     }
 
-    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING,300)
+    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
 },
 
@@ -1429,6 +1429,8 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
+
+
     // If we don't generate the blocks - skip this function
     if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]){
 
@@ -1488,7 +1490,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     }
 
-    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,300)
+    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,0)
 
 },
 
@@ -1669,7 +1671,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
                 HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
 
-            ).catch(_=>{})
+            ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${subchain} => ${error}`,'W'))
                 
         }
 
@@ -1695,6 +1697,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
     let proofsRequests = tempObject.PROOFS_REQUESTS
+
+    let skipStage1Set = tempObject.SKIP_PROCEDURE_STAGE_1
 
     let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
@@ -1750,12 +1754,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     
     for(let handler of subchainsURLAndPubKey){
-
         
         let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
 
-        //No sense to get the health of pool who has been stopped
-        if(metadataOfCurrentSubchain.IS_STOPPED) continue
+        //No sense to get the health of pool which has been stopped or SKIP_PROCEDURE_STAGE_1 was initiated
+        if(metadataOfCurrentSubchain.IS_STOPPED || skipStage1Set.has(handler.pubKey)) continue
 
 
         let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(r=>{
@@ -1797,6 +1800,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         }
     
     */
+
+
+    console.log('Health pingbacks ',healthCheckPingbacks)
+
 
 
     for(let answer of healthCheckPingbacks){
@@ -1846,7 +1853,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let currentTime = GET_GMT_TIMESTAMP()
 
-    let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT*1000
+    let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
@@ -1870,7 +1877,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate)
 
-        
+
         if(currentTime-localHealthHandler.LAST_SEEN >= afkLimit){
 
             /*
@@ -2027,7 +2034,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     //Send to hostchain
                     HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
 
-                ).catch(_=>{})
+                ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${candidate} => ${error}`,'W'))
 
                 
             }
@@ -2056,6 +2063,7 @@ RESTORE_STATE=async()=>{
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
     
     for(let poolPubKey of validatorsMetadata){
 
@@ -2707,7 +2715,7 @@ PREPARE_SYMBIOTE=async()=>{
         HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
 
 
-        SKIP_PROCEDURE_STAGE_1:new Map(), // set(subchainID)
+        SKIP_PROCEDURE_STAGE_1:new Set(), // set(subchainID)
 
         SKIP_PROCEDURE_STAGE_2:new Map(), // mapping(subchainID=>{INDEX,HASH})
 
