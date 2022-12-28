@@ -68,6 +68,7 @@ GET_FROM_STATE = async recordID => {
 
 
 
+
 GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
 
     return SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)

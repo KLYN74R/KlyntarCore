@@ -833,7 +833,10 @@ START_VERIFICATION_THREAD=async()=>{
         if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
-        setTimeout(START_VERIFICATION_THREAD,(nextBlock||shouldSkip||currentSessionMetadata.FREEZED)?0:CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
+
+        let shouldImmediatelyContinue = nextBlock||shouldSkip||currentSessionMetadata.IS_STOPPED
+
+        setTimeout(START_VERIFICATION_THREAD,shouldImmediatelyContinue ? 0 : CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
 
     

@@ -2954,19 +2954,6 @@ RUN_SYMBIOTE=async()=>{
         },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
 
-        // TODO: Move this function to the moment when we'll get the current QUORUM(via QUORUM_THREAD)
-        // setTimeout(()=>
-
-        //     SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.includes(CONFIG.SYMBIOTE.PUB) && START_AWAKENING_PROCEDURE()
-
-        // ,3000)
-
-
-        //Run another thread to ask for blocks
-        // UPD:We have decied to speed up this procedure during parallelism & plugins
-        // GET_BLOCKS_FOR_FUTURE_WRAPPER()
-
-
     }
 
 }
