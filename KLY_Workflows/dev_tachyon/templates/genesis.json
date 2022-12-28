@@ -12,11 +12,31 @@
             "STAKERS":{},
             "WAITING_ROOM":{}
         
+        },
+        "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
+        
+            "percentage":0.5,
+            "overStake":10000,
+            "whiteList":[],
+            "totalPower":55000,
+            "STAKERS":{},
+            "WAITING_ROOM":{}
+        
+        },
+        "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
+        
+            "percentage":0.5,
+            "overStake":10000,
+            "whiteList":[],
+            "totalPower":55000,
+            "STAKERS":{},
+            "WAITING_ROOM":{}
+        
         }
 
     },
 
-    "CHECKPOINT_TIMESTAMP":1666188167,
+    "CHECKPOINT_TIMESTAMP":1672012980000,
     
     "STATE":{
 
@@ -25,7 +45,24 @@
             "type":"account",
             "balance":200000,
             "uno":0,
-            "nonce":0
+            "nonce":0,
+            "rev_t":0
+        },
+        "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
+            
+            "type":"account",
+            "balance":200000,
+            "uno":0,
+            "nonce":0,
+            "rev_t":0
+        },
+        "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
+            
+            "type":"account",
+            "balance":200000,
+            "uno":0,
+            "nonce":0,
+            "rev_t":0
         },
 
         "0000000000000000000000000000000000000000000000000000000000000000":{

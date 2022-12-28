@@ -89,8 +89,9 @@ let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,event,goingToSpend)=>
 
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event => {
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = (event,senderStorageObject) => {
 
+    
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION === event.v){
 
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
@@ -104,7 +105,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = event => {
         
         if(event.payload.type==='P/B') return ADDONS['verify_BLISS'](signedData,event.creator,event.sig)
         
-        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.account.rev_t).catch(_=>false)      
+        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.rev_t).catch(_=>false)      
 
     }else return false
 
@@ -152,7 +153,7 @@ export let VERIFIERS = {
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee
 
-        event = await FILTERS.TX(event) //pass through the filter
+        event = await FILTERS.TX(event,sender) //pass through the filter
     
         if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
@@ -219,7 +220,7 @@ export let VERIFIERS = {
             goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.payload).length+event.fee
 
         
-        event = await FILTERS.CONTRACT_DEPLOY(event) //pass through the filter
+        event = await FILTERS.CONTRACT_DEPLOY(event,sender) //pass through the filter
 
 
         if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
@@ -294,6 +295,8 @@ export let VERIFIERS = {
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.fee+event.payload.energyLimit
+
+        event = await FILTERS.CONTRACT_CALL(event,sender) //pass through the filter
 
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){

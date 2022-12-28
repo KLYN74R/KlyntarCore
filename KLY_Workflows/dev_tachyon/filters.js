@@ -38,11 +38,16 @@
 
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
+import { GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 
-let VERIFY_WRAP=event=>{
 
-    if(VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event)){
+
+let VERIFY_WRAP=async event=>{
+
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
+
+    if(await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount)){
         
         return {
             

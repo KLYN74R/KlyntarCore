@@ -2234,14 +2234,16 @@ LOAD_GENESIS=async()=>{
 
                 if(genesis.STATE[addressOrContractID].type==='contract'){
 
+                    let {lang,balance,uno,storages,bytecode} = genesis.STATE[addressOrContractID]
+
                     let contractMeta = {
 
                         type:"contract",
-                        lang:genesis.STATE[addressOrContractID].lang,
-                        balance:genesis.STATE[addressOrContractID].balance,
-                        uno:genesis.STATE[addressOrContractID].uno,
-                        storages:genesis.STATE[addressOrContractID].storages,
-                        bytecode:genesis.STATE[addressOrContractID].bytecode
+                        lang,
+                        balance,
+                        uno,
+                        storages,
+                        bytecode
                     
                     } 
 

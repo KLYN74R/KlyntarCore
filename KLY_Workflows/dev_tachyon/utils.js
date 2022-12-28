@@ -1,4 +1,4 @@
-import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3, PATH_RESOLVE} from '../../KLY_Utils/utils.js'
+import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
