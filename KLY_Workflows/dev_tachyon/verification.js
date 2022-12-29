@@ -250,7 +250,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     index = +index
 
 
-
+    
     if(skipStage2Mapping.has(subchain)){
 
         //{INDEX,HASH}

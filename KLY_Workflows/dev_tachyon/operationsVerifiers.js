@@ -314,17 +314,10 @@ export default {
         if(isFromRoute){
 
             //Via routes we accept only the "stop:false" operations. This way, appropriate validator informs the quorum about his activity
-
-            let {sig} = payload
-
-            let {INDEX,HASH,IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
-
-            let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
    
-            if(stop===false && IS_STOPPED && INDEX===index && HASH===hash && await BLS_VERIFY(stop+subchain+index+hash+qtPayload,sig,subchain)){
+            if(stop===false){
 
-                return {stop,subchain,index,hash}
+                return {stop,subchain}
 
             }
 
@@ -599,7 +592,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    MAJOR_VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
 
         /*
         
