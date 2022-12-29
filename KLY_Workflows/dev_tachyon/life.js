@@ -818,7 +818,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
-    //__________________________ If we've runned the second stage - skip the code bellow __________________________
+    //__________________________ If we've runned the second stage - skip the code below __________________________
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -1564,7 +1564,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
             
         //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_2 _____________________
-        // We'll potentially need it in code bellow
+        // We'll potentially need it in code below
         let signaturesForAggregation = [], pubKeysForAggregation = []
         
         
@@ -1919,7 +1919,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             
             //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_1 _____________________
 
-            // We'll potentially need it in code bellow
+            // We'll potentially need it in code below
             let signaturesForAggregation = [], pubKeysForAggregation = []
 
 
@@ -2438,7 +2438,7 @@ LOAD_GENESIS=async()=>{
 
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
-    // If your stake/unstake tx was bellow this line - it might be burned. However, the line is set by QUORUM, so it should be safe
+    // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
     SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=-1
     
     SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1

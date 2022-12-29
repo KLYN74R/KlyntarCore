@@ -467,15 +467,15 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // let acc0Stat = await GET_ACCOUNT_DATA(user0.pub)
 // let acc1Stat = await GET_ACCOUNT_DATA(user1.pub)
-// let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
+let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
 // let acc3Stat = await GET_ACCOUNT_DATA(user3.pub)
 
-// let tblsAccStat = await GET_ACCOUNT_DATA(tblsAccounts.rootPub)
+let tblsAccStat = await GET_ACCOUNT_DATA(tblsAccounts.rootPub)
 
 
 // console.log(acc0Stat)
 // console.log(acc1Stat)
-// console.log(acc2Stat)
+console.log(acc2Stat)
 // console.log(acc3Stat)
 
-// console.log(tblsAccStat)
+console.log(tblsAccStat)

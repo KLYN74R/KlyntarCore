@@ -112,7 +112,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
 //____________________DEFINE PATHS_______________________
 
-//All content bellow are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
+//All content below are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
 [
 
     'CHAINDATA',//Data of symbiote

@@ -106,14 +106,14 @@ export default {
 
     {
         bytecode:'',(empty)
-        lang:'SPEC/<name of contract>'
+        lang:'spec/<name of contract>'
         constructorParams:[]
     }
 
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('SPEC/')) && Array.isArray(event.payload.constructorParams)
+        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('spec/')) && Array.isArray(event.payload.constructorParams)
         &&
         await VERIFY_WRAP(event)
 

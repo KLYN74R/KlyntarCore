@@ -207,7 +207,7 @@ export let VERIFIERS = {
 
     {
         bytecode:'',(empty)
-        lang:'SPEC/<name of contract>'
+        lang:'spec/<name of contract>'
         constructorParams:[]
     }
 
@@ -226,7 +226,7 @@ export let VERIFIERS = {
         if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
 
-            if(event.payload.lang.startsWith('SPEC/')){
+            if(event.payload.lang.startsWith('spec/')){
 
                 let typeofContract = event.payload.lang.split('/')[1]
 
@@ -307,7 +307,7 @@ export let VERIFIERS = {
 
             if(contractMeta){
 
-                if(contractMeta.lang.startsWith('SPEC/')){
+                if(contractMeta.lang.startsWith('spec/')){
 
                     let typeofContract = contractMeta.lang.split('/')[1]
 

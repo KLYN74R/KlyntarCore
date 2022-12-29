@@ -15,7 +15,7 @@ export let CONTRACT = {
     
     {
         bytecode:'',(empty)
-        lang:'SPEC/stakingPool'
+        lang:'spec/stakingPool'
         constructorParams:[]
     }
 
@@ -36,7 +36,7 @@ export let CONTRACT = {
             poolAlreadyExists = await SYMBIOTE_META.STATE.get(blsPubKey+'(POOL)').catch(_=>false)
 
 
-        if(!poolAlreadyExists && overStake>0 && Array.isArray(whiteList)){
+        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList)){
 
             let contractMetadataTemplate = {
 
