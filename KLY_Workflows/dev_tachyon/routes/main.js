@@ -1,6 +1,6 @@
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
-import {BROADCAST,BLS_VERIFY,SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
+import {BROADCAST,BLS_VERIFY,BLS_SIG,BLOCKLOG,GET_MAJORITY} from '../utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -162,7 +162,7 @@ acceptBlocks=response=>{
                     )
                     
 
-                    let commitment = await SIG(blockID+hash+qtPayload)
+                    let commitment = await BLS_SIG(blockID+hash+qtPayload)
 
                     //Put to local storage to prevent double voting
                     await tempObject.DATABASE.put(blockID,commitment).then(()=>
@@ -552,7 +552,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
                     
                     status:'SKIP',
                     
-                    sig:await SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload)
+                    sig:await BLS_SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload)
                 
                 }))
 
@@ -966,7 +966,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
 
-            let sig = await SIG(BLAKE3(JSON.stringify(checkpointProposition)))
+            let sig = await BLS_SIG(BLAKE3(JSON.stringify(checkpointProposition)))
 
             response.end(JSON.stringify({sig}))
 
@@ -1087,7 +1087,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(payloadIsAlreadyInDb){
 
-        let sig = await SIG('STAGE_2'+payloadHash)
+        let sig = await BLS_SIG('STAGE_2'+payloadHash)
 
         response.end(JSON.stringify({sig}))
 
@@ -1121,7 +1121,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             // Generate the signature for the second stage
 
-            let sig = await SIG('STAGE_2'+payloadHash)
+            let sig = await BLS_SIG('STAGE_2'+payloadHash)
 
             response.end(JSON.stringify({sig}))
 

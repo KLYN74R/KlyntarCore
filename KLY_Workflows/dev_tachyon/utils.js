@@ -227,7 +227,7 @@ BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 },
 
 
-SIG=data=>BLS.singleSig(data,PRIVATE_KEY),
+BLS_SIG=data=>BLS.singleSig(data,PRIVATE_KEY),
 
 
 
@@ -291,7 +291,7 @@ BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubK
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            SIG(JSON.stringify(data)).then(sig=>
+            BLS_SIG(JSON.stringify(data)).then(sig=>
 
                 fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 

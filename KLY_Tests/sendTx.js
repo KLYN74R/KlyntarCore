@@ -118,7 +118,9 @@ let tblsAccounts = {
 
         id:'084fed08b978af4d7d196a7446a86b58009e636b611db16211b65a9aadff2905'
 
-    }
+    },
+
+    rootPub:'bedc88644f0deea4c0a77ba687712f494a1af7d8869f09768a0db42284f89d17b7b9225e0c87c2cb5511907dfd5eae3a53d789298721039e833770de29595880'
 
 }
 
@@ -319,7 +321,7 @@ let MULTISIG_2_TBLS=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+2,msig2TblsPayload)
+    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,6,msig2TblsPayload)
 
     console.log(event)
 
@@ -353,7 +355,7 @@ let TBLS_2_DEFAULT=async()=>{
         v:WORKFLOW_VERSION,
         creator:rootPub,
         type:TX_TYPES.TX,
-        nonce:1,
+        nonce:3,
         fee:FEE,
         payload:tblsPayload,
         sig:''
@@ -378,11 +380,11 @@ let TBLS_2_DEFAULT=async()=>{
 
     console.log(template)
 
-    console.log('IS TBLS OK => ',tbls.verifyTBLS(template.creator,template.sig,dataToSign+' '))
+    console.log('IS TBLS OK => ',tbls.verifyTBLS(template.creator,template.sig,dataToSign))
 
-    // let status = await SEND_EVENT(event)
+    let status = await SEND_EVENT(template)
 
-    // console.log(status)
+    console.log(status)
 
 }
 
@@ -398,7 +400,7 @@ let DEFAULT_2_POST_QUANTUM=async()=>{
 
     let pqcPayload={
 
-        to:postQuantumDilithium,
+        to:postQuantumDilithium.address,
         
         amount:7
     
@@ -456,13 +458,24 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // TBLS_2_DEFAULT()
 
-DILITHIUM_2_MULTISIG()
+// DILITHIUM_2_MULTISIG()
+
+
 
 //__________________________ GET INFO __________________________
 
 
-// let accData3 = await GET_ACCOUNT_DATA('61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8')
-// let accData4 = await GET_ACCOUNT_DATA('75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG')
+let acc0Stat = await GET_ACCOUNT_DATA(user0.pub)
+let acc1Stat = await GET_ACCOUNT_DATA(user1.pub)
+let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
+let acc3Stat = await GET_ACCOUNT_DATA(user3.pub)
 
-// console.log(accData3)
-// console.log(accData4)
+let tblsAccStat = await GET_ACCOUNT_DATA(tblsAccounts.rootPub)
+
+
+// console.log(acc0Stat)
+// console.log(acc1Stat)
+// console.log(acc2Stat)
+// console.log(acc3Stat)
+
+console.log(tblsAccStat)
