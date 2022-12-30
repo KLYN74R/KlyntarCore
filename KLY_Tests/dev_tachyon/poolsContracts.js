@@ -419,6 +419,50 @@ From the previous step, the state looks like this
 
 ![*] ------------------------------------------------------ How to get rewards --------------------------------------------------------
 
+Imagine that you want to get rewards from pool. Since previous step we have the following in state
 
+
+[Pool storage]:
+    
+    {
+
+        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
+        value: {
+            percentage: 0.7,
+            overStake: 0,
+            whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
+            totalPower: 55000-X,
+            STAKERS: {
+
+                '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
+                    
+                    KLY:55000-X,
+                    UNO:0,
+                    REWARD:Y
+                }                
+
+            },
+            WAITING_ROOM: {}
+        
+        }
+
+    }
+
+
+0) You need to call the <getReward> function of pool to move the FULL reward(since previous reward withdraw) to your account
+
+TX_TYPE=CONTRACT_CALL
+
+PAYLOAD={
+
+    contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+    method:'getReward',
+    energyLimit:0
+    params:[]
+    imports:[]
+
+}
+
+1) If OK - then you'll notice that your account state contains +Y on balance
 
 */

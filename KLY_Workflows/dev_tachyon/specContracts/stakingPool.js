@@ -209,7 +209,7 @@ export let CONTRACT = {
     */
     getReward:async event => {
 
-        let pool=event.payload,
+        let pool=event.payload.contractID,
 
             poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
 
