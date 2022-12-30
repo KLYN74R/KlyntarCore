@@ -100,7 +100,9 @@ export let CONTRACT = {
     
     stake:async event => {
 
-        let {pool,amount,units}=event.payload,
+        let pool=event.payload.contractID,
+
+            {amount,units}=event.payload.params[0]
 
             poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
 
@@ -165,7 +167,9 @@ export let CONTRACT = {
     */
     unstake:async event => {
 
-        let {pool,amount,units}=event.payload,
+        let pool=event.payload.contractID,
+
+            {amount,units}=event.payload.params[0],
 
             poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
 
