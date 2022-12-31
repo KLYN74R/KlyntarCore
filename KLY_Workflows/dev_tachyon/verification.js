@@ -257,7 +257,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         if(alreadySkipped) return {skip:true,verify:false}
 
 
-        
+
         //{INDEX,HASH}
         let skipStage2Data = skipStage2Mapping.get(subchain)
 
@@ -286,7 +286,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
     
-    if(superFinalizationProof) return true
+    if(superFinalizationProof) return {skip:false,verify:true}
     
 
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
@@ -335,7 +335,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
-                return true
+                return {skip:false,verify:true}
 
             }
 
@@ -345,7 +345,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //If we can't find - try next time
 
-    return false
+    return {skip:false,verify:false}
 
 },
 
