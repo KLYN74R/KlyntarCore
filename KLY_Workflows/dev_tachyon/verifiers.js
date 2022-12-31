@@ -232,7 +232,7 @@ export let VERIFIERS = {
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    SPECIAL_CONTRACTS[typeofContract].CONTRACT.constructor(event,atomicBatch) // do deployment logic
+                    SPECIAL_CONTRACTS.get(typeofContract).constructor(event,atomicBatch) // do deployment logic
 
                     sender.balance-=goingToSpend
             
@@ -313,7 +313,9 @@ export let VERIFIERS = {
 
                     if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                        SPECIAL_CONTRACTS[typeofContract].CONTRACT[event.payload.method](event,atomicBatch)
+                        let contract = SPECIAL_CONTRACTS.get(typeofContract)
+                        
+                        contract[event.payload.method](event,atomicBatch)
 
                         sender.balance-=goingToSpend
             

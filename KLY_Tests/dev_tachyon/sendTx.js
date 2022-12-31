@@ -151,7 +151,7 @@ let postQuantumBliss={
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:6666/account/${account}`)
+    return fetch(`http://localhost:6665/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -287,7 +287,7 @@ let MULTISIG_2_MULTISIG=async()=>{
     let msig2MsigPayload={
 
         // Required if the sender is a multisig
-        active:user0.pub,
+        active:user3.pub,
         afk:[],
         rev_t:0,
         to:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
@@ -455,7 +455,7 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // DEFAULT_2_DEFAULT()
 
-MULTISIG_2_MULTISIG()
+// MULTISIG_2_MULTISIG()
 
 // MULTISIG_2_TBLS()
 
@@ -468,7 +468,13 @@ MULTISIG_2_MULTISIG()
 //__________________________ GET INFO __________________________
 
 
-// let acc0Stat = await GET_ACCOUNT_DATA(user0.pub)
+// console.log(await GET_ACCOUNT_DATA(user0.pub))
+
+let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL')
+
+console.log(acc0Stat)
+
+
 // let acc1Stat = await GET_ACCOUNT_DATA(user1.pub)
 // let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
 // // let acc3Stat = await GET_ACCOUNT_DATA(user3.pub)

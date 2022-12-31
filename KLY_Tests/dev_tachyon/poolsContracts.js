@@ -648,6 +648,15 @@ let DEPLOY_POOL_CONTRACT=async()=>{
         nonce:1,
         fee:FEE,
         payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            afk:[],
+
+            //____________________ For contract _____________________
+
             bytecode:'',
             lang:'spec/stakingPool',
             constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
@@ -664,6 +673,10 @@ let DEPLOY_POOL_CONTRACT=async()=>{
     console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
 
     console.log(poolContractCreationTx)
+
+    let status = await SEND_EVENT(poolContractCreationTx)
+
+    console.log('POOL DEPLOYMENT STATUS => ',status);
 
 }
 
