@@ -884,20 +884,11 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
         }
         
-    ).map(
-        
-        operation => {
-
-            console.log('DEBUG: TO EX => ',operation)
-
-            return operation.id
-        }
-        
-    )
-
-    console.log('DEBUG: Exclude => ',excludeSpecOperations)
+    ).map(operation => operation.id)
 
 
+
+    
     if(excludeSpecOperations.length !== 0){
 
         response.end(JSON.stringify({excludeSpecOperations}))

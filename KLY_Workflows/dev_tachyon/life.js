@@ -1164,8 +1164,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             for(let {excludeSpecOperations} of checkpointsPingBacks){
 
                 if(excludeSpecOperations && excludeSpecOperations.length!==0){
-
-                    console.log('DEBUG: Proposition to exclude ',excludeSpecOperations)
                     
                     for(let operationID of excludeSpecOperations){
 
@@ -2207,6 +2205,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
     LOG(`Number of phantoms to generate \x1b[32;1m${phantomBlocksNumber}`,'I')
 
+    let atomicBatch = SYMBIOTE_META.BLOCKS.batch()
 
     for(let i=0;i<phantomBlocksNumber;i++){
 
@@ -2230,12 +2229,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
         let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally
-        await SYMBIOTE_META.BLOCKS.put(blockID,blockCandidate)
+        atomicBatch.put(blockID,blockCandidate)
            
     }
 
     //Update the GENERATION_THREAD after all
-    await SYMBIOTE_META.STATE.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+    atomicBatch.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+
+    await atomicBatch.write()
 
 },
 
@@ -2617,7 +2618,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.STATE.get('GT').catch(error=>
+    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
         
         error.notFound
         ?

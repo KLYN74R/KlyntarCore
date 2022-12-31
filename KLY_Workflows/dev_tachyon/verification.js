@@ -238,7 +238,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     // Need for async safety
-    if(vtPayload!==qtPayload) return
+    if(vtPayload!==qtPayload) return {skip:false,verify:false}
 
 
     let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2
@@ -249,10 +249,15 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     index = +index
 
-
     
     if(skipStage2Mapping.has(subchain)){
 
+        let alreadySkipped = await checkpointTemporaryDB.get('FINAL_SKIP_STAGE_3:'+subchain).catch(_=>false)
+
+        if(alreadySkipped) return {skip:true,verify:false}
+
+
+        
         //{INDEX,HASH}
         let skipStage2Data = skipStage2Mapping.get(subchain)
 
@@ -267,8 +272,10 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         if(skipStage3Proof && skipStage3Proof.index === currentMetadata.INDEX && skipStage3Proof.hash === currentMetadata.HASH){
     
             //Stop this subchain for the next iterations
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain].IS_STOPPED=true
-    
+            let successWrite = await checkpointTemporaryDB.put('FINAL_SKIP_STAGE_3:'+subchain,true).then(()=>true).catch(_=>false)
+
+            if(successWrite) return {skip:true,verify:false}
+             
         }    
 
     }
@@ -788,8 +795,12 @@ START_VERIFICATION_THREAD=async()=>{
 
             else if(updatedIsFreshCheckpoint){
 
-                quorumSolutionToVerifyBlock = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+                let {skip,verify} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
 
+                quorumSolutionToVerifyBlock = verify
+
+                shouldSkip = skip
+            
             }
 
 
