@@ -177,140 +177,152 @@ DELETE_POOLS=async validatorPubKey=>{
 
 
 
+EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=>{
+
+    
+    //_______________________________Perform SPEC_OPERATIONS_____________________________
+    let workflowOptionsTemplate = {...SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS}
+        
+
+    SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+    
+    // Structure is <poolID> => true if pool should be deleted
+    SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
+    
+
+    //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
+    for(let operation of nextCheckpoint.PAYLOAD.OPERATIONS){
+     
+        if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
+    
+    }
+
+    //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
+
+    for(let operation of nextCheckpoint.PAYLOAD.OPERATIONS){
+        
+        if(operation.type==='SLASH_UNSTAKE') continue
+          /*
+            
+            Perform changes here before move to the next checkpoint
+            
+            OPERATION in checkpoint has the following structure
+            {
+                type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+            }
+            
+        */
+        await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
+    
+    }
+
+    //_______________________Remove pools if lack of staking power_______________________
+
+    let toRemovePools = [], promises = []
+
+
+    for(let validator of SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS){
+
+        let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+
+            if(poolStorage.totalPower<SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+
+        })
+
+        promises.push(promise)
+
+    }
+
+    await Promise.all(promises.splice(0))
+    
+    //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
+    
+    let deleteValidatorsPoolsPromises=[]
+    
+    for(let address of toRemovePools){
+    
+        deleteValidatorsPoolsPromises.push(DELETE_POOLS(address))
+    
+    }
+
+    await Promise.all(deleteValidatorsPoolsPromises.splice(0))
+
+
+    //________________________________Remove rogue pools_________________________________
+
+    
+    let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+    
+    let slashObjectKeys = Object.keys(slashObject)
+        
+
+    for(let poolIdentifier of slashObjectKeys){
+    
+        //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+    
+        atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+    
+    
+    }
+
+
+    //Update the WORKFLOW_OPTIONS
+    SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+    SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+
+
+    //After all ops - commit state and make changes to workflow
+
+    SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
+
+        atomicBatch.put(recordID,value)
+
+    })
+
+
+},
+
+
+
+
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
+
+    //_________________________________FIND THE NEXT CHECKPOINT AND EXECUTE SPECIAL_OPERATIONS INSTANTLY_________________________________
 
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
 
     if(possibleCheckpoint){
 
-
-        //_______________________________Perform SPEC_OPERATIONS_____________________________
-
-
-        let workflowOptionsTemplate = {...SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS}
-            
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
-
-        // Structure is <poolID> => true if pool should be deleted
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
-
-        //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-        for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
-         
-            if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
-
-        }
-
-        //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
-
-        for(let operation of possibleCheckpoint.PAYLOAD.OPERATIONS){
-
-            if(operation.type==='SLASH_UNSTAKE') continue
-
-              /*
-                
-                Perform changes here before move to the next checkpoint
-                
-                OPERATION in checkpoint has the following structure
-
-                {
-                    type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
-                }
-                
-
-            */
-
-            await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
-
-        }
-
-        //_______________________Remove pools if lack of staking power_______________________
-
-        let toRemovePools = [], promises = []
-
-        for(let validator of SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS){
-
-            let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
-
-                if(poolStorage.totalPower<SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
-
-            })
-
-            promises.push(promise)
-
-        }
-
-        await Promise.all(promises.splice(0))
-
-        //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
-
-        let deleteValidatorsPoolsPromises=[]
-
-        for(let address of toRemovePools){
-
-            deleteValidatorsPoolsPromises.push(DELETE_POOLS(address))
-
-        }
-
-        await Promise.all(deleteValidatorsPoolsPromises.splice(0))
-
-
-        //________________________________Remove rogue pools_________________________________
-
         // These operations must be atomic
         let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
 
-        let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
-            
-        for(let poolIdentifier of slashObjectKeys){
+        // Execute special operations in checkpoint
+        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(possibleCheckpoint,atomicBatch)
 
-            //slashObject has the structure like this <pool> => <{delayedIds,pool}>
-            atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
-        
-        }
-
-
-        //Update the WORKFLOW_OPTIONS
-        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
-
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
-
-
-        //After all ops - commit state and make changes to workflow
-
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
-
-            atomicBatch.put(recordID,value)
-
-        })
-
-        //Clear the QUORUM_THREAD_CACHE
-        //TODO:Make more advanced logic
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.clear()
-
-
+        // Get the FullID of old checkpoint
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        //Update the block height to keep progress on hostchain
 
-        global.SKIP_PROCEDURE_STAGE_1_BLOCK = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
-        global.SKIP_PROCEDURE_STAGE_2_BLOCK = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
+        // Update the block height to keep progress on hostchain
+        global.SKIP_PROCEDURE_STAGE_1_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
+        global.SKIP_PROCEDURE_STAGE_2_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
 
         // Store checkpoint locally
         SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
-
-
+    
+    
         let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
-
-        //Create new temporary db for next checkpoint
+    
+        // Create new temporary db for next checkpoint
         let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
 
 
-        //Create mapping & set for the next checkpoint
+        // Create mappings & set for the next checkpoint
         let nextTemporaryObject={
 
             SPECIAL_OPERATIONS_MEMPOOL:new Map(),
@@ -332,35 +344,22 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             DATABASE:nextTempDB
             
         }
+
+
+        //____________ Create the copy of QT to store it before we'll start to produce commitments & finalization proofs for the next checkpoint ____________
+
+
+        let copyOfQuorumThread = {...SYMBIOTE_META.QUORUM_THREAD}
+
+        copyOfQuorumThread.CHECKPOINT = possibleCheckpoint
+
+        copyOfQuorumThread.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
+
+        // Commit changes
         
-        //Set next temporary object
-        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
-
-        //Set new checkpoint
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
-
-        //Create new quorum based on new SUBCHAINS_METADATA state
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
-
-        //Get the new ROOTPUB and delete the old one
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
-        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
-
-
-        //_______________________________________Commit changes____________________________________________
-
-
-        atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
+        atomicBatch.put('QT',copyOfQuorumThread)
 
         await atomicBatch.write()
-
-
-        // Close & delete the old temporary db        
-        await SYMBIOTE_META.TEMP.get(qtPayload).DATABASE.close()
-        
-        fs.rm(process.env.CHAINDATA_PATH+`/${qtPayload}`,{recursive:true},()=>{})
-        
-        SYMBIOTE_META.TEMP.delete(qtPayload)
 
 
         //_______________________Check the version required for the next checkpoint________________________
@@ -381,6 +380,31 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         }
 
+        // Set next temporary object by ID
+        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
+    
+        // Set new checkpoint
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
+    
+        // Create new quorum based on new SUBCHAINS_METADATA state
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
+    
+        // Get the new ROOTPUB and delete the old one
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+    
+        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
+
+
+        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
+
+
+        // Close & delete the old temporary db 
+
+        await SYMBIOTE_META.TEMP.get(qtPayload).DATABASE.close()
+        
+        fs.rm(process.env.CHAINDATA_PATH+`/${qtPayload}`,{recursive:true},()=>{})
+        
+        SYMBIOTE_META.TEMP.delete(qtPayload)
 
 
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
@@ -423,16 +447,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
 
-        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
-
-
     }else{
 
         // Wait for the new checkpoint will appear on hostchain
 
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
 
+
     }
+
 
 },
 
@@ -610,6 +633,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         let operationID = BLAKE3(JSON.stringify(operation.payload))
 
+        operation.id=operationID
+
         await currentCheckpointDB.put('SPECIAL_OPERATION:'+subchain,operation).then(()=>{
 
             // Only after that we can add it to mempool and create stage_3 proof
@@ -758,7 +783,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     
     let otherAgreements = new Map()
 
-
+    console.log(checkpointsPingBacks)
+  
     
     for(let {pubKey,sig} of checkpointsPingBacks){
 
@@ -1139,6 +1165,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 if(excludeSpecOperations && excludeSpecOperations.length!==0){
 
+                    console.log('DEBUG: Proposition to exclude ',excludeSpecOperations)
+                    
                     for(let operationID of excludeSpecOperations){
 
                         let operationToDelete = temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
@@ -1701,6 +1729,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
+
     if(tempObject.HEALTH_MONITORING.size===0){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
@@ -2084,16 +2113,13 @@ RESTORE_STATE=async()=>{
         if(skipStage2Proof) tempObject.SKIP_PROCEDURE_STAGE_2.set(poolPubKey,skipStage2Proof)
 
 
-        let skipOperationRelatedToThisPool = await tempObject.DATABASE.put('SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
+        let skipOperationRelatedToThisPool = await tempObject.DATABASE.get('SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
 
         if(skipOperationRelatedToThisPool){
 
-            // Get the hash(id)
-            let operationID = BLAKE3(JSON.stringify(skipOperationRelatedToThisPool.payload))
-
             //Store to mempool of special operations
             
-            tempObject.SPECIAL_OPERATIONS_MEMPOOL.set(operationID,skipOperationRelatedToThisPool)
+            tempObject.SPECIAL_OPERATIONS_MEMPOOL.set(skipOperationRelatedToThisPool.id,skipOperationRelatedToThisPool)
 
         }
 
@@ -2917,7 +2943,6 @@ RUN_SYMBIOTE=async()=>{
 
         //6.Run function to work with finalization stuff and avoid async problems
         FINALIZATION_PROOFS_SYNCHRONIZER()
-
 
         let promises=[]
 

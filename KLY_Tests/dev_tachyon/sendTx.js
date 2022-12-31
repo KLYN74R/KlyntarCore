@@ -14,11 +14,14 @@
  */
 
 
-import {SIG} from '../KLY_Utils/utils.js'
+import {SIG} from '../../KLY_Utils/utils.js'
 import {hash} from 'blake3-wasm'
 import fetch from 'node-fetch'
-import bls from '../KLY_Utils/signatures/multisig/bls.js'
-import tbls from '../KLY_Utils/signatures/threshold/tbls.js'
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
+
+
+
 
 
 //___________________________________________ CONSTANTS POOL ___________________________________________
@@ -287,8 +290,8 @@ let MULTISIG_2_MULTISIG=async()=>{
         active:user0.pub,
         afk:[],
         rev_t:0,
-        to:user3.pub,
-        amount:1337
+        to:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+        amount:100000
     
     }
 
@@ -452,7 +455,7 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // DEFAULT_2_DEFAULT()
 
-// MULTISIG_2_MULTISIG()
+MULTISIG_2_MULTISIG()
 
 // MULTISIG_2_TBLS()
 
@@ -467,15 +470,15 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // let acc0Stat = await GET_ACCOUNT_DATA(user0.pub)
 // let acc1Stat = await GET_ACCOUNT_DATA(user1.pub)
-let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
-// let acc3Stat = await GET_ACCOUNT_DATA(user3.pub)
+// let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
+// // let acc3Stat = await GET_ACCOUNT_DATA(user3.pub)
 
-let tblsAccStat = await GET_ACCOUNT_DATA(tblsAccounts.rootPub)
+// let tblsAccStat = await GET_ACCOUNT_DATA(tblsAccounts.rootPub)
 
 
-// console.log(acc0Stat)
-// console.log(acc1Stat)
-console.log(acc2Stat)
-// console.log(acc3Stat)
+// // console.log(acc0Stat)
+// // console.log(acc1Stat)
+// console.log(acc2Stat)
+// // console.log(acc3Stat)
 
-console.log(tblsAccStat)
+// console.log(tblsAccStat)

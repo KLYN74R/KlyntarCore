@@ -873,7 +873,12 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             if(specialOperationsMempool.has(operation.id)){
 
                 // If operation exists - check if it's STOP_VALIDATOR operation. Mark it if it's <SKIP> operation(i.e. stop=true)
-                if(operation.type==='STOP_VALIDATOR' && operation.payload.stop === true) subchainsToSkipThatCantBeExcluded.delete(operation.payload.subchain)
+                if(operation.type==='STOP_VALIDATOR' && operation.payload.stop === true) {
+
+                    subchainsToSkipThatCantBeExcluded.delete(operation.payload.subchain)
+                }
+
+                return false
 
             }else return true // Exclude operations which we don't have
         
@@ -881,11 +886,16 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
     ).map(
         
-        operation => operation.id
+        operation => {
+
+            console.log('DEBUG: TO EX => ',operation)
+
+            return operation.id
+        }
         
     )
 
-
+    console.log('DEBUG: Exclude => ',excludeSpecOperations)
 
 
     if(excludeSpecOperations.length !== 0){

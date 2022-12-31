@@ -383,18 +383,251 @@ DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
 
 
 //Function to find,validate and process logic with new checkpoint
-SET_UP_NEW_CHECKPOINT=async()=>{
+SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
-    //When we reach the limits of current checkpoint - then we need to do extra logic
 
-    //Add extra logic to remove/add new validators, assign/reassign account to some thread, set QUORUM and so on
+    //When we reach the limits of current checkpoint - then we need to execute the special operations
+
+    if(limitsReached && !checkpointIsCompleted){
+
+
+        let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
+
+
+        //_____________________________To change it via operations___________________________
+
+        let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
+        
+        SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+
+        //___________________Create array of delayed unstaking transactions__________________
+
+        SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
+
+        //_____________________________Create object for slashing____________________________
+
+        // Structure <pool> => <{delayedIds,pool}>
+        SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+
+        //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
+        for(let operation of operations){
+        
+            if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
+        
+        }
+
+
+        //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
+        
+        
+        //____________________Go through the SPEC_OPERATIONS and perform it__________________
+
+        for(let operation of operations){
+    
+            if(operation.type==='SLASH_UNSTAKE') continue
+
+            /*
+            
+            Perform changes here before move to the next checkpoint
+            
+            OPERATION in checkpoint has the following structure
+
+            {
+                type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+            }
+            
+
+            */
+
+            await OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
+    
+        }
+
+
+        //_______________________Remove pools if lack of staking power_______________________
+
+
+        let toRemovePools = [], promises = []
+
+        for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS){
+
+            let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+
+                if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+
+            })
+
+            promises.push(promise)
+
+        }
+
+        await Promise.all(promises.splice(0))
+
+        //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
+
+        let deleteValidatorsPoolsPromises=[]
+
+        for(let address of toRemovePools){
+
+            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS(address))
+
+        }
+
+        await Promise.all(deleteValidatorsPoolsPromises.splice(0))
+
+
+        //________________________________Remove rogue pools_________________________________
+
+        // These operations must be atomic
+        let atomicBatch = SYMBIOTE_META.STATE.batch()
+
+        let slashObject = await GET_FROM_STATE('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
+        
+        for(let poolIdentifier of slashObjectKeys){
+
+            //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+            atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+
+            let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
+
+            //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
+            for(let id of arrayOfDelayed){
+
+                let delayedArray = await GET_FROM_STATE('DEL_OPER_'+id)
+
+                // Each object in delayedArray has the following structure {fromPool,to,amount,units}
+                let toDeleteArray = []
+
+                for(let i=0;i<delayedArray.length;i++){
+
+                    if(delayedArray[i].fromPool===poolIdentifier) toDeleteArray.push(i)
+
+                }
+
+                // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
+
+                for(let txid of delayedArray) delayedArray.splice(txid,1) //remove single tx
+
+            }
+
+
+        }
+
+
+        //______________Perform earlier delayed operations & add new operations______________
+
+        let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
+
+        //If it's first checkpoints - add this array
+        if(!delayedTableOfIds) delayedTableOfIds=[]
+
+        
+        let currentCheckpointID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID ,
+        
+            idsToDelete = []
+
+
+        for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
+
+            //Here we get the arrays of delayed operatins from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+
+            if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointID){
+
+                let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
+
+                if(oldDelayOperations){
+
+                    for(let delayedTX of oldDelayOperations){
+
+                        /*
+
+                            Get the accounts and add appropriate amount of KLY / UNO
+
+                            delayedTX has the following structure
+
+                            {
+                                fromPool:<id of pool that staker withdraw stake from>,
+
+                                to:<staker pubkey/address>,
+                    
+                                amount:<number>,
+                    
+                                units:< KLY | UNO >
+                    
+                            }
+                        
+                        */
+
+                        let account = await GET_ACCOUNT_ON_SYMBIOTE(delayedTX.to)
+
+                        //Return back staked KLY / UNO to the state of user's account
+                        if(delayedTX.units==='KLY') account.balance += delayedTX.amount
+
+                        else account.uno += delayedTX.amount
+                        
+
+                    }
+
+
+                    //Remove ID (delayedID) from delayed table of IDs because we already used it
+                    idsToDelete.push(i)
+
+                }
+
+            }
+
+        }
+
+        //Remove "spent" ids
+        for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
+
+
+
+        //Also, add the array of delayed operations from THIS checkpoint if it's not empty
+        let currentArrayOfDelayedOperations = await GET_FROM_STATE('DELAYED_OPERATIONS')
+        
+        if(currentArrayOfDelayedOperations.length !== 0){
+
+            delayedTableOfIds.push(currentCheckpointID)
+
+            SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointID,currentArrayOfDelayedOperations)
+
+        }
+
+        //_______________________Commit changes after operations here________________________
+
+        //Updated WORKFLOW_OPTIONS
+        SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+
+        SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+
+
+        // Mark checkpoint as completed not to repeat the operations twice
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
+
+
+        //Commit the changes of state using atomic batch
+        SYMBIOTE_META.STATE_CACHE.forEach(
+            
+            (value,recordID) => atomicBatch.put(recordID,value)
+            
+        )
+
+
+        atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+
+        await atomicBatch.write()
+    
+    }
+
+
+    //________________________________________ FIND NEW CHECKPOINT ________________________________________
 
 
     let currentTimestamp = GET_GMT_TIMESTAMP(),//due to UTC timestamp format
 
         checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,currentTimestamp)
-
-
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -407,219 +640,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         if(nextCheckpoint) {
 
-            
-            let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
-
-
-            //_____________________________To change it via operations___________________________
-
-            let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
-            
-            SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
-
-            //___________________Create array of delayed unstaking transactions__________________
-
-            SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
-
-            //_____________________________Create object for slashing____________________________
-
-            // Structure <pool> => <{delayedIds,pool}>
-            SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
-
-            //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-            for(let operation of operations){
-            
-                if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
-            
-            }
-
-
-            //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
-            
-            
-            //____________________Go through the SPEC_OPERATIONS and perform it__________________
-
-            for(let operation of operations){
-        
-                if(operation.type==='SLASH_UNSTAKE') continue
-
-                /*
-                
-                Perform changes here before move to the next checkpoint
-                
-                OPERATION in checkpoint has the following structure
-
-                {
-                    type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
-                }
-                
-
-                */
-
-                await OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
-        
-            }
-
-
-            //_______________________Remove pools if lack of staking power_______________________
-
-
-            let toRemovePools = [], promises = []
-
-            for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS){
-
-                let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
-
-                    if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
-
-                })
-
-                promises.push(promise)
-
-            }
-
-            await Promise.all(promises.splice(0))
-
-            //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
-
-            let deleteValidatorsPoolsPromises=[]
-
-            for(let address of toRemovePools){
-
-                deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS(address))
-
-            }
-
-            await Promise.all(deleteValidatorsPoolsPromises.splice(0))
-
-
-            //________________________________Remove rogue pools_________________________________
-
-            // These operations must be atomic
-            let atomicBatch = SYMBIOTE_META.STATE.batch()
-
-            let slashObject = await GET_FROM_STATE('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
-            
-            for(let poolIdentifier of slashObjectKeys){
-
-                //slashObject has the structure like this <pool> => <{delayedIds,pool}>
-                atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
-
-                let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
-
-                //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
-                for(let id of arrayOfDelayed){
-
-                    let delayedArray = await GET_FROM_STATE('DEL_OPER_'+id)
-
-                    // Each object in delayedArray has the following structure {fromPool,to,amount,units}
-                    let toDeleteArray = []
-
-                    for(let i=0;i<delayedArray.length;i++){
-
-                        if(delayedArray[i].fromPool===poolIdentifier) toDeleteArray.push(i)
-
-                    }
-
-                    // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
-
-                    for(let txid of delayedArray) delayedArray.splice(txid,1) //remove single tx
-
-                }
-
-
-            }
-
-
-            //______________Perform earlier delayed operations & add new operations______________
-
-            let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
-
-            //If it's first checkpoints - add this array
-            if(!delayedTableOfIds) delayedTableOfIds=[]
-
-            
-            let currentCheckpointID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID ,
-            
-                idsToDelete = []
-
-
-            for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
-
-                //Here we get the arrays of delayed operatins from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
-
-                if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointID){
-
-                    let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
-
-                    if(oldDelayOperations){
-
-                        for(let delayedTX of oldDelayOperations){
-
-                            /*
-
-                                Get the accounts and add appropriate amount of KLY / UNO
-
-                                delayedTX has the following structure
-
-                                {
-                                    fromPool:<id of pool that staker withdraw stake from>,
-
-                                    to:<staker pubkey/address>,
-                        
-                                    amount:<number>,
-                        
-                                    units:< KLY | UNO >
-                        
-                                }
-                            
-                            */
-
-                            let account = await GET_ACCOUNT_ON_SYMBIOTE(delayedTX.to)
-
-                            //Return back staked KLY / UNO to the state of user's account
-                            if(delayedTX.units==='KLY') account.balance += delayedTX.amount
-
-                            else account.uno += delayedTX.amount
-                            
-
-                        }
-
-
-                        //Remove ID (delayedID) from delayed table of IDs because we already used it
-                        idsToDelete.push(i)
-
-                    }
-
-                }
-
-            }
-
-            //Remove "spent" ids
-            for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
-
-
-
-            //Also, add the array of delayed operations from THIS checkpoint if it's not empty
-            let currentArrayOfDelayedOperations = await GET_FROM_STATE('DELAYED_OPERATIONS')
-            
-            if(currentArrayOfDelayedOperations.length !== 0){
-
-                delayedTableOfIds.push(currentCheckpointID)
-
-                SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointID,currentArrayOfDelayedOperations)
-
-            }
-
-            //_______________________Commit changes after operations here________________________
-
-            //Updated WORKFLOW_OPTIONS
-            SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
-
-            SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
-
-
             //Set new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
@@ -629,17 +649,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             //Get the new rootpub
             SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
-
-
-            SYMBIOTE_META.STATE_CACHE.forEach(
-                
-                (value,recordID) => atomicBatch.put(recordID, value)
-                
-            )
-
-            atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
-
-            await atomicBatch.write()
 
 
             //_______________________Check the version required for the next checkpoint________________________
@@ -653,12 +662,7 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
             }
 
-        }
-
-        else {
-
-            //Even if we can't find new valid checkpoint and current checkpoint is non fresh - mark it as completed
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
+        } else {
 
             LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT/1000} seconds ...`,'I')
 
@@ -666,11 +670,6 @@ SET_UP_NEW_CHECKPOINT=async()=>{
 
         }
     
-    }else{
-
-        //If we reach the limits of checkpoint but it's still fresh - then mark it as "completed"
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
-
     }
 
 },
@@ -693,7 +692,7 @@ START_VERIFICATION_THREAD=async()=>{
         
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        if(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint || SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED) await SET_UP_NEW_CHECKPOINT()
+        await SET_UP_NEW_CHECKPOINT(currentSubchainsMetadataHash === subchainsMetadataHashFromCheckpoint,SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED)
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
