@@ -2700,6 +2700,41 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
+
+    //_______________________________Check the version of QT and VT and if need - update________________________________
+    
+    if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
+
+        LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')
+
+        console.log('\n')
+        console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+    
+
+        // Stop the node to update the software
+        GRACEFUL_STOP()
+
+        return
+
+    }
+
+
+    if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
+
+        LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
+
+        console.log('\n')
+        console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+    
+
+        // Stop the node to update the software
+        GRACEFUL_STOP()
+
+        return
+
+    }
+
+
     
     //_____________________________________Set some values to stuff cache___________________________________________
 
