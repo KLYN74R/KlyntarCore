@@ -364,7 +364,7 @@ WAIT_SOME_TIME=async()=>
 
 
 
-DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
+DELETE_VALIDATOR_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -455,13 +455,13 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //_______________________Remove pools if lack of staking power_______________________
 
 
-        let toRemovePools = [], promises = []
+        let poolsToBeRemoved = [], promises = []
 
         for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS){
 
             let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-                if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+                if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push(validator)
 
             })
 
@@ -475,9 +475,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         let deleteValidatorsPoolsPromises=[]
 
-        for(let address of toRemovePools){
+        for(let poolBLSAddress of poolsToBeRemoved){
 
-            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS(address))
+            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS_WHO_HAS_LACK_OF_STAKING_POWER(poolBLSAddress))
 
         }
 
@@ -489,7 +489,11 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         // These operations must be atomic
         let atomicBatch = SYMBIOTE_META.STATE.batch()
 
-        let slashObject = await GET_FROM_STATE('SLASH_OBJECT'), slashObjectKeys = Object.keys(slashObject)
+        let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
+        
+        let slashObjectKeys = Object.keys(slashObject)
+        
+
         
         for(let poolIdentifier of slashObjectKeys){
 

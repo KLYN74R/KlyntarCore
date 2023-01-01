@@ -152,7 +152,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 
-DELETE_POOLS=async validatorPubKey=>{
+DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -242,7 +242,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=
     
     for(let address of toRemovePools){
     
-        deleteValidatorsPoolsPromises.push(DELETE_POOLS(address))
+        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER(address))
     
     }
 

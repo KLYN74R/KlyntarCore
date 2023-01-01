@@ -143,16 +143,53 @@ export default {
             
             */
 
-            if(poolStorage){
+            if(!poolStorage){
 
-                //If everything is ok - add or slash totalPower of the pool
+                let poolTemplateForQt = {
 
-                if(type==='+') poolStorage.totalPower+=amount
+                    totalPower:0,       
+                    lackOfTotalPower:true,
+                    stopCheckpointID:-1,
+                    storedMetadata:{}
+                
+                }
+
+                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
+
+                poolStorage = SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
+            
+            }
+            
+
+            //If everything is ok - add or slash totalPower of the pool
+
+            if(type==='+') poolStorage.totalPower+=amount
                     
-                else poolStorage.totalPower-=amount
-                    
-                //Put to cache that this tx was spent
-                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            else poolStorage.totalPower-=amount
+            
+
+            //Put to cache that this tx was spent
+            SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+
+            
+            let workflowConfigs = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
+
+
+            if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
+
+                
+                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS.push(pool)
+        
+                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
+
+
+                // Make it "null" again
+
+                poolStorage.lackOfTotalPower=false
+
+                poolStorage.stopCheckpointID=-1
+
+                poolStorage.storedMetadata={}
 
             }
         
@@ -194,7 +231,7 @@ export default {
             
             */
 
-     //To check payload received from route
+            //To check payload received from route
 
 
             let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
@@ -203,10 +240,9 @@ export default {
 
 
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
+            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
 
-                stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
-
+            let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
             
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
@@ -253,6 +289,8 @@ export default {
                 delete poolStorage.WAITING_ROOM[txid]
 
 
+                let workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
                 if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
@@ -261,15 +299,25 @@ export default {
 
                     SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.push(pool)
 
-                    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={
-                        
-                        INDEX:-1,
-                    
-                        HASH:'Poyekhali!@Y.A.Gagarin',
+                    if(!poolStorage.storedMetadata.HASH){
 
-                        IS_STOPPED:false
+                        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
                     
+                    }else{
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
+                            
+                            INDEX:-1,
+                        
+                            HASH:'Poyekhali!@Y.A.Gagarin',
+    
+                            IS_STOPPED:false
+                        
+                        }
+
                     }
+
+                    // Make it "null" again
 
                     poolStorage.lackOfTotalPower=false
 
@@ -379,6 +427,7 @@ export default {
                 delayedIds - array of IDs of delayed operations to get it and remove "UNSTAKE" txs from state
             }
 
+            
         */
 
         let {delayedIds,pool}=payload

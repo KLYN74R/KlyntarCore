@@ -406,7 +406,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
         type:'CONTRACT_CALL',
-        nonce:11,
+        nonce:3,
         fee:FEE,
         payload:{
             
@@ -452,7 +452,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 }
 
 
-// SEND_STAKE_TX()
+SEND_STAKE_TX()
 
 
 
