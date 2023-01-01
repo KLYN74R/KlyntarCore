@@ -304,6 +304,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Execute special operations in checkpoint
         await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(possibleCheckpoint,atomicBatch)
 
+        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
+
         // Get the FullID of old checkpoint
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -1649,7 +1651,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
         //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
 
-        if(pubKeysForAggregation.length>=GET_MAJORITY('QUORUM_THREAD')){
+        if(pubKeysForAggregation.length >= GET_MAJORITY('QUORUM_THREAD')){
 
             /*
                 

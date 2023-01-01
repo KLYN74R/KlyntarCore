@@ -151,7 +151,7 @@ let postQuantumBliss={
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:6665/account/${account}`)
+    return fetch(`http://localhost:6666/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -287,8 +287,10 @@ let MULTISIG_2_MULTISIG=async()=>{
     let msig2MsigPayload={
 
         // Required if the sender is a multisig
-        active:user3.pub,
+        active:user0.pub,
         afk:[],
+
+        type:'M',
         rev_t:0,
         to:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
         amount:100000
@@ -470,7 +472,7 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL')
+let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)')
 
 console.log(acc0Stat)
 

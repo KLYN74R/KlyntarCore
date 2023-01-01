@@ -645,7 +645,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
         type:'CONTRACT_DEPLOY',
-        nonce:1,
+        nonce:4,
         fee:FEE,
         payload:{
             
@@ -682,7 +682,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
 
 
-// DEPLOY_POOL_CONTRACT()
+DEPLOY_POOL_CONTRACT()
 
 
 
@@ -768,7 +768,8 @@ TX_TYPE=CONTRACT_CALL, required payload is
 }
 
 
-SEND_STAKE_TX()
+// SEND_STAKE_TX()
+
 
 
 

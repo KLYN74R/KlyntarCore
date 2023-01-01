@@ -170,7 +170,7 @@ export let VERIFIERS = {
                 }
                 
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
-                if(event.payload.rev_t) recipient.rev_t=event.payload.rev_t
+                if(typeof event.payload.rev_t === 'number') recipient.rev_t=event.payload.rev_t
     
                 SYMBIOTE_META.STATE_CACHE.set(event.payload.to,recipient)//add to cache to collapse after all events in blocks of block
             
@@ -232,7 +232,7 @@ export let VERIFIERS = {
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    SPECIAL_CONTRACTS.get(typeofContract).constructor(event,atomicBatch) // do deployment logic
+                    await SPECIAL_CONTRACTS.get(typeofContract).constructor(event,atomicBatch) // do deployment logic
 
                     sender.balance-=goingToSpend
             
@@ -315,7 +315,7 @@ export let VERIFIERS = {
 
                         let contract = SPECIAL_CONTRACTS.get(typeofContract)
                         
-                        contract[event.payload.method](event,atomicBatch)
+                        await contract[event.payload.method](event,atomicBatch)
 
                         sender.balance-=goingToSpend
             

@@ -613,6 +613,8 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         // Mark checkpoint as completed not to repeat the operations twice
         SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
 
+        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
+
 
         //Commit the changes of state using atomic batch
         SYMBIOTE_META.STATE_CACHE.forEach(
