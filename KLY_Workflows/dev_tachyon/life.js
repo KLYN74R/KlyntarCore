@@ -159,7 +159,7 @@ DELETE_POOLS=async validatorPubKey=>{
     let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(validatorPubKey+'(POOL)_STORAGE_POOL')
 
 
-    poolStorage.isStopped=true
+    poolStorage.lackOfTotalPower=true
 
     poolStorage.stopCheckpointID=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
     

@@ -371,7 +371,7 @@ DELETE_VALIDATOR_POOLS=async validatorPubKey=>{
     let poolStorage = await GET_FROM_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
 
 
-    poolStorage.isStopped=true
+    poolStorage.lackOfTotalPower=true
 
     poolStorage.stopCheckpointID=SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 

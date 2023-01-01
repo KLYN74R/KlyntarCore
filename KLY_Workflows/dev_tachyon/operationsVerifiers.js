@@ -22,7 +22,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.isStopped || SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
@@ -128,7 +128,7 @@ export default {
 
 
 
-            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool)
+            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
 
             /* 
             
@@ -136,7 +136,7 @@ export default {
 
                 {
                     totalPower:<number>
-                    isStopped:<boolean>
+                    lackOfTotalPower:<boolean>
                     stopCheckpointID:<number>
                     storedMetadata:{INDEX,HASH}
                 }
@@ -255,7 +255,7 @@ export default {
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.isStopped){
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
 
                     //Add to SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS and SUBCHAINS_METADATA with the default empty template
 
@@ -271,7 +271,7 @@ export default {
                     
                     }
 
-                    poolStorage.isStopped=false
+                    poolStorage.lackOfTotalPower=false
 
                     poolStorage.stopCheckpointID=-1
 

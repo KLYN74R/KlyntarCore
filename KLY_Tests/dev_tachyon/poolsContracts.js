@@ -1,3 +1,155 @@
+import {SIG} from '../../KLY_Utils/utils.js'
+import {hash} from 'blake3-wasm'
+import fetch from 'node-fetch'
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+
+
+
+//___________________________________________ CONSTANTS POOL ___________________________________________
+
+
+
+const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
+
+const WORKFLOW_VERSION = 0
+
+const FEE = 5
+
+const TX_TYPES = {
+
+    TX:'TX', // default address <=> address tx
+    CONTRACT_DEPLOY:'CONTRACT_DEPLOY',
+    CONTRACT_CALL:'CONTRACT_CALL',
+    EVM_CALL:'EVM_CALL',
+    MIGRATE_TO_EVM:'MIGRATE_TO_EVM'
+
+}
+
+const SIG_TYPES = {
+    
+    DEFAULT:'D',                    // Default ed25519
+    TBLS:'T',                       // TBLS(threshold sig)
+    POST_QUANTUM_DIL:'P/D',         // Post-quantum Dilithium(2/3/5,2 used by default)
+    POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
+    MULTISIG:'M'                    // Multisig BLS
+}
+
+const SPECIAL_OPERATIONS_TYPES={
+
+    STAKING_CONTRACT_CALL:'STAKING_CONTRACT_CALL',
+    STOP_VALIDATOR:'STOP_VALIDATOR',
+    SLASH_UNSTAKE:'SLASH_UNSTAKE',
+    REMOVE_FROM_WAITING_ROOM:'REMOVE_FROM_WAITING_ROOM',
+    UPDATE_RUBICON:'UPDATE_RUBICON',
+    WORKFLOW_UPDATE:'WORKFLOW_UPDATE',
+    VERSION_UPDATE:'VERSION_UPDATE',
+
+}
+
+//___________________________________________ TEST ACCOUNTS ___________________________________________
+
+
+// BLS multisig
+const POOL_OWNER = {
+
+    privateKey: '8cd685bd53078dd908dc49c40eb38c46305eba1473348b0a573f3598a5c2e32f',
+    pubKey: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
+    
+}
+
+
+//___________________________________________ FUNCTIONS ___________________________________________
+
+
+let GET_ACCOUNT_DATA=async account=>{
+
+    return fetch(`http://localhost:6666/account/${account}`)
+
+    .then(r=>r.json()).catch(_=>{
+    
+        console.log(_)
+
+        console.log(`Can't get chain level data`)
+
+    })
+
+}
+
+
+let BLAKE3=v=>hash(v).toString('hex')
+
+
+let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
+
+
+    let template = {
+
+        v:WORKFLOW_VERSION,
+        creator:account.pub,
+        type:txType,
+        nonce,
+        fee:FEE,
+        payload,
+        sig:''
+    
+    }
+
+    template.payload.type=sigType
+
+    if(sigType===SIG_TYPES.DEFAULT){
+
+        template.sig = await SIG(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
+
+    }else if (sigType===SIG_TYPES.MULTISIG){
+        
+        template.sig = await bls.singleSig(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
+    
+    }
+
+    return template
+
+}
+
+
+
+
+let SEND_EVENT=event=>{
+
+    return fetch('http://localhost:6666/event',
+
+        {
+        
+            method:'POST',
+        
+            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
+    
+        }
+
+    ).then(r=>r.text()).catch(console.log)
+
+}
+
+
+
+let SEND_SPECIAL_OPERATION=(type,payload)=>{
+
+    return fetch('http://localhost:6666/special_operations',
+
+        {
+        
+            method:'POST',
+        
+            body:JSON.stringify({type,payload})
+    
+        }
+
+    ).then(r=>r.text()).catch(console.log)
+
+}
+
+
+
+
 /*
 
                                                     This is the set of tests related to the interactions with the pools' contracts.
@@ -90,7 +242,75 @@ After pool's contract deployment we should have the following in state
 
 On this step, we've created everything for pool. But it's still not active because we haven't staked on this. We'll stake during the next test below
 
+*/
 
+
+let DEPLOY_POOL_CONTRACT=async()=>{
+
+
+    /*
+    
+    0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload
+
+    {
+        {
+            bytecode:'',(empty)
+            lang:'spec/stakingPool'
+            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList]
+        }
+    }
+
+    */
+
+    let poolContractCreationTx={
+
+        v:WORKFLOW_VERSION,
+        creator:POOL_OWNER.pubKey,
+        type:'CONTRACT_DEPLOY',
+        nonce:1,
+        fee:FEE,
+        payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            afk:[],
+
+            //____________________ For contract _____________________
+
+            bytecode:'',
+            lang:'spec/stakingPool',
+            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
+        },
+        sig:''
+
+    }
+
+
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_DEPLOY'+JSON.stringify(poolContractCreationTx.payload)+poolContractCreationTx.nonce+FEE
+
+    poolContractCreationTx.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
+
+    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
+
+    console.log(poolContractCreationTx)
+
+    let status = await SEND_EVENT(poolContractCreationTx)
+
+    console.log('POOL DEPLOYMENT STATUS => ',status);
+
+}
+
+
+
+// DEPLOY_POOL_CONTRACT()
+
+
+
+
+
+/*
 
 ![*] -------------------------------------------------------- Staking to existing pool --------------------------------------------------------
 
@@ -151,7 +371,97 @@ The state will look like this
         }
     }
 
+*/
 
+
+let SEND_STAKE_TX=async()=>{
+
+
+    /*
+    
+TX_TYPE=CONTRACT_CALL, required payload is
+
+    {
+
+        contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+        method:'stake',
+        energyLimit:0,
+        params:[A] params to pass to function. A is alias - see below
+        imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
+        
+    }
+
+    This is the single parameter
+    
+    A={
+        amount:55000
+        units:'KLY'
+    }
+
+
+    */
+
+    let stakingTxToPool={
+
+        v:WORKFLOW_VERSION,
+        creator:POOL_OWNER.pubKey,
+        type:'CONTRACT_CALL',
+        nonce:11,
+        fee:FEE,
+        payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            afk:[],
+
+            //____________________ For contract _____________________
+            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+            method:'stake',
+            energyLimit:0,
+            params:[
+
+                {
+                    amount:50000,
+                    units:'KLY'
+                }
+
+            ],
+            imports:[] 
+            
+        },
+
+        sig:''
+
+    }
+
+
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+
+    stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
+
+    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
+
+    console.log(stakingTxToPool)
+
+    let status = await SEND_EVENT(stakingTxToPool)
+
+    console.log('POOL DEPLOYMENT STATUS => ',status);
+
+}
+
+
+// SEND_STAKE_TX()
+
+
+
+
+
+
+
+
+/*
 
 ![*] -------------------------------------------------------- Move stake from WAITING_ROOM to pool --------------------------------------------------------
 
@@ -219,7 +529,7 @@ The only thing that you should take from the previous step - hash of event signa
 
                 '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
                     
-                    KLY:55000,
+                    KLY:50000,
                     UNO:0,
                     REWARD:0
                 }                
@@ -234,7 +544,33 @@ The object {KLY,UNO,REWARD} used for contract logic. We need KLY,UNO to know how
 REWARD shows how much you earned since the last <getReward> call.
 
 
+*/
 
+
+
+
+let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
+
+    let mySpecialOperations = {
+
+        type:'STAKING_CONTRACT_CALL',
+        
+        payload:{
+
+            txid:'63a0bb522d44969a6428ed0d7c6ece4262c932ddeef5c9b6f926e8f2920fd57e',
+            pool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            type:'+',
+            amount:50000
+    
+        }
+    
+    }
+
+}
+
+
+
+/*
 
 ![*] -------------------------------------------------------- How to unstake --------------------------------------------------------
 
@@ -470,307 +806,13 @@ PAYLOAD={
 
 
 
-import {SIG} from '../../KLY_Utils/utils.js'
-import {hash} from 'blake3-wasm'
-import fetch from 'node-fetch'
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 
 
-//___________________________________________ CONSTANTS POOL ___________________________________________
 
 
 
-const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
-const WORKFLOW_VERSION = 0
-
-const FEE = 5
-
-const TX_TYPES = {
-
-    TX:'TX', // default address <=> address tx
-    CONTRACT_DEPLOY:'CONTRACT_DEPLOY',
-    CONTRACT_CALL:'CONTRACT_CALL',
-    EVM_CALL:'EVM_CALL',
-    MIGRATE_TO_EVM:'MIGRATE_TO_EVM'
-
-}
-
-const SIG_TYPES = {
-    
-    DEFAULT:'D',                    // Default ed25519
-    TBLS:'T',                       // TBLS(threshold sig)
-    POST_QUANTUM_DIL:'P/D',         // Post-quantum Dilithium(2/3/5,2 used by default)
-    POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
-    MULTISIG:'M'                    // Multisig BLS
-}
-
-const SPECIAL_OPERATIONS_TYPES={
-
-    STAKING_CONTRACT_CALL:'STAKING_CONTRACT_CALL',
-    STOP_VALIDATOR:'STOP_VALIDATOR',
-    SLASH_UNSTAKE:'SLASH_UNSTAKE',
-    REMOVE_FROM_WAITING_ROOM:'REMOVE_FROM_WAITING_ROOM',
-    UPDATE_RUBICON:'UPDATE_RUBICON',
-    WORKFLOW_UPDATE:'WORKFLOW_UPDATE',
-    VERSION_UPDATE:'VERSION_UPDATE',
-
-}
-
-//___________________________________________ TEST ACCOUNTS ___________________________________________
-
-
-// BLS multisig
-const POOL_OWNER = {
-
-    privateKey: '8cd685bd53078dd908dc49c40eb38c46305eba1473348b0a573f3598a5c2e32f',
-    pubKey: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
-    
-}
-
-
-//___________________________________________ FUNCTIONS ___________________________________________
-
-
-let GET_ACCOUNT_DATA=async account=>{
-
-    return fetch(`http://localhost:6666/account/${account}`)
-
-    .then(r=>r.json()).catch(_=>{
-    
-        console.log(_)
-
-        console.log(`Can't get chain level data`)
-
-    })
-
-}
-
-
-let BLAKE3=v=>hash(v).toString('hex')
-
-
-let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
-
-
-    let template = {
-
-        v:WORKFLOW_VERSION,
-        creator:account.pub,
-        type:txType,
-        nonce,
-        fee:FEE,
-        payload,
-        sig:''
-    
-    }
-
-    template.payload.type=sigType
-
-    if(sigType===SIG_TYPES.DEFAULT){
-
-        template.sig = await SIG(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
-
-    }else if (sigType===SIG_TYPES.MULTISIG){
-        
-        template.sig = await bls.singleSig(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
-    
-    }
-
-    return template
-
-}
-
-
-
-
-let SEND_EVENT=event=>{
-
-    return fetch('http://localhost:6666/event',
-
-        {
-        
-            method:'POST',
-        
-            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
-    
-        }
-
-    ).then(r=>r.text()).catch(console.log)
-
-}
-
-
-
-let SEND_SPECIAL_OPERATION=(type,payload)=>{
-
-    return fetch('http://localhost:6666/special_operations',
-
-        {
-        
-            method:'POST',
-        
-            body:JSON.stringify({type,payload})
-    
-        }
-
-    ).then(r=>r.text()).catch(console.log)
-
-}
-
-
-
-// ![*] ------------------------------------------------------- Pool deployment. See dev_tachyon/specContracts/stakingPool.js --------------------------------------------------------
-
-let DEPLOY_POOL_CONTRACT=async()=>{
-
-
-    /*
-    
-    0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload
-
-    {
-        {
-            bytecode:'',(empty)
-            lang:'spec/stakingPool'
-            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList]
-        }
-    }
-
-    */
-
-    let poolContractCreationTx={
-
-        v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_DEPLOY',
-        nonce:1,
-        fee:FEE,
-        payload:{
-            
-            //________________ Account related stuff ________________
-
-            type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            afk:[],
-
-            //____________________ For contract _____________________
-
-            bytecode:'',
-            lang:'spec/stakingPool',
-            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
-        },
-        sig:''
-
-    }
-
-
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_DEPLOY'+JSON.stringify(poolContractCreationTx.payload)+poolContractCreationTx.nonce+FEE
-
-    poolContractCreationTx.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
-
-    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
-
-    console.log(poolContractCreationTx)
-
-    let status = await SEND_EVENT(poolContractCreationTx)
-
-    console.log('POOL DEPLOYMENT STATUS => ',status);
-
-}
-
-
-
-// DEPLOY_POOL_CONTRACT()
-
-
-
-// ![*] -------------------------------------------------------- Staking to existing pool --------------------------------------------------------
-
-
-
-let SEND_STAKE_TX=async()=>{
-
-
-    /*
-    
-TX_TYPE=CONTRACT_CALL, required payload is
-
-    {
-
-        contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
-        method:'stake',
-        energyLimit:0,
-        params:[A] params to pass to function. A is alias - see below
-        imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
-        
-    }
-
-    This is the single parameter
-    
-    A={
-        amount:55000
-        units:'KLY'
-    }
-
-
-    */
-
-    let stakingTxToPool={
-
-        v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:11,
-        fee:FEE,
-        payload:{
-            
-            //________________ Account related stuff ________________
-
-            type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            afk:[],
-
-            //____________________ For contract _____________________
-            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
-            method:'stake',
-            energyLimit:0,
-            params:[
-
-                {
-                    amount:50000,
-                    units:'KLY'
-                }
-
-            ],
-            imports:[] 
-            
-        },
-
-        sig:''
-
-    }
-
-
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
-
-    stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
-
-    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
-
-    console.log(stakingTxToPool)
-
-    let status = await SEND_EVENT(stakingTxToPool)
-
-    console.log('POOL DEPLOYMENT STATUS => ',status);
-
-}
-
-
-
-
-SEND_STAKE_TX()
 
 
 

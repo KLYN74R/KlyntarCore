@@ -300,7 +300,7 @@ export let VERIFIERS = {
 
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
-            
+
 
             let contractMeta = await GET_FROM_STATE(event.payload.contractID)
 
@@ -314,10 +314,6 @@ export let VERIFIERS = {
                     if(SPECIAL_CONTRACTS.has(typeofContract)){
 
                         let contract = SPECIAL_CONTRACTS.get(typeofContract)
-
-                        console.log('CONTRACT IS ',contract)
-
-                        console.log(event)
                         
                         await contract[event.payload.method](event,atomicBatch)
 

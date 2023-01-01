@@ -9,7 +9,16 @@
             "overStake":10000,
             "whiteList":[],
             "totalPower":55000,
-            "STAKERS":{},
+            "lackOfTotalPower":false,
+            "stopCheckpointID": -1,
+            "storedMetadata": {},
+            "STAKERS":{
+                "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                    "KLY":55000,
+                    "UNO":0,
+                    "REWARD":0
+                }
+            },
             "WAITING_ROOM":{}
         
         },
@@ -19,7 +28,16 @@
             "overStake":10000,
             "whiteList":[],
             "totalPower":55000,
-            "STAKERS":{},
+            "lackOfTotalPower":false,
+            "stopCheckpointID": -1,
+            "storedMetadata": {},
+            "STAKERS":{
+                "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                    "KLY":55000,
+                    "UNO":0,
+                    "REWARD":0
+                }
+            },
             "WAITING_ROOM":{}
         
         },
@@ -29,14 +47,23 @@
             "overStake":10000,
             "whiteList":[],
             "totalPower":55000,
-            "STAKERS":{},
+            "lackOfTotalPower":false,
+            "stopCheckpointID": -1,
+            "storedMetadata": {},
+            "STAKERS":{
+                "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                    "KLY":55000,
+                    "UNO":0,
+                    "REWARD":0
+                }
+            },
             "WAITING_ROOM":{}
         
         }
 
     },
 
-    "CHECKPOINT_TIMESTAMP":1672012980000,
+    "CHECKPOINT_TIMESTAMP":1672570168593,
     
     "STATE":{
 

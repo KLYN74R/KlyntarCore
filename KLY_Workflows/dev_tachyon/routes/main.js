@@ -92,9 +92,9 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainIsStoppedForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtValidatorsMetadata[block.creator].IS_STOPPED
+                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtValidatorsMetadata[block.creator].IS_STOPPED
                 
-                if(subchainIsStoppedForCurrentCheckpoint){
+                if(subchainlackOfTotalPowerForCurrentCheckpoint){
 
                     !response.aborted && response.end('Subchain is skipped')
         

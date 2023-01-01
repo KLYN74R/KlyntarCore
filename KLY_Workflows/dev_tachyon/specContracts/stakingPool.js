@@ -57,7 +57,7 @@ export let CONTRACT = {
 
                 whiteList,
 
-                isStopped:false,
+                lackOfTotalPower:false,
                     
                 stopCheckpointID:-1,
                     
