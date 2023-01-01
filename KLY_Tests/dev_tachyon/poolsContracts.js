@@ -682,8 +682,93 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
 
 
-DEPLOY_POOL_CONTRACT()
+// DEPLOY_POOL_CONTRACT()
 
+
+
+// ![*] -------------------------------------------------------- Staking to existing pool --------------------------------------------------------
+
+
+
+let SEND_STAKE_TX=async()=>{
+
+
+    /*
+    
+TX_TYPE=CONTRACT_CALL, required payload is
+
+    {
+
+        contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+        method:'stake',
+        energyLimit:0,
+        params:[A] params to pass to function. A is alias - see below
+        imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
+        
+    }
+
+    This is the single parameter
+    
+    A={
+        amount:55000
+        units:'KLY'
+    }
+
+
+    */
+
+    let stakingTxToPool={
+
+        v:WORKFLOW_VERSION,
+        creator:POOL_OWNER.pubKey,
+        type:'CONTRACT_CALL',
+        nonce:2,
+        fee:FEE,
+        payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            afk:[],
+
+            //____________________ For contract _____________________
+            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            method:'stake',
+            energyLimit:0,
+            params:[
+
+                {
+                    amount:55000,
+                    units:'KLY'
+                }
+
+            ],
+            imports:[] 
+            
+        },
+
+        sig:''
+
+    }
+
+
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+
+    stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
+
+    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
+
+    console.log(stakingTxToPool)
+
+    let status = await SEND_EVENT(stakingTxToPool)
+
+    console.log('POOL DEPLOYMENT STATUS => ',status);
+
+}
+
+
+SEND_STAKE_TX()
 
 
 

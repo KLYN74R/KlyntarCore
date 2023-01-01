@@ -102,7 +102,7 @@ export let CONTRACT = {
 
         let pool=event.payload.contractID,
 
-            {amount,units}=event.payload.params[0]
+            {amount,units}=event.payload.params[0],
 
             poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
 
