@@ -645,7 +645,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
         type:'CONTRACT_DEPLOY',
-        nonce:4,
+        nonce:1,
         fee:FEE,
         payload:{
             
@@ -682,7 +682,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
 
 
-DEPLOY_POOL_CONTRACT()
+// DEPLOY_POOL_CONTRACT()
 
 
 
@@ -722,7 +722,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
         type:'CONTRACT_CALL',
-        nonce:2,
+        nonce:11,
         fee:FEE,
         payload:{
             
@@ -733,13 +733,13 @@ TX_TYPE=CONTRACT_CALL, required payload is
             afk:[],
 
             //____________________ For contract _____________________
-            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
             method:'stake',
             energyLimit:0,
             params:[
 
                 {
-                    amount:55000,
+                    amount:50000,
                     units:'KLY'
                 }
 
@@ -768,7 +768,9 @@ TX_TYPE=CONTRACT_CALL, required payload is
 }
 
 
-// SEND_STAKE_TX()
+
+
+SEND_STAKE_TX()
 
 
 

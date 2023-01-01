@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE_FOR_QUORUM_THREAD} from '../utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from '../utils.js'
 
 import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
@@ -104,46 +104,43 @@ export let CONTRACT = {
 
             {amount,units}=event.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
+            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
         //Also, instantly check if account is whitelisted
+
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(event.creator))){
-    
+
             let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
             if(stakerAccount){
             
                 let stakeIsOk = (units==='KLY'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
-            
-                if(stakeIsOk){
 
-                    if(poolStorage.totalPower + amount <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
-                        poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
+                    poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
 
-                            checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                        checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
-                            staker:event.creator,
+                        staker:event.creator,
 
-                            amount,
+                        amount,
 
-                            units,
+                        units,
 
-                            type:'+' //means "STAKE"
-                        
-                        }
-
-                        //Reduce number of KLY/UNO from account
-                        if(units==='KLY') stakerAccount.balance-=amount
-                        
-                        else stakerAccount.uno-=amount
-
+                        type:'+' //means "STAKE"
+                    
                     }
 
+                    //Reduce number of KLY/UNO from account
+                    if(units==='KLY') stakerAccount.balance-=amount
+                    
+                    else stakerAccount.uno-=amount
+
                 }
-        
+
             }
     
         }
@@ -171,7 +168,7 @@ export let CONTRACT = {
 
             {amount,units}=event.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL'),
 
             stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
@@ -211,7 +208,7 @@ export let CONTRACT = {
 
         let pool=event.payload.contractID,
 
-            poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL'),
 
             stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 

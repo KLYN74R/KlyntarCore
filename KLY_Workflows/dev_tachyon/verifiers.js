@@ -38,7 +38,7 @@
 
 
 
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from './utils.js'
 
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
@@ -300,9 +300,9 @@ export let VERIFIERS = {
 
 
         if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
+            
 
-
-            let contractMeta = await GET_FROM_STATE_FOR_QUORUM_THREAD(event.payload.contractID)
+            let contractMeta = await GET_FROM_STATE(event.payload.contractID)
 
 
             if(contractMeta){
@@ -314,6 +314,10 @@ export let VERIFIERS = {
                     if(SPECIAL_CONTRACTS.has(typeofContract)){
 
                         let contract = SPECIAL_CONTRACTS.get(typeofContract)
+
+                        console.log('CONTRACT IS ',contract)
+
+                        console.log(event)
                         
                         await contract[event.payload.method](event,atomicBatch)
 
