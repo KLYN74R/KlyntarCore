@@ -1824,9 +1824,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     */
 
 
-    console.log('Health pingbacks ',healthCheckPingbacks)
-
-
 
     for(let answer of healthCheckPingbacks){
 

@@ -209,9 +209,10 @@
         "GET_STUFF":600,
         "GET_SUBCHAINS":600,
         "GET_QUORUM":600,
-        "GET_PAYLOAD_FOR_CHECKPOINT":600
+        "GET_PAYLOAD_FOR_CHECKPOINT":600,
+        "GET_QUORUM_THREAD_CHECKPOINT":600
     },
-    
+
     "TRIGGERS":{
 
         "API_ACCOUNTS":1,
@@ -219,7 +220,7 @@
         "API_NODES":1,
         "API_BLOCK":1,
         "API_SHARE_STUFF":1,
-        
+
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
@@ -229,7 +230,7 @@
         "GET_QUORUM":1,
         "GET_PAYLOAD_FOR_CHECKPOINT":1,
         "GET_HEALTH_CHECKER":1,
-
+        "GET_QUORUM_THREAD_CHECKPOINT":1,
         "SHARE_FINALIZATION_PROOF":1,
         "GET_SUPER_FINALIZATION_PROOFS":1
     },

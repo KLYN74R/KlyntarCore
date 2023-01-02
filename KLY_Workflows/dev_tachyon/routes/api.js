@@ -130,6 +130,7 @@ getSubchainsMetadata=response=>{
 
 
 
+
 //Returns quorum for today(based on QUORUM_THREAD because it shows really current quorum)
 getCurrentQuorum=response=>{
 
@@ -148,6 +149,25 @@ getCurrentQuorum=response=>{
 
 },
 
+
+
+//Returns the checkpoint of QUORUM_THREAD that is currently used by node
+getCurrentQuorumThreadCheckpoint=response=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM_THREAD_CHECKPOINT){
+
+        response
+            
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM_THREAD_CHECKPOINT}`)
+            .onAborted(()=>response.aborted=true)
+
+        response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT))
+
+    }else !response.aborted && response.end('Route is off')
+
+},
 
 
 
@@ -192,15 +212,16 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/stuff/:STUFF_ID/:STUFF_TYPE',stuff)
+.get('/get_quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
 .get('/get_subchains_metadata',getSubchainsMetadata)
 
 .get('/get_quorum',getCurrentQuorum)
-
 // .post('/multiplicity',multiplicity)
 
 .get('/account/:ADDRESS',account)
+
+.get('/stuff/:STUFF_ID',stuff)
 
 .post('/stuff_add',stuffAdd)
 
