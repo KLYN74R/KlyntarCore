@@ -176,8 +176,6 @@ export default {
 
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
-
-                console.log(SYMBIOTE_META.QUORUM_THREAD)
                 
                 SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS.push(pool)
         

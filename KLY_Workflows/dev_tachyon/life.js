@@ -784,8 +784,6 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
     
     let otherAgreements = new Map()
-
-    console.log(checkpointsPingBacks)
   
     
     for(let {pubKey,sig} of checkpointsPingBacks){
