@@ -249,7 +249,8 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     index = +index
 
-    
+
+
     if(skipStage2Mapping.has(subchain)){
 
         let alreadySkipped = await checkpointTemporaryDB.get('FINAL_SKIP_STAGE_3:'+subchain).catch(_=>false)
@@ -494,7 +495,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         let slashObjectKeys = Object.keys(slashObject)
         
 
-        
+
         for(let poolIdentifier of slashObjectKeys){
 
             //slashObject has the structure like this <pool> => <{delayedIds,pool}>
@@ -616,6 +617,13 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         // Mark checkpoint as completed not to repeat the operations twice
         SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
+       
+        //Create new quorum based on new SUBCHAINS_METADATA state
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
+
+        //Get the new rootpub
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+
 
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
 

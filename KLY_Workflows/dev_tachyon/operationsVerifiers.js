@@ -177,8 +177,9 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
 
+                console.log(SYMBIOTE_META.QUORUM_THREAD)
                 
-                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS.push(pool)
+                SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS.push(pool)
         
                 SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
 
@@ -299,7 +300,7 @@ export default {
 
                     SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.push(pool)
 
-                    if(!poolStorage.storedMetadata.HASH){
+                    if(poolStorage.storedMetadata.HASH){
 
                         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
                     
@@ -393,7 +394,7 @@ export default {
 
             // Set the "STOPPED" property to true/false in VT.SUBCHAINS_METADATA[<subchain>]
 
-            let subchainsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
+            let subchainsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
 
             if(stop){
 
@@ -427,7 +428,7 @@ export default {
                 delayedIds - array of IDs of delayed operations to get it and remove "UNSTAKE" txs from state
             }
 
-            
+
         */
 
         let {delayedIds,pool}=payload

@@ -452,10 +452,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 }
 
 
-SEND_STAKE_TX()
-
-
-
+// SEND_STAKE_TX()
 
 
 
@@ -551,13 +548,13 @@ REWARD shows how much you earned since the last <getReward> call.
 
 let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
 
-    let mySpecialOperations = {
+    let mySpecialOperation = {
 
         type:'STAKING_CONTRACT_CALL',
         
         payload:{
 
-            txid:'63a0bb522d44969a6428ed0d7c6ece4262c932ddeef5c9b6f926e8f2920fd57e',
+            txid:'dba4f76346a945aaf6855f2c98904c871a14a4c81d46fd93ff2f248296509c5d',
             pool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
             type:'+',
             amount:50000
@@ -566,7 +563,24 @@ let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
     
     }
 
+
+    let optionsToSend = {
+
+        method:'POST',
+        body:JSON.stringify(mySpecialOperation)
+    
+    }
+    
+    
+    fetch('http://localhost:6666/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:6665/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:6664/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+
+
 }
+
+
+MOVE_FROM_WAITING_ROOM_TO_STAKERS()
 
 
 
