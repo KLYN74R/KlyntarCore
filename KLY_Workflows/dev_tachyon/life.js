@@ -18,6 +18,8 @@ import {START_VERIFICATION_THREAD} from './verification.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
+import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
+
 import Block from './essences/block.js'
 
 import UWS from 'uWebSockets.js'
@@ -2175,7 +2177,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     
     */
 
-                
+
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
 
 
@@ -2234,6 +2236,8 @@ LOAD_GENESIS=async()=>{
     
         checkpointTimestamp,
 
+        evmPromises=[],
+
         startPool = ''
 
 
@@ -2277,11 +2281,18 @@ LOAD_GENESIS=async()=>{
             
         )
 
-        Object.keys(genesis.EVM).forEach(address=>{
+        let evmKeys = Object.keys(genesis.EVM)
+
+        for(let evmKey of evmKeys) {
+
+            let {balance,nonce} = genesis.EVM[evmKey]
 
             //Put KLY-EVM to KLY-EVM state db which will be used by Trie
 
-        })
+            evmPromises.push(KLY_EVM.putAccount(evmKey,balance,nonce))
+
+        }
+
 
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
@@ -2360,6 +2371,7 @@ LOAD_GENESIS=async()=>{
 
     })
 
+    await Promise.all(evmPromises)
 
     await atomicBatch.write()
 
@@ -2584,9 +2596,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         //_______________________________ EVM storage _______________________________
 
-        'KLY_EVM', //Contains state of EVM
+        //'KLY_EVM' Contains state of EVM
 
-        'KLY_EVM_META' //Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        //'KLY_EVM_META' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
 
     ].forEach(

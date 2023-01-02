@@ -63,7 +63,7 @@
 
     },
 
-    "CHECKPOINT_TIMESTAMP":1672570168593,
+    "CHECKPOINT_TIMESTAMP":1672651293121,
     
     "STATE":{
 
@@ -114,8 +114,15 @@
 
         "0x407d73d8a49eeb85d32cf465507dd71d507100c1":{
             
-            "nonce": 2,
-            "balance":1
+            "nonce": 0,
+            "balance":100
+
+        },
+
+        "0x4741c39e6096c192Db6E1375Ff32526512069dF5":{
+            
+            "nonce": 0,
+            "balance":100
 
         }
     
