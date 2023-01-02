@@ -86,6 +86,7 @@ GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
 
 
 
+
 WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl),
 
 
@@ -376,7 +377,7 @@ GET_VALIDATORS_URLS = async withPubkey => {
 
     let promises=[]
 
-    Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA).forEach(pubKey =>
+    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(pubKey =>
         
         promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
@@ -489,7 +490,6 @@ DECRYPT_KEYS=async spinner=>{
     let symbioteConfigReference=CONFIG.SYMBIOTE,
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
-
 
 
     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')

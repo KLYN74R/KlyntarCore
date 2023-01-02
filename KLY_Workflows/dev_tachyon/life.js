@@ -2,9 +2,9 @@ import {
     
     DECRYPT_KEYS,BLOCKLOG,BLS_SIG,BLS_VERIFY,
     
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD, IS_MY_VERSION_OLD,
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
     
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST, GET_RANDOM_BYTES_AS_HEX, CHECK_IF_THE_SAME_DAY
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY
 
 } from './utils.js'
 
@@ -168,8 +168,6 @@ DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
 
-    SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS.splice(SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS.indexOf(validatorPubKey),1)
-
     delete SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
 
 },
@@ -219,10 +217,10 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=
 
     //_______________________Remove pools if lack of staking power_______________________
 
-    let toRemovePools = [], promises = []
+    let toRemovePools = [], promises = [], qtSubchains = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
 
 
-    for(let validator of SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS){
+    for(let validator of qtSubchains){
 
         let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
@@ -1454,7 +1452,6 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
-
     // If we don't generate the blocks - skip this function
     if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]){
 
@@ -2097,7 +2094,9 @@ RESTORE_STATE=async()=>{
 
         let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey]
 
+        
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
+        
         tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
 
 
@@ -2107,7 +2106,9 @@ RESTORE_STATE=async()=>{
 
         let skipStage2Proof = await tempObject.DATABASE.get('SKIP_STAGE_2:'+poolPubKey).catch(_=>false) // {INDEX,HASH} / false
 
+        
         if(skipStage1Proof) tempObject.SKIP_PROCEDURE_STAGE_1.add(poolPubKey)
+        
         if(skipStage2Proof) tempObject.SKIP_PROCEDURE_STAGE_2.set(poolPubKey,skipStage2Proof)
 
 
@@ -2141,22 +2142,6 @@ RESTORE_STATE=async()=>{
 
 
 
-//! Deprecated
-
-// REQUEST_FOR_BLOCKS=async()=>{
-
-//     //Here we check if current QUORUM_THREAD.CHECKPOINT is fresh and if true - ask the blocks from the minimal height defined in checkpoint payload
-    
-//     let currentMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOIINT.PAYLOAD.SUBCHAINS_METADATA
-
-//     let quorumMembersURLS = await GET_QUORUM_MEMBERS_URLS('QUORUM_THREAD')
-
-//     for(let url of)
-
-// }
-
-
-
 //________________________________________________________________EXTERNAL_______________________________________________________________________
 
 
@@ -2166,7 +2151,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.includes(CONFIG.SYMBIOTE.PUB)) return
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]) return
 
 
     let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]
@@ -2245,9 +2230,14 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 LOAD_GENESIS=async()=>{
 
+
     let atomicBatch = SYMBIOTE_META.STATE.batch(),
+
+        quorumThreadAtomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch(),
     
-        checkpointTimestamp
+        checkpointTimestamp,
+
+        startPool = ''
 
 
     //Load all the configs
@@ -2327,12 +2317,13 @@ LOAD_GENESIS=async()=>{
         SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
 
 
-        Object.keys(genesis.VALIDATORS).forEach(validatorPubKey=>{
 
-            //Push to array of validators on VERIFICATION_THREAD
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.push(validatorPubKey)
+
+        Object.keys(genesis.VALIDATORS).forEach(validatorPubKey=>{
     
-            //Add metadata
+            startPool=validatorPubKey
+
+            //Add metadata related to this pool
             SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
     
             //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
@@ -2356,6 +2347,17 @@ LOAD_GENESIS=async()=>{
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+            let templateForQt = {
+
+                totalPower:onlyOnePossibleStorageForStakingContract.totalPower,
+                lackOfTotalPower:false,
+                stopCheckpointID:-1,
+                storedMetadata:{}
+            
+            }
+
+            quorumThreadAtomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',templateForQt)
     
         })
 
@@ -2364,12 +2366,14 @@ LOAD_GENESIS=async()=>{
 
     await atomicBatch.write()
 
+    await quorumThreadAtomicBatch.write()
+
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
     
     SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
         
-        SUBCHAIN:SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS[0],
+        SUBCHAIN:startPool,
         
         INDEX:-1,
         
@@ -2458,10 +2462,6 @@ LOAD_GENESIS=async()=>{
         FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM
     
     }
-
-    //Inital values of VALIDATORS and SUBCHAINS_METADATA on QUORUM_THREAD are the same as on VERIFICATION_THREAD
-
-    SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS=[...SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS]
 
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
@@ -2667,8 +2667,6 @@ PREPARE_SYMBIOTE=async()=>{
             return {
                             
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:''},//pointer to know where we should start to process further blocks
-    
-                SUBCHAINS:[],//BLS pubkey0,pubkey1,pubkey2,...pubkeyN
 
                 SUBCHAINS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:}
                 
@@ -2689,7 +2687,7 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
 
-    if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.length===0){
+    if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
         await LOAD_GENESIS()
 
@@ -2894,6 +2892,7 @@ PREPARE_SYMBIOTE=async()=>{
     ).then(answer=>answer!=='YES'&& process.exit(108))
 
 },
+
 
 
 

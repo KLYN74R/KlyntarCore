@@ -110,19 +110,19 @@ block=(response,request)=>{
 
 
 //Returns current validators pool
-getValidators=response=>{
+getSubchainsMetadata=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_VALIDATORS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUBCHAINS){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_VALIDATORS}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SUBCHAINS}`)
             .onAborted(()=>response.aborted=true)
 
 
-        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS))
+        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA))
 
     }else !response.aborted && response.end('Symbiote not supported')
 
@@ -147,77 +147,6 @@ getCurrentQuorum=response=>{
     }else !response.aborted && response.end('Symbiote not supported')
 
 },
-
-
-/*
-
-? 0 - array of blockIDs to export
-
-Insofar as blockchain verification thread works horizontally, by passing IDs of blocks,node exports next N blocks in a row
-
-And you ask for a blocks:
-
-*   [Validator1:10,Validator2:10,Validator3:10,...ValidatorX:A,Validator2:13,...]
-
-*/
-
-multiplicity=response=>
-
-    response.writeHeader('Access-Control-Allow-Origin','*')
-    
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_MULTI}`)
-            
-            .onAborted(()=>response.aborted=true)
-            
-.onData(async v=>{
-   
-    let blocksIDs=await BODY(v,CONFIG.MAX_PAYLOAD_SIZE)
-
-
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_MULTI && Array.isArray(blocksIDs)){
-
-
-        let limit=CONFIG.SYMBIOTE.BLOCKS_EXPORT_PORTION,
-        
-            response=[],
-
-            promises=[]
-
-
-        for(let id of blocksIDs){
-
-            let [blockCreator,height]=id?.split(':')
-
-            height=+height
-
-            if(Number.isInteger(height) && SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[blockCreator]?.INDEX+100<height) continue
-
-            promises.push(SYMBIOTE_META.BLOCKS.get(id).then(
-                
-                async block => {
-
-                    let proof = await SYMBIOTE_META.VALIDATORS_COMMITMENTS.get(id).catch(_=>'')
-
-                    response.push({b:block,p:proof})
-
-                }
-                
-            ).catch(_=>{}))
-
-            limit--
-
-            if(limit===0) break
-
-        }
-       
-        await Promise.all(promises.splice(0))
-        
-        !response.aborted && response.end(JSON.stringify(response))
-
-    }else !response.aborted && response.end(JSON.stringify({e:'Symbiote not supported'}))
-
-       
-}),
 
 
 
@@ -265,7 +194,7 @@ UWS_SERVER
 
 .get('/stuff/:STUFF_ID/:STUFF_TYPE',stuff)
 
-.get('/get_validators',getValidators)
+.get('/get_subchains_metadata',getSubchainsMetadata)
 
 .get('/get_quorum',getCurrentQuorum)
 

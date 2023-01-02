@@ -575,7 +575,7 @@ let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
     fetch('http://localhost:6666/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
     fetch('http://localhost:6665/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
     fetch('http://localhost:6664/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-
+    //fetch('http://localhost:6663/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
 }
 

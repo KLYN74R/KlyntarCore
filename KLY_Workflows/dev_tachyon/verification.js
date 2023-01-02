@@ -379,10 +379,6 @@ DELETE_VALIDATOR_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
     poolStorage.storedMetadata=SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
 
-    //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
-
-    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.splice(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.indexOf(validatorPubKey),1)
-
     delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
 },
@@ -456,9 +452,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //_______________________Remove pools if lack of staking power_______________________
 
 
-        let poolsToBeRemoved = [], promises = []
+        let poolsToBeRemoved = [], promises = [], subchainsArray = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
 
-        for(let validator of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS){
+        for(let validator of subchainsArray){
 
             let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
@@ -735,7 +731,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let prevSubchainWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
-            validatorsPool=SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS,
+            validatorsPool = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA),
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentSubchainToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
@@ -788,7 +784,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 quorumSolutionToVerifyBlock = false, //by default
 
-                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentSubchainToCheck].INDEX > currentSessionMetadata.INDEX,
+                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentSubchainToCheck]?.INDEX > currentSessionMetadata.INDEX,
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
@@ -860,8 +856,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         let shouldImmediatelyContinue = nextBlock||shouldSkip||currentSessionMetadata.IS_STOPPED
 
-        setTimeout(START_VERIFICATION_THREAD,shouldImmediatelyContinue ? 0 : CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
+        setTimeout(START_VERIFICATION_THREAD,shouldImmediatelyContinue ? 0 : CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
 
     
     }else{
@@ -1021,12 +1017,14 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.length-1)), //and share the rest among other validators
+        subchainsArray = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA),
+
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(subchainsArray.length-1)), //and share the rest among other validators
     
         shareFeesPromises = []
 
           
-    if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
+    if(subchainsArray.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
@@ -1035,7 +1033,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     //_____________________________________________ THE REST ______________________________________________
 
-    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.forEach(poolPubKey=>
+    subchainsArray.forEach(poolPubKey=>
 
         poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool))
             
@@ -1088,7 +1086,8 @@ verifyBlock=async block=>{
         let sendersAccounts=[]
     
         //Push accounts of validators
-        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
+        Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
+
 
         //Now cache has all accounts and ready for the next cycles
         await Promise.all(sendersAccounts.splice(0))

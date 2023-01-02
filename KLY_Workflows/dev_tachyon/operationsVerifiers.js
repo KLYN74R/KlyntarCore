@@ -175,12 +175,12 @@ export default {
             let workflowConfigs = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
 
 
-            if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
-                
-                SYMBIOTE_META.QUORUM_THREAD.SUBCHAINS.push(pool)
-        
-                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
+            if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
+                let template = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
+        
+
+                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = template
 
                 // Make it "null" again
 
@@ -238,14 +238,12 @@ export default {
             if(slashHelper[pool]) return
 
 
-
             let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
 
             let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
             
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
-
 
                 let stakerAccount = poolStorage.STAKERS[stakeOrUnstakeTx.staker] || {KLY:0,UNO:0,REWARD:0}
 
@@ -292,12 +290,8 @@ export default {
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE && poolStorage.lackOfTotalPower){
-
-                    //Add to SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS and SUBCHAINS_METADATA with the default empty template
-
-                    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.push(pool)
-
+                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE){
+                    
                     if(poolStorage.storedMetadata.HASH){
 
                         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
