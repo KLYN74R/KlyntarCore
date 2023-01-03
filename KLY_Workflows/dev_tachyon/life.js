@@ -154,7 +154,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 
-DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
+DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -177,7 +177,7 @@ DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
 
 
-EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=>{
+EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
@@ -191,7 +191,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=
     
 
     //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-    for(let operation of nextCheckpoint.PAYLOAD.OPERATIONS){
+    for(let operation of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS){
      
         if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
     
@@ -199,7 +199,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=
 
     //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
 
-    for(let operation of nextCheckpoint.PAYLOAD.OPERATIONS){
+    for(let operation of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS){
         
         if(operation.type==='SLASH_UNSTAKE') continue
           /*
@@ -242,7 +242,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT=async (nextCheckpoint,atomicBatch)=
     
     for(let address of toRemovePools){
     
-        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHO_HAS_LACK_OF_STAKING_POWER(address))
+        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address))
     
     }
 
@@ -298,20 +298,23 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     if(possibleCheckpoint){
 
+        // Get the FullID of old checkpoint
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+
+        // Set the new checkpoint. It's still COMPLETED=false, so we'll not create finalization proofs & commitments for it(long story short - async stuff os OK)
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
+
         // These operations must be atomic
         let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
 
         // Execute special operations in checkpoint
-        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(possibleCheckpoint,atomicBatch)
+        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch)
 
-        // Mark as completed
-        possibleCheckpoint.COMPLETED=true
+        // Create new quorum based on new SUBCHAINS_METADATA state
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
-
-        // Get the FullID of old checkpoint
-        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
 
         // Update the block height to keep progress on hostchain
         global.SKIP_PROCEDURE_STAGE_1_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
@@ -323,7 +326,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
         let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
     
-        // Create new temporary db for next checkpoint
+        // Create new temporary db for the next checkpoint
         let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
 
 
@@ -351,25 +354,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
 
-        //____________ Create the copy of QT to store it before we'll start to produce commitments & finalization proofs for the next checkpoint ____________
-
-
-        let copyOfQuorumThread = {...SYMBIOTE_META.QUORUM_THREAD}
-
-        copyOfQuorumThread.CHECKPOINT = possibleCheckpoint
-
-        copyOfQuorumThread.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
-
-        console.log('======== UPDATED QT IS =========')
-        console.log(copyOfQuorumThread)
-
-        // Commit changes
-        
-        atomicBatch.put('QT',copyOfQuorumThread)
-
-        await atomicBatch.write()
-
-
         //_______________________Check the version required for the next checkpoint________________________
 
 
@@ -387,27 +371,27 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             return
 
         }
+        
 
-        // Set next temporary object by ID
-        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
-    
-        // Set new checkpoint
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
-    
-        // Create new quorum based on new SUBCHAINS_METADATA state
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
-    
+        // Mark as completed
+        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED=true
+
+        // Commit changes        
+        atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
+
+        await atomicBatch.write()
+        
+
+        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
+
+        
         // Get the new ROOTPUB and delete the old one
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
     
         SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
 
 
-        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
-
-
         // Close & delete the old temporary db 
-
         await SYMBIOTE_META.TEMP.get(qtPayload).DATABASE.close()
         
         fs.rm(process.env.CHAINDATA_PATH+`/${qtPayload}`,{recursive:true},()=>{})
@@ -429,9 +413,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             // Fill the checkpoints manager with the latest data
 
-            let currentCheckpointManager = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER
+            let currentCheckpointManager = nextTemporaryObject.CHECKPOINT_MANAGER
 
-            let currentCheckpointSyncHelper = SYMBIOTE_META.TEMP.get(nextQuorumThreadID).CHECKPOINT_MANAGER_SYNC_HELPER
+            let currentCheckpointSyncHelper = nextTemporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER
 
             Object.keys(validatorsMetadata).forEach(
             
@@ -449,10 +433,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
 
-            //Continue to find checkpoints
-            setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
 
         }
+
+
+        // Set next temporary object by ID
+        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
+
+        //Continue to find checkpoints
+        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
 
 
     }else{
@@ -1787,7 +1776,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         
         let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
 
-        
+
         //No sense to get the health of pool which has been stopped or SKIP_PROCEDURE_STAGE_1 was initiated
         if(metadataOfCurrentSubchain.IS_STOPPED || skipStage1Set.has(handler.pubKey)) continue
 
@@ -2475,7 +2464,9 @@ LOAD_GENESIS=async()=>{
 
         TIMESTAMP:checkpointTimestamp,
 
-        FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM
+        FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        
+        COMPLETED:true
     
     }
 

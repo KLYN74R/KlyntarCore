@@ -79,6 +79,14 @@ acceptBlocks=response=>{
 
     }
 
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end('QT checkpoint is incomplete')
+
+        return
+
+    }
+
     
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
@@ -161,14 +169,14 @@ acceptBlocks=response=>{
                          
                     )
                     
-
+                
                     let commitment = await BLS_SIG(blockID+hash+qtPayload)
 
                     //Put to local storage to prevent double voting
                     await tempObject.DATABASE.put(blockID,commitment).then(()=>
-
+    
                         !response.aborted && response.end(commitment)
-                
+                    
                     ).catch(_=>!response.aborted && response.end('Something wrong'))
 
 
@@ -280,7 +288,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
     
-    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF){
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -321,7 +329,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         }
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end('Route is off or QT checkpoint is incomplete')
 
 }),
 
@@ -528,6 +536,16 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end('QT checkpoint is incomplete')
+
+        return
+
+    }
+
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
         !response.aborted && response.end('Checkpoint is not fresh')
@@ -632,6 +650,10 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         !response.aborted && response.end('Checkpoint is not fresh')
     
+    }else if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end('QT checkpoint is incomplete')
+        
     }else if(tempObject.SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
         // If we've found proofs about subchain skip procedure - vote to SKIP to perform SKIP_PROCEDURE_STAGE_2
@@ -693,7 +715,6 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         }else response.end(JSON.stringify({status:'NOT FOUND'}))
 
-
     }else response.end(JSON.stringify({status:'NOT FOUND'}))
 
 
@@ -736,6 +757,14 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     let skipProof = tempObject.PROOFS_RESPONSES.get(`SKIP_STAGE_3:${subchain}`)
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end(JSON.stringify({status:'QT checkpoint is incomplete'}))
+
+        return
+        
+    }
 
     if(skipProof){
 
@@ -851,6 +880,14 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let specialOperationsMempool = tempObject.SPECIAL_OPERATIONS_MEMPOOL
     
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
+
+        return
+
+    }
 
     if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
 
@@ -1060,6 +1097,15 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload).PROOFS_RESPONSES
 
 
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
+
+        return
+
+    }
+
+
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
 
         response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
@@ -1207,7 +1253,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
+    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
         let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
@@ -1227,7 +1273,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
         
         }else response.end('Verification failed')
 
-    }else response.end('Route is off')
+    }else response.end('Route is off, overview failed or QT checkpoint is incomplete')
 
 }),
 
