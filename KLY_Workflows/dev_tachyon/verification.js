@@ -124,6 +124,12 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
+    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+        return
+
+    }
+
     let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
     let promises=[], signatures=[], pubKeys=[]
@@ -238,7 +244,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     // Need for async safety
-    if(vtPayload!==qtPayload) return {skip:false,verify:false}
+    if(vtPayload!==qtPayload || !SYMBIOTE_META.TEMP.has(qtPayload)) return {skip:false,verify:false}
 
 
     let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2

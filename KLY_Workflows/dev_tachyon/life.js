@@ -121,6 +121,8 @@ let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.W
 
     GET_SPEC_EVENTS = qtPayload =>{
 
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)) return []
+
         let specialOperationsMempool = SYMBIOTE_META.TEMP.get(qtPayload).SPECIAL_OPERATIONS_MEMPOOL
 
         return Array.from(specialOperationsMempool).map(subArr=>subArr[1]) //{type,payload}
@@ -475,6 +477,13 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     let currentTempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    if(!currentTempObject){
+
+        //Repeat this procedure after a while
+        setTimeout(FINALIZATION_PROOFS_SYNCHRONIZER,1000)
+
+    }
+
     let currentCheckpointsManager = currentTempObject.CHECKPOINT_MANAGER // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
 
     let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
@@ -681,6 +690,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
+    if(!checkpointTemporaryDB) return
+
 
     myCheckpoint ||= await checkpointTemporaryDB.get('CHECKPOINT').catch(_=>false)
 
@@ -844,6 +855,14 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    if(!temporaryObject){
+
+        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
+
+        return
+
+    }
 
     let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
@@ -1195,6 +1214,10 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    
+    if(!FINALIZATION_PROOFS) return
+
+
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
     
     FINALIZATION_PROOFS.set(blockID,new Map())
@@ -1338,8 +1361,11 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
         commitmentsForCurrentBlock
 
+    
+    
+    if(!commitmentsMapping) return
 
-    if(!commitmentsMapping.has(blockID)){
+    else if(!commitmentsMapping.has(blockID)){
 
         commitmentsMapping.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
 
@@ -1465,6 +1491,15 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 
+
+    if(!FINALIZATION_PROOFS){
+
+        setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
+
+        return
+        
+    }
+
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
         //If we still works on the old checkpoint - continue
@@ -1527,6 +1562,9 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     let validatorsURLsAndPubKeys = await GET_VALIDATORS_URLS(true)
+
+    
+    if(!temporaryObject) return
 
 
     for(let subchain of temporaryObject.SKIP_PROCEDURE_STAGE_1){
@@ -1710,6 +1748,14 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    if(!tempObject){
+
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+        return
+
+    }
+
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
     let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
@@ -1873,6 +1919,15 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+
+
+    if(!checkpointTemporaryDB){
+
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+        return
+    }
+
 
     let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
 

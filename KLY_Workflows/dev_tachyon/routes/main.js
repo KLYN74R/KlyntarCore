@@ -79,7 +79,7 @@ acceptBlocks=response=>{
 
     }
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -292,6 +292,13 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            !response.aborted && response.end('QT checkpoint is incomplete')
+
+            return
+        }
+
         let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
@@ -349,6 +356,13 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+        !response.aborted && response.end('Checkpoint is not fresh')
+
+        return
+    }
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
@@ -404,6 +418,13 @@ getSuperFinalization=async(response,request)=>{
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            response.end('QT checkpoint is not ready')
+
+            return
+        }
        
         let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
     
@@ -472,6 +493,13 @@ healthChecker = async response => {
         let latestHash = block && Block.genHash(block)
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            response.end('QT checkpoint is not ready')
+
+            return
+        }
        
         let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
@@ -538,7 +566,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -637,6 +665,13 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    if(!tempObject){
+
+        !response.aborted && response.end('QT checkpoint is not ready')
+
+        return
+    }
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
@@ -755,6 +790,13 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    if(!tempObject){
+
+        !response.aborted && response.end('QT checkpoint is not ready')
+
+        return
+    }
 
     let skipProof = tempObject.PROOFS_RESPONSES.get(`SKIP_STAGE_3:${subchain}`)
 
@@ -878,10 +920,10 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let specialOperationsMempool = tempObject.SPECIAL_OPERATIONS_MEMPOOL
+    let specialOperationsMempool = tempObject?.SPECIAL_OPERATIONS_MEMPOOL
     
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject) {
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1094,10 +1136,12 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload).PROOFS_RESPONSES
+    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload)?.PROOFS_RESPONSES
+
+    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !checkpointProofsResponses){
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1115,11 +1159,8 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
 
 
-    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
-
     let {aggregatedPub,aggregatedSignature,afkValidators} = CHECKPOINT_FINALIZATION_PROOF
 
-    
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
@@ -1208,6 +1249,14 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            !response.aborted && response.end('QT checkpoint is not ready')
+        
+            return
+
+        }
+
         let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
 
@@ -1217,11 +1266,11 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         if(checkpoint){
 
-            response.end(JSON.stringify(checkpoint))
+            !response.aborted && response.end(JSON.stringify(checkpoint))
 
-        }else response.end('No checkpoint')
+        }else !response.aborted && response.end('No checkpoint')
 
-    }else response.end('Route is off')
+    }else !response.aborted && response.end('Route is off')
 
 },
 
@@ -1249,6 +1298,13 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+        !response.aborted && response.end('QT checkpoint is not ready')
+
+        return
+    }
+
     let specialOperationsMempool = SYMBIOTE_META.TEMP.get(qtPayload).SPECIAL_OPERATIONS_MEMPOOL
 
 
@@ -1269,11 +1325,11 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
             console.log('DEBUG: '+specialOperationsMempool)
 
-            response.end('OK')
+            !response.aborted && response.end('OK')
         
-        }else response.end('Verification failed')
+        }else !response.aborted && response.end('Verification failed')
 
-    }else response.end('Route is off, overview failed or QT checkpoint is incomplete')
+    }else !response.aborted && response.end('Route is off, overview failed or QT checkpoint is incomplete')
 
 }),
 

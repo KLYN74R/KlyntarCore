@@ -701,7 +701,7 @@ export default {
 
 
 
-                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay){
+                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && SYMBIOTE_META.TEMP.has(qtPayload)){
 
                         let {DATABASE,SKIP_PROCEDURE_STAGE_1} = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -818,7 +818,7 @@ export default {
 
 
                     
-                    if(majorityVotedForIt && isTheSameDay){
+                    if(majorityVotedForIt && isTheSameDay && SYMBIOTE_META.TEMP.has(qtPayload)){
 
                         let {DATABASE,SKIP_PROCEDURE_STAGE_2} = SYMBIOTE_META.TEMP.get(qtPayload)
 
