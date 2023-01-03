@@ -304,6 +304,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Execute special operations in checkpoint
         await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(possibleCheckpoint,atomicBatch)
 
+        // Mark as completed
+        possibleCheckpoint.COMPLETED=true
+
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
 
         // Get the FullID of old checkpoint
@@ -356,6 +359,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         copyOfQuorumThread.CHECKPOINT = possibleCheckpoint
 
         copyOfQuorumThread.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
+
+        console.log('======== UPDATED QT IS =========')
+        console.log(copyOfQuorumThread)
 
         // Commit changes
         
@@ -1781,6 +1787,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         
         let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
 
+        
         //No sense to get the health of pool which has been stopped or SKIP_PROCEDURE_STAGE_1 was initiated
         if(metadataOfCurrentSubchain.IS_STOPPED || skipStage1Set.has(handler.pubKey)) continue
 

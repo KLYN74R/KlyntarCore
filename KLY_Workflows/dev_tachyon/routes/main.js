@@ -1221,7 +1221,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
             // Add to mempool
             specialOperationsMempool.set(payloadHash,operation)
 
-            console.log(specialOperationsMempool)
+            console.log('DEBUG: '+specialOperationsMempool)
 
             response.end('OK')
         
