@@ -39,6 +39,7 @@
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
 import { GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
+import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
 
 
 
@@ -148,31 +149,37 @@ export default {
         Payload is hexadecimal EVM bytecode
     
     */
-    EVM_CALL:async event=>typeof event.payload==='string' && await VERIFY_WRAP(event),
+    EVM_CALL:async event=>{
+
+        //typeof event.payload==='string' && await VERIFY_WRAP(event)
+
+    },
 
 
     /*
     
-        To move funds from KLY to EVM
-
-        Payload is
-
         {
+        
+            path:'K=>E'|'E=>K',
+            
+            _________ Dependent of path, set appropriate address to move funds to _________
+            
             address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
             amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
         }
     
-    */
-    MIGRATE_TO_EVM:async event=>
+
     
+    */
+    MIGRATE_BETWEEN_ENV:async event=>{
+
         typeof event.payload.address==='string'
         &&
         typeof event.payload.amount==='number'
         &&
         event.payload.amount>0
-        &&
-        await VERIFY_WRAP(event)
 
+    }
 
 }
 

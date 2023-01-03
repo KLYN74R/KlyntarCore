@@ -51,6 +51,7 @@ import {VM} from '../../KLY_VMs/default/vm.js'
 import * as _ from './specContracts/root.js'
 
 import FILTERS from './filters.js'
+import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
 
 
 
@@ -364,32 +365,45 @@ export let VERIFIERS = {
 
     },
 
+
     /*
 
         To interact with EVM
 
-        Payload is hexadecimal evm bytecode
-    
+        [+] Payload is hexadecimal evm bytecode
+        [+] We don't need <atomicBatch> here coz EVM is atomic, so we'll use only get/set state root to control the VM state
+        [+] All txs are executed in block where miner(block creator) is pools' EVM compatible pre-binded address(NOTE:We'll implement it soon or even change the execution logic)
+        [+] That's why, we don't need rewardBox here - we'll distribute rewards in EVM context
+
+
     */
-    EVM_CALL:async (event,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(event,_,_)=>{
+
+        let status = await KLY_EVM.callContract(event.payload)
+
+        // Store to KLY_EVM_META or somewhere else
 
     },
     
 
     /*
     
-        To move funds from KLY to EVM
+        To move funds KLY <=> EVM
 
         Payload is
 
         {
+            path:'K=>E'|'E=>K',
+            
+            _________ Dependent of path, set appropriate address to move funds to _________
+            
             address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
             amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
         }
     
 
     */
-    MIGRATE_TO_EVM:async (event,rewardBox,atomicBatch)=>{
+    MIGRATE_BETWEEN_ENV:async (event,rewardBox,atomicBatch)=>{
 
     }
     
