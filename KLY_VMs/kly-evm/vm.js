@@ -19,6 +19,10 @@ import {Level} from 'level'
 
 //'KLY_EVM_META' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
+
+const FEES_CUCKOLD = '0x0000000000000000000000000000000000000000' // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
+
+
 const trie = new Trie({
     
     db:new LevelDB(new Level(process.env.CHAINDATA_PATH+'/KLY_EVM')), // use own implementation. See the sources
@@ -27,7 +31,7 @@ const trie = new Trie({
 
 })
 
-const common = Common.custom({name:'KLYNTAR',networkId:7331,chainId:7331},'london') //set to MERGE
+const common = Common.custom({name:'KLYNTAR',networkId:7331,chainId:7331},'merge')
 
 const stateManager = new DefaultStateManager({trie})
 
@@ -46,9 +50,7 @@ Default block template for KLY-EVM
 P.S: BTW everything will be changable
 
 */
-const block = Block.fromBlockData({header:{miner:'0x0000000000000000000000000000000000000000',timestamp:133713371337}},{common})
-
-
+// const block = Block.fromBlockData({header:{miner:'0x0000000000000000000000000000000000000000',timestamp:133713371337}},{common})
 
 
 //_________________________________________________________ EXPORT SECTION _________________________________________________________
@@ -62,14 +64,17 @@ export let KLY_EVM = {
     /**
      * ### Execute tx in KLY-EVM
      * 
-     * @param {String} serializedEVMTx - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {String} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
      * @param {Block} block - blocks to execute tx in this context
      * 
      * @returns txResult 
      */
-    callContract:async(serializedEVMTx,block)=>{
+    callEVM:async(serializedEVMTxWithout0x,timestamp)=>{
 
-        let tx = Transaction.fromSerializedTx(serializedEVMTx)
+        let block = Block.fromBlockData({header:{miner:FEES_CUCKOLD,timestamp}},{common})
+
+        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+
 
         let txResult = await vm.runTx({tx,block}).catch(error=>error)
 
@@ -116,12 +121,8 @@ export let KLY_EVM = {
           
         }
         
-        let status = await vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>{
+        let status = await vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
 
-            console.log(_)
-
-            return {status:false}
-        })
 
         return status
 

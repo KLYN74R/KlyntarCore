@@ -46,12 +46,15 @@ import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
+
 import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'
 
 import FILTERS from './filters.js'
-import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
+
+import web3 from 'web3'
 
 
 
@@ -371,17 +374,28 @@ export let VERIFIERS = {
         To interact with EVM
 
         [+] Payload is hexadecimal evm bytecode
-        [+] We don't need <atomicBatch> here coz EVM is atomic, so we'll use only get/set state root to control the VM state
-        [+] All txs are executed in block where miner(block creator) is pools' EVM compatible pre-binded address(NOTE:We'll implement it soon or even change the execution logic)
-        [+] That's why, we don't need rewardBox here - we'll distribute rewards in EVM context
-
 
     */
-    EVM_CALL:async(event,_,_)=>{
+    EVM_CALL:async(event,rewardBox,_)=>{
 
-        let status = await KLY_EVM.callContract(event.payload)
+        let timestamp = Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP / 1000)
 
-        // Store to KLY_EVM_META or somewhere else
+        let status = await KLY_EVM.callEVM(event.payload,timestamp)
+
+
+        if(!status.execResult.exceptionError){
+
+            // Store to KLY_EVM_META or somewhere else
+            
+            let totalSpentInWei = status.amountSpent //BigInt value
+
+            let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
+
+            // Add appropriate value to rewardbox to distribute among pools
+
+            rewardBox.fees+=totalSpentByTxInKLY
+
+        }
 
     },
     
@@ -393,7 +407,7 @@ export let VERIFIERS = {
         Payload is
 
         {
-            path:'K=>E'|'E=>K',
+            to:'K|E', - destination env. E-means "add X KLY from my account on KLY env to EVM env". K-means "send X KLY from my EVM env to KLY env"
             
             _________ Dependent of path, set appropriate address to move funds to _________
             
@@ -403,7 +417,60 @@ export let VERIFIERS = {
     
 
     */
-    MIGRATE_BETWEEN_ENV:async (event,rewardBox,atomicBatch)=>{
+    MIGRATE_BETWEEN_ENV:async(event,rewardBox,atomicBatch)=>{
+
+        let {to,address,amount} = event.payload
+
+        if(to==='K'){
+
+            // Migration from EVM to KLY
+
+            let evmAccount = await KLY_EVM.getAccount()
+
+
+
+        }else{
+
+            let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
+        
+            recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.payload.to),
+
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee
+
+        event = await FILTERS.TX(event,sender) //pass through the filter
+    
+        if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
+
+            if(!recipient){
+    
+                //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
+                recipient={
+                
+                    type:'account',
+                    balance:0,
+                    uno:0,
+                    nonce:0
+                
+                }
+                
+                //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
+                if(typeof event.payload.rev_t === 'number') recipient.rev_t=event.payload.rev_t
+    
+                SYMBIOTE_META.STATE_CACHE.set(event.payload.to,recipient)//add to cache to collapse after all events in blocks of block
+            
+            }
+            
+            sender.balance-=goingToSpend
+                
+            recipient.balance+=event.payload.amount
+        
+            sender.nonce=event.nonce
+            
+            rewardBox.fees+=event.fee
+
+        }
+
+        }
 
     }
     

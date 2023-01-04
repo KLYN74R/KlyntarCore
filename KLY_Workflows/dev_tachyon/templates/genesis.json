@@ -124,8 +124,23 @@
             "nonce": 0,
             "balance":100
 
+        },
+
+        "0x0000000000000000000000000000000000000000":{
+            
+            "nonce": 0,
+            "balance":100
+
         }
     
-    }
+    },
+
+    "EVM_PREDEPLOYED_CONTRACTS":[
+
+        {
+            "bytecode":"00"
+        }
+
+    ]
 
 }

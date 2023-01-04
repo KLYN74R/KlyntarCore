@@ -158,9 +158,12 @@ export default {
 
     /*
     
+        To move funds KLY <=> EVM
+
+        Payload is
+
         {
-        
-            path:'K=>E'|'E=>K',
+            to:'K|E', - destination env. E-means "add X KLY from my account on KLY env to EVM env". K-means "send X KLY from my EVM env to KLY env"
             
             _________ Dependent of path, set appropriate address to move funds to _________
             
@@ -168,7 +171,6 @@ export default {
             amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
         }
     
-
     
     */
     MIGRATE_BETWEEN_ENV:async event=>{
