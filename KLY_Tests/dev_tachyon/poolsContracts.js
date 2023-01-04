@@ -63,7 +63,7 @@ const POOL_OWNER = {
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:6666/account/${account}`)
+    return fetch(`http://localhost:7331/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -115,7 +115,7 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 let SEND_EVENT=event=>{
 
-    return fetch('http://localhost:6666/event',
+    return fetch('http://localhost:7331/event',
 
         {
         
@@ -133,7 +133,7 @@ let SEND_EVENT=event=>{
 
 let SEND_SPECIAL_OPERATION=(type,payload)=>{
 
-    return fetch('http://localhost:6666/special_operations',
+    return fetch('http://localhost:7331/special_operations',
 
         {
         
@@ -572,10 +572,10 @@ let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
     }
     
     
-    fetch('http://localhost:6666/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:6665/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:6664/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    //fetch('http://localhost:6663/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
 }
 

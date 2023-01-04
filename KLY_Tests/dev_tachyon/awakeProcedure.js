@@ -92,6 +92,6 @@ let optionsToSend = {
 }
 
 
-fetch('http://localhost:6666/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-fetch('http://localhost:6665/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-fetch('http://localhost:6664/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))

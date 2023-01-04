@@ -27,7 +27,7 @@ import Web3 from 'web3'
 //___________________________________________ CONSTANTS POOL ___________________________________________
 
 
-const web3 = new Web3('http://localhost:6666')
+const web3 = new Web3('http://localhost:7331')
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
@@ -173,7 +173,7 @@ let evmAccount1 = {
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:6666/account/${account}`)
+    return fetch(`http://localhost:7331/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -225,7 +225,7 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 let SEND_EVENT=event=>{
 
-    return fetch('http://localhost:6666/event',
+    return fetch('http://localhost:7331/event',
 
         {
         

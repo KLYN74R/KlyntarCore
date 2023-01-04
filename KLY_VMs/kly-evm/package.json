@@ -4,7 +4,7 @@
     "description": "A KLY-EVM virtual machine",
     "type": "module",
     "main": "vm.js",
-    "keywords": [],
+    "keywords": ["kly","klyntar","mutable-vm","evm"],
     "author": "KlyntarTeam",
     "license": "Apache-2.0",
     "dependencies": {

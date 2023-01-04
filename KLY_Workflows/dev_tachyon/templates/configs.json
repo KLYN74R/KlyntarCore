@@ -176,8 +176,8 @@
     },
     
     "BOOTSTRAP_NODES":[
-        "http://localhost:6665",
-        "http://localhost:6664",
+        "http://localhost:7332",
+        "http://localhost:7333",
         "http://localhost:44444"
     ],
     
@@ -239,35 +239,35 @@
     "FINALIZATION_PROOFS_POOL_LIMIT":100000,
     "SUPER_FINALIZATION_PROOFS_POOL_LIMIT":100000,
 
-    "GET_BLOCKS_URL":"http://localhost:6666",
-    "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:6666",
-    "GET_MULTI":"http://localhost:6666",
-    "GET_CHECKPOINT_PAYLOAD_URL":"http://localhost:6666",
+    "GET_BLOCKS_URL":"http://localhost:7331",
+    "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:7331",
+    "GET_MULTI":"http://localhost:7331",
+    "GET_CHECKPOINT_PAYLOAD_URL":"http://localhost:7331",
     
     "BLOCKS_EXPORT_PORTION":100,
 
     "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
 
-    "GET_STUFF_URL":"http://localhost:6666",
+    "GET_STUFF_URL":"http://localhost:7331",
 
     "STUFF_CACHE_SIZE":100000,
     
     "LOAD_STUFF":{
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
             "payload":{
-                "url":"http://localhost:6666"
+                "url":"http://localhost:7331"
             },
             "sig":""
         },
         "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
             "payload":{
-                "url":"http://localhost:6665"
+                "url":"http://localhost:7332"
             },
             "sig":""
         },
         "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
             "payload":{
-                "url":"http://localhost:6664"
+                "url":"http://localhost:7333"
             },
             "sig":""
         }
@@ -299,7 +299,7 @@
 
     "TIMEOUT_TO_PRE_SHARE_COMMITMENTS":2000,
 
-    "AWAKE_HELPER_NODE":"http://localhost:6666",
+    "AWAKE_HELPER_NODE":"http://localhost:7331",
 
     "REGION":"EU",
 

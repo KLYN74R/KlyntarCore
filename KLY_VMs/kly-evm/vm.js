@@ -22,6 +22,17 @@ import {Level} from 'level'
 
 const FEES_CUCKOLD = '0x0000000000000000000000000000000000000000' // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
 
+const {
+
+    name,
+    networkId,
+    chainId,
+    coinbase,
+    hardfork,
+    gasLimitForBlock
+
+} = CONFIG.EVM
+
 
 const trie = new Trie({
     
