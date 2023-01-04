@@ -475,7 +475,7 @@ DECRYPT_KEYS=async spinner=>{
         //Main key
         global.PRIVATE_KEY=keys.kly
 
-        if(CONFIG.EVM.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+        if(CONFIG.EVM_CHAINS.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
         else CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
         
@@ -535,7 +535,7 @@ DECRYPT_KEYS=async spinner=>{
     
         privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
         
-    if(CONFIG.EVM.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
+    if(CONFIG.EVM_CHAINS.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
         
     else HOSTCHAIN.CONNECTOR.PRV=privateKey
         

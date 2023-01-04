@@ -20,14 +20,12 @@ import {Level} from 'level'
 //'KLY_EVM_META' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
 
-const FEES_CUCKOLD = '0x0000000000000000000000000000000000000000' // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
-
 const {
 
     name,
     networkId,
     chainId,
-    coinbase,
+    coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
     gasLimitForBlock
 
@@ -42,7 +40,7 @@ const trie = new Trie({
 
 })
 
-const common = Common.custom({name:'KLYNTAR',networkId:7331,chainId:7331},'merge')
+const common = Common.custom({name,networkId,chainId},hardfork)
 
 const stateManager = new DefaultStateManager({trie})
 
@@ -82,7 +80,7 @@ export let KLY_EVM = {
      */
     callEVM:async(serializedEVMTxWithout0x,timestamp)=>{
 
-        let block = Block.fromBlockData({header:{miner:FEES_CUCKOLD,timestamp}},{common})
+        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 

@@ -580,7 +580,7 @@ let EVM_CONTRACT_CALL=async()=>{
 
 // DILITHIUM_2_MULTISIG()
 
-EVM_DEFAULT_TX()
+// EVM_DEFAULT_TX()
 
 
 //__________________________ GET INFO __________________________
@@ -588,9 +588,9 @@ EVM_DEFAULT_TX()
 
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-// let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL')
+let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL')
 
-// console.log(acc0Stat)
+console.log(acc0Stat)
 
 
 

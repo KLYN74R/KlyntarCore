@@ -864,7 +864,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
         //Depending on packID load appropriate module
-        if(CONFIG.EVM.includes(tickers[i])){
+        if(CONFIG.EVM_CHAINS.includes(tickers[i])){
         
             EvmHostChainConnector=(await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
             

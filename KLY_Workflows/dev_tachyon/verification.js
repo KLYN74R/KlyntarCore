@@ -860,10 +860,10 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
 
-        let shouldImmediatelyContinue = nextBlock||shouldSkip||currentSessionMetadata.IS_STOPPED
+        // let shouldImmediatelyContinue = nextBlock||shouldSkip||currentSessionMetadata.IS_STOPPED
 
 
-        setTimeout(START_VERIFICATION_THREAD,shouldImmediatelyContinue ? 0 : CONFIG.SYMBIOTE.VERIFICATION_THREAD_POLLING_INTERVAL)
+        setTimeout(START_VERIFICATION_THREAD,0)
 
     
     }else{

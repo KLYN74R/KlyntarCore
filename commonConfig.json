@@ -1,0 +1,49 @@
+{
+    "GALAXY":"Milky Way",
+    "ROLE":"BASIC",
+    
+    "INTERFACE":"::",
+    "PORT":7331,
+
+    "PAYLOAD_SIZE":1000,
+    "EXTENDED_PAYLOAD_SIZE":10000,
+    "MAX_PAYLOAD_SIZE":10000000,
+
+
+    "TLS":{
+
+        "ENABLED":false,
+
+        "CONFIGS":{
+
+            "key_file_name":"security/cert.key",
+   
+            "cert_file_name":"security/cert.pem"
+
+        }
+    },
+    
+    "ALIASES":{
+        "2CfkMCWs49dRzd1AXjKgv3Z4HCGqPH7tGzEAsKkrGyzA":"\u001b[37m<<<<<<<<<<<<<\u001b[30;1m---[\u001b[38;5;202mANTI-VENOM\u001b[30;1m]---\u001b[37m>>>>>>>>>>>>>\u001b[0m"
+    },
+
+    "PRELUDE":{
+
+        "DECRYPTED":false,
+        "ANIMATION_DURATION":0,
+        "NO_SPINNERS":false,
+        "OPTIMISTIC":true
+        
+    },
+
+    "DAEMON_LOGS":true,
+
+    "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly-evm"],
+    
+    "BITFORKS":["btc","ltc","doge","dash"],
+
+    "PLUGINS":[],
+
+    "RUNNER":"dev_andromeda/runner.js"
+    
+}

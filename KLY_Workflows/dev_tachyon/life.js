@@ -2232,8 +2232,6 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
 
 
-    phantomBlocksNumber++//DELETE after tests
-
     //If nothing to generate-then no sense to generate block,so return
     if(phantomBlocksNumber===0) return 
 
@@ -2861,7 +2859,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Depending on packID load appropriate module
-    if(CONFIG.EVM.includes(ticker)){
+    if(CONFIG.EVM_CHAINS.includes(ticker)){
         
         let EvmHostChainConnector = (await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
         
