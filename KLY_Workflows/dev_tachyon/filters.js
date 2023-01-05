@@ -38,8 +38,8 @@
 
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
-import { GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
-import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
+import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
+import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 
 

@@ -482,6 +482,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
         //Repeat this procedure after a while
         setTimeout(FINALIZATION_PROOFS_SYNCHRONIZER,1000)
 
+        return
+
     }
 
     let currentCheckpointsManager = currentTempObject.CHECKPOINT_MANAGER // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
@@ -1212,10 +1214,10 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     let blockHash = Block.genHash(block)
 
-    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
+    if(!SYMBIOTE_META.TEMP.has(qtPayload)) return
 
-    
-    if(!FINALIZATION_PROOFS) return
+
+    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
@@ -1246,11 +1248,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
-    
+
+                
                 let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
     
+            
             }).catch(_=>false)
     
 
@@ -1265,7 +1269,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
 
 
-
+    
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
 
 
@@ -1319,13 +1323,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         //Share here
         BROADCAST('/super_finalization',superFinalizationProof)
 
-        await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof)
+        await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof).catch(_=>false)
 
         // Repeat procedure for the next block and store the progress
 
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        await DATABASE.put('BLOCK_SENDER_HANDLER',appropriateDescriptor)
+        await DATABASE.put('BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(_=>false)
 
         appropriateDescriptor.height++
 
@@ -1489,16 +1493,16 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH + SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
-
-
-    if(!FINALIZATION_PROOFS){
+    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
 
         return
-        
+
     }
+
+    let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
+
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
@@ -2231,6 +2235,8 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
     let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
 
+    //DEBUG
+    phantomBlocksNumber++
 
     //If nothing to generate-then no sense to generate block,so return
     if(phantomBlocksNumber===0) return 
@@ -2745,6 +2751,8 @@ PREPARE_SYMBIOTE=async()=>{
         }
         
     })
+
+
 
 
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){

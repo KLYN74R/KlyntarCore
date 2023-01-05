@@ -1,4 +1,4 @@
-import {BLAKE3, GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 
 
@@ -9,7 +9,7 @@ export default class Block{
         
         this.creator=CONFIG.SYMBIOTE.PUB //block creator(validator) Example:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta
 
-        this.time=GET_GMT_TIMESTAMP() //UTC timestamp
+        this.time=GET_GMT_TIMESTAMP() //UTC timestamp (NOTE:in milliseconds)
 
         this.events=eventsSet //array of events(transactions,contract calls, services logic,etc.)
 

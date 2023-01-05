@@ -70,19 +70,18 @@ acceptBlocks=response=>{
     
     }
 
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+
+        !response.aborted && response.end('QT checkpoint is incomplete')
+
+        return
+
+    }
 
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
         !response.aborted && response.end('Checkpoint is not fresh')
         
-        return
-
-    }
-
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
-
-        !response.aborted && response.end('QT checkpoint is incomplete')
-
         return
 
     }
@@ -314,17 +313,17 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         }else{
 
+            
             let {aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
 
-            let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
-
             
-
+            
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
@@ -1322,8 +1321,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
             // Add to mempool
             specialOperationsMempool.set(payloadHash,operation)
-
-            console.log('DEBUG: '+specialOperationsMempool)
+            
 
             !response.aborted && response.end('OK')
         

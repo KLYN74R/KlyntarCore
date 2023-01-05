@@ -32,7 +32,7 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "STAKERS":{
-                "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
                     "KLY":55000,
                     "UNO":0,
                     "REWARD":0
@@ -51,7 +51,7 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "STAKERS":{
-                "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
                     "KLY":55000,
                     "UNO":0,
                     "REWARD":0
@@ -63,7 +63,7 @@
 
     },
 
-    "CHECKPOINT_TIMESTAMP":1672651293121,
+    "CHECKPOINT_TIMESTAMP":1672825945576,
     
     "STATE":{
 
@@ -124,23 +124,8 @@
             "nonce": 0,
             "balance":100
 
-        },
-
-        "0x0000000000000000000000000000000000000000":{
-            
-            "nonce": 0,
-            "balance":100
-
         }
     
-    },
-
-    "EVM_PREDEPLOYED_CONTRACTS":[
-
-        {
-            "bytecode":"00"
-        }
-
-    ]
+    }
 
 }

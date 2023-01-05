@@ -243,6 +243,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
+
     // Need for async safety
     if(vtPayload!==qtPayload || !SYMBIOTE_META.TEMP.has(qtPayload)) return {skip:false,verify:false}
 
@@ -254,7 +255,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
     index = +index
-
 
 
     if(skipStage2Mapping.has(subchain)){
@@ -319,8 +319,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
                                     Array.isArray(itsProbablySuperFinalizationProof.afkValidators)
 
 
-
-                                    
         if(generalAndTypeCheck){
 
             //Verify it before return
@@ -757,7 +755,6 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
-
 
         
         if(currentSessionMetadata.IS_STOPPED){
