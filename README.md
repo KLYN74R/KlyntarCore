@@ -293,10 +293,7 @@ KlyntarCore
 │   │    └───symbiotes.json
 │   │
 │   └───GENESIS
-│   │ 
-│   └───LOGS
-│   │ 
-│   └───SNAPSHOTS
+│   
 
 ```
 

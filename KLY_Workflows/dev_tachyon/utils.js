@@ -209,7 +209,7 @@ GET_QUORUM = threadID => {
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
-    if(CONFIG.SYMBIOTE.LOGS.BLOCK){
+    if(CONFIG.DAEMON_LOGS){
 
         console.log(' '.repeat(spaces),color,'_'.repeat(79))
 
@@ -228,7 +228,7 @@ BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 },
 
 
-BLS_SIG=data=>BLS.singleSig(data,PRIVATE_KEY),
+BLS_SIGN_DATA=data=>BLS.singleSig(data,PRIVATE_KEY),
 
 
 
@@ -292,7 +292,7 @@ BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubK
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            BLS_SIG(JSON.stringify(data)).then(sig=>
+            BLS_SIGN_DATA(JSON.stringify(data)).then(sig=>
 
                 fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 
@@ -302,8 +302,6 @@ BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubK
                 
                 }).catch(_=>
                     
-                    CONFIG.SYMBIOTE.LOGS.OFFLINE
-                    &&
                     LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
                     
                 )
@@ -321,8 +319,6 @@ BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubK
         
         .catch(_=>
             
-            CONFIG.SYMBIOTE.LOGS.OFFLINE
-            &&
             LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
             
         )
@@ -345,12 +341,10 @@ BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubK
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='OK'&&SYMBIOTE_META.PEERS.splice(index,1)
+                value!=='OK' && SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(_=>{
                 
-                CONFIG.SYMBIOTE.LOGS.OFFLINE
-                &&
                 LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mPEERS ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
 
                 SYMBIOTE_META.PEERS.splice(index,1)

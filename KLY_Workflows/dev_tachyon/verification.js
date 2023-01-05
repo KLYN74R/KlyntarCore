@@ -874,93 +874,6 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-MAKE_SNAPSHOT=async()=>{
-
-    let {SNAPSHOT,STATE,VERIFICATION_THREAD}=SYMBIOTE_META//get appropriate dbs & descriptors of symbiote
-
-
-    //_____________________________________________________Now we can make snapshot_____________________________________________________
-
-    LOG(`Start making snapshot for ${SYMBIOTE_ALIAS()}`,'I')
-
-    
-    //Init atomic descriptor
-    let atomicBatch = SNAPSHOT.batch()
-
-    //Check if we should do full or partial snapshot.See https://github.com/KLYN74R/CIIPs
-    if(CONFIG.SYMBIOTE.SNAPSHOTS.ALL){
-        
-        await new Promise(
-        
-            resolve => STATE.createReadStream()
-            
-                            .on('data',data=>atomicBatch.put(data.key,data.value))//add state of each account to snapshot dbs
-            
-                            .on('close',resolve)
-            
-        ).catch(error=>{
-    
-                LOG(`Snapshot creation failed on state copying stage for ${SYMBIOTE_ALIAS()}\n${error}`,'W')
-                
-                process.emit('SIGINT',130)
-    
-            })
-
-    }else{
-
-        //Read only part of state to make snapshot for backups
-        //Set your own policy of backups with your other nodes,infrastructure etc.
-        let choosen=JSON.parse(process.env.SNAPSHOTS_PATH+`/separation/${CONFIG.SYMBIOTE.SYMBIOTE_ID}.json`),
-        
-            getPromises=[]
-
-
-        choosen.forEach(
-            
-            recordId => getPromises.push(
-                
-                STATE.get(recordId).then(
-                    
-                    acc => atomicBatch.put(recordId,acc)
-                    
-                )
-                
-            )
-            
-        )
-
-        await Promise.all(getPromises.splice(0)).catch( e => {
-    
-            LOG(`Snapshot creation failed on getting choosen records for ${SYMBIOTE_ALIAS()}\n${e}`,'W')
-            
-            process.emit('SIGINT',130)
-
-        })
-        
-
-    }
-    
-
-
-
-    await atomicBatch.write()
-    
-        .then(()=>LOG(`Snapshot was successfully created for \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m on point \x1b[36;1m${VERIFICATION_THREAD.FINALIZED_POINTER.HASH} ### ${VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN}:${VERIFICATION_THREAD.FINALIZED_POINTER.INDEX}`,'S'))
-        
-        .catch(error=>{
-
-            LOG(`Snapshot creation failed for ${SYMBIOTE_ALIAS()}\n${error}`,'W')
-        
-            process.emit('SIGINT',130)
-
-        })
-
-
-},
-
-
-
-
 SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
     let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
@@ -1142,6 +1055,7 @@ verifyBlock=async block=>{
 
 
         //Change finalization pointer
+        
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
@@ -1150,34 +1064,18 @@ verifyBlock=async block=>{
 
         
         //Change metadata per validator's thread
+        
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].INDEX=block.index
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
 
-        //Finally - decrease the counter to snapshot
-        SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER--
+        //Commit the state of VERIFICATION_THREAD
 
-        let snapCounter=SYMBIOTE_META.VERIFICATION_THREAD.SNAPSHOT_COUNTER
-
-
-        //Fix the state of VERIFICATION_THREAD
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
         
-
-        //__________________________________________CREATE SNAPSHOT IF YOU NEED_________________________________________
-
-
-        block.index!==0//no sense to snaphost if no blocks yet
-        &&
-        CONFIG.SYMBIOTE.SNAPSHOTS.ENABLE//probably you don't won't to make snapshot on this machine
-        &&
-        snapCounter===0//if it's time to make snapshot(e.g. next 200th block generated)
-        &&
-        await MAKE_SNAPSHOT()
-
 
     }
 

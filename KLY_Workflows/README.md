@@ -30,11 +30,15 @@ And pairs of symbiotes and workflows:
 
 </ul>
 
+<div align="center">
+
 ```
 
 The only difference is that workflow has more global meaning than consensus, because contains consensus and other stuff(networking,cryptography and so on)
 
 ```
+
+</div>
 
 ## How to write custom workflow
 

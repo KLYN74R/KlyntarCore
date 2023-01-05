@@ -186,3 +186,7 @@ export let KLY_EVM = {
 
 
 }
+
+
+
+global.KLY_EVM = KLY_EVM

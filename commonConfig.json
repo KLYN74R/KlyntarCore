@@ -36,8 +36,6 @@
         
     },
 
-    "DAEMON_LOGS":true,
-
     "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly-evm"],
     
     "BITFORKS":["btc","ltc","doge","dash"],

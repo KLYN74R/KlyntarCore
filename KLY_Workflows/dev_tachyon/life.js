@@ -1,6 +1,6 @@
 import {
     
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIG,BLS_VERIFY,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
     
@@ -42,9 +42,6 @@ import fs from 'fs'
 
 //++++++++++++++++++++++++ Define general global object  ++++++++++++++++++++++++
 
-//Open writestream in append mode
-global.SYMBIOTE_LOGS_STREAM=fs.createWriteStream(process.env.LOGS_PATH+`/symbiote.log`),{flags:'a+'}
-
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
 //Your decrypted private key
@@ -66,31 +63,16 @@ export let GRACEFUL_STOP=()=>{
     LOG('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...','I')
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
-    
-    //Probably stop logs on this step
-    setInterval(async()=>{
 
-        console.log('\n')
+    console.log('\n')
 
-        //Close logs streams
-        await new Promise( resolve => SYMBIOTE_LOGS_STREAM.close( error => {
+    LOG('Closing server connections...','I')
 
-            LOG(`Logging was stopped for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m ${error?'\n'+error:''}`,'I')
+    global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
 
-            resolve()
+    LOG('Node was gracefully stopped','I')
         
-        }))
-
-        LOG('Server stopped','I')
-
-        global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
-
-        LOG('Node was gracefully stopped','I')
-            
-        process.exit(0)
-
-
-    },200)
+    process.exit(0)
 
 }
 
@@ -557,7 +539,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
                 if(currentSkipProcedureStage1Set.has(SUBCHAIN)){
 
-                    let signa = await BLS_SIG(`SKIP_STAGE_2:${SUBCHAIN}:${INDEX}:${HASH}:${qtPayload}`)
+                    let signa = await BLS_SIGN_DATA(`SKIP_STAGE_2:${SUBCHAIN}:${INDEX}:${HASH}:${qtPayload}`)
 
                     currentFinalizationProofsResponses.set(keyValue[0],signa)
     
@@ -581,7 +563,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                 if(currentSkipProcedureStage1Set.has(subchain)) continue
     
                 // Put to responses
-                currentFinalizationProofsResponses.set(blockID,await BLS_SIG(blockID+hash+'FINALIZATION'+qtPayload))
+                currentFinalizationProofsResponses.set(blockID,await BLS_SIGN_DATA(blockID+hash+'FINALIZATION'+qtPayload))
     
                 currentFinalizationProofsRequests.delete(blockID)
 
@@ -620,7 +602,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         let handler = currentSkipProcedureStage2Map.get(subchain)
 
-        let sig = await BLS_SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
+        let sig = await BLS_SIGN_DATA(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
 
         //First of all - add to the mempool of special operations
         let operation = {
@@ -752,7 +734,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         },
 
-        ISSUER_PROOF:await BLS_SIG(CONFIG.SYMBIOTE.PUB+myCheckpoint.HEADER.PAYLOAD_HASH),
+        ISSUER_PROOF:await BLS_SIGN_DATA(CONFIG.SYMBIOTE.PUB+myCheckpoint.HEADER.PAYLOAD_HASH),
 
         CHECKPOINT_PAYLOAD:myCheckpoint.PAYLOAD
 
@@ -1269,7 +1251,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
 
 
-    
+
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate SUPER_FINALIZATION_PROOF _______________________
 
 
@@ -1982,7 +1964,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 height:localHealthHandler.INDEX,
                 
-                sig:await BLS_SIG(session+candidate+localHealthHandler.INDEX+qtPayload)
+                sig:await BLS_SIGN_DATA(session+candidate+localHealthHandler.INDEX+qtPayload)
             
             }
 
@@ -2094,7 +2076,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     session,
                     subchain:candidate,
                 
-                    sig:await BLS_SIG(session+session),
+                    sig:await BLS_SIGN_DATA(session+session),
                     initiator:CONFIG.SYMBIOTE.PUB,
                     
                     aggregatedPub,
@@ -2256,7 +2238,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
             hash=Block.genHash(blockCandidate)
     
 
-        blockCandidate.sig=await BLS_SIG(hash)
+        blockCandidate.sig=await BLS_SIGN_DATA(hash)
             
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated ——│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
@@ -2605,7 +2587,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     
     //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-    let pathes=[process.env.CHAINDATA_PATH,process.env.SNAPSHOTS_PATH]
+    let pathes=[process.env.CHAINDATA_PATH]
     
     pathes.forEach(
         
@@ -2675,13 +2657,6 @@ PREPARE_SYMBIOTE=async()=>{
         id => SYMBIOTE_META.STUFF.put(id,CONFIG.SYMBIOTE.LOAD_STUFF[id])
         
     )
-   
-
-    //...and separate dirs for state and metadata snapshots
-
-    SYMBIOTE_META.SNAPSHOT=level(process.env.SNAPSHOTS_PATH,{valueEncoding:'json'})
-
-
 
 
     SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
@@ -2736,9 +2711,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SUBCHAINS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:}
                 
-                CHECKPOINT:'genesis',
-
-                SNAPSHOT_COUNTER:CONFIG.SYMBIOTE.SNAPSHOTS.RANGE
+                CHECKPOINT:'genesis'
             
             }
 
@@ -2984,7 +2957,7 @@ START_AWAKENING_PROCEDURE=async()=>{
         subchain:CONFIG.SYMBIOTE.PUB,
         index:INDEX,
         hash:HASH,
-        sig:await BLS_SIG(false+CONFIG.SYMBIOTE.PUB+INDEX+HASH+qtPayload)
+        sig:await BLS_SIGN_DATA(false+CONFIG.SYMBIOTE.PUB+INDEX+HASH+qtPayload)
     
     }
 

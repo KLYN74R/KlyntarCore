@@ -112,7 +112,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
 //____________________DEFINE PATHS_______________________
 
-//All content below are stored like LOGS_PATH/</SYMBIOTE_ID>/...subdirs
+
 [
 
     'CHAINDATA',//Data of symbiote
@@ -121,9 +121,6 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
     'CONFIGS',//Directory with configs(for node,symbiote and so on)
 
-    'LOGS',//Directory with logs for symbiote avtivity
-
-    'SNAPSHOTS'//Directory with snapshots of state for symbiote
 
 ].forEach(scope=>{
 
@@ -265,14 +262,6 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 //Location for symbiotes
 !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
-
-//And for snapshots
-!fs.existsSync(process.env.SNAPSHOTS_PATH) && fs.mkdirSync(process.env.SNAPSHOTS_PATH);
-
-//For logs streams
-!fs.existsSync(process.env.LOGS_PATH) && fs.mkdirSync(process.env.LOGS_PATH);
-
-
 
 
 /*

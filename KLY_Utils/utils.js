@@ -81,7 +81,7 @@ GET_GMT_TIMESTAMP=()=>{
  * @param {string} pub Ed25519 pubkey RFC8410
  * @returns {boolean} True if signature is valid and false otherwise(invalid or error)
  * */
-VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
+ED25519_VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
        
     //Add mandatory prefix and postfix to pubkey
     cryptoModule.verify(null,data,'-----BEGIN PUBLIC KEY-----\n'+Buffer.from('302a300506032b6570032100'+Buffer.from(Base58.decode(pubKey)).toString('hex'),'hex').toString('base64')+'\n-----END PUBLIC KEY-----',Buffer.from(signature,'base64'),(err,res)=>
@@ -90,7 +90,7 @@ VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
 
     )
 
-).catch(e=>false),//no log message coz in case of tons of wrong signatures we don't need to spam our logs streams
+).catch(_=>false),
 
 
 
@@ -117,7 +117,7 @@ VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
  * 
  * 
  * */
-SIG=(data,prv)=>new Promise((resolve,reject)=>
+ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
     cryptoModule.sign(null,Buffer.from(data),'-----BEGIN PRIVATE KEY-----\n'+prv+'\n-----END PRIVATE KEY-----',(e,sig)=>
     
@@ -125,12 +125,12 @@ SIG=(data,prv)=>new Promise((resolve,reject)=>
 
     )
 
-).catch(_=>''),
+).catch(_=>false),
 
 
 
 //Advanced function which also check limits(useful in routes where we accept relatively small data chunks not to paste payload size checker in each handler)
-BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.from(bytes)))).catch(e=>false),//...no error message to prevent spam to logs streams
+BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.from(bytes)))).catch(e=>false),
 
 
 
@@ -158,7 +158,7 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
  */
 SAFE_ADD=(buffer,chunk,a)=>new Promise(r=>r( Buffer.concat([ buffer, Buffer.from(chunk) ]) ))
     
-    .catch(e=>{
+    .catch(_=>{
         
         a.end('Local buffer overflow')
         
@@ -174,13 +174,9 @@ SEND=(url,payload,callback)=>fetch(url,{method:'POST',body:JSON.stringify(payloa
 
 
 
-//Segregate console and "in-file" logs can be occured by directing stdin to some "nnlog" file to handle logs
-//Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
-LOG=(msg,msgColor,symbiote)=>{
+LOG=(msg,msgColor)=>{
 
     CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
-
-    if(symbiote) CONFIG.SYMBIOTE.LOGS.TO_FILE && SYMBIOTE_LOGS_STREAM.write(`\n[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}] ${msg}`)
 
 },
 
@@ -190,7 +186,7 @@ LOG=(msg,msgColor,symbiote)=>{
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
-    if(CONFIG.SYMBIOTE.LOGS.BLOCK){
+    if(CONFIG.DAEMON_LOGS){
 
         LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
 

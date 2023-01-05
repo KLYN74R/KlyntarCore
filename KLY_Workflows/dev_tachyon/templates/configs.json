@@ -301,27 +301,6 @@
 
     "AWAKE_HELPER_NODE":"http://localhost:7331",
 
-    "REGION":"EU",
-
-    "LOGS":{
-    
-        "TO_FILE":true,
-        "OFFLINE":false,
-        "BLOCK":true,
-        "STORE":true
-        
-    },
-            
-    "SNAPSHOTS":{
-        
-        "ENABLE":true,
-        "RANGE":2,
-        "ALL":true,
-        "SHARDS_URLS":[
-            "https://myown.snapshots.io",
-            "https://dead::beef",
-            "http://192.168.1.23:9696"
-        ]
-    }
+    "REGION":"EU"
 
 }

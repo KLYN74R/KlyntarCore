@@ -38,11 +38,11 @@
 
 
 
+import {BLAKE3,ED25519_VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
+
 import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from './utils.js'
 
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
-
-import {BLAKE3,VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -101,7 +101,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = (event,senderStorageObject) =>
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce&signatures), workflow version, event type, JSON'ed payload,nonce and fee
         let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+event.type+JSON.stringify(event.payload)+event.nonce+event.fee
     
-        if(event.payload.type==='D') return VERIFY(signedData,event.sig,event.creator)
+        if(event.payload.type==='D') return ED25519_VERIFY(signedData,event.sig,event.creator)
         
         if(event.payload.type==='T') return tbls.verifyTBLS(event.creator,event.sig,signedData)
         
@@ -120,7 +120,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = (event,senderStorageObject) =>
 
 export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE=(type,pubkey,signa,data)=>{
 
-    if(type==='D') return VERIFY(data,signa,pubkey)
+    if(type==='D') return ED25519_VERIFY(data,signa,pubkey)
     
     if(type==='P/D') return ADDONS['verify_DIL'](data,pubkey,signa)
     
