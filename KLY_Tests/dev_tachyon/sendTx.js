@@ -15,7 +15,7 @@
 
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-import {SIG} from '../../KLY_Utils/utils.js'
+import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
 import {Transaction} from '@ethereumjs/tx'
 import {Common} from '@ethereumjs/common'
 import {hash} from 'blake3-wasm'
@@ -208,7 +208,7 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
     if(sigType===SIG_TYPES.DEFAULT){
 
-        template.sig = await SIG(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
+        template.sig = await ED25519_SIGN_DATA(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
 
     }else if (sigType===SIG_TYPES.MULTISIG){
         
@@ -572,7 +572,7 @@ let EVM_CONTRACT_CALL=async()=>{
 
 // DEFAULT_2_DEFAULT()
 
-MULTISIG_2_MULTISIG()
+// MULTISIG_2_MULTISIG()
 
 // MULTISIG_2_TBLS()
 
@@ -585,12 +585,11 @@ MULTISIG_2_MULTISIG()
 
 //__________________________ GET INFO __________________________
 
-
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-// let acc0Stat = await GET_ACCOUNT_DATA('7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL')
+let acc0Stat = await GET_ACCOUNT_DATA('7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta')
 
-// console.log(acc0Stat)
+console.log(acc0Stat)
 
 
 

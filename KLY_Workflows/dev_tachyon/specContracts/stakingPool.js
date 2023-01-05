@@ -210,17 +210,17 @@ export let CONTRACT = {
 
             poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL'),
 
-            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
+            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
 
             stakerInfo = poolStorage.STAKERS[event.creator] // Pubkey => {KLY,UNO,REWARD}
 
 
         if(poolStorage && stakerAccount && stakerInfo.REWARD>0){
 
-            stakerAccount.balance+=stakerInfo.REWARD
+            stakerAccount.balance += stakerInfo.REWARD
 
             stakerInfo.REWARD=0
-    
+
         }
 
     }

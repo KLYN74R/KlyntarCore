@@ -1,11 +1,11 @@
-import {SIG} from '../../KLY_Utils/utils.js'
-import {hash} from 'blake3-wasm'
-import fetch from 'node-fetch'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import fetch from 'node-fetch'
+
 
 
 
 //___________________________________________ CONSTANTS POOL ___________________________________________
+
 
 
 
@@ -74,43 +74,6 @@ let GET_ACCOUNT_DATA=async account=>{
     })
 
 }
-
-
-let BLAKE3=v=>hash(v).toString('hex')
-
-
-let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
-
-
-    let template = {
-
-        v:WORKFLOW_VERSION,
-        creator:account.pub,
-        type:txType,
-        nonce,
-        fee:FEE,
-        payload,
-        sig:''
-    
-    }
-
-    template.payload.type=sigType
-
-    if(sigType===SIG_TYPES.DEFAULT){
-
-        template.sig = await SIG(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
-
-    }else if (sigType===SIG_TYPES.MULTISIG){
-        
-        template.sig = await bls.singleSig(SYMBIOTE_ID+WORKFLOW_VERSION+txType+JSON.stringify(payload)+nonce+FEE,account.prv)
-    
-    }
-
-    return template
-
-}
-
-
 
 
 let SEND_EVENT=event=>{
@@ -580,7 +543,7 @@ let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
 }
 
 
-MOVE_FROM_WAITING_ROOM_TO_STAKERS()
+// MOVE_FROM_WAITING_ROOM_TO_STAKERS()
 
 
 
@@ -818,12 +781,65 @@ PAYLOAD={
 */
 
 
+let GET_REWARD=async()=>{
+
+
+    const GENESIS_VALIDATOR_1 = {
+
+        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
+        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
+    
+    }
+    
+
+    let getRewardTxCall={
+
+        v:WORKFLOW_VERSION,
+        creator:GENESIS_VALIDATOR_1.pubKey,
+        type:'CONTRACT_CALL',
+        nonce:4,
+        fee:FEE,
+        payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:GENESIS_VALIDATOR_1.pubKey,
+            afk:[],
+
+            //____________________ For contract _____________________
+
+            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
+            method:'getReward',
+            energyLimit:0,
+            params:[],
+            imports:[] 
+            
+        },
+
+        sig:''
+
+    }
+
+
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(getRewardTxCall.payload)+getRewardTxCall.nonce+FEE
+
+    getRewardTxCall.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
+
+    console.log('\n=============== SIGNED TX TO CALL POOL CONTRACT AND GET THE REWARDS ===============\n')
+
+    console.log(getRewardTxCall)
+
+    let status = await SEND_EVENT(getRewardTxCall)
+
+    console.log('STATUS => ',status);
+
+
+}
 
 
 
-
-
-
+GET_REWARD()
 
 
 
