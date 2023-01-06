@@ -7,8 +7,7 @@ import {Trie} from '@ethereumjs/trie'
 import {LevelDB} from './LevelDB.js'
 import {VM} from '@ethereumjs/vm'
 import {Level} from 'level'
-
-
+import Web3 from 'web3'
 
 
 //_________________________________________________________ CONSTANTS POOL _________________________________________________________
@@ -48,6 +47,8 @@ const stateManager = new DefaultStateManager({trie})
 // Create our VM instance
 const vm = await VM.create({common,stateManager})
 
+
+const web3 = new Web3()
 
 /*
 
@@ -212,14 +213,42 @@ export let KLY_EVM = {
      * @param {string} 32-bytes hexadecimal root of VM's state
      * 
      */
-    setStateRoot: stateRootInHex => stateManager.setStateRoot(Buffer.from(stateRootInHex,'hex'))
+    setStateRoot: stateRootInHex => stateManager.setStateRoot(Buffer.from(stateRootInHex,'hex')),
 
 
     //____________________________________ Auxiliary functionality ____________________________________
 
 
+    /**
+     * 
+     * ### Get the gas required for VM execution
+     * 
+     * @param {string} txObject - raw signed default tx or contract call
+     *
+     *  
+    */
+    estimateGasUsed:async(txObject,contractAddress,contractABI,method,params)=>{
+
+        if(contractAddress){
+
+            let contract = new web3.eth.Contract(contractABI,contractAddress)
+
+            let gasAmount = await contract.methods[method](...params).estimateGas(txObject);
+            
+            return web3.utils.toHex(gasAmount)
+    
+        }else{
+
+            let gasUsed = await web3.eth.estimateGas(txObject).catch(_=>false)
+
+            return web3.utils.toHex(gasUsed)
+
+        }
+
+    }
 
 }
+
 
 
 
