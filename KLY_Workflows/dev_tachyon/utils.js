@@ -161,13 +161,9 @@ QUICK_SORT = array => {
 
 //We get the quorum based on validators' metadata(pass via parameter)
 
-GET_QUORUM = threadID => {
+GET_QUORUM = (subchainsMetadata,workflowOptions) => {
 
-    let subchainsMetadata = threadID==='VERIFICATION_THREAD' ? SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA : SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,
-    
-        validators = Object.keys(subchainsMetadata),
-    
-        workflowOptions = SYMBIOTE_META[threadID].WORKFLOW_OPTIONS
+    let validators = Object.keys(subchainsMetadata)
 
 
     //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
@@ -452,6 +448,25 @@ GET_MAJORITY=threadID=>{
 
 
 GET_RANDOM_BYTES_AS_HEX=size=>crypto.randomBytes(size).toString('hex'),
+
+
+
+USE_TEMPORARY_DB=async(operationType,dbReference,key,value)=>{
+
+
+    if(operationType === 'get'){
+
+        let value = await dbReference.get(key)
+
+        return value
+
+    }
+    else if(operationType === 'put') await dbReference.put(key,value)
+
+    else await dbReference.del(key)
+
+},
+
 
 
 DECRYPT_KEYS=async spinner=>{

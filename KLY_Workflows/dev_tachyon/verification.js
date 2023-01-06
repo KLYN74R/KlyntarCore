@@ -269,7 +269,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         let skipStage2Data = skipStage2Mapping.get(subchain)
 
         //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
-        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH)
+        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
         //{INDEX,HASH,IS_STOPPED}
         let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
@@ -609,7 +609,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         //_______________________Commit changes after operations here________________________
 
-        //Updated WORKFLOW_OPTIONS
+        //Update the WORKFLOW_OPTIONS
         SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
         SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
@@ -619,7 +619,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
        
         //Create new quorum based on new SUBCHAINS_METADATA state
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
+        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
         //Get the new rootpub
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
@@ -664,12 +664,11 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             //Set new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
+            // //Create new quorum based on new SUBCHAINS_METADATA state
+            // SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
 
-            //Create new quorum based on new SUBCHAINS_METADATA state
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
-
-            //Get the new rootpub
-            SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+            // //Get the new rootpub
+            // SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
             //_______________________Check the version required for the next checkpoint________________________
@@ -808,7 +807,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             else if(updatedIsFreshCheckpoint){
 
-                let {skip,verify} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash)
+                let {skip,verify} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({skip:false,verify:false}))
 
                 quorumSolutionToVerifyBlock = verify
 

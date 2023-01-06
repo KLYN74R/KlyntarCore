@@ -4,7 +4,7 @@ import {
     
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
     
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB
 
 } from './utils.js'
 
@@ -16,7 +16,7 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
 
-import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
+import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
@@ -138,7 +138,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 
-DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
+DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -147,27 +147,27 @@ DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     poolStorage.lackOfTotalPower=true
 
-    poolStorage.stopCheckpointID=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    poolStorage.stopCheckpointID=fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.HEADER.ID
     
-    poolStorage.storedMetadata=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
+    poolStorage.storedMetadata=fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
 
 
     //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
 
-    delete SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
+    delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
 
 },
 
 
 
 
-EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
+EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
-    let workflowOptionsTemplate = {...SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS}
-        
 
+    let workflowOptionsTemplate = {...fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS}
+    
     SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
     
     // Structure is <poolID> => true if pool should be deleted
@@ -175,15 +175,15 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
     
 
     //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-    for(let operation of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS){
+    for(let operation of fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.OPERATIONS){
      
-        if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
+        if(operation.type==='SLASH_UNSTAKE') await SPECIAL_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
     
     }
 
     //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
 
-    for(let operation of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS){
+    for(let operation of fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.OPERATIONS){
         
         if(operation.type==='SLASH_UNSTAKE') continue
           /*
@@ -197,20 +197,20 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
             }
             
         */
-        await OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true)
+        await SPECIAL_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThreadWithNewCheckpoint)
     
     }
 
     //_______________________Remove pools if lack of staking power_______________________
 
-    let toRemovePools = [], promises = [], qtSubchains = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
+    let toRemovePools = [], promises = [], qtSubchains = Object.keys(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
 
 
     for(let validator of qtSubchains){
 
         let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-            if(poolStorage.totalPower<SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+            if(poolStorage.totalPower<fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
 
         })
 
@@ -226,9 +226,10 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
     
     for(let address of toRemovePools){
     
-        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address))
+        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThreadWithNewCheckpoint))
     
     }
+
 
     await Promise.all(deleteValidatorsPoolsPromises.splice(0))
 
@@ -252,7 +253,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async atomicBatch => {
 
 
     //Update the WORKFLOW_OPTIONS
-    SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+    fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
     SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
 
@@ -277,42 +278,57 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     //_________________________________FIND THE NEXT CHECKPOINT AND EXECUTE SPECIAL_OPERATIONS INSTANTLY_________________________________
 
+    
     let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
 
     if(possibleCheckpoint){
 
+        // We need it for changes
+        let fullCopyOfQuorumThreadWithNewCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD}
+
+        // Set the new checkpoint
+        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
+
+        // All operations must be atomic
+        let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+
         // Get the FullID of old checkpoint
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
-        // Set the new checkpoint. It's still COMPLETED=false, so we'll not create finalization proofs & commitments for it(long story short - async stuff os OK)
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT = possibleCheckpoint
+        // Execute special operations from new checkpoint using our copy of QT and atomic handler
+        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
 
-        // These operations must be atomic
-        let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
-
-        // Execute special operations in checkpoint
-        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch)
-
-        // Create new quorum based on new SUBCHAINS_METADATA state
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
 
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
+
+        // Mark as completed
+        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.COMPLETED=true
+
+        // Create new quorum based on new SUBCHAINS_METADATA state
+        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
+
+
+        // Commit changes        
+        atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
+
+        await atomicBatch.write()
+          
+        
+        // Store checkpoint locally
+        SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
+            
 
         // Update the block height to keep progress on hostchain
         global.SKIP_PROCEDURE_STAGE_1_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
         global.SKIP_PROCEDURE_STAGE_2_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
-
-        // Store checkpoint locally
-        SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
     
     
         let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
     
         // Create new temporary db for the next checkpoint
         let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
-
 
         // Create mappings & set for the next checkpoint
         let nextTemporaryObject={
@@ -337,6 +353,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         }
 
+        SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThreadWithNewCheckpoint
+
+        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
+
+        // Get the new ROOTPUB and delete the old one
+        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+    
+        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
+
 
         //_______________________Check the version required for the next checkpoint________________________
 
@@ -348,31 +373,10 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             console.log('\n')
             console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
         
-
             // Stop the node to update the software
             GRACEFUL_STOP()
 
-            return
-
         }
-        
-
-        // Mark as completed
-        SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED=true
-
-        // Commit changes        
-        atomicBatch.put('QT',SYMBIOTE_META.QUORUM_THREAD)
-
-        await atomicBatch.write()
-        
-
-        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
-
-        
-        // Get the new ROOTPUB and delete the old one
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
-    
-        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+qtPayload)
 
 
         // Close & delete the old temporary db 
@@ -419,7 +423,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         }
-
 
         // Set next temporary object by ID
         SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
@@ -494,10 +497,11 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     for(let keyValue of currentCheckpointSyncHelper){
 
         let subchain = keyValue[0]
+        
         let handlerWithMaximumHeight = keyValue[1] // {INDEX,HASH,FINALIZATION_PROOF}
 
         //Store to DB
-        await currentCheckpointDB.put(subchain,handlerWithMaximumHeight).then(()=>{
+        await USE_TEMPORARY_DB('put',currentCheckpointDB,subchain,handlerWithMaximumHeight).then(()=>{
 
             // And only after db - update the finalization height for CHECKPOINT_MANAGER
             currentCheckpointsManager.set(subchain,handlerWithMaximumHeight)
@@ -513,7 +517,9 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     if(currentFinalizationProofsRequests.get('NEXT_CHECKPOINT')){
 
-        await currentCheckpointDB.put('NEXT_CHECKPOINT',true).then(()=>{
+
+        //Store to DB
+        await USE_TEMPORARY_DB('put',currentCheckpointDB,'NEXT_CHECKPOINT',true).then(()=>{
 
             // On this step, we have the latest info about finalization_proofs
             currentFinalizationProofsResponses.set('READY_FOR_CHECKPOINT',true)
@@ -625,7 +631,9 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         operation.id=operationID
 
-        await currentCheckpointDB.put('SPECIAL_OPERATION:'+subchain,operation).then(()=>{
+
+          //Store to DB
+          await USE_TEMPORARY_DB('put',currentCheckpointDB,'SPECIAL_OPERATION:'+subchain,operation).then(()=>{
 
             // Only after that we can add it to mempool and create stage_3 proof
 
@@ -677,7 +685,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     if(!checkpointTemporaryDB) return
 
 
-    myCheckpoint ||= await checkpointTemporaryDB.get('CHECKPOINT').catch(_=>false)
+    myCheckpoint ||= await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'CHECKPOINT').catch(_=>false)
 
     quorumMembersHandler ||= await GET_VALIDATORS_URLS(true)
 
@@ -816,9 +824,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
         myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
 
-
         //Store time tracker to DB
-        await checkpointTemporaryDB.put('CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP())
+        await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP()).catch(_=>false)
 
         //Send the header to hostchain
         await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
@@ -850,10 +857,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
-    let timestamp = await temporaryObject.DATABASE.get(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
+    let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
 
-    let myPotentialCheckpoint = await temporaryObject.DATABASE.get(`CHECKPOINT`).catch(_=>false)
-
+    let myPotentialCheckpoint = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,`CHECKPOINT`).catch(_=>false)
 
 
 
@@ -867,7 +873,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
     //Delete the time tracker
-    await temporaryObject.DATABASE.del(`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
+    await USE_TEMPORARY_DB('del',temporaryObject.DATABASE,`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
  
 
     if(myPotentialCheckpoint){
@@ -1147,7 +1153,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             }
 
-            await temporaryObject.DATABASE.put(`CHECKPOINT`,newCheckpoint).catch(_=>false)
+            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,`CHECKPOINT`,newCheckpoint).catch(_=>false)
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
@@ -1305,13 +1311,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         //Share here
         BROADCAST('/super_finalization',superFinalizationProof)
 
-        await DATABASE.put('SFP:'+blockID+blockHash,superFinalizationProof).catch(_=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'SFP:'+blockID+blockHash,superFinalizationProof).catch(_=>false)
 
         // Repeat procedure for the next block and store the progress
 
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        await DATABASE.put('BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(_=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(_=>false)
 
         appropriateDescriptor.height++
 
@@ -1449,7 +1455,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
     
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID)
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID).catch(_=>{})
 
     }
 
@@ -1490,7 +1496,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
-        appropriateDescriptor = await DATABASE.get('BLOCK_SENDER_HANDLER').catch(_=>false)
+        appropriateDescriptor = await USE_TEMPORARY_DB('get',DATABASE,'BLOCK_SENDER_HANDLER').catch(_=>false)
 
         if(!appropriateDescriptor){
 
@@ -1518,14 +1524,14 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     if(FINALIZATION_PROOFS.has(blockID)){
 
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID)
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID).catch(_=>{})
 
     }else{
 
         // This option means that we already started to share block and going to find 2/3N+1 commitments
         // Once we get it - aggregate it and start finalization proofs grabbing(previous option) 
         
-        await RUN_COMMITMENTS_GRABBING(qtPayload,blockID)
+        await RUN_COMMITMENTS_GRABBING(qtPayload,blockID).catch(_=>{})
 
     }
 
@@ -1555,13 +1561,15 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
     for(let subchain of temporaryObject.SKIP_PROCEDURE_STAGE_1){
 
-        let skipStage3Handler = await temporaryObject.DATABASE.get('SKIP_STAGE_3:'+subchain).catch(_=>false)
+        let skipStage3Handler = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'SKIP_STAGE_3:'+subchain).catch(_=>false)
 
         //No sense to do this procedure for subchain which is already skipped
         if(skipStage3Handler || temporaryObject.SKIP_PROCEDURE_STAGE_2.has(subchain)) continue
 
+
         //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
-        let timestamp = temporaryObject.DATABASE.get('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
+        let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
+
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
     
@@ -1570,7 +1578,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         }
         
         //Delete the time tracker
-        await temporaryObject.DATABASE.del('TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>{})
+        await USE_TEMPORARY_DB('del',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>{})
         
 
         let localFinalizationHandler = temporaryObject.CHECKPOINT_MANAGER.get(subchain)
@@ -1707,8 +1715,8 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             }
 
             //Add time tracker for event
-            
-            await temporaryObject.DATABASE.put('TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP()).then(()=>
+      
+            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP()).then(()=>
 
                 //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
                 HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
@@ -1767,8 +1775,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let baseBlockID = pubKey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await tempObject.DATABASE.get('SFP:'+baseBlockID+HASH).catch(_=>false)
-
+            let SUPER_FINALIZATION_PROOF = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+baseBlockID+HASH).catch(_=>false)
+            
+        
             //Store to mapping
             tempObject.HEALTH_MONITORING.set(pubKey,{LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF})
 
@@ -1920,7 +1929,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     for(let candidate of candidatesForAnotherCheck){
 
-        let timestamp = await checkpointTemporaryDB.get('TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
+        let timestamp = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
 
         if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
     
@@ -1929,8 +1938,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         }
         
         //Delete the time tracker
-        await checkpointTemporaryDB.del('TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>{})
+        await USE_TEMPORARY_DB('del',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>{})
     
+
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate)
@@ -2086,8 +2096,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 }
 
 
+
                 //Add time tracker for event
-                await checkpointTemporaryDB.put('TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
+                await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
 
                     //Send to hostchain
                     HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
@@ -2107,7 +2118,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
-    SKIP_PROCEDURE_STAGE_2()
+    SKIP_PROCEDURE_STAGE_2().catch(_=>{})
 
 },
 
@@ -2520,10 +2531,10 @@ LOAD_GENESIS=async()=>{
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of SUBCHAINS_METADATA state
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
     //...However, quorum for QUORUM_THREAD might be retrieved from SUBCHAINS_METADATA of checkpoints. It's because both threads are async
-    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('QUORUM_THREAD')
+    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
 
 },
 
@@ -2754,8 +2765,6 @@ PREPARE_SYMBIOTE=async()=>{
         // Stop the node to update the software
         GRACEFUL_STOP()
 
-        return
-
     }
 
 
@@ -2769,8 +2778,6 @@ PREPARE_SYMBIOTE=async()=>{
 
         // Stop the node to update the software
         GRACEFUL_STOP()
-
-        return
 
     }
 
@@ -2982,7 +2989,7 @@ START_AWAKENING_PROCEDURE=async()=>{
 
     if(numberOfOkStatus >= majority){
 
-        LOG('Ok, majority received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1mGT\x1b[32;1m will be activated','S')
+        LOG('Ok, majority received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1msubchain\x1b[32;1m will be activated','S')
 
     }else LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - probably, less than majority agree with it`,'W')
 

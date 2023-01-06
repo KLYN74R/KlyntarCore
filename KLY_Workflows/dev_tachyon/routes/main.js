@@ -1,6 +1,6 @@
-import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {BROADCAST,BLS_VERIFY,BLS_SIGN_DATA,BLOCKLOG,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
-import {BROADCAST,BLS_VERIFY,BLS_SIGN_DATA,BLOCKLOG,GET_MAJORITY} from '../utils.js'
+import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -56,7 +56,7 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtValidatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtSubchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -99,7 +99,7 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtValidatorsMetadata[block.creator].IS_STOPPED
+                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator].IS_STOPPED
                 
                 if(subchainlackOfTotalPowerForCurrentCheckpoint){
 
@@ -112,7 +112,8 @@ acceptBlocks=response=>{
                 
                 let hash=Block.genHash(block)
 
-                let myCommitment = await tempObject.DATABASE.get(block.сreator+":"+block.index).catch(_=>false)
+
+                let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,block.сreator+":"+block.index).catch(_=>false)
          
 
                 if(myCommitment){
@@ -168,11 +169,12 @@ acceptBlocks=response=>{
                          
                     )
                     
-                
+
                     let commitment = await BLS_SIGN_DATA(blockID+hash+qtPayload)
+                
 
                     //Put to local storage to prevent double voting
-                    await tempObject.DATABASE.put(blockID,commitment).then(()=>
+                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
     
                         !response.aborted && response.end(commitment)
                     
@@ -356,7 +358,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+    if(!tempObject){
 
         !response.aborted && response.end('Checkpoint is not fresh')
 
@@ -368,17 +372,17 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSignature).catch(_=>false)
 
-    let majorityIsOk = GET_MAJORITY('QUORUM_THREAD') >= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length
+    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
 
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
 
-    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    let checkpointTempDB = tempObject.DATABASE
 
 
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        checkpointTempDB.put('SFP:'+possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof)
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
@@ -424,10 +428,9 @@ getSuperFinalization=async(response,request)=>{
 
             return
         }
+
        
-        let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
-    
-        let superFinalizationProof = await checkpointTempDB.get('SFP:'+request.getParameter(0)).catch(_=>false)
+        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(qtPayload)?.DATABASE,'SFP:'+request.getParameter(0)).catch(_=>false)
 
 
         if(superFinalizationProof){
@@ -500,10 +503,8 @@ healthChecker = async response => {
             return
         }
        
-        let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
-        let superFinalizationProof = await checkpointTempDB.get('SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
-
+        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(qtPayload)?.DATABASE,'SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
 
 
         if(superFinalizationProof){
@@ -1135,18 +1136,21 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointProofsResponses = SYMBIOTE_META.TEMP.get(qtPayload)?.PROOFS_RESPONSES
-
-    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !checkpointProofsResponses){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
         return
 
     }
+
+
+    let checkpointProofsResponses = tempObject.PROOFS_RESPONSES
+
+    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
@@ -1162,14 +1166,14 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    let checkpointTemporaryDB = tempObject.DATABASE
 
 
 
-    let payloadIsAlreadyInDb = await checkpointTemporaryDB.get(payloadHash).catch(_=>false)
+    let payloadIsAlreadyInDb = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false)
 
-    let proposerAlreadyInDB = await checkpointTemporaryDB.get('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
-
+    let proposerAlreadyInDB = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
+    
 
 
     if(payloadIsAlreadyInDb){
@@ -1198,20 +1202,29 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         if(majorityHasSignedIt && issuerSignatureIsOk){
 
             // Store locally, mark that this issuer has already sent us a finalized version of checkpoint
-            let atomicBatch = checkpointTemporaryDB.batch()
 
-            atomicBatch.put('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER,true)
+            try{
+
+                let atomicBatch = checkpointTemporaryDB.batch()
+
+                atomicBatch.put('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER,true)
             
-            atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
+                atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
 
-            await atomicBatch.write()
+                await atomicBatch.write()
 
-            // Generate the signature for the second stage
+                // Generate the signature for the second stage
 
-            let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
+                let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
 
-            response.end(JSON.stringify({sig}))
+                response.end(JSON.stringify({sig}))
 
+            }catch{
+
+                response.end(JSON.stringify({error:'Something wrong with batch'}))
+
+            }
+            
         }else response.end(JSON.stringify({error:'Something wrong'}))
 
     }
@@ -1261,7 +1274,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let payloadHash = request.getParameter(0),
 
-            checkpoint = await checkpointTemporaryDB.get(payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
+            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
 
         if(checkpoint){
 

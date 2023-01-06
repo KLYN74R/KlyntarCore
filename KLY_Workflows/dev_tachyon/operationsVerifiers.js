@@ -61,7 +61,7 @@ export default {
 
 
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    STAKING_CONTRACT_CALL:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
     /*
 
@@ -172,15 +172,15 @@ export default {
             SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
             
-            let workflowConfigs = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
+            let workflowConfigs = fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS
 
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                let template = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
+                let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
         
 
-                SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = template
+                fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = metadataTemplate
 
                 // Make it "null" again
 
@@ -330,7 +330,7 @@ export default {
 
 
     //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    STOP_VALIDATOR:async(payload,isFromRoute,usedOnQuorumThread)=>{
+    STOP_VALIDATOR:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -368,7 +368,7 @@ export default {
 
             // Set the "STOPPED" property to true/false in QT.SUBCHAINS_METADATA[<subchain>]
 
-            let subchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
+            let subchainsMetadata = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
 
             if(stop){
 
@@ -407,7 +407,7 @@ export default {
 
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -474,7 +474,7 @@ export default {
 
 
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
         
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
@@ -573,7 +573,7 @@ export default {
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -619,7 +619,7 @@ export default {
 
         }else if(usedOnQuorumThread){
     
-            if(SYMBIOTE_META.QUORUM_THREAD.RUBICON < payload) SYMBIOTE_META.QUORUM_THREAD.RUBICON=payload
+            if(fullCopyOfQuorumThreadWithNewCheckpoint.RUBICON < payload) fullCopyOfQuorumThreadWithNewCheckpoint.RUBICON=payload
 
         }else{
 
@@ -634,7 +634,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -704,7 +704,7 @@ export default {
 
 
 
-    VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread)=>{
+    VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -749,9 +749,9 @@ export default {
             return {type:'VERSION_UPDATE',payload:data}
 
         }
-        else if(usedOnQuorumThread && payload.major > SYMBIOTE_META.QUORUM_THREAD.VERSION){
+        else if(usedOnQuorumThread && payload.major > fullCopyOfQuorumThreadWithNewCheckpoint.VERSION){
 
-            SYMBIOTE_META.QUORUM_THREAD.VERSION=payload.major
+            fullCopyOfQuorumThreadWithNewCheckpoint.VERSION=payload.major
 
         }else if(payload.major > SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
 
