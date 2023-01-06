@@ -196,6 +196,8 @@ export let CONTRACT = {
     },
 
 
+
+    
     /*
      
         Method to withdraw your money by staking

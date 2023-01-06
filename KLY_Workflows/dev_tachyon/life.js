@@ -2333,11 +2333,15 @@ LOAD_GENESIS=async()=>{
 
         for(let evmKey of evmKeys) {
 
-            let {balance,nonce} = genesis.EVM[evmKey]
+            let {isContract,balance,nonce,code,storage} = genesis.EVM[evmKey]
 
             //Put KLY-EVM to KLY-EVM state db which will be used by Trie
 
-            evmPromises.push(KLY_EVM.putAccount(evmKey,balance,nonce))
+            if(isContract){
+
+                evmPromises.push(KLY_EVM.putContract(evmKey,balance,nonce,code,storage))
+
+            }else evmPromises.push(KLY_EVM.putAccount(evmKey,balance,nonce))
 
         }
 
@@ -2424,6 +2428,11 @@ LOAD_GENESIS=async()=>{
     await atomicBatch.write()
 
     await quorumThreadAtomicBatch.write()
+
+    
+    // Get the EVM state root and assign as one of the VT properties
+
+    SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
@@ -2750,6 +2759,9 @@ PREPARE_SYMBIOTE=async()=>{
         await SYMBIOTE_META.QUORUM_THREAD_METADATA.put('QT',SYMBIOTE_META.QUORUM_THREAD)
 
     }
+
+    
+    await KLY_EVM.setStateRoot(SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT)
 
 
     //_______________________________Check the version of QT and VT and if need - update________________________________

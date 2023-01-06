@@ -137,6 +137,40 @@ export let KLY_EVM = {
 
     },
 
+
+
+
+    putContract:async(address,balanceInEthKly,nonce,code,storage)=>{
+
+        let accountData = {
+            
+            nonce,
+            
+            balance:BigInt(balanceInEthKly) * (BigInt(10) ** BigInt(18)), // balanceInEthKly * 1 eth. So, if you want to set balance to X KLY on KLY-EVM - set parameter value to X
+          
+        }
+
+        address = Address.fromString(address)
+    
+        await vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
+
+        for (const [key, val] of Object.entries(storage)) {
+        
+            const storageKey = Buffer.from(key,'hex')
+            const storageVal = Buffer.from(val,'hex')
+        
+            await vm.stateManager.putContractStorage(address,storageKey,storageVal)
+        
+        }
+
+        const codeBuf = Buffer.from(code,'hex')
+    
+        await vm.stateManager.putContractCode(address,codeBuf)
+        
+    },
+
+
+    
     /**
      * 
      * ### Returns the state of account related to address

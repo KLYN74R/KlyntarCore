@@ -410,7 +410,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
     let status = await SEND_EVENT(stakingTxToPool)
 
-    console.log('POOL DEPLOYMENT STATUS => ',status);
+    console.log('SEND_STAKE TX STATUS => ',status);
 
 }
 
@@ -543,7 +543,7 @@ let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
 }
 
 
-MOVE_FROM_WAITING_ROOM_TO_STAKERS()
+// MOVE_FROM_WAITING_ROOM_TO_STAKERS()
 
 
 
@@ -730,6 +730,120 @@ From the previous step, the state looks like this
 4) Finally, you'll get back your X KLY
 
 
+*/
+
+
+let UNSTAKING=async()=>{
+
+    
+    const GENESIS_VALIDATOR_1 = {
+
+        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
+        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
+    
+    }
+
+    
+    let unstakingTxToPool={
+
+        v:WORKFLOW_VERSION,
+        creator:GENESIS_VALIDATOR_1.pubKey,
+        type:'CONTRACT_CALL',
+        nonce:2,
+        fee:FEE,
+        payload:{
+            
+            //________________ Account related stuff ________________
+
+            type:'M', //multisig tx
+            active:GENESIS_VALIDATOR_1.pubKey,
+            afk:[],
+
+            //____________________ For contract _____________________
+
+            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
+            method:'unstake',
+            energyLimit:0,
+            params:[
+
+                {
+                    amount:50000,
+                    units:'KLY'
+                }
+
+            ],
+            imports:[] 
+            
+        },
+
+        sig:''
+
+    }
+
+
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
+
+    unstakingTxToPool.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
+
+    console.log('\n=============== SIGNED TX FOR UNSTAKING ===============\n')
+
+    console.log(unstakingTxToPool)
+
+    let status = await SEND_EVENT(unstakingTxToPool)
+
+    console.log('UNSTAKING TX STATUS => ',status);
+
+
+}
+
+
+// UNSTAKING()
+
+
+// And special operation to move from WAITING ROOM to delayed operations
+
+
+
+
+let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
+
+    let mySpecialOperationToUnstake = {
+
+        type:'STAKING_CONTRACT_CALL',
+        
+        payload:{
+
+            txid:'3af3102de898b8fc67f1400e14b8542a42d1d09125cd7a737cb7d00b14b93498',
+            pool:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            type:'-',
+            amount:50000
+    
+        }
+    
+    }
+
+
+    let optionsToSend = {
+
+        method:'POST',
+        body:JSON.stringify(mySpecialOperationToUnstake)
+    
+    }
+    
+    
+    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+
+}
+
+
+// MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
+
+
+
+/*
 ![*] ------------------------------------------------------ How to get rewards --------------------------------------------------------
 
 Imagine that you want to get rewards from pool. Since previous step we have the following in state
