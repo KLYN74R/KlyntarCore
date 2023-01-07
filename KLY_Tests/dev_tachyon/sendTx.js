@@ -587,9 +587,9 @@ let EVM_CONTRACT_CALL=async()=>{
 
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-let acc0Stat = await GET_ACCOUNT_DATA('7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)_STORAGE_POOL')
+// let acc0Stat = await GET_ACCOUNT_DATA('7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)_STORAGE_POOL')
 
-console.log(acc0Stat)
+// console.log(acc0Stat)
 
 
 

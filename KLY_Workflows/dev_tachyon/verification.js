@@ -661,14 +661,17 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         if(nextCheckpoint) {
 
-            //Set new checkpoint
+
+            let oldQuorum = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
+
+            //Set the new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
-            // //Create new quorum based on new SUBCHAINS_METADATA state
-            // SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM('VERIFICATION_THREAD')
+            // But quorum is the same as previous
+            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = oldQuorum
 
-            // //Get the new rootpub
-            // SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+            //Get the new rootpub
+            SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
             //_______________________Check the version required for the next checkpoint________________________

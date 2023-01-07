@@ -110,10 +110,9 @@ let SEND_WORKFLOW_UPDATE_MESSAGE=async()=>{
     */
 
         let data={
-                
-            SUBCHAIN_AFK_LIMIT:130000,
 
-            CHECKPOINT_SPEC_OPS_LIMIT:2000
+            fieldName:'SUBCHAIN_AFK_LIMIT',
+            newValue:130000
         
         }
     
