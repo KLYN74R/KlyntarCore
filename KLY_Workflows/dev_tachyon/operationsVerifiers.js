@@ -349,7 +349,7 @@ export default {
         
         */
 
-        let {stop,subchain,index,hash}=payload
+        let {stop,subchain}=payload
 
 
         if(isFromRoute){
@@ -374,10 +374,6 @@ export default {
 
                 subchainsMetadata.IS_STOPPED=true
 
-                subchainsMetadata.INDEX = index
-
-                subchainsMetadata.HASH = hash
-
             }else subchainsMetadata.IS_STOPPED=false //unfreeze
 
         }
@@ -391,10 +387,6 @@ export default {
             if(stop){
 
                 subchainsMetadata.IS_STOPPED=true
-
-                subchainsMetadata.INDEX = index
-
-                subchainsMetadata.HASH = hash
 
             }else subchainsMetadata.IS_STOPPED=false //unfreeze
 
@@ -431,7 +423,11 @@ export default {
 
             let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
-            return !!poolExists
+            if(poolExists && Array.isArray(delayedIds)){
+
+                return {delayedIds,pool}
+
+            }else return false
 
         }
         else if(usedOnQuorumThread){
@@ -474,7 +470,7 @@ export default {
 
 
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
         
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
@@ -573,7 +569,7 @@ export default {
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    UPDATE_RUBICON:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    RUBICON_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -609,7 +605,7 @@ export default {
             &&
             SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -674,7 +670,7 @@ export default {
             &&
             CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -739,7 +735,8 @@ export default {
             &&
             CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+
 
 
         if(overviewIfFromRoute){

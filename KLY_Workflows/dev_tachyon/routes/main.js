@@ -1323,18 +1323,20 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
     if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
-        let isOk = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
+        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
 
-        if(isOk){        
+        if(possibleSpecialOperation){        
 
             // Assign the ID to operation to easily detect what we should exclude from checkpoints propositions
-            let payloadHash = BLAKE3(JSON.stringify(operation.payload))
+            let payloadHash = BLAKE3(JSON.stringify(possibleSpecialOperation.payload))
 
-            operation.id = payloadHash
+            possibleSpecialOperation.id = payloadHash
 
             // Add to mempool
-            specialOperationsMempool.set(payloadHash,operation)
-            
+            specialOperationsMempool.set(payloadHash,possibleSpecialOperation)
+
+            console.log('========= SPECIAL OPERATIONS MEMPOOL IS =========\n')
+            console.log(specialOperationsMempool)
 
             !response.aborted && response.end('OK')
         

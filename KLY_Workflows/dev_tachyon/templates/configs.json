@@ -105,8 +105,9 @@
 
 
     "TRUSTED_POOLS":{
-        "UPDATE_RUBICON":["CiKNwFUB6xcu8NN1Jmz47jZiGggMRNgrn8wzCkccPJia"],
-        "WORKFLOW_UPDATE":["CiKNwFUB6xcu8NN1Jmz47jZiGggMRNgrn8wzCkccPJia"]
+        "VERSION_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
+        "RUBICON_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
+        "WORKFLOW_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"]
     },
 
     "STORE_BLOCKS":true,
