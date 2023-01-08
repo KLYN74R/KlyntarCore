@@ -119,7 +119,7 @@ let GET_ACCOUNT_DATA=async account=>{
 
 let SEND_EVENT=event=>{
 
-    return fetch('http://localhost:7331/event',
+    return fetch('http://localhost:7332/event',
 
         {
         
@@ -278,14 +278,14 @@ let DEPLOY_POOL_CONTRACT=async()=>{
             //________________ Account related stuff ________________
 
             type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            active:POOL_OWNER.pubKey,
             afk:[],
 
             //____________________ For contract _____________________
 
             bytecode:'',
             lang:'spec/stakingPool',
-            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
+            constructorParams:[POOL_OWNER.pubKey,0.7,10000,[]]
         },
         sig:''
 
@@ -880,7 +880,7 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 }
 
 
-MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
+// MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
 
 
