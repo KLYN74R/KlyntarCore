@@ -1271,7 +1271,6 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
 
-
         let payloadHash = request.getParameter(0),
 
             checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)

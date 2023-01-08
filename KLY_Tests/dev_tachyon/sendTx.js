@@ -31,7 +31,7 @@ const web3 = new Web3('http://localhost:7331')
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
-const WORKFLOW_VERSION = 0
+const WORKFLOW_VERSION = 1
 
 const FEE = 5
 
@@ -173,7 +173,7 @@ let evmAccount1 = {
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:7331/account/${account}`)
+    return fetch(`http://localhost:7332/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -225,7 +225,7 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 let SEND_EVENT=event=>{
 
-    return fetch('http://localhost:7331/event',
+    return fetch('http://localhost:7332/event',
 
         {
         
@@ -314,8 +314,8 @@ let MULTISIG_2_MULTISIG=async()=>{
 
         type:'M',
         rev_t:0,
-        to:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-        amount:100000
+        to:'6TSGRz9KaTHtwtFXdLHoyvn1F5uQEysqz43nMH5DY3Zh2xtmKeuZST5PZR1zZVsCHk',
+        amount:1000
     
     }
 
@@ -587,7 +587,7 @@ let EVM_CONTRACT_CALL=async()=>{
 
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-// let acc0Stat = await GET_ACCOUNT_DATA('7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta(POOL)_STORAGE_POOL')
+// let acc0Stat = await GET_ACCOUNT_DATA('6TSGRz9KaTHtwtFXdLHoyvn1F5uQEysqz43nMH5DY3Zh2xtmKeuZST5PZR1zZVsCHk')
 
 // console.log(acc0Stat)
 
