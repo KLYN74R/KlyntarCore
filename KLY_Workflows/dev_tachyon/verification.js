@@ -369,7 +369,7 @@ WAIT_SOME_TIME=async()=>
 
 
 
-DELETE_VALIDATOR_POOLS_WHO_HAS_LACK_OF_STAKING_POWER=async validatorPubKey=>{
+DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -478,7 +478,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         for(let poolBLSAddress of poolsToBeRemoved){
 
-            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS_WHO_HAS_LACK_OF_STAKING_POWER(poolBLSAddress))
+            deleteValidatorsPoolsPromises.push(DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(poolBLSAddress))
 
         }
 
@@ -498,8 +498,18 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         for(let poolIdentifier of slashObjectKeys){
 
-            //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+
+            //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool}> _____________
+            
+            // Delete the single storage
             atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+
+            // Delete metadata
+            atomicBatch.del(poolIdentifier+'(POOL)')
+
+            // Remove from subchains
+            delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[poolIdentifier]
+
 
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
 
@@ -519,7 +529,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
 
-                for(let txid of delayedArray) delayedArray.splice(txid,1) //remove single tx
+                for(let txidIndex of toDeleteArray) delayedArray.splice(txidIndex,1) //remove single tx
 
             }
 
@@ -535,16 +545,16 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         if(!delayedTableOfIds) delayedTableOfIds=[]
 
         
-        let currentCheckpointID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID ,
+        let currentCheckpointIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
         
-            idsToDelete = []
+        let idsToDelete = []
 
 
         for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
 
-            //Here we get the arrays of delayed operatins from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+            //Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
-            if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointID){
+            if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointIndex){
 
                 let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
 
@@ -601,11 +611,15 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         
         if(currentArrayOfDelayedOperations.length !== 0){
 
-            delayedTableOfIds.push(currentCheckpointID)
+            delayedTableOfIds.push(currentCheckpointIndex)
 
-            SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointID,currentArrayOfDelayedOperations)
+            SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointIndex,currentArrayOfDelayedOperations)
 
         }
+
+        // Set the DELAYED_TABLE_OF_IDS to DB
+        SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
+
 
         //_______________________Commit changes after operations here________________________
 

@@ -244,10 +244,12 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
     for(let poolIdentifier of slashObjectKeys){
     
-        //slashObject has the structure like this <pool> => <{delayedIds,pool}>
+        //slashObject has the structure like this <pool> => true
     
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
-    
+
+        // Remove from subchains
+        delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolIdentifier]
     
     }
 

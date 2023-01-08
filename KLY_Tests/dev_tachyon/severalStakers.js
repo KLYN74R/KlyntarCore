@@ -10,6 +10,7 @@ So, we deploy pool as usual, but with 3 stakers
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 import fetch from 'node-fetch'
+import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
 
 
 
@@ -405,29 +406,27 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
     */
 
-    let stakingTxToPool={
+    let stakingTxToPoolFromStaker={
 
         v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
+        creator:STAKER_2.pub,
         type:'CONTRACT_CALL',
-        nonce:3,
+        nonce:1,
         fee:FEE,
         payload:{
             
             //________________ Account related stuff ________________
 
-            type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            afk:[],
+            type:'D', //default, using ed25519 signature
 
             //____________________ For contract _____________________
-            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+            contractID:POOL_OWNER.pubKey+'(POOL)',
             method:'stake',
             energyLimit:0,
             params:[
 
                 {
-                    amount:50000,
+                    amount:20000,
                     units:'KLY'
                 }
 
@@ -441,15 +440,15 @@ TX_TYPE=CONTRACT_CALL, required payload is
     }
 
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPoolFromStaker.payload)+stakingTxToPoolFromStaker.nonce+FEE
 
-    stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
+    stakingTxToPoolFromStaker.sig=await ED25519_SIGN_DATA(dataToSign,STAKER_2.prv)
 
     console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
 
-    console.log(stakingTxToPool)
+    console.log(stakingTxToPoolFromStaker)
 
-    let status = await SEND_EVENT(stakingTxToPool)
+    let status = await SEND_EVENT(stakingTxToPoolFromStaker)
 
     console.log('SEND_STAKE TX STATUS => ',status);
 
@@ -552,335 +551,67 @@ REWARD shows how much you earned since the last <getReward> call.
 
 let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
 
-    let mySpecialOperation = {
 
-        type:'STAKING_CONTRACT_CALL',
-        
-        payload:{
-
-            txid:'dba4f76346a945aaf6855f2c98904c871a14a4c81d46fd93ff2f248296509c5d',
-            pool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            type:'+',
-            amount:50000
+    /*
     
+    Our 3 stakers received the following IDs from staking
+
+        [+] FbjP8LpTeujhpbrqeq3GiTeDgDvZUBWzuyGU49hzaTGb => 3d40b9675451a754614b1f6e0aea24c3d57081f377dd452d23aa00e690031430
+
+        [+] 8fJbrevJjKEgb6Q6ATe53eGUDk9w2X97fWTraqwivZKY => cdceb83b5374d11324cdce456df2c162e58b44b10a13bd6fae79600d3dde6fc6
+
+        [+] 8NrFBfJqWKgBb8ig2Wwzz8ADvghSs4JYdvnZUN74fm9w => 0ad008ff4c7cdb9df786d47b1fd04c3e141d8d041b917363553e987fb11082d8
+    
+    
+    */
+
+    let TX_IDS_IN_WAITING_ROOM_OF_POOL = [
+
+        '3d40b9675451a754614b1f6e0aea24c3d57081f377dd452d23aa00e690031430',
+        'cdceb83b5374d11324cdce456df2c162e58b44b10a13bd6fae79600d3dde6fc6',
+        '0ad008ff4c7cdb9df786d47b1fd04c3e141d8d041b917363553e987fb11082d8'
+    ]
+
+
+    for(let txid of TX_IDS_IN_WAITING_ROOM_OF_POOL){
+
+
+        let mySpecialOperation = {
+
+            type:'STAKING_CONTRACT_CALL',
+            
+            payload:{
+    
+                txid,
+                pool:POOL_OWNER.pubKey,
+                type:'+',
+                amount:20000
+        
+            }
+        
         }
     
+    
+        let optionsToSend = {
+    
+            method:'POST',
+            body:JSON.stringify(mySpecialOperation)
+        
+        }
+        
+        
+        // fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp)) - disabled since previous checkpoint due to unstaking
+        fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+        fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+        fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    
+
     }
-
-
-    let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperation)
-    
-    }
-    
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
 }
 
 
 // MOVE_FROM_WAITING_ROOM_TO_STAKERS()
-
-
-
-/*
-
-![*] -------------------------------------------------------- How to unstake --------------------------------------------------------
-
-Unstaking - is important part of work with pools & stakers because require appropriate security & reliability stuff.
-Unstaking isn't instant process - the unstaking period is declared in workflow options via UNSTAKING_PERIOD property. This shows difference in checkpoints' IDs
-
-For example, if you call unstake function of pool's contract(see KLY_Workflows/dev_tachyon/specContracts/stakingPool.js), you loose the staker status and your UNSTAKE operation moves to WAITING_ROOM
-
-___________________________________________________________[Steps to unstake]___________________________________________________________
-
-0) Send the contract call operation with the following payload
-
-TX_TYPE = CONTRACT_CALL(see dev_tachyon/verifiers.js)
-
-PAYLOD = {
-
-    contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
-    method:'unstake',
-    energyLimit:0,
-    params:[A] params to pass to function. A is alias - see below
-    imports:[]
-
-}
-
-A={
-    amount:<amount in KLY or UNO> | NOTE:must be int - not float
-    type:<KLY|UNO>
-}
-
-Note: You can unstake the same sum you've staked or less(not more😃)
-
-1) If call was successfull - then the state will looks like this
-
-
-
-    Pool metadata:
-
-    {
-        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
-        value: {
-            type: 'contract',
-            lang: 'spec/stakingPool',
-            balance: 0,
-            uno: 0,
-            storages: [ 'POOL' ],
-            bytecode: ''
-        }
-    }
-
-
-    Pool storage:
-    
-    {
-
-        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
-        value: {
-            percentage: 0.7,
-            overStake: 0,
-            whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
-            totalPower: 55000,
-            STAKERS: {
-
-                '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
-                    
-                    KLY:55000,
-                    UNO:0,
-                    REWARD:0
-                }                
-
-            },
-            WAITING_ROOM: {
-
-                '<BLAKE3(event.sig)>':{
-
-                    checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
-
-                    staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-
-                    amount:X,
-
-                    units:'KLY',
-
-                    type:'-' //means "UNSTAKE"
-
-                }
-
-            }
-        
-        }
-
-    }
-
-
-2) The second part - create the special operation as a final step of unstaking
-
-For this, we need to send STAKING_CONTRACT_CALL operation to ALL the current quorum members
-
-{
-    type:'STAKING_CONTRACT_CALL',
-    payload:{
-
-        {
-            txid:BLAKE3(event.sig)<id in WAITING_ROOM in contract storage> - take this from your contract call tx on previous step
-            pool:''7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            type:'-'
-            amount:X
-        }
-    
-    }
-
-}
-
-If such txid present in WAITING_ROOM of this pool and all the verification stuff successfully passed - then we check the UNSTAKING_PERIOD(it might be various dependent on network solutions).
-
-By default - it's 4.
-
-Based on info in record WAITING_ROOM of your pool - we can understand when it will be possible for your to unstake and get funds(KLY/UNO) back.
-
-If you've unstaked on CHECKPOINT_ID=1337, that's mean that you'll have ability to finish unstaking at least on 1337+UNSTAKING_PERIOD(4)=1341st checkpoint(~ 4 days)
-
-******************************************************************
-* The minimal required unstaking period for dev_tachyon - 3 days *
-******************************************************************
-
-3) After that, your unstaking tx will be pushed to DELAYED_OPERATIONS array.
-
-This is the array which identifies by checkpointID and performed once it's time for it
-
-For example, if current CHECKPOINT_ID = 1337, then the array of DELAYED_OPERATIONS related to this checkpoint will be executed on the 1341st checkpoint
-
-From the previous step, the state looks like this
-
-
-[Pool storage]:
-    
-    {
-
-        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
-        value: {
-            percentage: 0.7,
-            overStake: 0,
-            whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
-            totalPower: 55000-X,
-            STAKERS: {
-
-                '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
-                    
-                    KLY:55000-X,
-                    UNO:0,
-                    REWARD:Y
-                }                
-
-            },
-            WAITING_ROOM: {}
-        
-        }
-
-    }
-
-[DELAYED_OPERATIONS]:
-
-[
-
-    {
-
-        fromPool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-
-        to:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-                        
-        amount:X,
-                        
-        units:'KLY'
-
-    },
-    ...(other delayed operations from checkpoint 1337th)
-
-]
-
-
-4) Finally, you'll get back your X KLY
-
-
-*/
-
-
-let UNSTAKING=async()=>{
-
-    
-    const GENESIS_VALIDATOR_1 = {
-
-        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    
-    }
-
-    
-    let unstakingTxToPool={
-
-        v:WORKFLOW_VERSION,
-        creator:GENESIS_VALIDATOR_1.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:2,
-        fee:FEE,
-        payload:{
-            
-            //________________ Account related stuff ________________
-
-            type:'M', //multisig tx
-            active:GENESIS_VALIDATOR_1.pubKey,
-            afk:[],
-
-            //____________________ For contract _____________________
-
-            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
-            method:'unstake',
-            energyLimit:0,
-            params:[
-
-                {
-                    amount:50000,
-                    units:'KLY'
-                }
-
-            ],
-            imports:[] 
-            
-        },
-
-        sig:''
-
-    }
-
-
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
-
-    unstakingTxToPool.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
-
-    console.log('\n=============== SIGNED TX FOR UNSTAKING ===============\n')
-
-    console.log(unstakingTxToPool)
-
-    let status = await SEND_EVENT(unstakingTxToPool)
-
-    console.log('UNSTAKING TX STATUS => ',status);
-
-
-}
-
-
-// UNSTAKING()
-
-
-// And special operation to move from WAITING ROOM to delayed operations
-
-
-
-
-let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
-
-    let mySpecialOperationToUnstake = {
-
-        type:'STAKING_CONTRACT_CALL',
-        
-        payload:{
-
-            txid:'3af3102de898b8fc67f1400e14b8542a42d1d09125cd7a737cb7d00b14b93498',
-            pool:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
-            type:'-',
-            amount:50000
-    
-        }
-    
-    }
-
-
-    let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperationToUnstake)
-    
-    }
-    
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-
-}
-
-
-// MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
 
 
@@ -941,8 +672,9 @@ let GET_REWARD=async()=>{
 
     const GENESIS_VALIDATOR_1 = {
 
-        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
+        privateKey:"9607ad1de8eed220fd07143cfb0bf851d1ab3bafe498c77c2e51fd487db16f0e",
+        
+        pubKey:"75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG"
     
     }
     
@@ -952,7 +684,7 @@ let GET_REWARD=async()=>{
         v:WORKFLOW_VERSION,
         creator:GENESIS_VALIDATOR_1.pubKey,
         type:'CONTRACT_CALL',
-        nonce:4,
+        nonce:1,
         fee:FEE,
         payload:{
             
@@ -992,16 +724,4 @@ let GET_REWARD=async()=>{
 
 }
 
-
-
-// GET_REWARD()
-
-
-
-
-
-
-
-//________________________ GET INFO ________________________
-
-// let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
+GET_REWARD()
