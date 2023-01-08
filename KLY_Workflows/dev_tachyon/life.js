@@ -290,6 +290,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Set the new checkpoint
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
 
+        // Store original checkpoint locally
+        await SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
+
         // All operations must be atomic
         let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
 
@@ -314,10 +317,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
 
         await atomicBatch.write()
-          
-        
-        // Store checkpoint locally
-        SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
             
 
         // Update the block height to keep progress on hostchain
