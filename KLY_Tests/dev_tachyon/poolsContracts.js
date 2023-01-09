@@ -52,8 +52,9 @@ const SPECIAL_OPERATIONS_TYPES={
 // BLS multisig
 const POOL_OWNER = {
 
-    privateKey: '8cd685bd53078dd908dc49c40eb38c46305eba1473348b0a573f3598a5c2e32f',
-    pubKey: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
+    privateKey:"aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24",
+        
+    pubKey:"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8"
     
 }
 
@@ -369,24 +370,24 @@ TX_TYPE=CONTRACT_CALL, required payload is
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
         type:'CONTRACT_CALL',
-        nonce:3,
+        nonce:5,
         fee:FEE,
         payload:{
             
             //________________ Account related stuff ________________
 
             type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            active:POOL_OWNER.pubKey,
             afk:[],
 
             //____________________ For contract _____________________
-            contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+            contractID:POOL_OWNER.pubKey+'(POOL)',
             method:'stake',
             energyLimit:0,
             params:[
 
                 {
-                    amount:50000,
+                    amount:500,
                     units:'KLY'
                 }
 
@@ -839,7 +840,7 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 }
 
 
-MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
+// MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
 
 
@@ -963,4 +964,6 @@ let GET_REWARD=async()=>{
 
 //________________________ GET INFO ________________________
 
-// let acc2Stat = await GET_ACCOUNT_DATA(user2.pub)
+let acc2Stat = await GET_ACCOUNT_DATA(POOL_OWNER.pubKey+'(POOL)_STORAGE_POOL')
+
+console.log(acc2Stat)

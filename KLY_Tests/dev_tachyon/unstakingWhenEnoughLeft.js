@@ -213,7 +213,7 @@ From the previous step, the state looks like this
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
-const WORKFLOW_VERSION = 1 // since previous successfull tests - now workflow version is 1
+const WORKFLOW_VERSION = 0 // since previous successfull tests - now workflow version is 1
 
 const FEE = 5
 
@@ -251,14 +251,15 @@ let SEND_EVENT=event=>{
 }
 
 
+
 let UNSTAKING=async()=>{
 
     
     const GENESIS_VALIDATOR_2 = {
 
-        privateKey:"9607ad1de8eed220fd07143cfb0bf851d1ab3bafe498c77c2e51fd487db16f0e",
+        privateKey:"aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24",
         
-        pubKey:"75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG"
+        pubKey:"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8"
     
     }
 
@@ -332,7 +333,7 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
         
         payload:{
 
-            txid:'939e7bca9800770d34f6cf9f9b5b17bd1c3b676fe83c1c0363fcb69a84f4d6d7',
+            txid:'aae9aedd0db7a8fbca2345a20fa389824e6ad361d9d9754a1f53ea41d57847dc',
             pool:'75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG',
             type:'-',
             amount:3000
@@ -360,7 +361,6 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 
 // MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
-
-// let acc0Stat = await GET_ACCOUNT_DATA('75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG(POOL)_STORAGE_POOL')
+// let acc0Stat = await GET_ACCOUNT_DATA('61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8(POOL)_STORAGE_POOL')
 
 // console.log(acc0Stat)

@@ -1322,7 +1322,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
     if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
-        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false) //it's just verify without state changes
+        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(_=>false) //it's just verify without state changes
 
         if(possibleSpecialOperation){        
 

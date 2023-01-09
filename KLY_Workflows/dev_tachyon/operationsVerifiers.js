@@ -61,7 +61,7 @@ export default {
 
 
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
     /*
 
@@ -407,7 +407,7 @@ export default {
 
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -421,21 +421,41 @@ export default {
             }
 
 
+            If received from route - then payload has the following structure
+
+            {
+                sigType,
+                pubKey,
+                signa,
+                data:{pool,delayedIds}
+            }
+
+
+        Also, you must sign the data with the latest payload's header hash
+
+        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+
         */
 
-        let {delayedIds,pool}=payload
+        let {sigType,pubKey,signa,data} = payload
+
+
+        let overviewIfFromRoute = 
+
+            isFromRoute //method used on POST /special_operations
+            &&
+            typeof data.pool === 'string' && Array.isArray(data.delayedIds)
+            &&
+            CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
+            &&
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            &&
+            await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+
 
         if(isFromRoute){
-
-            //Here we just check if pool exists
-
-            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
-
-            if(poolExists && Array.isArray(delayedIds)){
-
-                return {delayedIds,pool}
-
-            }else return false
+        
+            return overviewIfFromRoute ? {type:'SLASH_UNSTAKE',payload:payload.data} : false
 
         }
         else if(usedOnQuorumThread){
@@ -443,13 +463,13 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
             if(poolExists){
 
                 let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
 
-                slashObject[pool]=true
+                slashObject[payload.pool]=true
     
             }
 
@@ -460,13 +480,13 @@ export default {
 
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let poolExists = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolExists = await SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
             if(poolExists){
 
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
             
-                slashObject[pool]={delayedIds,pool}
+                slashObject[pool]=payload
 
             }
 
@@ -558,6 +578,7 @@ export default {
 
                 let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(stakingTx.staker)
 
+                // Return the stake
                 if(stakingTx.units === 'KLY'){
 
                     stakerAccount.balance += stakingTx.amount
@@ -577,7 +598,7 @@ export default {
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    RUBICON_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -597,7 +618,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
         
         */
 
@@ -638,7 +659,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
@@ -708,7 +729,7 @@ export default {
 
 
 
-    VERSION_UPDATE:async (payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    VERSION_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
         /*
         
