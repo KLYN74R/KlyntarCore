@@ -217,38 +217,6 @@ const WORKFLOW_VERSION = 1 // since previous successfull tests - now workflow ve
 
 const FEE = 5
 
-const TX_TYPES = {
-
-    TX:'TX', // default address <=> address tx
-    CONTRACT_DEPLOY:'CONTRACT_DEPLOY',
-    CONTRACT_CALL:'CONTRACT_CALL',
-    EVM_CALL:'EVM_CALL',
-    MIGRATE_BETWEEN_ENV:'MIGRATE_BETWEEN_ENV'
-
-}
-
-const SIG_TYPES = {
-    
-    DEFAULT:'D',                    // Default ed25519
-    TBLS:'T',                       // TBLS(threshold sig)
-    POST_QUANTUM_DIL:'P/D',         // Post-quantum Dilithium(2/3/5,2 used by default)
-    POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
-    MULTISIG:'M'                    // Multisig BLS
-}
-
-
-const SPECIAL_OPERATIONS_TYPES={
-
-    STAKING_CONTRACT_CALL:'STAKING_CONTRACT_CALL',
-    STOP_VALIDATOR:'STOP_VALIDATOR',
-    SLASH_UNSTAKE:'SLASH_UNSTAKE',
-    REMOVE_FROM_WAITING_ROOM:'REMOVE_FROM_WAITING_ROOM',
-    UPDATE_RUBICON:'UPDATE_RUBICON',
-    WORKFLOW_UPDATE:'WORKFLOW_UPDATE',
-    VERSION_UPDATE:'VERSION_UPDATE',
-
-}
-
 
 let GET_ACCOUNT_DATA=async account=>{
 
@@ -364,10 +332,10 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
         
         payload:{
 
-            txid:'3af3102de898b8fc67f1400e14b8542a42d1d09125cd7a737cb7d00b14b93498',
-            pool:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            txid:'939e7bca9800770d34f6cf9f9b5b17bd1c3b676fe83c1c0363fcb69a84f4d6d7',
+            pool:'75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG',
             type:'-',
-            amount:50000
+            amount:3000
     
         }
     
@@ -382,9 +350,9 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
     }
     
     
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
     fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
     fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
+    fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
     //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
 }
@@ -393,7 +361,6 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 // MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
 
+// let acc0Stat = await GET_ACCOUNT_DATA('75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG(POOL)_STORAGE_POOL')
 
-let acc0Stat = await GET_ACCOUNT_DATA('DELAYED_OPERATIONS')
-
-console.log(acc0Stat)
+// console.log(acc0Stat)

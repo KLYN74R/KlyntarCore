@@ -177,10 +177,13 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
-        
+                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool]){
 
-                fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = metadataTemplate
+                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false}
+
+                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = metadataTemplate
+    
+                }
 
                 // Make it "null" again
 
@@ -291,25 +294,30 @@ export default {
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
                 if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE){
-                    
-                    if(poolStorage.storedMetadata.HASH){
 
-                        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
-                    
-                    }else{
+                    // Do it only if pool is not in current SUBCHAINS_METADATA
+                    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]){
 
-                        SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
-                            
-                            INDEX:-1,
+                        if(poolStorage.storedMetadata.HASH){
+
+                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
                         
-                            HASH:'Poyekhali!@Y.A.Gagarin',
+                        }else{
     
-                            IS_STOPPED:false
-                        
+                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
+                                
+                                INDEX:-1,
+                            
+                                HASH:'Poyekhali!@Y.A.Gagarin',
+        
+                                IS_STOPPED:false
+                            
+                            }
+    
                         }
-
+        
                     }
-
+                    
                     // Make it "null" again
 
                     poolStorage.lackOfTotalPower=false

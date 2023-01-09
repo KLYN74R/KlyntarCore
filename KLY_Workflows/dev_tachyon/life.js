@@ -309,7 +309,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
 
         // Mark as completed
-        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.COMPLETED=true
+        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.COMPLETED = true
 
         // Create new quorum based on new SUBCHAINS_METADATA state
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
@@ -418,15 +418,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             )
 
-            //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
-
-            if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
-
-
         }
 
         // Set next temporary object by ID
         SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
+
+        //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
+
+        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
+
 
         //Continue to find checkpoints
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
@@ -582,7 +582,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                 
                 let subchainState = currentCheckpointSyncHelper.get(subchain)
 
-                if(subchainState.INDEX<index){
+                if(subchainState && subchainState.INDEX<index){
 
                     subchainState.INDEX=index
                     

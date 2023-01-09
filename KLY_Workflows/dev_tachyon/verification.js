@@ -620,6 +620,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         // Set the DELAYED_TABLE_OF_IDS to DB
         SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
 
+        //Delete the temporary array from cache
+        SYMBIOTE_META.STATE_CACHE.delete('DELAYED_OPERATIONS')
+
 
         //_______________________Commit changes after operations here________________________
 
