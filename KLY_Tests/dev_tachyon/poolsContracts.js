@@ -130,7 +130,7 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
         {
             bytecode:'',(empty)
             lang:'spec/stakingPool'
-            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList]
+            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList,PoolURL]
         }
     }
 
@@ -161,12 +161,23 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
     To prevent contract call by the someone else, set the whitelist to ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']
 
 
+*    [*] PoolURL - endpoint to know how to find pool authority. Need to grab commitments, finalization proofs and so on.
 
+    The default form is http(s)://<domain_or_ip>:<port>/<optional path>
+
+    The valid examples are:
+
+        http://localhost:9333
+        http://subdomain.of.some.domain:1337
+        https://dead::cafe:6666/with_path
+
+    ! NOTE: Make sure that there is no "/"<slash> in the end of URL to avoid failed fetch call
+    ! NOTE x2: This URL might be changed later via tons of plugins available on KLY - it will be useful for sharing work, scaling, avoiding spam/DDoS and so on
 
 
 *    So, the payload for constructor for system contract will be like this:
 
-    ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
+    ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],'http://localhost:7334']
 
 
 +++++++++++++++++++++++++++++++++++++++++++++++++ RESULT +++++++++++++++++++++++++++++++++++++++++++++++++
@@ -199,7 +210,8 @@ After pool's contract deployment we should have the following in state
                 whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
                 totalPower: 0,
                 STAKERS: {},
-                WAITING_ROOM: {}
+                WAITING_ROOM: {},
+                poolURL:'http://localhost:7334'
             }
         }
 
@@ -245,7 +257,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
             bytecode:'',
             lang:'spec/stakingPool',
-            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']]
+            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],'http://localhost:7334']
         },
         sig:''
 

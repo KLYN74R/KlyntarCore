@@ -373,6 +373,23 @@ GET_VALIDATORS_URLS = async withPubkey => {
         
             stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
+        ).catch(_=>
+
+            //Try to get from pool storage(url must be passed via deployment)
+
+            GET_FROM_STATE(pubKey+'(POOL)_STORAGE_POOL').then(
+                
+                poolSingleStorage => {
+
+                    // Set to cache first
+                    SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolSingleStorage.poolURL}})
+
+                    return withPubkey ? {url:poolSingleStorage.poolURL,pubKey} : poolSingleStorage.poolURL
+
+                }
+                
+            ).catch(_=>false)
+
         ))
 
     )
@@ -384,32 +401,6 @@ GET_VALIDATORS_URLS = async withPubkey => {
 },
 
 
-
-
-GET_QUORUM_MEMBERS_URLS = async (threadID,withPubkey) => {
-
-    let promises=[]
-
-    SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.forEach(
-        
-        pubKey => promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
-        
-            stuffData => withPubkey ? {url:tuffData.payload.url,pubKey}: stuffData.payload.url
-        
-        ))
-
-    )
-
-    let quorumMembersURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-
-    return quorumMembersURLs
-
-},
-
-
-
-
-GET_URL_OF_VALIDATOR = pubKey => SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(stuffData => stuffData?.payload?.url),
 
 
 //SYMBIOTE_META.VERSION shows the real software version of appropriate workflow

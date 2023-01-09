@@ -19,24 +19,25 @@ export let CONTRACT = {
         constructorParams:[]
     }
 
-    Required params:[BLSPoolRootKey,Percentage,OverStake,WhiteList]
+    Required params:[BLSPoolRootKey,Percentage,OverStake,WhiteList,PoolAddress]
 
         [*] BLSPoolRootKey - BLS pubkey for validator. The same as PoolID
         [*] Percentage - % of fees that will be earned by BLS pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
         [*] OverStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
         [*] WhiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
+        [*] PoolAddress - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
 
     */
     constructor:async (event,atomicBatch) => {
 
         let{constructorParams}=event.payload,
 
-            [blsPubKey,percentage,overStake,whiteList]=constructorParams,
+            [blsPubKey,percentage,overStake,whiteList,poolURL]=constructorParams,
 
             poolAlreadyExists = await SYMBIOTE_META.STATE.get(blsPubKey+'(POOL)').catch(_=>false)
 
 
-        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList)){
+        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -54,6 +55,8 @@ export let CONTRACT = {
                 percentage,
 
                 overStake,
+
+                poolURL,
 
                 whiteList,
 
