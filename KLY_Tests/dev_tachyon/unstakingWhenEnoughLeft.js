@@ -361,6 +361,6 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 
 // MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
 
-// let acc0Stat = await GET_ACCOUNT_DATA('61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8(POOL)_STORAGE_POOL')
+let acc0Stat = await GET_ACCOUNT_DATA('DELAYED_OPERATIONS')
 
-// console.log(acc0Stat)
+console.log(acc0Stat)

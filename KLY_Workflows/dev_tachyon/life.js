@@ -244,13 +244,17 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
     for(let poolIdentifier of slashObjectKeys){
     
-        //slashObject has the structure like this <pool> => true
+        //___________slashObject has the structure like this <pool> => true___________
     
+        // Delete from DB
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
 
         // Remove from subchains
         delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolIdentifier]
     
+        // Remove from cache
+        SYMBIOTE_META.QUORUM_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+
     }
 
 
@@ -258,6 +262,8 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
     fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
     SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+
+    SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('SLASH_OBJECT')
 
 
     //After all ops - commit state and make changes to workflow
@@ -425,7 +431,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
 
-        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB].IS_STOPPED) START_AWAKENING_PROCEDURE()
+        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
 
 
         //Continue to find checkpoints

@@ -510,6 +510,11 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             // Remove from subchains
             delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[poolIdentifier]
 
+            // Delete from cache
+            SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+
+            SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)')
+
 
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
 
@@ -620,8 +625,10 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         // Set the DELAYED_TABLE_OF_IDS to DB
         SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
 
-        //Delete the temporary array from cache
+        //Delete the temporary from cache
         SYMBIOTE_META.STATE_CACHE.delete('DELAYED_OPERATIONS')
+
+        SYMBIOTE_META.STATE_CACHE.delete('SLASH_OBJECT')
 
 
         //_______________________Commit changes after operations here________________________
