@@ -75,7 +75,7 @@ export let KLY_EVM = {
      * ### Execute tx in KLY-EVM
      * 
      * @param {String} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
-     * @param {Block} block - blocks to execute tx in this context
+     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns txResult 
      */
@@ -84,7 +84,6 @@ export let KLY_EVM = {
         let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
-
 
         let txResult = await vm.runTx({tx,block}).catch(error=>error)
 
@@ -95,12 +94,18 @@ export let KLY_EVM = {
      /**
      * ### Execute tx in KLY-EVM without state changes
      * 
-     * @param {String} serializedEVMTx - EVM signed tx in hexadecimal to be executed in EVM in context of given block
-     * @param {Block} block - blocks to execute tx in this context
+     * @param {String} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns txResult 
      */
-    sandboxCall:async(tx,block)=>{
+    sandboxCall:async(serializedEVMTxWithout0x,timestamp)=>{
+
+        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
+
+        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+
+        vm.stateManager.getContractStorage()
 
         let txResult = await vm.evm.runCall({tx,block}).catch(error=>error)
 

@@ -99,13 +99,13 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator].IS_STOPPED
+                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
                 
                 if(subchainlackOfTotalPowerForCurrentCheckpoint){
 
                     !response.aborted && response.end('Subchain is skipped')
         
-                    return                    
+                    return
 
                 }
 
@@ -1435,6 +1435,7 @@ UWS_SERVER
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
+// .get('/skip_procedure_stage_3',getSkipProcedureStage3)
 
 .post('/block',acceptBlocks)
 
