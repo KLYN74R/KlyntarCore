@@ -16,18 +16,13 @@
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
-import {Transaction} from '@ethereumjs/tx'
-import {Common} from '@ethereumjs/common'
 import {hash} from 'blake3-wasm'
 import fetch from 'node-fetch'
-import Web3 from 'web3'
 
 
 
 //___________________________________________ CONSTANTS POOL ___________________________________________
 
-
-const web3 = new Web3('http://localhost:7331')
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
@@ -53,9 +48,6 @@ const SIG_TYPES = {
     POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
     MULTISIG:'M'                    // Multisig BLS
 }
-
-// KLY-EVM
-const common = Common.custom({name:'KLYNTAR',networkId:7331,chainId:7331},'merge')
 
 
 
@@ -149,23 +141,6 @@ let postQuantumBliss={
     address: '1826d3782d53b127c53129fe67f4a3e3c1140feb2af36a0517077297a6e867e5'
   
 }
-
-// EVM account
-
-let evmAccount0 = {
-
-    address:'0x4741c39e6096c192Db6E1375Ff32526512069dF5',
-    privateKey:Buffer.from('d86dd54fd92f7c638668b1847aa3928f213db09ccda19f1a5f2badeae50cb93e','hex')
-
-}
-
-let evmAccount1 = {
-
-    address:'0xdA0DD318C511025C87217D776Ac2C98E5f655fdC',
-    privateKey:Buffer.from('43818ec87b33c38d65fe835e3143010fe08bce8da962aab996dc239229a6b574','hex')
-  
-}
-
 
 
 //___________________________________________ FUNCTIONS ___________________________________________
@@ -448,98 +423,6 @@ let DEFAULT_2_POST_QUANTUM=async()=>{
 
 
 let DILITHIUM_2_MULTISIG=async()=>{
-
-
-    let accData = await GET_ACCOUNT_DATA(postQuantumDilithium.pub)
-
-    console.log(accData)
-
-    let pqcPayload={
-
-        to:user0.pub,
-        
-        amount:1
-    
-    }
-
-    let event = await GET_EVENT_TEMPLATE(postQuantumDilithium,TX_TYPES.TX,SIG_TYPES.POST_QUANTUM_DIL,accData.nonce+1,pqcPayload)
-
-    console.log(event)
-
-
-    let status = await SEND_EVENT(event)
-
-    console.log(status)
-
-}
-
-
-
-let EVM_DEFAULT_TX=async()=>{
-
-    // Build a transaction
-    let txObject = {
-
-        chainId:web3.utils.toHex(7331),
-        
-        nonce:web3.utils.toHex(0),
-
-        to:evmAccount1.address,
-        
-        value: web3.utils.toHex(web3.utils.toWei('1.337','ether')),
-        
-        gasLimit: web3.utils.toHex(42000),
-        
-        gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
-    
-        //Set payload in hex
-        data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a10a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
-    
-    }
-
-
-    let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
-
-    
-    let raw = '0x' + tx.serialize().toString('hex')
-
-    console.log(Transaction)
-
-    console.log('Transaction(HEX) ———> ',raw)
-
-}
-
-
-
-let EVM_CONTRACT_DEPLOY=async()=>{
-
-
-    let accData = await GET_ACCOUNT_DATA(postQuantumDilithium.pub)
-
-    console.log(accData)
-
-    let pqcPayload={
-
-        to:user0.pub,
-        
-        amount:1
-    
-    }
-
-    let event = await GET_EVENT_TEMPLATE(postQuantumDilithium,TX_TYPES.TX,SIG_TYPES.POST_QUANTUM_DIL,accData.nonce+1,pqcPayload)
-
-    console.log(event)
-
-
-    let status = await SEND_EVENT(event)
-
-    console.log(status)
-
-}
-
-
-
-let EVM_CONTRACT_CALL=async()=>{
 
 
     let accData = await GET_ACCOUNT_DATA(postQuantumDilithium.pub)

@@ -146,18 +146,6 @@ export default {
 
     /*
     
-        Payload is hexadecimal EVM bytecode
-    
-    */
-    EVM_CALL:async event=>{
-
-        //typeof event.payload==='string' && await VERIFY_WRAP(event)
-
-    },
-
-
-    /*
-    
         To move funds KLY <=> EVM
 
         Payload is

@@ -74,7 +74,7 @@ export let KLY_EVM = {
     /**
      * ### Execute tx in KLY-EVM
      * 
-     * @param {String} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {string} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns txResult 
@@ -94,10 +94,10 @@ export let KLY_EVM = {
      /**
      * ### Execute tx in KLY-EVM without state changes
      * 
-     * @param {String} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {string} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
-     * @returns txResult 
+     * @returns {string} result of executed contract / default tx
      */
     sandboxCall:async(serializedEVMTxWithout0x,timestamp)=>{
 
@@ -105,11 +105,20 @@ export let KLY_EVM = {
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        vm.stateManager.getContractStorage()
-
-        let txResult = await vm.evm.runCall({tx,block}).catch(error=>error)
-
-        return txResult
+        let caller = tx.getSenderAddress()
+    
+        let {to,data,value} = tx
+        
+    
+        let txResult = await vm.evm.runCall({
+        
+            to,caller,data,value,
+        
+            block
+          
+        })
+        
+        if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.returnValue)
 
     },
 
@@ -117,7 +126,7 @@ export let KLY_EVM = {
      * 
      * ### Add the account to storage
      * 
-     * @param {String} address - EVM-compatible 20-bytes address
+     * @param {string} address - EVM-compatible 20-bytes address
      * @param {number} balanceInEthKly - wished balance
      * @param {number} nonce - account nonce
      * 
@@ -136,7 +145,7 @@ export let KLY_EVM = {
           
         }
         
-        let status = await vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
+        let status = await vm.stateManager.putAccount(Address.fromstring(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
 
 
         return status
@@ -156,7 +165,7 @@ export let KLY_EVM = {
           
         }
 
-        address = Address.fromString(address)
+        address = Address.fromstring(address)
     
         await vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
 
@@ -181,7 +190,7 @@ export let KLY_EVM = {
      * 
      * ### Returns the state of account related to address
      * 
-     * @param {String} address - EVM-compatible 20-bytes address
+     * @param {string} address - EVM-compatible 20-bytes address
      * 
      * @returns {Object} account - The account from state 
      * 
@@ -193,20 +202,20 @@ export let KLY_EVM = {
      * 
      * 
      */
-    getAccount:async address => vm.stateManager.getAccount(Address.fromString(address)),
+    getAccount:async address => vm.stateManager.getAccount(Address.fromstring(address)),
 
     /**
      * 
      * ### Returns the root of VM state
      * 
-     * @returns {String} root of state of KLY-EVM in hexadecimal  
+     * @returns {string} root of state of KLY-EVM in hexadecimal  
      * 
      */
     getStateRoot:async()=>{
 
         let stateRoot = await vm.stateManager.getStateRoot()
         
-        return stateRoot.toString('hex') //32-bytes hexadecimal form
+        return stateRoot.tostring('hex') //32-bytes hexadecimal form
 
     },
 
@@ -228,27 +237,33 @@ export let KLY_EVM = {
      * 
      * ### Get the gas required for VM execution
      * 
-     * @param {string} txObject - raw signed default tx or contract call
+     * @param {string} serializedEVMTxWithout0x - raw hexadecimal serialized tx without 0x
      *
+     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
+     * 
+     * 
+     * @returns {string} required number of gas to deploy contract or call method
      *  
     */
-    estimateGasUsed:async(txObject,contractAddress,contractABI,method,params)=>{
+    estimateGasUsed:async (serializedEVMTxWithout0x,timestamp) => {
+        
+        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
-        if(contractAddress){
+        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-            let contract = new web3.eth.Contract(contractABI,contractAddress)
-
-            let gasAmount = await contract.methods[method](...params).estimateGas(txObject);
-            
-            return web3.utils.toHex(gasAmount)
-    
-        }else{
-
-            let gasUsed = await web3.eth.estimateGas(txObject).catch(_=>false)
-
-            return web3.utils.toHex(gasUsed)
-
-        }
+        let caller = tx.getSenderAddress()
+        
+        let {to,data,value} = tx
+        
+        let txResult = await vm.evm.runCall({
+        
+            to,caller,data,value,
+        
+            block
+          
+        })
+        
+        if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.executionGasUsed)
 
     }
 
