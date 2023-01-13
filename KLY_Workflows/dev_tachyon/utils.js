@@ -463,6 +463,7 @@ USE_TEMPORARY_DB=async(operationType,dbReference,key,value)=>{
 
 
 
+
 DECRYPT_KEYS=async spinner=>{
 
     
@@ -494,7 +495,6 @@ DECRYPT_KEYS=async spinner=>{
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
-    console.log('EVM STATE ROOT IS => ',SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT)
 
     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
 

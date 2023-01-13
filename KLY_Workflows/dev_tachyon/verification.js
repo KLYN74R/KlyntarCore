@@ -18,6 +18,7 @@ import {GRACEFUL_STOP} from './life.js'
 
 import fetch from 'node-fetch'
 import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
+import Web3 from 'web3'
 
 
 
@@ -1096,8 +1097,31 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
-        // Get the EVM state root and set to VT
-        SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+        //___________________ Update the KLY-EVM ___________________
+
+        // Update stateRoot
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.STATE_ROOT = await KLY_EVM.getStateRoot()
+
+        // Increase block index
+        let nextIndex = BigInt(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.NEXT_BLOCK_INDEX)+BigInt(1)
+
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
+
+        // Store previous hash
+        let currentHash = KLY_EVM.getCurrentBlock().hash()
+
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.PARENT_HASH = currentHash.toString('hex')
+
+        // Imagine that it's 1 block per 2 seconds
+        let nextTimestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.TIMESTAMP+2
+
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.TIMESTAMP = nextTimestamp
+    
+
+        // Set the next block's parameters
+    
+        KLY_EVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
+        
 
         
         //Commit the state of VERIFICATION_THREAD

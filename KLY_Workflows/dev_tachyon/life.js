@@ -12,11 +12,11 @@ import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KL
 
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
+import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
+
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
-
-import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
@@ -30,9 +30,12 @@ import fetch from 'node-fetch'
 
 import level from 'level'
 
+import Web3 from 'web3'
+
 import ora from 'ora'
 
 import fs from 'fs'
+
 
 
 
@@ -2436,10 +2439,20 @@ LOAD_GENESIS=async()=>{
 
     await quorumThreadAtomicBatch.write()
 
-    
-    // Get the EVM state root and assign as one of the VT properties
 
-    SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+    // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
+
+    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META = {
+
+        STATE_ROOT:await KLY_EVM.getStateRoot(),
+        
+        NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+
+        PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+        
+        TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+
+    }
 
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
@@ -2664,7 +2677,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //'KLY_EVM' Contains state of EVM
 
-        //'KLY_EVM_META' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        //'STATE' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
 
     ].forEach(
@@ -2767,12 +2780,22 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
-    
-    await KLY_EVM.setStateRoot(SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT)
+
+    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META
+
+    console.log('Current block is ',SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META)
+
+    await KLY_EVM.setStateRoot(STATE_ROOT)
+
+    // Set the block parameters
+
+    KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
+
 
 
     //_______________________________Check the version of QT and VT and if need - update________________________________
     
+
     if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
         LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')

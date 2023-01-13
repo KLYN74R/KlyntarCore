@@ -11,13 +11,15 @@ import Web3 from 'web3'
 
 
 
+
 //_________________________________________________________ CONSTANTS POOL _________________________________________________________
 
 
 
-//'KLY_EVM' Contains state of EVM
 
-//'KLY_EVM_META' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+// 'KLY_EVM' Contains state of EVM
+
+// 'STATE' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
 
 const {
@@ -27,7 +29,8 @@ const {
     chainId,
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
-    gasLimitForBlock
+    gasLimitForBlock,
+    blockTime
 
 } = CONFIG.EVM
 
@@ -50,6 +53,10 @@ const vm = await VM.create({common,stateManager})
 
 
 const web3 = new Web3()
+
+
+let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase}},{common})
+
 
 /*
 
@@ -76,16 +83,14 @@ export let KLY_EVM = {
      * ### Execute tx in KLY-EVM
      * 
      * @param {string} serializedEVMTxWith0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
-     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns txResult 
+     * 
      */
-    callEVM:async(serializedEVMTxWith0x,timestamp)=>{
+    callEVM:async serializedEVMTxWith0x=>{
 
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
-
-        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
@@ -102,16 +107,13 @@ export let KLY_EVM = {
      * ### Execute tx in KLY-EVM without state changes
      * 
      * @param {string} serializedEVMTxWith0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
-     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns {string} result of executed contract / default tx
      */
-    sandboxCall:async(serializedEVMTxWith0x,timestamp)=>{
+    sandboxCall:async serializedEVMTxWith0x=>{
 
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
-
-        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
@@ -285,6 +287,31 @@ export let KLY_EVM = {
         })
         
         return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed)
+
+    },
+
+    /**
+     * 
+     * @returns {Block} the current block that used on VT
+     */
+    getCurrentBlock:()=>block,
+
+
+    setCurrentBlockParams:(nextIndex,timestamp,parentHash)=>{
+
+        block = Block.fromBlockData({
+            
+            header:{
+
+                gasLimit:gasLimitForBlock,
+                miner:coinbase,
+                timestamp,
+                parentHash:Buffer.from(parentHash,'hex'),
+                number:nextIndex
+            
+            }
+        
+        },{common})
 
     }
 

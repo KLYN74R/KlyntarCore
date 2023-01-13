@@ -42,6 +42,8 @@ const getGasAmountForContractCall = async (contract,checkpoint) => {
 
 let DEFAULT_SIMPLE_QUERIES=async()=>{
 
+    await web3.eth.getBlockNumber().then(data=>console.log('Current height is => ',data)).catch(e=>console.log(e))
+
     await web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
 
     await web3.eth.getBalance('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(balance=>console.log(`Balance of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${balance}`)).catch(e=>console.log(e))
@@ -57,7 +59,6 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
     await web3.eth.getHashrate().then(hashRate=>console.log('Hashrate is ',hashRate)).catch(e=>console.log(e))
 
     await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
-
 
 }
 

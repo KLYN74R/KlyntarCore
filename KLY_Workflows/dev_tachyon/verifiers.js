@@ -52,6 +52,8 @@ import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'
 
+import {Transaction} from '@ethereumjs/tx'
+
 import FILTERS from './filters.js'
 
 import web3 from 'web3'
@@ -376,7 +378,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(event,rewardBox,_)=>{
+    EVM_CALL:async(event,rewardBox,atomicBatch)=>{
 
         
         let timestamp = Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP / 1000)
@@ -391,8 +393,6 @@ export let VERIFIERS = {
             console.log(evmResult.execResult)
 
             console.log('Created contract is => ',evmResult.createdAddress?.toString())
-
-            // Store to KLY_EVM_META or somewhere else. Store tx and receipt by hash
             
             let totalSpentInWei = evmResult.amountSpent //BigInt value
 
@@ -403,7 +403,106 @@ export let VERIFIERS = {
             totalSpentByTxInKLY = +totalSpentByTxInKLY
 
             rewardBox.fees+=totalSpentByTxInKLY
+
+
+            /*
             
+                ________________________ WHAT WE NEED TO STORE TO STATE DB ________________________
+
+                'EVM_INDEX:'+blockHash.slice(2) - block index by its hash
+                'EVM_BLOCK:'+blockIndex - block by  its index
+                'TX:'+txHash - {tx,receipt} - tx and receipt by txHash
+
+                __________________________ WHAT WE NEED TO CHANGE / ADD ___________________________
+
+                For tx:
+
+                    blockHash - '0x'+block.hash().toString('hex')
+                    blockNumber - block.header.number(in hex)
+                    hash - '0x'+tx.hash().toString('hex')
+                    from - tx.getSenderAddress().toString()            
+                    data => input
+                    transactionIndex - 0
+
+
+            */
+
+
+            let tx = Transaction.fromSerializedTx(Buffer.from(event.payload.slice(2),'hex'))
+            
+            if(tx){
+
+                
+                let transaction = JSON.parse(tx.toJSON())
+
+                
+                transaction.blockHash = '0x'+KLY_EVM.getCurrentBlock().hash().toString('hex')
+
+                transaction.blockNumber = KLY_EVM.getCurrentBlock().header.number
+
+                transaction.hash = '0x'+tx.hash().toString('hex')
+
+                transaction.from ||= tx.getSenderAddress().toString()
+
+                transaction.transactionIndex = 0
+
+
+                //______________ Working with receipt ______________
+
+                let receipt = evmResult.receipt
+
+                /*
+                
+                 _____________________Add manually______________________
+
+                    transactionHash - '0x'+tx.hash().toString('hex')
+                    transactionIndex - '0x0'
+                    
+                    blockHash - '0x'+block.hash().toString('hex')
+                    blockNumber - block.header.number (in hex)
+                    
+                    from - tx.getSenderAddress().toString()
+                    to - tx.to
+                    cumulativeGasUsed - convert to hex
+                    effectiveGasPrice - take from tx gasPrice tx.gasPrice
+                    gasUsed - take from tx execution result (result.execResult.executionGasUsed.toString())
+                    type - tx.type (convert to hex)
+                    contractAddress - take from tx (vm.runTx({tx,block}).createdAddress). Otherwise - set as null
+                    logsBloom - '0x'+receipt.bitvector.toString('hex')
+                
+                
+                */
+
+                let {hash,blockHash,blockNumber,from,to,gasPrice} = transaction
+
+                let futureReceipt = {
+
+                    transactionHash:hash,
+                    transactionIndex:'0x0',
+                    blockHash,
+                    blockNumber,
+                    from,
+                    cumulativeBlockGasUsed:web3.utils.toHex(receipt.cumulativeBlockGasUsed.toString()),
+                    effectiveGasPrice:gasPrice,
+                    gasUsed:web3.utils.toHex(evmResult.execResult.executionGasUsed.toString()),
+                    type:web3.utils.toHex(tx.type),
+                    logsBloom:'0x'+receipt.bitvector.toString('hex')
+                
+                }
+                
+
+                if(to) receipt.to = to
+
+                if(evmResult.createdAddress) receipt.contractAddress = evmResult.createdAddress.toString()
+
+
+                //____________________ Now we can store tx and receipt locally ____________________
+
+                atomicBatch.put('TX:'+hash,{tx:transaction,receipt:JSON.stringify(futureReceipt)})
+
+
+            }
+
         }
 
     },
