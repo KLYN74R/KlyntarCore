@@ -17,6 +17,7 @@ import Block from './essences/block.js'
 import {GRACEFUL_STOP} from './life.js'
 
 import fetch from 'node-fetch'
+import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
 
 
 
@@ -1095,7 +1096,10 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
+        // Get the EVM state root and set to VT
+        SYMBIOTE_META.VERIFICATION_THREAD.EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
+        
         //Commit the state of VERIFICATION_THREAD
 
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)

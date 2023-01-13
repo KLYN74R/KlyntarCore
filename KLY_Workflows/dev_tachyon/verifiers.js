@@ -386,7 +386,11 @@ export let VERIFIERS = {
 
         if(evmResult && !evmResult.execResult.exceptionError){
 
-            console.log('DEBUG:'+evmResult.execResult)
+            console.log('DEBUG')
+
+            console.log(evmResult.execResult)
+
+            console.log('Created contract is => ',evmResult.createdAddress?.toString())
 
             // Store to KLY_EVM_META or somewhere else. Store tx and receipt by hash
             

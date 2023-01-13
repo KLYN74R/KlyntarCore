@@ -134,7 +134,7 @@ export let KLY_EVM = {
                     block
                   
                 })
-                
+
                 return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
                 
             } return {error:{msg:'Wrong nonce value or insufficient balance'}}
