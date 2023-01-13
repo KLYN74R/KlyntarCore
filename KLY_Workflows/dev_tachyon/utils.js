@@ -13,6 +13,9 @@ import crypto from 'crypto'
 import fs from 'fs'
 
 
+
+
+
 //Object to work with hostchain
 global.HOSTCHAIN = {}
 

@@ -1,6 +1,6 @@
 import {DefaultStateManager} from '@ethereumjs/statemanager'
-import {Transaction,TxData} from '@ethereumjs/tx'
 import {Address,Account} from '@ethereumjs/util'
+import {Transaction} from '@ethereumjs/tx'
 import {Common} from '@ethereumjs/common'
 import {Block} from '@ethereumjs/block'
 import {Trie} from '@ethereumjs/trie'
@@ -8,6 +8,7 @@ import {LevelDB} from './LevelDB.js'
 import {VM} from '@ethereumjs/vm'
 import {Level} from 'level'
 import Web3 from 'web3'
+
 
 
 //_________________________________________________________ CONSTANTS POOL _________________________________________________________
@@ -74,12 +75,15 @@ export let KLY_EVM = {
     /**
      * ### Execute tx in KLY-EVM
      * 
-     * @param {string} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {string} serializedEVMTxWith0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns txResult 
      */
-    callEVM:async(serializedEVMTxWithout0x,timestamp)=>{
+    callEVM:async(serializedEVMTxWith0x,timestamp)=>{
+
+        
+        let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
 
         let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
@@ -87,47 +91,55 @@ export let KLY_EVM = {
 
         let txResult = await vm.runTx({tx,block})
 
+
+        // We'll need full result to store logs and so on
         if(!txResult.execResult.exceptionError) return txResult
+
 
     },
 
      /**
      * ### Execute tx in KLY-EVM without state changes
      * 
-     * @param {string} serializedEVMTxWithout0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {string} serializedEVMTxWith0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
      * @returns {string} result of executed contract / default tx
      */
-    sandboxCall:async(serializedEVMTxWithout0x,timestamp)=>{
+    sandboxCall:async(serializedEVMTxWith0x,timestamp)=>{
+
+        
+        let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
 
         let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        let caller = tx.getSenderAddress()
+        let origin = tx.getSenderAddress()
     
-        let {to,data,value} = tx
-    
+        let {to,data,value,gasLimit} = tx
+
+
+
         if(tx.validate() && tx.verifySignature()){
 
-            let account = await vm.stateManager.getAccount(caller)
+            let account = await vm.stateManager.getAccount(origin)
 
-            if(account.nonce === tx.nonce){
+            if(account.nonce === tx.nonce && account.balance >= value){
 
                 let txResult = await vm.evm.runCall({
         
-                    to,caller,data,value,
+                    origin,to,data,gasLimit,
                 
                     block
                   
                 })
                 
-                if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.returnValue)
+                return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
                 
-            }
+            } return {error:{msg:'Wrong nonce value or insufficient balance'}}
 
-        }
+        } return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
     
     },
 
@@ -154,7 +166,7 @@ export let KLY_EVM = {
           
         }
         
-        let status = await vm.stateManager.putAccount(Address.fromstring(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
+        let status = await vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
 
 
         return status
@@ -174,7 +186,7 @@ export let KLY_EVM = {
           
         }
 
-        address = Address.fromstring(address)
+        address = Address.fromString(address)
     
         await vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
 
@@ -211,7 +223,7 @@ export let KLY_EVM = {
      * 
      * 
      */
-    getAccount:async address => vm.stateManager.getAccount(Address.fromstring(address)),
+    getAccount:async address => vm.stateManager.getAccount(Address.fromString(address)),
 
     /**
      * 
@@ -224,7 +236,7 @@ export let KLY_EVM = {
 
         let stateRoot = await vm.stateManager.getStateRoot()
         
-        return stateRoot.tostring('hex') //32-bytes hexadecimal form
+        return stateRoot.toString('hex') //32-bytes hexadecimal form
 
     },
 
@@ -246,7 +258,7 @@ export let KLY_EVM = {
      * 
      * ### Get the gas required for VM execution
      * 
-     * @param {TxData} txData - EVM-like transaction with fields like from,to,value,data,etc.
+     * @param {import('@ethereumjs/tx').TxData} txData - EVM-like transaction with fields like from,to,value,data,etc.
      *
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
@@ -260,19 +272,19 @@ export let KLY_EVM = {
 
         let tx = Transaction.fromTxData(txData)
 
-        let caller = tx.getSenderAddress()
+        let origin = tx.getSenderAddress()
         
-        let {to,data,value} = tx
+        let {to,data} = tx
         
         let txResult = await vm.evm.runCall({
         
-            to,caller,data,value,
+            origin,to,data,
         
             block
           
         })
         
-        if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.executionGasUsed)
+        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed)
 
     }
 

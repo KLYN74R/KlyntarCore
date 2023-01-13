@@ -373,28 +373,33 @@ export let VERIFIERS = {
 
         To interact with EVM
 
-        [+] Payload is hexadecimal evm bytecode
+        [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
     EVM_CALL:async(event,rewardBox,_)=>{
 
+        
         let timestamp = Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP / 1000)
 
-        let status = await KLY_EVM.callEVM(event.payload,timestamp)
+        let evmResult = await KLY_EVM.callEVM(event.payload,timestamp).catch(_=>false)
 
 
-        if(!status.execResult.exceptionError){
+        if(evmResult && !evmResult.execResult.exceptionError){
 
-            // Store to KLY_EVM_META or somewhere else
+            console.log('DEBUG:'+evmResult.execResult)
+
+            // Store to KLY_EVM_META or somewhere else. Store tx and receipt by hash
             
-            let totalSpentInWei = status.amountSpent //BigInt value
+            let totalSpentInWei = evmResult.amountSpent //BigInt value
 
             let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
 
-            // Add appropriate value to rewardbox to distribute among pools
+            // Add appropriate value to rewardbox to distribute among KLY pools
+
+            totalSpentByTxInKLY = +totalSpentByTxInKLY
 
             rewardBox.fees+=totalSpentByTxInKLY
-
+            
         }
 
     },

@@ -484,8 +484,6 @@ export default {
 
             if(poolExists){
 
-                console.log('DEBUG: SLASH_UNSTAKE ',payload.pool)
-
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
             
                 slashObject[payload.pool]=payload

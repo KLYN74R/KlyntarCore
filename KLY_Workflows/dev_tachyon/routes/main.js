@@ -1334,9 +1334,6 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
             // Add to mempool
             specialOperationsMempool.set(payloadHash,possibleSpecialOperation)
 
-            console.log('========= SPECIAL OPERATIONS MEMPOOL IS =========\n')
-            console.log(specialOperationsMempool)
-
             !response.aborted && response.end('OK')
         
         }else !response.aborted && response.end('Verification failed')

@@ -46,6 +46,8 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     await web3.eth.getBalance('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(balance=>console.log(`Balance of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${balance}`)).catch(e=>console.log(e))
 
+    await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
+
     await web3.eth.getCoinbase().then(miner=>console.log('Coinbase is '+miner)).catch(e=>console.log(e))
 
     await web3.eth.getGasPrice().then(gasPrice=>console.log(`Gas price is ${web3.utils.fromWei(gasPrice.toString(),'Gwei')}`)).catch(e=>console.log(e))
@@ -56,22 +58,26 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
 
+
 }
 
 // DEFAULT_SIMPLE_QUERIES()
 
+
 let EVM_DEFAULT_TX=async()=>{
+
+    let nonce = await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5')
 
     // Build a transaction
     let txObject = {
         
-        nonce:web3.utils.toHex(0),
+        nonce:web3.utils.toHex(nonce),
 
         to:evmAccount1.address,
         
-        value: web3.utils.toHex(web3.utils.toWei('0.337','ether')),
+        value: web3.utils.toHex(web3.utils.toWei('1.337','ether')),
         
-        gasLimit: web3.utils.toHex(42000),
+        gasLimit: web3.utils.toHex(23000),
         
         gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
     
@@ -94,6 +100,7 @@ let EVM_DEFAULT_TX=async()=>{
 
 }
 
+
 // EVM_DEFAULT_TX()
 
 
@@ -112,7 +119,7 @@ let EVM_CONTRACT_DEPLOY=async()=>{
     }).encodeABI()
 
 
-    web3.eth.getTransactionCount(evmAccount1.address,async(err,txCount)=>{
+    web3.eth.getTransactionCount(evmAccount0.address,async(err,txCount)=>{
 			
         if(err) return
 
@@ -140,15 +147,6 @@ let EVM_CONTRACT_DEPLOY=async()=>{
         //Sign the transaction
         tx.sign(evmAccount0.privateKey)
 
-        console.log(tx)
-
-        console.log('======== ESTIMATED =========')
-        
-        console.log(await web3.eth.estimateGas(txObject))
-
-        console.log('Hash is => 0x'+tx.hash().toString('hex'))
-
-        // console.log(await getGasAmountForContractCall('fdkfnkdjfnkjsdfnkddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd'))
 
         let raw = '0x' + tx.serialize().toString('hex')
 
@@ -156,6 +154,7 @@ let EVM_CONTRACT_DEPLOY=async()=>{
 
         //Broadcast the transaction
         web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+
 
     })
 
@@ -165,29 +164,58 @@ let EVM_CONTRACT_DEPLOY=async()=>{
 // EVM_CONTRACT_DEPLOY()
 
 
-
 let EVM_CONTRACT_CALL=async()=>{
 
+    // Make a checkpoint by call appropriate method of previously deployed contract
 
-    let accData = await GET_ACCOUNT_DATA(postQuantumDilithium.pub)
+    const nextCheckpoint = `Hello, it's the second checkpoint`
 
-    console.log(accData)
+    const TEST_KLY_EVM_CONTRACT = new web3.eth.Contract([{"inputs":[{"internalType":"string","name":"initialCheckpoint","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"Checkpoint","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"SkipProcedure","type":"event"},{"inputs":[{"internalType":"string","name":"aggregatedCheckpoint","type":"string"}],"name":"checkpoint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"skipMetadata","type":"string"}],"name":"skip","outputs":[],"stateMutability":"nonpayable","type":"function"}])
 
-    let pqcPayload={
 
-        to:user0.pub,
-        
-        amount:1
+
+    web3.eth.getTransactionCount(evmAccount0.address,async(err,txCount)=>{
+			
+        if(err) return
+
+        // Build a transaction
+        let txObject = {
+
+            from:evmAccount0.address,
+
+            to:'0x49fb5fccd2f0cf7764b4a469669c2d400006d203', // our contract address
+
+            nonce:web3.utils.toHex(txCount),
     
-    }
+            //Set enough limit and price for gas
+            gasLimit: web3.utils.toHex(100000),
+    
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+            
+            data:TEST_KLY_EVM_CONTRACT.methods.checkpoint(nextCheckpoint).encodeABI()
 
-    let event = await GET_EVENT_TEMPLATE(postQuantumDilithium,TX_TYPES.TX,SIG_TYPES.POST_QUANTUM_DIL,accData.nonce+1,pqcPayload)
-
-    console.log(event)
+        }
 
 
-    let status = await SEND_EVENT(event)
+        //Choose custom network
+        let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
 
-    console.log(status)
+        //Sign the transaction
+        tx.sign(evmAccount0.privateKey)
+
+
+        let raw = '0x' + tx.serialize().toString('hex')
+
+        console.log('Transaction(HEX) ———> ',raw)
+
+        //Broadcast the transaction
+        web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+
+
+    })
+
 
 }
+
+
+EVM_CONTRACT_CALL()
