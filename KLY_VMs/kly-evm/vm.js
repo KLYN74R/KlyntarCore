@@ -1,6 +1,6 @@
 import {DefaultStateManager} from '@ethereumjs/statemanager'
+import {Transaction,TxData} from '@ethereumjs/tx'
 import {Address,Account} from '@ethereumjs/util'
-import {Transaction} from '@ethereumjs/tx'
 import {Common} from '@ethereumjs/common'
 import {Block} from '@ethereumjs/block'
 import {Trie} from '@ethereumjs/trie'
@@ -85,9 +85,9 @@ export let KLY_EVM = {
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        let txResult = await vm.runTx({tx,block}).catch(error=>error)
+        let txResult = await vm.runTx({tx,block})
 
-        return txResult
+        if(!txResult.execResult.exceptionError) return txResult
 
     },
 
@@ -108,18 +108,27 @@ export let KLY_EVM = {
         let caller = tx.getSenderAddress()
     
         let {to,data,value} = tx
-        
     
-        let txResult = await vm.evm.runCall({
-        
-            to,caller,data,value,
-        
-            block
-          
-        })
-        
-        if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.returnValue)
+        if(tx.validate() && tx.verifySignature()){
 
+            let account = await vm.stateManager.getAccount(caller)
+
+            if(account.nonce === tx.nonce){
+
+                let txResult = await vm.evm.runCall({
+        
+                    to,caller,data,value,
+                
+                    block
+                  
+                })
+                
+                if(!txResult.execResult.exceptionError) return web3.utils.toHex(txResult.execResult.returnValue)
+                
+            }
+
+        }
+    
     },
 
      /**
@@ -237,7 +246,7 @@ export let KLY_EVM = {
      * 
      * ### Get the gas required for VM execution
      * 
-     * @param {string} serializedEVMTxWithout0x - raw hexadecimal serialized tx without 0x
+     * @param {TxData} txData - EVM-like transaction with fields like from,to,value,data,etc.
      *
      * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
@@ -245,11 +254,11 @@ export let KLY_EVM = {
      * @returns {string} required number of gas to deploy contract or call method
      *  
     */
-    estimateGasUsed:async (serializedEVMTxWithout0x,timestamp) => {
+    estimateGasUsed:async (txData,timestamp) => {
         
         let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
 
-        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+        let tx = Transaction.fromTxData(txData)
 
         let caller = tx.getSenderAddress()
         

@@ -36,7 +36,6 @@ const getGasAmountForContractCall = async (contract,checkpoint) => {
 }
 
 
-
 //___________________________________________________________ TEST SECTION ___________________________________________________________
 
 
