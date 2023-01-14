@@ -6,7 +6,7 @@ specifiers:
   '@ethereumjs/common': ^3.0.0
   '@ethereumjs/tx': ^4.0.2
   '@idena/vrf-js': ^1.0.1
-  '@klyntar/klyntarevmjsonrpc': ^3.2.0
+  '@klyntar/klyntarevmjsonrpc': ^3.3.2
   '@noble/bls12-381': ^1.2.0
   '@solana/web3.js': ^1.62.0
   assemblyscript: ^0.19.9
@@ -36,7 +36,7 @@ dependencies:
   '@chainsafe/bls': 7.1.1
   '@ethereumjs/common': 3.0.0
   '@idena/vrf-js': 1.0.1
-  '@klyntar/klyntarevmjsonrpc': 3.2.0
+  '@klyntar/klyntarevmjsonrpc': 3.3.2
   '@noble/bls12-381': 1.2.0
   assemblyscript: 0.19.23
   base-58: 0.0.1
@@ -472,8 +472,8 @@ packages:
       mocha: 8.4.0
     dev: false
 
-  /@klyntar/klyntarevmjsonrpc/3.2.0:
-    resolution: {integrity: sha512-Db5E6+8ovpL5c+MRMmaqOfEZTbpUH3nEbZkfJagM02uoAQ44VnFuvRSqg7+jdKROx5DOLaqWOOTHvaLMok279A==}
+  /@klyntar/klyntarevmjsonrpc/3.3.2:
+    resolution: {integrity: sha512-IlWEPtH3KCFFYspcXk1LhqA+932/5AYh9nlmTHqSIZqsz6Qc8ToN5N5PeLVEm25g4aUMp0q5iioRL71MZqTdqA==}
     hasBin: true
     dependencies:
       '@ethereumjs/tx': 4.0.2
@@ -4118,7 +4118,7 @@ packages:
     dev: false
 
   /util-deprecate/1.0.2:
-    resolution: {integrity: sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=}
+    resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
   /util/0.12.4:
     resolution: {integrity: sha512-bxZ9qtSlGUWSOy9Qa9Xgk11kSslpuZwaxCg4sNIDj6FLucDab2JxnHwyNTCpHMtK1MjoQiWQ6DiUMZYbSrO+Sw==}

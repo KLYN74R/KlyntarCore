@@ -386,18 +386,13 @@ export let VERIFIERS = {
         let evmResult = await KLY_EVM.callEVM(event.payload,timestamp).catch(_=>false)
 
 
-        if(evmResult && !evmResult.execResult.exceptionError){
-
-            console.log('DEBUG')
-
-            console.log(evmResult.execResult)
-
-            console.log('Created contract is => ',evmResult.createdAddress?.toString())
-            
+        if(evmResult && !evmResult.execResult.exceptionError){            
+          
             let totalSpentInWei = evmResult.amountSpent //BigInt value
 
             let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
 
+          
             // Add appropriate value to rewardbox to distribute among KLY pools
 
             totalSpentByTxInKLY = +totalSpentByTxInKLY
@@ -405,136 +400,9 @@ export let VERIFIERS = {
             rewardBox.fees+=totalSpentByTxInKLY
 
 
-            /*
-            
-                ________________________ WHAT WE NEED TO STORE TO STATE DB ________________________
+            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-                'EVM_INDEX:'+blockHash.slice(2) - block index by its hash
-                'EVM_BLOCK:'+blockIndex - block by  its index
-                'TX:'+txHash - {tx,receipt} - tx and receipt by txHash
-
-                __________________________ WHAT WE NEED TO CHANGE / ADD ___________________________
-
-                For tx:
-
-                    blockHash - '0x'+block.hash().toString('hex')
-                    blockNumber - block.header.number(in hex)
-                    hash - '0x'+tx.hash().toString('hex')
-                    from - tx.getSenderAddress().toString()            
-                    data => input
-                    transactionIndex - 0
-
-
-            */
-
-
-            let tx = Transaction.fromSerializedTx(Buffer.from(event.payload.slice(2),'hex'))
-            
-            if(tx){
-
-                console.log('tx is ',tx)
-
-                console.log(tx.toJSON())
-
-                let transaction = tx.toJSON()
-
-                
-                transaction.blockHash = '0x'+KLY_EVM.getCurrentBlock().hash().toString('hex')
-
-                transaction.blockNumber = web3.utils.toHex(KLY_EVM.getCurrentBlock().header.number.toString())
-
-                transaction.hash = '0x'+tx.hash().toString('hex')
-
-                transaction.from ||= tx.getSenderAddress().toString()
-
-                transaction.transactionIndex = 0
-
-
-                //______________ Working with receipt ______________
-
-                let receipt = evmResult.receipt
-
-                /*
-
-                    ______________________Must return______________________
-
-
-                    ✅transactionHash : DATA, 32 Bytes - hash of the transaction.
-                    ✅transactionIndex: QUANTITY - integer of the transactions index position in the block.
-                    ✅blockHash: DATA, 32 Bytes - hash of the block where this transaction was in.
-                    ✅blockNumber: QUANTITY - block number where this transaction was in.
-                    ✅from: DATA, 20 Bytes - address of the sender.
-                    ✅to: DATA, 20 Bytes - address of the receiver. null when its a contract creation transaction.
-                    ✅cumulativeGasUsed : QUANTITY - The total amount of gas used when this transaction was executed in the block.
-                    ✅effectiveGasPrice : QUANTITY - The sum of the base fee and tip paid per unit of gas.
-                    ✅gasUsed : QUANTITY - The amount of gas used by this specific transaction alone.
-                    ✅contractAddress : DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
-                    ✅logs: Array - Array of log objects, which this transaction generated.
-                    ✅logsBloom: DATA, 256 Bytes - Bloom filter for light clients to quickly retrieve related logs.
-                    ✅type: DATA - integer of the transaction type, 0x00 for legacy transactions, 0x01 for access list types, 0x02 for dynamic fees. It also returns either :
-                    ⌛️root : DATA 32 bytes of post-transaction stateroot (pre Byzantium)
-                    ✅status: QUANTITY either 1 (success) or 0 (failure)
-
-                
-                 _____________________Add manually______________________
-
-                    transactionHash - '0x'+tx.hash().toString('hex')
-                    transactionIndex - '0x0'
-                    
-                    blockHash - '0x'+block.hash().toString('hex')
-                    blockNumber - block.header.number (in hex)
-                    
-                    from - tx.getSenderAddress().toString()
-                    to - tx.to
-                    cumulativeGasUsed - convert to hex
-                    effectiveGasPrice - take from tx gasPrice tx.gasPrice
-                    gasUsed - take from tx execution result (result.execResult.executionGasUsed.toString())
-                    type - tx.type (convert to hex)
-                    contractAddress - take from tx (vm.runTx({tx,block}).createdAddress). Otherwise - set as null
-                    logsBloom - '0x'+receipt.bitvector.toString('hex')
-                
-                
-                */
-
-                let {hash,blockHash,blockNumber,from,to,gasPrice} = transaction
-
-                let futureReceipt = {
-
-                    status:receipt.status,
-                    transactionHash:hash,
-                    transactionIndex:'0x0',
-                    blockHash,
-                    blockNumber,
-                    from,
-                    cumulativeGasUsed:web3.utils.toHex(receipt.cumulativeBlockGasUsed.toString()),
-                    effectiveGasPrice:gasPrice,
-                    gasUsed:web3.utils.toHex(evmResult.execResult.executionGasUsed.toString()),
-                    type:web3.utils.toHex(tx.type),
-                    logsBloom:'0x'+receipt.bitvector.toString('hex'),
-                    logs:receipt.logs,
-                
-                }
-                
-
-                if(to) futureReceipt.to = to
-
-                
-                if(evmResult.createdAddress) futureReceipt.contractAddress = evmResult.createdAddress.toString()
-                
-                else futureReceipt.contractAddress = null
-
-
-                //____________________ Now we can store tx and receipt locally ____________________
-
-                console.log(transaction)
-                console.log(futureReceipt)
-
-                console.log('Going to push with hash ','TX:'+hash)
-
-                atomicBatch.put('TX:'+hash,{tx:transaction,receipt:futureReceipt})
-
-
-            }
+            atomicBatch.put('TX:'+tx.hash,{tx,receipt})
 
         }
 

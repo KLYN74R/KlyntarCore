@@ -1021,6 +1021,8 @@ verifyBlock=async block=>{
         //To calculate fees and split between validators.Currently - general fees sum is 0. It will be increased each performed transaction
         let rewardBox={fees:0}
 
+        SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+
 
         //To change the state atomically
         let atomicBatch = SYMBIOTE_META.STATE.batch()
@@ -1117,121 +1119,20 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.TIMESTAMP = nextTimestamp
 
-        /*
-
-                        Now, we need to store block
-
-        ______________________Block must have______________________
-    
-        ✅number: QUANTITY - the block number. null when its pending block.
-        ⌛️hash: DATA, 32 Bytes - hash of the block. null when its pending block.
-        ✅parentHash: DATA, 32 Bytes - hash of the parent block.
-        ✅nonce: DATA, 8 Bytes - hash of the generated proof-of-work. null when its pending block.
-        ✅sha3Uncles: DATA, 32 Bytes - SHA3 of the uncles data in the block.
-        ✅transactionsRoot: DATA, 32 Bytes - the root of the transaction trie of the block.
-        ✅stateRoot: DATA, 32 Bytes - the root of the final state trie of the block.
-        ✅receiptsRoot: DATA, 32 Bytes - the root of the receipts trie of the block.
-        ✅miner: DATA, 20 Bytes - the address of the beneficiary to whom the mining rewards were given.
-        ✅difficulty: QUANTITY - integer of the difficulty for this block.
-        ⌛️totalDifficulty: QUANTITY - integer of the total difficulty of the chain until this block.
-        ✅extraData: DATA - the "extra data" field of this block.
-        ✅logsBloom: DATA, 256 Bytes - the bloom filter for the logs of the block. null when its pending block.
-        ✅gasLimit: QUANTITY - the maximum gas allowed in this block.
-        ✅gasUsed: QUANTITY - the total used gas by all transactions in this block.
-        ✅timestamp: QUANTITY - the unix timestamp for when the block was collated.
-        ✅transactions: Array - Array of transaction objects, or 32 Bytes transaction hashes depending on the last given parameter.
-        ✅uncles: Array - Array of uncle hashes.
-        ⌛️size: QUANTITY - integer the size of this block in bytes.
-        
-
-        ________________________Current________________________
-        
-        {
-            header: {
-                parentHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-                uncleHash: '0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347',
-                coinbase: '0x0000000000000000000000000000000000000000',
-                stateRoot: '0x0000000000000000000000000000000000000000000000000000000000000000',
-                transactionsTrie: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                receiptTrie: '0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421',
-                logsBloom: '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-                difficulty: '0x0',
-                number: '0x0',
-                gasLimit: '0xffffffffffffff',
-                gasUsed: '0x0',
-                timestamp: '0x1f21f020c9',
-                extraData: '0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-                mixHash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-                nonce: '0x0000000000000000'
-            },
-
-            transactions: [],
-            uncleHeaders: []
-        }
 
 
-        _________________________TODO__________________________
-
-        ✅hash - '0x'+block.hash.toString('hex')
-        ✅uncleHash => sha3Uncles
-        ✅transactionsTrie => transactionsRoot
-        ✅receiptTrie => receiptsRoot
-        ✅coinbase => miner
-        ✅totalDifficulty - '0x0'
-        size - '0x'
-        ✅transactions - push the hashes of txs runned in this block
-        ✅uncleHeaders => uncles[]
+        let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
 
-    */
-            
+        atomicBatch.put('EVM_BLOCK:'+blockToStore.number,blockToStore)
 
-        let currentBlock = KLY_EVM.getCurrentBlock()
+        atomicBatch.put('EVM_INDEX:'+blockToStore.hash,blockToStore.number)
 
-        let {number,parentHash,nonce,uncleHash,transactionsTrie,receiptTrie,coinbase,stateRoot,difficulty,logsBloom,gasLimit,gasUsed,mixHash,extraData} = currentBlock.header
-
-        let blockTemplate = {
-
-            number:Web3.utils.toHex(number.toString()),
-            hash:'0x'+currentHash.toString('hex'),
-            
-            parentHash:'0x'+parentHash.toString('hex'),
-            nonce:'0x'+nonce.toString('hex'),
-
-            extraData:'0x'+extraData.toString('hex'),
-            
-            sha3Uncles:'0x'+uncleHash.toString('hex'),
-            transactionsRoot:'0x'+transactionsTrie.toString('hex'),
-            receiptsRoot:'0x'+receiptTrie.toString('hex'),
-            stateRoot:'0x'+stateRoot.toString('hex'),
-            
-            miner:coinbase.toString(),
-            
-            gasLimit:Web3.utils.toHex(gasLimit.toString()),
-            gasUsage:Web3.utils.toHex(gasUsed.toString()),
-            
-            logsBloom:'0x'+logsBloom.toString('hex'),
-            
-            totalDifficulty:'0x0',
-            difficulty:Web3.utils.toHex(difficulty.toString()),
-
-            mixHash:'0x'+mixHash.toString('hex'),
-
-            transactions:[],
-            uncleHeaders:[]
-
-        }
-
-        atomicBatch.put('EVM_BLOCK:'+blockTemplate.number,blockTemplate)
-
-        atomicBatch.put('EVM_INDEX:'+blockTemplate.hash,blockTemplate.number)
-
-        
+        atomicBatch.put('EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
         // Set the next block's parameters
     
         KLY_EVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
-
         
         //Commit the state of VERIFICATION_THREAD
 

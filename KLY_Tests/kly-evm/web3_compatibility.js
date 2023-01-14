@@ -44,7 +44,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     // web3.eth.getTransactionReceipt('0x3488c353b8fdb42909f9962d72f717854d48bd0650e6bca7464a8f1ea4ae74e3').then(console.log)
     
-    // await web3.eth.getBlock(10).then(data=>console.log(data)).catch(e=>console.log(e))
+    // await web3.eth.getBlock('0x98b97c8285de48c6646e360d4080e8b71b4809e20f5143f766ff3569ff79508f').then(data=>console.log(data)).catch(e=>console.log(e))
 
     // await web3.eth.getBlock('0xea1c41adc189dc2c7deab8597647deeeaffdd57c728fb900608aaf5543e7cef3').then(data=>console.log(data)).catch(e=>console.log(e))
 
@@ -52,7 +52,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     await web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
 
-    await web3.eth.getBalance('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(balance=>console.log(`Balance of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${balance}`)).catch(e=>console.log(e))
+    await web3.eth.getBalance('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(balance=>console.log(`Balance of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
     await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
 
@@ -299,7 +299,9 @@ let CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY=async()=>{
 
 let GET_CONTRACT_RECEIPT=async()=>{
 
-    let receipt = await web3.eth.getTransactionReceipt('0xf1dec5adf0e574df5d282e7a866174cdc0b02e9c15e6ca680cabab033bd8d3d6')
+    let receipt = await web3.eth.getTransactionReceipt('0x65ef4a0a737c5ff0a755b12fe6779ea549b5e2214b655c75384bb1c0856e8325')
+
+    console.log('Receipt is ',receipt)
 
     let receiptLogs = receipt.logs
 
@@ -309,45 +311,60 @@ let GET_CONTRACT_RECEIPT=async()=>{
 
     let EVENT_ABI = JSON.parse('[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}]')
 
-    let [originContractAddress,topics,logData] = receiptLogs[0]
+    let {address,topics,data} = receiptLogs[0]
 
-    let contractAddress = '0x'+Buffer.from(originContractAddress).toString('hex')
-    
-    let topicsInHex = topics.map(x=>'0x'+Buffer.from(x).toString('hex'))
+    console.log('Contract address(which emit event) => ',address)
+    console.log('Topics array => ',topics)
+    console.log('Pure data => ',data)
 
-    let pureHexLogs = '0x'+Buffer.from(logData).toString('hex')
-
-
-    console.log('Contract address(which emit event) => ',contractAddress)
-    console.log('Topics array => ',topicsInHex)
-    console.log('Pure data => ',pureHexLogs)
-
-    console.log(web3.eth.abi.decodeLog(EVENT_ABI,pureHexLogs,topicsInHex))
-
-    console.log('______________ LOG 2 ______________')
-    
-    // Second one(Skip)
-
-    let EVENT_ABI_2 = JSON.parse('[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}]')
-
-    let [originContractAddress2,topics2,logData2] = receiptLogs[1]
-
-    let contractAddress2 = '0x'+Buffer.from(originContractAddress2).toString('hex')
-    
-    let topicsInHex2 = topics2.map(x=>'0x'+Buffer.from(x).toString('hex'))
-
-    let pureHexLogs2 = '0x'+Buffer.from(logData2).toString('hex')
-
-
-    console.log('Contract address(which emit event) => ',contractAddress2)
-    console.log('Topics array => ',topicsInHex2)
-    console.log('Pure data => ',pureHexLogs2)
-
-    console.log(web3.eth.abi.decodeLog(EVENT_ABI_2,pureHexLogs2,topicsInHex2))
+    console.log(web3.eth.abi.decodeLog(EVENT_ABI,data,topics))
 
 
 }
 
 
 
-GET_CONTRACT_RECEIPT()
+// GET_CONTRACT_RECEIPT()
+
+
+
+let GET_PAST_LOGS=()=>{
+
+
+    let contractAddress = '0x350a40A78d11a66dB87B3D7D92d81A9609Ea68d2'
+
+    let TEST_CONTRACT = new web3.eth.Contract([{"inputs":[{"internalType":"string","name":"initialCheckpoint","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"Checkpoint","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"SkipProcedure","type":"event"},{"inputs":[{"internalType":"string","name":"aggregatedCheckpoint","type":"string"}],"name":"checkpoint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"skipMetadata","type":"string"}],"name":"skip","outputs":[],"stateMutability":"nonpayable","type":"function"}],contractAddress);
+ 
+    let options = { 
+
+        fromBlock: 2000,
+        toBlock:'latest',
+
+    };
+
+
+    TEST_CONTRACT.getPastEvents('Checkpoint',options)
+    
+    .then(async results => {
+
+        console.log(results)
+
+
+    }).catch(console.log);
+
+
+    
+//     TEST_CONTRACT.getPastEvents('allEvents',options)
+    
+//     .then(async results => {
+
+//         console.log(results)
+
+
+//     }).catch(console.log);
+
+
+}
+
+
+GET_PAST_LOGS()

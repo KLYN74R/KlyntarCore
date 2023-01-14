@@ -373,7 +373,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
     LOG(`Server is working on \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
 
-    LOG(`Runned plugins(${CONFIG.PLUGINS.length}) are \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`,'CON')
+    LOG(CONFIG.PLUGINS.length!==0 ? `Runned plugins(${CONFIG.PLUGINS.length}) are \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
 
 
     !CONFIG.PRELUDE.OPTIMISTIC
