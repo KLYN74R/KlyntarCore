@@ -432,13 +432,16 @@ export let VERIFIERS = {
             
             if(tx){
 
-                
-                let transaction = JSON.parse(tx.toJSON())
+                console.log('tx is ',tx)
+
+                console.log(tx.toJSON())
+
+                let transaction = tx.toJSON()
 
                 
                 transaction.blockHash = '0x'+KLY_EVM.getCurrentBlock().hash().toString('hex')
 
-                transaction.blockNumber = KLY_EVM.getCurrentBlock().header.number
+                transaction.blockNumber = web3.utils.toHex(KLY_EVM.getCurrentBlock().header.number.toString())
 
                 transaction.hash = '0x'+tx.hash().toString('hex')
 
@@ -452,6 +455,26 @@ export let VERIFIERS = {
                 let receipt = evmResult.receipt
 
                 /*
+
+                    ______________________Must return______________________
+
+
+                    ✅transactionHash : DATA, 32 Bytes - hash of the transaction.
+                    ✅transactionIndex: QUANTITY - integer of the transactions index position in the block.
+                    ✅blockHash: DATA, 32 Bytes - hash of the block where this transaction was in.
+                    ✅blockNumber: QUANTITY - block number where this transaction was in.
+                    ✅from: DATA, 20 Bytes - address of the sender.
+                    ✅to: DATA, 20 Bytes - address of the receiver. null when its a contract creation transaction.
+                    ✅cumulativeGasUsed : QUANTITY - The total amount of gas used when this transaction was executed in the block.
+                    ✅effectiveGasPrice : QUANTITY - The sum of the base fee and tip paid per unit of gas.
+                    ✅gasUsed : QUANTITY - The amount of gas used by this specific transaction alone.
+                    ✅contractAddress : DATA, 20 Bytes - The contract address created, if the transaction was a contract creation, otherwise null.
+                    ✅logs: Array - Array of log objects, which this transaction generated.
+                    ✅logsBloom: DATA, 256 Bytes - Bloom filter for light clients to quickly retrieve related logs.
+                    ✅type: DATA - integer of the transaction type, 0x00 for legacy transactions, 0x01 for access list types, 0x02 for dynamic fees. It also returns either :
+                    ⌛️root : DATA 32 bytes of post-transaction stateroot (pre Byzantium)
+                    ✅status: QUANTITY either 1 (success) or 0 (failure)
+
                 
                  _____________________Add manually______________________
 
@@ -477,28 +500,38 @@ export let VERIFIERS = {
 
                 let futureReceipt = {
 
+                    status:receipt.status,
                     transactionHash:hash,
                     transactionIndex:'0x0',
                     blockHash,
                     blockNumber,
                     from,
-                    cumulativeBlockGasUsed:web3.utils.toHex(receipt.cumulativeBlockGasUsed.toString()),
+                    cumulativeGasUsed:web3.utils.toHex(receipt.cumulativeBlockGasUsed.toString()),
                     effectiveGasPrice:gasPrice,
                     gasUsed:web3.utils.toHex(evmResult.execResult.executionGasUsed.toString()),
                     type:web3.utils.toHex(tx.type),
-                    logsBloom:'0x'+receipt.bitvector.toString('hex')
+                    logsBloom:'0x'+receipt.bitvector.toString('hex'),
+                    logs:receipt.logs,
                 
                 }
                 
 
-                if(to) receipt.to = to
+                if(to) futureReceipt.to = to
 
-                if(evmResult.createdAddress) receipt.contractAddress = evmResult.createdAddress.toString()
+                
+                if(evmResult.createdAddress) futureReceipt.contractAddress = evmResult.createdAddress.toString()
+                
+                else futureReceipt.contractAddress = null
 
 
                 //____________________ Now we can store tx and receipt locally ____________________
 
-                atomicBatch.put('TX:'+hash,{tx:transaction,receipt:JSON.stringify(futureReceipt)})
+                console.log(transaction)
+                console.log(futureReceipt)
+
+                console.log('Going to push with hash ','TX:'+hash)
+
+                atomicBatch.put('TX:'+hash,{tx:transaction,receipt:futureReceipt})
 
 
             }

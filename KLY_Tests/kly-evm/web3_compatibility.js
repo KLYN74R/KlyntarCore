@@ -42,6 +42,12 @@ const getGasAmountForContractCall = async (contract,checkpoint) => {
 
 let DEFAULT_SIMPLE_QUERIES=async()=>{
 
+    // web3.eth.getTransactionReceipt('0x3488c353b8fdb42909f9962d72f717854d48bd0650e6bca7464a8f1ea4ae74e3').then(console.log)
+    
+    // await web3.eth.getBlock(10).then(data=>console.log(data)).catch(e=>console.log(e))
+
+    // await web3.eth.getBlock('0xea1c41adc189dc2c7deab8597647deeeaffdd57c728fb900608aaf5543e7cef3').then(data=>console.log(data)).catch(e=>console.log(e))
+
     await web3.eth.getBlockNumber().then(data=>console.log('Current height is => ',data)).catch(e=>console.log(e))
 
     await web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
@@ -60,9 +66,10 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
 
+
 }
 
-DEFAULT_SIMPLE_QUERIES()
+// DEFAULT_SIMPLE_QUERIES()
 
 
 let EVM_DEFAULT_TX=async()=>{
@@ -210,7 +217,7 @@ let EVM_CONTRACT_CALL=async()=>{
         console.log('Transaction(HEX) ———> ',raw)
 
         //Broadcast the transaction
-        web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+        web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
 
 
     })
@@ -220,3 +227,127 @@ let EVM_CONTRACT_CALL=async()=>{
 
 
 // EVM_CONTRACT_CALL()
+
+
+
+
+
+
+
+
+let CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY=async()=>{
+
+    let initialCheckpoint='Hello KLYNTAR'
+
+    let TEST_CONTRACT = new web3.eth.Contract([{"inputs":[{"internalType":"string","name":"initialCheckpoint","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"Checkpoint","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"SkipProcedure","type":"event"},{"inputs":[{"internalType":"string","name":"aggregatedCheckpoint","type":"string"}],"name":"checkpoint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"skipMetadata","type":"string"}],"name":"skip","outputs":[],"stateMutability":"nonpayable","type":"function"}]);
+    
+    let TEST_CONTRACT_ABI = TEST_CONTRACT.deploy({
+         
+        data: '0x608060405234801561001057600080fd5b506040516106b33803806106b38339818101604052810190610032919061011a565b7f5d882878f6c50530e63829854e64755332e385dbf9dd9c2798e07d9c88c67e4081426040516100639291906101ab565b60405180910390a17f983b67a422dd57556c551b5d85141a480c1ac4a13b58597f3dc99f55a136777c814260405161009c9291906101ab565b60405180910390a15061030f565b60006100bd6100b884610200565b6101db565b9050828152602081018484840111156100d9576100d86102ef565b5b6100e4848285610257565b509392505050565b600082601f830112610101576101006102ea565b5b81516101118482602086016100aa565b91505092915050565b6000602082840312156101305761012f6102f9565b5b600082015167ffffffffffffffff81111561014e5761014d6102f4565b5b61015a848285016100ec565b91505092915050565b600061016e82610231565b610178818561023c565b9350610188818560208601610257565b610191816102fe565b840191505092915050565b6101a58161024d565b82525050565b600060408201905081810360008301526101c58185610163565b90506101d4602083018461019c565b9392505050565b60006101e56101f6565b90506101f1828261028a565b919050565b6000604051905090565b600067ffffffffffffffff82111561021b5761021a6102bb565b5b610224826102fe565b9050602081019050919050565b600081519050919050565b600082825260208201905092915050565b6000819050919050565b60005b8381101561027557808201518184015260208101905061025a565b83811115610284576000848401525b50505050565b610293826102fe565b810181811067ffffffffffffffff821117156102b2576102b16102bb565b5b80604052505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600080fd5b600080fd5b600080fd5b600080fd5b6000601f19601f8301169050919050565b6103958061031e6000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80636697a9251461003b5780636fad198f14610057575b600080fd5b6100556004803603810190610050919061015b565b610073565b005b610071600480360381019061006c919061015b565b6100af565b005b7f5d882878f6c50530e63829854e64755332e385dbf9dd9c2798e07d9c88c67e4081426040516100a49291906101ec565b60405180910390a150565b7f983b67a422dd57556c551b5d85141a480c1ac4a13b58597f3dc99f55a136777c81426040516100e09291906101ec565b60405180910390a150565b60006100fe6100f984610241565b61021c565b90508281526020810184848401111561011a5761011961033f565b5b610125848285610298565b509392505050565b600082601f8301126101425761014161033a565b5b81356101528482602086016100eb565b91505092915050565b60006020828403121561017157610170610349565b5b600082013567ffffffffffffffff81111561018f5761018e610344565b5b61019b8482850161012d565b91505092915050565b60006101af82610272565b6101b9818561027d565b93506101c98185602086016102a7565b6101d28161034e565b840191505092915050565b6101e68161028e565b82525050565b6000604082019050818103600083015261020681856101a4565b905061021560208301846101dd565b9392505050565b6000610226610237565b905061023282826102da565b919050565b6000604051905090565b600067ffffffffffffffff82111561025c5761025b61030b565b5b6102658261034e565b9050602081019050919050565b600081519050919050565b600082825260208201905092915050565b6000819050919050565b82818337600083830152505050565b60005b838110156102c55780820151818401526020810190506102aa565b838111156102d4576000848401525b50505050565b6102e38261034e565b810181811067ffffffffffffffff821117156103025761030161030b565b5b80604052505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b600080fd5b600080fd5b600080fd5b600080fd5b6000601f19601f830116905091905056fea264697066735822122037c0ff7b0742c14f2ca7d49c8c8f1b3d7035133e089fdd8ed4472da6355b5ca364736f6c63430008070033', 
+        arguments: [initialCheckpoint]
+    
+    }).encodeABI()
+
+    
+    web3.eth.getTransactionCount(evmAccount0.address,async(err,txCount)=>{
+		
+        if(err) return
+
+        // Build a transaction
+        let txObject = {
+
+            from:evmAccount0.address,
+
+            nonce:web3.utils.toHex(txCount),
+    
+            //Set enough limit and price for gas
+            gasLimit: web3.utils.toHex(800000),
+    
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+            
+            //Set contract bytecode
+            data: TEST_CONTRACT_ABI
+
+        }
+
+
+        //Choose custom network
+        let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
+
+        //Sign the transaction
+        tx.sign(evmAccount0.privateKey)
+
+
+        let raw = '0x' + tx.serialize().toString('hex')
+
+        console.log('Transaction(HEX) ———> ',raw)
+
+        //Broadcast the transaction
+        web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+
+
+    })
+
+
+}
+
+
+// CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY()
+
+
+
+
+let GET_CONTRACT_RECEIPT=async()=>{
+
+    let receipt = await web3.eth.getTransactionReceipt('0xf1dec5adf0e574df5d282e7a866174cdc0b02e9c15e6ca680cabab033bd8d3d6')
+
+    let receiptLogs = receipt.logs
+
+    //__________________________ Parse logs _________________________
+
+    // First one(Checkpoint)
+
+    let EVENT_ABI = JSON.parse('[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}]')
+
+    let [originContractAddress,topics,logData] = receiptLogs[0]
+
+    let contractAddress = '0x'+Buffer.from(originContractAddress).toString('hex')
+    
+    let topicsInHex = topics.map(x=>'0x'+Buffer.from(x).toString('hex'))
+
+    let pureHexLogs = '0x'+Buffer.from(logData).toString('hex')
+
+
+    console.log('Contract address(which emit event) => ',contractAddress)
+    console.log('Topics array => ',topicsInHex)
+    console.log('Pure data => ',pureHexLogs)
+
+    console.log(web3.eth.abi.decodeLog(EVENT_ABI,pureHexLogs,topicsInHex))
+
+    console.log('______________ LOG 2 ______________')
+    
+    // Second one(Skip)
+
+    let EVENT_ABI_2 = JSON.parse('[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}]')
+
+    let [originContractAddress2,topics2,logData2] = receiptLogs[1]
+
+    let contractAddress2 = '0x'+Buffer.from(originContractAddress2).toString('hex')
+    
+    let topicsInHex2 = topics2.map(x=>'0x'+Buffer.from(x).toString('hex'))
+
+    let pureHexLogs2 = '0x'+Buffer.from(logData2).toString('hex')
+
+
+    console.log('Contract address(which emit event) => ',contractAddress2)
+    console.log('Topics array => ',topicsInHex2)
+    console.log('Pure data => ',pureHexLogs2)
+
+    console.log(web3.eth.abi.decodeLog(EVENT_ABI_2,pureHexLogs2,topicsInHex2))
+
+
+}
+
+
+
+GET_CONTRACT_RECEIPT()
