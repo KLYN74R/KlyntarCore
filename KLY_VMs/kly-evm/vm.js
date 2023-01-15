@@ -1,5 +1,5 @@
 import {DefaultStateManager} from '@ethereumjs/statemanager'
-import {Address,Account} from '@ethereumjs/util'
+import {Address,Account, isValidAddress} from '@ethereumjs/util'
 import {Transaction} from '@ethereumjs/tx'
 import {Common} from '@ethereumjs/common'
 import {Block} from '@ethereumjs/block'
@@ -30,7 +30,7 @@ const {
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
     gasLimitForBlock,
-    blockTime
+    creds
 
 } = CONFIG.EVM
 
@@ -106,42 +106,64 @@ export let KLY_EVM = {
      /**
      * ### Execute tx in KLY-EVM without state changes
      * 
-     * @param {string} serializedEVMTxWith0x - EVM signed tx in hexadecimal to be executed in EVM in context of given block
+     * @param {import('@ethereumjs/tx').TxData | string} txDataOrSerializedTxInHexWith0x - EVM signed tx(TxData like(see EVM docs)) or serialized tx to be executed in EVM in context of given block
      * 
      * @returns {string} result of executed contract / default tx
      */
-    sandboxCall:async serializedEVMTxWith0x=>{
+    sandboxCall:async(txDataOrSerializedTxInHexWith0x,isJustCall)=>{
 
+        // In case it's just KLY-EVM call to read from contract - then ok, otherwise(is isJustCall=false) we assume that it's attempt to add to mempool(so we need to verify signature and other stuff)
+
+        let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'))
         
-        let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
+        if(isJustCall){
 
-        let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+            let {to,data} = tx
 
-        let origin = tx.getSenderAddress()
+            let vmCopy = await vm.copy()
+
+            let txResult = await vmCopy.evm.runCall({
+            
+                to,data,
+            
+                block
+              
+            })
+
+            return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
+
+        }else {
+
+            let vmCopy = await vm.copy()
+
+            let origin = tx.getSenderAddress()
+
+            let {to,data,value,gasLimit} = tx
+
+            let caller = origin
+
+
+            if(tx.validate() && tx.verifySignature()){
+
+                let account = await vmCopy.stateManager.getAccount(origin)
     
-        let {to,data,value,gasLimit} = tx
-
-
-
-        if(tx.validate() && tx.verifySignature()){
-
-            let account = await vm.stateManager.getAccount(origin)
-
-            if(account.nonce === tx.nonce && account.balance >= value){
-
-                let txResult = await vm.evm.runCall({
-        
-                    origin,to,data,gasLimit,
-                
-                    block
-                  
-                })
-
-                return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
-                
-            } return {error:{msg:'Wrong nonce value or insufficient balance'}}
-
-        } return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
+                if(account.nonce === tx.nonce && account.balance >= value){
+    
+                    let txResult = await vmCopy.evm.runCall({
+            
+                        origin,caller,to,data,gasLimit,
+                    
+                        block
+                      
+                    })
+    
+                    return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
+                    
+                } return {error:{msg:'Wrong nonce value or insufficient balance'}}
+    
+            } return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
+    
+        }
     
     },
 
@@ -261,33 +283,61 @@ export let KLY_EVM = {
      * ### Get the gas required for VM execution
      * 
      * @param {import('@ethereumjs/tx').TxData} txData - EVM-like transaction with fields like from,to,value,data,etc.
-     *
-     * @param {BigInt} timestamp - timestamp in seconds for pseudo-chain sequence
      * 
-     * 
+     *  
      * @returns {string} required number of gas to deploy contract or call method
      *  
     */
-    estimateGasUsed:async (txData,timestamp) => {
-        
-        let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase,timestamp}},{common})
+    estimateGasUsed:async txData => {
 
         let tx = Transaction.fromTxData(txData)
 
-        let origin = tx.getSenderAddress()
-        
         let {to,data} = tx
-        
-        let txResult = await vm.evm.runCall({
-        
-            origin,to,data,
-        
-            block
-          
-        })
-        
-        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed)
 
+        let origin = Address.fromString(txData.from) || tx.isSigned() && tx.getSenderAddress()
+        
+        let caller = origin
+
+        let vmCopy = await vm.copy()
+
+        let txResult = await vmCopy.evm.runCall({origin,caller,to,data,block})
+
+        let gasUsed = txResult.execResult.executionGasUsed
+
+        // If gas is 0 - then it's default tx, so we need to run it via .runTx after getting signed with our private key and nonce
+
+        if(gasUsed === BigInt(0)){
+
+            try{
+
+
+                txData.gasLimit = txData.gas || txData.gasLimit
+
+                txData.gasLimit = BigInt(txData.gasLimit) === BigInt(0) ? BigInt(CONFIG.EVM.maxAllowedGasAmountForSandboxExecution) : txData.gasLimit
+
+                txData.gasPrice = BigInt(txData.gasPrice) === BigInt(0) ? BigInt(CONFIG.EVM.gasPriceInWeiAndHex) : txData.gasPrice
+
+                
+                let finalTx = Transaction.fromTxData(txData)
+
+                
+                finalTx = finalTx.sign(Buffer.from(creds.privateKey,'hex'))
+            
+                txResult = await vmCopy.runTx({tx:finalTx,block,skipBalance:true,skipNonce:true})
+    
+                gasUsed = txResult.totalGasSpent
+                
+            }catch(e){
+
+                return {error:{msg:JSON.stringify(e)}}
+
+            }
+
+        }
+        
+
+        return txResult.execResult.exceptionError || web3.utils.toHex(gasUsed.toString())
+        
     },
 
     /**

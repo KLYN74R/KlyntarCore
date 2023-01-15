@@ -8,5 +8,13 @@
     
     "clientVersion":"KLY-EVM/dev_tachyon/v0.13.37/Node.js",
     "protocolVersionInHex":"0x1",
-    "gasPriceInWeiAndHex":"0x49ad39126"
+    "gasPriceInWeiAndHex":"0x49ad39126",
+    "maxAllowedGasAmountForSandboxExecution":100000,
+    "creds":{
+    
+        "address":"0xEe96057673fC7aF8971B32d8D3458D27f5B7A3F2",
+        "privateKey":"1a32ca908e0e6182f89bfa2fbc9401b05e3c49d1c6df29000c26e875a1666dab"
+        
+    }
+
 }

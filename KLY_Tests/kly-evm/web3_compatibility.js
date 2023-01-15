@@ -27,14 +27,6 @@ const evmAccount1 = {
   
 }
 
-const getGasAmountForContractCall = async (contract,checkpoint) => {
-
-    let gasAmount = await contract.methods.checkpoint(checkpoint).estimateGas({from:evmAccount0.address});
-    
-    return gasAmount
-
-}
-
 
 //___________________________________________________________ TEST SECTION ___________________________________________________________
 
@@ -52,7 +44,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     await web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
 
-    await web3.eth.getBalance('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(balance=>console.log(`Balance of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+    await web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
     await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
 
@@ -70,6 +62,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 // DEFAULT_SIMPLE_QUERIES()
+
 
 
 let EVM_DEFAULT_TX=async()=>{
@@ -152,10 +145,6 @@ let EVM_CONTRACT_DEPLOY=async()=>{
         //Choose custom network
         let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
 
-        //Sign the transaction
-        tx.sign(evmAccount0.privateKey)
-
-
         let raw = '0x' + tx.serialize().toString('hex')
 
         console.log('Transaction(HEX) ———> ',raw)
@@ -207,10 +196,6 @@ let EVM_CONTRACT_CALL=async()=>{
 
         //Choose custom network
         let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
-
-        //Sign the transaction
-        tx.sign(evmAccount0.privateKey)
-
 
         let raw = '0x' + tx.serialize().toString('hex')
 
@@ -274,10 +259,6 @@ let CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY=async()=>{
         //Choose custom network
         let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
 
-        //Sign the transaction
-        tx.sign(evmAccount0.privateKey)
-
-
         let raw = '0x' + tx.serialize().toString('hex')
 
         console.log('Transaction(HEX) ———> ',raw)
@@ -295,6 +276,59 @@ let CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY=async()=>{
 // CONTRACT_WITH_SEVERAL_EVENTS_DEPLOY()
 
 
+
+let MAKE_CHECKPOINT=async()=>{
+
+
+    let contractAddress = '0x350a40A78d11a66dB87B3D7D92d81A9609Ea68d2'
+
+    let TEST_CONTRACT = new web3.eth.Contract([{"inputs":[{"internalType":"string","name":"initialCheckpoint","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"Checkpoint","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"string","name":"payload","type":"string"},{"indexed":false,"internalType":"uint256","name":"blocktime","type":"uint256"}],"name":"SkipProcedure","type":"event"},{"inputs":[{"internalType":"string","name":"aggregatedCheckpoint","type":"string"}],"name":"checkpoint","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"string","name":"skipMetadata","type":"string"}],"name":"skip","outputs":[],"stateMutability":"nonpayable","type":"function"}]);
+
+    let checkpoint = 'I am checkpoint'
+
+    
+    web3.eth.getTransactionCount(evmAccount0.address,async(err,txCount) => {
+			
+        if(err) return
+
+        // Build a transaction
+        let txObject = {
+
+            from:evmAccount0.address,
+
+            nonce: web3.utils.toHex(txCount),
+    
+            //value: web3.utils.toHex(web3.utils.toWei('0','ether')),
+            to:contractAddress,
+
+
+            //Set enough limit and price for gas
+            gasLimit: web3.utils.toHex(800000),
+    
+            gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+            
+            //Set contract bytecode
+            data: TEST_CONTRACT.methods.checkpoint(checkpoint).encodeABI()
+
+        }
+
+        //Choose custom network
+        let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
+
+        let raw = '0x' + tx.serialize().toString('hex')
+
+        console.log('Transaction(HEX) ———> ',raw)
+
+        //Broadcast the transaction
+        web3.eth.sendSignedTransaction(raw, (err, txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+
+    })
+
+
+}
+
+
+// MAKE_CHECKPOINT()
 
 
 let GET_CONTRACT_RECEIPT=async()=>{
@@ -367,4 +401,47 @@ let GET_PAST_LOGS=()=>{
 }
 
 
-GET_PAST_LOGS()
+// GET_PAST_LOGS()
+
+
+
+let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
+
+    let nonce = await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5')
+
+    // Build a transaction
+    let txObject = {
+        
+        from:evmAccount0.address,
+
+        nonce:web3.utils.toHex(nonce),
+
+        to:evmAccount1.address,
+        
+        value: web3.utils.toHex(web3.utils.toWei('1.337','ether')),
+        
+        gasLimit: web3.utils.toHex(42000),
+        
+        gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+    
+        //Set payload in hex
+        data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a1qqqqqqqqqqqqqqqqqqqqqqqqqqqqq0a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
+    
+    }
+
+
+    let tx = Transaction.fromTxData(txObject,{common}).sign(evmAccount0.privateKey)
+
+    console.log('Tx hash is => ','0x'+tx.hash().toString('hex'))
+
+    console.log(tx.toJSON())
+
+    console.log(await web3.eth.estimateGas(txObject))
+
+
+    // let raw = '0x' + tx.serialize().toString('hex')
+
+
+}
+
+ESTIMATE_GAS_FOR_DEFAULT_TX()

@@ -1,53 +1,51 @@
 lockfileVersion: 5.3
 
 specifiers:
-  '@ethereumjs/block': ^4.0.0
-  '@ethereumjs/common': ^3.0.0
-  '@ethereumjs/statemanager': ^1.0.0
-  '@ethereumjs/trie': ^5.0.0
-  '@ethereumjs/tx': ^4.0.0
-  '@ethereumjs/util': ^8.0.0
-  '@ethereumjs/vm': ^6.0.0
+  '@ethereumjs/block': 4.0.0
+  '@ethereumjs/common': 3.0.0
+  '@ethereumjs/statemanager': 1.0.0
+  '@ethereumjs/trie': 5.0.0
+  '@ethereumjs/tx': 4.0.0
+  '@ethereumjs/util': 8.0.0
+  '@ethereumjs/vm': 6.0.0
+  '@ethersproject/abi': 5.7.0
   level: ^8.0.0
 
 dependencies:
-  '@ethereumjs/block': 4.1.0
-  '@ethereumjs/common': 3.0.2
-  '@ethereumjs/statemanager': 1.0.2
-  '@ethereumjs/trie': 5.0.2
-  '@ethereumjs/tx': 4.0.2
-  '@ethereumjs/util': 8.0.3
-  '@ethereumjs/vm': 6.3.0
+  '@ethereumjs/block': 4.0.0
+  '@ethereumjs/common': 3.0.0
+  '@ethereumjs/statemanager': 1.0.0
+  '@ethereumjs/trie': 5.0.0
+  '@ethereumjs/tx': 4.0.0
+  '@ethereumjs/util': 8.0.0
+  '@ethereumjs/vm': 6.0.0
+  '@ethersproject/abi': 5.7.0
   level: 8.0.0
 
 packages:
 
-  /@ethereumjs/block/4.1.0:
-    resolution: {integrity: sha512-WuRRt3CuN1TjhzBbyI7K0PoXFVEfTwbCCsGN4hS0CaRulzlfWXNhQJmHBISbX72BDZbma2KbMq0Iam3xZ2lG3g==}
+  /@ethereumjs/block/4.0.0:
+    resolution: {integrity: sha512-OewaOEzcplspEeoDWyEKX7ENuXYUQMUsO18payHrPBC7kTGDcWr+qx+F6gMMC/pyJvS9l9LpLmMOS6ENIK62kA==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/common': 3.0.2
+      '@ethereumjs/common': 3.0.0
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/trie': 5.0.2
-      '@ethereumjs/tx': 4.0.2
-      '@ethereumjs/util': 8.0.3
+      '@ethereumjs/trie': 5.0.0
+      '@ethereumjs/tx': 4.0.0
+      '@ethereumjs/util': 8.0.0
       ethereum-cryptography: 1.1.2
-      ethers: 5.7.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
     dev: false
 
-  /@ethereumjs/blockchain/6.1.0:
-    resolution: {integrity: sha512-V15Rr9ohysC7YiI5xLHUxuymzJbP/gAfUT4/DIQ9JOMcshzZZ7XL+ml61ypAMPLfFe5JI/UEnW61sCDUGz2gSA==}
+  /@ethereumjs/blockchain/6.0.0:
+    resolution: {integrity: sha512-JdgY2jD4ymzcCbAcX4XVX1dTLoVqEIyaBVPVljYlPzJEdIoFa5JYpZheNlZGtP11d1OKhhyTqfqLuYThxI32Tw==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/block': 4.1.0
-      '@ethereumjs/common': 3.0.2
-      '@ethereumjs/ethash': 2.0.2
+      '@ethereumjs/block': 4.0.0
+      '@ethereumjs/common': 3.0.0
+      '@ethereumjs/ethash': 2.0.0
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/trie': 5.0.2
-      '@ethereumjs/util': 8.0.3
+      '@ethereumjs/trie': 5.0.0
+      '@ethereumjs/util': 8.0.0
       abstract-level: 1.0.3
       debug: 4.3.4
       ethereum-cryptography: 1.1.2
@@ -55,48 +53,42 @@ packages:
       lru-cache: 5.1.1
       memory-level: 1.0.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
     dev: false
 
-  /@ethereumjs/common/3.0.2:
-    resolution: {integrity: sha512-N8fpT5uDvxOE5dIaPQZWzJaBRkRWrCXv63MONEn5ikp/J9mWFc53VUjb3GqtIYHRgg9nP81TXmtnvQJz1IuTiw==}
+  /@ethereumjs/common/3.0.0:
+    resolution: {integrity: sha512-yHgMom5HFlAJIu8fmA1n0UvBnanhULfuNQAD+tT6ZR6sndLUz2Mc4eegF3Rby579lqJMAc/rpsToP7wA/i4R/w==}
     dependencies:
-      '@ethereumjs/util': 8.0.3
+      '@ethereumjs/util': 8.0.0
       crc-32: 1.2.2
     dev: false
 
-  /@ethereumjs/ethash/2.0.2:
-    resolution: {integrity: sha512-/fgahHOIhOKL0zHTPghrEJh6Btn2B6YRBPF66WSK3guMO5Vrro5AX6s7xEl8+aoZs5xWp96v0mlfb758a6gJnA==}
+  /@ethereumjs/ethash/2.0.0:
+    resolution: {integrity: sha512-U4+G1UYDCeqGW59h9FtjxVPZcQc/+nptpAMjQfGIN2nA1ZXoxtZiyVBgW0ocyofIbpySnSNMQRcUq2iqJ/7qug==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/block': 4.1.0
+      '@ethereumjs/block': 4.0.0
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/util': 8.0.3
+      '@ethereumjs/util': 8.0.0
       abstract-level: 1.0.3
-      bigint-crypto-utils: 3.1.8
+      bigint-crypto-utils: 3.1.7
       ethereum-cryptography: 1.1.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
     dev: false
 
-  /@ethereumjs/evm/1.2.3:
-    resolution: {integrity: sha512-yQFF8xbcN98VBdDP4xLKEvcO/wB2djWC3YTQ0hG2O0ZnpPGS92oP24inxmrlrUukvZ3ZWafw60OOtQn7YqQdLw==}
+  /@ethereumjs/evm/1.0.0:
+    resolution: {integrity: sha512-jLUPnpYxMDYnmRuD8xKQWuTXcAiHtvWLJ99L7nNiVU31yShQuWckyQShxE7CGuNm5nm6X6yptSSzb1inb1Bd8w==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/common': 3.0.2
-      '@ethereumjs/util': 8.0.3
-      '@ethersproject/providers': 5.7.2
+      '@ethereumjs/common': 3.0.0
+      '@ethereumjs/util': 8.0.0
+      '@types/async-eventemitter': 0.2.1
+      async-eventemitter: 0.2.4
       debug: 4.3.4
       ethereum-cryptography: 1.1.2
       mcl-wasm: 0.7.9
       rustbn.js: 0.2.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
     dev: false
 
   /@ethereumjs/rlp/4.0.0:
@@ -105,76 +97,70 @@ packages:
     hasBin: true
     dev: false
 
-  /@ethereumjs/statemanager/1.0.2:
-    resolution: {integrity: sha512-/uE+r+Pr0hy1dXS9AOO9083yQZD2RYM7vcayrnDoMZNlLU7xAt9XfDB/3pdfOK3CKUxlpLruhIafAk4vjFuGMQ==}
+  /@ethereumjs/statemanager/1.0.0:
+    resolution: {integrity: sha512-mOGXsq1LH4vKCfO+c2wPQQD67/Tm2bA4uuH4QadmPwVBm8z/21uvAITZJg3UGSEvnMWY873J4GumeADe/xAeEg==}
     dependencies:
-      '@ethereumjs/common': 3.0.2
+      '@ethereumjs/common': 3.0.0
       '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/trie': 5.0.0
+      '@ethereumjs/util': 8.0.0
       debug: 4.3.4
       ethereum-cryptography: 1.1.2
-      ethers: 5.7.2
-      js-sdsl: 4.2.0
+      functional-red-black-tree: 1.0.1
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
     dev: false
 
-  /@ethereumjs/trie/5.0.2:
-    resolution: {integrity: sha512-fZ7CbygZwJ2UTOgJt39L8nQHsLzB6eC0317TdKgkZQfG4AZ4ir+DyESUcl0g5iEN6t6ZqEYj7AfNB2/6C/jR5g==}
+  /@ethereumjs/trie/5.0.0:
+    resolution: {integrity: sha512-BiFv9hQZighlp4445kfG65X+tc8eEfpP32RMKzCELmSvChpwmtuL8Xuxy+aTYWQEMjY6s4gAVLX/J48SW7gwQg==}
     engines: {node: '>=14'}
     dependencies:
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/util': 8.0.3
-      '@types/readable-stream': 2.3.15
+      '@ethereumjs/util': 8.0.0
       ethereum-cryptography: 1.1.2
       readable-stream: 3.6.0
     dev: false
 
-  /@ethereumjs/tx/4.0.2:
-    resolution: {integrity: sha512-6GoKVK3MVcAFFn4qSLIIDZ1vrKSLn7W5L80Pvae1BJFgchu+11R2iOqQyVGUSGbaXllh4xliUy/7+x5pYwRY8Q==}
+  /@ethereumjs/tx/4.0.0:
+    resolution: {integrity: sha512-W3Fc61kAA3D6vJad2vsfh9ygdaMeScYpf49ephoo/0y+CP9IN+MMrqA6mx1X0Fr/jf52IuW4hDHE/rmgadBV6g==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/common': 3.0.2
+      '@ethereumjs/common': 3.0.0
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/util': 8.0.3
-      ethereum-cryptography: 1.1.2
-      ethers: 5.7.2
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-    dev: false
-
-  /@ethereumjs/util/8.0.3:
-    resolution: {integrity: sha512-0apCbwc8xAaie6W7q6QyogfyRS2BMU816a8KwpnpRw9Qrc6Bws+l7J3LfCLMt2iL6Wi8CYb0B29AeIr2N4vHnw==}
-    engines: {node: '>=14'}
-    dependencies:
-      '@ethereumjs/rlp': 4.0.0
-      async: 3.2.4
+      '@ethereumjs/util': 8.0.0
       ethereum-cryptography: 1.1.2
     dev: false
 
-  /@ethereumjs/vm/6.3.0:
-    resolution: {integrity: sha512-vkuDXcta22VW0o/O0LAyMxZK719ULFm0BAjfHaEsVWVLsSIKWEwRom8f9Rg7MGSnuhlEaDfYnCuC1ewfgfvT3g==}
+  /@ethereumjs/util/8.0.0:
+    resolution: {integrity: sha512-Zz/Ovar0VU/CaYHLvigBTjG5PmkG0OzjvRjjoXRJbJcdWJoTCN2N4BYgoCBOZomKjaAT4ABpQ7wer6ZFOglvjg==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/block': 4.1.0
-      '@ethereumjs/blockchain': 6.1.0
-      '@ethereumjs/common': 3.0.2
-      '@ethereumjs/evm': 1.2.3
       '@ethereumjs/rlp': 4.0.0
-      '@ethereumjs/statemanager': 1.0.2
-      '@ethereumjs/trie': 5.0.2
-      '@ethereumjs/tx': 4.0.2
-      '@ethereumjs/util': 8.0.3
+      ethereum-cryptography: 1.1.2
+    dev: false
+
+  /@ethereumjs/vm/6.0.0:
+    resolution: {integrity: sha512-bFt9RSe+HKT+lgpL4+pHEWjn6l3N4f82cfFkSHaF4RTgSHeyGq/K4lbyXOFGE+r7QAwXM5SrRR1+g7kLhp0h7w==}
+    engines: {node: '>=14'}
+    dependencies:
+      '@ethereumjs/block': 4.0.0
+      '@ethereumjs/blockchain': 6.0.0
+      '@ethereumjs/common': 3.0.0
+      '@ethereumjs/evm': 1.0.0
+      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/statemanager': 1.0.0
+      '@ethereumjs/trie': 5.0.0
+      '@ethereumjs/tx': 4.0.0
+      '@ethereumjs/util': 8.0.0
+      '@types/async-eventemitter': 0.2.1
+      async-eventemitter: 0.2.4
       debug: 4.3.4
       ethereum-cryptography: 1.1.2
+      functional-red-black-tree: 1.0.1
       mcl-wasm: 0.7.9
       rustbn.js: 0.2.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
     dev: false
 
   /@ethersproject/abi/5.7.0:
@@ -229,13 +215,6 @@ packages:
       '@ethersproject/bytes': 5.7.0
     dev: false
 
-  /@ethersproject/basex/5.7.0:
-    resolution: {integrity: sha512-ywlh43GwZLv2Voc2gQVTKBoVQ1mti3d8HK5aMxsfu/nRDnMmNqaSJ3r3n85HBByT8OpoY96SXM1FogC533T4zw==}
-    dependencies:
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/properties': 5.7.0
-    dev: false
-
   /@ethersproject/bignumber/5.7.0:
     resolution: {integrity: sha512-n1CAdIHRWjSucQO3MC1zPSVgV/6dy/fjL9pMrPP9peL+QxEg9wOsVqwD4+818B6LUEtaXzVHQiuivzRoxPxUGw==}
     dependencies:
@@ -256,21 +235,6 @@ packages:
       '@ethersproject/bignumber': 5.7.0
     dev: false
 
-  /@ethersproject/contracts/5.7.0:
-    resolution: {integrity: sha512-5GJbzEU3X+d33CdfPhcyS+z8MzsTrBGk/sc+G+59+tPa9yFkl6HQ9D6L0QMgNTA9q8dT0XKxxkyp883XsQvbbg==}
-    dependencies:
-      '@ethersproject/abi': 5.7.0
-      '@ethersproject/abstract-provider': 5.7.0
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/address': 5.7.0
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/constants': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-    dev: false
-
   /@ethersproject/hash/5.7.0:
     resolution: {integrity: sha512-qX5WrQfnah1EFnO5zJv1v46a8HW0+E5xuBBDTwMFZLuVTx0tbU2kkx15NqdjxecrLGatQN9FGQKpb1FKdHCt+g==}
     dependencies:
@@ -283,41 +247,6 @@ packages:
       '@ethersproject/logger': 5.7.0
       '@ethersproject/properties': 5.7.0
       '@ethersproject/strings': 5.7.0
-    dev: false
-
-  /@ethersproject/hdnode/5.7.0:
-    resolution: {integrity: sha512-OmyYo9EENBPPf4ERhR7oj6uAtUAhYGqOnIS+jE5pTXvdKBS99ikzq1E7Iv0ZQZ5V36Lqx1qZLeak0Ra16qpeOg==}
-    dependencies:
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/basex': 5.7.0
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/pbkdf2': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/sha2': 5.7.0
-      '@ethersproject/signing-key': 5.7.0
-      '@ethersproject/strings': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-      '@ethersproject/wordlists': 5.7.0
-    dev: false
-
-  /@ethersproject/json-wallets/5.7.0:
-    resolution: {integrity: sha512-8oee5Xgu6+RKgJTkvEMl2wDgSPSAQ9MB/3JYjFV9jlKvcYHUXZC+cQp0njgmxdHkYWn8s6/IqIZYm0YWCjO/0g==}
-    dependencies:
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/address': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/hdnode': 5.7.0
-      '@ethersproject/keccak256': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/pbkdf2': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/random': 5.7.0
-      '@ethersproject/strings': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-      aes-js: 3.0.0
-      scrypt-js: 3.0.1
     dev: false
 
   /@ethersproject/keccak256/5.7.0:
@@ -337,51 +266,9 @@ packages:
       '@ethersproject/logger': 5.7.0
     dev: false
 
-  /@ethersproject/pbkdf2/5.7.0:
-    resolution: {integrity: sha512-oR/dBRZR6GTyaofd86DehG72hY6NpAjhabkhxgr3X2FpJtJuodEl2auADWBZfhDHgVCbu3/H/Ocq2uC6dpNjjw==}
-    dependencies:
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/sha2': 5.7.0
-    dev: false
-
   /@ethersproject/properties/5.7.0:
     resolution: {integrity: sha512-J87jy8suntrAkIZtecpxEPxY//szqr1mlBaYlQ0r4RCaiD2hjheqF9s1LVE8vVuJCXisjIP+JgtK/Do54ej4Sw==}
     dependencies:
-      '@ethersproject/logger': 5.7.0
-    dev: false
-
-  /@ethersproject/providers/5.7.2:
-    resolution: {integrity: sha512-g34EWZ1WWAVgr4aptGlVBF8mhl3VWjv+8hoAnzStu8Ah22VHBsuGzP17eb6xDVRzw895G4W7vvx60lFFur/1Rg==}
-    dependencies:
-      '@ethersproject/abstract-provider': 5.7.0
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/address': 5.7.0
-      '@ethersproject/base64': 5.7.0
-      '@ethersproject/basex': 5.7.0
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/constants': 5.7.0
-      '@ethersproject/hash': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/networks': 5.7.1
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/random': 5.7.0
-      '@ethersproject/rlp': 5.7.0
-      '@ethersproject/sha2': 5.7.0
-      '@ethersproject/strings': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-      '@ethersproject/web': 5.7.1
-      bech32: 1.1.4
-      ws: 7.4.6
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-    dev: false
-
-  /@ethersproject/random/5.7.0:
-    resolution: {integrity: sha512-19WjScqRA8IIeWclFme75VMXSBvi4e6InrUNuaR4s5pTF2qNhcGdCUwdxUVGtDDqC00sDLCO93jPQoDUH4HVmQ==}
-    dependencies:
-      '@ethersproject/bytes': 5.7.0
       '@ethersproject/logger': 5.7.0
     dev: false
 
@@ -390,14 +277,6 @@ packages:
     dependencies:
       '@ethersproject/bytes': 5.7.0
       '@ethersproject/logger': 5.7.0
-    dev: false
-
-  /@ethersproject/sha2/5.7.0:
-    resolution: {integrity: sha512-gKlH42riwb3KYp0reLsFTokByAKoJdgFCwI+CCiX/k+Jm2mbNs6oOaCjYQSlI1+XBVejwH2KrmCbMAT/GnRDQw==}
-    dependencies:
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      hash.js: 1.1.7
     dev: false
 
   /@ethersproject/signing-key/5.7.0:
@@ -409,17 +288,6 @@ packages:
       bn.js: 5.2.1
       elliptic: 6.5.4
       hash.js: 1.1.7
-    dev: false
-
-  /@ethersproject/solidity/5.7.0:
-    resolution: {integrity: sha512-HmabMd2Dt/raavyaGukF4XxizWKhKQ24DoLtdNbBmNKUOPqwjsKQSdV9GQtj9CBEea9DlzETlVER1gYeXXBGaA==}
-    dependencies:
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/keccak256': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/sha2': 5.7.0
-      '@ethersproject/strings': 5.7.0
     dev: false
 
   /@ethersproject/strings/5.7.0:
@@ -444,49 +312,11 @@ packages:
       '@ethersproject/signing-key': 5.7.0
     dev: false
 
-  /@ethersproject/units/5.7.0:
-    resolution: {integrity: sha512-pD3xLMy3SJu9kG5xDGI7+xhTEmGXlEqXU4OfNapmfnxLVY4EMSSRp7j1k7eezutBPH7RBN/7QPnwR7hzNlEFeg==}
-    dependencies:
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/constants': 5.7.0
-      '@ethersproject/logger': 5.7.0
-    dev: false
-
-  /@ethersproject/wallet/5.7.0:
-    resolution: {integrity: sha512-MhmXlJXEJFBFVKrDLB4ZdDzxcBxQ3rLyCkhNqVu3CDYvR97E+8r01UgrI+TI99Le+aYm/in/0vp86guJuM7FCA==}
-    dependencies:
-      '@ethersproject/abstract-provider': 5.7.0
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/address': 5.7.0
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/hash': 5.7.0
-      '@ethersproject/hdnode': 5.7.0
-      '@ethersproject/json-wallets': 5.7.0
-      '@ethersproject/keccak256': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/random': 5.7.0
-      '@ethersproject/signing-key': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-      '@ethersproject/wordlists': 5.7.0
-    dev: false
-
   /@ethersproject/web/5.7.1:
     resolution: {integrity: sha512-Gueu8lSvyjBWL4cYsWsjh6MtMwM0+H4HvqFPZfB6dV8ctbP9zFAO73VG1cMWae0FLPCtz0peKPpZY8/ugJJX2w==}
     dependencies:
       '@ethersproject/base64': 5.7.0
       '@ethersproject/bytes': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/strings': 5.7.0
-    dev: false
-
-  /@ethersproject/wordlists/5.7.0:
-    resolution: {integrity: sha512-S2TFNJNfHWVHNE6cNDjbVlZ6MgE17MIxMbMg2zv3wn+3XSJGosL1m9ZVv3GXCf/2ymSsQ+hRI5IzoMJTG6aoVA==}
-    dependencies:
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/hash': 5.7.0
       '@ethersproject/logger': 5.7.0
       '@ethersproject/properties': 5.7.0
       '@ethersproject/strings': 5.7.0
@@ -519,15 +349,8 @@ packages:
       '@scure/base': 1.1.1
     dev: false
 
-  /@types/node/18.11.18:
-    resolution: {integrity: sha512-DHQpWGjyQKSHj3ebjFI/wRKcqQcdR+MoFBygntYOZytCqNfkd2ZC4ARDJ2DQqhjH5p85Nnd3jhUJIXrszFX/JA==}
-    dev: false
-
-  /@types/readable-stream/2.3.15:
-    resolution: {integrity: sha512-oM5JSKQCcICF1wvGgmecmHldZ48OZamtMxcGGVICOJA8o8cahXC1zEVAif8iwoc5j8etxFaRFnf095+CDsuoFQ==}
-    dependencies:
-      '@types/node': 18.11.18
-      safe-buffer: 5.1.2
+  /@types/async-eventemitter/0.2.1:
+    resolution: {integrity: sha512-M2P4Ng26QbAeITiH7w1d7OxtldgfAe0wobpyJzVK/XOb0cUGKU2R4pfAhqcJBXAe2ife5ZOhSv4wk7p+ffURtg==}
     dev: false
 
   /abstract-level/1.0.3:
@@ -543,24 +366,24 @@ packages:
       queue-microtask: 1.2.3
     dev: false
 
-  /aes-js/3.0.0:
-    resolution: {integrity: sha512-H7wUZRn8WpTq9jocdxQ2c8x2sKo9ZVmzfRE13GiNJXfp7NcKYEdvl3vspKjXox6RIG2VtaRe4JFvxG4rqp2Zuw==}
+  /async-eventemitter/0.2.4:
+    resolution: {integrity: sha512-pd20BwL7Yt1zwDFy+8MX8F1+WCT8aQeKj0kQnTrH9WaeRETlRamVhD0JtRPmrV4GfOJ2F9CvdQkZeZhnh2TuHw==}
+    dependencies:
+      async: 2.6.4
     dev: false
 
-  /async/3.2.4:
-    resolution: {integrity: sha512-iAB+JbDEGXhyIUavoDl9WP/Jj106Kz9DEn1DPgYw5ruDn0e3Wgi3sKFm55sASdGBNOQB8F59d9qQ7deqrHA8wQ==}
+  /async/2.6.4:
+    resolution: {integrity: sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA==}
+    dependencies:
+      lodash: 4.17.21
     dev: false
 
   /base64-js/1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
     dev: false
 
-  /bech32/1.1.4:
-    resolution: {integrity: sha512-s0IrSOzLlbvX7yp4WBfPITzpAU8sqQcpsmwXDiKwrG4r491vwCO/XpejasRNl0piBMe/DvP4Tz0mIS/X1DPJBQ==}
-    dev: false
-
-  /bigint-crypto-utils/3.1.8:
-    resolution: {integrity: sha512-+VMV9Laq8pXLBKKKK49nOoq9bfR3j7NNQAtbA617a4nw9bVLo8rsqkKMBgM2AJWlNX9fEIyYaYX+d0laqYV4tw==}
+  /bigint-crypto-utils/3.1.7:
+    resolution: {integrity: sha512-zpCQpIE2Oy5WIQpjC9iYZf8Uh9QqoS51ZCooAcNvzv1AQ3VWdT52D0ksr1+/faeK8HVIej1bxXcP75YcqH3KPA==}
     engines: {node: '>=10.4.0'}
     dependencies:
       bigint-mod-arith: 3.1.2
@@ -655,44 +478,6 @@ packages:
       '@scure/bip39': 1.1.0
     dev: false
 
-  /ethers/5.7.2:
-    resolution: {integrity: sha512-wswUsmWo1aOK8rR7DIKiWSw9DbLWe6x98Jrn8wcTflTVvaXhAMaB5zGAXy0GYQEQp9iO1iSHWVyARQm11zUtyg==}
-    dependencies:
-      '@ethersproject/abi': 5.7.0
-      '@ethersproject/abstract-provider': 5.7.0
-      '@ethersproject/abstract-signer': 5.7.0
-      '@ethersproject/address': 5.7.0
-      '@ethersproject/base64': 5.7.0
-      '@ethersproject/basex': 5.7.0
-      '@ethersproject/bignumber': 5.7.0
-      '@ethersproject/bytes': 5.7.0
-      '@ethersproject/constants': 5.7.0
-      '@ethersproject/contracts': 5.7.0
-      '@ethersproject/hash': 5.7.0
-      '@ethersproject/hdnode': 5.7.0
-      '@ethersproject/json-wallets': 5.7.0
-      '@ethersproject/keccak256': 5.7.0
-      '@ethersproject/logger': 5.7.0
-      '@ethersproject/networks': 5.7.1
-      '@ethersproject/pbkdf2': 5.7.0
-      '@ethersproject/properties': 5.7.0
-      '@ethersproject/providers': 5.7.2
-      '@ethersproject/random': 5.7.0
-      '@ethersproject/rlp': 5.7.0
-      '@ethersproject/sha2': 5.7.0
-      '@ethersproject/signing-key': 5.7.0
-      '@ethersproject/solidity': 5.7.0
-      '@ethersproject/strings': 5.7.0
-      '@ethersproject/transactions': 5.7.0
-      '@ethersproject/units': 5.7.0
-      '@ethersproject/wallet': 5.7.0
-      '@ethersproject/web': 5.7.1
-      '@ethersproject/wordlists': 5.7.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-    dev: false
-
   /functional-red-black-tree/1.0.1:
     resolution: {integrity: sha512-dsKNQNdj6xA3T+QlADDA7mOSlX0qiMINjn0cgr+eGHGsbSHzTabcIogz2+p/iqP1Xs6EP/sS2SbqH+brGTbq0g==}
     dev: false
@@ -725,10 +510,6 @@ packages:
     engines: {node: '>=4'}
     dev: false
 
-  /js-sdsl/4.2.0:
-    resolution: {integrity: sha512-dyBIzQBDkCqCu+0upx25Y2jGdbTGxE9fshMsCdK0ViOongpV+n5tXRcZY9v7CaVQ79AGS9KA1KHtojxiM7aXSQ==}
-    dev: false
-
   /js-sha3/0.8.0:
     resolution: {integrity: sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==}
     dev: false
@@ -752,6 +533,10 @@ packages:
     dependencies:
       browser-level: 1.0.1
       classic-level: 1.2.0
+    dev: false
+
+  /lodash/4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
     dev: false
 
   /lru-cache/5.1.1:
@@ -823,16 +608,8 @@ packages:
     resolution: {integrity: sha512-4VlvkRUuCJvr2J6Y0ImW7NvTCriMi7ErOAqWk1y69vAdoNIzCF3yPmgeNzx+RQTLEDFq5sHfscn1MwHxP9hNfA==}
     dev: false
 
-  /safe-buffer/5.1.2:
-    resolution: {integrity: sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==}
-    dev: false
-
   /safe-buffer/5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
-    dev: false
-
-  /scrypt-js/3.0.1:
-    resolution: {integrity: sha512-cdwTTnqPu0Hyvf5in5asVdZocVDTNRmR7XEcJuIzMjJeSHybHl7vpB66AzwTaIg6CLSbtjcxc8fqcySfnTkccA==}
     dev: false
 
   /string_decoder/1.3.0:
@@ -843,19 +620,6 @@ packages:
 
   /util-deprecate/1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
-    dev: false
-
-  /ws/7.4.6:
-    resolution: {integrity: sha512-YmhHDO4MzaDLB+M9ym/mDA5z0naX8j7SIlT8f8z+I0VtzsRbekxEutHSme7NPS2qE8StCYQNUnfWdXta/Yu85A==}
-    engines: {node: '>=8.3.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: ^5.0.2
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
     dev: false
 
   /yallist/3.1.1:

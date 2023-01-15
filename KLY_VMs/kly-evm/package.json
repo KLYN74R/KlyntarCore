@@ -1,20 +1,26 @@
 {
-    "name": "kly_evm",
-    "version": "1.0.0",
-    "description": "A KLY-EVM virtual machine",
-    "type": "module",
-    "main": "vm.js",
-    "keywords": ["kly","klyntar","mutable-vm","evm"],
-    "author": "KlyntarTeam",
-    "license": "Apache-2.0",
-    "dependencies": {
-      "@ethereumjs/block": "^4.0.0",
-      "@ethereumjs/common": "^3.0.0",
-      "@ethereumjs/statemanager": "^1.0.0",
-      "@ethereumjs/trie": "^5.0.0",
-      "@ethereumjs/tx": "^4.0.0",
-      "@ethereumjs/util": "^8.0.0",
-      "@ethereumjs/vm": "^6.0.0",
-      "level": "^8.0.0"
-    }
+  "name": "kly_evm",
+  "version": "1.0.0",
+  "description": "A KLY-EVM virtual machine",
+  "type": "module",
+  "main": "vm.js",
+  "keywords": [
+    "kly",
+    "klyntar",
+    "mutable-vm",
+    "evm"
+  ],
+  "author": "KlyntarTeam",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@ethereumjs/block": "4.0.0",
+    "@ethereumjs/common": "3.0.0",
+    "@ethereumjs/statemanager": "1.0.0",
+    "@ethereumjs/trie": "5.0.0",
+    "@ethereumjs/tx": "4.0.0",
+    "@ethereumjs/util": "8.0.0",
+    "@ethereumjs/vm": "6.0.0",
+    "@ethersproject/abi": "5.7.0",
+    "level": "^8.0.0"
   }
+}
