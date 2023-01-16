@@ -9,9 +9,9 @@ List of routes to test
 
 POST /finalization [✅]
 
-POST /super_finalization
+POST /super_finalization [✅]
 
-GET  /get_super_finalization/:BLOCK_ID_AND_HASH
+GET  /get_super_finalization/:BLOCK_ID_AND_HASH [✅]
 
 GET /get_payload_for_checkpoint/:PAYLOAD_HASH
 
@@ -64,9 +64,7 @@ let CREDS = {
 }
 
 
-
-
-
+//___________________________________________ TESTS ______________________________________________
 
 
 let POST_FINALIZATION_ROUTE_TEST=async()=>{
@@ -157,4 +155,115 @@ ___________________________Verification steps___________________________
 }
 
 
-POST_FINALIZATION_ROUTE_TEST()
+// POST_FINALIZATION_ROUTE_TEST()
+
+
+
+
+
+
+
+
+let POST_SUPER_FINALIZATION_ROUTE_TEST=async()=>{
+
+/*
+
+****************************************************************
+                                                               *
+Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
+                                                               *
+****************************************************************
+
+[Test status]:✅(No shutdown when wrong data sent(wrong format))
+
+*/
+
+
+    let optionsToSend
+
+    //______________________ Empty object ______________________
+
+
+    // let emptyObject={}
+
+    // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+
+    // await fetch(CREDS.url+'/super_finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+
+    //______________________ Normal object ______________________
+
+    let normalObject =   {
+        
+        blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+
+        blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+        
+        aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+
+        aggregatedSignature:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+
+        afkValidators:[]
+
+    }
+
+    optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+
+    await fetch(CREDS.url+'/super_finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+}
+
+// POST_SUPER_FINALIZATION_ROUTE_TEST()
+
+
+
+
+
+
+
+
+let GET_SUPER_FINALIZATION_ROUTE_TEST=async()=>{
+
+/*
+
+To return SUPER_FINALIZATION_PROOF related to some block PubX:Index
+
+Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+
+Params:
+
+    [0] - blockID+blockHash
+
+Returns:
+
+    {
+        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
+        aggregatedPub:<>,
+        afkValidators
+        
+    }
+
+*/
+
+
+
+    //______________________ Empty blockID ______________________
+
+    await fetch(CREDS.url+'/get_super_finalization/').then(r=>r.text()).then(console.log).catch(console.log)
+
+    //______________________ Normal blockID ______________________
+
+    /*
+    
+    Returns 
+
+    {"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:596","blockHash":"84ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"oIkKCqcwY1tWqeK5ZlvCdiVoiPA5f/lbVqXwwjPK1bUguOPonRV7NMNOxHjOds6JGANj+uGTb7RnkNP4ZdG3GUms1A/5Uv98EIki80PM1bWvCqaLjcEVTb2aN4laqzgh","afkValidators":[]}
+
+    */
+    await fetch(CREDS.url+'/get_super_finalization/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
+
+
+}
+
+
+// GET_SUPER_FINALIZATION_ROUTE_TEST()

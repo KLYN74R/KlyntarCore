@@ -25,7 +25,7 @@ export default {
     derivePubKey:privateKey=>Base58.encode(bls.getPublicKey(Buffer.from(privateKey,'hex'))),
     
     //async
-    singleSig:(msg,privateKey)=>bls.sign(
+    singleSig:async(msg,privateKey)=>bls.sign(
         
         Buffer.from(msg,'utf-8').toString('hex'),Buffer.from(privateKey,'hex')
         
@@ -33,7 +33,7 @@ export default {
         
     ).then(b=>Buffer.from(b,'utf-8').toString('base64')),
 
-    singleVerify:(msg,pubKey,signa)=>bls.verify(Buffer.from(signa,'base64'),Buffer.from(msg,'utf-8').toString('hex'),Base58.decode(pubKey)),
+    singleVerify:async(msg,pubKey,signa)=>bls.verify(Buffer.from(signa,'base64'),Buffer.from(msg,'utf-8').toString('hex'),Base58.decode(pubKey)),
 
     aggregatePublicKeys:publicKeysArray=>Base58.encode(bls.aggregatePublicKeys(publicKeysArray.map(Base58.decode))),
 

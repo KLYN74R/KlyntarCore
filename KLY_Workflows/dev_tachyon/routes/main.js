@@ -374,27 +374,37 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
         return
     }
+
+    
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+
+    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = possibleSuperFinalizationProof
     
+    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
 
-    let signaIsOk = await bls.singleVerify(possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash+'FINALIZATION'+qtPayload,possibleSuperFinalizationProof.aggregatedPub,possibleSuperFinalizationProof.aggregatedSignature).catch(_=>false)
+        !response.aborted && response.end('Wrong format of input params')
 
-    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-possibleSuperFinalizationProof.afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+        return
 
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([possibleSuperFinalizationProof.aggregatedPub,...possibleSuperFinalizationProof.afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    }
 
+    let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
+
+    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+    
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    
     let checkpointTempDB = tempObject.DATABASE
-
 
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+possibleSuperFinalizationProof.blockID+possibleSuperFinalizationProof.blockHash,possibleSuperFinalizationProof).catch(_=>{})
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID+blockHash,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
-    }else !response.aborted && response.end('Something wrong')
+    }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
 
 
 }),
