@@ -316,11 +316,19 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         }else{
 
             
-            let {aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
+
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+
+                !response.aborted && response.end('Wrong format of input params')
+
+                return
+
+            }
 
             let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
 
-            let signaIsOk = await bls.singleVerify(aggregatedCommitments.blockID+aggregatedCommitments.blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
+            let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
@@ -329,11 +337,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(aggregatedCommitments.blockID,{hash:aggregatedCommitments.blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
     
                 !response.aborted && response.end('OK')
                 
-            }else !response.aborted && response.end('Something wrong')    
+            }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
 
         }
 
