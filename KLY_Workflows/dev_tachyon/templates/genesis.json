@@ -19,7 +19,8 @@
                     "REWARD":0
                 }
             },
-            "WAITING_ROOM":{}
+            "WAITING_ROOM":{},
+            "poolURL":"http://localhost:7331"
         
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
@@ -38,7 +39,8 @@
                     "REWARD":0
                 }
             },
-            "WAITING_ROOM":{}
+            "WAITING_ROOM":{},
+            "poolURL":"http://localhost:7332"
         
         },
         "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
@@ -57,13 +59,14 @@
                     "REWARD":0
                 }
             },
-            "WAITING_ROOM":{}
+            "WAITING_ROOM":{},
+            "poolURL":"http://localhost:7333"
         
         }
 
     },
 
-    "CHECKPOINT_TIMESTAMP":1673020420056,
+    "CHECKPOINT_TIMESTAMP":1673825543232,
     
     "STATE":{
 
