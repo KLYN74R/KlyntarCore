@@ -26,13 +26,13 @@ GET /health [✅] (no params)
 
 _______________________________ 3 Routes related to the 3 stages of the skip procedure _______________________________
 
-POST /skip_procedure_stage_1
+POST /skip_procedure_stage_1 [✅]
 
-POST /skip_procedure_stage_2
+POST /skip_procedure_stage_2 [✅]
 
-POST /skip_procedure_stage_3
+POST /skip_procedure_stage_3 [✅]
 
-GET /skip_procedure_stage_3
+GET /skip_procedure_stage_3 [⌛️] - required by Savitar, so skip for a while
 
 
 
@@ -49,6 +49,7 @@ POST /addpeer
 import {BLS_SIGN_DATA} from '../../KLY_Workflows/dev_tachyon/utils.js'
 
 import fetch from 'node-fetch'
+import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 
 //___________________________________ IMPORTS / CONSTANTS POOL ___________________________________
@@ -703,3 +704,299 @@ Response - it's object with the following structure:
 
 
 // TEST_CHECKPOINT_STAGE_2_ROUTE()
+
+
+
+
+
+
+
+
+let TEST_SKIP_PROCEDURE_STAGE_1_ROUTE=async()=>{
+
+
+/*
+
+[Info]:
+
+    Route to accept requests from other quorum members about development of subchains.
+
+    For this, we should response like this
+
+
+[Accept]:
+
+    {
+        session:<32-bytes random hex session ID>,
+        
+        initiator:<BLS pubkey of quorum member who initiated skip procedure>,
+        
+        requestedSubchain:<BLS pubkey of subchain that initiator wants to get latest info about>,
+        
+        height:<block height of subchain on which initiator stopped>
+        
+        sig:SIG(session+requestedSubchain+height)
+    
+    }
+
+[Response]:
+
+    [+] In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
+        For this - response with a signature like this SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
+
+    [+] If timeout of AFK from subchain is not too old - then response with 'OK'
+
+    [+] Also, if we notice that requested height is lower than we have - then send own version as a proof
+
+*/
+
+        
+        
+        let optionsToSend
+    
+        //______________________ Empty object ______________________
+    
+    
+        // let emptyObject={}
+    
+        // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+    
+        // await fetch(CREDS.url+'/skip_procedure_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    
+        // Result = Signature verification failed {"code":"ERR_INVALID_ARG_TYPE"}
+    
+    
+        // __________ Negative test __________
+    
+        // let normalObject =   {
+    
+        //     session:'0000000000000000000000000000000000000000000000000000000000000000',
+        
+        //     initiator:CREDS.pub,
+            
+        //     requestedSubchain:'LOLOLO',
+            
+        //     height:5000,
+            
+        //     sig:await bls.singleSig('0000000000000000000000000000000000000000000000000000000000000000'+'LOLOLO'+5000+'-1',CREDS.prv)
+    
+        // }
+    
+        // optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    
+        // await fetch(CREDS.url+'/skip_procedure_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    
+
+        // Result => No such subchain
+        
+        //__________ Test with valid subchain __________
+
+        let normalObject =   {
+    
+            session:'0000000000000000000000000000000000000000000000000000000000000000',
+        
+            initiator:CREDS.pub,
+            
+            requestedSubchain:CREDS.pub,
+            
+            height:5000,
+            
+            sig:await bls.singleSig('0000000000000000000000000000000000000000000000000000000000000000'+CREDS.pub+5000+'-1',CREDS.prv)
+    
+        }
+    
+        optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    
+        await fetch(CREDS.url+'/skip_procedure_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    
+        /*
+        
+        Result:
+
+            If height > [CURRENT_ON_NODE]:
+                {"status":"Not going to skip and my local subchain height is lower than proposed by you(local:2286 | your:5000)"}
+
+            Else:
+                {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkValidators":[]}}}
+
+        */
+        
+    }
+        
+    
+    
+// TEST_SKIP_PROCEDURE_STAGE_1_ROUTE()
+
+
+
+
+
+
+
+
+
+
+
+let TEST_SKIP_PROCEDURE_STAGE_2_ROUTE=async()=>{
+
+
+    
+/*
+
+[Info]:
+
+    Route to accept requests from other quorum members about SKIP_PROCEDURE
+
+    But, in stage 2 we get the reference to hostchain where we'll see aggregated proof as result of SKIP_PROCEDURE_STAGE_1
+
+
+[Accept]:
+
+    {
+        subchain:<ID>
+        height:<block index of this subchain on which we're going to skip>
+        hash:<block hash>
+        finalizationProof
+    }
+
+    * Your node will understand that hunting has started because we'll find SKIP_PROCEDURE_STAGE_1 on hostchain
+
+
+[Response]:
+
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_1 from hostchain, we have this subchainID in appropriate set
+        
+        1)We should add this subchain to SKIP_PROCEDURE_STAGE_2 set to stop sharing commitments/finalization proofs for this subchain
+        2)We generate appropriate signature with the data from CHECKPOINTS manager
+
+        Also, if height/hash/superFinalizationProof in request body is valid and height>our local version - update CHECKPOINT_MANAGER and generate signature
+
+    [+] In case our local version of height for appropriate subchain > proposed height in request and we have a FINALIZATION_PROOF - send response with status "UPDATE" and our height/hash/finalizationproof
+
+        Soon or late, majority will get the common version of proofs for SKIP_PROCEDURE_STAGE_2 and generate an appropriate aggregated signature
+
+*/
+            
+            
+            let optionsToSend
+        
+            //______________________ Empty object ______________________
+        
+        
+            // let emptyObject={}
+        
+            // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+        
+            // await fetch(CREDS.url+'/skip_procedure_stage_2',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+        
+            // Result = {"status":"Subchain not found"}        
+        
+
+            // __________ Negative test __________
+        
+            let normalObject =   {
+            
+                subchain:CREDS.pub,
+            
+                height:5000,
+
+                hash:'LOLOLO'
+                    
+            }
+        
+            optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+        
+            await fetch(CREDS.url+'/skip_procedure_stage_2',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+        
+
+            
+            //__________ Test with valid subchain __________
+    
+            // let normalObject =   {
+        
+            //     session:'0000000000000000000000000000000000000000000000000000000000000000',
+            
+            //     initiator:CREDS.pub,
+                
+            //     requestedSubchain:CREDS.pub,
+                
+            //     height:5000,
+                
+            //     sig:await bls.singleSig('0000000000000000000000000000000000000000000000000000000000000000'+CREDS.pub+5000+'-1',CREDS.prv)
+        
+            // }
+        
+            // optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+        
+            // await fetch(CREDS.url+'/skip_procedure_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+        
+            /*
+            
+            Result:
+    
+                If height > [CURRENT_ON_NODE]:
+                    {"status":"Not going to skip and my local subchain height is lower than proposed by you(local:2286 | your:5000)"}
+    
+                Else:
+                    {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkValidators":[]}}}
+    
+            */
+            
+        }
+            
+        
+        
+// TEST_SKIP_PROCEDURE_STAGE_2_ROUTE()
+
+
+
+
+let TEST_SKIP_PROCEDURE_STAGE_3_ROUTE=async()=>{
+
+
+    
+  /*
+
+[Info]:
+
+    Route to accept requests from other quorum members about SKIP_PROCEDURE
+
+    But, in stage 3 we get the proof that 2/3N+1 from quorum is ready to stop the subchain from height H with hash <HASH>
+
+
+[Accept]:
+
+    {
+        subchain:<ID> - the subchain for which we've found proofs for SKIP_PROCEDURE_STAGE_2 on hostchain to stop from height H with hash <HASH>
+    }
+
+
+[Response]:
+
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
+        Then,response with SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${qtPayload}`)
+
+    [+] Otherwise - send NOT_FOUND status
+
+
+*/
+                
+                
+    let optionsToSend
+
+    //______________________ Empty object ______________________
+
+
+    let emptyObject={}
+
+    optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+
+    await fetch(CREDS.url+'/skip_procedure_stage_3',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Result = {"status":"NOT FOUND"}   
+
+    
+}
+             
+            
+// TEST_SKIP_PROCEDURE_STAGE_3_ROUTE()

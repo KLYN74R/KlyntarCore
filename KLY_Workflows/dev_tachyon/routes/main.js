@@ -142,7 +142,7 @@ acceptBlocks=response=>{
             
                     typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                     &&
-                    await BLS_VERIFY(hash,block.sig,block.creator)//and finally-the most CPU intensive task
+                    await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
                     &&
                     checkIfItsChain
                 
@@ -600,7 +600,9 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     }
 
-    if(await BLS_VERIFY(session+requestedSubchain+height+qtPayload,sig,initiator)){
+    let errorOccured
+
+    if(await BLS_VERIFY(session+requestedSubchain+height+qtPayload,sig,initiator).catch(error=>{errorOccured=error;return false})){
 
         let myLocalHealthCheckingHandler = tempObject.HEALTH_MONITORING.get(requestedSubchain)
 
@@ -630,11 +632,11 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
                 
                 }))
 
-            }else !response.aborted && response.end(JSON.stringify({status:'OK'}))
+            }else !response.aborted && response.end(JSON.stringify({status:`Not going to skip and my local subchain height is lower than proposed by you(local:${myLocalHealthCheckingHandler.INDEX} | your:${height})`}))
        
         }else !response.aborted && response.end('No such subchain')
 
-    }else !response.aborted && response.end('Verification failed')
+    }else !response.aborted && response.end(`Signature verification failed ${JSON.stringify(errorOccured)}`)
 
 }),
 
@@ -744,7 +746,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
             !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
         
-        }else if(localSyncHandler.INDEX<height){
+        }else if(localSyncHandler.INDEX<height && finalizationProof){
 
             //Verify finalization proof and update the value
 
@@ -766,9 +768,9 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             !response.aborted && response.end(JSON.stringify({status:'LOCAL_UPDATE'}))
 
-        }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
+        }else !response.aborted && response.end(JSON.stringify({status:'Local subchain height is bigger than proposed by you or finalization proof have wrong format'}))
 
-    }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
+    }else !response.aborted && response.end(JSON.stringify({status:'Subchain not found'}))
 
 
 }),
@@ -832,7 +834,7 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         !response.aborted && response.end(JSON.stringify({status:'SKIP_STAGE_3',sig:skipProof}))
         
-    }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
+    }else !response.aborted && response.end(JSON.stringify({status:`Can't get SKIP_STAGE_3 proofs. Try to repeat stage 1 and 2`}))
 
 
 }),
