@@ -37,19 +37,19 @@ GET /skip_procedure_stage_3 [⌛️] - required by Savitar, so skip for a while
 
 
 
-POST /block
+POST /block [✅]
 
-POST /event
+POST /event [✅]
 
-POST /addpeer
+POST /addpeer [✅]
 
 
 */
 
-import {BLS_SIGN_DATA} from '../../KLY_Workflows/dev_tachyon/utils.js'
 
-import fetch from 'node-fetch'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import fetch from 'node-fetch'
+
 
 
 //___________________________________ IMPORTS / CONSTANTS POOL ___________________________________
@@ -1000,3 +1000,204 @@ let TEST_SKIP_PROCEDURE_STAGE_3_ROUTE=async()=>{
              
             
 // TEST_SKIP_PROCEDURE_STAGE_3_ROUTE()
+
+
+
+
+
+let TEST_SEND_BLOCK_AND_GET_COMMITMENT = async() => {
+
+/*
+
+[Description]:
+    Accept blocks and return commitment if subchain sequence completed
+  
+[Accept]:
+
+    Blocks
+  
+    {
+        creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+        time:1666744452126,
+        events:[
+            event1,
+            event2,
+            event3,
+        ]
+        index:1337,
+        prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+        sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+    }
+
+
+[Response]:
+
+    SIG(blockID+hash) => jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S
+
+    <OR> nothing
+
+
+*/
+
+    let optionsToSend
+
+    //______________________ Empty object ______________________
+
+    let emptyObject={}
+
+    optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+
+    await fetch(CREDS.url+'/block',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+
+}
+
+
+
+// TEST_SEND_BLOCK_AND_GET_COMMITMENT()
+
+
+
+//Format of body : {symbiote,body}
+//There is no <creator> field-we get it from tx
+
+
+
+let TEST_SEND_EVENT = async() => {
+
+/*
+    
+Format of body : {symbiote,body}
+There is no <creator> field-we get it from tx
+
+*/
+
+    let optionsToSend
+
+    //______________________ Empty object ______________________
+
+    // let emptyObject={}
+
+    // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+
+    // await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Result => Event structure is wrong
+
+
+
+    //______________________ Normal,but no filter ________________________
+
+    // let normal = {
+    //     symbiote:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',        
+    //     event:{
+    //         creator:'LOL',
+    //         nonce:9,
+    //         sig:'fdfdf'
+    //     }
+
+    // }
+
+    // optionsToSend={method:'POST',body:JSON.stringify(normal)}
+
+    // await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Result => No such filter. Make sure your <event.type> is supported by current version of workflow runned on symbiote
+
+
+    //_____________________________ Normal _______________________________
+
+    let normal = {
+        symbiote:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',        
+        event:{
+            creator:CREDS.pub,
+            type:'TX',
+            nonce:9,
+            amount:228,
+            sig:'fdfdf',
+            to:'LOL'
+        }
+
+    }
+
+    optionsToSend={method:'POST',body:JSON.stringify(normal)}
+
+    await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Response => Can't get filtered value of event
+
+
+}
+    
+
+// TEST_SEND_EVENT()
+
+
+
+
+
+
+let ADD_PEER_TEST = async()=>{
+
+/*
+
+To add node to local set of peers to exchange data with
+
+Params:
+
+    [symbioteID,hostToAdd(initiator's valid and resolved host)]
+
+    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
+
+
+Returns:
+
+    'OK' - if node was added to local peers
+    '<MSG>' - if some error occured
+
+*/
+
+    let optionsToSend
+
+    //___________ Empty array ___________
+
+    // let emptyArray=[]
+
+    // optionsToSend={method:'POST',body:JSON.stringify(emptyArray)}
+
+    // await fetch(CREDS.url+'/addpeer',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Response - "Symbiote not supported"
+
+    //___________ Not array ___________
+
+
+    // let emptyObject={}
+
+    // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+
+    // await fetch(CREDS.url+'/addpeer',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Res => Input must be a 2-elements array like [symbioteID,you_endpoint]
+
+
+    //___________ Normal ___________
+
+    
+    let normArray=[
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "lalalla"
+    ]
+
+    optionsToSend={method:'POST',body:JSON.stringify(normArray)}
+
+    await fetch(CREDS.url+'/addpeer',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    // Response - "Symbiote not supported"
+
+}
+
+
+
+// ADD_PEER_TEST()

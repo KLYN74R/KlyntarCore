@@ -48,7 +48,7 @@ let VERIFY_WRAP=async event=>{
 
     let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
-    if(await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount)){
+    if(await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount).catch(_=>false)){
         
         return {
             
@@ -114,7 +114,7 @@ export default {
     */
     CONTRACT_DEPLOY:async event=>
     
-        typeof event.payload.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload.lang.startsWith('spec/')) && Array.isArray(event.payload.constructorParams)
+        typeof event.payload?.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload?.lang?.startsWith('spec/')) && Array.isArray(event.payload.constructorParams)
         &&
         await VERIFY_WRAP(event)
 
@@ -137,7 +137,7 @@ export default {
     */
     CONTRACT_CALL:async event=>
     
-        typeof event.payload.contractID==='string' && event.payload.contractID.length<=256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params) && Array.isArray(event.payload.imports)
+        typeof event.payload?.contractID==='string' && event.payload.contractID.length<=256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params) && Array.isArray(event.payload.imports)
         &&
         await VERIFY_WRAP(event)
 
@@ -163,7 +163,7 @@ export default {
     */
     MIGRATE_BETWEEN_ENV:async event=>{
 
-        typeof event.payload.address==='string'
+        typeof event.payload?.address==='string'
         &&
         typeof event.payload.amount==='number'
         &&

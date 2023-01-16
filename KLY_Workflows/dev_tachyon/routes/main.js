@@ -21,7 +21,7 @@ let
 /*
 
 [Description]:
-    Accept blocks
+    Accept blocks and return commitment if subchain sequence completed
   
 [Accept]:
 
@@ -178,10 +178,10 @@ acceptBlocks=response=>{
     
                         !response.aborted && response.end(commitment)
                     
-                    ).catch(_=>!response.aborted && response.end('Something wrong'))
+                    ).catch(error=>!response.aborted && response.end(`Something wrong => ${JSON.stringify(error)}`))
 
 
-                }else !response.aborted && response.end('Overview failed')
+                }else !response.aborted && response.end('Overview failed. Make sure input data is ok')
             
             }
         
@@ -201,14 +201,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let {symbiote,event}=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
-    if(!(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS) || typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
-        
-        !response.aborted && response.end('Overview failed')
-        
-        return
-        
-    }
-    
+
     /*
     
         ...and do such "lightweight" verification here to prevent db bloating
@@ -221,8 +214,40 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     
     */
+
+    if(typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
+
+        !response.aborted && response.end('Event structure is wrong')
+
+        return
+    }
+
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
+
+        !response.aborted && response.end(`Wrong symbiote ID => My:${CONFIG.SYMBIOTE.SYMBIOTE_ID} | Your:${symbiote}`)
+
+        return
+
+    }
+
+    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS){
+        
+        !response.aborted && response.end('Route is off')
+        
+        return
+        
+    }
+
+    if(!SYMBIOTE_META.FILTERS[event.type]){
+
+        !response.aborted && response.end('No such filter. Make sure your <event.type> is supported by current version of workflow runned on symbiote')
+        
+        return
+
+    }
+
     
-    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE && SYMBIOTE_META.FILTERS[event.type]){
+    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE){
 
         let filtered=await SYMBIOTE_META.FILTERS[event.type](event)
 
@@ -232,9 +257,9 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             SYMBIOTE_META.MEMPOOL.push(event)
                         
-        }else !response.aborted && response.end('Post overview failed')
+        }else !response.aborted && response.end(`Can't get filtered value of event`)
 
-    }else !response.aborted && response.end('Mempool is fullfilled or no such filter')
+    }else !response.aborted && response.end('Mempool is fullfilled')
 
 }),
 
@@ -1473,9 +1498,34 @@ Returns:
 
 addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
     
-    let [symbiote,domain]=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    let acceptedData = await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+
+    if(!Array.isArray(acceptedData)){
+
+        !response.aborted && response.end('Input must be a 2-elements array like [symbioteID,you_endpoint]')
+        
+        return
+
+    }
+
+    let [symbiote,domain]=acceptedData
+   
+    if(CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
+
+        !response.aborted && response.end('Symbiote not supported')
+        
+        return
+
+    }
+
+    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES){
+
+        !response.aborted && response.end('Route is off')
+        
+        return
+    }
     
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID===symbiote && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES && typeof domain==='string' && domain.length<=256){
+    if(typeof domain==='string' && domain.length<=256){
         
         //Add more advanced logic in future(or use plugins - it's even better)
         let nodes=SYMBIOTE_META.PEERS
@@ -1488,11 +1538,11 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
             :
             nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
     
-            !response.aborted && response.end('OK')
+            !response.aborted && response.end('Your node has been added')
     
         }else !response.aborted && response.end('Your node already in scope')
     
-    }else !response.aborted && response.end('Wrong types')
+    }else !response.aborted && response.end('Wrong types => endpoint(domain) must be 256 chars in length or less')
 
 })
 

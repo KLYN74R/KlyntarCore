@@ -95,7 +95,7 @@ let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,event,goingToSpend)=>
 
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = (event,senderStorageObject) => {
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(event,senderStorageObject) => {
 
     
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION === event.v){
