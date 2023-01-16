@@ -1657,7 +1657,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
             
             */
         
-            if(answerFromValidator.status==='UPDATE'){
+            if(answerFromValidator.status==='UPDATE' && typeof answerFromValidator.data === 'object' && typeof answerFromValidator.data.FINALIZATION_PROOF === 'object'){
             
                 // In this case it means that validator we've requested has higher version of subchain and a FINALIZATION_PROOF for it, so we just accept it if verification is ok and break the cycle
                 let {INDEX,HASH} = answerFromValidator.data
@@ -1685,7 +1685,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
     
                 }
     
-            }else if(answerFromValidator.status==='SKIP_STAGE_2' && await BLS_VERIFY(`SKIP_STAGE_2:${subchain}:${localFinalizationHandler.INDEX}:${localFinalizationHandler.HASH}:${qtPayload}`,answerFromValidator.sig,validatorHandler.pubKey)){
+            }else if(answerFromValidator.status==='SKIP_STAGE_2' && await BLS_VERIFY(`SKIP_STAGE_2:${subchain}:${localFinalizationHandler.INDEX}:${localFinalizationHandler.HASH}:${qtPayload}`,answerFromValidator.sig,validatorHandler.pubKey).catch(_=>false)){
 
                 // Grab the skip agreements to publish to hostchains
 
@@ -1892,7 +1892,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     for(let answer of healthCheckPingbacks){
 
 
-        if(typeof answer !== 'object' || !answer.superFinalizationProof){
+        if(typeof answer !== 'object' || typeof answer.superFinalizationProof !== 'object'){
 
             candidatesForAnotherCheck.push(answer.pubKey)
 
@@ -2031,7 +2031,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 
                 */
 
-                if(answerFromValidator.status==='UPDATE'){
+                if(answerFromValidator.status==='UPDATE' && typeof answerFromValidator.data === 'object' && typeof answerFromValidator.data.SUPER_FINALIZATION_PROOF === 'object'){
 
                     // In this case it means that validator we've requested has higher version of subchain, so we just accept it(if SUPER_FINALIZATION_PROOF verification is ok) and break the cycle
 
@@ -2062,7 +2062,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     }
 
-                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB+qtPayload,answerFromValidator.sig,validatorHandler.pubKey)){
+                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB+qtPayload,answerFromValidator.sig,validatorHandler.pubKey).catch(_=>false)){
 
                     // Grab the skip agreements to publish to hostchains
 
