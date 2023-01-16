@@ -442,7 +442,7 @@ getSuperFinalization=async(response,request)=>{
 
         if(!SYMBIOTE_META.TEMP.has(qtPayload)){
 
-            response.end('QT checkpoint is not ready')
+            !response.aborted && response.end('QT checkpoint is not ready')
 
             return
         }
@@ -453,11 +453,11 @@ getSuperFinalization=async(response,request)=>{
 
         if(superFinalizationProof){
 
-            response.end(JSON.stringify(superFinalizationProof))
+            !response.aborted && response.end(JSON.stringify(superFinalizationProof))
 
-        }else response.end('No proof')
+        }else !response.aborted && response.end('No proof')
 
-    }else response.end('Route is off')
+    }else !response.aborted && response.end('Route is off')
 
 },
 
@@ -502,7 +502,7 @@ healthChecker = async response => {
         // Get the latest SUPER_FINALIZATION_PROOF that we have
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        if(!appropriateDescriptor) response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
+        if(!appropriateDescriptor) !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
 
 
         
@@ -516,7 +516,7 @@ healthChecker = async response => {
 
         if(!SYMBIOTE_META.TEMP.has(qtPayload)){
 
-            response.end('QT checkpoint is not ready')
+            !response.aborted && response.end('QT checkpoint is not ready')
 
             return
         }
@@ -529,11 +529,11 @@ healthChecker = async response => {
 
             let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
 
-            response.end(JSON.stringify(healthProof))
+            !response.aborted && response.end(JSON.stringify(healthProof))
 
-        }else response.end(JSON.stringify({err:'No proof'}))
+        }else !response.aborted && response.end(JSON.stringify({err:'No proof'}))
 
-    }else response.end(JSON.stringify({err:'Route is off'}))
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -612,7 +612,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             if(currentTime-myLocalHealthCheckingHandler.LAST_SEEN >= afkLimit){
 
-                response.end(JSON.stringify({
+                !response.aborted && response.end(JSON.stringify({
                     
                     status:'SKIP',
                     
@@ -622,7 +622,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             }else if(myLocalHealthCheckingHandler.INDEX>height){
 
-                response.end(JSON.stringify({
+                !response.aborted && response.end(JSON.stringify({
                     
                     status:'UPDATE',
                     
@@ -630,11 +630,11 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
                 
                 }))
 
-            }else response.end(JSON.stringify({status:'OK'}))
+            }else !response.aborted && response.end(JSON.stringify({status:'OK'}))
        
-        }else response.end('No such subchain')
+        }else !response.aborted && response.end('No such subchain')
 
-    }else response.end('Verification failed')
+    }else !response.aborted && response.end('Verification failed')
 
 }),
 
@@ -719,7 +719,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
         
         if(sigResponse){
 
-            response.end(JSON.stringify({status:'SKIP_STAGE_2',sig:sigResponse}))
+            !response.aborted && response.end(JSON.stringify({status:'SKIP_STAGE_2',sig:sigResponse}))
 
             return
         }
@@ -728,7 +728,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
         if(INDEX>height){
 
             //Don't vote - send UPDATE response
-            response.end(JSON.stringify({
+            !response.aborted && response.end(JSON.stringify({
                     
                 status:'UPDATE',
                 
@@ -741,7 +741,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
             // Add to PROOFS_REQUESTS
             tempObject.PROOFS_REQUESTS.set('SKIP_STAGE_2:'+subchain,{SUBCHAIN:subchain,INDEX,HASH})
 
-            response.end(JSON.stringify({status:'OK'}))
+            !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
         
         }else if(localSyncHandler.INDEX<height){
@@ -764,11 +764,11 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             }
 
-            response.end(JSON.stringify({status:'LOCAL_UPDATE'}))
+            !response.aborted && response.end(JSON.stringify({status:'LOCAL_UPDATE'}))
 
-        }else response.end(JSON.stringify({status:'NOT FOUND'}))
+        }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
 
-    }else response.end(JSON.stringify({status:'NOT FOUND'}))
+    }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
 
 
 }),
@@ -830,9 +830,9 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         // If we've found proofs about subchain skip procedure stage 2(so we know the height/hash)- vote to SKIP to perform SKIP_PROCEDURE_STAGE_3
 
-        response.end(JSON.stringify({status:'SKIP_STAGE_3',sig:skipProof}))
+        !response.aborted && response.end(JSON.stringify({status:'SKIP_STAGE_3',sig:skipProof}))
         
-    }else response.end(JSON.stringify({status:'NOT FOUND'}))
+    }else !response.aborted && response.end(JSON.stringify({status:'NOT FOUND'}))
 
 
 }),
@@ -932,6 +932,14 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
+    if(typeof checkpointProposition.ISSUER !== 'string' || typeof checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH !== 'string' || typeof checkpointProposition.SUBCHAINS_METADATA !== 'object' || !Array.isArray(checkpointProposition.OPERATIONS)){
+
+        !response.aborted && response.end(JSON.stringify({error:'Wrong input formats'}))
+
+        return
+
+    }
+
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let currentPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
@@ -951,7 +959,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
 
-        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
 
         return
 
@@ -970,9 +978,9 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             if(specialOperationsMempool.has(operation.id)){
 
                 // If operation exists - check if it's STOP_VALIDATOR operation. Mark it if it's <SKIP> operation(i.e. stop=true)
-                if(operation.type==='STOP_VALIDATOR' && operation.payload.stop === true) {
+                if(operation.type==='STOP_VALIDATOR' && operation.payload?.stop === true) {
 
-                    subchainsToSkipThatCantBeExcluded.delete(operation.payload.subchain)
+                    subchainsToSkipThatCantBeExcluded.delete(operation.payload?.subchain)
                 }
 
                 return false
@@ -988,7 +996,9 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     
     if(excludeSpecOperations.length !== 0){
 
-        response.end(JSON.stringify({excludeSpecOperations}))
+        
+        !response.aborted && response.end(JSON.stringify({excludeSpecOperations}))
+
 
     }else if (subchainsToSkipThatCantBeExcluded.size===0){
 
@@ -999,24 +1009,38 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         
         // [1] Compare proposed SUBCHAINS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
 
-        let metadataUpdate = [], wrongSkipStatusPresent=false
+        let metadataUpdate = []
+        
+        let wrongSkipStatusPresent=false, subchainWithWrongStopIndex
 
         let subchains = Object.keys(checkpointProposition.SUBCHAINS_METADATA)
+
+        let localCopyOfSubchains = Object.keys(currentPoolsMetadata)
+
+        if(subchains.toString() !== localCopyOfSubchains.toString()){
+
+            !response.aborted && response.end(JSON.stringify({error:`Subchains set are not equal with my version of subchains metadata since previous checkpoint ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
+
+            return
+
+        }
 
 
         for(let subchain of subchains){
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
-
+            
             if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED) {
 
                 wrongSkipStatusPresent=true
+
+                subchainWithWrongStopIndex=subchain
 
                 break
 
             }
 
-            if(localVersion.INDEX > checkpointProposition.SUBCHAINS_METADATA[subchain].INDEX){
+            if(localVersion?.INDEX > checkpointProposition.SUBCHAINS_METADATA[subchain].INDEX){
 
                 // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 
@@ -1055,20 +1079,30 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongSkipStatusPresent){
 
-            response.end(JSON.stringify({error:'Wrong <IS_STOPPED> status for subchain'}))
+            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_STOPPED> status for subchain ${subchainWithWrongStopIndex}`}))
 
         }
         else if(metadataUpdate.length!==0){
 
-            response.end(JSON.stringify({metadataUpdate}))
+            !response.aborted && response.end(JSON.stringify({metadataUpdate}))
 
         }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
 
-            let sig = await BLS_SIGN_DATA(BLAKE3(JSON.stringify(checkpointProposition)))
+            let finalVersionToSign = {
 
-            response.end(JSON.stringify({sig}))
+                ISSUER:checkpointProposition.ISSUER,
+                PREV_CHECKPOINT_PAYLOAD_HASH:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,                
+                SUBCHAINS_METADATA:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,
+                OPERATIONS:checkpointProposition.OPERATIONS,
+                OTHER_SYMBIOTES:{}                        
+            
+            }
 
-        }else response.end(JSON.stringify({error:'Everything failed'}))
+            let sig = await BLS_SIGN_DATA(BLAKE3(JSON.stringify(finalVersionToSign)))
+
+            !response.aborted && response.end(JSON.stringify({sig}))
+
+        }else !response.aborted && response.end(JSON.stringify({error:`Everything failed(wrongSkipStatusPresent:false | metadataUpdate.length!==0 | hashes not equal)`}))
 
     }
 
@@ -1173,7 +1207,15 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
 
-        response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+
+        return
+
+    }
+
+    if(!CHECKPOINT_FINALIZATION_PROOF){
+
+        !response.aborted && response.end(JSON.stringify({error:'No CHECKPOINT_FINALIZATION_PROOF in input data'}))
 
         return
 
@@ -1198,11 +1240,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
 
-        response.end(JSON.stringify({sig}))
+        !response.aborted && response.end(JSON.stringify({sig}))
 
     }else if(proposerAlreadyInDB){
 
-        response.end(JSON.stringify({error:`You've already sent a majority agreed payload for checkpoint`}))
+        !response.aborted && response.end(JSON.stringify({error:`You've already sent a majority agreed payload for checkpoint`}))
 
     }
     else{
@@ -1211,11 +1253,28 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         //Verify 2 signatures
 
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold).catch(_=>false)
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
 
-        let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF)
+        let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF).catch(error=>({error}))
 
 
+
+        if(issuerSignatureIsOk.error){
+
+            !response.aborted && response.end(JSON.stringify({error:`Issuer signature is not ok => ${issuerSignatureIsOk.error}`}))
+
+            return
+
+        }
+
+        if(majorityHasSignedIt.error){
+
+            !response.aborted && response.end(JSON.stringify({error:`Majority signature is not ok => ${majorityHasSignedIt.error}`}))
+
+            return
+
+        }
+        
 
         if(majorityHasSignedIt && issuerSignatureIsOk){
 
@@ -1235,15 +1294,15 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
                 let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
 
-                response.end(JSON.stringify({sig}))
+                !response.aborted && response.end(JSON.stringify({sig}))
 
             }catch{
 
-                response.end(JSON.stringify({error:'Something wrong with batch'}))
+                !response.aborted && response.end(JSON.stringify({error:'Something wrong with batch'}))
 
             }
             
-        }else response.end(JSON.stringify({error:'Something wrong'}))
+        }else !response.aborted && response.end(JSON.stringify({error:'Something wrong'}))
 
     }
 
@@ -1337,12 +1396,39 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     let specialOperationsMempool = SYMBIOTE_META.TEMP.get(qtPayload).SPECIAL_OPERATIONS_MEMPOOL
 
 
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end('QT checkpoint is incomplete. Wait some time and repeat the operation later')
+
+        return
+    }
+
+    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS){
+
+        !response.aborted && response.end(`Route is off. This node don't accept special operations`)
+
+        return
+    }
+
+    if(specialOperationsMempool.size >= CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE){
+
+        !response.aborted && response.end('Mempool for special operations is full')
+    
+        return
+    }
+
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED && CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS && specialOperationsMempool.size<CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE && OPERATIONS_VERIFIERS[operation.type]){
 
-        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(_=>false) //it's just verify without state changes
+    if(OPERATIONS_VERIFIERS[operation.type]){
 
-        if(possibleSpecialOperation){        
+        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(error=>({isError:true,error})) //it's just verify without state changes
+
+        if(possibleSpecialOperation?.isError){
+            
+            !response.aborted && response.end(`Verification failed. Reason => ${JSON.stringify(possibleSpecialOperation)}`)
+
+        }
+        else if(possibleSpecialOperation){
 
             // Assign the ID to operation to easily detect what we should exclude from checkpoints propositions
             let payloadHash = BLAKE3(JSON.stringify(possibleSpecialOperation.payload))
@@ -1353,10 +1439,11 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
             specialOperationsMempool.set(payloadHash,possibleSpecialOperation)
 
             !response.aborted && response.end('OK')
-        
-        }else !response.aborted && response.end('Verification failed')
+       
+        }
+        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleSpecialOperation)}`)
 
-    }else !response.aborted && response.end('Route is off, overview failed or QT checkpoint is incomplete')
+    }else !response.aborted && response.end(`No verification function for this special operation => ${operation.type}`)
 
 }),
 
