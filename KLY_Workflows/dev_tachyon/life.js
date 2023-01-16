@@ -794,11 +794,15 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
     let otherAgreements = new Map()
   
     
-    for(let {pubKey,sig} of checkpointsPingBacks){
+    for(let obj of checkpointsPingBacks){
+
+        if(typeof obj !== 'object') continue
+
+        let {pubKey,sig} = obj
 
         if(sig){
 
-            let isSignaOk = await bls.singleVerify('STAGE_2'+myCheckpoint.HEADER.PAYLOAD_HASH,pubKey,sig)
+            let isSignaOk = await bls.singleVerify('STAGE_2'+myCheckpoint.HEADER.PAYLOAD_HASH,pubKey,sig).catch(_=>false)
 
             if(isSignaOk) otherAgreements.set(pubKey,sig)
 
@@ -888,7 +892,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     if(myPotentialCheckpoint){
         
-        await INITIATE_CHECKPOINT_STAGE_2_GRABBING(myPotentialCheckpoint)
+        await INITIATE_CHECKPOINT_STAGE_2_GRABBING(myPotentialCheckpoint).catch(_=>{})
 
         setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
 
@@ -1040,7 +1044,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-        for(let {pubKey,sig,metadataUpdate} of checkpointsPingBacks){
+        for(let obj of checkpointsPingBacks){
+
+            
+            if(typeof obj !== 'object') continue
+
+
+            let {pubKey,sig,metadataUpdate} = obj
 
             /*
             
@@ -1061,7 +1071,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             if(sig){
 
-                let isSignaOk = await bls.singleVerify(checkpointPayloadHash,pubKey,sig)
+                let isSignaOk = await bls.singleVerify(checkpointPayloadHash,pubKey,sig).catch(_=>false)
 
                 if(isSignaOk) otherAgreements.set(pubKey,sig)
 
@@ -1082,26 +1092,31 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     else{
 
                         // If we received proof about bigger height on this subchain
-                        if(updateOp.index>subchainMetadata.INDEX){
+                        if(updateOp.index>subchainMetadata.INDEX && typeof updateOp.finalizationProof === 'string'){
 
                             let {aggregatedSignature,aggregatedPub,afkValidators} = updateOp.finalizationProof
     
-                            let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+qtPayload,aggregatedPub,aggregatedSignature)
+                            let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
         
-                            let rootPubIsOK = quorumRootPub === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
+                            try{
+
+                                let rootPubIsOK = quorumRootPub === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
         
         
-                            if(signaIsOk && rootPubIsOK){
+                                if(signaIsOk && rootPubIsOK){
 
-                                let latestFinalized = {INDEX:updateOp.index,HASH:updateOp.hash,FINALIZATION_PROOF:updateOp.finalizationProof}
+                                    let latestFinalized = {INDEX:updateOp.index,HASH:updateOp.hash,FINALIZATION_PROOF:updateOp.finalizationProof}
 
-                                // Send to synchronizer to update the local stats
+                                    // Send to synchronizer to update the local stats
 
-                                currentSyncHelper.set(updateOp.subchain,latestFinalized)
+                                    currentSyncHelper.set(updateOp.subchain,latestFinalized)
 
-                                propositionsToUpdateMetadata++
+                                    propositionsToUpdateMetadata++
         
-                            }
+                                }
+
+
+                            }catch(_){}
 
                         }
 
@@ -1167,7 +1182,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
 
-            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers)
+            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers).catch(_=>{})
 
 
         }else if(propositionsToUpdateMetadata===0){
@@ -1877,7 +1892,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     for(let answer of healthCheckPingbacks){
 
 
-        if(!answer.superFinalizationProof){
+        if(typeof answer !== 'object' || !answer.superFinalizationProof){
 
             candidatesForAnotherCheck.push(answer.pubKey)
 
