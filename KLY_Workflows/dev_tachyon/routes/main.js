@@ -198,7 +198,7 @@ acceptBlocks=response=>{
 //There is no <creator> field-we get it from tx
 acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {symbiote,event}=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    let {symbiote,event}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
 
