@@ -1021,6 +1021,8 @@ verifyBlock=async block=>{
         //To calculate fees and split between validators.Currently - general fees sum is 0. It will be increased each performed transaction
         let rewardBox={fees:0}
 
+        let currentBlockID = block.creator+":"+block.index
+
         SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
@@ -1041,9 +1043,28 @@ verifyBlock=async block=>{
 
         //___________________________________________START TO PERFORM EVENTS____________________________________________
 
+        let txIndexInBlock=0
+
         for(let event of block.events){
 
-            if(SYMBIOTE_META.VERIFIERS[event.type]) await SYMBIOTE_META.VERIFIERS[event.type](event,rewardBox,atomicBatch)
+            if(SYMBIOTE_META.VERIFIERS[event.type]){
+
+                let eventCopy = {...event}
+
+                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](eventCopy,rewardBox,atomicBatch).catch(_=>{})
+
+                // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+                if(reason!=='EVM'){
+
+                    let txid = BLAKE3(eventCopy.sig)
+
+                    atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
+    
+                }
+
+                txIndexInBlock++
+                
+            }
 
         }
 
@@ -1081,7 +1102,6 @@ verifyBlock=async block=>{
         )
         
         if(SYMBIOTE_META.STATE_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
-
 
 
         //Change finalization pointer
@@ -1123,6 +1143,19 @@ verifyBlock=async block=>{
 
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
+
+        //Add the KLY-EVM metadata to block receipt
+
+        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
+
+            evmData:{
+
+                relativeBlockIndex:blockToStore.number,
+                relativeBlockHash:blockToStore.hash
+
+            }
+
+        })
 
         atomicBatch.put('EVM_BLOCK:'+blockToStore.number,blockToStore)
 

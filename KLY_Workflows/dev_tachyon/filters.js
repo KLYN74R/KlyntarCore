@@ -50,6 +50,7 @@ let VERIFY_WRAP=async event=>{
 
     let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount).catch(_=>false)
 
+    
     if(result){
         
         return {

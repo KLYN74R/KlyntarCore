@@ -182,8 +182,12 @@ export let VERIFIERS = {
             goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee
 
         event = await FILTERS.TX(event,sender) //pass through the filter
-    
-        if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
+
+        if(!event){
+
+            return {isOk:false,reason:`Can't get filtered value of event`}
+        
+        }else if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
             if(!recipient){
     
@@ -212,7 +216,9 @@ export let VERIFIERS = {
             
             rewardBox.fees+=event.fee
 
-        }
+            return {isOk:true}
+
+        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
         
     },
 
@@ -251,8 +257,12 @@ export let VERIFIERS = {
         event = await FILTERS.CONTRACT_DEPLOY(event,sender) //pass through the filter
 
 
-        if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
+        if(!event){
 
+            return {isOk:false,reason:`Can't get filtered value of event`}
+
+        }
+        else if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
             if(event.payload.lang.startsWith('spec/')){
 
@@ -268,7 +278,7 @@ export let VERIFIERS = {
                     
                     rewardBox.fees+=event.fee
 
-                }
+                }else return {isOk:false,reason:`No such type of special contract`}
 
             }else{
 
@@ -295,7 +305,9 @@ export let VERIFIERS = {
     
             }
 
-        }
+            return {isOk:true}
+
+        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
 
     },
 
@@ -326,8 +338,12 @@ export let VERIFIERS = {
 
         event = await FILTERS.CONTRACT_CALL(event,sender) //pass through the filter
 
+        
+        if(!event){
 
-        if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
+            return {isOk:false,reason:`Can't get filtered value of event`}
+        
+        }else if(await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
 
 
             let contractMeta = await GET_FROM_STATE(event.payload.contractID)
@@ -351,7 +367,8 @@ export let VERIFIERS = {
                     
                         rewardBox.fees+=event.fee
 
-                    }
+                    }else return {isOk:false,reason:`No such type of special contract`}
+
 
                 }else {
 
@@ -386,9 +403,11 @@ export let VERIFIERS = {
 
                 }
 
-            }
+                return {isOk:true}
 
-        }
+            }else return {isOk:false,reason:`No metadata for contract`}
+
+        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
 
     },
 
@@ -425,6 +444,8 @@ export let VERIFIERS = {
             let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
             atomicBatch.put('TX:'+tx.hash,{tx,receipt})
+
+            return {isOk:true,reason:'EVM'}
 
         }
 

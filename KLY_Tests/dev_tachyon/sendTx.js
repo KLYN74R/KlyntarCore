@@ -26,7 +26,7 @@ import fetch from 'node-fetch'
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
 
-const WORKFLOW_VERSION = 1
+const WORKFLOW_VERSION = 0
 
 const FEE = 5
 
@@ -148,7 +148,7 @@ let postQuantumBliss={
 
 let GET_ACCOUNT_DATA=async account=>{
 
-    return fetch(`http://localhost:7332/account/${account}`)
+    return fetch(`http://localhost:7331/account/${account}`)
 
     .then(r=>r.json()).catch(_=>{
     
@@ -200,7 +200,7 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 let SEND_EVENT=event=>{
 
-    return fetch('http://localhost:7332/event',
+    return fetch('http://localhost:7331/event',
 
         {
         
@@ -242,6 +242,8 @@ let MULTISIG_2_DEFAULT=async()=>{
     let status = await SEND_EVENT(event)
 
     console.log(status)
+
+    console.log('TX_ID is => ',BLAKE3(event.sig))
 
 
 }
@@ -452,7 +454,7 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 //__________________________ SEND __________________________
 
-// MULTISIG_2_DEFAULT()
+MULTISIG_2_DEFAULT()
 
 // DEFAULT_2_DEFAULT()
 
@@ -471,9 +473,9 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // console.log(await GET_ACCOUNT_DATA(user0.pub))
 
-let acc0Stat = await GET_ACCOUNT_DATA('6TSGRz9KaTHtwtFXdLHoyvn1F5uQEysqz43nMH5DY3Zh2xtmKeuZST5PZR1zZVsCHk(POOL)_STORAGE_POOL')
+// let acc0Stat = await GET_ACCOUNT_DATA('6TSGRz9KaTHtwtFXdLHoyvn1F5uQEysqz43nMH5DY3Zh2xtmKeuZST5PZR1zZVsCHk(POOL)_STORAGE_POOL')
 
-console.log(acc0Stat)
+// console.log(acc0Stat)
 
 
 
