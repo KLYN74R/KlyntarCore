@@ -1,4 +1,4 @@
-import { createRequire } from 'module'
+import {createRequire} from 'module'
 
 import cryptoModule from 'crypto'
 

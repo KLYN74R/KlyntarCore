@@ -48,7 +48,9 @@ let VERIFY_WRAP=async event=>{
 
     let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
 
-    if(await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount).catch(_=>false)){
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount).catch(_=>false)
+
+    if(result){
         
         return {
             

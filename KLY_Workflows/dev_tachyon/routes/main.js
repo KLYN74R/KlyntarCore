@@ -249,13 +249,13 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE){
 
-        let filtered=await SYMBIOTE_META.FILTERS[event.type](event)
+        let filteredEvent=await SYMBIOTE_META.FILTERS[event.type](event)
 
-        if(filtered){
+        if(filteredEvent){
 
             !response.aborted && response.end('OK')
 
-            SYMBIOTE_META.MEMPOOL.push(event)
+            SYMBIOTE_META.MEMPOOL.push(filteredEvent)
                         
         }else !response.aborted && response.end(`Can't get filtered value of event`)
 

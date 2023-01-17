@@ -52,8 +52,6 @@ import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'
 
-import {Transaction} from '@ethereumjs/tx'
-
 import FILTERS from './filters.js'
 
 import web3 from 'web3'
@@ -107,9 +105,33 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(event,senderStorageObjec
         
         if(event.payload.type==='T') return tbls.verifyTBLS(event.creator,event.sig,signedData)
         
-        if(event.payload.type==='P/D') return ADDONS['verify_DIL'](signedData,event.creator,event.sig)
+        if(event.payload.type==='P/D') {
+
+            let isOk = false
+
+            try{
+
+                isOk = BLAKE3(event.payload.pubKey) === event.creator && ADDONS['verify_DIL'](signedData,event.payload.pubKey,event.sig)
+            
+            }catch{ isOk = false}
+
+            return isOk === 'true'
+            
+        }
         
-        if(event.payload.type==='P/B') return ADDONS['verify_BLISS'](signedData,event.creator,event.sig)
+        if(event.payload.type==='P/B'){
+          
+            let isOk=false
+
+            try{
+
+                isOk = BLAKE3(event.payload.pubKey) === event.creator && ADDONS['verify_BLISS'](signedData,event.payload.pubKey,event.sig)
+            
+            }catch{ isOk = false}
+
+            return isOk === 'true'
+
+        }
         
         if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.rev_t).catch(_=>false)      
 
