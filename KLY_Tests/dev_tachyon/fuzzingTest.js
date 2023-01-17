@@ -32,7 +32,7 @@ POST /skip_procedure_stage_2 [✅]
 
 POST /skip_procedure_stage_3 [✅]
 
-GET /skip_procedure_stage_3 [⌛️] - required by Savitar, so skip for a while
+GET /skip_procedure_stage_3 [✅] - required by Savitar, so skip for a while
 
 
 

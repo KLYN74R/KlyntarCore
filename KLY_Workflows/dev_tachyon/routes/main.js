@@ -867,6 +867,60 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 
 
+/**
+ * 
+ * [Info]:
+ * 
+ *      Route mostly for explorers & other software which should know that some subchain was skipped for current checkpoint
+ * 
+ * [Accept]
+ * 
+ *      0-subchain
+ * 
+ * [Returns]
+ * 
+ *     SKIP_STAGE_3 aggregated proof for given subchain => {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+ * 
+ */
+getSkipProcedureStage3 = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    
+    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is not ready'}))
+
+        return
+    }
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
+
+        return
+        
+    }
+
+    let skipStage3Proof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SKIP_STAGE_3:'+subchain).catch(_=>false)
+
+
+    if(skipStage3Proof) !response.aborted && response.end(JSON.stringify(skipStage3Proof))
+
+    else !response.aborted && response.end(JSON.stringify({error:'No SKIP_STAGE_3 for given subchain'}))
+
+},
+
+
+
+
 /*
 
 Accept checkpoints from other validators in quorum and returns own version as answer
@@ -1589,7 +1643,7 @@ UWS_SERVER
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
-// .get('/skip_procedure_stage_3',getSkipProcedureStage3)
+.get('/skip_procedure_stage_3',getSkipProcedureStage3)
 
 .post('/block',acceptBlocks)
 
