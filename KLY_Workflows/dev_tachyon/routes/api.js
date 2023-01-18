@@ -48,7 +48,7 @@ account=async(response,request)=>{
  * @returns {String} Info in JSON
  * 
  * */
-info=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
+getMyInfo=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 
 
@@ -80,7 +80,7 @@ nodes=(response,request)=>{
 
 
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-block=(response,request)=>{
+getBlockById=(response,request)=>{
 
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
@@ -99,7 +99,124 @@ block=(response,request)=>{
         ).catch(_=>response.end('No block'))
 
 
-    }else !response.aborted && response.end('Symbiote not supported')
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+getSyncState=response=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SYNC_STATE){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SYNC_STATE}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        !response.aborted && response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER))
+            
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+getSymbioteInfo=response=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SYMBIOTE_INFO){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SYMBIOTE_INFO}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        // SymbioteID - it's BLAKE3 hash of manifest( SYMBIOTE_ID = BLAKE3(JSON.stringify(CONFIG.SYMBIOTE.MANIFEST)))
+        
+        let symbioteID = CONFIG.SYMBIOTE.SYMBIOTE_ID
+
+        //Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
+
+        let {
+        
+            WORKFLOW:workflowID,
+            WORKFLOW_HASH:workflowHash,
+            HIVEMIND:hivemind,
+            HOSTCHAINS:hostchains,
+            GENESIS_HASH:genesisHash
+        
+        }=CONFIG.SYMBIOTE.MANIFEST
+
+        
+        //Get the current version of VT and QT
+
+        let verificationThreadWorkflowVersion = SYMBIOTE_META.VERIFICATION_THREAD.VERSION
+        let quorumThreadWorkflowVersion = SYMBIOTE_META.QUORUM_THREAD.VERSION
+
+
+        //Get the current version of workflows_options on VT and QT
+
+        let verificationThreadWorkflowOptions = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+        let quorumThreadWorkflowOptions = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
+
+        // Get the additional hostchain info
+        let hostchainInfo = CONFIG.SYMBIOTE.CONNECTOR.TICKER_INFO
+
+
+        // Send
+        !response.aborted && response.end(JSON.stringify({
+
+            symbioteID, workflowID, workflowHash,hivemind,hostchains,genesisHash,
+
+            verificationThreadWorkflowVersion,quorumThreadWorkflowVersion,
+
+            verificationThreadWorkflowOptions,quorumThreadWorkflowOptions,
+
+            hostchainInfo
+
+        }))
+            
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+// 0 - RID(relative block index)
+getBlockByRID=(response,request)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_BLOCK_BY_RID){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_BLOCK_BY_RID}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        SYMBIOTE_META.STATE.get('RID:'+request.getParameter(0)).then(
+            
+            blockID => SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
+
+                !response.aborted && response.end(JSON.stringify(block))
+            )    
+            
+        ).catch(_=>!response.aborted && response.end('No block'))
+
+
+    }else !response.aborted && response.end('Route is off')
 
 },
 
@@ -125,26 +242,6 @@ getSubchainsMetadata=response=>{
 
 },
 
-
-
-
-//Returns quorum for today(based on QUORUM_THREAD because it shows really current quorum)
-getCurrentQuorum=response=>{
-
-    //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM){
-
-        response
-            
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM}`)
-            .onAborted(()=>response.aborted=true)
-
-        response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
-
-    }else !response.aborted && response.end('Symbiote not supported')
-
-},
 
 
 
@@ -213,20 +310,24 @@ UWS_SERVER
 
 .get('/get_subchains_metadata',getSubchainsMetadata)
 
-.get('/get_quorum',getCurrentQuorum)
-// .post('/multiplicity',multiplicity)
+.get('/get_block_by_rid/:RID',getBlockByRID)
+
+.get('/get_symbiote_info',getSymbioteInfo)
 
 .get('/account/:ADDRESS',account)
 
+.get('/sync_state',getSyncState)
+
+.get('/block/:ID',getBlockById)
+
 .get('/stuff/:STUFF_ID',stuff)
+
+.get('/get_my_info',getMyInfo)
 
 .post('/stuff_add',stuffAdd)
 
 .get('/nodes/:REGION',nodes)
 
-.get('/block/:ID',block)
-
-.get('/info',info)
 
 
 

@@ -2478,7 +2478,9 @@ LOAD_GENESIS=async()=>{
         
         INDEX:-1,
         
-        HASH:'Poyekhali!@Y.A.Gagarin'
+        HASH:'Poyekhali!@Y.A.Gagarin',
+
+        RID:0
     
     }
 
@@ -2561,6 +2563,8 @@ LOAD_GENESIS=async()=>{
         TIMESTAMP:checkpointTimestamp,
 
         FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+
+        TX:'genesis',
         
         COMPLETED:true
     
@@ -2762,7 +2766,7 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
                             
-                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:''},//pointer to know where we should start to process further blocks
+                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',RID:0},//pointer to know where we should start to process further blocks
 
                 SUBCHAINS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:}
                 

@@ -64,6 +64,7 @@
     "CONNECTOR":{
 
         "TICKER":"ltc",
+        "TICKER_INFO":"Litecoin testnet",
         "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
         "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
         "URL":"http://localhost:2339",
@@ -212,7 +213,9 @@
         "GET_SUBCHAINS":600,
         "GET_QUORUM":600,
         "GET_PAYLOAD_FOR_CHECKPOINT":600,
-        "GET_QUORUM_THREAD_CHECKPOINT":600
+        "GET_QUORUM_THREAD_CHECKPOINT":600,
+        "GET_BLOCK_BY_RID":6000,
+        "GET_SYNC_STATE":10
     },
 
     "TRIGGERS":{
@@ -234,7 +237,10 @@
         "GET_HEALTH_CHECKER":1,
         "GET_QUORUM_THREAD_CHECKPOINT":1,
         "SHARE_FINALIZATION_PROOF":1,
-        "GET_SUPER_FINALIZATION_PROOFS":1
+        "GET_SUPER_FINALIZATION_PROOFS":1,
+        "GET_BLOCK_BY_RID":1,
+        "GET_SYNC_STATE":1
+
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,

@@ -1104,6 +1104,9 @@ verifyBlock=async block=>{
         if(SYMBIOTE_META.STATE_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
 
+        // Store the currently relative block index (RID)
+        atomicBatch.put('RID:'+SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID,currentBlockID)
+
         //Change finalization pointer
         
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
@@ -1112,6 +1115,7 @@ verifyBlock=async block=>{
                 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID++
         
         //Change metadata per validator's thread
         

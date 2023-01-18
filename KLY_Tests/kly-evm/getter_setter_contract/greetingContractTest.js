@@ -94,7 +94,7 @@ let DEPLOY_CONTRACT=async()=>{
 
 let GET_TX_RECEIPT_TO_GET_CONTRACT_ADDRESS=async()=>{
 
-    let receipt = await web3.eth.getTransactionReceipt('0xb7c9241e01687933db08bfde9879a8f210039cd40d11d1da25f3ce86d1202e58')
+    let receipt = await web3.eth.getTransactionReceipt('0xabc67e4868cb3a90acc39a48ce381e11cbde0a19df7b30b58eb14898edf5713c')
 
     console.log('Receipt is ',receipt)
 
@@ -121,7 +121,7 @@ let SET_GREETING=async()=>{
 
             from:evmAccount0.address,
 
-            to:'0x400F246244d67F1654B7939C330a46e4bd9e4186', // our contract address
+            to:'0x49Fb5FccD2f0Cf7764B4A469669C2d400006d203', // our contract address
 
             nonce:web3.utils.toHex(txCount),
     

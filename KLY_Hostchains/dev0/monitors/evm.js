@@ -304,6 +304,8 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 FOUND_AT_BLOCK:event.blockNumber,
 
+                TX:event.transactionHash,
+
                 COMPLETED:false
 
             }

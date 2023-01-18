@@ -371,7 +371,7 @@ let GET_PAST_LOGS=()=>{
  
     let options = { 
 
-        fromBlock: 2000,
+        fromBlock: 0,
         toBlock:'latest',
 
     };
@@ -401,7 +401,7 @@ let GET_PAST_LOGS=()=>{
 }
 
 
-// GET_PAST_LOGS()
+GET_PAST_LOGS()
 
 
 
@@ -444,4 +444,4 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
 }
 
-ESTIMATE_GAS_FOR_DEFAULT_TX()
+// ESTIMATE_GAS_FOR_DEFAULT_TX()
