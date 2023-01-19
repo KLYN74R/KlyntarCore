@@ -47,6 +47,7 @@ const SIG_TYPES = {
     POST_QUANTUM_DIL:'P/D',         // Post-quantum Dilithium(2/3/5,2 used by default)
     POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
     MULTISIG:'M'                    // Multisig BLS
+
 }
 
 

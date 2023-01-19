@@ -24,15 +24,9 @@ account=async(response,request)=>{
 
     if(CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
 
-        let data={
-        
-            ...await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(_=>''),
-        
-            finalizationStage:SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER
-    
-        }
+        let data = await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(_=>'')
 
-        !response.aborted&&WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
+        !response.aborted && WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
 
     }else !response.aborted&&response.end('Symbiote not supported or BALANCE trigger is off')
 
@@ -222,8 +216,34 @@ getBlockByRID=(response,request)=>{
 
 
 
+// 0 - txid
+getEventReceipt=(response,request)=>{
 
-//Returns current validators pool
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_EVENT_RECEIPT){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_EVENT_RECEIPT}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        SYMBIOTE_META.STATE.get('TX:'+request.getParameter(0)).then(
+            
+            eventReceipt => !response.aborted && response.end(JSON.stringify(eventReceipt))
+            
+        ).catch(_=>!response.aborted && response.end('No event with such id'))
+
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+//Returns current validators subchains
 getSubchainsMetadata=response=>{
 
     //Set triggers
@@ -309,6 +329,8 @@ UWS_SERVER
 .get('/get_quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
 .get('/get_subchains_metadata',getSubchainsMetadata)
+
+.get('/get_event_receipt/:txid',getEventReceipt)
 
 .get('/get_block_by_rid/:RID',getBlockByRID)
 

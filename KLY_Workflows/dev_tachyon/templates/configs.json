@@ -215,7 +215,8 @@
         "GET_PAYLOAD_FOR_CHECKPOINT":600,
         "GET_QUORUM_THREAD_CHECKPOINT":600,
         "GET_BLOCK_BY_RID":6000,
-        "GET_SYNC_STATE":10
+        "GET_SYNC_STATE":10,
+        "GET_EVENT_RECEIPT":10
     },
 
     "TRIGGERS":{
@@ -239,7 +240,8 @@
         "SHARE_FINALIZATION_PROOF":1,
         "GET_SUPER_FINALIZATION_PROOFS":1,
         "GET_BLOCK_BY_RID":1,
-        "GET_SYNC_STATE":1
+        "GET_SYNC_STATE":1,
+        "GET_EVENT_RECEIPT":1
 
     },
     

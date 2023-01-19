@@ -270,7 +270,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         //{INDEX,HASH}
         let skipStage2Data = skipStage2Mapping.get(subchain)
 
-        //Structure is {index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+        //Structure is {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
         let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
         //{INDEX,HASH,IS_STOPPED}

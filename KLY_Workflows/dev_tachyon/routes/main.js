@@ -521,7 +521,6 @@ healthChecker = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
-    
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
@@ -882,12 +881,13 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
  *     SKIP_STAGE_3 aggregated proof for given subchain => {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
  * 
  */
-getSkipProcedureStage3 = async response => {
+getSkipProcedureStage3 = async (response,request) => {
+
 
     response.onAborted(()=>response.aborted=true)
 
     
-    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let subchain = request.getParameter(0)
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -1643,7 +1643,7 @@ UWS_SERVER
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
-.get('/skip_procedure_stage_3',getSkipProcedureStage3)
+.get('/skip_procedure_stage_3/:subchain',getSkipProcedureStage3)
 
 .post('/block',acceptBlocks)
 
