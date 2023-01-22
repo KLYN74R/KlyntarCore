@@ -161,7 +161,7 @@ acceptBlocks=response=>{
 
                                 BROADCAST('/block',block)
 
-                                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+                                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
 
                             }
                             

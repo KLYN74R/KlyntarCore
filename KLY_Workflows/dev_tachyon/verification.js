@@ -50,7 +50,7 @@ GET_BLOCK = async(blockCreator,index) => {
                 
             if(typeof block.events==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
     
-                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',block)
+                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
 
                 SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -94,7 +94,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
                     if(overviewIsOk){
     
-                        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m——│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+                        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
                         SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
     
