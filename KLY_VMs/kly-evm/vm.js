@@ -1,5 +1,5 @@
 import {DefaultStateManager} from '@ethereumjs/statemanager'
-import {Address,Account, isValidAddress} from '@ethereumjs/util'
+import {Address,Account} from '@ethereumjs/util'
 import {Transaction} from '@ethereumjs/tx'
 import {Common} from '@ethereumjs/common'
 import {Block} from '@ethereumjs/block'

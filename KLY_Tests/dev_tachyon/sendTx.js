@@ -242,7 +242,7 @@ let MULTISIG_2_DEFAULT=async()=>{
 
     let status = await SEND_EVENT(event)
 
-    console.log(status)
+    // console.log(status)
 
     console.log('TX_ID is => ',BLAKE3(event.sig))
 

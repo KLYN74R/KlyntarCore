@@ -208,6 +208,7 @@
         "INFO":600,
         "API_NODES":600,
         "API_BLOCK":6000,
+        "API_BLOCK_RECEIPT":6000,
 
         "GET_STUFF":600,
         "GET_SUBCHAINS":600,
@@ -225,6 +226,7 @@
         "INFO":1,
         "API_NODES":1,
         "API_BLOCK":1,
+        "API_BLOCK_RECEIPT":1,
         "API_SHARE_STUFF":1,
 
         "ACCEPT_BLOCKS":1,

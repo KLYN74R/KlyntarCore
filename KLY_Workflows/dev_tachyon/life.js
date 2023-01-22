@@ -1362,6 +1362,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     if(!block) return
 
 
+
     let blockHash = Block.genHash(block)
 
 
@@ -1401,6 +1402,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     
             if(commitmentsForCurrentBlock.has(descriptor.pubKey)) continue
     
+
             /*
             
             0. Share the block via POST /block and get the commitment as the answer
@@ -1513,6 +1515,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         return
 
     }
+
 
     let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(qtPayload)
 

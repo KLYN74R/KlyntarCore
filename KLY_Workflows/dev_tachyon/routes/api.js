@@ -74,6 +74,7 @@ nodes=(response,request)=>{
 
 
 // 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// Returns block
 getBlockById=(response,request)=>{
 
     //Set triggers
@@ -91,6 +92,34 @@ getBlockById=(response,request)=>{
             !response.aborted && response.end(JSON.stringify(block))
             
         ).catch(_=>response.end('No block'))
+
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// Returns block receipt
+getBlockReceipt=(response,request)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK_RECEIPT){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK_RECEIPT}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        SYMBIOTE_META.STATE.get('BLOCK_RECEIPT:'+request.getParameter(0)).then(block=>
+
+            !response.aborted && response.end(JSON.stringify(block))
+            
+        ).catch(_=>response.end('No block receipt'))
 
 
     }else !response.aborted && response.end('Route is off')
@@ -335,6 +364,8 @@ UWS_SERVER
 .get('/get_block_by_rid/:RID',getBlockByRID)
 
 .get('/get_symbiote_info',getSymbioteInfo)
+
+.get('/block_receipt/:ID',getBlockReceipt)
 
 .get('/account/:ADDRESS',account)
 

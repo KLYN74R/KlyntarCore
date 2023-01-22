@@ -241,14 +241,13 @@ Verification process:
 */
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
+
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-
     // Need for async safety
     if(vtPayload!==qtPayload || !SYMBIOTE_META.TEMP.has(qtPayload)) return {skip:false,verify:false}
-
 
     let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2
 
@@ -291,7 +290,6 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID+blockHash).catch(_=>false)
-
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
     
@@ -849,8 +847,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             //We skip the block if checkpoint is not completed and no such block in checkpoint
             //No matter if checkpoint is fresh or not
-            
-            
+
             if(shouldSkip){
 
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
@@ -1107,6 +1104,8 @@ verifyBlock=async block=>{
         // Store the currently relative block index (RID)
         atomicBatch.put('RID:'+SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID,currentBlockID)
 
+        let oldRID = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID
+
         //Change finalization pointer
         
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
@@ -1147,10 +1146,12 @@ verifyBlock=async block=>{
 
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
-
         //Add the KLY-EVM metadata to block receipt
 
         atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
+
+            rid:oldRID,
+            hash:blockHash,
 
             evmData:{
 
