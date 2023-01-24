@@ -204,20 +204,22 @@
     "MY_HOSTNAME":"http://somenode.com:6666",
         
     "TTL":{
-        "API_ACCOUNTS":30,
+        "API_ACCOUNTS":5,
         "INFO":600,
-        "API_NODES":600,
+        "API_NODES":5,
         "API_BLOCK":6000,
         "API_BLOCK_RECEIPT":6000,
+        "API_LATEST_N_BLOCKS":5,
 
-        "GET_STUFF":600,
-        "GET_SUBCHAINS":600,
-        "GET_QUORUM":600,
-        "GET_PAYLOAD_FOR_CHECKPOINT":600,
-        "GET_QUORUM_THREAD_CHECKPOINT":600,
+        "GET_STUFF":5,
+        "GET_SUBCHAINS":5,
+        "GET_QUORUM":5,
+        "GET_PAYLOAD_FOR_CHECKPOINT":6000,
+        "GET_QUORUM_THREAD_CHECKPOINT":5,
         "GET_BLOCK_BY_RID":6000,
-        "GET_SYNC_STATE":10,
-        "GET_EVENT_RECEIPT":10
+        "GET_SYNC_STATE":2,
+        "GET_SYMBIOTE_INFO":5,
+        "GET_EVENT_RECEIPT":100
     },
 
     "TRIGGERS":{
@@ -228,12 +230,13 @@
         "API_BLOCK":1,
         "API_BLOCK_RECEIPT":1,
         "API_SHARE_STUFF":1,
+        "API_LATEST_N_BLOCKS":1,
 
         "ACCEPT_BLOCKS":1,
         "ACCEPT_EVENTS":1,
         "ACCEPT_NEW_NODES":1,
         "ACCEPT_SPECIAL_OPERATIONS":1,
-
+    
         "GET_SUBCHAINS":1,
         "GET_QUORUM":1,
         "GET_PAYLOAD_FOR_CHECKPOINT":1,
@@ -243,8 +246,8 @@
         "GET_SUPER_FINALIZATION_PROOFS":1,
         "GET_BLOCK_BY_RID":1,
         "GET_SYNC_STATE":1,
+        "GET_SYMBIOTE_INFO":1,
         "GET_EVENT_RECEIPT":1
-
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,

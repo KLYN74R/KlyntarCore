@@ -1,3 +1,4 @@
+import Block from '../essences/block.js'
 import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 
 
@@ -92,6 +93,68 @@ getBlockById=(response,request)=>{
             !response.aborted && response.end(JSON.stringify(block))
             
         ).catch(_=>response.end('No block'))
+
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
+/*
+
+0 - START_RID | RID to ask blocks from
+1 - N | Ask N blocks(25 by default)
+
+Returns array of blocks sorted by RID in reverse order
+
+*/
+
+getLatestNBlocks=async(response,request)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_LATEST_N_BLOCKS){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_LATEST_N_BLOCKS}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        let startRID = +request.getParameter(0)
+
+        let limit =  25
+
+        let promises=[]
+
+        for(let i=0;i<limit;i++){
+
+            let rid = startRID-i
+
+            let blockPromise = SYMBIOTE_META.STATE.get('RID:'+rid).then(
+            
+                blockID => SYMBIOTE_META.BLOCKS.get(blockID).then(block=>{
+
+                    block.hash=Block.genHash(block)
+                    
+                    block.rid=rid
+
+                    return block
+
+                })
+                
+            ).catch(_=>false)
+    
+            promises.push(blockPromise)
+
+        }
+
+
+        let blocks = await Promise.all(promises).then(array=>array.filter(Boolean))
+
+        !response.aborted && response.end(JSON.stringify(blocks))
 
 
     }else !response.aborted && response.end('Route is off')
@@ -354,6 +417,8 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 
 UWS_SERVER
+
+.get('/get_latest_n_blocks/:START_RID/:NUMBER_OF_BLOCKS',getLatestNBlocks)
 
 .get('/get_quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
