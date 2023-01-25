@@ -459,7 +459,8 @@ Returns:
 */
 getSuperFinalization=async(response,request)=>{
 
-    response.onAborted(()=>response.aborted=true)
+    response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
+
 
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
 
@@ -884,7 +885,7 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
 getSkipProcedureStage3 = async (response,request) => {
 
 
-    response.onAborted(()=>response.aborted=true)
+    response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
     
     let subchain = request.getParameter(0)
