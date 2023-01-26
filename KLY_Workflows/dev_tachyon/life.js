@@ -1336,7 +1336,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
         //Share here
         BROADCAST('/super_finalization',superFinalizationProof)
 
-        await USE_TEMPORARY_DB('put',DATABASE,'SFP:'+blockID+blockHash,superFinalizationProof).catch(_=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'SFP:'+blockID,superFinalizationProof).catch(_=>false)
 
         // Repeat procedure for the next block and store the progress
 
@@ -1803,7 +1803,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let baseBlockID = pubKey+":"+INDEX
 
-            let SUPER_FINALIZATION_PROOF = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+baseBlockID+HASH).catch(_=>false)
+            let SUPER_FINALIZATION_PROOF = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+baseBlockID).catch(_=>false)
             
         
             //Store to mapping

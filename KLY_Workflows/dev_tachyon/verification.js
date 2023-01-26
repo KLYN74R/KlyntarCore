@@ -289,12 +289,15 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     }
 
     
-    let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID+blockHash).catch(_=>false)
+    let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
-    
-    if(superFinalizationProof) return {skip:false,verify:true}
-    
+
+    if(superFinalizationProof){
+
+        return superFinalizationProof.blockHash===blockHash ? {skip:false,verify:true} : {skip:false,verify:false,shouldDelete:true}
+
+    }   
 
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
     
@@ -834,11 +837,19 @@ START_VERIFICATION_THREAD=async()=>{
 
             else if(updatedIsFreshCheckpoint){
 
-                let {skip,verify} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({skip:false,verify:false}))
+                let {skip,verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({skip:false,verify:false}))
 
                 quorumSolutionToVerifyBlock = verify
 
                 shouldSkip = skip
+
+                if(shouldDelete){
+
+                    // Probably - hash mismatch 
+
+                    await SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+
+                }
             
             }
 
@@ -869,9 +880,6 @@ START_VERIFICATION_THREAD=async()=>{
                 }
 
                 LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
-                    
-                // If verification failed - delete block. It will force to find another(valid) block from network
-                // else SYMBIOTE_META.BLOCKS.del(currentValidatorToCheck+':'+(currentSessionMetadata.INDEX+1)).catch(e=>{})
                 
             }
 

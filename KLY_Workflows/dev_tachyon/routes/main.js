@@ -414,6 +414,12 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     }
 
+    let myLocalBlock = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+
+
+
+    let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
+
     let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
 
     let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
@@ -423,9 +429,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
     let checkpointTempDB = tempObject.DATABASE
 
 
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID+blockHash,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators}).catch(_=>{})
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
@@ -445,11 +451,13 @@ Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 
 
 Params:
 
-    [0] - blockID+blockHash
+    [0] - blockID
 
 Returns:
 
     {
+        blockID,
+        blockHash,
         aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
         aggregatedPub:<>,
         afkValidators
@@ -547,7 +555,7 @@ healthChecker = async response => {
         }
        
 
-        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(qtPayload)?.DATABASE,'SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight+latestHash).catch(_=>false)
+        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(qtPayload)?.DATABASE,'SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
 
         if(superFinalizationProof){
