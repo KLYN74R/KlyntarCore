@@ -1,5 +1,5 @@
 import Block from '../essences/block.js'
-import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
+import {WRAP_RESPONSE,GET_NODES, USE_TEMPORARY_DB} from '../utils.js'
 
 
 
@@ -138,7 +138,7 @@ getLatestNBlocks=async(response,request)=>{
                 blockID => SYMBIOTE_META.BLOCKS.get(blockID).then(block=>{
 
                     block.hash=Block.genHash(block)
-                    
+
                     block.rid=rid
 
                     return block
@@ -308,6 +308,143 @@ getBlockByRID=(response,request)=>{
 
 
 
+
+getSearchResult=async(response,request)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SEARCH_RESULT){
+
+        response
+        
+            .writeHeader('Access-Control-Allow-Origin','*')
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SEARCH_RESULT}`)
+            .onAborted(()=>response.aborted=true)
+
+
+        //_____________ Find possible values _____________
+
+        let query = request.getParameter(0)
+
+        let responseType
+
+        
+        let possibleTxReceipt = await SYMBIOTE_META.STATE.get('TXID:'+query).then(receipt=>{
+
+            responseType='EVENT_RECEIPT'
+
+            return receipt
+
+        }).catch(_=>false)
+
+
+        if(possibleTxReceipt){
+
+            !response.aborted && response.end(JSON.stringify({responseType,data:possibleTxReceipt}))
+
+            return
+
+        }
+
+
+        let blockByRID = await SYMBIOTE_META.STATE.get(query).then(
+            
+            blockID => SYMBIOTE_META.BLOCKS.get(blockID)
+
+        ).then(block=>{
+
+            responseType='BLOCK_BY_RID'
+
+            return block
+
+        }).catch(_=>false)
+
+
+        if(blockByRID){
+
+            !response.aborted && response.end(JSON.stringify({responseType,data:blockByRID}))
+
+            return
+
+        }
+
+    
+        let possibleBlock = await SYMBIOTE_META.BLOCKS.get(query).then(block=>{
+
+            responseType='BLOCK_BY_ID'
+
+            return block
+
+        }).catch(_=>false)
+
+
+        if(possibleBlock){
+
+            !response.aborted && response.end(JSON.stringify({responseType,data:possibleBlock}))
+
+            return
+
+        }
+
+            
+        let possibleFromState = await SYMBIOTE_META.STATE.get(query).then(stateCell=>{
+
+            responseType='FROM_STATE'
+
+            return stateCell
+
+        }).catch(_=>false)
+
+
+        
+        if(possibleFromState){
+
+            !response.aborted && response.end(JSON.stringify({responseType,data:possibleFromState}))
+
+            return
+
+        }
+
+
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+        if(!tempObject){
+
+            !response.aborted && response.end(JSON.stringify({responseType:'ERROR',data:'Wait for a next checkpoint'}))
+
+            return
+
+        }else{
+
+            let possibleSuperFinalizationProofOrSkipStage3 = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(sfpOrSkipStage3=>{
+
+                responseType = query.startsWith('SFP') ? 'SUPER_FINALIZATION_PROOF' : 'SKIP_STAGE_3'
+
+                return sfpOrSkipStage3
+
+            }).catch(_=>false)
+    
+
+            if(possibleSuperFinalizationProofOrSkipStage3){
+
+                !response.aborted && response.end(JSON.stringify({responseType,data:possibleSuperFinalizationProofOrSkipStage3}))
+    
+                return
+    
+            }else !response.aborted && response.end(JSON.stringify({responseType,data:`No data`}))
+
+
+        }
+
+
+    }else !response.aborted && response.end('Route is off')
+
+},
+
+
+
+
 // 0 - txid
 getEventReceipt=(response,request)=>{
 
@@ -423,6 +560,8 @@ UWS_SERVER
 .get('/get_quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
 .get('/get_subchains_metadata',getSubchainsMetadata)
+
+.get('/get_search_result/:QUERY',getSearchResult)
 
 .get('/get_event_receipt/:txid',getEventReceipt)
 
