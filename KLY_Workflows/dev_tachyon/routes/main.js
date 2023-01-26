@@ -1626,7 +1626,7 @@ UWS_SERVER
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
-.get('/get_super_finalization/:BLOCK_ID_AND_HASH',getSuperFinalization)
+.get('/get_super_finalization/:BLOCK_ID',getSuperFinalization)
 
 
 .get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
@@ -1652,7 +1652,7 @@ UWS_SERVER
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
-.get('/skip_procedure_stage_3/:subchain',getSkipProcedureStage3)
+.get('/skip_procedure_stage_3/:SUBCHAIN',getSkipProcedureStage3)
 
 .post('/block',acceptBlocks)
 

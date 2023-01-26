@@ -563,13 +563,13 @@ UWS_SERVER
 
 .get('/get_search_result/:QUERY',getSearchResult)
 
-.get('/get_event_receipt/:txid',getEventReceipt)
+.get('/get_event_receipt/:TXID',getEventReceipt)
 
 .get('/get_block_by_rid/:RID',getBlockByRID)
 
 .get('/get_symbiote_info',getSymbioteInfo)
 
-.get('/block_receipt/:ID',getBlockReceipt)
+.get('/block_receipt/:BLOCK_ID',getBlockReceipt)
 
 .get('/account/:ADDRESS',account)
 
