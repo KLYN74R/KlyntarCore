@@ -328,7 +328,7 @@ getSearchResult=async(response,request)=>{
         let responseType
 
         
-        let possibleTxReceipt = await SYMBIOTE_META.STATE.get('TXID:'+query).then(receipt=>{
+        let possibleTxReceipt = await SYMBIOTE_META.STATE.get('TX:'+query).then(receipt=>{
 
             responseType='EVENT_RECEIPT'
 
