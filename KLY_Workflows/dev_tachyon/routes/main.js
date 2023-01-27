@@ -625,6 +625,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     }
 
+    
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
         !response.aborted && response.end('Checkpoint is not fresh')
