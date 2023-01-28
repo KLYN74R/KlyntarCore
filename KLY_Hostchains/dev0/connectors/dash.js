@@ -70,6 +70,5 @@ export default {
     getBlockByIndex:blockIndex=>getBlockByIndex('dash',blockIndex),
 
     getTransaction:txHash=>getTransaction('dash',txHash)
-    
 
 }

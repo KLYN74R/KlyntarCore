@@ -88,7 +88,7 @@ export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
             //Convert hexademical data from output and get rid of magic bytes
             let data=Buffer.from(tx.vout[0].scriptPubKey.hex,'hex').toString('utf-8').slice(2).split('_')
 
-            return data[0]==blockIndex&&data[1]===klyntarHash  
+            return data[0]==blockIndex && data[1]===klyntarHash  
 
         })
     
