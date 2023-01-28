@@ -168,7 +168,7 @@ export let VERIFIERS = {
     {
         to:<address to send KLY to>
         amount:<KLY to transfer>
-        rev_t:<if recepient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig who'se votes can be ignored)>
+        rev_t:<if recepient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig whose votes can be ignored)>
     }
     
     */

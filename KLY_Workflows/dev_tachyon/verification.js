@@ -780,7 +780,7 @@ START_VERIFICATION_THREAD=async()=>{
             nextBlock,//to verify next block ASAP if it's available
 
             shouldSkip = false
-
+        
 
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
@@ -871,7 +871,8 @@ START_VERIFICATION_THREAD=async()=>{
             }else if(block && quorumSolutionToVerifyBlock){
 
                 await verifyBlock(block)
-            
+
+
                 //Signal that verification was successful
                 if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck].INDEX===pointerThatVerificationWasSuccessful){
                 
@@ -1046,6 +1047,7 @@ verifyBlock=async block=>{
         await Promise.all(sendersAccounts.splice(0))
 
 
+
         //___________________________________________START TO PERFORM EVENTS____________________________________________
 
         let txIndexInBlock=0
@@ -1054,7 +1056,7 @@ verifyBlock=async block=>{
 
             if(SYMBIOTE_META.VERIFIERS[event.type]){
 
-                let eventCopy = {...event}
+                let eventCopy = JSON.parse(JSON.stringify(event))
 
                 let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](eventCopy,rewardBox,atomicBatch).catch(_=>{})
 
@@ -1129,6 +1131,7 @@ verifyBlock=async block=>{
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].INDEX=block.index
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
+
 
         //___________________ Update the KLY-EVM ___________________
 

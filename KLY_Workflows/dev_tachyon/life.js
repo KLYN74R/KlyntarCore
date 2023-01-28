@@ -296,7 +296,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     if(possibleCheckpoint){
 
         // We need it for changes
-        let fullCopyOfQuorumThreadWithNewCheckpoint = {...SYMBIOTE_META.QUORUM_THREAD}
+        let fullCopyOfQuorumThreadWithNewCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD))
 
         // Set the new checkpoint
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
@@ -2314,8 +2314,6 @@ LOAD_GENESIS=async()=>{
 
         evmPromises=[],
 
-        tempMetadataHodler={},
-
         startPool = ''
 
 
@@ -2414,7 +2412,7 @@ LOAD_GENESIS=async()=>{
             startPool=validatorPubKey
 
             //Add metadata related to this pool
-            tempMetadataHodler[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
+            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
     
             //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
             
@@ -2488,8 +2486,6 @@ LOAD_GENESIS=async()=>{
         RID:0
     
     }
-
-    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA={...tempMetadataHodler}
     
 
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
@@ -2518,7 +2514,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:{...tempMetadataHodler},
+            SUBCHAINS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2560,7 +2556,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:{...tempMetadataHodler},
+            SUBCHAINS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2798,6 +2794,7 @@ PREPARE_SYMBIOTE=async()=>{
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
         await LOAD_GENESIS()
+
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
