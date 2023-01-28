@@ -287,9 +287,9 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         }    
 
     }
-
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
+
 
     //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
 

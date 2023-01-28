@@ -1223,6 +1223,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
 
+
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
@@ -1360,7 +1361,6 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
     // Check for this block after a while
     if(!block) return
-
 
 
     let blockHash = Block.genHash(block)
@@ -2314,6 +2314,8 @@ LOAD_GENESIS=async()=>{
 
         evmPromises=[],
 
+        tempMetadataHodler={},
+
         startPool = ''
 
 
@@ -2412,7 +2414,7 @@ LOAD_GENESIS=async()=>{
             startPool=validatorPubKey
 
             //Add metadata related to this pool
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
+            tempMetadataHodler[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
     
             //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
             
@@ -2487,6 +2489,9 @@ LOAD_GENESIS=async()=>{
     
     }
 
+    SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA={...tempMetadataHodler}
+    
+
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
         RANGE_START_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
@@ -2513,7 +2518,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA},
+            SUBCHAINS_METADATA:{...tempMetadataHodler},
 
             OPERATIONS:[],
 
@@ -2555,7 +2560,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:{...SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA},
+            SUBCHAINS_METADATA:{...tempMetadataHodler},
 
             OPERATIONS:[],
 
