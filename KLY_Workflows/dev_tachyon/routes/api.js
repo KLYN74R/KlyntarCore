@@ -532,7 +532,7 @@ stuff=async(response,request)=>{
         
             return obj
         
-        })
+        }).catch(_=>false)
 
         !response.aborted && response.end(JSON.stringify(stuff))
 

@@ -170,7 +170,7 @@ GET_QUORUM = (subchainsMetadata,workflowOptions) => {
 
 
     //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-    if(validators.length<workflowOptions.QUORUM_SIZE){
+    if(validators.length>workflowOptions.QUORUM_SIZE){
 
         let validatorsMetadataHash = BLAKE3(JSON.stringify(subchainsMetadata)),
 
@@ -194,7 +194,7 @@ GET_QUORUM = (subchainsMetadata,workflowOptions) => {
 
             )
 
-        return sortedChallenges.slice(0,workflowOptions.QUORUM_SIZE+1).map(challenge=>mapping.get(challenge))
+        return sortedChallenges.slice(0,workflowOptions.QUORUM_SIZE).map(challenge=>mapping.get(challenge))
 
 
     } else return validators
@@ -369,6 +369,7 @@ GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEE
 GET_VALIDATORS_URLS = async withPubkey => {
 
     let promises=[]
+
 
     SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(pubKey =>
         

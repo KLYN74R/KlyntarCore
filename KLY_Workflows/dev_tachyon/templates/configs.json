@@ -50,7 +50,7 @@
             "MINIMAL_STAKE_PER_ENTITY":20,
             "POOL_AFK_MAX_TIME":10,
             "UNSTAKING_PERIOD":4,
-            "QUORUM_SIZE":127,
+            "QUORUM_SIZE":12727,
             "SUBCHAIN_AFK_LIMIT":120000,
             "EVENTS_LIMIT_PER_BLOCK":30000,
             "CHECKPOINT_SPEC_OPS_LIMIT":1000,

@@ -323,7 +323,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Create new quorum based on new SUBCHAINS_METADATA state
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
 
-
         // Commit changes        
         atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
 
@@ -1263,6 +1262,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
 
+                console.log('Received FP => ',possibleFinalizationProof)
                 
                 let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
     
@@ -1419,7 +1419,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
     
-            }).catch(_=>false)
+            }).catch(_=>console.log(_))
     
             // To make sharing async
             promises.push(promise)
@@ -1434,7 +1434,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     //_______________________ It means that we now have enough commitments for appropriate block. Now we can start to generate FINALIZATION_PROOF _______________________
 
     // On this step we should go through the quorum members and share FINALIZATION_PROOF to get the SUPER_FINALIZATION_PROOFS(and this way - finalize the block)
-
+    
     if(commitmentsForCurrentBlock.size>=majority){
 
         let signers = [...commitmentsForCurrentBlock.keys()]
@@ -2587,6 +2587,7 @@ LOAD_GENESIS=async()=>{
 
     //...However, quorum for QUORUM_THREAD might be retrieved from SUBCHAINS_METADATA of checkpoints. It's because both threads are async
     SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
+
 
 },
 

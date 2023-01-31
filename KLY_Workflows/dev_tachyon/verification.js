@@ -307,7 +307,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     for(let memberURL of quorumMembersURLs){
 
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID+blockHash).then(r=>r.json()).catch(_=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&
