@@ -12,25 +12,26 @@ var client = new WebSocketClient({
     
     tlsOptions:{
     
-        //With TLS
-        ca:fs.readFileSync('KLY_Plugins/dev/security/rsa4096-cert.pem'),
+        // With TLS
+        ca:fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_tips/security/2022.crt'),
 
         //For mTLS
-        key:fs.readFileSync('KLY_Plugins/dev/security/localkey.pem'),
-        cert:fs.readFileSync('KLY_Plugins/dev/security/localcert.pem')
+        // key:fs.readFileSync('KLY_Plugins/dev_tips/security/localkey.pem'),
+        // cert:fs.readFileSync('KLY_Plugins/dev_tips/security/localcert.pem')
     
     }
 
 });
 
 
+// Подключаемся к нужному ресурсу
+client.connect('wss://localhost:9999/','echo-protocol');
+
 
 // Вешаем на него обработчик события подключения к серверу
 client.on('connect', handler);
 
-// Подключаемся к нужному ресурсу
-client.connect('wss://localhost:9999/','echo-protocol');
-
+client.on('connectFailed',console.log)
 
 function handler(connection) {
     
@@ -46,9 +47,11 @@ function handler(connection) {
 
         connection.sendUTF('Hi, there!'+inc++);
 
-    },3000)
+    },0)
 
 
     connection.on('close',a=>console.log('CLOSED'))
+
+    connection.on('error',console.log)
       
 }

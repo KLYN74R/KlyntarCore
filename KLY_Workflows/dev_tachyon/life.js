@@ -576,14 +576,14 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     
                 // We can't produce finalization proofs for subchains that are stopped
                 if(currentSkipProcedureStage1Set.has(subchain)) continue
-    
+
                 // Put to responses
                 currentFinalizationProofsResponses.set(blockID,await BLS_SIGN_DATA(blockID+hash+'FINALIZATION'+qtPayload))
     
                 currentFinalizationProofsRequests.delete(blockID)
 
                 // Delete the response for the previous block from responses
-                currentFinalizationProofsResponses.delete(subchain+':'+(index-1))
+                // currentFinalizationProofsResponses.delete(subchain+':'+(index-1))
 
 
                 //Update the CHECKPOINTS_MANAGER
@@ -1261,8 +1261,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
     
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
-
-                console.log('Received FP => ',possibleFinalizationProof)
                 
                 let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
     
@@ -1419,7 +1417,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
     
-            }).catch(_=>console.log(_))
+            }).catch(_=>{})
     
             // To make sharing async
             promises.push(promise)

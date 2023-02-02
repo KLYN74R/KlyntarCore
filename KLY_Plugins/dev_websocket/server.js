@@ -6,7 +6,18 @@ import https from 'https'
 import fs from 'fs'
 
 
-let configs=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev_websocket/config.json')))
+let configs=JSON.parse(fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_websocket/config.json'))
+
+
+global.__dirname = await import('path').then(async mod=>
+  
+    mod.dirname(
+      
+      (await import('url')).fileURLToPath(import.meta.url)
+      
+    )
+
+)
 
 
 let WebSocketServer = WS.server;
@@ -14,15 +25,15 @@ let WebSocketServer = WS.server;
 
 let server = https.createServer({
   
-    key: fs.readFileSync(PATH_RESOLVE(configs.TLS_KEY)),
+    key: fs.readFileSync(configs.TLS_KEY),
   
-    cert: fs.readFileSync(PATH_RESOLVE(configs.TLS_CERT)),
+    cert: fs.readFileSync(configs.TLS_CERT),
   
     //Test mTLS
     requestCert:configs.mTLS,
     
     //This is necessary only if the client uses a self-signed certificate.
-    ca: [ fs.readFileSync(PATH_RESOLVE(configs.mTLS_CA)) ]
+    // ca: [ fs.readFileSync(configs.mTLS_CA) ]
 
 
 },(request, response)=>{
@@ -34,7 +45,7 @@ let server = https.createServer({
 })
 
 
-server.listen(configs.PORT,()=>console.log((new Date()) + ' Server is listening on port 9999'))
+server.listen(configs.PORT,()=>console.log((new Date()) + ` Server is listening on port ${configs.PORT}`))
 
 
 let wsServer = new WebSocketServer({

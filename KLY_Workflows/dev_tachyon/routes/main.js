@@ -140,7 +140,7 @@ acceptBlocks=response=>{
 
                 let allow=
             
-                    typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
+                    typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.events)//make general lightweight overview
                     &&
                     await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
                     &&
@@ -157,13 +157,10 @@ acceptBlocks=response=>{
                             
                         _ =>
                             
-                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>{
-
-                                BROADCAST('/block',block)
+                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
 
                                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
 
-                            }
                             
                         ).catch(_=>{})
                          
@@ -182,6 +179,188 @@ acceptBlocks=response=>{
 
 
                 }else !response.aborted && response.end('Overview failed. Make sure input data is ok')
+            
+            }
+        
+        }else !response.aborted && response.end('Payload limit')
+    
+    })
+
+},
+
+
+
+
+/*
+
+[Description]:
+    Accept many blocks and return commitment if subchain sequence completed
+  
+[Accept]:
+
+    Blocks array
+
+    [
+
+        {
+            creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            time:1666744452126,
+            events:[
+                event1,
+                event2,
+                event3,
+            ]
+            index:1337,
+            prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+            sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+        }
+
+    ]
+  
+
+[Response]:
+
+    SIG(blockID+hash) => jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S
+
+    <OR> nothing
+
+*/
+acceptManyBlocks=response=>{
+    
+    let total=0
+    
+    let buffer=Buffer.alloc(0)
+    
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let qtSubchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+
+    //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
+        
+        !response.aborted && response.end('Route is off')
+        
+        return
+    
+    }
+
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+
+        !response.aborted && response.end('QT checkpoint is incomplete')
+
+        return
+
+    }
+
+    if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+        !response.aborted && response.end('Checkpoint is not fresh')
+        
+        return
+
+    }
+
+    
+    response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
+
+        if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+        
+            buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
+    
+            total+=chunk.byteLength
+        
+            if(last){
+            
+                
+                let blocksBatch=await PARSE_JSON(buffer)
+
+                let commitmentsMap={}
+
+
+                for(let block of blocksBatch){
+
+                    let blockID = block.creator+":"+block.index
+
+                    let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
+                
+                    if(subchainlackOfTotalPowerForCurrentCheckpoint) continue
+   
+                    
+                    let hash=Block.genHash(block)
+    
+    
+                    let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
+             
+    
+                    if(myCommitment){
+
+                        commitmentsMap[blockID]=myCommitment
+    
+                        continue
+                    
+                    }
+   
+                    
+                    let checkIfItsChain = block.index===0 || await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+    
+                        //Compare hashes to make sure it's a chain
+    
+                        let prevHash = Block.genHash(prevBlock)
+    
+                        return prevHash === block.prevHash
+    
+                    }).catch(_=>false)
+   
+    
+                    //Otherwise - check if we can accept this block
+    
+                    let allow=
+                
+                        typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
+                        &&
+                        await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
+                        &&
+                        checkIfItsChain
+                    
+    
+    
+                    if(allow){
+  
+                        
+                        //Store it locally-we'll work with this block later
+                        await SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                                
+                            _ =>
+                                
+                                SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+    
+                                    BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
+                                
+                            ).catch(_=>{})
+                             
+                        )
+                        
+                        
+                        let commitment = await BLS_SIGN_DATA(blockID+hash+qtPayload)
+                    
+    
+                        //Put to local storage to prevent double voting
+                        await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
+        
+                            commitmentsMap[blockID]=commitment
+                        
+                        ).catch(_=>{})
+    
+    
+                    }
+
+                    
+                }
+
+                !response.aborted && response.end(JSON.stringify(commitmentsMap))  
             
             }
         
@@ -264,6 +443,26 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 }),
 
 
+
+
+FINALIZATION_PROOFS_POLLING=(tempObject,blockID,response)=>{
+
+
+    if(tempObject.PROOFS_RESPONSES.has(blockID)){
+
+        // Instantly send response
+        !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(blockID))
+
+    }else{
+
+        //Wait a while
+
+        setTimeout(()=>FINALIZATION_PROOFS_POLLING(tempObject,blockID,response),0)
+
+    }
+
+
+},
 
 
 /*
@@ -364,7 +563,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
     
-                !response.aborted && response.end('OK')
+                FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
             }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
 
@@ -374,6 +573,110 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 }),
 
+
+
+
+MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,response)=>{
+
+    if(blocksSet.every(blockID=>tempObject.PROOFS_RESPONSES.has(blockID))){
+
+        console.log('DEBUG: Going to send =>',blocksSet)
+
+        let fpArray=blocksSet.map(blockID=>{
+
+            let fp = tempObject.PROOFS_RESPONSES.get(blockID)
+
+            tempObject.PROOFS_RESPONSES.delete(blockID)
+
+            return fp
+
+        })
+
+
+        // Instantly send response
+        !response.aborted && response.end(JSON.stringify(fpArray))
+
+    }else{
+
+        //Wait a while
+
+        setTimeout(()=>MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,response),0)
+
+    }
+
+
+},
+
+
+
+
+manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let aggregatedCommitmentsArray=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+
+    let blocksSet = []
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            !response.aborted && response.end('QT checkpoint is incomplete')
+
+            return
+        }
+
+        let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+        if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+            !response.aborted && response.end('Checkpoint is not fresh')
+            
+    
+        }
+        
+        
+        for(let aggragatedCommitment of aggregatedCommitmentsArray){
+
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggragatedCommitment
+    
+
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+
+                !response.aborted && response.end('Wrong format of input params')
+
+                return
+
+            }
+
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+
+            let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
+    
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    
+            
+            
+            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+                // Add request to sync function 
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+    
+                blocksSet.push(blockID)
+
+            }
+
+        }
+
+
+        MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,response)
+        
+
+    }else !response.aborted && response.end('Route is off or QT checkpoint is incomplete')
+
+}),
 
 
 
@@ -1624,6 +1927,9 @@ UWS_SERVER
 //2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
 .post('/finalization',finalization)
 
+
+.post('/many_finalization',manyFinalization)
+
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
@@ -1656,6 +1962,8 @@ UWS_SERVER
 .get('/skip_procedure_stage_3/:SUBCHAIN',getSkipProcedureStage3)
 
 .post('/block',acceptBlocks)
+
+.post('/many_blocks',acceptManyBlocks)
 
 .post('/event',acceptEvents)
 
