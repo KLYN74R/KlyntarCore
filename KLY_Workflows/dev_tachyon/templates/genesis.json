@@ -20,7 +20,8 @@
                 }
             },
             "WAITING_ROOM":{},
-            "poolURL":"http://localhost:7331"
+            "poolURL":"http://localhost:7331",
+            "wssPoolURL":"wss://localhost:9999"
         
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
@@ -40,7 +41,8 @@
                 }
             },
             "WAITING_ROOM":{},
-            "poolURL":"http://localhost:7332"
+            "poolURL":"http://localhost:7332",
+            "wssPoolURL":"wss://localhost:9998"
         
         },
         "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
@@ -60,7 +62,8 @@
                 }
             },
             "WAITING_ROOM":{},
-            "poolURL":"http://localhost:7333"
+            "poolURL":"http://localhost:7333",
+            "wssPoolURL":"wss://localhost:9997"
         
         }
 

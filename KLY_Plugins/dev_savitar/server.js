@@ -54,7 +54,7 @@ import fs from 'fs'
 
 
 
-import {USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_MAJORITY, USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/utils.js'
 
 
 
@@ -81,6 +81,14 @@ let server = https.createServer({
     response.end();
 
 })
+
+
+//TESTS:
+
+if(CONFIG.SYMBIOTE.PUB==='75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG') configs.PORT=9333
+if(CONFIG.SYMBIOTE.PUB==='61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8') configs.PORT=9334
+if(CONFIG.SYMBIOTE.PUB==='6YHBZxZfBPk8oDPARGT4ZM9ZUPksMUngyCBYw8Ec6ufWkR6jpnjQ9HAJRLcon76sE7') configs.PORT=9335
+
 
 
 server.listen(configs.PORT,()=>LOG({data:`Savitar WSS server was activated on port \u001b[38;5;168m${configs.PORT}`},'CD'))
@@ -126,10 +134,62 @@ let IS_ORIGIN_ALLOWED=origin=>{
 let GEN_HASH=block=>BLAKE3( block.creator + block.time + JSON.stringify(block.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
 
 
+let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
+
+    if(blocksSet.every(blockID=>tempObject.PROOFS_RESPONSES.has(blockID))){
+
+        console.log('DEBUG: Going to send =>',blocksSet)
+
+        let fpArray=blocksSet.map(blockID=>{
+
+            let fp = tempObject.PROOFS_RESPONSES.get(blockID)
+
+            tempObject.PROOFS_RESPONSES.delete(blockID)
+
+            return fp
+
+        })
+
+
+        // Instantly send response
+
+        connection.sendUTF(JSON.stringify(fpArray))
+
+    }else{
+
+        //Wait a while
+
+        setTimeout(()=>MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection),0)
+
+    }
+
+
+}
+
+
+
+
 //__________________________________________ TWO MAIN ROUTES FOR TEST __________________________________________
 
 
-let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(payload,connection)=>{
+let RETURN_BLOCK = (blockID,connection)=>{
+
+    //Set triggers
+    if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+
+        SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
+
+            connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:block}))
+            
+        ).catch(_=>connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'No block'}})))
+
+
+    }else connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'Route is off'}}))
+
+}
+
+
+let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
     // connection.sendUTF(message.utf8Data);
     
@@ -166,14 +226,11 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(payload,connection)=>{
     }
 
 
-            
-    let blocksBatch=payload
-
     let commitmentsMap={}
 
 
 
-    for(let block of blocksBatch){
+    for(let block of blocksArray){
 
         let blockID = block.creator+":"+block.index
 
@@ -254,9 +311,71 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(payload,connection)=>{
 }
 
 
-let RETURN_MANY_FINALIZATION_PROOFS=async(payload,connection)=>{
 
+
+let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)=>{
+
+
+    let blocksSet = []
+
+
+    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+
+
+        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+
+            connection.sendUTF('QT checkpoint is incomplete')
+
+            return
+        }
+
+        let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+        if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+
+            connection.sendUTF('Checkpoint is not fresh')
+            
+            return
     
+        }
+        
+        
+        for(let aggragatedCommitment of aggregatedCommitmentsArray){
+
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggragatedCommitment
+    
+
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+
+                connection.sendUTF('Wrong format of input params')
+
+                return
+
+            }
+
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+
+            let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
+    
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    
+            
+            
+            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+                // Add request to sync function 
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+    
+                blocksSet.push(blockID)
+
+            }
+
+        }
+    }
+
+    MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection)
 
 }
 
@@ -289,13 +408,17 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             let data = JSON.parse(message.utf8Data)
 
-            if(data.route='many_blocks'){
+            if(data.route==='many_blocks'){
 
                 ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS(data.payload,connection)
 
-            }else if(data.route='many_finalization_proofs'){
+            }else if(data.route==='many_finalization_proofs'){
 
                 RETURN_MANY_FINALIZATION_PROOFS(data.payload,connection)
+
+            }else if(data.route==='get_block'){
+
+                RETURN_BLOCK(data.payload,connection)
 
             }else{
 
