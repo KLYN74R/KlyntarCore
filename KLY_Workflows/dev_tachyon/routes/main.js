@@ -1928,7 +1928,7 @@ UWS_SERVER
 .post('/finalization',finalization)
 
 
-.post('/many_finalization',manyFinalization)
+// .post('/many_finalization',manyFinalization)
 
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
@@ -1963,7 +1963,7 @@ UWS_SERVER
 
 .post('/block',acceptBlocks)
 
-.post('/many_blocks',acceptManyBlocks)
+// .post('/many_blocks',acceptManyBlocks)
 
 .post('/event',acceptEvents)
 

@@ -420,7 +420,13 @@ WEBSOCKET_SERVER.on('request',request=>{
 
                 RETURN_BLOCK(data.payload,connection)
 
-            }else{
+            }
+            else if(data.route==='get_super_finalization'){
+
+                RETURN_BLOCK(data.payload,connection)
+
+            }
+            else{
 
                 connection.close(1337,'No available route. You can use <many_blocks> | <many_finalization_proofs>')
 
