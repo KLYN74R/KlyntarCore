@@ -138,22 +138,30 @@ let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
 
     if(blocksSet.every(blockID=>tempObject.PROOFS_RESPONSES.has(blockID))){
 
-        console.log('DEBUG: Going to send =>',blocksSet)
-
-        let fpArray=blocksSet.map(blockID=>{
+        let fpObject=blocksSet.map(blockID=>{
 
             let fp = tempObject.PROOFS_RESPONSES.get(blockID)
 
             tempObject.PROOFS_RESPONSES.delete(blockID)
 
-            return fp
+            return {[blockID]:fp}
 
         })
 
 
+        let finalObject = {
+
+            from:CONFIG.SYMBIOTE.PUB,
+            
+            finalizationProofs:fpObject // blockId => FP
+
+        }
+
+        console.log('Going to send ',finalObject)
+
         // Instantly send response
 
-        connection.sendUTF(JSON.stringify(fpArray))
+        connection.sendUTF(JSON.stringify(finalObject))
 
     }else{
 
@@ -203,23 +211,23 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
     if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
         
-        connection.sendUTF('Route is off')
+        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Route is off'}}))
         
         return
     
     }
 
     if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
-        
-        connection.sendUTF('QT checkpoint is incomplete')
+
+        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
 
         return
 
     }
 
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
-        
-        connection.sendUTF('Checkpoint is not fresh')
+
+        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
         
         return
 
@@ -241,6 +249,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
         
         let hash=GEN_HASH(block)
 
+        console.log('REQ FOR ',blockID)
 
         let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
  
@@ -304,9 +313,11 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
         
     }
 
+    commitmentsMap.from=CONFIG.SYMBIOTE.PUB
 
+    console.log('Answer ',commitmentsMap)
 
-    connection.sendUTF(JSON.stringify(commitmentsMap))
+    connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:commitmentsMap}))
 
 }
 
@@ -325,8 +336,8 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
         if(!SYMBIOTE_META.TEMP.has(qtPayload)){
-
-            connection.sendUTF('QT checkpoint is incomplete')
+            
+            connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
 
             return
         }
@@ -335,7 +346,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-            connection.sendUTF('Checkpoint is not fresh')
+            connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
             
             return
     
@@ -349,7 +360,8 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
             if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
 
-                connection.sendUTF('Wrong format of input params')
+
+                connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Wrong format of input params'}}))
 
                 return
 
@@ -373,9 +385,11 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
             }
 
         }
-    }
 
-    MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection)
+        MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection)
+
+    }else connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Route is off or checkpoint is incomplete'}}))
+
 
 }
 
