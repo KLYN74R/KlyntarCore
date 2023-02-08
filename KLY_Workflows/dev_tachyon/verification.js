@@ -291,7 +291,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
 
 
-    //We shouldn't verify local version of SFP, because we already did it. See the GET /get_super_finalization route handler
+    //We shouldn't verify local version of SFP, because we already did it. See the GET /super_finalization route handler
 
     if(superFinalizationProof){
 
@@ -299,7 +299,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     }   
 
-    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call /get_super_finalization route
+    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call GET /super_finalization route
     
     let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_VALIDATORS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
@@ -307,7 +307,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     for(let memberURL of quorumMembersURLs){
 
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/get_super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
 
             generalAndTypeCheck =   itsProbablySuperFinalizationProof
                                     &&

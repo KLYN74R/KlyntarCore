@@ -2627,12 +2627,6 @@ PREPARE_SYMBIOTE=async()=>{
         QUORUM_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
 
 
-        //________________________ CACHES_FOR_MONITORS ________________________
-
-        VERIFICATION_THREAD_EVENTS:[],
-
-        QUORUM_THREAD_EVENTS:[],
-
         //________________________ AUXILIARY_MAPPINGS ________________________
         
         PEERS:[], // Peers to exchange data with
@@ -2648,17 +2642,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    
-    //OnlyLinuxFans.Due to incapsulation level we need to create sub-level directory for each symbiote
-    let pathes=[process.env.CHAINDATA_PATH]
-    
-    pathes.forEach(
-        
-        name => !fs.existsSync(`${name}`) && fs.mkdirSync(`${name}`)
-        
-    )
-
-
+    !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
     
     
 

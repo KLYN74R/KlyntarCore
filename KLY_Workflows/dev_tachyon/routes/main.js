@@ -1933,10 +1933,10 @@ UWS_SERVER
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
 
-.get('/get_super_finalization/:BLOCK_ID',getSuperFinalization)
+.get('/super_finalization/:BLOCK_ID',getSuperFinalization)
 
 
-.get('/get_payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
+.get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 .post('/special_operations',specialOperationsAccept)
 

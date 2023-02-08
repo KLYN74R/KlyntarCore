@@ -555,21 +555,21 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/get_latest_n_blocks/:START_RID/:NUMBER_OF_BLOCKS',getLatestNBlocks)
+.get('/latest_n_blocks/:START_RID/:NUMBER_OF_BLOCKS',getLatestNBlocks)
 
-.get('/get_quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
+.get('/quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
-.get('/get_subchains_metadata',getSubchainsMetadata)
+.get('/subchains_metadata',getSubchainsMetadata)
 
-.get('/get_search_result/:QUERY',getSearchResult)
-
-.get('/get_event_receipt/:TXID',getEventReceipt)
-
-.get('/get_block_by_rid/:RID',getBlockByRID)
-
-.get('/get_symbiote_info',getSymbioteInfo)
+.get('/search_result/:QUERY',getSearchResult)
 
 .get('/block_receipt/:BLOCK_ID',getBlockReceipt)
+
+.get('/event_receipt/:TXID',getEventReceipt)
+
+.get('/block_by_rid/:RID',getBlockByRID)
+
+.get('/symbiote_info',getSymbioteInfo)
 
 .get('/account/:ADDRESS',account)
 
@@ -579,13 +579,11 @@ UWS_SERVER
 
 .get('/stuff/:STUFF_ID',stuff)
 
-.get('/get_my_info',getMyInfo)
-
 .post('/stuff_add',stuffAdd)
 
 .get('/nodes/:REGION',nodes)
 
-
+.get('/my_info',getMyInfo)
 
 
 /*

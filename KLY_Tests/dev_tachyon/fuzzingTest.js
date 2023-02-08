@@ -11,9 +11,9 @@ POST /finalization [✅]
 
 POST /super_finalization [✅]
 
-GET  /get_super_finalization/:BLOCK_ID_AND_HASH [✅]
+GET  /super_finalization/:BLOCK_ID_AND_HASH [✅]
 
-GET /get_payload_for_checkpoint/:PAYLOAD_HASH [✅]
+GET /payload_for_checkpoint/:PAYLOAD_HASH [✅]
 
 POST /special_operations [✅]
 
@@ -251,7 +251,7 @@ Returns:
 
     //______________________ Empty blockID ______________________
 
-    await fetch(CREDS.url+'/get_super_finalization/').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url+'/super_finalization/').then(r=>r.text()).then(console.log).catch(console.log)
 
     //______________________ Normal blockID ______________________
 
@@ -262,7 +262,7 @@ Returns:
     {"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:596","blockHash":"84ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"oIkKCqcwY1tWqeK5ZlvCdiVoiPA5f/lbVqXwwjPK1bUguOPonRV7NMNOxHjOds6JGANj+uGTb7RnkNP4ZdG3GUms1A/5Uv98EIki80PM1bWvCqaLjcEVTb2aN4laqzgh","afkValidators":[]}
 
     */
-    await fetch(CREDS.url+'/get_super_finalization/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url+'/super_finalization/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
 
 
 }
@@ -278,7 +278,7 @@ let GET_PAYLOAD_FOR_CHECKPOINT_ROUTE_TEST=async()=>{
 
 /*
 
-/get_payload_for_checkpoint/:PAYLOAD_HASH
+GET /payload_for_checkpoint/:PAYLOAD_HASH
 
 
 
@@ -304,7 +304,7 @@ Returns:
     
     //______________________ Empty hash ______________________
 
-    await fetch(CREDS.url+'/get_payload_for_checkpoint/').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url+'/payload_for_checkpoint/').then(r=>r.text()).then(console.log).catch(console.log)
 
     //_____________ Invalid hash (some random data) __________
 
@@ -313,7 +313,7 @@ Returns:
     Returns 
 
     */
-    await fetch(CREDS.url+'/get_payload_for_checkpoint/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url+'/payload_for_checkpoint/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
     
     
 }

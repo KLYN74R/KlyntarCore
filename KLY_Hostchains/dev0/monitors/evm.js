@@ -345,7 +345,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                 
                 for(let url of initURLs){
                                 
-                    let checkpointPayload = await fetch(url+'/get_payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
+                    let checkpointPayload = await fetch(url+'/payload_for_checkpoint/'+PAYLOAD_HASH).then(r=>r.json()).catch(_=>false)
 
                     if(checkpointPayload && checkpointPayload.PREV_CHECKPOINT_PAYLOAD_HASH === currentCheckpoint.HEADER.PAYLOAD_HASH && BLAKE3(JSON.stringify(checkpointPayload)) === PAYLOAD_HASH){
 
