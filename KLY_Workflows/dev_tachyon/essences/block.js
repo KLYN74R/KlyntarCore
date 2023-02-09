@@ -5,13 +5,15 @@ import {BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 export default class Block{
     
-    constructor(eventsSet){
+    constructor(eventsSet,externalTxs){
         
         this.creator=CONFIG.SYMBIOTE.PUB //block creator(validator) Example:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta
 
         this.time=GET_GMT_TIMESTAMP() //UTC timestamp (NOTE:in milliseconds)
 
         this.events=eventsSet //array of events(transactions,contract calls, services logic,etc.)
+
+        this.externalTxs = externalTxs
 
         this.index=SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX //index of block in validator's thread
         
@@ -21,6 +23,6 @@ export default class Block{
     
     }
     
-    static genHash=block=>BLAKE3( block.creator + block.time + JSON.stringify(block.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
+    static genHash=block=>BLAKE3( block.creator + block.time + JSON.stringify(block.events) + JSON.stringify(block.externalTxs) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
 
 }

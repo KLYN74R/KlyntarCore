@@ -2462,7 +2462,15 @@ LOAD_GENESIS=async()=>{
 
                     }
 
-                } else atomicBatch.put(BLAKE3(addressOrContractID+genesis.STATE[addressOrContractID].subchain),genesis.STATE[addressOrContractID]) //else - it's default account
+                } else {
+
+                    let subchainID = genesis.STATE[addressOrContractID].subchain
+
+                    delete genesis.STATE[addressOrContractID].subchain
+
+                    atomicBatch.put(BLAKE3(addressOrContractID+subchainID),genesis.STATE[addressOrContractID]) //else - it's default account
+
+                }
 
             }
             
