@@ -35,27 +35,9 @@ const {
 } = CONFIG.EVM
 
 
-const trie = new Trie({
-    
-    db:new LevelDB(new Level(process.env.CHAINDATA_PATH+'/KLY_EVM')), // use own implementation. See the sources
-
-    useKeyHashing:true
-
-})
-
 const common = Common.custom({name,networkId,chainId},hardfork)
 
-const stateManager = new DefaultStateManager({trie})
-
-
-// Create our VM instance
-const vm = await VM.create({common,stateManager})
-
-
 const web3 = new Web3()
-
-
-let block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase}},{common})
 
 
 /*
@@ -76,7 +58,34 @@ P.S: BTW everything will be changable
 
 
 
-export let KLY_EVM = {
+export class KLY_EVM {
+
+
+    constructor(pathToVMState){
+
+        const trie = new Trie({
+    
+            db:new LevelDB(new Level(pathToVMState)), // use own implementation. See the sources
+        
+            useKeyHashing:true
+        
+        })
+        
+        
+        this.stateManager = new DefaultStateManager({trie})
+        
+        this.block = Block.fromBlockData({header:{gasLimit:gasLimitForBlock,miner:coinbase}},{common})
+
+
+    }
+
+
+    startEVM=async()=>{
+
+        // Create our VM instance
+        this.vm = await VM.create({common,stateManager:this.stateManager})
+
+    }
 
 
     /**
@@ -87,30 +96,30 @@ export let KLY_EVM = {
      * @returns txResult 
      * 
      */
-    callEVM:async serializedEVMTxWith0x=>{
+    callEVM=async serializedEVMTxWith0x=>{
 
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        let txResult = await vm.runTx({tx,block})
+        let txResult = await this.vm.runTx({tx,block})
 
 
         // We'll need full result to store logs and so on
         if(!txResult.execResult.exceptionError) return txResult
 
 
-    },
+    }
 
-     /**
+    /**
      * ### Execute tx in KLY-EVM without state changes
      * 
      * @param {import('@ethereumjs/tx').TxData | string} txDataOrSerializedTxInHexWith0x - EVM signed tx(TxData like(see EVM docs)) or serialized tx to be executed in EVM in context of given block
      * 
      * @returns {string} result of executed contract / default tx
-     */
-    sandboxCall:async(txDataOrSerializedTxInHexWith0x,isJustCall)=>{
+    */
+    sandboxCall=async(txDataOrSerializedTxInHexWith0x,isJustCall)=>{
 
         // In case it's just KLY-EVM call to read from contract - then ok, otherwise(is isJustCall=false) we assume that it's attempt to add to mempool(so we need to verify signature and other stuff)
 
@@ -120,7 +129,7 @@ export let KLY_EVM = {
 
             let {to,data} = tx
 
-            let vmCopy = await vm.copy()
+            let vmCopy = await this.vm.copy()
 
             let txResult = await vmCopy.evm.runCall({
             
@@ -134,7 +143,7 @@ export let KLY_EVM = {
 
         }else {
 
-            let vmCopy = await vm.copy()
+            let vmCopy = await this.vm.copy()
 
             let origin = tx.getSenderAddress()
 
@@ -165,7 +174,7 @@ export let KLY_EVM = {
     
         }
     
-    },
+    }
 
      /**
      * 
@@ -180,7 +189,7 @@ export let KLY_EVM = {
      * @returns {boolean} result.status
      * 
      */
-    putAccount:async(address,balanceInEthKly,nonce=0)=>{
+    putAccount=async(address,balanceInEthKly,nonce=0)=>{
 
         let accountData = {
             
@@ -190,17 +199,17 @@ export let KLY_EVM = {
           
         }
         
-        let status = await vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
+        let status = await this.vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
 
 
         return status
 
-    },
+    }
 
 
 
 
-    putContract:async(address,balanceInEthKly,nonce,code,storage)=>{
+    putContract=async(address,balanceInEthKly,nonce,code,storage)=>{
 
         let accountData = {
             
@@ -212,22 +221,22 @@ export let KLY_EVM = {
 
         address = Address.fromString(address)
     
-        await vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
+        await this.vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
 
         for (const [key, val] of Object.entries(storage)) {
         
             const storageKey = Buffer.from(key,'hex')
             const storageVal = Buffer.from(val,'hex')
         
-            await vm.stateManager.putContractStorage(address,storageKey,storageVal)
+            await this.vm.stateManager.putContractStorage(address,storageKey,storageVal)
         
         }
 
         const codeBuf = Buffer.from(code,'hex')
     
-        await vm.stateManager.putContractCode(address,codeBuf)
+        await this.vm.stateManager.putContractCode(address,codeBuf)
         
-    },
+    }
 
 
     
@@ -247,7 +256,7 @@ export let KLY_EVM = {
      * 
      * 
      */
-    getAccount:async address => vm.stateManager.getAccount(Address.fromString(address)),
+    getAccount = async address => this.vm.stateManager.getAccount(Address.fromString(address))
 
     /**
      * 
@@ -256,13 +265,13 @@ export let KLY_EVM = {
      * @returns {string} root of state of KLY-EVM in hexadecimal  
      * 
      */
-    getStateRoot:async()=>{
+    getStateRoot = async() => {
 
-        let stateRoot = await vm.stateManager.getStateRoot()
+        let stateRoot = await this.vm.stateManager.getStateRoot()
         
         return stateRoot.toString('hex') //32-bytes hexadecimal form
 
-    },
+    }
 
 
     /**
@@ -272,7 +281,7 @@ export let KLY_EVM = {
      * @param {string} 32-bytes hexadecimal root of VM's state
      * 
      */
-    setStateRoot: stateRootInHex => stateManager.setStateRoot(Buffer.from(stateRootInHex,'hex')),
+    setStateRoot = stateRootInHex => this.stateManager.setStateRoot(Buffer.from(stateRootInHex,'hex'))
 
 
     //____________________________________ Auxiliary functionality ____________________________________
@@ -288,7 +297,7 @@ export let KLY_EVM = {
      * @returns {string} required number of gas to deploy contract or call method
      *  
     */
-    estimateGasUsed:async txData => {
+    estimateGasUsed = async txData => {
 
         let tx = Transaction.fromTxData(txData)
 
@@ -298,7 +307,7 @@ export let KLY_EVM = {
         
         let caller = origin
 
-        let vmCopy = await vm.copy()
+        let vmCopy = await this.vm.copy()
 
         let txResult = await vmCopy.evm.runCall({origin,caller,to,data,block})
 
@@ -338,18 +347,19 @@ export let KLY_EVM = {
 
         return txResult.execResult.exceptionError || web3.utils.toHex(gasUsed.toString())
         
-    },
+    }
+
 
     /**
      * 
      * @returns {Block} the current block that used on VT
      */
-    getCurrentBlock:()=>block,
+    getCurrentBlock=()=>this.block
 
 
-    setCurrentBlockParams:(nextIndex,timestamp,parentHash)=>{
+    setCurrentBlockParams=(nextIndex,timestamp,parentHash)=>{
 
-        block = Block.fromBlockData({
+        this.block = Block.fromBlockData({
             
             header:{
 
@@ -363,7 +373,7 @@ export let KLY_EVM = {
         
         },{common})
 
-    },
+    }
 
 
     /**
@@ -377,7 +387,7 @@ export let KLY_EVM = {
      * 
      * @returns {Object}
      */
-    getTransactionWithReceiptToStore:(transactionInHex,evmResult,logsMap)=>{
+    getTransactionWithReceiptToStore=(transactionInHex,evmResult,logsMap)=>{
 
         /*
             
@@ -396,9 +406,9 @@ export let KLY_EVM = {
             let transaction = tx.toJSON()
         
                         
-            transaction.blockHash = '0x'+KLY_EVM.getCurrentBlock().hash().toString('hex')
+            transaction.blockHash = '0x'+this.getCurrentBlock().hash().toString('hex')
         
-            transaction.blockNumber = web3.utils.toHex(KLY_EVM.getCurrentBlock().header.number.toString())
+            transaction.blockNumber = web3.utils.toHex(this.getCurrentBlock().header.number.toString())
         
             transaction.hash = '0x'+tx.hash().toString('hex')
         
@@ -512,10 +522,9 @@ export let KLY_EVM = {
         
                 }
         
-                KLY_EVM.storeLog(logsMap,finalLogForm)
+                this.storeLog(logsMap,finalLogForm)
 
                 return finalLogForm
-
                 
             })
         
@@ -551,10 +560,10 @@ export let KLY_EVM = {
         }
 
 
-    },
+    }
 
 
-    getBlockToStore: currentHash =>{
+    getBlockToStore = currentHash => {
 
                 /*
 
@@ -625,7 +634,7 @@ export let KLY_EVM = {
     */
             
 
-        let currentBlock = KLY_EVM.getCurrentBlock()
+        let currentBlock = this.getCurrentBlock()
 
         let {number,parentHash,nonce,uncleHash,transactionsTrie,receiptTrie,coinbase,stateRoot,difficulty,logsBloom,gasLimit,gasUsed,mixHash,extraData,timestamp} = currentBlock.header
 
@@ -667,11 +676,11 @@ export let KLY_EVM = {
 
         return blockTemplate
 
-    },
+    }
 
 
     //
-    storeLog:(logsMap,logInstance) => {
+    storeLog = (logsMap,logInstance) => {
 
         
     /*
@@ -781,8 +790,3 @@ export let KLY_EVM = {
     }
 
 }
-
-
-
-
-global.KLY_EVM = KLY_EVM

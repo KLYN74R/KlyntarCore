@@ -79,7 +79,8 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
-            "rev_t":0
+            "rev_t":0,
+            "subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
             
@@ -87,7 +88,8 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
-            "rev_t":0
+            "rev_t":0,
+            "subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
         },
         "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
             
@@ -95,7 +97,8 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
-            "rev_t":0
+            "rev_t":0,
+            "subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
         },
 
         "0000000000000000000000000000000000000000000000000000000000000000":{
@@ -106,6 +109,7 @@
             "uno":0,
             "storages":["storageID_N"],
             "bytecode":"00",
+            "subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
 
             "storageID_N":{
                 "key1":"value1",

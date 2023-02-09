@@ -561,9 +561,9 @@ UWS_SERVER
 
 .get('/subchains_metadata',getSubchainsMetadata)
 
-.get('/search_result/:QUERY',getSearchResult)
-
 .get('/block_receipt/:BLOCK_ID',getBlockReceipt)
+
+.get('/search_result/:QUERY',getSearchResult)
 
 .get('/event_receipt/:TXID',getEventReceipt)
 
