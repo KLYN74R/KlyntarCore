@@ -173,7 +173,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (event,rewardBox,_)=>{
+    TX:async (blockAuthority,event,rewardBox,_)=>{
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
         
@@ -247,7 +247,7 @@ export let VERIFIERS = {
 
     */
 
-    CONTRACT_DEPLOY:async (event,rewardBox,atomicBatch)=>{
+    CONTRACT_DEPLOY:async (blockAuthority,event,rewardBox,atomicBatch)=>{
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
 
@@ -330,7 +330,7 @@ export let VERIFIERS = {
 
 
     */
-    CONTRACT_CALL:async (event,rewardBox,atomicBatch)=>{
+    CONTRACT_CALL:async (blockAuthority,event,rewardBox,atomicBatch)=>{
 
         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
 
@@ -419,7 +419,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(event,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(blockAuthority,event,rewardBox,atomicBatch)=>{
 
         
         let timestamp = Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP / 1000)
@@ -469,7 +469,7 @@ export let VERIFIERS = {
     
 
     */
-    MIGRATE_BETWEEN_ENV:async(event,rewardBox,atomicBatch)=>{
+    MIGRATE_BETWEEN_ENV:async(blockAuthority,event,rewardBox,atomicBatch)=>{
 
         let {to,address,amount} = event.payload
 

@@ -2311,23 +2311,132 @@ LOAD_GENESIS=async()=>{
     
         checkpointTimestamp,
 
-        evmPromises=[],
-
         startPool = ''
 
 
-    //Load all the configs
-    fs.readdirSync(process.env.GENESIS_PATH).forEach(file=>{
+
+
+    //__________________________________ Load all the configs __________________________________
+
+    let filesOfGenesis = fs.readdirSync(process.env.GENESIS_PATH)
+
+
+    for(let file of filesOfGenesis){
 
         let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
+
+
+        for(let [validatorPubKey,validatorContractStorage] of genesis.VALIDATORS){
+
+            startPool=validatorPubKey
+
+            //Add metadata related to this pool
+            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={
+                
+                INDEX:-1,
+                
+                HASH:'Poyekhali!@Y.A.Gagarin',
+                
+                AUTHORITY:validatorPubKey
+            
+            }
+
+            //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
+            
+            let contractMetadataTemplate = {
     
+                type:"contract",
+                lang:'spec/stakingPool',
+                balance:0,
+                uno:0,
+                storages:['POOL'],
+                bytecode:''
+    
+            }
+            
+            //Put metadata
+            atomicBatch.put(validatorPubKey+'(POOL)',contractMetadataTemplate)
+    
+            //Put storage
+            //NOTE: We just need a simple storage with ID="POOL"
+            atomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',validatorContractStorage)
+
+            let templateForQt = {
+
+                totalPower:validatorContractStorage.totalPower,
+                lackOfTotalPower:false,
+                stopCheckpointID:-1,
+                storedMetadata:{}
+            
+            }
+
+            quorumThreadAtomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+
+            //____________________ Create a separate KLY-EVM for this subchain ____________________
+
+            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${validatorPubKey}`)
+
+            await EVM.startEVM()
+
+            //________________________ Fill the state of given KLY-EVM ________________________
+
+            let evmStateForThisSubchain = genesis.EVM[validatorPubKey]
+
+            if(evmStateForThisSubchain){
+
+                let evmKeys = Object.keys(evmStateForThisSubchain)
+
+                for(let evmKey of evmKeys) {
+        
+                    let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
+        
+                    //Put KLY-EVM to KLY-EVM state db which will be used by Trie
+        
+                    if(isContract){
+        
+                        await EVM.putContract(evmKey,balance,nonce,code,storage)
+        
+                    }else{
+
+                        await EVM.putAccount(evmKey,balance,nonce)
+
+                    }
+        
+                }
+    
+            }
+
+
+            // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
+
+            let METADATA = {
+                
+                STATE_ROOT:await EVM.getStateRoot(),
+        
+                NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+        
+                PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+                
+                TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+            
+            }
+
+
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(validatorPubKey,{EVM,METADATA})
+            
+        }
+
+
+        //_______________________ Now add the data to state _______________________
+    
+
         Object.keys(genesis.STATE).forEach(
         
             addressOrContractID => {
 
                 if(genesis.STATE[addressOrContractID].type==='contract'){
 
-                    let {lang,balance,uno,storages,bytecode} = genesis.STATE[addressOrContractID]
+                    let {lang,balance,uno,storages,bytecode,subchain} = genesis.STATE[addressOrContractID]
 
                     let contractMeta = {
 
@@ -2341,36 +2450,20 @@ LOAD_GENESIS=async()=>{
                     } 
 
                     //Write metadata first
-                    atomicBatch.put(addressOrContractID,contractMeta)
+                    atomicBatch.put(BLAKE3(addressOrContractID+subchain),contractMeta)
 
                     //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
                     for(let storageID of genesis.STATE[addressOrContractID].storages){
 
-                        atomicBatch.put(addressOrContractID+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
+                        atomicBatch.put(BLAKE3(addressOrContractID+subchain)+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
 
                     }
 
-                } else atomicBatch.put(addressOrContractID,genesis.STATE[addressOrContractID]) //else - it's default account
+                } else atomicBatch.put(BLAKE3(addressOrContractID+subchain),genesis.STATE[addressOrContractID]) //else - it's default account
 
             }
             
         )
-
-        let evmKeys = Object.keys(genesis.EVM)
-
-        for(let evmKey of evmKeys) {
-
-            let {isContract,balance,nonce,code,storage} = genesis.EVM[evmKey]
-
-            //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-
-            if(isContract){
-
-                evmPromises.push(KLY_EVM.putContract(evmKey,balance,nonce,code,storage))
-
-            }else evmPromises.push(KLY_EVM.putAccount(evmKey,balance,nonce))
-
-        }
 
 
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
@@ -2403,73 +2496,12 @@ LOAD_GENESIS=async()=>{
 
         SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
 
+    }
 
-
-
-        Object.keys(genesis.VALIDATORS).forEach(validatorPubKey=>{
     
-            startPool=validatorPubKey
-
-            //Add metadata related to this pool
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false} // set the initial values
-    
-            //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
-            
-            let contractMetadataTemplate = {
-    
-                type:"contract",
-                lang:'spec/stakingPool',
-                balance:0,
-                uno:0,
-                storages:['POOL'],
-                bytecode:''
-    
-            }
-    
-            let onlyOnePossibleStorageForStakingContract=genesis.VALIDATORS[validatorPubKey]
-            
-            //Put metadata
-            atomicBatch.put(validatorPubKey+'(POOL)',contractMetadataTemplate)
-    
-            //Put storage
-            //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-
-            let templateForQt = {
-
-                totalPower:onlyOnePossibleStorageForStakingContract.totalPower,
-                lackOfTotalPower:false,
-                stopCheckpointID:-1,
-                storedMetadata:{}
-            
-            }
-
-            quorumThreadAtomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',templateForQt)
-    
-        })
-
-    })
-
-    await Promise.all(evmPromises)
-
     await atomicBatch.write()
 
     await quorumThreadAtomicBatch.write()
-
-
-    // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
-
-    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META = {
-
-        STATE_ROOT:await KLY_EVM.getStateRoot(),
-        
-        NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
-
-        PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
-        
-        TIMESTAMP:Math.floor(checkpointTimestamp/1000)
-
-    }
 
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
@@ -2633,6 +2665,8 @@ PREPARE_SYMBIOTE=async()=>{
 
         STATIC_STUFF_CACHE:new Map(),
 
+        KLY_EVM_PER_SUBCHAIN:new Map(), // subchainID => {EVM,METADATA}
+
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
         TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE,SPECIAL_OPERATIONS_MEMPOOL}
@@ -2684,7 +2718,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //'KLY_EVM' Contains state of EVM
 
-        //'STATE' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
+        //'KLY_EVM_METADATA' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
 
 
     ].forEach(
@@ -2754,12 +2788,14 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
                             
-                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',RID:0},//pointer to know where we should start to process further blocks
+                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',RID:0},// pointer to know where we should start to process further blocks
 
-                SUBCHAINS_METADATA:{},//PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:}
+                SUBCHAINS_METADATA:{},// PUBKEY => {INDEX:'',HASH:'',AUTHORITY:''}
                 
+                KLY_EVM_METADATA:{}, // PUBKEY => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} 
+
                 CHECKPOINT:'genesis'
-            
+ 
             }
 
         }else{
@@ -2789,15 +2825,22 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
-    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META
+    //_____________________________________ Set the EVM metadata for each subchain______________________________________
+
+    for(let [subchainID] of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA){
 
 
-    await KLY_EVM.setStateRoot(STATE_ROOT)
+        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
 
-    // Set the block parameters
+        let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(subchainID)
 
-    KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
+        await evm.setStateRoot(STATE_ROOT)
+    
+        // Set the block parameters
+        await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
 
+
+    }
 
 
     //_______________________________Check the version of QT and VT and if need - update________________________________
@@ -2847,7 +2890,7 @@ PREPARE_SYMBIOTE=async()=>{
     SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+qtPayload,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
-    //_________________________________Add the temporary dat of current QT__________________________________________
+    //_________________________________Add the temporary data of current QT__________________________________________
     
     let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${qtPayload}`,{valueEncoding:'json'})
 
