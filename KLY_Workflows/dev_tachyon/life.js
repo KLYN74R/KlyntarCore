@@ -2321,12 +2321,15 @@ LOAD_GENESIS=async()=>{
     let filesOfGenesis = fs.readdirSync(process.env.GENESIS_PATH)
 
 
-    for(let file of filesOfGenesis){
+    for(let filePath of filesOfGenesis){
 
-        let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${file}`))
+        let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${filePath}`))
+
+        
+        checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
 
-        for(let [validatorPubKey,validatorContractStorage] of genesis.VALIDATORS){
+        for(let [validatorPubKey,validatorContractStorage] of Object.entries(genesis.VALIDATORS)){
 
             startPool=validatorPubKey
 
@@ -2409,7 +2412,7 @@ LOAD_GENESIS=async()=>{
 
             // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
 
-            let METADATA = {
+            SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[validatorPubKey]={
                 
                 STATE_ROOT:await EVM.getStateRoot(),
         
@@ -2421,14 +2424,14 @@ LOAD_GENESIS=async()=>{
             
             }
 
-
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(validatorPubKey,{EVM,METADATA})
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(validatorPubKey,EVM)
             
         }
 
 
         //_______________________ Now add the data to state _______________________
     
+        // * Each account / contract must have <subchain> property to assign it to appropriate shard(subchain)
 
         Object.keys(genesis.STATE).forEach(
         
@@ -2459,14 +2462,11 @@ LOAD_GENESIS=async()=>{
 
                     }
 
-                } else atomicBatch.put(BLAKE3(addressOrContractID+subchain),genesis.STATE[addressOrContractID]) //else - it's default account
+                } else atomicBatch.put(BLAKE3(addressOrContractID+genesis.STATE[addressOrContractID].subchain),genesis.STATE[addressOrContractID]) //else - it's default account
 
             }
             
         )
-
-
-        checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
 
         /*
@@ -2665,7 +2665,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         STATIC_STUFF_CACHE:new Map(),
 
-        KLY_EVM_PER_SUBCHAIN:new Map(), // subchainID => {EVM,METADATA}
+        KLY_EVM_PER_SUBCHAIN:new Map(), // subchainID => EVM
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
@@ -2827,12 +2827,24 @@ PREPARE_SYMBIOTE=async()=>{
 
     //_____________________________________ Set the EVM metadata for each subchain______________________________________
 
-    for(let [subchainID] of SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA){
+    for(let subchainID of Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)){
 
-
-        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
+        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainID]
 
         let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(subchainID)
+
+
+        if(!evm){
+
+            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainID}`)
+
+            await EVM.startEVM()
+
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainID,EVM)
+
+            evm=EVM
+
+        }
 
         await evm.setStateRoot(STATE_ROOT)
     
