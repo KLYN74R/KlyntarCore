@@ -952,7 +952,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
 
 
-        1) Take all the validators from SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS
+        1) Take all the ACTIVE validators from SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.AUTHORITY
 
         2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
 
@@ -969,14 +969,14 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        subchainsArray = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA),
+        subchainsAuthorities = new Set(Object.values(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).map(meta=>meta.AUTHORITY)),
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(subchainsArray.length-1)), //and share the rest among other validators
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(subchainsAuthorities.length-1)), //and share the rest among other validators
     
         shareFeesPromises = []
 
           
-    if(subchainsArray.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
+    if(subchainsAuthorities.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
@@ -985,7 +985,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     //_____________________________________________ THE REST ______________________________________________
 
-    subchainsArray.forEach(poolPubKey=>
+    subchainsAuthorities.forEach(poolPubKey=>
 
         poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool))
             
@@ -1072,7 +1072,7 @@ verifyBlock=async block=>{
                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                 if(reason!=='EVM'){
 
-                    let txid = BLAKE3(eventCopy.sig)
+                    let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
                     atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
     
@@ -1080,6 +1080,44 @@ verifyBlock=async block=>{
 
                 txIndexInBlock++
                 
+            }
+
+        }
+        
+        //______________________________________NOW WORK WITH THE EXTERNAL EVENTS_______________________________________
+        
+        let subchainAndExternalEvents = Object.entries(block.externalTxs)
+
+        for(let [subchainID,arrayOfExternalEvents] of subchainAndExternalEvents){
+
+            let txIndexInBlock=0
+
+            // If this creator was also assigned as a given subchain authority - then execute the txs inside
+            if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchainID]?.AUTHORITY === block.creator){
+
+                for(let event of arrayOfExternalEvents){
+
+                    if(SYMBIOTE_META.VERIFIERS[event.type]){
+        
+                        let eventCopy = JSON.parse(JSON.stringify(event))
+        
+                        let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainID,eventCopy,rewardBox,atomicBatch).catch(_=>{})
+        
+                        // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+                        if(reason!=='EVM'){
+        
+                            let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+        
+                            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
+            
+                        }
+        
+                        txIndexInBlock++
+                        
+                    }
+        
+                }    
+
             }
 
         }

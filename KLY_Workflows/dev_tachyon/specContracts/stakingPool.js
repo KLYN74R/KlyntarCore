@@ -28,7 +28,7 @@ export let CONTRACT = {
         [*] PoolAddress - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
 
     */
-    constructor:async (event,atomicBatch) => {
+    constructor:async (event,atomicBatch,originSubchain) => {
 
         let{constructorParams}=event.payload,
 
@@ -101,7 +101,7 @@ export let CONTRACT = {
     
     */
     
-    stake:async event => {
+    stake:async(event,originSubchain) => {
 
         let pool=event.payload.contractID,
 
@@ -165,7 +165,7 @@ export let CONTRACT = {
 
     
     */
-    unstake:async event => {
+    unstake:async (event,originSubchain) => {
 
         let pool=event.payload.contractID,
 
@@ -209,7 +209,7 @@ export let CONTRACT = {
 
     
     */
-    getReward:async event => {
+    getReward:async (event,originSubchain) => {
 
         let pool=event.payload.contractID,
 

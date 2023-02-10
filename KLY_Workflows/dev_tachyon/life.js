@@ -2362,11 +2362,11 @@ LOAD_GENESIS=async()=>{
             }
             
             //Put metadata
-            atomicBatch.put(subchainAuthority+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(BLAKE3(subchainAuthority+subchainAuthority+'(POOL)'),contractMetadataTemplate)
     
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(subchainAuthority+'(POOL)_STORAGE_POOL',validatorContractStorage)
+            atomicBatch.put(BLAKE3(subchainAuthority+subchainAuthority+'(POOL)_STORAGE_POOL'),validatorContractStorage)
 
 
             // Add the account for fees for each authority
