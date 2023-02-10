@@ -43,15 +43,12 @@ import {BLAKE3} from '../../KLY_Utils/utils.js'
 
 
 
-let BLS_PUBKEY_FOR_FILTER = CONFIG.SYMBIOTE.FILTER_PUB || CONFIG.SYMBIOTE.PUB
 
+let VERIFY_WRAP=async (event,originSubchain)=>{
 
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator))
 
-let VERIFY_WRAP=async event=>{
-
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(BLS_PUBKEY_FOR_FILTER+event.creator))
-
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount,BLS_PUBKEY_FOR_FILTER).catch(_=>false)
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount,originSubchain).catch(_=>false)
 
     
     if(result){
@@ -92,11 +89,11 @@ export default {
     }
 
     */
-    TX:async event=>
+    TX:async (event,originSubchain) =>
 
         typeof event.payload?.amount==='number' && typeof event.payload.to==='string' && event.payload.amount>0 && (!event.payload.rev_t || typeof event.payload.rev_t==='number')
         &&
-        await VERIFY_WRAP(event)
+        await VERIFY_WRAP(event,originSubchain)
     ,
 
     /*
@@ -118,11 +115,11 @@ export default {
     }
 
     */
-    CONTRACT_DEPLOY:async event=>
+    CONTRACT_DEPLOY:async (event,originSubchain) =>
     
         typeof event.payload?.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload?.lang?.startsWith('spec/')) && Array.isArray(event.payload.constructorParams)
         &&
-        await VERIFY_WRAP(event)
+        await VERIFY_WRAP(event,originSubchain)
 
     ,
 
@@ -141,11 +138,11 @@ export default {
         }
 
     */
-    CONTRACT_CALL:async event=>
+    CONTRACT_CALL:async (event,originSubchain) =>
     
         typeof event.payload?.contractID==='string' && event.payload.contractID.length<=256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params) && Array.isArray(event.payload.imports)
         &&
-        await VERIFY_WRAP(event)
+        await VERIFY_WRAP(event,originSubchain)
 
     ,
 

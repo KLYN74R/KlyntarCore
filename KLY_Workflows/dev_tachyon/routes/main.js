@@ -11,7 +11,10 @@ import Block from '../essences/block.js'
 
 
 
-let
+let BLS_PUBKEY_FOR_FILTER = CONFIG.SYMBIOTE.FILTER_PUB || CONFIG.SYMBIOTE.PUB,
+
+
+
 
 //__________________________________________________________BASIC FUNCTIONAL_____________________________________________________________________
 
@@ -425,7 +428,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE){
 
-        let filteredEvent=await SYMBIOTE_META.FILTERS[event.type](event)
+        let filteredEvent=await SYMBIOTE_META.FILTERS[event.type](event,BLS_PUBKEY_FOR_FILTER)
 
         if(filteredEvent){
 
