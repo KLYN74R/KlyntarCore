@@ -38,17 +38,20 @@
 
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
-import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
+import {BLAKE3} from '../../KLY_Utils/utils.js'
 
+
+
+let BLS_PUBKEY_FOR_FILTER = CONFIG.SYMBIOTE.FILTER_PUB || CONFIG.SYMBIOTE.PUB
 
 
 
 let VERIFY_WRAP=async event=>{
 
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(BLS_PUBKEY_FOR_FILTER+event.creator))
 
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount).catch(_=>false)
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount,BLS_PUBKEY_FOR_FILTER).catch(_=>false)
 
     
     if(result){
@@ -164,15 +167,15 @@ export default {
     
     
     */
-    MIGRATE_BETWEEN_ENV:async event=>{
+    // MIGRATE_BETWEEN_ENV:async event=>{
 
-        typeof event.payload?.address==='string'
-        &&
-        typeof event.payload.amount==='number'
-        &&
-        event.payload.amount>0
+    //     typeof event.payload?.address==='string'
+    //     &&
+    //     typeof event.payload.amount==='number'
+    //     &&
+    //     event.payload.amount>0
 
-    }
+    // }
 
 }
 

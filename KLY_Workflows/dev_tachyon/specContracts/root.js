@@ -1,7 +1,9 @@
 global.SPECIAL_CONTRACTS=new Map()
 
+// Will be available in the following releases
+// let specContracts = ['aliases','mintUnobtanium','deployService','stakingPool','rwxContract']
 
-let specContracts = ['aliases','mintUnobtanium','deployService','stakingPool']
+let specContracts = ['stakingPool']
 
 for(let name of specContracts){
 

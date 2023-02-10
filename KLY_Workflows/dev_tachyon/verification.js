@@ -1037,20 +1037,27 @@ verifyBlock=async block=>{
         //To change the state atomically
         let atomicBatch = SYMBIOTE_META.STATE.batch()
 
+
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
-        let sendersAccounts=[]
+        let accountsToAddToCache=[]
     
-        //Push accounts of validators
-        Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).forEach(pubKey=>sendersAccounts.push(GET_ACCOUNT_ON_SYMBIOTE(pubKey)))
+        //Push accounts for fees of subchains authorities
 
+        let authorities = new Set(Object.values(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).map(meta=>meta.AUTHORITY))
+
+        authorities.forEach(
+            
+            pubKey => accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(block.creator+pubKey+'_FEES')))
+            
+        )
 
         //Now cache has all accounts and ready for the next cycles
-        await Promise.all(sendersAccounts.splice(0))
-
+        await Promise.all(accountsToAddToCache.splice(0))
 
 
         //___________________________________________START TO PERFORM EVENTS____________________________________________
+
 
         let txIndexInBlock=0
 
@@ -1060,7 +1067,7 @@ verifyBlock=async block=>{
 
                 let eventCopy = JSON.parse(JSON.stringify(event))
 
-                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](eventCopy,rewardBox,atomicBatch).catch(_=>{})
+                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](block.creator,eventCopy,rewardBox,atomicBatch).catch(_=>{})
 
                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                 if(reason!=='EVM'){

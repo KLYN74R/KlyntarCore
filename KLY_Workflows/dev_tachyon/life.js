@@ -2330,19 +2330,21 @@ LOAD_GENESIS=async()=>{
         
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
+        let authorities = new Set(Object.keys(genesis.VALIDATORS))
 
-        for(let [validatorPubKey,validatorContractStorage] of Object.entries(genesis.VALIDATORS)){
 
-            startPool=validatorPubKey
+        for(let [subchainAuthority,validatorContractStorage] of Object.entries(genesis.VALIDATORS)){
+
+            startPool=subchainAuthority
 
             //Add metadata related to this pool
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]={
+            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchainAuthority]={
                 
                 INDEX:-1,
                 
                 HASH:'Poyekhali!@Y.A.Gagarin',
                 
-                AUTHORITY:validatorPubKey
+                AUTHORITY:subchainAuthority
             
             }
 
@@ -2360,11 +2362,24 @@ LOAD_GENESIS=async()=>{
             }
             
             //Put metadata
-            atomicBatch.put(validatorPubKey+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(subchainAuthority+'(POOL)',contractMetadataTemplate)
     
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',validatorContractStorage)
+            atomicBatch.put(subchainAuthority+'(POOL)_STORAGE_POOL',validatorContractStorage)
+
+
+            // Add the account for fees for each authority
+            authorities.forEach(anotherValidatorPubKey=>{
+
+                if(anotherValidatorPubKey!==subchainAuthority){
+
+                    atomicBatch.put(BLAKE3(subchainAuthority+anotherValidatorPubKey+'_FEES'),{reward:0})
+
+                }
+
+            })
+
 
             let templateForQt = {
 
@@ -2375,17 +2390,17 @@ LOAD_GENESIS=async()=>{
             
             }
 
-            quorumThreadAtomicBatch.put(validatorPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+            quorumThreadAtomicBatch.put(subchainAuthority+'(POOL)_STORAGE_POOL',templateForQt)
 
             //____________________ Create a separate KLY-EVM for this subchain ____________________
 
-            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${validatorPubKey}`)
+            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainAuthority}`)
 
             await EVM.startEVM()
 
             //________________________ Fill the state of given KLY-EVM ________________________
 
-            let evmStateForThisSubchain = genesis.EVM[validatorPubKey]
+            let evmStateForThisSubchain = genesis.EVM[subchainAuthority]
 
             if(evmStateForThisSubchain){
 
@@ -2414,7 +2429,7 @@ LOAD_GENESIS=async()=>{
 
             // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
 
-            SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[validatorPubKey]={
+            SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainAuthority]={
                 
                 STATE_ROOT:await EVM.getStateRoot(),
         
@@ -2426,7 +2441,7 @@ LOAD_GENESIS=async()=>{
             
             }
 
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(validatorPubKey,EVM)
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainAuthority,EVM)
             
         }
 
@@ -3029,7 +3044,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         }\x1b[36;1m is \x1b[32;1m${
             
-            CONFIG.SYMBIOTE.BALANCE_VIEW?balance:'<disabled>'
+            CONFIG.SYMBIOTE.BALANCE_VIEW ? balance : '<disabled>'
         
         }   \x1b[36;1m[${CONFIG.SYMBIOTE.STOP_HOSTCHAIN?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
     
