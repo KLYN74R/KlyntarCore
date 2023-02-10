@@ -2473,12 +2473,12 @@ LOAD_GENESIS=async()=>{
                     } 
 
                     //Write metadata first
-                    atomicBatch.put(BLAKE3(addressOrContractID+subchain),contractMeta)
+                    atomicBatch.put(BLAKE3(subchain+addressOrContractID),contractMeta)
 
                     //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
                     for(let storageID of genesis.STATE[addressOrContractID].storages){
 
-                        atomicBatch.put(BLAKE3(addressOrContractID+subchain+'_STORAGE_'+storageID),genesis.STATE[addressOrContractID][storageID])
+                        atomicBatch.put(BLAKE3(subchain+addressOrContractID+'_STORAGE_'+storageID),genesis.STATE[addressOrContractID][storageID])
 
                     }
 
@@ -2488,7 +2488,7 @@ LOAD_GENESIS=async()=>{
 
                     delete genesis.STATE[addressOrContractID].subchain
 
-                    atomicBatch.put(BLAKE3(addressOrContractID+subchainID),genesis.STATE[addressOrContractID]) //else - it's default account
+                    atomicBatch.put(BLAKE3(subchainID+addressOrContractID),genesis.STATE[addressOrContractID]) //else - it's default account
 
                 }
 

@@ -360,13 +360,15 @@ export let VERIFIERS = {
 
                         let contract = SPECIAL_CONTRACTS.get(typeofContract)
                         
-                        await contract[event.payload.method](event,atomicBatch)
+                        await contract[event.payload.method](event,originSubchain,atomicBatch)
+
 
                         senderAccount.balance-=goingToSpend
             
                         senderAccount.nonce=event.nonce
                     
                         rewardBox.fees+=event.fee
+
 
                     }else return {isOk:false,reason:`No such type of special contract`}
 
@@ -388,7 +390,7 @@ export let VERIFIERS = {
 
                     try{
 
-                        result = VM.callContract(contractInstance,contractMetadata,'',event.payload.method,contractMeta.type)
+                        result = VM.callContract(contractInstance,contractMetadata,originSubchain,'',event.payload.method,contractMeta.type)
 
                     }catch(err){
 
@@ -444,7 +446,7 @@ export let VERIFIERS = {
 
             totalSpentByTxInKLY = +totalSpentByTxInKLY
 
-            rewardBox.fees+=totalSpentByTxInKLY
+            rewardBox.fees += totalSpentByTxInKLY
 
 
             let {tx,receipt} = evmOfSubchain.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get(BLAKE3(originSubchain+'EVM_LOGS_MAP')))
