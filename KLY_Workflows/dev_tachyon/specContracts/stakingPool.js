@@ -34,7 +34,7 @@ export let CONTRACT = {
 
             [blsPubKey,percentage,overStake,whiteList,poolURL]=constructorParams,
 
-            poolAlreadyExists = await SYMBIOTE_META.STATE.get(blsPubKey+'(POOL)').catch(_=>false)
+            poolAlreadyExists = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string'){
@@ -76,12 +76,11 @@ export let CONTRACT = {
 
             
             //Put metadata
-            atomicBatch.put(blsPubKey+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(BLAKE3(originSubchain+blsPubKey+'(POOL)'),contractMetadataTemplate)
 
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(blsPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-
+            atomicBatch.put(BLAKE3(originSubchain+blsPubKey+'(POOL)_STORAGE_POOL'),onlyOnePossibleStorageForStakingContract)
 
         }
 
@@ -103,11 +102,11 @@ export let CONTRACT = {
     
     stake:async(event,originSubchain) => {
 
-        let pool=event.payload.contractID,
+        let fullPoolIdWithPostfix=event.payload.contractID, // Format => BLS_pubkey(POOL)
 
             {amount,units}=event.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL')
+            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL'))
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -115,7 +114,7 @@ export let CONTRACT = {
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(event.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator)
+            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator))
 
             if(stakerAccount){
             
@@ -167,11 +166,11 @@ export let CONTRACT = {
     */
     unstake:async (event,originSubchain) => {
 
-        let pool=event.payload.contractID,
+        let fullPoolIdWithPostfix=event.payload.contractID,
 
             {amount,units}=event.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
             stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
@@ -211,11 +210,11 @@ export let CONTRACT = {
     */
     getReward:async (event,originSubchain) => {
 
-        let pool=event.payload.contractID,
+        let fullPoolIdWithPostfix=event.payload.contractID,
 
-            poolStorage = await GET_FROM_STATE(pool+'_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
-            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
+            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator)),
 
             stakerInfo = poolStorage.STAKERS[event.creator] // Pubkey => {KLY,UNO,REWARD}
 

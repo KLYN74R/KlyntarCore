@@ -144,7 +144,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
 
 
-DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async(validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -1225,7 +1225,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
 
-
     let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
@@ -1413,9 +1412,10 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
             2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /super_finalization to share the SUPER_FINALIZATION_PROOFS over the symbiote
     
             */
+
     
             let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.text()).then(async possibleCommitment=>{
-    
+
                 let commitmentIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,descriptor.pubKey,possibleCommitment).catch(_=>false)
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
@@ -2368,6 +2368,9 @@ LOAD_GENESIS=async()=>{
             //NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(BLAKE3(subchainAuthority+subchainAuthority+'(POOL)_STORAGE_POOL'),validatorContractStorage)
 
+            // Put the pointer to know the subchain which store the pool's data(metadata+storages)
+            atomicBatch.put(subchainAuthority+'(POOL)_POINTER',subchainAuthority)
+
 
             // Add the account for fees for each authority
             authorities.forEach(anotherValidatorPubKey=>{
@@ -2475,7 +2478,7 @@ LOAD_GENESIS=async()=>{
                     //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
                     for(let storageID of genesis.STATE[addressOrContractID].storages){
 
-                        atomicBatch.put(BLAKE3(addressOrContractID+subchain)+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
+                        atomicBatch.put(BLAKE3(addressOrContractID+subchain+'_STORAGE_'+storageID),genesis.STATE[addressOrContractID][storageID])
 
                     }
 
@@ -2876,6 +2879,9 @@ PREPARE_SYMBIOTE=async()=>{
         // Set the block parameters
         await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
 
+
+        // Add the global EVM for sandbox execution via API
+        global.KLY_EVM = evm
 
     }
 

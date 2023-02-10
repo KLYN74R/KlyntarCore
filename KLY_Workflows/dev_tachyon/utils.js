@@ -366,7 +366,7 @@ GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEE
 
 
 
-GET_VALIDATORS_URLS = async withPubkey => {
+GET_VALIDATORS_URLS = async (withPubkey,subchainID) => {
 
     let promises=[]
 

@@ -290,7 +290,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
 
-
+    
     //We shouldn't verify local version of SFP, because we already did it. See the GET /super_finalization route handler
 
     if(superFinalizationProof){
@@ -870,6 +870,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(block && quorumSolutionToVerifyBlock){
 
+
                 await verifyBlock(block)
 
 
@@ -907,17 +908,13 @@ START_VERIFICATION_THREAD=async()=>{
 
 SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
-    console.log(poolId)
-    console.log(feeToPay)
 
-    let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
+    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolId+poolId+'(POOL)_STORAGE_POOL'))
 
     if(mainStorageOfPool.percentage!==0){
 
         //Get the pool percentage and send to appropriate BLS address
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(poolId)
-
-        console.log('Pool is ',poolBindedAccount)
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolId+poolId))
 
         poolBindedAccount.balance += mainStorageOfPool.percentage*feeToPay
         
@@ -935,6 +932,21 @@ SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
         stakerStats.REWARD+=totalStakerPowerPercent*restOfFees
 
     })
+
+},
+
+
+
+
+// We need this method to send fees to this special account and 
+SEND_FEES_TO_FEES_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientPool,feeReward) => {
+
+    // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
+    // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
+    
+    let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(BLAKE3(subchainID+feeRecepientPool+'_FEES'))
+
+    feesAccountForGivenPoolOnThisSubchain.reward+=feeReward
 
 },
 
@@ -985,9 +997,9 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     //_____________________________________________ THE REST ______________________________________________
 
-    subchainsAuthorities.forEach(poolPubKey=>
+    subchainsAuthorities.forEach(feesRecepientPoolPubKey=>
 
-        poolPubKey !== blockCreator && shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(poolPubKey,payToEachPool))
+        feesRecepientPoolPubKey !== blockCreator && shareFeesPromises.push(SEND_FEES_TO_FEES_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
             
     )
      
@@ -1132,7 +1144,11 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(error=>LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W'))
+            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(
+                
+                error => LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
+                
+            )
 
         }else if(block.creator!==CONFIG.SYMBIOTE.PUB){
 
