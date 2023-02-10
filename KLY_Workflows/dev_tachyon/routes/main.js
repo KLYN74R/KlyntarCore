@@ -1,13 +1,12 @@
-import {BROADCAST,BLS_VERIFY,BLS_SIGN_DATA,BLOCKLOG,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
-
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+
+import {BLS_VERIFY,BLS_SIGN_DATA,BLOCKLOG,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import OPERATIONS_VERIFIERS from '../operationsVerifiers.js'
 
 import Block from '../essences/block.js'
-
 
 
 
@@ -99,11 +98,12 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
-                
-                if(subchainlackOfTotalPowerForCurrentCheckpoint){
+                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || block.creator !== SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.AUTHORITY
+            
 
-                    !response.aborted && response.end('Subchain is skipped')
+                if(subchainIsSkipped){
+
+                    !response.aborted && response.end('Subchain has another authority')
         
                     return
 
@@ -113,9 +113,8 @@ acceptBlocks=response=>{
                 let hash=Block.genHash(block)
 
 
-                let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,block.сreator+":"+block.index).catch(_=>false)
-         
-
+                let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,block.creator+":"+block.index).catch(_=>false)
+                
                 if(myCommitment){
 
                     !response.aborted && response.end(myCommitment)
@@ -123,7 +122,6 @@ acceptBlocks=response=>{
                     return
                 
                 }
-                
                 
                 let checkIfItsChain = block.index===0 || await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
 
@@ -146,7 +144,6 @@ acceptBlocks=response=>{
                     &&
                     checkIfItsChain
                 
-
 
                 if(allow){
                 
@@ -284,9 +281,9 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
+                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || block.creator !== SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.AUTHORITY
                 
-                    if(subchainlackOfTotalPowerForCurrentCheckpoint) continue
+                    if(subchainIsSkipped) continue
    
                     
                     let hash=Block.genHash(block)
@@ -1424,7 +1421,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
             
-            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED) {
+            if(checkpointProposition.SUBCHAINS_METADATA[subchain].AUTHORITY !== currentPoolsMetadata[subchain].AUTHORITY) {
 
                 wrongSkipStatusPresent=true
 
@@ -1473,7 +1470,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongSkipStatusPresent){
 
-            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_STOPPED> status for subchain ${subchainWithWrongStopIndex}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Wrong <AUTHORITY> for subchain ${subchainWithWrongStopIndex}`}))
 
         }
         else if(metadataUpdate.length!==0){
@@ -1545,7 +1542,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         SUBCHAINS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,AUTHORITY}
 
             /..other data
             

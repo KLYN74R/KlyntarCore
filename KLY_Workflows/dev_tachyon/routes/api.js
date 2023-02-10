@@ -555,9 +555,9 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
-.get('/latest_n_blocks/:START_RID/:NUMBER_OF_BLOCKS',getLatestNBlocks)
-
 .get('/quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
+
+.get('/latest_n_blocks/:NUMBER_OF_BLOCKS',getLatestNBlocks)
 
 .get('/subchains_metadata',getSubchainsMetadata)
 

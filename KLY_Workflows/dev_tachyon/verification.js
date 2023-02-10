@@ -272,7 +272,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         //Structure is {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
         let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
-        //{INDEX,HASH,IS_STOPPED}
+        //{INDEX,HASH,AUTHORITY}
         let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
 
 
@@ -769,7 +769,7 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentSubchainToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,AUTHORITY} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck],
 
             blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1),
@@ -891,9 +891,6 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
 
-        // let shouldImmediatelyContinue = nextBlock||shouldSkip||currentSessionMetadata.IS_STOPPED
-
-
         setTimeout(START_VERIFICATION_THREAD,0)
 
     
@@ -910,14 +907,19 @@ START_VERIFICATION_THREAD=async()=>{
 
 SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
+    console.log(poolId)
+    console.log(feeToPay)
+
     let mainStorageOfPool = await GET_FROM_STATE(poolId+'(POOL)_STORAGE_POOL')
 
     if(mainStorageOfPool.percentage!==0){
 
         //Get the pool percentage and send to appropriate BLS address
-        let poolBindedBLSPubKey = await GET_ACCOUNT_ON_SYMBIOTE(poolId)
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(poolId)
 
-        poolBindedBLSPubKey.balance += mainStorageOfPool.percentage*feeToPay
+        console.log('Pool is ',poolBindedAccount)
+
+        poolBindedAccount.balance += mainStorageOfPool.percentage*feeToPay
         
     }
 

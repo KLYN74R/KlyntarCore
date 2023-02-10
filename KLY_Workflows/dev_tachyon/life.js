@@ -105,6 +105,8 @@ process.on('SIGHUP',GRACEFUL_STOP)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
+    GET_EXTERNAL_EVENTS = () => {return []},
+
     GET_SPEC_EVENTS = qtPayload =>{
 
         if(!SYMBIOTE_META.TEMP.has(qtPayload)) return []
@@ -434,7 +436,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
 
-        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
+        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB]?.AUTHORITY !== CONFIG.SYMBIOTE.PUB) START_AWAKENING_PROCEDURE()
 
 
         //Continue to find checkpoints
@@ -725,7 +727,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 SUBCHAINS_METADATA: {
                 
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,AUTHORITY}
 
                     /..other data
             
@@ -914,7 +916,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             SUBCHAINS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,AUTHORITY}
 
                 /..other data
             
@@ -976,9 +978,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {AUTHORITY} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
-                potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED}
+                potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,AUTHORITY}
 
             }
 
@@ -1417,7 +1419,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
                 let commitmentIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,descriptor.pubKey,possibleCommitment).catch(_=>false)
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
-    
+
             }).catch(_=>{})
     
             // To make sharing async
@@ -1550,14 +1552,16 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     if(FINALIZATION_PROOFS.has(blockID)){
 
+        console.log('DEBUG: Run FP grabbing ',blockID)
+
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
         await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID).catch(_=>{})
 
     }else{
 
         // This option means that we already started to share block and going to find 2/3N+1 commitments
-        // Once we get it - aggregate it and start finalization proofs grabbing(previous option) 
-        
+        // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
+
         await RUN_COMMITMENTS_GRABBING(qtPayload,blockID).catch(_=>{})
 
     }
@@ -2269,9 +2273,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     for(let i=0;i<phantomBlocksNumber;i++){
 
 
-        let eventsArray=await GET_EVENTS(),
-            
-            blockCandidate=new Block(eventsArray),
+        let blockCandidate=new Block(GET_EVENTS(),GET_EXTERNAL_EVENTS()),
                         
             hash=Block.genHash(blockCandidate)
     
@@ -2771,7 +2773,7 @@ PREPARE_SYMBIOTE=async()=>{
         previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + JSON.stringify(previousBlock.externalTxs) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
         
         initSpinner?.stop()
 
@@ -3035,9 +3037,6 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //____________________________________________GENERAL SYMBIOTE INFO____________________________________________
-
-
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/syminfo.txt')).toString(),'S')
 
 
     //Ask to approve current set of hostchains
