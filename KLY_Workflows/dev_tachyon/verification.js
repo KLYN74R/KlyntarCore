@@ -1031,7 +1031,7 @@ verifyBlock=async block=>{
 
         let currentBlockID = block.creator+":"+block.index
 
-        SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+        SYMBIOTE_META.STATE_CACHE.set(BLAKE3(block.creator+'EVM_LOGS_MAP'),{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
         //To change the state atomically
@@ -1182,11 +1182,11 @@ verifyBlock=async block=>{
 
         })
 
-        atomicBatch.put('EVM_BLOCK:'+blockToStore.number,blockToStore)
+        atomicBatch.put(BLAKE3(block.creator+'EVM_BLOCK:'+blockToStore.number),blockToStore)
 
-        atomicBatch.put('EVM_INDEX:'+blockToStore.hash,blockToStore.number)
+        atomicBatch.put(BLAKE3(block.creator+'EVM_INDEX:'+blockToStore.hash),blockToStore.number)
 
-        atomicBatch.put('EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+        atomicBatch.put(BLAKE3(block.creator+'EVM_LOGS:'+blockToStore.number),SYMBIOTE_META.STATE_CACHE.get(BLAKE3(block.creator+'EVM_LOGS_MAP')))
 
         // Set the next block's parameters
     

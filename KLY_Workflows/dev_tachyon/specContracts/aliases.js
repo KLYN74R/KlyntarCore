@@ -8,44 +8,44 @@ export let ENERGY_USED_BY_METHOD=methodID=>{return
 
 export let CONTRACT = {
 
-    constructor:async(payload,atomicBatch)=>{
+    constructor:async(originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    setAlias:async(payload,atomicBatch)=>{
+    setAlias:async(originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    unSetAlias:async(payload,atomicBatch)=>{
+    unSetAlias:async(originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    changeRoot:async(payload,atomicBatch)=>{
+    changeRoot:async(originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
 
-    stake:async (payload,atomicBatch)=>{
+    stake:async (originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    unstake:async (payload,atomicBatch)=>{
+    unstake:async (originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    slash:async (payload,atomicBatch)=>{
+    slash:async (originSubchain,payload,atomicBatch)=>{
 
         
 

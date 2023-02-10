@@ -8,26 +8,26 @@ export let ENERGY_USED_BY_METHOD=methodID=>{return
 export let CONTRACT = {
 
 
-    constructor:async (payload,atomicBatch)=>{
+    constructor:async (originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    mintUnobtanium:async (payload,atomicBatch)=>{
+    mintUnobtanium:async (originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
     //To decrease number of UNO from some account
-    burnUnobtanium:async (payload,atomicBatch)=>{
+    burnUnobtanium:async (originSubchain,payload,atomicBatch)=>{
 
         
 
     },
 
-    changeRoot:async (payload,atomicBatch)=>{
+    changeRoot:async (originSubchain,payload,atomicBatch)=>{
 
         
 
