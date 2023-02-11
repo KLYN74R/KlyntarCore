@@ -1,10 +1,10 @@
 import {
     
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,
-    
+    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
+
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
-    
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB
+
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,
 
 } from './utils.js'
 
@@ -2815,7 +2815,7 @@ PREPARE_SYMBIOTE=async()=>{
 
             //Default initial value
             return {
-                            
+            
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',RID:0}, // pointer to know where we should start to process further blocks
 
                 SUBCHAINS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}

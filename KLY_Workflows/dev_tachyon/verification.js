@@ -1,8 +1,8 @@
 import {
     
-    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE,
-    
-    GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY
+    GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY,
+
+    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE
 
 } from './utils.js'
 
@@ -17,7 +17,7 @@ import Block from './essences/block.js'
 import {GRACEFUL_STOP} from './life.js'
 
 import fetch from 'node-fetch'
-import { KLY_EVM } from '../../KLY_VMs/kly-evm/vm.js'
+
 import Web3 from 'web3'
 
 
@@ -943,7 +943,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
-    
+
     let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(BLAKE3(subchainID+feeRecepientPool+'_FEES'))
 
     feesAccountForGivenPoolOnThisSubchain.reward+=feeReward
@@ -981,7 +981,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
 
     let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/activeValidatorsSet.size), //and share the rest among other validators
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(activeValidatorsSet.size-1)), //and share the rest among other validators
     
         shareFeesPromises = []
 
@@ -997,7 +997,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
 
     activeValidatorsSet.forEach(feesRecepientPoolPubKey=>
 
-        shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
+        feesRecepientPoolPubKey !== blockCreator && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
             
     )
      
@@ -1107,41 +1107,41 @@ verifyBlock=async block=>{
         
         //______________________________________NOW WORK WITH THE REASSIGNED EVENTS_______________________________________
         
-        let subchainAndReassignments = Object.entries(block.reassignments)
+        // let subchainAndReassignments = Object.entries(block.reassignments)
 
-        for(let [subchainID,arrayOfEvents] of subchainAndReassignments){
+        // for(let [subchainID,arrayOfEvents] of subchainAndReassignments){
 
-            let txIndexInBlock=0
+        //     let txIndexInBlock=0
 
-            // If this creator was also assigned as a given subchain authority - then execute the txs inside
-            if(SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID] === block.creator){
+        //     // If this creator was also assigned as a given subchain authority - then execute the txs inside
+        //     if(SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID] === block.creator){
 
-                for(let event of arrayOfEvents){
+        //         for(let event of arrayOfEvents){
 
-                    if(SYMBIOTE_META.VERIFIERS[event.type]){
+        //             if(SYMBIOTE_META.VERIFIERS[event.type]){
         
-                        let eventCopy = JSON.parse(JSON.stringify(event))
+        //                 let eventCopy = JSON.parse(JSON.stringify(event))
         
-                        let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainID,eventCopy,rewardBox,atomicBatch).catch(_=>{})
+        //                 let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainID,eventCopy,rewardBox,atomicBatch).catch(_=>{})
         
-                        // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-                        if(reason!=='EVM'){
+        //                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+        //                 if(reason!=='EVM'){
         
-                            let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+        //                     let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
         
-                            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
+        //                     atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
             
-                        }
+        //                 }
         
-                        txIndexInBlock++
+        //                 txIndexInBlock++
                         
-                    }
+        //             }
         
-                }    
+        //         }    
 
-            }
+        //     }
 
-        }
+        // }
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
@@ -1204,58 +1204,62 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
+        let blockReceipt = {
+
+            rid:oldRID,
+            hash:blockHash
+
+        }
 
         //___________________ Update the KLY-EVM ___________________
 
-        let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(block.creator)
+        if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.has(block.creator)){
 
-        // Update stateRoot
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.STATE_ROOT = await KLY_EVM.getStateRoot()
+            let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(block.creator)
 
-        // Increase block index
-        let nextIndex = BigInt(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.NEXT_BLOCK_INDEX)+BigInt(1)
+            let currentEVMMetadata = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[block.creator]
+    
+            // Update stateRoot
+            currentEVMMetadata.STATE_ROOT = await currentEVM.getStateRoot()
+    
+            // Increase block index
+            let nextIndex = BigInt(currentEVMMetadata.NEXT_BLOCK_INDEX)+BigInt(1)
+    
+            currentEVMMetadata.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
+    
+            // Store previous hash
+            let currentHash = currentEVM.getCurrentBlock().hash()
+    
+            currentEVMMetadata.PARENT_HASH = currentHash.toString('hex')
+    
+            // Imagine that it's 1 block per 2 seconds
+            let nextTimestamp = currentEVMMetadata.TIMESTAMP+2
+    
+            currentEVMMetadata.TIMESTAMP = nextTimestamp
 
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
+            let blockToStore = currentEVM.getBlockToStore(currentHash)
 
-        // Store previous hash
-        let currentHash = KLY_EVM.getCurrentBlock().hash()
-
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.PARENT_HASH = currentHash.toString('hex')
-
-        // Imagine that it's 1 block per 2 seconds
-        let nextTimestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.TIMESTAMP+2
-
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.TIMESTAMP = nextTimestamp
-
-
-
-        let blockToStore = KLY_EVM.getBlockToStore(currentHash)
-
-        //Add the KLY-EVM metadata to block receipt
-
-        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
-
-            rid:oldRID,
-            hash:blockHash,
-
-            evmData:{
+            //Add the KLY-EVM metadata to block receipt
+            
+            blockReceipt.evmData={
 
                 relativeBlockIndex:blockToStore.number,
                 relativeBlockHash:blockToStore.hash
 
             }
 
-        })
+            atomicBatch.put(BLAKE3(block.creator+'EVM_BLOCK:'+blockToStore.number),blockToStore)
 
-        atomicBatch.put(BLAKE3(block.creator+'EVM_BLOCK:'+blockToStore.number),blockToStore)
-
-        atomicBatch.put(BLAKE3(block.creator+'EVM_INDEX:'+blockToStore.hash),blockToStore.number)
-
-        atomicBatch.put(BLAKE3(block.creator+'EVM_LOGS:'+blockToStore.number),SYMBIOTE_META.STATE_CACHE.get(BLAKE3(block.creator+'EVM_LOGS_MAP')))
-
-        // Set the next block's parameters
+            atomicBatch.put(BLAKE3(block.creator+'EVM_INDEX:'+blockToStore.hash),blockToStore.number)
     
-        KLY_EVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
+            atomicBatch.put(BLAKE3(block.creator+'EVM_LOGS:'+blockToStore.number),SYMBIOTE_META.STATE_CACHE.get(BLAKE3(block.creator+'EVM_LOGS_MAP')))
+    
+            // Set the next block's parameters
+            currentEVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
+        
+        }
+
+        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,blockReceipt)
         
         //Commit the state of VERIFICATION_THREAD
 
