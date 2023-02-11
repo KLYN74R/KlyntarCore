@@ -2822,6 +2822,8 @@ PREPARE_SYMBIOTE=async()=>{
 
                 REASSIGNMENTS:{}, // SUBCHAIN_ID => NEW_TEMPORARY_AUTHORITY
                 
+                TO_FINISH:{}, // SUBCHAIN_ID => {AUTHORITY1:HEIGHT_X,AUTHORITY2:HEIGHT_Y,...}
+
                 KLY_EVM_METADATA:{}, // PUBKEY => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
                 CHECKPOINT:'genesis'
