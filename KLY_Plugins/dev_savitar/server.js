@@ -131,7 +131,11 @@ let IS_ORIGIN_ALLOWED=origin=>{
 //__________________________________________ Additional functionality __________________________________________
 
 
-let GEN_HASH=block=>BLAKE3( block.creator + block.time + JSON.stringify(block.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
+let GEN_HASH = block => {
+
+    return BLAKE3( block.creator + block.time + JSON.stringify(block.events) + JSON.stringify(block.reassignments) + JSON.stringify(block.reassignProof) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
+
+}
 
 
 let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{

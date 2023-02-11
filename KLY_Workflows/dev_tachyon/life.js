@@ -1552,8 +1552,6 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     if(FINALIZATION_PROOFS.has(blockID)){
 
-        console.log('DEBUG: Run FP grabbing ',blockID)
-
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
         await RUN_FINALIZATION_PROOFS_GRABBING(qtPayload,blockID).catch(_=>{})
 
@@ -2791,7 +2789,7 @@ PREPARE_SYMBIOTE=async()=>{
         previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + JSON.stringify(previousBlock.reassignments) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + JSON.stringify(previousBlock.reassignments) + JSON.stringify(block.reassignProof) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
         
         initSpinner?.stop()
 

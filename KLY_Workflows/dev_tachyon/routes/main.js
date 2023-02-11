@@ -576,8 +576,6 @@ MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,response)=>{
 
     if(blocksSet.every(blockID=>tempObject.PROOFS_RESPONSES.has(blockID))){
 
-        console.log('DEBUG: Going to send =>',blocksSet)
-
         let fpArray=blocksSet.map(blockID=>{
 
             let fp = tempObject.PROOFS_RESPONSES.get(blockID)
@@ -673,6 +671,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
     }else !response.aborted && response.end('Route is off or QT checkpoint is incomplete')
 
 }),
+
 
 
 

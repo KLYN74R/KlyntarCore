@@ -2,7 +2,7 @@ import {
     
     GET_VALIDATORS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY,
 
-    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE
+    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE, QUICK_SORT
 
 } from './utils.js'
 
@@ -109,6 +109,71 @@ GET_BLOCK = async(blockCreator,index) => {
         })
     
     )
+
+},
+
+
+
+
+GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
+
+    /*
+    
+    SKIP_STAGE_3_PROOF has the following structure
+
+
+    {
+    
+        subchain, - skipped subchain. The work on this chain will be delegated to another pool
+        index,
+        hash,
+
+        aggregatedPub,
+        aggregatedSignature, - SIG(`SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`)
+        afkValidators
+    
+    }
+
+    Using <subchain>, <index>, <hash> and <qtPayload> fields we can get the hash which will be used to find pool to assign
+    
+    */
+
+    let {subchain,index,hash} = skipStage3Proof
+
+
+    // Based on this hash - start the cycle over ACTIVE 
+    let pseudoRandomHash = BLAKE3(subchain+index+hash+qtPayload)
+
+    let activePools = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
+    
+        .filter(([_,validatorMetadata])=>!validatorMetadata.IS_STOPPED)
+
+        .map(([validatorPubKey,_])=>validatorPubKey)
+
+
+    let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
+
+
+    let firstChallenge = QUICK_SORT(
+
+        activePools.map(
+        
+            validatorPubKey => {
+
+                let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+
+                mapping.set(challenge,validatorPubKey)
+
+                return challenge
+
+            }
+            
+        )
+
+    )[0]
+
+
+    return mapping.get(firstChallenge)
 
 },
 
