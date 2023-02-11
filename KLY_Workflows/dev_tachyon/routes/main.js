@@ -58,8 +58,6 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
-
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
@@ -101,12 +99,12 @@ acceptBlocks=response=>{
             
                 let block=await PARSE_JSON(buffer)
 
-                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || block.creator !== SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.AUTHORITY
+                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.IS_STOPPED
             
 
                 if(subchainIsSkipped){
 
-                    !response.aborted && response.end('Subchain has another authority')
+                    !response.aborted && response.end('Subchain was skipped')
         
                     return
 
@@ -233,8 +231,6 @@ acceptManyBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
-
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
@@ -284,7 +280,7 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || block.creator !== SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.AUTHORITY
+                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.IS_STOPPED
                 
                     if(subchainIsSkipped) continue
    
@@ -1424,7 +1420,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
             
-            if(checkpointProposition.SUBCHAINS_METADATA[subchain].AUTHORITY !== currentPoolsMetadata[subchain].AUTHORITY) {
+            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED) {
 
                 wrongSkipStatusPresent=true
 
@@ -1473,7 +1469,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongSkipStatusPresent){
 
-            !response.aborted && response.end(JSON.stringify({error:`Wrong <AUTHORITY> for subchain ${subchainWithWrongStopIndex}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_STOPPED> for subchain ${subchainWithWrongStopIndex}`}))
 
         }
         else if(metadataUpdate.length!==0){
@@ -1545,7 +1541,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         SUBCHAINS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,AUTHORITY}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
             /..other data
             

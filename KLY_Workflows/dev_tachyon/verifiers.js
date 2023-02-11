@@ -46,8 +46,6 @@ import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
-
 import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'

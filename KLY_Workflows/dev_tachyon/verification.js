@@ -272,7 +272,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         //Structure is {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
         let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
-        //{INDEX,HASH,AUTHORITY}
+        //{INDEX,HASH,IS_STOPPED}
         let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
 
 
@@ -290,7 +290,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
 
-    
+
     //We shouldn't verify local version of SFP, because we already did it. See the GET /super_finalization route handler
 
     if(superFinalizationProof){
@@ -769,7 +769,7 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
             currentSubchainToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
 
-            //We receive {INDEX,HASH,AUTHORITY} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck],
 
             blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1),
@@ -939,7 +939,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
 
 
 // We need this method to send fees to this special account and 
-SEND_FEES_TO_FEES_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientPool,feeReward) => {
+SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientPool,feeReward) => {
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
@@ -954,7 +954,7 @@ SEND_FEES_TO_FEES_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientP
 
 
 //Function to distribute stakes among validators/blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
+DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
 
     /*
 
@@ -964,7 +964,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
 
 
-        1) Take all the ACTIVE validators from SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS.AUTHORITY
+        1) Take all the ACTIVE validators from SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA
 
         2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
 
@@ -981,14 +981,12 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        subchainsAuthorities = new Set(Object.values(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).map(meta=>meta.AUTHORITY)),
-
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(subchainsAuthorities.length-1)), //and share the rest among other validators
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/activeValidatorsSet.size), //and share the rest among other validators
     
         shareFeesPromises = []
 
           
-    if(subchainsAuthorities.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
+    if(activeValidatorsSet.size===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
@@ -997,9 +995,9 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator)=>{
 
     //_____________________________________________ THE REST ______________________________________________
 
-    subchainsAuthorities.forEach(feesRecepientPoolPubKey=>
+    activeValidatorsSet.forEach(feesRecepientPoolPubKey=>
 
-        feesRecepientPoolPubKey !== blockCreator && shareFeesPromises.push(SEND_FEES_TO_FEES_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
+        shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
             
     )
      
@@ -1056,11 +1054,22 @@ verifyBlock=async block=>{
     
         //Push accounts for fees of subchains authorities
 
-        let authorities = new Set(Object.values(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA).map(meta=>meta.AUTHORITY))
+        let activeValidators = new Set()
 
-        authorities.forEach(
+        for(let [validatorPubKey,metadata] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)){
+
+            if(!metadata.IS_STOPPED) activeValidators.add(validatorPubKey) 
+
+        }
+
+        activeValidators.forEach(
             
-            pubKey => accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(block.creator+pubKey+'_FEES')))
+            pubKey => {
+
+                // Avoid own pubkey to be added. On own chains we send rewards directly
+                if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(block.creator+pubKey+'_FEES')))
+
+            }
             
         )
 
@@ -1096,18 +1105,18 @@ verifyBlock=async block=>{
 
         }
         
-        //______________________________________NOW WORK WITH THE EXTERNAL EVENTS_______________________________________
+        //______________________________________NOW WORK WITH THE REASSIGNED EVENTS_______________________________________
         
-        let subchainAndExternalEvents = Object.entries(block.externalTxs)
+        let subchainAndReassignments = Object.entries(block.reassignments)
 
-        for(let [subchainID,arrayOfExternalEvents] of subchainAndExternalEvents){
+        for(let [subchainID,arrayOfEvents] of subchainAndReassignments){
 
             let txIndexInBlock=0
 
             // If this creator was also assigned as a given subchain authority - then execute the txs inside
-            if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchainID]?.AUTHORITY === block.creator){
+            if(SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID] === block.creator){
 
-                for(let event of arrayOfExternalEvents){
+                for(let event of arrayOfEvents){
 
                     if(SYMBIOTE_META.VERIFIERS[event.type]){
         
@@ -1136,7 +1145,7 @@ verifyBlock=async block=>{
 
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
-        await DISTRIBUTE_FEES(rewardBox.fees,block.creator)
+        await DISTRIBUTE_FEES(rewardBox.fees,block.creator,activeValidators)
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
@@ -1197,6 +1206,8 @@ verifyBlock=async block=>{
 
 
         //___________________ Update the KLY-EVM ___________________
+
+        let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(block.creator)
 
         // Update stateRoot
         SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_META.STATE_ROOT = await KLY_EVM.getStateRoot()

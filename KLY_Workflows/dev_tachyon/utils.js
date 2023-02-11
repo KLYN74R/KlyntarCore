@@ -366,38 +366,42 @@ GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEE
 
 
 
-GET_VALIDATORS_URLS = async (withPubkey,subchainID) => {
+GET_VALIDATORS_URLS = async withPubkey => {
 
     let promises=[]
 
 
-    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.forEach(pubKey =>
-        
-        promises.push(SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
+    for(let pubKey of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM){
+
+        let promise = SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
             stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
-        ).catch(_=>
+        ).catch(async _=>{
 
-            //Try to get from pool storage(url must be passed via deployment)
+            let originSubchain = await SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(_=>false)
 
-            GET_FROM_STATE(pubKey+'(POOL)_STORAGE_POOL').then(
-                
-                poolSingleStorage => {
+            if(originSubchain){
+
+                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+pubKey+'(POOL)_STORAGE_POOL')).catch(_=>false)
+
+                if(poolStorage){
 
                     // Set to cache first
-                    SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolSingleStorage.poolURL}})
+                    SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolStorage.poolURL}})
 
-                    return withPubkey ? {url:poolSingleStorage.poolURL,pubKey} : poolSingleStorage.poolURL
+                    return withPubkey ? {url:poolStorage.poolURL,pubKey} : poolStorage.poolURL
 
                 }
-                
-            ).catch(_=>false)
 
-        ))
+            }
 
-    )
-    
+        })
+
+        promises.push(promise)
+
+    }
+
     let validatorsURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
 
     return validatorsURLs

@@ -421,7 +421,7 @@ SUBCHAINS_METADATA - object like this
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
                 INDEX: -1,
                 HASH: 'Poyekhali!@Y.A.Gagarin',
-                AUTHORITY:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'
+                IS_STOPPED:boolean
             }
     
         }
@@ -465,13 +465,13 @@ export default {
 
                 SUBCHAINS_METADATA:{
                 
-                    VALIDATOR_0 : {INDEX:number,HASH:string,AUTHORITY:string},
+                    VALIDATOR_0 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
-                    VALIDATOR_1 : {INDEX:number,HASH:string,AUTHORITY:string},
+                    VALIDATOR_1 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
                     ...
 
-                    VALIDATOR_N : {INDEX:number,HASH:string,AUTHORITY:string}
+                    VALIDATOR_N : {INDEX:number,HASH:string,IS_STOPPED:boolean}
                 
                 }
 
