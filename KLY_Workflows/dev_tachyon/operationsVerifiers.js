@@ -2,6 +2,8 @@ import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD}
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
+import {BLAKE3} from '../../KLY_Utils/utils.js'
+
 
 
 
@@ -88,30 +90,36 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+
+            if(subchainWherePoolStorage){
+
+                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
 
                 stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
             
 
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
+                if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
 
                 let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
-                if(stillUnspent){
+                    if(stillUnspent){
 
-                    let specOpsTemplate = {
+                        let specOpsTemplate = {
 
-                        type:'STAKING_CONTRACT_CALL',
+                            type:'STAKING_CONTRACT_CALL',
 
-                        payload:{
+                            payload:{
 
-                            txid,pool,type,amount
+                                txid,pool,type,amount
+
+                            }
 
                         }
 
-                    }
+                        return specOpsTemplate
 
-                    return specOpsTemplate
+                    }
 
                 }
 
@@ -241,93 +249,99 @@ export default {
             if(slashHelper[pool]) return
 
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL')
+            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
-            let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
-            
+            if(subchainWherePoolStorage){
 
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
+                let poolStorage = await GET_FROM_STATE(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL'))
 
-                let stakerAccount = poolStorage.STAKERS[stakeOrUnstakeTx.staker] || {KLY:0,UNO:0,REWARD:0}
-
-                if(stakeOrUnstakeTx.type==='+'){
-
-                    stakerAccount[stakeOrUnstakeTx.units]+=stakeOrUnstakeTx.amount
-
-                    poolStorage.totalPower+=stakeOrUnstakeTx.amount
-
-                }else {
-
-                    stakerAccount[stakeOrUnstakeTx.units]-=stakeOrUnstakeTx.amount
-
-                    poolStorage.totalPower-=stakeOrUnstakeTx.amount
-
-                    //Add KLY / UNO to the user's account
-                    let delayedOperationsArray = await GET_FROM_STATE('DELAYED_OPERATIONS')
-
-                    let txTemplate={
-
-                        fromPool:pool,
-
-                        to:stakeOrUnstakeTx.staker,
-                        
-                        amount:stakeOrUnstakeTx.amount,
-                        
-                        units:stakeOrUnstakeTx.units
-
-                    }
-
-                    //This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
-                    delayedOperationsArray.push(txTemplate)
-
-                }
-
-                //Assign updated state
-                poolStorage.STAKERS[stakeOrUnstakeTx.staker]=stakerAccount
-
-                //Remove from WAITING_ROOM
-                delete poolStorage.WAITING_ROOM[txid]
-
-
-                let workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
-
-                // If required number of power is ok and pool was stopped - then make it <active> again
-
-                if(poolStorage.totalPower>=workflowConfigs.VALIDATOR_STAKE){
-
-                    // Do it only if pool is not in current SUBCHAINS_METADATA
-                    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]){
-
-                        if(poolStorage.storedMetadata.HASH){
-
-                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
-                        
-                        }else{
+                let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
+                
     
-                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
-                                
-                                INDEX:-1,
+                if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
+    
+                    let stakerAccount = poolStorage.STAKERS[stakeOrUnstakeTx.staker] || {KLY:0,UNO:0,REWARD:0}
+    
+                    if(stakeOrUnstakeTx.type==='+'){
+    
+                        stakerAccount[stakeOrUnstakeTx.units]+=stakeOrUnstakeTx.amount
+    
+                        poolStorage.totalPower+=stakeOrUnstakeTx.amount
+    
+                    }else {
+    
+                        stakerAccount[stakeOrUnstakeTx.units]-=stakeOrUnstakeTx.amount
+    
+                        poolStorage.totalPower-=stakeOrUnstakeTx.amount
+    
+                        //Add KLY / UNO to the user's account
+                        let delayedOperationsArray = await GET_FROM_STATE('DELAYED_OPERATIONS')
+    
+                        let txTemplate={
+    
+                            fromPool:pool,
+    
+                            to:stakeOrUnstakeTx.staker,
                             
-                                HASH:'Poyekhali!@Y.A.Gagarin',
-        
-                                IS_STOPPED:false
+                            amount:stakeOrUnstakeTx.amount,
                             
-                            }
+                            units:stakeOrUnstakeTx.units
     
                         }
+    
+                        //This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
+                        delayedOperationsArray.push(txTemplate)
+    
+                    }
+    
+                    //Assign updated state
+                    poolStorage.STAKERS[stakeOrUnstakeTx.staker]=stakerAccount
+    
+                    //Remove from WAITING_ROOM
+                    delete poolStorage.WAITING_ROOM[txid]
+    
+    
+                    let workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+    
+                    // If required number of power is ok and pool was stopped - then make it <active> again
+    
+                    if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
+    
+                        // Do it only if pool is not in current SUBCHAINS_METADATA
+                        if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]){
+    
+                            if(poolStorage.storedMetadata.HASH){
+    
+                                SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
+                            
+                            }else{
         
+                                SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
+                                    
+                                    INDEX:-1,
+                                
+                                    HASH:'Poyekhali!@Y.A.Gagarin',
+            
+                                    IS_STOPPED:false
+                                
+                                }
+        
+                            }
+            
+                        }
+                        
+                        // Make it "null" again
+    
+                        poolStorage.lackOfTotalPower=false
+    
+                        poolStorage.stopCheckpointID=-1
+    
+                        poolStorage.storedMetadata={}
+    
                     }
                     
-                    // Make it "null" again
-
-                    poolStorage.lackOfTotalPower=false
-
-                    poolStorage.stopCheckpointID=-1
-
-                    poolStorage.storedMetadata={}
-
-                }
-                
+                }    
+    
             }
 
         }
@@ -478,10 +492,12 @@ export default {
         else{
 
             // On VERIFICATION_THREAD we should delete the pool from SUBCHAINS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
-
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let poolExists = await SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
+
+            let poolExists = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+
 
             if(poolExists){
 
@@ -513,35 +529,40 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
-                stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+            if(subchainWherePoolStorage){
+
+                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
+
+                    stakingTx = poolStorage?.WAITING_ROOM?.[txid],
                     
-                isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.QUORUM_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.QUORUM_THREAD.RUBICON,
 
-                isStakeTx = stakingTx?.type === '+'
+                    isStakeTx = stakingTx?.type === '+'
             
 
+                if(stakingTx && isNotTooOld && isStakeTx){
 
-            if(stakingTx && isNotTooOld && isStakeTx){
+                    let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
-                let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+                    if(stillUnspent){
 
-                if(stillUnspent){
+                        let specOpsTemplate = {
 
-                    let specOpsTemplate = {
+                            type:'REMOVE_FROM_WAITING_ROOM',
 
-                        type:'REMOVE_FROM_WAITING_ROOM',
+                            payload:{
 
-                        payload:{
+                                txid,pool
 
-                            txid,pool
+                            }
 
                         }
 
-                    }
+                        return specOpsTemplate
 
-                    return specOpsTemplate
+                    }
 
                 }
 
@@ -562,35 +583,44 @@ export default {
 
             if(slashHelper[pool]) return
 
-            let poolStorage = await GET_FROM_STATE(pool+'(POOL)_STORAGE_POOL'),
 
-                stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
-                isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+            if(subchainWherePoolStorage){
 
-                isStakeTx = stakingTx?.type === '+'
+                let poolStorage = await GET_FROM_STATE(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')),
+
+                    stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+
+                    isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+
+                    isStakeTx = stakingTx?.type === '+'
 
             
 
-            if(stakingTx && isNotTooOld && isStakeTx){
+                if(stakingTx && isNotTooOld && isStakeTx){
 
-                //Remove from WAITING_ROOM
-                delete poolStorage.WAITING_ROOM[txid]
+                    //Remove from WAITING_ROOM
+                    delete poolStorage.WAITING_ROOM[txid]
 
-                let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(stakingTx.staker)
+                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainWherePoolStorage+stakingTx.staker))
 
-                // Return the stake
-                if(stakingTx.units === 'KLY'){
+                    if(stakerAccount){
+                    
+                        // Return the stake
+                        if(stakingTx.units === 'KLY'){
 
-                    stakerAccount.balance += stakingTx.amount
+                            stakerAccount.balance += stakingTx.amount
 
-                }else stakerAccount.uno += stakingTx.amount
+                        }else stakerAccount.uno += stakingTx.amount
 
+                    }
                 
-            }            
+                }            
 
-        }
-        
+            }
+
+        }        
 
     },
 

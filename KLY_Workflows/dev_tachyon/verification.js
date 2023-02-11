@@ -270,7 +270,6 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
 },
 
-
 /*
 
 <SUPER_FINALIZATION_PROOF> is an aggregated proof from 2/3N+1 validators from quorum that they each have 2/3N+1 commitments from other validators
@@ -304,6 +303,7 @@ Verification process:
     If this both conditions is ok - then you can accept block with 100% garantee of irreversibility
 
 */
+
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
