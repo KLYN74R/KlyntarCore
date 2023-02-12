@@ -839,11 +839,6 @@ START_VERIFICATION_THREAD=async()=>{
 
             blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1),
 
-            //take the next validator in a row. If it's end of validators pool - start from the first validator
-            nextValidatorToCheck=validatorsPool[validatorsPool.indexOf(currentSubchainToCheck)+1] || validatorsPool[0],
-
-            nextBlock,//to verify next block ASAP if it's available
-
             shouldSkip = false
         
 
@@ -871,7 +866,17 @@ START_VERIFICATION_THREAD=async()=>{
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
 
-        }else {
+        }
+        else if(currentSessionMetadata.IS_RESERVE){
+
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
+
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+                                    
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='RESERVE_POOL'
+
+        }
+        else {
 
             //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
 
@@ -935,16 +940,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(block && quorumSolutionToVerifyBlock){
 
-
                 await verifyBlock(block)
-
-
-                //Signal that verification was successful
-                if(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck].INDEX===pointerThatVerificationWasSuccessful){
-                
-                    nextBlock=await GET_BLOCK(nextValidatorToCheck,SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[nextValidatorToCheck].INDEX+1)
-                
-                }
 
                 LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
                 

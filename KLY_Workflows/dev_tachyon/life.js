@@ -2229,6 +2229,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]) return
 
+    // If we are reserve - return
+    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
+
 
     let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]
 
@@ -2333,6 +2336,8 @@ LOAD_GENESIS=async()=>{
 
         for(let [subchainAuthority,validatorContractStorage] of Object.entries(genesis.VALIDATORS)){
 
+            let {isReserve} = validatorContractStorage
+
             startPool=subchainAuthority
 
             //Add metadata related to this pool
@@ -2342,7 +2347,9 @@ LOAD_GENESIS=async()=>{
                 
                 HASH:'Poyekhali!@Y.A.Gagarin',
                 
-                IS_STOPPED:false
+                IS_STOPPED:false,
+
+                IS_RESERVE:isReserve
             
             }
 
@@ -2387,7 +2394,8 @@ LOAD_GENESIS=async()=>{
                 totalPower:validatorContractStorage.totalPower,
                 lackOfTotalPower:false,
                 stopCheckpointID:-1,
-                storedMetadata:{}
+                storedMetadata:{},
+                isReserve
             
             }
 
@@ -2395,55 +2403,59 @@ LOAD_GENESIS=async()=>{
 
             //____________________ Create a separate KLY-EVM for this subchain ____________________
 
-            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainAuthority}`)
+            if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.size < CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE && !isReserve){
 
-            await EVM.startEVM()
+                let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainAuthority}`)
 
-            //________________________ Fill the state of given KLY-EVM ________________________
-
-            let evmStateForThisSubchain = genesis.EVM[subchainAuthority]
-
-            if(evmStateForThisSubchain){
-
-                let evmKeys = Object.keys(evmStateForThisSubchain)
-
-                for(let evmKey of evmKeys) {
-        
-                    let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
-        
-                    //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-        
-                    if(isContract){
-        
-                        await EVM.putContract(evmKey,balance,nonce,code,storage)
-        
-                    }else{
-
-                        await EVM.putAccount(evmKey,balance,nonce)
-
+                await EVM.startEVM()
+    
+                //________________________ Fill the state of given KLY-EVM ________________________
+    
+                let evmStateForThisSubchain = genesis.EVM[subchainAuthority]
+    
+                if(evmStateForThisSubchain){
+    
+                    let evmKeys = Object.keys(evmStateForThisSubchain)
+    
+                    for(let evmKey of evmKeys) {
+            
+                        let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
+            
+                        //Put KLY-EVM to KLY-EVM state db which will be used by Trie
+            
+                        if(isContract){
+            
+                            await EVM.putContract(evmKey,balance,nonce,code,storage)
+            
+                        }else{
+    
+                            await EVM.putAccount(evmKey,balance,nonce)
+    
+                        }
+            
                     }
         
                 }
     
+    
+                // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
+    
+                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainAuthority]={
+                    
+                    STATE_ROOT:await EVM.getStateRoot(),
+            
+                    NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+            
+                    PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+                    
+                    TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+                
+                }
+    
+                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainAuthority,EVM)    
+
             }
 
-
-            // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
-
-            SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainAuthority]={
-                
-                STATE_ROOT:await EVM.getStateRoot(),
-        
-                NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
-        
-                PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
-                
-                TIMESTAMP:Math.floor(checkpointTimestamp/1000)
-            
-            }
-
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainAuthority,EVM)
-            
         }
 
 
@@ -2610,7 +2622,7 @@ LOAD_GENESIS=async()=>{
         },
         
         PAYLOAD:{
-
+            
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
             SUBCHAINS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
@@ -2818,10 +2830,6 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SUBCHAINS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
 
-                REASSIGNMENTS:{}, // SUBCHAIN_ID => NEW_TEMPORARY_AUTHORITY
-                
-                TO_FINISH:{}, // SUBCHAIN_ID => {AUTHORITY1:HEIGHT_X,AUTHORITY2:HEIGHT_Y,...}
-
                 KLY_EVM_METADATA:{}, // PUBKEY => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
                 CHECKPOINT:'genesis'
@@ -2859,31 +2867,35 @@ PREPARE_SYMBIOTE=async()=>{
 
     for(let subchainID of Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)){
 
-        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainID]
+        if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.has(subchainID)){
 
-        let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(subchainID)
+            let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainID]
 
-
-        if(!evm){
-
-            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainID}`)
-
-            await EVM.startEVM()
-
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainID,EVM)
-
-            evm=EVM
-
-        }
-
-        await evm.setStateRoot(STATE_ROOT)
+            let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(subchainID)
     
-        // Set the block parameters
-        await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
-
-
-        // Add the global EVM for sandbox execution via API
-        global.KLY_EVM = evm
+    
+            if(!evm){
+    
+                let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainID}`)
+    
+                await EVM.startEVM()
+    
+                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainID,EVM)
+    
+                evm=EVM
+    
+            }
+    
+            await evm.setStateRoot(STATE_ROOT)
+        
+            // Set the block parameters
+            await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
+    
+    
+            // Add the global EVM for sandbox execution via API
+            global.KLY_EVM = evm
+    
+        }
 
     }
 
