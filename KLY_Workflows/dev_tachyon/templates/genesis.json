@@ -80,6 +80,7 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "isReserve":true,
+            "reserveFor":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
             "STAKERS":{
                 "7ZFXrcQvRVKQVJQWCL1GBeiisMw6th1ENMFqXTFtnQ1d6Eo7vkTRQuW4g2A4uXrp5n":{
                     "KLY":55000,

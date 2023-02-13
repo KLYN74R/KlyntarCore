@@ -54,7 +54,7 @@ import fs from 'fs'
 
 
 
-import {GET_MAJORITY, USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_MAJORITY,USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/utils.js'
 
 
 
@@ -133,7 +133,7 @@ let IS_ORIGIN_ALLOWED=origin=>{
 
 let GEN_HASH = block => {
 
-    return BLAKE3( block.creator + block.time + JSON.stringify(block.events) + JSON.stringify(block.reassignments) + JSON.stringify(block.reassignProof) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
+    return BLAKE3( block.creator + block.time + JSON.stringify(block.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
 
 }
 

@@ -3,6 +3,7 @@
 import WS from 'websocket'
 import fs from 'fs'
 
+import {SocksProxyAgent} from 'socks-proxy-agent'
 
 
 // Создаётся экземпляр клиента
@@ -18,6 +19,8 @@ var client = new WebSocketClient({
         //For mTLS
         // key:fs.readFileSync('KLY_Plugins/dev_tips/security/localkey.pem'),
         // cert:fs.readFileSync('KLY_Plugins/dev_tips/security/localcert.pem')
+
+        agent:new SocksProxyAgent('socks5h://127.0.0.1:5666')
     
     }
 

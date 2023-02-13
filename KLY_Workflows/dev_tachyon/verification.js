@@ -144,9 +144,9 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
     // Based on this hash - start the cycle over ACTIVE 
     let pseudoRandomHash = BLAKE3(subchain+index+hash+qtPayload)
 
-    let activePools = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
+    let activeReservePools = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
     
-        .filter(([_,validatorMetadata])=>!validatorMetadata.IS_STOPPED)
+        .filter(([_,validatorMetadata])=>!validatorMetadata.IS_STOPPED && validatorMetadata.IS_RESERVE) //take only active reservists
 
         .map(([validatorPubKey,_])=>validatorPubKey)
 
@@ -156,7 +156,7 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
 
     let firstChallenge = QUICK_SORT(
 
-        activePools.map(
+        activeReservePools.map(
         
             validatorPubKey => {
 
@@ -922,9 +922,6 @@ START_VERIFICATION_THREAD=async()=>{
                 }
             
             }
-
-
-            let pointerThatVerificationWasSuccessful = currentSessionMetadata.INDEX+1 //if the id will be increased - then the block was verified and we can move on 
 
             //We skip the block if checkpoint is not completed and no such block in checkpoint
             //No matter if checkpoint is fresh or not

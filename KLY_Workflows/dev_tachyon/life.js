@@ -1574,6 +1574,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 // This function is oriented on founded & valid SKIP_PROCEDURE_STAGE_1 proofs and starts SKIP_PROCEDURE_STAGE_2 - to grab appropriate proofs, aggregate and publish to hostchain to finally skip the subchain 
 SKIP_PROCEDURE_STAGE_2=async()=>{
 
+
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
@@ -1764,6 +1765,17 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
 
+RESERVE_AND_NOT_ACTIVE=(poolPubKey,poolMetadata)=>{
+
+    // This function used in SUBCHAINS_HEALTH_MONITORING function to avoid getting health from reserve nodes in case they weren't assigned to some subchain workflow
+
+    if(poolMetadata.IS_RESERVE) return true
+
+},
+
+
+
+
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
@@ -1847,9 +1859,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
 
 
-        //No sense to get the health of pool which has been stopped or SKIP_PROCEDURE_STAGE_1 was initiated
-        if(metadataOfCurrentSubchain.IS_STOPPED || skipStage1Set.has(handler.pubKey)) continue
-
+        //No sense to get the health of pool which has been stopped | When this pool is reserve and not active | SKIP_PROCEDURE_STAGE_1 was initiated for pool
+        if(metadataOfCurrentSubchain.IS_STOPPED || RESERVE_AND_NOT_ACTIVE(handler.pubKey,metadataOfCurrentSubchain) || skipStage1Set.has(handler.pubKey)) continue
 
         let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(r=>{
 
@@ -2399,6 +2410,8 @@ LOAD_GENESIS=async()=>{
             
             }
 
+            if(isReserve) templateForQt.reserveFor = validatorContractStorage.reserveFor
+
             quorumThreadAtomicBatch.put(subchainAuthority+'(POOL)_STORAGE_POOL',templateForQt)
 
             //____________________ Create a separate KLY-EVM for this subchain ____________________
@@ -2452,7 +2465,9 @@ LOAD_GENESIS=async()=>{
                 
                 }
     
-                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainAuthority,EVM)    
+                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainAuthority,EVM)
+
+                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[subchainAuthority]=subchainAuthority
 
             }
 
@@ -2801,7 +2816,7 @@ PREPARE_SYMBIOTE=async()=>{
         previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + JSON.stringify(previousBlock.reassignments) + JSON.stringify(previousBlock.reassignProof) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
+    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
         
         initSpinner?.stop()
 
@@ -2830,7 +2845,11 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SUBCHAINS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
 
-                KLY_EVM_METADATA:{}, // PUBKEY => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+                KLY_EVM_METADATA:{}, // SUBCHAIN_ID => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+
+                KLY_EVM_REASSIGN:{}, // EVM_ID => ASSIGNED_BLS_PUBKEY(poolID)
+
+                REASSIGNMENTS:{}, // STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
 
                 CHECKPOINT:'genesis'
  
@@ -2865,43 +2884,44 @@ PREPARE_SYMBIOTE=async()=>{
 
     //_____________________________________ Set the EVM metadata for each subchain______________________________________
 
-    for(let subchainID of Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)){
 
-        if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.has(subchainID)){
+    for(let [evmID,assignedPoolPubKey] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
 
-            let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainID]
+        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID]
 
-            let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(subchainID)
-    
-    
-            if(!evm){
-    
-                let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${subchainID}`)
-    
-                await EVM.startEVM()
-    
-                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(subchainID,EVM)
-    
-                evm=EVM
-    
-            }
-    
-            await evm.setStateRoot(STATE_ROOT)
-        
-            // Set the block parameters
-            await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
-    
-    
-            // Add the global EVM for sandbox execution via API
-            global.KLY_EVM = evm
-    
+        let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
+
+
+        if(!evm){
+
+            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${evmID}`)
+
+            await EVM.startEVM()
+
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(assignedPoolPubKey,EVM)
+
+            evm=EVM
+
         }
+
+        await evm.setStateRoot(STATE_ROOT)
+    
+        // Set the block parameters
+        await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
+
+
+        // Add the global EVM for sandbox execution via API
+        global.KLY_EVM = evm
 
     }
 
 
+
+
     //_______________________________Check the version of QT and VT and if need - update________________________________
     
+
+
 
     if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
@@ -2976,7 +2996,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_PROCEDURE_STAGE_2:new Map(), // mapping(subchainID=>{INDEX,HASH})
 
-        //____________________ Mapping which contains temporary databases for   ____________________
+        REASSIGNMENTS:new Map(), // active poolID from reserve => skipped one
+
+        //____________________Mapping which contains temporary databases for____________________
 
         DATABASE:quorumTemporaryDB // DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on    
 
