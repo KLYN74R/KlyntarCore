@@ -1002,9 +1002,13 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(BLAKE3(subchainID+feeRecepientPool+'_FEES'))
+    let accountsForFeesId = BLAKE3(subchainID+feeRecepientPool+'_FEES')
+
+    let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(accountsForFeesId) || {reward:0}
 
     feesAccountForGivenPoolOnThisSubchain.reward+=feeReward
+
+    SYMBIOTE_META.STATE_CACHE.set(accountsForFeesId,feesAccountForGivenPoolOnThisSubchain)
 
 },
 
@@ -1116,7 +1120,7 @@ verifyBlock=async block=>{
 
         for(let [validatorPubKey,metadata] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)){
 
-            if(!metadata.IS_STOPPED) activeValidators.add(validatorPubKey) 
+            if(!metadata.IS_STOPPED && !metadata.IS_RESERVE) activeValidators.add(validatorPubKey) 
 
         }
 
