@@ -26,13 +26,18 @@ export let CONTRACT = {
         [*] OverStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
         [*] WhiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
         [*] PoolAddress - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
+        
+        ------------ For reserve pools ------------
+
+        [*] IsReserve - define type of pool. isReserve=false means that this pool will have a separate subchain. isReserve=false means that you pool will be in reserve and will be used only when main pool will be stopped
+        [*] ReserveFor - SubchainID of main pool
 
     */
     constructor:async (event,atomicBatch,originSubchain) => {
 
         let{constructorParams}=event.payload,
 
-            [blsPubKey,percentage,overStake,whiteList,poolURL]=constructorParams,
+            [blsPubKey,percentage,overStake,whiteList,poolURL,isReserve,reserveFor]=constructorParams,
 
             poolAlreadyExists = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
 
@@ -60,6 +65,8 @@ export let CONTRACT = {
 
                 whiteList,
 
+                isReserve,
+
                 lackOfTotalPower:false,
                     
                 stopCheckpointID:-1,
@@ -73,6 +80,9 @@ export let CONTRACT = {
                 WAITING_ROOM:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
 
             }
+
+
+            if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
 
             
             //Put metadata

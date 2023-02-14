@@ -111,7 +111,10 @@ export default {
 
                             payload:{
 
-                                txid,pool,type,amount
+                                txid,pool,type,amount,
+                                
+                                isReserve:poolStorage.isReserve,
+                                reserveFor:poolStorage.reserveFor
 
                             }
 
@@ -146,7 +149,8 @@ export default {
                     totalPower:<number>
                     lackOfTotalPower:<boolean>
                     stopCheckpointID:<number>
-                    storedMetadata:{INDEX,HASH}
+                    storedMetadata:{INDEX,HASH},
+                    isReserve:<boolean>
                 }
             
             */
