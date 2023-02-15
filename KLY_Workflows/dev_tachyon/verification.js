@@ -750,17 +750,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
-        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
-
-
-        //Commit the changes of state using atomic batch
-        SYMBIOTE_META.STATE_CACHE.forEach(
-            
-            (value,recordID) => atomicBatch.put(recordID,value)
-            
-        )
-
-
         /*
         
             ____________________________________After running all SPECIAL_OPERATIONS we should do the following____________________________________        
@@ -776,9 +765,119 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         */
 
+        // [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA and nonces
+
+        let hashOfSubchainsMetadataInCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+
+        // Build the graphs
+
+        let subchainsIDs = new Set()
+
+        let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
+
+        
+        for(let [poolPubKey,poolMetadata] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)){
+
+            if(!poolMetadata.IS_RESERVE){
+
+                subchainsIDs.add(poolPubKey)
+
+            }else if(!poolMetadata.IS_STOPPED){
+
+                    // Otherwise - it's reserve pool
+
+                    let originSubchain = await SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
+                    
+                    let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+
+                    if(poolStorage){
+
+                        let {reserveFor} = poolStorage
+
+                        if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+
+                        activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                    
+                    }
+
+                }
+
+            }
+
+         
+
+            let specialOperationsOnThisCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
+
+            // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
+
+            let skippedValidators = new Set()
+
+            for(let operation of specialOperationsOnThisCheckpoint){
+
+                /* 
+                
+                    Reminder: STOP_VALIDATOR speical operation payload has the following structure
+                
+                    {
+                       type, stop, subchain, index, hash
+                    }
+                
+                */
+
+                if(operation.type==='STOP_VALIDATOR'){
+
+                    skippedValidators.add(operation.payload.subchain)
+
+                }
+
+            }
+            
+
+
+
+            for(let subchainPoolID of subchainsIDs){
+
+                // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
+
+                let nextReservePool = subchainPoolID
+
+                delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
+
+                let nonce = 0
+
+
+                while(skippedValidators.has(nextReservePool)){
+
+                    if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
+
+                    }
+
+                    let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfSubchainsMetadataInCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
+
+                    if(possibleNextReservePool){
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]=possibleNextReservePool
+
+                        nextReservePool = possibleNextReservePool
+
+                        nonce++
+
+                    }else break
+
+                }
+
+                if(nextReservePool!==subchainPoolID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
+
+                // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
+
+            }
+
+
+
         // [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA - reassign it to other subchains
         
-
         let poolsIdsAndMetadata = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
 
         let alreadyInResponseForEVM = Object.values(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)
@@ -803,6 +902,17 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             }
 
         }
+
+
+        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
+
+
+        //Commit the changes of state using atomic batch
+        SYMBIOTE_META.STATE_CACHE.forEach(
+            
+            (value,recordID) => atomicBatch.put(recordID,value)
+            
+        )
 
 
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
@@ -857,7 +967,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
 
             
-            for(let [poolPubKey,poolMetadata] of oldSubchainsMetadataFromCheckpoint){
+            for(let [poolPubKey,poolMetadata] of Object.entries(oldSubchainsMetadataFromCheckpoint)){
 
                 if(!poolMetadata.IS_RESERVE){
 
