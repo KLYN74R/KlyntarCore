@@ -2723,7 +2723,7 @@ PREPARE_SYMBIOTE=async()=>{
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
         TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE,SPECIAL_OPERATIONS_MEMPOOL}
-            
+
     
     }
 
@@ -2833,7 +2833,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    
+
     SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(error=>{
 
         if(error.notFound){

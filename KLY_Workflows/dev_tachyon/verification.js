@@ -761,7 +761,48 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         )
 
 
-        //________________________________ Check if some of EVM was stopped. In case it's true - 
+        /*
+        
+            ____________________________________After running all SPECIAL_OPERATIONS we should do the following____________________________________        
+        
+                [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA - reassign it to other subchains
+                [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA and nonces
+
+
+            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(pool,EVM)
+                
+            SYMBIOTE_META.VERIFICATION_THREAD.KL
+            Y_EVM_REASSIGN[pool]=pool
+
+        */
+
+        // [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA - reassign it to other subchains
+        
+
+        let poolsIdsAndMetadata = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
+
+        let alreadyInResponseForEVM = Object.values(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)
+
+
+        for(let [evmID,responsiblePoolID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
+
+            if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[responsiblePoolID]){
+
+                // Assing the new subchain to be responsible for appropriate KLY-EVM
+                
+                for(let [poolID,poolMetadata] of poolsIdsAndMetadata) {
+
+                    if(!poolMetadata.IS_RESERVE && !alreadyInResponseForEVM.includes(poolID)){
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[evmID]=poolID
+
+                    }
+    
+                }
+
+            }
+
+        }
 
 
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
@@ -792,7 +833,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             let oldQuorum = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
 
-            let oldMetadataFromCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+            let oldSubchainsMetadataFromCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
             let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
 
@@ -816,7 +857,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
 
             
-            for(let [poolPubKey,poolMetadata] of oldMetadataFromCheckpoint){
+            for(let [poolPubKey,poolMetadata] of oldSubchainsMetadataFromCheckpoint){
 
                 if(!poolMetadata.IS_RESERVE){
 
@@ -881,7 +922,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 let nextReservePool = subchainPoolID
 
-                if(oldMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+                if(oldSubchainsMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
 
                     /*
                     
