@@ -933,8 +933,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
                 // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
 
 
-
-
             }
 
 
