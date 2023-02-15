@@ -458,16 +458,15 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
 
 
-GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed,reassignmentsArray)=>{
+GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
 
 
     // Hence it's a chain - take a nonce
     let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce)
     
-    
     let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
 
-    let arrayOfChallanges = activeReservePoolsRelatedToSubchainAndStillNotUsed
+    let arrayOfChallanges = activeReservePoolsRelatedToSubchain
     
         .filter(pubKey=>!reassignmentsArray.includes(pubKey))
         

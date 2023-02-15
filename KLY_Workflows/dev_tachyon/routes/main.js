@@ -1231,6 +1231,71 @@ getSkipProcedureStage3 = async (response,request) => {
 
 /*
 
+Used to accept aggregated version of SKIP_STAGE_3 proofs
+
+[Accept]:
+
+    {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+
+[Returns]:
+
+    'OK'
+
+*/
+acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let aggregatedVersionOfSkipStage3=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    
+    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+
+    if(!tempObject){
+
+        !response.aborted && response.end('QT checkpoint is not ready')
+
+        return
+    }
+
+    
+    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = aggregatedVersionOfSkipStage3
+
+
+    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof subchain !== 'string' || typeof hash !== 'string' || typeof index !== 'number' || !Array.isArray(afkValidators)){
+
+        !response.aborted && response.end('Wrong format of input params')
+
+        return
+
+    }
+
+
+    let dataThatShouldBeSigned = `SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`
+
+    let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+        
+    let signaIsOk = await bls.singleVerify(dataThatShouldBeSigned,aggregatedPub,aggregatedSignature).catch(_=>false)
+
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    
+            
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+        tempObject.PROOFS_REQUESTS.set('REASSIGN:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators})
+
+        !response.aborted && response.end('OK')
+                
+    }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
+
+
+}),
+
+
+
+
+/*
+
 Accept checkpoints from other validators in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
 
@@ -1955,6 +2020,8 @@ UWS_SERVER
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
 .get('/skip_procedure_stage_3/:SUBCHAIN',getSkipProcedureStage3)
+
+.post('/accept_aggregated_skip_stage_3_proof',acceptAggregatedSkipStage3)
 
 .post('/block',acceptBlocks)
 

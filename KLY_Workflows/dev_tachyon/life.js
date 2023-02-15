@@ -4,7 +4,7 @@ import {
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY, QUICK_SORT,
 
 } from './utils.js'
 
@@ -458,6 +458,66 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
+GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint,reassignMetadata)=>{
+
+    let arrayOfActiveReservePools = []
+
+    for(let [poolPubKey,poolMetadata] of Object.entries(subchainMetadataFromCheckpoint)){
+
+        if(!poolMetadata.IS_RESERVE && !poolMetadata.IS_STOPPED){
+                
+            let candidatePoolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+        
+            if(candidatePoolStorage){
+        
+                let {reserveFor} = candidatePoolStorage
+
+                if(originSubchain===reserveFor){
+
+                    arrayOfActiveReservePools.push(originSubchain)
+
+                }
+
+            }
+
+        }        
+
+    }
+
+    // Now based on hash of subchainsMetadata in checkpoint and nonce - find next reserve pool
+
+    // Hence it's a chain - take a nonce
+
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(subchainMetadataFromCheckpoint))
+    
+    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+reassignMetadata.NONCE)
+
+    let mapping = new Map()
+
+    let arrayOfChallanges = arrayOfActiveReservePools
+    
+        .filter(pubKey=>!reassignMetadata.SKIPPED_RESERVE.includes(pubKey))
+        
+        .map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+    
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+    
+
+    let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+    
+    return mapping.get(firstChallenge)
+
+},
+
+
+
+
 // Function for secured and a sequently update of CHECKPOINT_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
 FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
@@ -471,6 +531,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     */
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let oldSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
 
     let currentTempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -501,6 +563,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 
     let currentCheckpointSkipSpecialOperationsMempool = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL // mapping(operationID=>{type,payload})
+
+    let reassignments = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL
 
 
     //____________________ UPDATE THE CHECKPOINT_MANAGER ____________________
@@ -564,6 +628,89 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                     currentFinalizationProofsRequests.delete(keyValue[0])
     
                 }
+
+            }else if (keyValue[0].startsWith('REASSIGN:')){
+
+                let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = keyValue[1]
+
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_STAGE_3:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}).then(async()=>{
+
+                    // Add the reassignment
+                    
+                    let refToMainPool = reassignments.get(subchain)
+        
+                    if(refToMainPool){
+        
+                        let reassignMetadata = JSON.stringify(JSON.parse(reassignments.get(refToMainPool)))
+        
+                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(refToMainPool,oldSubchainMetadata,reassignMetadata)
+        
+                        if(nextReservePool){
+        
+                            reassignMetadata.NONCE++
+        
+                            reassignMetadata.SKIPPED_RESERVE.push(reassignMetadata.CURRENT)
+        
+                            reassignMetadata.CURRENT = nextReservePool
+
+                            reassignments.delete(subchain)
+        
+                            // Put to DB before use
+                            
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+refToMainPool,reassignMetadata).then(async()=>{
+        
+                                // And only after successful store we can add to mapping the final pointer
+                                
+                                reassignments.set(refToMainPool,reassignMetadata)
+
+                                reassignments.set(nextReservePool,refToMainPool)
+
+        
+                            }).catch(_=>false)
+        
+                        }
+        
+                    }else if(!oldSubchainMetadata[subchain].IS_RESERVE){
+        
+                        // Otherwise - add initial value to mapping and find the first reserve pool
+        
+                        let futureMeta = {
+                            
+                            NONCE:0,
+                            
+                            SKIPPED_RESERVE:[],
+
+                            CURRENT:''
+                        
+                        }
+        
+                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(subchain,oldSubchainMetadata,futureMeta)
+
+                        if(nextReservePool){
+        
+                            futureMeta.NONCE++
+
+                            futureMeta.CURRENT = nextReservePool
+                
+                            // Put to DB before use
+                            
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+subchain,futureMeta).then(async()=>{
+        
+                                // And only after successful store we can add to mapping the final pointer
+                                
+                                reassignments.set(subchain,futureMeta)
+                                
+                                reassignments.set(nextReservePool,subchain)
+
+        
+                            }).catch(_=>false)
+        
+                        }
+        
+                    }
+        
+                }).catch(_=>false)
+
 
             }else{
 
@@ -2996,7 +3143,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_PROCEDURE_STAGE_2:new Map(), // mapping(subchainID=>{INDEX,HASH})
 
-        REASSIGNMENTS:new Map(), // active poolID from reserve => skipped one
+        REASSIGNMENTS:new Map(), // Two types of records. In case key is a primary pool(pubkey===subchainID) - value is {NONCE:<number>,SKIPPED_RESERVE:[<string>,...],CURRENT:<string>}. In case key is reserve pool => value is subchainID
 
         //____________________Mapping which contains temporary databases for____________________
 
