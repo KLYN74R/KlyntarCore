@@ -458,6 +458,39 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
 
 
+GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed,reassignmentsArray)=>{
+
+
+    // Hence it's a chain - take a nonce
+    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce)
+    
+    
+    let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
+
+    let arrayOfChallanges = activeReservePoolsRelatedToSubchainAndStillNotUsed
+    
+        .filter(pubKey=>!reassignmentsArray.includes(pubKey))
+        
+        .map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+    
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+    
+
+    let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+    
+    return mapping.get(firstChallenge)
+    
+},
+
+
+
+
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
@@ -728,6 +761,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         )
 
 
+        //________________________________ Check if some of EVM was stopped. In case it's true - 
+
+
         atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
@@ -751,10 +787,15 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
 
 
-        if(nextCheckpoint) {
+        if(nextCheckpoint){
 
 
             let oldQuorum = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
+
+            let oldMetadataFromCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+
+            let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+
 
             //Set the new checkpoint
             SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
@@ -764,6 +805,137 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             //Get the new rootpub
             SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+
+
+            //______________________________Check if some subchains were stopped______________________________
+
+            // Build the graphs
+
+            let subchainsIDs = new Set()
+
+            let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
+
+            
+            for(let [poolPubKey,poolMetadata] of oldMetadataFromCheckpoint){
+
+                if(!poolMetadata.IS_RESERVE){
+
+                    subchainsIDs.add(poolPubKey)
+
+                }else if(!poolMetadata.IS_STOPPED){
+
+                    // Otherwise - it's reserve pool
+
+                    let originSubchain = await GET_FROM_STATE(poolPubKey+`(POOL)_POINTER`)
+                    
+                    let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+
+                    if(poolStorage){
+
+                        let {reserveFor} = poolStorage
+
+                        if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+
+                        activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                    
+                    }
+
+                }
+
+            }
+
+         
+
+            let specialOperationsOnThisCheckpoint = nextCheckpoint.PAYLOAD.OPERATIONS
+
+            // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
+
+            let skippedValidators = new Set()
+
+            for(let operation of specialOperationsOnThisCheckpoint){
+
+                /* 
+                
+                    Reminder: STOP_VALIDATOR speical operation payload has the following structure
+                
+                    {
+                       type, stop, subchain, index, hash
+                    }
+                
+                */
+
+                if(operation.type==='STOP_VALIDATOR'){
+
+                    skippedValidators.add(operation.payload.subchain)
+
+                }
+
+            }
+            
+
+
+
+            for(let subchainPoolID of subchainsIDs){
+
+                // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
+
+                let nextReservePool = subchainPoolID
+
+                if(oldMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+
+                    /*
+                    
+                        If some of subchains were stopped on previous checkpoint - it's a signal that the beginning of chain is hidden here:
+                        
+                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS  in form like STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
+
+                        and the reponsible for pool is REASSIGNMENTS[<skipped_subchain_id>][0]
+                    
+                    */
+                    
+                    nextReservePool = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
+
+                }
+
+                let nonce = 0
+
+
+                while(skippedValidators.has(nextReservePool)){
+
+                    if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
+
+                    }
+                    
+                    // Now check if <startOfChain> pool wasn't stopped
+
+                    if(skippedValidators.has(nextReservePool)){
+
+                        // if yes - find next responsible for work on this pool in a row
+
+                        let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
+
+                        if(possibleNextReservePool){
+
+                            SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].push(possibleNextReservePool)
+
+                            nextReservePool = possibleNextReservePool
+
+                            nonce++
+
+                        }else break
+
+                    }
+
+                }
+
+                // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
+
+
+
+
+            }
 
 
             //_______________________Check the version required for the next checkpoint________________________
@@ -1167,45 +1339,9 @@ verifyBlock=async block=>{
 
         }
         
-        //______________________________________NOW WORK WITH THE REASSIGNED EVENTS_______________________________________
         
-        // let subchainAndReassignments = Object.entries(block.reassignments)
-
-        // for(let [subchainID,arrayOfEvents] of subchainAndReassignments){
-
-        //     let txIndexInBlock=0
-
-        //     // If this creator was also assigned as a given subchain authority - then execute the txs inside
-        //     if(SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID] === block.creator){
-
-        //         for(let event of arrayOfEvents){
-
-        //             if(SYMBIOTE_META.VERIFIERS[event.type]){
-        
-        //                 let eventCopy = JSON.parse(JSON.stringify(event))
-        
-        //                 let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainID,eventCopy,rewardBox,atomicBatch).catch(_=>{})
-        
-        //                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-        //                 if(reason!=='EVM'){
-        
-        //                     let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
-        
-        //                     atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
-            
-        //                 }
-        
-        //                 txIndexInBlock++
-                        
-        //             }
-        
-        //         }    
-
-        //     }
-
-        // }
-
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
+        
         
         await DISTRIBUTE_FEES(rewardBox.fees,block.creator,activeValidators)
 

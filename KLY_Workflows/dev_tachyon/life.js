@@ -2833,7 +2833,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-
+    
     SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(error=>{
 
         if(error.notFound){
