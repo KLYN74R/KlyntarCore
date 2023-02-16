@@ -1623,13 +1623,13 @@ verifyBlock=async (block,subchainContext)=>{
             let blockToStore = currentEVM.getBlockToStore(currentHash)
 
 
-            atomicBatch.put(evmID+'EVM_BLOCK:'+blockToStore.number,blockToStore)
+            atomicBatch.put(evmID+':EVM_BLOCK:'+blockToStore.number,blockToStore)
 
-            atomicBatch.put(evmID+'EVM_INDEX:'+blockToStore.hash,blockToStore.number)
+            atomicBatch.put(evmID+':EVM_INDEX:'+blockToStore.hash,blockToStore.number)
     
-            atomicBatch.put(evmID+'EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
+            atomicBatch.put(evmID+':EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
     
-            atomicBatch.put(evmID+'EVM_BLOCK_RECEIPT:'+blockToStore.number,`BLOCK_CONTEXT:${currentBlockID}`)
+            atomicBatch.put(evmID+':EVM_BLOCK_RECEIPT:'+blockToStore.number,`BLOCK_CONTEXT:${currentBlockID}`)
 
 
             // Set the next block's parameters
