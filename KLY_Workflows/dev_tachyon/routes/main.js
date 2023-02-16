@@ -58,7 +58,7 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -278,6 +278,7 @@ acceptManyBlocks=response=>{
     }
 
     
+
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
         if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
@@ -298,7 +299,7 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.IS_STOPPED
+                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
                 
                     if(subchainIsSkipped) continue
    
@@ -500,7 +501,7 @@ Aggregated version of commitments. This is the proof that 2/3N+1 has received th
 
         aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-        afkValidators:[...]
+        afkVoters:[...]
 
     }
 
@@ -510,7 +511,7 @@ ___________________________Verification steps___________________________
 
 [+] Verify the signa
 
-[+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkValidators array for this and QUORUM_THREAD.QUORUM
+[+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkVoters array for this and QUORUM_THREAD.QUORUM
 
 [+] RootPub is equal to QUORUM_THREAD rootpub
 
@@ -541,7 +542,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         
         let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-        let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA 
+        let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
 
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
@@ -558,9 +559,9 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         }else{
 
             
-            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggregatedCommitments
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
 
-            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
                 !response.aborted && response.end('Wrong format of input params')
 
@@ -571,11 +572,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             let [blockCreator,_] = blockID.split(':')
 
 
-            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
             let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
             
@@ -583,7 +584,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && mainPoolOrAtLeastReassignment){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
@@ -660,10 +661,10 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
         
         for(let aggragatedCommitment of aggregatedCommitmentsArray){
 
-            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggragatedCommitment
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggragatedCommitment
     
 
-            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
                 !response.aborted && response.end('Wrong format of input params')
 
@@ -671,11 +672,11 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
             }
 
-            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
             
             
@@ -683,7 +684,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 blocksSet.push(blockID)
 
@@ -716,7 +717,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -731,9 +732,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
    
     let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = possibleSuperFinalizationProof
+    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleSuperFinalizationProof
     
-    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
         !response.aborted && response.end('Wrong format of input params')
 
@@ -750,9 +751,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
     
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
     let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
 
@@ -762,7 +763,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && mainPoolOrAtLeastReassignment){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators}).catch(_=>{})
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
@@ -791,7 +792,7 @@ Returns:
         blockHash,
         aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
         aggregatedPub:<>,
-        afkValidators
+        afkVoters
         
     }
 
@@ -849,7 +850,7 @@ Returns:
             
             aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
             aggregatedPub:<>,
-            afkValidators
+            afkVoters
         
         }
     
@@ -946,7 +947,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
 
     if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
@@ -1064,7 +1065,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     if(!tempObject){
 
@@ -1142,11 +1143,11 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
             //Verify finalization proof and update the value
 
-            let {aggregatedPub,aggregatedSignature,afkValidators} = finalizationProof
+            let {aggregatedPub,aggregatedSignature,afkVoters} = finalizationProof
 
             let data = subchain+':'+height+hash+qtPayload
 
-            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
             if(finalizationProofIsOk){
 
@@ -1246,7 +1247,7 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
  * 
  * [Returns]
  * 
- *     SKIP_STAGE_3 aggregated proof for given subchain => {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+ *     SKIP_STAGE_3 aggregated proof for given subchain => {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
  * 
  */
 getSkipProcedureStage3 = async (response,request) => {
@@ -1295,7 +1296,7 @@ Used to accept aggregated version of SKIP_STAGE_3 proofs
 
 [Accept]:
 
-    {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}
+    {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
 
 [Returns]:
 
@@ -1319,10 +1320,10 @@ acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-
     }
 
     
-    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = aggregatedVersionOfSkipStage3
+    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedVersionOfSkipStage3
 
 
-    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof subchain !== 'string' || typeof hash !== 'string' || typeof index !== 'number' || !Array.isArray(afkValidators)){
+    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof subchain !== 'string' || typeof hash !== 'string' || typeof index !== 'number' || !Array.isArray(afkVoters)){
 
         !response.aborted && response.end('Wrong format of input params')
 
@@ -1333,16 +1334,16 @@ acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-
 
     let dataThatShouldBeSigned = `SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`
 
-    let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
         
     let signaIsOk = await bls.singleVerify(dataThatShouldBeSigned,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
             
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
-        tempObject.PROOFS_REQUESTS.set('REASSIGN:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators})
+        tempObject.PROOFS_REQUESTS.set('REASSIGN:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters})
 
         !response.aborted && response.end('OK')
                 
@@ -1356,7 +1357,7 @@ acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-
 
 /*
 
-Accept checkpoints from other validators in quorum and returns own version as answer
+Accept checkpoints from other pools in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
 
 [Accept]:
@@ -1368,7 +1369,7 @@ Accept checkpoints from other validators in quorum and returns own version as an
 
     PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
     
-    SUBCHAINS_METADATA: {
+    POOLS_METADATA: {
                 
         '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
 
@@ -1446,7 +1447,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(typeof checkpointProposition.ISSUER !== 'string' || typeof checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH !== 'string' || typeof checkpointProposition.SUBCHAINS_METADATA !== 'object' || !Array.isArray(checkpointProposition.OPERATIONS)){
+    if(typeof checkpointProposition.ISSUER !== 'string' || typeof checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH !== 'string' || typeof checkpointProposition.POOLS_METADATA !== 'object' || !Array.isArray(checkpointProposition.OPERATIONS)){
 
         !response.aborted && response.end(JSON.stringify({error:'Wrong input formats'}))
 
@@ -1456,7 +1457,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let currentPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let currentPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -1521,13 +1522,13 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
         
-        // [1] Compare proposed SUBCHAINS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
+        // [1] Compare proposed POOLS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
 
         let metadataUpdate = []
         
         let wrongSkipStatusPresent=false, subchainWithWrongStopIndex
 
-        let subchains = Object.keys(checkpointProposition.SUBCHAINS_METADATA)
+        let subchains = Object.keys(checkpointProposition.POOLS_METADATA)
 
         let localCopyOfSubchains = Object.keys(currentPoolsMetadata)
 
@@ -1544,7 +1545,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
             
-            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED || currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.SUBCHAINS_METADATA[subchain].IS_RESERVE) {
+            if(checkpointProposition.POOLS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED || currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.POOLS_METADATA[subchain].IS_RESERVE) {
 
                 wrongSkipStatusPresent=true
 
@@ -1554,7 +1555,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             }
 
-            if(localVersion?.INDEX > checkpointProposition.SUBCHAINS_METADATA[subchain].INDEX){
+            if(localVersion?.INDEX > checkpointProposition.POOLS_METADATA[subchain].INDEX){
 
                 // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 
@@ -1606,7 +1607,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
                 ISSUER:checkpointProposition.ISSUER,
                 PREV_CHECKPOINT_PAYLOAD_HASH:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,                
-                SUBCHAINS_METADATA:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,
+                POOLS_METADATA:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,
                 OPERATIONS:checkpointProposition.OPERATIONS,
                 OTHER_SYMBIOTES:{}                        
             
@@ -1651,7 +1652,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         aggregatedPub:<2/3N+1 from QUORUM>,
         aggregatedSigna:<SIG(PAYLOAD_HASH)>,
-        afkValidators:[]
+        afkVoters:[]
 
     }
 
@@ -1663,7 +1664,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-        SUBCHAINS_METADATA: {
+        POOLS_METADATA: {
                 
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
@@ -1678,7 +1679,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 }
 
-To verify it => VERIFY(aggPub,aggSigna,afkValidators,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
+To verify it => VERIFY(aggPub,aggSigna,afkVoters,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
 
 To sign it => SIG('STAGE_2'+BLAKE3(JSON.stringify(<PROPOSED>)))
 
@@ -1736,7 +1737,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
 
 
-    let {aggregatedPub,aggregatedSignature,afkValidators} = CHECKPOINT_FINALIZATION_PROOF
+    let {aggregatedPub,aggregatedSignature,afkVoters} = CHECKPOINT_FINALIZATION_PROOF
 
     let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
 
@@ -1767,7 +1768,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         //Verify 2 signatures
 
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
 
         let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF).catch(error=>({error}))
 
@@ -1838,7 +1839,7 @@ Returns:
 
     {
         PREV_CHECKPOINT_PAYLOAD_HASH: '',
-        SUBCHAINS_METADATA: [Object],
+        POOLS_METADATA: [Object],
         OPERATIONS: [],
         OTHER_SYMBIOTES: {}
     }

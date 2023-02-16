@@ -209,8 +209,8 @@ After pool's contract deployment we should have the following in state
                 overStake: 0,
                 whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
                 totalPower: 0,
-                STAKERS: {},
-                WAITING_ROOM: {},
+                stakers: {},
+                waitingRoom: {},
                 poolURL:'http://localhost:7334'
             }
         }
@@ -326,8 +326,8 @@ The state will look like this
             overStake: 0,
             whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
             totalPower: 0,
-            STAKERS: {},
-            WAITING_ROOM: {
+            stakers: {},
+            waitingRoom: {
 
                 BLAKE3(event.sig):{
 
@@ -498,7 +498,7 @@ The only thing that you should take from the previous step - hash of event signa
             overStake: 0,
             whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
             totalPower: 55000,
-            STAKERS: {
+            stakers: {
 
                 '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
                     

@@ -207,7 +207,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let qtPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -246,7 +246,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
         let blockID = block.creator+":"+block.index
 
-        let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
+        let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
     
         if(subchainlackOfTotalPowerForCurrentCheckpoint) continue
 
@@ -359,10 +359,10 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
         
         for(let aggragatedCommitment of aggregatedCommitmentsArray){
 
-            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators} = aggragatedCommitment
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggragatedCommitment
     
 
-            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkValidators)){
+            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
 
                 connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Wrong format of input params'}}))
@@ -371,18 +371,18 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
             }
 
-            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
             
             
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 blocksSet.push(blockID)
 

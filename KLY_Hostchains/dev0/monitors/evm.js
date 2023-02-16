@@ -265,17 +265,17 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
         //Knowing the quorum, we can step-by-step enumerate events and find the next valid checkpoint
 
-        let {ID,PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE,AFK_VALIDATORS} = JSON.parse(event.returnValues.payload)
+        let {ID,PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNERS_PUBKEY,QUORUM_AGGREGATED_SIGNATURE,AFK_VOTERS} = JSON.parse(event.returnValues.payload)
 
         //Make sure it's really next
         let isNext = currentCheckpoint.HEADER.ID+1 === ID
 
 
-        //[+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
-        //[+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1) (majority)
+        //[+] Aggregated quorum pubkey ==== AGGREGATE(afkVoters,aggregatedPub)
+        //[+] QUORUM_SIZE-afkVoters >= QUORUM_SIZE(2/3N+1) (majority)
         //[+] VERIFY(aggregatedPub,aggregatedSigna,hash)
 
-        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VALIDATORS,rootPub,'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority).catch(_=>false)
+        let signaIsOk = await bls.verifyThresholdSignature(QUORUM_AGGREGATED_SIGNERS_PUBKEY,AFK_VOTERS,rootPub,'STAGE_2'+PAYLOAD_HASH,QUORUM_AGGREGATED_SIGNATURE,quorumNumber-majority).catch(_=>false)
 
         
         if(isNext && signaIsOk) {
@@ -292,13 +292,13 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                     QUORUM_AGGREGATED_SIGNATURE,
 
-                    AFK_VALIDATORS
+                    AFK_VOTERS
 
                 },
 
                 //We'll add checkpoint payload once find it
 
-                //Based on PAYLOAD.SUBCHAINS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
+                //Based on PAYLOAD.POOLS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
                 TIMESTAMP:(+event.returnValues.blocktime)*1000,
 
@@ -320,7 +320,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
 
                 PREV_CHECKPOINT_PAYLOAD_HASH
 
-                SUBCHAINS_METADATA:{},
+                POOLS_METADATA:{},
 
                 OPERATIONS:{},
 
@@ -383,11 +383,11 @@ Header:
 {
     PAYLOAD_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
     
-    QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
+    QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF POOLS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
 
     QUORUM_AGGREGATED_SIGNATURE:<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
 
-    AFK_VALIDATORS:<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
+    AFK_VOTERS:<ARRAY OF AFK POOLS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
 
 }
 
@@ -406,7 +406,7 @@ Then, the biggest possible checkpoint size is:
 48*42
 ______________________
 
-2192 bytes - the biggest possible checkpoint size in case QUORUM SIZE=127(validators number might be infinite)
+2192 bytes - the biggest possible checkpoint size in case QUORUM SIZE=127(pools number might be infinite)
 
 
 -------------------------------------------------------------Checkpoint payload-------------------------------------------------------------
@@ -415,7 +415,7 @@ Checkpoint payload contains:
 
 OTHER_CHECKPOINTS (KEY=>VALUE) => (SYMBIOTE_ID=>CHECKPOINT_HEADER) - object with checkpoints from other symbiotes to perform Hivemind activity
 
-SUBCHAINS_METADATA - object like this
+POOLS_METADATA - object like this
 
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
@@ -438,7 +438,7 @@ SUBCHAINS_METADATA - object like this
 export default {
 
     // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.QUORUM_THREAD
-    //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the SUBCHAINS_METADATA state in checkpoint
+    //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the POOLS_METADATA state in checkpoint
     /*
     
      Reminder: Checkpoint structure
@@ -448,11 +448,11 @@ export default {
             {
                 PAYLOAD_HASH: <32 bytes BLAKE3 HASH OF CHECKPOINT PAYLOAD. Quorum sign this hash>
     
-                QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF VALIDATORS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
+                QUORUM_AGGREGATED_SIGNERS_PUBKEY:<48 bytes BLS AGGREGATED PUBKEY OF POOLS FROM CURRENT QUORUM WHO SIGNED CHECKPOINT>
 
                 QUORUM_AGGREGATED_SIGNATURE:<96 bytes BLS AGGREGATED SIGNATURE which verified by aggregated pubkey>
 
-                AFK_VALIDATORS:<ARRAY OF AFK VALIDATORS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
+                AFK_VOTERS:<ARRAY OF AFK POOLS FROM QUORUM WHO SKIPPED CHECKPOINT GENERATION PROCEDURE.48 BYTES PER PUBKEY>
 
             }
 
@@ -463,7 +463,7 @@ export default {
 
                 PREV_CHECKPOINT_PAYLOAD_HASH
 
-                SUBCHAINS_METADATA:{
+                POOLS_METADATA:{
                 
                     VALIDATOR_0 : {INDEX:number,HASH:string,IS_STOPPED:boolean},
 
@@ -477,7 +477,7 @@ export default {
 
                 OPERATIONS:{
 
-                    Here we add/remove validators, assign to validators and so on
+                    Here we add/remove pools, assign to pools and so on
 
                 }
 
@@ -513,15 +513,15 @@ export default {
         The rest - splitted for 48 bytes BLS pubkeys of members whose signatures we hadn't get(due to network issues or order in cycle)
 
 
-        => { hash, aggregatedPub, aggregatedSigna, afkValidators }
+        => { hash, aggregatedPub, aggregatedSigna, afkVoters }
         
         ***************************************************************************************************************
 
         To verify checkpoint is valid(so we can accept it and continue verification thread):
 
-            [+] Aggregated quorum pubkey ==== AGGREGATE(afkValidators,aggregatedPub)
+            [+] Aggregated quorum pubkey ==== AGGREGATE(afkVoters,aggregatedPub)
 
-            [+] QUORUM_SIZE-afkValidators >= QUORUM_SIZE(2/3N+1)
+            [+] QUORUM_SIZE-afkVoters >= QUORUM_SIZE(2/3N+1)
 
             [+] VERIFY(aggregatedPub,aggregatedSigna,hash)
 
@@ -693,9 +693,9 @@ export default {
 
                 for(let event of events){
 
-                    let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
+                    let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold).catch(_=>false)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold).catch(_=>false)
                     
                     let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
@@ -751,7 +751,7 @@ export default {
                 afk:[]
             }
 
-            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain].
+            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain].
                 For this reasons, subchain will be deactivated at least untill the next checkpoint.
                 Also, it should has a valid timestamp(today) to make sure it's between <CURRENT_CHECKPOINT> <=> <NEXT_CHECKPOINT>
             
@@ -812,9 +812,9 @@ export default {
 
                 for(let event of events){
 
-                    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = JSON.parse(event.returnValues.payload)
+                    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold).catch(_=>false)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold).catch(_=>false)
 
                     let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 

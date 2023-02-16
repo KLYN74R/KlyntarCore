@@ -1,7 +1,7 @@
 {
     "VERSION":0,
 
-    "VALIDATORS":{
+    "POOLS":{
 
         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
         
@@ -13,14 +13,14 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "isReserve":false,
-            "STAKERS":{
+            "stakers":{
                 "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
-                    "KLY":55000,
-                    "UNO":0,
-                    "REWARD":0
+                    "kly":55000,
+                    "uno":0,
+                    "reward":0
                 }
             },
-            "WAITING_ROOM":{},
+            "waitingRoom":{},
             "poolURL":"http://localhost:7331",
             "wssPoolURL":"wss://localhost:9999"
         
@@ -35,14 +35,14 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "isReserve":false,
-            "STAKERS":{
+            "stakers":{
                 "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
-                    "KLY":55000,
-                    "UNO":0,
-                    "REWARD":0
+                    "kly":55000,
+                    "uno":0,
+                    "reward":0
                 }
             },
-            "WAITING_ROOM":{},
+            "waitingRoom":{},
             "poolURL":"http://localhost:7332",
             "wssPoolURL":"wss://localhost:9998"
         
@@ -57,14 +57,14 @@
             "stopCheckpointID": -1,
             "storedMetadata": {},
             "isReserve":false,
-            "STAKERS":{
+            "stakers":{
                 "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
-                    "KLY":55000,
-                    "UNO":0,
-                    "REWARD":0
+                    "kly":55000,
+                    "uno":0,
+                    "reward":0
                 }
             },
-            "WAITING_ROOM":{},
+            "waitingRoom":{},
             "poolURL":"http://localhost:7333",
             "wssPoolURL":"wss://localhost:9997"
         
@@ -81,14 +81,14 @@
             "storedMetadata": {},
             "isReserve":true,
             "reserveFor":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
-            "STAKERS":{
+            "stakers":{
                 "7ZFXrcQvRVKQVJQWCL1GBeiisMw6th1ENMFqXTFtnQ1d6Eo7vkTRQuW4g2A4uXrp5n":{
-                    "KLY":55000,
-                    "UNO":0,
-                    "REWARD":0
+                    "kly":55000,
+                    "uno":0,
+                    "reward":0
                 }
             },
-            "WAITING_ROOM":{},
+            "waitingRoom":{},
             "poolURL":"http://localhost:7334",
             "wssPoolURL":"wss://localhost:9996"
         

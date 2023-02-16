@@ -103,7 +103,7 @@ export default {
 
             let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
 
-            let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
+            let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
@@ -202,11 +202,11 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool]){
+                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool]){
 
                     let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'Poyekhali!@Y.A.Gagarin',IS_STOPPED:false,IS_RESERVE:poolStorage.isReserve}
 
-                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[pool] = metadataTemplate
+                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool] = metadataTemplate
     
                 }
 
@@ -227,13 +227,13 @@ export default {
             
             Logic on VERIFICATION_THREAD
             
-            Here we should move stakers from WAITING_ROOMs to stakers
+            Here we should move stakers from "waitingRoom" to "stakers"
 
             Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .checkpointID property and compare to timestamp of current checkpoint on VT)
 
             Also, check the minimal possible stake(in UNO), if pool still valid and so on
 
-            Then, delete record from WAITING_ROOM and add to "stakers"
+            Then, delete record from "waitingRoom" and add to "stakers"
 
 
             Struct in POOL.WAITING_ROOM
@@ -269,12 +269,12 @@ export default {
 
             let poolStorage = await GET_FROM_STATE(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL'))
 
-            let stakeOrUnstakeTx = poolStorage?.WAITING_ROOM?.[txid]
+            let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
             
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
 
-                let stakerAccount = poolStorage.STAKERS[stakeOrUnstakeTx.staker] || {KLY:0,UNO:0,REWARD:0}
+                let stakerAccount = poolStorage.stakers[stakeOrUnstakeTx.staker] || {kly:0,uno:0,reward:0}
 
                 if(stakeOrUnstakeTx.type==='+'){
 
@@ -313,10 +313,10 @@ export default {
                 }
 
                 //Assign updated state
-                poolStorage.STAKERS[stakeOrUnstakeTx.staker]=stakerAccount
+                poolStorage.stakers[stakeOrUnstakeTx.staker]=stakerAccount
 
                 //Remove from WAITING_ROOM
-                delete poolStorage.WAITING_ROOM[txid]
+                delete poolStorage.waitingRoom[txid]
 
 
                 let workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
@@ -325,16 +325,16 @@ export default {
 
                 if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                    // Do it only if pool is not in current SUBCHAINS_METADATA
-                    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]){
+                    // Do it only if pool is not in current POOLS_METADATA
+                    if(!SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
 
                         if(poolStorage.storedMetadata.HASH){
 
-                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]=poolStorage.storedMetadata
+                            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]=poolStorage.storedMetadata
                         
                         }else{
     
-                            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[pool]={   
+                            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
                                 
                                 INDEX:-1,
                             
@@ -447,29 +447,29 @@ export default {
         
         else if(usedOnQuorumThread){
 
-            // Set the "STOPPED" property to true/false in QT.SUBCHAINS_METADATA[<subchain>]
+            // Set the "STOPPED" property to true/false in QT.POOLS_METADATA[<subchain>]
 
-            let subchainsMetadata = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[subchain]
+            let poolsMetadata = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain]
 
             if(stop){
 
-                subchainsMetadata.IS_STOPPED=true
+                poolsMetadata.IS_STOPPED=true
 
-            }else subchainsMetadata.IS_STOPPED=false //unfreeze
+            }else poolsMetadata.IS_STOPPED=false //unfreeze
 
         }
         
         else{
 
-            // Set the "STOPPED" property to true/false in VT.SUBCHAINS_METADATA[<subchain>]
+            // Set the "STOPPED" property to true/false in VT.POOLS_METADATA[<subchain>]
 
-            let subchainsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchain]
+            let poolsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
 
             if(stop){
 
-                subchainsMetadata.IS_STOPPED=true
+                poolsMetadata.IS_STOPPED=true
 
-            }else subchainsMetadata.IS_STOPPED=false //unfreeze
+            }else poolsMetadata.IS_STOPPED=false //unfreeze
 
         }        
 
@@ -549,7 +549,7 @@ export default {
         }
         else{
 
-            // On VERIFICATION_THREAD we should delete the pool from SUBCHAINS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
+            // On VERIFICATION_THREAD we should delete the pool from POOLS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
             let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
@@ -593,7 +593,7 @@ export default {
 
                 let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
 
-                    stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+                    stakingTx = poolStorage?.waitingRoom?.[txid],
                     
                     isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.QUORUM_THREAD.RUBICON,
 
@@ -648,7 +648,7 @@ export default {
 
                 let poolStorage = await GET_FROM_STATE(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')),
 
-                    stakingTx = poolStorage?.WAITING_ROOM?.[txid],
+                    stakingTx = poolStorage?.waitingRoom?.[txid],
 
                     isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
 
@@ -659,14 +659,14 @@ export default {
                 if(stakingTx && isNotTooOld && isStakeTx){
 
                     //Remove from WAITING_ROOM
-                    delete poolStorage.WAITING_ROOM[txid]
+                    delete poolStorage.waitingRoom[txid]
 
                     let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainWherePoolStorage+stakingTx.staker))
 
                     if(stakerAccount){
                     
                         // Return the stake
-                        if(stakingTx.units === 'KLY'){
+                        if(stakingTx.units === 'kly'){
 
                             stakerAccount.balance += stakingTx.amount
 

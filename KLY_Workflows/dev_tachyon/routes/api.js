@@ -472,8 +472,8 @@ getEventReceipt=(response,request)=>{
 
 
 
-//Returns current validators subchains
-getSubchainsMetadata=response=>{
+//Returns current pools data
+getPoolsMetadata=response=>{
 
     //Set triggers
     if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUBCHAINS){
@@ -485,7 +485,7 @@ getSubchainsMetadata=response=>{
             .onAborted(()=>response.aborted=true)
 
 
-        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA))
+        response.end(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA))
 
     }else !response.aborted && response.end('Symbiote not supported')
 
@@ -559,11 +559,11 @@ UWS_SERVER
 
 .get('/latest_n_blocks/:NUMBER_OF_BLOCKS',getLatestNBlocks)
 
-.get('/subchains_metadata',getSubchainsMetadata)
-
 .get('/block_receipt/:BLOCK_ID',getBlockReceipt)
 
 .get('/search_result/:QUERY',getSearchResult)
+
+.get('/pools_metadata',getPoolsMetadata)
 
 .get('/event_receipt/:TXID',getEventReceipt)
 

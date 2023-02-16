@@ -1,6 +1,6 @@
 import {
     
-    GET_VALIDATORS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
+    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
@@ -16,7 +16,7 @@ import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN, START_VERIFICATION_THREAD} from './verification.js'
+import {START_VERIFICATION_THREAD} from './verification.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
@@ -155,12 +155,12 @@ DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async(validatorPubKey,fullCopyOfQu
 
     poolStorage.stopCheckpointID=fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.HEADER.ID
     
-    poolStorage.storedMetadata=fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
+    poolStorage.storedMetadata=fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[validatorPubKey]
 
 
-    //Remove from VALIDATORS array(to prevent be elected to quorum) and metadata
+    //Remove from POOLS array(to prevent be elected to quorum) and metadata
 
-    delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[validatorPubKey]
+    delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[validatorPubKey]
 
 },
 
@@ -209,10 +209,10 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
     //_______________________Remove pools if lack of staking power_______________________
 
-    let toRemovePools = [], promises = [], qtSubchains = Object.keys(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
+    let toRemovePools = [], promises = [], quorumThreadPools = Object.keys(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)
 
 
-    for(let validator of qtSubchains){
+    for(let validator of quorumThreadPools){
 
         let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
@@ -226,18 +226,18 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
     await Promise.all(promises.splice(0))
     
-    //Now in toRemovePools we have IDs of pools which should be deleted from VALIDATORS
+    //Now in toRemovePools we have IDs of pools which should be deleted from POOLS
     
-    let deleteValidatorsPoolsPromises=[]
+    let deletePoolsPromises=[]
     
     for(let address of toRemovePools){
     
-        deleteValidatorsPoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThreadWithNewCheckpoint))
+        deletePoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThreadWithNewCheckpoint))
     
     }
 
 
-    await Promise.all(deleteValidatorsPoolsPromises.splice(0))
+    await Promise.all(deletePoolsPromises.splice(0))
 
 
     //________________________________Remove rogue pools_________________________________
@@ -255,8 +255,8 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
         // Delete from DB
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
 
-        // Remove from subchains
-        delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolIdentifier]
+        // Remove from pools
+        delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolIdentifier]
     
         // Remove from cache
         SYMBIOTE_META.QUORUM_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
@@ -323,8 +323,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Mark as completed
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.COMPLETED = true
 
-        // Create new quorum based on new SUBCHAINS_METADATA state
-        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
+        // Create new quorum based on new POOLS_METADATA state
+        fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
 
         
         
@@ -336,7 +336,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         
-        //__________________Based on SUBCHAINS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+        //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
 
 
         let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
@@ -348,7 +348,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         let nextTempDBBatch = nextTempDB.batch()
 
 
-        for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)){
+        for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
 
             if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
 
@@ -381,7 +381,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
         */
 
-        let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+        let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA))
 
         
         for(let subchainPoolID of stoppedSubchainsIDs){
@@ -511,7 +511,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
 
-        let validatorsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+        let poolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
 
         if(checkpointIsFresh && iAmInTheQuorum){
@@ -522,13 +522,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             let currentCheckpointSyncHelper = nextTemporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER
 
-            Object.keys(validatorsMetadata).forEach(
+            Object.keys(poolsMetadata).forEach(
             
                 poolPubKey => {
 
-                    currentCheckpointManager.set(poolPubKey,validatorsMetadata[poolPubKey])
+                    currentCheckpointManager.set(poolPubKey,poolsMetadata[poolPubKey])
 
-                    currentCheckpointSyncHelper.set(poolPubKey,validatorsMetadata[poolPubKey])
+                    currentCheckpointSyncHelper.set(poolPubKey,poolsMetadata[poolPubKey])
 
                 }
 
@@ -541,7 +541,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
 
-        if(validatorsMetadata[CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
+        if(poolsMetadata[CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
 
 
         //Continue to find checkpoints
@@ -589,7 +589,7 @@ GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint
 
     }
 
-    // Now based on hash of subchainsMetadata in checkpoint and nonce - find next reserve pool
+    // Now based on hash of poolsMetadata in checkpoint and nonce - find next reserve pool
 
     // Hence it's a chain - take a nonce
 
@@ -637,7 +637,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let oldSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+    let oldSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let currentTempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
@@ -736,9 +736,9 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
             }else if (keyValue[0].startsWith('REASSIGN:')){
 
-                let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators} = keyValue[1]
+                let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = keyValue[1]
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_STAGE_3:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkValidators}).then(async()=>{
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_STAGE_3:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}).then(async()=>{
 
                     // Add the reassignment
                     
@@ -951,7 +951,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
     myCheckpoint ||= await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'CHECKPOINT').catch(_=>false)
 
-    quorumMembersHandler ||= await GET_VALIDATORS_URLS(true)
+    quorumMembersHandler ||= await GET_POOLS_URLS(true)
 
     
     //_____________________ Go through the quorum and share our pre-signed object with checkpoint payload and issuer proof____________________
@@ -965,7 +965,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
                 aggregatedPub:<2/3N+1 from QUORUM>,
                 aggregatedSigna:<SIG(PAYLOAD_HASH)>,
-                afkValidators:[]
+                afkVoters:[]
 
             }
 
@@ -977,7 +977,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-                SUBCHAINS_METADATA: {
+                POOLS_METADATA: {
                 
                     '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
@@ -1002,7 +1002,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
             aggregatedPub:myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNERS_PUBKEY,
             aggregatedSignature:myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE,
-            afkValidators:myCheckpoint.HEADER.AFK_VALIDATORS
+            afkVoters:myCheckpoint.HEADER.AFK_VOTERS
 
         },
 
@@ -1089,7 +1089,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE=bls.aggregateSignatures(signatures)
 
-        myCheckpoint.HEADER.AFK_VALIDATORS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
+        myCheckpoint.HEADER.AFK_VOTERS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
 
         //Store time tracker to DB
@@ -1166,7 +1166,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-            SUBCHAINS_METADATA: {
+            POOLS_METADATA: {
                 
                 '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
@@ -1216,7 +1216,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
 
-            SUBCHAINS_METADATA:{},
+            POOLS_METADATA:{},
 
             OPERATIONS:GET_SPEC_EVENTS(qtPayload),
 
@@ -1224,15 +1224,15 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }
 
-        Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA).forEach(
+        Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA).forEach(
             
             poolPubKey => {
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED,IS_RESERVE} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {IS_STOPPED,IS_RESERVE} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
-                potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED,IS_RESERVE}
+                potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
             }
 
@@ -1244,7 +1244,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembers = await GET_VALIDATORS_URLS(true)
+        let quorumMembers = await GET_POOLS_URLS(true)
 
         let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
 
@@ -1348,13 +1348,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                         // If we received proof about bigger height on this subchain
                         if(updateOp.index>subchainMetadata.INDEX && typeof updateOp.finalizationProof === 'string'){
 
-                            let {aggregatedSignature,aggregatedPub,afkValidators} = updateOp.finalizationProof
+                            let {aggregatedSignature,aggregatedPub,afkVoters} = updateOp.finalizationProof
     
                             let signaIsOk = await bls.singleVerify(updateOp.subchain+":"+updateOp.index+updateOp.hash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
         
                             try{
 
-                                let rootPubIsOK = quorumRootPub === bls.aggregatePublicKeys([aggregatedPub,...afkValidators])
+                                let rootPubIsOK = quorumRootPub === bls.aggregatePublicKeys([aggregatedPub,...afkVoters])
         
         
                                 if(signaIsOk && rootPubIsOK){
@@ -1423,7 +1423,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                     QUORUM_AGGREGATED_SIGNATURE:bls.aggregateSignatures(signatures),
         
-                    AFK_VALIDATORS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
+                    AFK_VOTERS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
         
                 },
                 
@@ -1498,7 +1498,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
 
-        quorumMembers = await GET_VALIDATORS_URLS(true),
+        quorumMembers = await GET_POOLS_URLS(true),
 
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
@@ -1548,7 +1548,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
         let signatures = [...finalizationProofsMapping.values()]
 
-        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
+        let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
 
 
         /*
@@ -1565,7 +1565,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
 
             aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-            afkValidators:[]
+            afkVoters:[]
 
         }
     
@@ -1582,7 +1582,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (qtPayload,blockID) => {
             
             aggregatedSignature:bls.aggregateSignatures(signatures),
             
-            afkValidators
+            afkVoters
 
         }
 
@@ -1625,7 +1625,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
         
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
-        quorumMembers = await GET_VALIDATORS_URLS(true),
+        quorumMembers = await GET_POOLS_URLS(true),
 
         promises=[],
 
@@ -1694,7 +1694,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
         let signatures = [...commitmentsForCurrentBlock.values()]
 
-        let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
+        let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
 
 
         /*
@@ -1711,7 +1711,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
 
             aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-            afkValidators:[]
+            afkVoters:[]
 
         }
     
@@ -1728,7 +1728,7 @@ RUN_COMMITMENTS_GRABBING = async (qtPayload,blockID) => {
             
             aggregatedSignature:bls.aggregateSignatures(signatures),
             
-            afkValidators
+            afkVoters
 
         }
 
@@ -1748,7 +1748,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
     // If we don't generate the blocks - skip this function
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]){
+    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
 
@@ -1781,7 +1781,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
         if(!appropriateDescriptor){
 
-            let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
+            let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
 
             appropriateDescriptor = {
     
@@ -1835,7 +1835,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
     let temporaryObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
-    let validatorsURLsAndPubKeys = await GET_VALIDATORS_URLS(true)
+    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
 
     
     if(!temporaryObject) return
@@ -1902,7 +1902,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         let signaturesForAggregation = [], pubKeysForAggregation = []
         
         
-        for(let validatorHandler of validatorsURLsAndPubKeys){
+        for(let validatorHandler of poolsURLsAndPubKeys){
         
             let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_2',sendOptions).then(r=>r.json()).catch(_=>'<>')
         
@@ -1919,11 +1919,11 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 // In this case it means that validator we've requested has higher version of subchain and a FINALIZATION_PROOF for it, so we just accept it if verification is ok and break the cycle
                 let {INDEX,HASH} = answerFromValidator.data
             
-                let {aggregatedPub,aggregatedSignature,afkValidators} = answerFromValidator.data.FINALIZATION_PROOF
+                let {aggregatedPub,aggregatedSignature,afkVoters} = answerFromValidator.data.FINALIZATION_PROOF
             
                 let data = subchain+':'+INDEX+HASH+qtPayload
             
-                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
             
                 if(finalizationProofIsOk && localFinalizationHandlerSyncHelper.INDEX < INDEX){
@@ -1934,7 +1934,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                     
                     localFinalizationHandlerSyncHelper.HASH = HASH
                     
-                    localFinalizationHandlerSyncHelper.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+                    localFinalizationHandlerSyncHelper.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
                     
                     // And break the cycle for this subchain-candidate
                     
@@ -1981,7 +1981,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 
             let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
 
-            let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+            let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
 
 
             let templateForSkipProcedureStage2 = {
@@ -1992,7 +1992,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
                 aggregatedPub,
                 aggregatedSignature,
-                afkValidators
+                afkVoters
 
             }
 
@@ -2059,7 +2059,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     if(tempObject.HEALTH_MONITORING.size===0){
 
         // Fill the HEALTH_MONITORING mapping with the latest known values
-        // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+        // Structure is SubchainID => {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
 
         let LAST_SEEN = GET_GMT_TIMESTAMP()
 
@@ -2099,7 +2099,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let subchainsURLAndPubKey = await GET_VALIDATORS_URLS(true)
+    let subchainsURLAndPubKey = await GET_POOLS_URLS(true)
 
     let proofsPromises = []
 
@@ -2109,7 +2109,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let handler of subchainsURLAndPubKey){
         
-        let metadataOfCurrentPool = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
+        let metadataOfCurrentPool = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[handler.pubKey]
 
         let mainPoolOrAtLeastReassignment = reassignments.has(handler.pubKey) && metadataOfCurrentPool.IS_RESERVE || !metadataOfCurrentPool.IS_RESERVE
 
@@ -2150,7 +2150,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             
                 aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
                 aggregatedPub:<>,
-                afkValidators
+                afkVoters
         
             }
       
@@ -2170,7 +2170,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             continue
         }
 
-        let {aggregatedPub,aggregatedSignature,afkValidators} = answer.superFinalizationProof
+        let {aggregatedPub,aggregatedSignature,afkVoters} = answer.superFinalizationProof
 
         let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
 
@@ -2181,7 +2181,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         // blockID+hash+'FINALIZATION'+qtPayload
         let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+qtPayload
 
-        let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+        let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
         //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
 
@@ -2193,7 +2193,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             localHealthHandler.HASH = latestHash
 
-            localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+            localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
 
         }else candidatesForAnotherCheck.push(pubKey)
         
@@ -2220,7 +2220,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    let validatorsURLSandPubKeys = await GET_VALIDATORS_URLS(true)
+    let poolsURLSandPubKeys = await GET_POOLS_URLS(true)
 
 
     for(let candidate of candidatesForAnotherCheck){
@@ -2290,7 +2290,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
-            for(let validatorHandler of validatorsURLSandPubKeys){
+            for(let validatorHandler of poolsURLSandPubKeys){
 
                 let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_1',sendOptions).then(r=>r.json()).catch(_=>'<>')
 
@@ -2308,11 +2308,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     let {INDEX,HASH} = answerFromValidator.data
 
-                    let {aggregatedPub,aggregatedSignature,afkValidators} = answerFromValidator.data.SUPER_FINALIZATION_PROOF
+                    let {aggregatedPub,aggregatedSignature,afkVoters} = answerFromValidator.data.SUPER_FINALIZATION_PROOF
 
                     let data = candidate+':'+INDEX+HASH+'FINALIZATION'+qtPayload
 
-                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkValidators,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
 
                     if(superFinalizationProofIsOk && localHealthHandler.INDEX < INDEX){
@@ -2325,7 +2325,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         localHealthHandler.HASH = HASH
 
-                        localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkValidators}
+                        localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
 
 
                         // And break the cycle for this subchain-candidate
@@ -2374,7 +2374,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 
                 let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
 
-                let afkValidators = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+                let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
 
 
                 let templateForSkipProcedureStage1 = {
@@ -2387,7 +2387,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     
                     aggregatedPub,
                     aggregatedSignature,
-                    afkValidators
+                    afkVoters
 
                 }
 
@@ -2424,7 +2424,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 RESTORE_STATE=async()=>{
 
     
-    let poolsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
+    let poolsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA)
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -2434,10 +2434,10 @@ RESTORE_STATE=async()=>{
 
     for(let poolPubKey of poolsMetadata){
 
-        // If this value is related to the current checkpoint - set to manager, otherwise - take from the SUBCHAINS_METADATA as a start point
+        // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {INDEX,HASH,(?)FINALIZATION_PROOF}
 
-        let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey]
+        let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
 
         
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
@@ -2512,13 +2512,13 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]) return
+    if(!SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]) return
 
     // If we are reserve - return
-    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
+    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
 
 
-    let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]
+    let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]
 
 
 
@@ -2616,17 +2616,17 @@ LOAD_GENESIS=async()=>{
         
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
-        let authorities = new Set(Object.keys(genesis.VALIDATORS))
+        let authorities = new Set(Object.keys(genesis.POOLS))
 
 
-        for(let [subchainAuthority,validatorContractStorage] of Object.entries(genesis.VALIDATORS)){
+        for(let [subchainAuthority,validatorContractStorage] of Object.entries(genesis.POOLS)){
 
             let {isReserve} = validatorContractStorage
 
             startPool=subchainAuthority
 
             //Add metadata related to this pool
-            SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[subchainAuthority]={
+            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchainAuthority]={
                 
                 INDEX:-1,
                 
@@ -2638,7 +2638,7 @@ LOAD_GENESIS=async()=>{
             
             }
 
-            //Create the appropriate storage for pre-set validators. We'll create the simplest variant - but validators will have ability to change it via txs during the chain work
+            //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
             
             let contractMetadataTemplate = {
     
@@ -2806,7 +2806,7 @@ LOAD_GENESIS=async()=>{
 
         We keep the official semver notation x.y.z(major.minor.patch)
 
-        You can't continue to work if QUORUM and major part of VALIDATORS decided to vote for major update.
+        You can't continue to work if QUORUM and major part of POOLS decided to vote for major update.
         
         However, if workflow_version has differences in minor or patch values - you can continue to work
 
@@ -2866,7 +2866,7 @@ LOAD_GENESIS=async()=>{
 
             QUORUM_AGGREGATED_SIGNATURE:'',
 
-            AFK_VALIDATORS:[]
+            AFK_VOTERS:[]
 
         },
         
@@ -2874,7 +2874,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
+            POOLS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2908,7 +2908,7 @@ LOAD_GENESIS=async()=>{
 
             QUORUM_AGGREGATED_SIGNATURE:'',
 
-            AFK_VALIDATORS:[]
+            AFK_VOTERS:[]
 
         },
         
@@ -2916,7 +2916,7 @@ LOAD_GENESIS=async()=>{
             
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            SUBCHAINS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)),
+            POOLS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2942,11 +2942,11 @@ LOAD_GENESIS=async()=>{
     SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1
 
 
-    //We get the quorum for VERIFICATION_THREAD based on own local copy of SUBCHAINS_METADATA state
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+    //We get the quorum for VERIFICATION_THREAD based on own local copy of POOLS_METADATA state
+    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
-    //...However, quorum for QUORUM_THREAD might be retrieved from SUBCHAINS_METADATA of checkpoints. It's because both threads are async
-    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
+    //...However, quorum for QUORUM_THREAD might be retrieved from POOLS_METADATA of checkpoints. It's because both threads are async
+    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA,SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
 
 
 },
@@ -3035,7 +3035,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         'HOSTCHAIN_DATA', //To store metadata from hostchains(proofs,refs,contract results and so on)
     
-        'STUFF', //Some data like combinations of validators for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
+        'STUFF', //Some data like combinations of pools for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
         'STATE', //Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
@@ -3119,7 +3119,7 @@ PREPARE_SYMBIOTE=async()=>{
             
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:''}, // pointer to know where we should start to process further blocks
 
-                SUBCHAINS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
+                POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
 
                 KLY_EVM_METADATA:{}, // SUBCHAIN_ID => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
@@ -3267,7 +3267,7 @@ PREPARE_SYMBIOTE=async()=>{
         PROOFS_RESPONSES:new Map(), // mapping(blockID=>FINALIZATION_PROOF)
 
 
-        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkValidators}}
+        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
 
 
         SKIP_PROCEDURE_STAGE_1:new Set(), // set(subchainID)
@@ -3398,9 +3398,9 @@ PREPARE_SYMBIOTE=async()=>{
 START_AWAKENING_PROCEDURE=async()=>{
     
 
-    let quorumMembersURLs = await GET_VALIDATORS_URLS()
+    let quorumMembersURLs = await GET_POOLS_URLS()
 
-    let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[CONFIG.SYMBIOTE.PUB]
+    let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 

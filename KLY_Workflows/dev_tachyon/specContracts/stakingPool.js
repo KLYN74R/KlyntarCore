@@ -75,9 +75,9 @@ export let CONTRACT = {
 
                 totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
-                STAKERS:{}, // Pubkey => {KLY,UNO,REWARD}
+                stakers:{}, // Pubkey => {KLY,UNO,REWARD}
 
-                WAITING_ROOM:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
+                waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
 
             }
 
@@ -128,11 +128,11 @@ export let CONTRACT = {
 
             if(stakerAccount){
             
-                let stakeIsOk = (units==='KLY'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
 
                 if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
-                    poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
+                    poolStorage.waitingRoom[BLAKE3(event.sig)]={
 
                         checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
@@ -147,7 +147,7 @@ export let CONTRACT = {
                     }
 
                     //Reduce number of KLY/UNO from account
-                    if(units==='KLY') stakerAccount.balance-=amount
+                    if(units==='kly') stakerAccount.balance-=amount
                     
                     else stakerAccount.uno-=amount
 
@@ -182,14 +182,14 @@ export let CONTRACT = {
 
             poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
-            stakerInfo = poolStorage.STAKERS[event.creator], // Pubkey => {KLY,UNO,REWARD}
+            stakerInfo = poolStorage.stakers[event.creator], // Pubkey => {KLY,UNO,REWARD}
 
-            wishedAmountIsOk = stakerInfo[units==='KLY'?'KLY':'UNO'] >= amount
+            wishedAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
 
 
         if(poolStorage && wishedAmountIsOk){
 
-            poolStorage.WAITING_ROOM[BLAKE3(event.sig)]={
+            poolStorage.waitingRoom[BLAKE3(event.sig)]={
 
                 checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
@@ -226,14 +226,14 @@ export let CONTRACT = {
 
             stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator)),
 
-            stakerInfo = poolStorage.STAKERS[event.creator] // Pubkey => {KLY,UNO,REWARD}
+            stakerInfo = poolStorage.stakers[event.creator] // Pubkey => {KLY,UNO,REWARD}
 
 
-        if(poolStorage && stakerAccount && stakerInfo.REWARD>0){
+        if(poolStorage && stakerAccount && stakerInfo.reward>0){
 
-            stakerAccount.balance += stakerInfo.REWARD
+            stakerAccount.balance += stakerInfo.reward
 
-            stakerInfo.REWARD=0
+            stakerInfo.reward=0
 
         }
 

@@ -4,7 +4,7 @@ This is the set of tests related to SLASH_UNSTAKE and REMOVE_FROM_WAITING_ROOM s
 
 [+] SLASH_UNSTAKE
 
-This is the operation which burn the stake of pool(and stakers) and remove it from SUBCHAINS_METADATA, QUORUM and so on.
+This is the operation which burn the stake of pool(and stakers) and remove it from POOLS_METADATA, QUORUM and so on.
 
 We need to send the appropriate object to current quorum members
 

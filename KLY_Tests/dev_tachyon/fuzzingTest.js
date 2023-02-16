@@ -92,7 +92,7 @@ Aggregated version of commitments. This is the proof that 2/3N+1 has received th
 
         aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-        afkValidators:[...]
+        afkVoters:[...]
 
     }
 
@@ -102,7 +102,7 @@ ___________________________Verification steps___________________________
 
 [+] Verify the signa
 
-[+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkValidators array for this and QUORUM_THREAD.QUORUM
+[+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkVoters array for this and QUORUM_THREAD.QUORUM
 
 [+] RootPub is equal to QUORUM_THREAD rootpub
 
@@ -145,7 +145,7 @@ ___________________________Verification steps___________________________
 
         aggregatedSignature:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-        afkValidators:[]
+        afkVoters:[]
 
     }
 
@@ -205,7 +205,7 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 
         aggregatedSignature:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
 
-        afkValidators:[]
+        afkVoters:[]
 
     }
 
@@ -241,7 +241,7 @@ Returns:
     {
         aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+QT.CHECKPOINT.HEADER.ID
         aggregatedPub:<>,
-        afkValidators
+        afkVoters
         
     }
 
@@ -259,7 +259,7 @@ Returns:
     
     Returns 
 
-    {"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:596","blockHash":"84ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"oIkKCqcwY1tWqeK5ZlvCdiVoiPA5f/lbVqXwwjPK1bUguOPonRV7NMNOxHjOds6JGANj+uGTb7RnkNP4ZdG3GUms1A/5Uv98EIki80PM1bWvCqaLjcEVTb2aN4laqzgh","afkValidators":[]}
+    {"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:596","blockHash":"84ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"oIkKCqcwY1tWqeK5ZlvCdiVoiPA5f/lbVqXwwjPK1bUguOPonRV7NMNOxHjOds6JGANj+uGTb7RnkNP4ZdG3GUms1A/5Uv98EIki80PM1bWvCqaLjcEVTb2aN4laqzgh","afkVoters":[]}
 
     */
     await fetch(CREDS.url+'/super_finalization/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
@@ -293,7 +293,7 @@ Returns:
 
     {
         PREV_CHECKPOINT_PAYLOAD_HASH: '',
-        SUBCHAINS_METADATA: [Object],
+        POOLS_METADATA: [Object],
         OPERATIONS: [],
         OTHER_SYMBIOTES: {}
     }
@@ -401,7 +401,7 @@ let TEST_CHECKPOINT_STAGE_1_ROUTE=async()=>{
 
 /*
 
-Accept checkpoints from other validators in quorum and returns own version as answer
+Accept checkpoints from other pools in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
 
 [Accept]:
@@ -413,7 +413,7 @@ Accept checkpoints from other validators in quorum and returns own version as an
 
     PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
     
-    SUBCHAINS_METADATA: {
+    POOLS_METADATA: {
                 
         '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
 
@@ -511,7 +511,7 @@ Response - it's object with the following structure:
     //     ISSUER:'LOL',
     //     OPERATIONS:[],
     //     PREV_CHECKPOINT_PAYLOAD_HASH:'',
-    //     SUBCHAINS_METADATA:{},
+    //     POOLS_METADATA:{},
     //     OTHER_SYMBIOTES:{}
     // }
 
@@ -529,7 +529,7 @@ Response - it's object with the following structure:
         ISSUER:'LOL',
         OPERATIONS:[],
         PREV_CHECKPOINT_PAYLOAD_HASH:'',
-        SUBCHAINS_METADATA:{
+        POOLS_METADATA:{
             "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
                 IS_STOPPED:false,
                 INDEX:-33
@@ -547,7 +547,7 @@ Response - it's object with the following structure:
     
     Response
 
-    {"metadataUpdate":[{"subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","index":1748,"hash":"77277818a7cfaf11911ff46c260b3f4783efb5bbb416a8c7d411fe0eec9cf062","finalizationProof":{"aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"lX8DSSIVZxGogpkDvvmhfXlinCfTVSo/dSQrC7FRA50R2yPT7mNm9ZXyFs66cOSkAjSb5m+9QiHHVHjlhYhYO8PdXmB+5HR8X+LGZry0AOeDf/gjZNTtpAKyqibu/DGy","afkValidators":[]}}]}
+    {"metadataUpdate":[{"subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","index":1748,"hash":"77277818a7cfaf11911ff46c260b3f4783efb5bbb416a8c7d411fe0eec9cf062","finalizationProof":{"aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"lX8DSSIVZxGogpkDvvmhfXlinCfTVSo/dSQrC7FRA50R2yPT7mNm9ZXyFs66cOSkAjSb5m+9QiHHVHjlhYhYO8PdXmB+5HR8X+LGZry0AOeDf/gjZNTtpAKyqibu/DGy","afkVoters":[]}}]}
     
     */
     
@@ -594,7 +594,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
 
         aggregatedPub:<2/3N+1 from QUORUM>,
         aggregatedSigna:<SIG(PAYLOAD_HASH)>,
-        afkValidators:[]
+        afkVoters:[]
 
     }
 
@@ -606,7 +606,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
             
         PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-        SUBCHAINS_METADATA: {
+        POOLS_METADATA: {
                 
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
 
@@ -621,7 +621,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
 
 }
 
-To verify it => VERIFY(aggPub,aggSigna,afkValidators,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
+To verify it => VERIFY(aggPub,aggSigna,afkVoters,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
 
 To sign it => SIG('STAGE_2'+BLAKE3(JSON.stringify(<PROPOSED>)))
 
@@ -684,7 +684,7 @@ Response - it's object with the following structure:
     //     ISSUER:'LOL',
     //     OPERATIONS:[],
     //     PREV_CHECKPOINT_PAYLOAD_HASH:'',
-    //     SUBCHAINS_METADATA:{
+    //     POOLS_METADATA:{
     //         "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
     //             IS_STOPPED:false,
     //             INDEX:-33
@@ -817,7 +817,7 @@ let TEST_SKIP_PROCEDURE_STAGE_1_ROUTE=async()=>{
                 {"status":"Not going to skip and my local subchain height is lower than proposed by you(local:2286 | your:5000)"}
 
             Else:
-                {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkValidators":[]}}}
+                {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkVoters":[]}}}
 
         */
         
@@ -938,7 +938,7 @@ let TEST_SKIP_PROCEDURE_STAGE_2_ROUTE=async()=>{
                     {"status":"Not going to skip and my local subchain height is lower than proposed by you(local:2286 | your:5000)"}
     
                 Else:
-                    {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkValidators":[]}}}
+                    {"status":"UPDATE","data":{"LAST_SEEN":1673864788361,"INDEX":2259,"HASH":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","SUPER_FINALIZATION_PROOF":{"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:2259","blockHash":"ab9cab4740f2c8fce808b272bd0c9d8e7d1213abc0aebaaf48e45554a963219f","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"peKLHov4RFMdLhnBObi1yJM2gCw2K9V1ehtq68wAEoP8jQM6yCMnfTJNukyQVY9pDWblntJleQw/dkvRMnpd3Z4H4CsKCTGeZPjnyAZyWYB/Y751mN3kNEWuS9T7a4H1","afkVoters":[]}}}
     
             */
             

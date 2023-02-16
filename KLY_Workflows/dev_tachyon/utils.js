@@ -162,27 +162,27 @@ QUICK_SORT = array => {
 
 
 
-//We get the quorum based on validators' metadata(pass via parameter)
+//We get the quorum based on pools' metadata(pass via parameter)
 
-GET_QUORUM = (subchainsMetadata,workflowOptions) => {
+GET_QUORUM = (poolsMetadata,workflowOptions) => {
 
-    let validators = Object.keys(subchainsMetadata)
+    let pools = Object.keys(poolsMetadata)
 
 
-    //If more than QUORUM_SIZE validators - then choose quorum. Otherwise - return full array of validators
-    if(validators.length>workflowOptions.QUORUM_SIZE){
+    //If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
+    if(pools.length>workflowOptions.QUORUM_SIZE){
 
-        let validatorsMetadataHash = BLAKE3(JSON.stringify(subchainsMetadata)),
+        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsMetadata)),
 
             mapping = new Map(),
 
             sortedChallenges = QUICK_SORT(
 
-                validators.map(
+                pools.map(
                 
                     validatorPubKey => {
 
-                        let challenge = parseInt(BLAKE3(validatorPubKey+validatorsMetadataHash),16)
+                        let challenge = parseInt(BLAKE3(validatorPubKey+poolsMetadataHash),16)
 
                         mapping.set(challenge,validatorPubKey)
 
@@ -197,7 +197,7 @@ GET_QUORUM = (subchainsMetadata,workflowOptions) => {
         return sortedChallenges.slice(0,workflowOptions.QUORUM_SIZE).map(challenge=>mapping.get(challenge))
 
 
-    } else return validators
+    } else return pools
 
 
 },
@@ -276,7 +276,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     let promises=[]
 
-    let quorumMembers = await GET_VALIDATORS_URLS()
+    let quorumMembers = await GET_POOLS_URLS()
 
     quorumMembers.forEach(url=>
     
@@ -366,7 +366,7 @@ GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEE
 
 
 
-GET_VALIDATORS_URLS = async withPubkey => {
+GET_POOLS_URLS = async withPubkey => {
 
     let promises=[]
 
@@ -402,9 +402,9 @@ GET_VALIDATORS_URLS = async withPubkey => {
 
     }
 
-    let validatorsURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
+    let poolsURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
 
-    return validatorsURLs
+    return poolsURLs
 
 },
 
@@ -439,7 +439,7 @@ GET_MAJORITY=threadID=>{
         majority = Math.floor(quorumNumber*(2/3))+1
 
 
-    //Check if majority is not bigger than number of validators. It's possible when there is a small number of validators
+    //Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
 
     return majority > quorumNumber ? quorumNumber : majority
 
