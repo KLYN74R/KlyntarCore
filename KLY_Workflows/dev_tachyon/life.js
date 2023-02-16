@@ -16,7 +16,7 @@ import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {START_VERIFICATION_THREAD} from './verification.js'
+import {GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN, START_VERIFICATION_THREAD} from './verification.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
@@ -326,7 +326,115 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Create new quorum based on new SUBCHAINS_METADATA state
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.QUORUM = GET_QUORUM(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA,fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS)
 
-        // Commit changes        
+        
+        
+        let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
+    
+        // Create new temporary db for the next checkpoint
+        let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
+
+
+
+        
+        //__________________Based on SUBCHAINS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+
+
+        let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
+
+        let stoppedSubchainsIDs = new Set()
+
+        let futureReassignments = new Map()
+
+        let nextTempDBBatch = nextTempDB.batch()
+
+
+        for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)){
+
+            if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
+
+                stoppedSubchainsIDs.add(poolPubKey)
+    
+            }
+            else if(!poolMetadata.IS_STOPPED){
+    
+                // Otherwise - it's reserve pool
+                        
+                let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
+    
+                if(poolStorage){
+    
+                    let {reserveFor} = poolStorage
+    
+                    if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+    
+                    activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                        
+                }
+    
+            }
+
+        }
+
+
+        /*
+    
+        
+        */
+
+        let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA))
+
+        
+        for(let subchainPoolID of stoppedSubchainsIDs){
+                        
+            let nonce = 0
+
+            let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) //hence we need to find first reserve pool in chain(among non-stopped reserve pools)
+
+            let arrayOfActiveReservePools = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
+
+            let mapping=new Map()
+
+            let arrayOfChallanges = arrayOfActiveReservePools.map(validatorPubKey=>{
+
+                let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+    
+                mapping.set(challenge,validatorPubKey)
+
+                return challenge
+
+            })
+    
+
+            let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+    
+            let firstReserveInChain = mapping.get(firstChallenge)
+            
+            if(firstReserveInChain){
+
+                let reassignmentTemplateForQT = {
+
+                    NONCE:1,
+                    
+                    SKIPPED_RESERVE:[],
+                    
+                    CURRENT:firstReserveInChain
+
+                }
+
+                nextTempDBBatch.put('REASSIGN:'+subchainPoolID,reassignmentTemplateForQT)
+
+                futureReassignments.set(subchainPoolID,reassignmentTemplateForQT)
+
+                futureReassignments.set(firstReserveInChain,subchainPoolID)
+
+            }
+
+        }
+
+
+        await nextTempDBBatch.write()
+
+        // Commit changes
         atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
 
         await atomicBatch.write()
@@ -336,11 +444,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         global.SKIP_PROCEDURE_STAGE_1_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
         global.SKIP_PROCEDURE_STAGE_2_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
     
-    
-        let nextQuorumThreadID = possibleCheckpoint.HEADER.PAYLOAD_HASH+possibleCheckpoint.HEADER.ID
-    
-        // Create new temporary db for the next checkpoint
-        let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
 
         // Create mappings & set for the next checkpoint
         let nextTemporaryObject={
@@ -359,8 +462,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
     
-            REASSIGNMENTS:new Map(),
-            
+            REASSIGNMENTS:futureReassignments,
+
             HEALTH_MONITORING:new Map(),
       
             DATABASE:nextTempDB
@@ -876,7 +979,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 SUBCHAINS_METADATA: {
                 
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
                     /..other data
             
@@ -1065,7 +1168,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             SUBCHAINS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
                 /..other data
             
@@ -1127,9 +1230,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {IS_STOPPED,IS_RESERVE} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
-                potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED}
+                potentialCheckpointPayload.SUBCHAINS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
             }
 
@@ -1914,11 +2017,10 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
 
-RESERVE_AND_NOT_ACTIVE=(poolPubKey,poolMetadata)=>{
+NOT_ACTIVE_POOL=(poolPubKey,poolMetadata,reassignments)=>{
 
     // This function used in SUBCHAINS_HEALTH_MONITORING function to avoid getting health from reserve nodes in case they weren't assigned to some subchain workflow
 
-    if(poolMetadata.IS_RESERVE) return true
 
 },
 
@@ -1947,6 +2049,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     let proofsRequests = tempObject.PROOFS_REQUESTS
 
     let skipStage1Set = tempObject.SKIP_PROCEDURE_STAGE_1
+
+    let reassignments = tempObject.REASSIGNMENTS
 
     let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
@@ -2005,17 +2109,20 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let handler of subchainsURLAndPubKey){
         
-        let metadataOfCurrentSubchain = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
+        let metadataOfCurrentPool = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[handler.pubKey]
+
+        let mainPoolOrAtLeastReassignment = reassignments.has(handler.pubKey) && metadataOfCurrentPool.IS_RESERVE || !metadataOfCurrentPool.IS_RESERVE
 
 
         //No sense to get the health of pool which has been stopped | When this pool is reserve and not active | SKIP_PROCEDURE_STAGE_1 was initiated for pool
-        if(metadataOfCurrentSubchain.IS_STOPPED || RESERVE_AND_NOT_ACTIVE(handler.pubKey,metadataOfCurrentSubchain) || skipStage1Set.has(handler.pubKey)) continue
+        if(metadataOfCurrentPool.IS_STOPPED || !mainPoolOrAtLeastReassignment || skipStage1Set.has(handler.pubKey)) continue
 
-        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(r=>{
 
-            r.pubKey = handler.pubKey
+        let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(response=>{
 
-            return r
+            response.pubKey = handler.pubKey
+
+            return response
 
         }).catch(_=>{candidatesForAnotherCheck.push(handler.pubKey)})
 

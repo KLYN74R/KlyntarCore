@@ -453,12 +453,12 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
-},
+}
 
 
 
 
-GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
+export let GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
 
 
     // Hence it's a chain - take a nonce
@@ -485,13 +485,13 @@ GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,active
     
     return mapping.get(firstChallenge)
     
-},
+}
 
 
 
 
 //Function to find,validate and process logic with new checkpoint
-SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
+let SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
     //When we reach the limits of current checkpoint - then we need to execute the special operations
@@ -781,97 +781,98 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 subchainsIDs.add(poolPubKey)
 
-            }else if(!poolMetadata.IS_STOPPED){
+            }
+            else if(!poolMetadata.IS_STOPPED){
 
-                    // Otherwise - it's reserve pool
+                // Otherwise - it's reserve pool
 
-                    let originSubchain = await SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
+                let originSubchain = await SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
                     
-                    let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
 
-                    if(poolStorage){
+                if(poolStorage){
 
-                        let {reserveFor} = poolStorage
+                    let {reserveFor} = poolStorage
 
-                        if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+                    if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
 
-                        activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                    activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
                     
-                    }
-
                 }
 
             }
+
+        }
 
          
 
-            let specialOperationsOnThisCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
+        let specialOperationsOnThisCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
 
-            // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
+        // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
 
-            let skippedValidators = new Set()
+        let skippedValidators = new Set()
 
-            for(let operation of specialOperationsOnThisCheckpoint){
+        for(let operation of specialOperationsOnThisCheckpoint){
 
-                /* 
-                
-                    Reminder: STOP_VALIDATOR speical operation payload has the following structure
-                
-                    {
-                       type, stop, subchain, index, hash
-                    }
-                
-                */
-
-                if(operation.type==='STOP_VALIDATOR'){
-
-                    skippedValidators.add(operation.payload.subchain)
-
+            /* 
+            
+                Reminder: STOP_VALIDATOR speical operation payload has the following structure
+            
+                {
+                    type, stop, subchain, index, hash
+                    
                 }
+                
+            */
+
+            if(operation.type==='STOP_VALIDATOR'){
+
+                skippedValidators.add(operation.payload.subchain)
 
             }
+
+        }
             
 
 
 
-            for(let subchainPoolID of subchainsIDs){
-
-                // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
-
-                let nextReservePool = subchainPoolID
-
-                delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
-
-                let nonce = 0
-
-
-                while(skippedValidators.has(nextReservePool)){
-
-                    if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
-
-                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
-
-                    }
-
-                    let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfSubchainsMetadataInCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
-
-                    if(possibleNextReservePool){
-
-                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]=possibleNextReservePool
-
-                        nextReservePool = possibleNextReservePool
-
-                        nonce++
-
-                    }else break
-
+        for(let subchainPoolID of subchainsIDs){
+            
+            // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
+            
+            let nextReservePool = subchainPoolID
+            
+            delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
+            
+            let nonce = 0
+            
+            while(skippedValidators.has(nextReservePool)){
+            
+                if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+            
+                    SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
+            
                 }
-
-                if(nextReservePool!==subchainPoolID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
-
-                // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
-
+            
+                let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfSubchainsMetadataInCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
+            
+                if(possibleNextReservePool){
+            
+                    SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]=possibleNextReservePool
+            
+                    nextReservePool = possibleNextReservePool
+            
+                    nonce++
+            
+                }else break
+            
             }
+            
+            if(nextReservePool!==subchainPoolID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
+        
+            // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
+        
+        }
 
 
 

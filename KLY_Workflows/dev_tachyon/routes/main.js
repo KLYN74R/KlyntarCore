@@ -1473,7 +1473,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
 
-        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or not ready for checkpoint'}))
 
         return
 
@@ -1544,7 +1544,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
             
-            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED) {
+            if(checkpointProposition.SUBCHAINS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED || currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.SUBCHAINS_METADATA[subchain].IS_RESERVE) {
 
                 wrongSkipStatusPresent=true
 
@@ -1665,7 +1665,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         SUBCHAINS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
             /..other data
             
@@ -1721,7 +1721,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
 
-        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or invalid'}))
+        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or not ready for checkpoint'}))
 
         return
 
