@@ -453,12 +453,12 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     delete SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[validatorPubKey]
 
-}
+},
 
 
 
 
-export let GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
+GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
 
 
     // Hence it's a chain - take a nonce
@@ -485,13 +485,13 @@ export let GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,n
     
     return mapping.get(firstChallenge)
     
-}
+},
 
 
 
 
 //Function to find,validate and process logic with new checkpoint
-let SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
+SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
     //When we reach the limits of current checkpoint - then we need to execute the special operations
