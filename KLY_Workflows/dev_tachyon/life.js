@@ -2684,7 +2684,11 @@ LOAD_GENESIS=async()=>{
             
             }
 
+            
             if(isReserve) templateForQt.reserveFor = validatorContractStorage.reserveFor
+
+            else SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainAuthority]=0
+
 
             quorumThreadAtomicBatch.put(subchainAuthority+'(POOL)_STORAGE_POOL',templateForQt)
 
@@ -2839,9 +2843,7 @@ LOAD_GENESIS=async()=>{
         
         INDEX:-1,
         
-        HASH:'Poyekhali!@Y.A.Gagarin',
-
-        RID:0
+        HASH:'Poyekhali!@Y.A.Gagarin'
     
     }
     
@@ -3115,13 +3117,15 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',RID:0}, // pointer to know where we should start to process further blocks
+                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:''}, // pointer to know where we should start to process further blocks
 
                 SUBCHAINS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
 
                 KLY_EVM_METADATA:{}, // SUBCHAIN_ID => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
-                KLY_EVM_REASSIGN:{}, // EVM_ID => ASSIGNED_BLS_PUBKEY(poolID)
+                KLY_EVM_REASSIGN:{}, // ASSIGNED_BLS_PUBKEY(poolID) => EVM_ID
+
+                RID_TRACKER:{}, // SUBCHAIN => INDEX
 
                 REASSIGNMENTS:{}, // STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
 
@@ -3159,7 +3163,7 @@ PREPARE_SYMBIOTE=async()=>{
     //_____________________________________ Set the EVM metadata for each subchain______________________________________
 
 
-    for(let [evmID,assignedPoolPubKey] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
+    for(let [assignedPoolPubKey,evmID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
 
         let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID]
 

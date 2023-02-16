@@ -756,12 +756,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
                 [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA - reassign it to other subchains
                 [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA and nonces
 
-
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(pool,EVM)
-                
-            SYMBIOTE_META.VERIFICATION_THREAD.KL
-            Y_EVM_REASSIGN[pool]=pool
-
         */
 
         // [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA and nonces
@@ -834,6 +828,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         }
             
 
+        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS={}
 
 
         for(let subchainPoolID of subchainsIDs){
@@ -841,8 +836,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
             
             let nextReservePool = subchainPoolID
-            
-            delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
             
             let nonce = 0
             
@@ -869,7 +862,11 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             }
             
             if(nextReservePool!==subchainPoolID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
-        
+
+            let initialReserve = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
+
+            if(initialReserve) SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[initialReserve]=subchainPoolID
+
             // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
         
         }
@@ -880,10 +877,10 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         
         let poolsIdsAndMetadata = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA)
 
-        let alreadyInResponseForEVM = Object.values(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)
+        let alreadyInResponseForEVM = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)
 
 
-        for(let [evmID,responsiblePoolID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
+        for(let [responsiblePoolID,evmID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
 
             if(!SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[responsiblePoolID]){
 
@@ -893,7 +890,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                     if(!poolMetadata.IS_RESERVE && !alreadyInResponseForEVM.includes(poolID)){
 
-                        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[evmID]=poolID
+                        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[poolID]=evmID
 
                     }
     
@@ -1071,6 +1068,8 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                             SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].push(possibleNextReservePool)
 
+                            SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[possibleNextReservePool]=subchainPoolID
+
                             nextReservePool = possibleNextReservePool
 
                             nonce++
@@ -1113,6 +1112,17 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
 
+CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL=reservePoolPubKey=>{
+
+    let subchainID = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[reservePoolPubKey]
+
+    return subchainID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID][0] === reservePoolPubKey
+
+},
+
+
+
+
 START_VERIFICATION_THREAD=async()=>{
 
     //This option will stop workflow of verification for each symbiote
@@ -1146,19 +1156,19 @@ START_VERIFICATION_THREAD=async()=>{
         
 
         */
-        
+
 
         let prevSubchainWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
             validatorsPool = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA),
 
             //take the next validator in a row. If it's end of validators pool - start from the first validator in array
-            currentSubchainToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
+            currentPoolToCheck = validatorsPool[validatorsPool.indexOf(prevSubchainWeChecked)+1] || validatorsPool[0],
 
             //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this validators' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentSubchainToCheck],
+            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[currentPoolToCheck],
 
-            blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1),
+            blockID = currentPoolToCheck+":"+(currentSessionMetadata.INDEX+1),
 
             shouldSkip = false
         
@@ -1166,7 +1176,8 @@ START_VERIFICATION_THREAD=async()=>{
         //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
         //Change the state of validator activity only via checkpoints
 
-        
+
+
         if(currentSessionMetadata.IS_STOPPED){
 
             /*
@@ -1180,7 +1191,7 @@ START_VERIFICATION_THREAD=async()=>{
             */
 
                 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
@@ -1190,24 +1201,24 @@ START_VERIFICATION_THREAD=async()=>{
         }
         else if(currentSessionMetadata.IS_RESERVE){
 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
             SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='RESERVE_POOL'
 
         }
-        else {
+        else if(currentSessionMetadata.IS_RESERVE && CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL(currentPoolToCheck) || !currentSessionMetadata.IS_RESERVE) {
 
             //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
 
-            let block = await GET_BLOCK(currentSubchainToCheck,currentSessionMetadata.INDEX+1),
+            let block = await GET_BLOCK(currentPoolToCheck,currentSessionMetadata.INDEX+1),
 
                 blockHash = block && Block.genHash(block),
 
                 quorumSolutionToVerifyBlock = false, //by default
 
-                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentSubchainToCheck]?.INDEX > currentSessionMetadata.INDEX,
+                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentPoolToCheck]?.INDEX > currentSessionMetadata.INDEX,
 
                 checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
@@ -1249,7 +1260,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(shouldSkip){
 
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentSubchainToCheck
+                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
                 SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                         
@@ -1258,10 +1269,33 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(block && quorumSolutionToVerifyBlock){
 
-                await verifyBlock(block)
+
+                let subchainContext = currentSessionMetadata.IS_RESERVE ? SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck] : currentPoolToCheck
+
+                await verifyBlock(block,subchainContext)
+
+                
+                if(currentSessionMetadata.IS_RESERVE){
+
+                    let metaFromCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA[currentPoolToCheck]
+
+                    if(metaFromCheckpoint.INDEX === currentSessionMetadata.INDEX && metaFromCheckpoint.HASH === currentSessionMetadata.HASH){
+
+                        // Delete from reassignments to move to the next pool in subchain
+
+                        let origin = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
+
+                        delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
+
+                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
+
+                    }
+
+                }
 
                 LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
                 
+
             }
 
         }
@@ -1337,7 +1371,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
 
 
 //Function to distribute stakes among validators/blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
+DISTRIBUTE_FEES=async(totalFees,subchainContext,activeValidatorsSet)=>{
 
     /*
 
@@ -1374,13 +1408,13 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
 
-    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(blockCreator,payToCreatorAndHisPool))
+    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(subchainContext,payToCreatorAndHisPool))
 
     //_____________________________________________ THE REST ______________________________________________
 
     activeValidatorsSet.forEach(feesRecepientPoolPubKey=>
 
-        feesRecepientPoolPubKey !== blockCreator && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(blockCreator,feesRecepientPoolPubKey,payToEachPool))
+        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(subchainContext,feesRecepientPoolPubKey,payToEachPool))
             
     )
      
@@ -1391,7 +1425,7 @@ DISTRIBUTE_FEES=async(totalFees,blockCreator,activeValidatorsSet)=>{
 
 
 
-verifyBlock=async block=>{
+verifyBlock=async (block,subchainContext)=>{
 
 
     let blockHash=Block.genHash(block),
@@ -1420,11 +1454,14 @@ verifyBlock=async block=>{
 
 
         //To calculate fees and split between validators.Currently - general fees sum is 0. It will be increased each performed transaction
+        
         let rewardBox={fees:0}
 
         let currentBlockID = block.creator+":"+block.index
 
-        SYMBIOTE_META.STATE_CACHE.set(BLAKE3(block.creator+'EVM_LOGS_MAP'),{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+        let evmIDForLogs = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[subchainContext]
+
+        if(evmIDForLogs) SYMBIOTE_META.STATE_CACHE.set(evmIDForLogs+'EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
         //To change the state atomically
@@ -1450,7 +1487,7 @@ verifyBlock=async block=>{
             pubKey => {
 
                 // Avoid own pubkey to be added. On own chains we send rewards directly
-                if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(block.creator+pubKey+'_FEES')))
+                if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(subchainContext+pubKey+'_FEES')))
 
             }
             
@@ -1471,7 +1508,7 @@ verifyBlock=async block=>{
 
                 let eventCopy = JSON.parse(JSON.stringify(event))
 
-                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](block.creator,eventCopy,rewardBox,atomicBatch).catch(_=>{})
+                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainContext,eventCopy,rewardBox,atomicBatch).catch(_=>{})
 
                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                 if(reason!=='EVM'){
@@ -1492,7 +1529,7 @@ verifyBlock=async block=>{
         //__________________________________________SHARE FEES AMONG VALIDATORS_________________________________________
         
         
-        await DISTRIBUTE_FEES(rewardBox.fees,block.creator,activeValidators)
+        await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activeValidators)
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
@@ -1500,7 +1537,7 @@ verifyBlock=async block=>{
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(block.creator+":"+block.index,block).catch(
+            SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
                 
                 error => LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
                 
@@ -1509,9 +1546,9 @@ verifyBlock=async block=>{
         }else if(block.creator!==CONFIG.SYMBIOTE.PUB){
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.BLOCKS.del(block.creator+":"+block.index).catch(
+            SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
                 
-                error => LOG(`Failed to delete block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
+                error => LOG(`Failed to delete block ${currentBlockID} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
                 
             )
 
@@ -1531,9 +1568,13 @@ verifyBlock=async block=>{
 
 
         // Store the currently relative block index (RID)
-        atomicBatch.put('RID:'+SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID,currentBlockID)
 
-        let oldRID = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID
+        let currentRID = SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
+
+        atomicBatch.put(`RID:${subchainContext}:${currentRID}`,currentBlockID)
+
+        SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
+
 
         //Change finalization pointer
         
@@ -1543,7 +1584,6 @@ verifyBlock=async block=>{
                 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.RID++
         
         //Change metadata per validator's thread
         
@@ -1551,20 +1591,16 @@ verifyBlock=async block=>{
 
         SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator].HASH=blockHash
 
-        let blockReceipt = {
-
-            rid:oldRID,
-            hash:blockHash
-
-        }
 
         //___________________ Update the KLY-EVM ___________________
 
-        if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.has(block.creator)){
+        let evmID = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[subchainContext]
 
-            let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(block.creator)
+        if(evmID){
 
-            let currentEVMMetadata = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[block.creator]
+            let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
+
+            let currentEVMMetadata = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID]
     
             // Update stateRoot
             currentEVMMetadata.STATE_ROOT = await currentEVM.getStateRoot()
@@ -1586,27 +1622,22 @@ verifyBlock=async block=>{
 
             let blockToStore = currentEVM.getBlockToStore(currentHash)
 
-            //Add the KLY-EVM metadata to block receipt
-            
-            blockReceipt.evmData={
 
-                relativeBlockIndex:blockToStore.number,
-                relativeBlockHash:blockToStore.hash
+            atomicBatch.put(evmID+'EVM_BLOCK:'+blockToStore.number,blockToStore)
 
-            }
-
-            atomicBatch.put(BLAKE3(block.creator+'EVM_BLOCK:'+blockToStore.number),blockToStore)
-
-            atomicBatch.put(BLAKE3(block.creator+'EVM_INDEX:'+blockToStore.hash),blockToStore.number)
+            atomicBatch.put(evmID+'EVM_INDEX:'+blockToStore.hash,blockToStore.number)
     
-            atomicBatch.put(BLAKE3(block.creator+'EVM_LOGS:'+blockToStore.number),SYMBIOTE_META.STATE_CACHE.get(BLAKE3(block.creator+'EVM_LOGS_MAP')))
+            atomicBatch.put(evmID+'EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
     
+            atomicBatch.put(evmID+'EVM_BLOCK_RECEIPT:'+blockToStore.number,`BLOCK_CONTEXT:${currentBlockID}`)
+
+
             // Set the next block's parameters
             currentEVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
         
-        }
+            atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,`EVM_CONTEXT:${evmID}`)
 
-        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,blockReceipt)
+        }
         
         //Commit the state of VERIFICATION_THREAD
 

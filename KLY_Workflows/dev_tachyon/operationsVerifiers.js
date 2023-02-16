@@ -352,30 +352,38 @@ export default {
 
                             // Create the separate KLY-EVM for this subchain in case it's main validator
 
-                            if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.size < workflowConfigs.QUORUM_SIZE && !poolStorage.isReserve){
+                            if(!poolStorage.isReserve){
 
-                                let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${pool}`)
-                
-                                await EVM.startEVM()
+                                if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.size < workflowConfigs.QUORUM_SIZE){
+
+                                    let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${pool}`)
                     
-                                // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
-                    
-                                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[pool]={
-                                    
-                                    STATE_ROOT:await EVM.getStateRoot(),
-                            
-                                    NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
-                            
-                                    PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
-                                    
-                                    TIMESTAMP:Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP/1000)
+                                    await EVM.startEVM()
+                        
+                                    // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
+                        
+                                    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[pool]={
+                                        
+                                        STATE_ROOT:await EVM.getStateRoot(),
                                 
-                                }
+                                        NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+                                
+                                        PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+                                        
+                                        TIMESTAMP:Math.floor(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP/1000)
+                                    
+                                    }
+                        
+                                    SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(pool,EVM)
                     
-                                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(pool,EVM)
-                
-                                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[pool]=pool
-                
+                                    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[pool]=pool
+                    
+                                }
+
+                                // Add the RID tracker
+
+                                SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[pool]=0                                
+                                
                             }
 
                         }

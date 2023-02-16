@@ -422,10 +422,14 @@ export let VERIFIERS = {
     */
     EVM_CALL:async(originSubchain,event,rewardBox,atomicBatch)=>{
 
-        
-        let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[originSubchain].TIMESTAMP
+        let evmID = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[originSubchain]
 
-        let evmOfSubchain = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(originSubchain)
+        if(!evmID) return
+
+
+        let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID].TIMESTAMP
+
+        let evmOfSubchain = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
 
 
 
@@ -447,9 +451,9 @@ export let VERIFIERS = {
             rewardBox.fees += totalSpentByTxInKLY
 
 
-            let {tx,receipt} = evmOfSubchain.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get(BLAKE3(originSubchain+'EVM_LOGS_MAP')))
+            let {tx,receipt} = evmOfSubchain.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
 
-            atomicBatch.put(BLAKE3(originSubchain+'TX:'+tx.hash),{tx,receipt})
+            atomicBatch.put(BLAKE3(evmID+'TX:'+tx.hash),{tx,receipt})
 
             return {isOk:true,reason:'EVM'}
 
