@@ -2423,14 +2423,16 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 RESTORE_STATE=async()=>{
 
-    let validatorsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
+    
+    let poolsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA)
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
-
     
-    for(let poolPubKey of validatorsMetadata){
+
+
+    for(let poolPubKey of poolsMetadata){
 
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the SUBCHAINS_METADATA as a start point
         // Returned value is {INDEX,HASH,(?)FINALIZATION_PROOF}
@@ -2462,6 +2464,22 @@ RESTORE_STATE=async()=>{
             //Store to mempool of special operations
             
             tempObject.SPECIAL_OPERATIONS_MEMPOOL.set(skipOperationRelatedToThisPool.id,skipOperationRelatedToThisPool)
+
+        }
+
+        //____________________________ Check for reassignments ____________________________
+
+        if(!poolsMetadata.IS_RESERVE){
+
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false)
+
+            if(reassignmentMetadata){
+
+                tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
+
+                tempObject.REASSIGNMENTS.set(reassignmentMetadata.CURRENT,poolPubKey)
+
+            }
 
         }
 
