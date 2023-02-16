@@ -1425,7 +1425,7 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activeValidatorsSet)=>{
 
 
 
-verifyBlock=async (block,subchainContext)=>{
+verifyBlock=async(block,subchainContext)=>{
 
 
     let blockHash=Block.genHash(block),
@@ -1635,7 +1635,13 @@ verifyBlock=async (block,subchainContext)=>{
             // Set the next block's parameters
             currentEVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
         
-            atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,`EVM_CONTEXT:${evmID}`)
+            atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
+
+                evmContext:evmID,
+
+                rid:currentRID
+
+            })
 
         }
         
