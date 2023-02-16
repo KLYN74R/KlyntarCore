@@ -58,6 +58,8 @@ acceptBlocks=response=>{
     
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
 
@@ -97,20 +99,36 @@ acceptBlocks=response=>{
         
             if(last){
             
-                let block=await PARSE_JSON(buffer)
+                let block = await PARSE_JSON(buffer)
 
-                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAINS_METADATA[block.creator]?.IS_STOPPED
+                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainMetadata[block.creator]?.IS_STOPPED
             
 
                 if(subchainIsSkipped){
 
-                    !response.aborted && response.end('Subchain was skipped')
+                    !response.aborted && response.end('Work on subchain was skipped')
         
                     return
 
                 }
 
+                let mainPoolOrAtLeastReassignment = qtSubchainMetadata[block.creator]
                 
+                                                    &&
+                                                    
+                                                    (tempObject.REASSIGNMENTS.has(block.creator) && qtSubchainMetadata[block.creator].IS_RESERVE || !qtSubchainMetadata[block.creator].IS_RESERVE)
+
+
+                if(!mainPoolOrAtLeastReassignment){
+
+                    !response.aborted && response.end(`This block creator can't produce blocks`)
+        
+                    return
+
+                }
+                
+
+
                 let hash=Block.genHash(block)
 
 
@@ -520,7 +538,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             return
         }
 
+        
         let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+
+        let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA 
+
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
@@ -546,22 +568,26 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             }
 
+            let [blockCreator,_] = blockID.split(':')
+
+
             let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkValidators.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+qtPayload,aggregatedPub,aggregatedSignature).catch(_=>false)
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
+            let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
             
             
-            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && mainPoolOrAtLeastReassignment){
 
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkValidators}})
     
                 FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
-            }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
+            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | mainPoolOrAtLeastReassignment:${mainPoolOrAtLeastReassignment}`)
 
         }
 
@@ -653,6 +679,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
     
             
             
+            
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
@@ -689,6 +716,8 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
     if(!tempObject){
@@ -714,6 +743,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let myLocalBlock = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
+    let [blockCreator,_] = blockID.split(':')
 
 
     let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
@@ -724,16 +754,19 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
     
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkValidators]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
     
+    let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
+
     let checkpointTempDB = tempObject.DATABASE
 
 
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual){
+
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && mainPoolOrAtLeastReassignment){
 
         await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkValidators}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
-    }else !response.aborted && response.end(`Something wrong because all of 3 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal}`)
+    }else !response.aborted && response.end(`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | mainPoolOrAtLeastReassignment:${mainPoolOrAtLeastReassignment}`)
 
 
 }),
@@ -913,6 +946,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
 
 
     if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
@@ -927,6 +961,18 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
         !response.aborted && response.end('Checkpoint is not fresh')
+        
+        return
+
+    }
+
+    
+    let mainPoolOrAtLeastReassignment = qtSubchainMetadata[requestedSubchain] && (tempObject.REASSIGNMENTS.has(requestedSubchain) && qtSubchainMetadata[requestedSubchain].IS_RESERVE || !qtSubchainMetadata[requestedSubchain].IS_RESERVE)
+
+
+    if(!mainPoolOrAtLeastReassignment){
+
+        !response.aborted && response.end(`This pool can't be skipped(not main / no reassignments)`)
         
         return
 
@@ -1018,12 +1064,26 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
 
+    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.SUBCHAINS_METADATA
+
     if(!tempObject){
 
         !response.aborted && response.end('QT checkpoint is not ready')
 
         return
     }
+
+    let mainPoolOrAtLeastReassignment = qtSubchainMetadata[subchain] && (tempObject.REASSIGNMENTS.has(subchain) && qtSubchainMetadata[subchain].IS_RESERVE || !qtSubchainMetadata[subchain].IS_RESERVE)
+
+    if(!mainPoolOrAtLeastReassignment){
+
+        !response.aborted && response.end(`This pool can't be skipped(not main / no reassignments)`)
+        
+        return
+
+    }
+
+
 
     let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 

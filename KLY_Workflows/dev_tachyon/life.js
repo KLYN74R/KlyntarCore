@@ -359,7 +359,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
     
-            HEALTH_MONITORING:new Map(), 
+            REASSIGNMENTS:new Map(),
+            
+            HEALTH_MONITORING:new Map(),
       
             DATABASE:nextTempDB
             
@@ -699,7 +701,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                                 // And only after successful store we can add to mapping the final pointer
                                 
                                 reassignments.set(subchain,futureMeta)
-                                
+
                                 reassignments.set(nextReservePool,subchain)
 
         
