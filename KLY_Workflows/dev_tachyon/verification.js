@@ -1199,15 +1199,6 @@ START_VERIFICATION_THREAD=async()=>{
 
 
         }
-        else if(currentSessionMetadata.IS_RESERVE){
-
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
-
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                    
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='RESERVE_POOL'
-
-        }
         else if(currentSessionMetadata.IS_RESERVE && CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL(currentPoolToCheck) || !currentSessionMetadata.IS_RESERVE) {
 
             //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
@@ -1297,6 +1288,14 @@ START_VERIFICATION_THREAD=async()=>{
                 
 
             }
+
+        }else{
+
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
+
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+                                    
+            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
         }
 
@@ -1576,6 +1575,8 @@ verifyBlock=async(block,subchainContext)=>{
         SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
 
 
+        let oldGRID = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
+
         //Change finalization pointer
         
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
@@ -1584,6 +1585,9 @@ verifyBlock=async(block,subchainContext)=>{
                 
         SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
+        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID++
+
+        atomicBatch.put(`GRID:${oldGRID}`,currentBlockID)
         
         //Change metadata per validator's thread
         

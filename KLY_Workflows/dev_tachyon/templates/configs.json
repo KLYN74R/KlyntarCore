@@ -204,7 +204,7 @@
     "MY_HOSTNAME":"http://somenode.com:6666",
         
     "TTL":{
-        "API_ACCOUNTS":5,
+
         "INFO":600,
         "API_NODES":5,
         "API_BLOCK":6000,
@@ -216,15 +216,16 @@
         "GET_QUORUM":5,
         "GET_PAYLOAD_FOR_CHECKPOINT":6000,
         "GET_QUORUM_THREAD_CHECKPOINT":5,
-        "GET_BLOCK_BY_RID":6000,
+        "GET_BLOCK_BY_GRID":6000,
         "GET_SYNC_STATE":2,
         "GET_SYMBIOTE_INFO":5,
-        "GET_EVENT_RECEIPT":100
+        "GET_EVENT_RECEIPT":100,
+        "GET_FROM_STATE":5,
+        "GET_SEARCH_RESULT":5
     },
 
     "TRIGGERS":{
 
-        "API_ACCOUNTS":1,
         "INFO":1,
         "API_NODES":1,
         "API_BLOCK":1,
@@ -244,10 +245,12 @@
         "GET_QUORUM_THREAD_CHECKPOINT":1,
         "SHARE_FINALIZATION_PROOF":1,
         "GET_SUPER_FINALIZATION_PROOFS":1,
-        "GET_BLOCK_BY_RID":1,
+        "GET_BLOCK_BY_GRID":1,
         "GET_SYNC_STATE":1,
         "GET_SYMBIOTE_INFO":1,
-        "GET_EVENT_RECEIPT":1
+        "GET_EVENT_RECEIPT":1,
+        "GET_FROM_STATE":1,
+        "GET_SEARCH_RESULT":1
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,

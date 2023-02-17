@@ -1,5 +1,7 @@
-import Block from '../essences/block.js'
 import {WRAP_RESPONSE,GET_NODES,USE_TEMPORARY_DB} from '../utils.js'
+import {BLAKE3} from '../../../KLY_Utils/utils.js'
+import Block from '../essences/block.js'
+
 
 
 
@@ -9,27 +11,32 @@ let
 
 /**## API/account
  * 
- *  Returns account's state
+ *  Returns account's state on given subchain
  * 
- *  0 - accountID
+ *  0 - subchainID
+ *  1 - cellID
  * 
  * 
- * @param {string} account publicKey/address of account(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on)
+ * @param {string} cellID publicKey/address of account(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on)
  * 
  * @returns {Account} Account instance
  * 
  * */
-account=async(response,request)=>{
+getFromState=async(response,request)=>{
     
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_ACCOUNTS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_FROM_STATE){
 
-        let data = await SYMBIOTE_META.STATE.get(request.getParameter(0)).catch(_=>'')
+    
+        let fullID = request.getParameter(0) === 'X' ? request.getParameter(1) : BLAKE3(request.getParameter(0)+request.getParameter(1))
 
-        !response.aborted && WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.API_ACCOUNTS).end(JSON.stringify(data))
+        let data = await SYMBIOTE_META.STATE.get(fullID).catch(_=>'')
 
-    }else !response.aborted&&response.end('Symbiote not supported or BALANCE trigger is off')
+        !response.aborted && WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.GET_FROM_STATE).end(JSON.stringify(data))
+
+    
+    }else !response.aborted && response.end('Trigger is off')
 
 },
 
@@ -123,7 +130,7 @@ getLatestNBlocks=async(response,request)=>{
             .onAborted(()=>response.aborted=true)
 
 
-        let startRID = +request.getParameter(0)
+        let startGRID = +request.getParameter(0)
 
         let limit =  25
 
@@ -131,15 +138,15 @@ getLatestNBlocks=async(response,request)=>{
 
         for(let i=0;i<limit;i++){
 
-            let rid = startRID-i
+            let grid = startGRID-i
 
-            let blockPromise = SYMBIOTE_META.STATE.get('RID:'+rid).then(
+            let blockPromise = SYMBIOTE_META.STATE.get('GRID:'+grid).then(
             
                 blockID => SYMBIOTE_META.BLOCKS.get(blockID).then(block=>{
 
                     block.hash=Block.genHash(block)
 
-                    block.rid=rid
+                    block.grid=grid
 
                     return block
 
@@ -279,20 +286,20 @@ getSymbioteInfo=response=>{
 
 
 
-// 0 - RID(relative block index)
-getBlockByRID=(response,request)=>{
+// 0 - GRID(general real block index)
+getBlockByGRID=(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_BLOCK_BY_RID){
+    if(CONFIG.SYMBIOTE.TRIGGERS.GET_BLOCK_BY_GRID){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_BLOCK_BY_RID}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_BLOCK_BY_GRID}`)
             .onAborted(()=>response.aborted=true)
 
 
-        SYMBIOTE_META.STATE.get('RID:'+request.getParameter(0)).then(
+        SYMBIOTE_META.STATE.get('GRID:'+request.getParameter(0)).then(
             
             blockID => SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
 
@@ -346,22 +353,22 @@ getSearchResult=async(response,request)=>{
         }
 
 
-        let blockByRID = await SYMBIOTE_META.STATE.get(query).then(
+        let blockByGRID = await SYMBIOTE_META.STATE.get(query).then(
             
             blockID => SYMBIOTE_META.BLOCKS.get(blockID)
 
         ).then(block=>{
 
-            responseType='BLOCK_BY_RID'
+            responseType='BLOCK_BY_GRID'
 
             return block
 
         }).catch(_=>false)
 
 
-        if(blockByRID){
+        if(blockByGRID){
 
-            !response.aborted && response.end(JSON.stringify({responseType,data:blockByRID}))
+            !response.aborted && response.end(JSON.stringify({responseType,data:blockByGRID}))
 
             return
 
@@ -557,21 +564,21 @@ UWS_SERVER
 
 .get('/quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
 
-.get('/latest_n_blocks/:NUMBER_OF_BLOCKS',getLatestNBlocks)
+.get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)
+
+.get('/state/:SUBCHAIN_ID/:CELL_ID',getFromState)
 
 .get('/block_receipt/:BLOCK_ID',getBlockReceipt)
 
 .get('/search_result/:QUERY',getSearchResult)
 
-.get('/pools_metadata',getPoolsMetadata)
-
 .get('/event_receipt/:TXID',getEventReceipt)
 
-.get('/block_by_rid/:RID',getBlockByRID)
+.get('/block_by_grid/:GRID',getBlockByGRID)
+
+.get('/pools_metadata',getPoolsMetadata)
 
 .get('/symbiote_info',getSymbioteInfo)
-
-.get('/account/:ADDRESS',account)
 
 .get('/sync_state',getSyncState)
 
