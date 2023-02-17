@@ -3038,8 +3038,6 @@ PREPARE_SYMBIOTE=async()=>{
 
     //______________________________________Prepare databases and storages___________________________________________
 
-    
-
 
     //Create subdirs due to rational solutions
     [
@@ -3068,8 +3066,6 @@ PREPARE_SYMBIOTE=async()=>{
         dbName => SYMBIOTE_META[dbName]=level(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
         
     )
-    
-    
     
     
     //____________________________________________Load stuff to db___________________________________________________
@@ -3191,6 +3187,10 @@ PREPARE_SYMBIOTE=async()=>{
 
             SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(assignedPoolPubKey,EVM)
 
+            // Add the global EVM for sandbox execution via API
+
+            if(evmID === CONFIG.EVM.evmID) global.KLY_EVM = EVM
+
             evm=EVM
 
         }
@@ -3199,13 +3199,10 @@ PREPARE_SYMBIOTE=async()=>{
     
         // Set the block parameters
         await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
-
-
-        // Add the global EVM for sandbox execution via API
-        global.KLY_EVM = evm
-
+        
     }
 
+    
 
 
 

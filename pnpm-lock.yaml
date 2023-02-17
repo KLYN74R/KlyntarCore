@@ -6,7 +6,7 @@ specifiers:
   '@ethereumjs/common': ^3.0.0
   '@ethereumjs/tx': ^4.0.2
   '@idena/vrf-js': ^1.0.1
-  '@klyntar/klyntarevmjsonrpc': ^3.3.2
+  '@klyntar/klyntarevmjsonrpc': github:KLYN74R/KlyntarEVMJsonRPC#feature_bind_to_subchain
   '@noble/bls12-381': ^1.2.0
   '@solana/web3.js': ^1.62.0
   assemblyscript: ^0.19.9
@@ -36,7 +36,7 @@ dependencies:
   '@chainsafe/bls': 7.1.1
   '@ethereumjs/common': 3.0.0
   '@idena/vrf-js': 1.0.1
-  '@klyntar/klyntarevmjsonrpc': 3.3.2
+  '@klyntar/klyntarevmjsonrpc': github.com/KLYN74R/KlyntarEVMJsonRPC/826cf264525da190b53aad27a37885e0fb0cf335
   '@noble/bls12-381': 1.2.0
   assemblyscript: 0.19.23
   base-58: 0.0.1
@@ -470,19 +470,6 @@ packages:
       js-sha256: 0.9.0
       js-sha512: 0.8.0
       mocha: 8.4.0
-    dev: false
-
-  /@klyntar/klyntarevmjsonrpc/3.3.2:
-    resolution: {integrity: sha512-IlWEPtH3KCFFYspcXk1LhqA+932/5AYh9nlmTHqSIZqsz6Qc8ToN5N5PeLVEm25g4aUMp0q5iioRL71MZqTdqA==}
-    hasBin: true
-    dependencies:
-      '@ethereumjs/tx': 4.0.2
-      keccak256: 1.0.6
-      web3: 1.8.1
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
     dev: false
 
   /@noble/bls12-381/1.2.0:
@@ -4922,6 +4909,21 @@ packages:
   /yocto-queue/0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
+    dev: false
+
+  github.com/KLYN74R/KlyntarEVMJsonRPC/826cf264525da190b53aad27a37885e0fb0cf335:
+    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/826cf264525da190b53aad27a37885e0fb0cf335}
+    name: '@klyntar/klyntarevmjsonrpc'
+    version: 3.3.2
+    hasBin: true
+    dependencies:
+      '@ethereumjs/tx': 4.0.2
+      keccak256: 1.0.6
+      web3: 1.8.1
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
     dev: false
 
   github.com/uNetworking/uWebSockets.js/e5d6241a7bbfb0d9258780dbf6175ae34d6f18e9:

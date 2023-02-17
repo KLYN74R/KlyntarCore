@@ -6,7 +6,7 @@ import Web3 from 'web3'
 //___________________________________ CONSTANTS POOL ___________________________________
 
 
-const web3 = new Web3('http://localhost:7331/kly_evm_rpc')
+const web3 = new Web3('http://localhost:7332/kly_evm_rpc')
 
 // KLY-EVM
 const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},'merge')
@@ -61,7 +61,8 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
 }
 
-DEFAULT_SIMPLE_QUERIES()
+
+// DEFAULT_SIMPLE_QUERIES()
 
 
 let EVM_DEFAULT_TX=async()=>{
@@ -96,7 +97,7 @@ let EVM_DEFAULT_TX=async()=>{
     let raw = '0x' + tx.serialize().toString('hex')
 
 	// Broadcast the transaction
-    web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some has been occured ${err}`:`Success ———> ${txHash}`))
+    web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some error has been occured ${err}`:`Success ———> ${txHash}`))
 
 }
 

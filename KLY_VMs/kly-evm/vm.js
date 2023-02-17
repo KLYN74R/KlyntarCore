@@ -97,11 +97,12 @@ export class KLY_EVM {
      * 
      */
     callEVM=async serializedEVMTxWith0x=>{
-
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
+
+        let block = this.block
 
         let txResult = await this.vm.runTx({tx,block})
 
@@ -125,6 +126,9 @@ export class KLY_EVM {
 
         let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'))
         
+        let block = this.block
+
+
         if(isJustCall){
 
             let {to,data} = tx
@@ -155,7 +159,7 @@ export class KLY_EVM {
             if(tx.validate() && tx.verifySignature()){
 
                 let account = await vmCopy.stateManager.getAccount(origin)
-    
+                 
                 if(account.nonce === tx.nonce && account.balance >= value){
     
                     let txResult = await vmCopy.evm.runCall({
@@ -165,7 +169,7 @@ export class KLY_EVM {
                         block
                       
                     })
-    
+  
                     return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
                     
                 } return {error:{msg:'Wrong nonce value or insufficient balance'}}
@@ -312,6 +316,8 @@ export class KLY_EVM {
         let txResult = await vmCopy.evm.runCall({origin,caller,to,data,block})
 
         let gasUsed = txResult.execResult.executionGasUsed
+
+        let block = this.block
 
         // If gas is 0 - then it's default tx, so we need to run it via .runTx after getting signed with our private key and nonce
 
@@ -785,7 +791,6 @@ export class KLY_EVM {
 
 
         logsMap[logInstance.address].push(logInstance)
-        
 
     }
 

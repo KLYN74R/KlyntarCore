@@ -453,7 +453,7 @@ export let VERIFIERS = {
 
             let {tx,receipt} = evmOfSubchain.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
 
-            atomicBatch.put(BLAKE3(evmID+'TX:'+tx.hash),{tx,receipt})
+            atomicBatch.put(evmID+':TX:'+tx.hash,{tx,receipt})
 
             return {isOk:true,reason:'EVM'}
 
