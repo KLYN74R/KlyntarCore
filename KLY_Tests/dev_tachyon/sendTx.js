@@ -253,7 +253,7 @@ let MULTISIG_2_DEFAULT=async()=>{
 
 let DEFAULT_2_DEFAULT=async()=>{
 
-    let accData = await GET_ACCOUNT_DATA(user1.pub)
+    let accData = await GET_ACCOUNT_DATA(user1.pub) || {nonce:0}
 
     console.log(accData)
 
@@ -269,9 +269,9 @@ let DEFAULT_2_DEFAULT=async()=>{
     console.log(event)
 
 
-    let status = await SEND_EVENT(event)
+    // let status = await SEND_EVENT(event)
 
-    console.log(status)
+    // console.log(status)
 
 }
 
@@ -455,9 +455,12 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 //__________________________ SEND __________________________
 
-MULTISIG_2_DEFAULT()
+// MULTISIG_2_DEFAULT()
 
 // DEFAULT_2_DEFAULT()
+
+console.log(Buffer.from('MmaAG6n4yz1j1hXzCgtMbsS7r4TrKA4mLa/M598FOMLlhNb63NYT49QrJ2dEOnBbArgBnh9/Ik+0v2gL9/EnCw==','base64').length)
+
 
 // MULTISIG_2_MULTISIG()
 

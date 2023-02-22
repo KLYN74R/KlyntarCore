@@ -875,6 +875,8 @@ export default {
 
         }
         
-    }
+    },
+
+    CHANGE_SUBCHAIN:()=>{},
 
 }
