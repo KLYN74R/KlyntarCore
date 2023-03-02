@@ -3,6 +3,7 @@ lockfileVersion: 5.3
 specifiers:
   '@ethereumjs/block': 4.0.0
   '@ethereumjs/common': 3.0.0
+  '@ethereumjs/rlp': ^4.0.1
   '@ethereumjs/statemanager': 1.0.0
   '@ethereumjs/trie': 5.0.0
   '@ethereumjs/tx': 4.0.0
@@ -14,6 +15,7 @@ specifiers:
 dependencies:
   '@ethereumjs/block': 4.0.0
   '@ethereumjs/common': 3.0.0
+  '@ethereumjs/rlp': 4.0.1
   '@ethereumjs/statemanager': 1.0.0
   '@ethereumjs/trie': 5.0.0
   '@ethereumjs/tx': 4.0.0
@@ -29,7 +31,7 @@ packages:
     engines: {node: '>=14'}
     dependencies:
       '@ethereumjs/common': 3.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/trie': 5.0.0
       '@ethereumjs/tx': 4.0.0
       '@ethereumjs/util': 8.0.0
@@ -43,7 +45,7 @@ packages:
       '@ethereumjs/block': 4.0.0
       '@ethereumjs/common': 3.0.0
       '@ethereumjs/ethash': 2.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/trie': 5.0.0
       '@ethereumjs/util': 8.0.0
       abstract-level: 1.0.3
@@ -68,7 +70,7 @@ packages:
     engines: {node: '>=14'}
     dependencies:
       '@ethereumjs/block': 4.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/util': 8.0.0
       abstract-level: 1.0.3
       bigint-crypto-utils: 3.1.7
@@ -91,8 +93,8 @@ packages:
       - supports-color
     dev: false
 
-  /@ethereumjs/rlp/4.0.0:
-    resolution: {integrity: sha512-LM4jS5n33bJN60fM5EC8VeyhUgga6/DjCPBV2vWjnfVtobqtOiNC4SQ1MRFqyBSmJGGdB533JZWewyvlcdJtkQ==}
+  /@ethereumjs/rlp/4.0.1:
+    resolution: {integrity: sha512-tqsQiBQDQdmPWE1xkkBq4rlSW5QZpLOUJ5RJh2/9fug+q9tnUhuZoVLk7s0scUIKTOzEtR72DFBXI4WiZcMpvw==}
     engines: {node: '>=14'}
     hasBin: true
     dev: false
@@ -101,7 +103,7 @@ packages:
     resolution: {integrity: sha512-mOGXsq1LH4vKCfO+c2wPQQD67/Tm2bA4uuH4QadmPwVBm8z/21uvAITZJg3UGSEvnMWY873J4GumeADe/xAeEg==}
     dependencies:
       '@ethereumjs/common': 3.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/trie': 5.0.0
       '@ethereumjs/util': 8.0.0
       debug: 4.3.4
@@ -115,7 +117,7 @@ packages:
     resolution: {integrity: sha512-BiFv9hQZighlp4445kfG65X+tc8eEfpP32RMKzCELmSvChpwmtuL8Xuxy+aTYWQEMjY6s4gAVLX/J48SW7gwQg==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/util': 8.0.0
       ethereum-cryptography: 1.1.2
       readable-stream: 3.6.0
@@ -126,7 +128,7 @@ packages:
     engines: {node: '>=14'}
     dependencies:
       '@ethereumjs/common': 3.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/util': 8.0.0
       ethereum-cryptography: 1.1.2
     dev: false
@@ -135,7 +137,7 @@ packages:
     resolution: {integrity: sha512-Zz/Ovar0VU/CaYHLvigBTjG5PmkG0OzjvRjjoXRJbJcdWJoTCN2N4BYgoCBOZomKjaAT4ABpQ7wer6ZFOglvjg==}
     engines: {node: '>=14'}
     dependencies:
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       ethereum-cryptography: 1.1.2
     dev: false
 
@@ -147,7 +149,7 @@ packages:
       '@ethereumjs/blockchain': 6.0.0
       '@ethereumjs/common': 3.0.0
       '@ethereumjs/evm': 1.0.0
-      '@ethereumjs/rlp': 4.0.0
+      '@ethereumjs/rlp': 4.0.1
       '@ethereumjs/statemanager': 1.0.0
       '@ethereumjs/trie': 5.0.0
       '@ethereumjs/tx': 4.0.0

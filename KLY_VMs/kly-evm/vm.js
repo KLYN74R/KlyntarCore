@@ -5,6 +5,7 @@ import {Common} from '@ethereumjs/common'
 import {Block} from '@ethereumjs/block'
 import {Trie} from '@ethereumjs/trie'
 import {LevelDB} from './LevelDB.js'
+import rlp from '@ethereumjs/rlp'
 import {VM} from '@ethereumjs/vm'
 import {Level} from 'level'
 import Web3 from 'web3'
@@ -65,9 +66,7 @@ export class KLY_EVM {
 
         const trie = new Trie({
     
-            db:new LevelDB(new Level(pathToVMState)), // use own implementation. See the sources
-        
-            useKeyHashing:true
+            db:new LevelDB(new Level(pathToVMState)) // use own implementation. See the sources
         
         })
         
@@ -227,18 +226,18 @@ export class KLY_EVM {
     
         await this.vm.stateManager.putAccount(address,Account.fromAccountData(accountData))
 
-        for (const [key, val] of Object.entries(storage)) {
+        for (const [key,value] of Object.entries(storage)) {
         
             const storageKey = Buffer.from(key,'hex')
-            const storageVal = Buffer.from(val,'hex')
-        
-            await this.vm.stateManager.putContractStorage(address,storageKey,storageVal)
+            const storageValue = Buffer.from(rlp.decode(`0x${value}`))
+            
+            await this.vm.stateManager.putContractStorage(address,storageKey,storageValue)
         
         }
 
-        const codeBuf = Buffer.from(code,'hex')
+        const codeBuffer = Buffer.from(code,'hex')
     
-        await this.vm.stateManager.putContractCode(address,codeBuf)
+        await this.vm.stateManager.putContractCode(address,codeBuffer)
         
     }
 
