@@ -160,6 +160,7 @@ class KLY_EVM_CLASS {
 
         }else {
 
+
             let vmCopy = await this.vm.copy()
 
             let origin = tx.getSenderAddress()
@@ -174,14 +175,14 @@ class KLY_EVM_CLASS {
                 let account = await vmCopy.stateManager.getAccount(origin)
                  
                 if(account.nonce === tx.nonce && account.balance >= value){
-    
+
                     let txResult = await vmCopy.evm.runCall({
             
                         origin,caller,to,data,gasLimit,
                     
                         block
                       
-                    })
+                    }).catch(err=>({execResult:err}))
   
                     return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
                     

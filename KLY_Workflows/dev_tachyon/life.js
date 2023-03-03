@@ -2731,8 +2731,10 @@ LOAD_GENESIS=async()=>{
     
                         console.log('SUB:'+evmKey.slice(2),poolPubKey)
 
+                        let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
+
                         // Add assignment to subchain
-                        atomicBatch.put('SUB:'+evmKey.slice(2),poolPubKey)
+                        atomicBatch.put('SUB:'+caseIgnoreAccountAddress,poolPubKey)
         
                     }
     
@@ -3202,9 +3204,6 @@ PREPARE_SYMBIOTE=async()=>{
         GRACEFUL_STOP()
 
     }
-
-
-    console.log(await GET_FROM_STATE('SUB:4741c39e6096c192Db6E1375Ff32526512069dF5'))
 
     
     //_____________________________________Set some values to stuff cache___________________________________________

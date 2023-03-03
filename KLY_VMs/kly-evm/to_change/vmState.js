@@ -96,7 +96,7 @@ class VmState {
     }
     async putAccount(address, account) {
         await this._stateManager.putAccount(address, account);
-        this.touchAccount(address);
+        await this.touchAccount(address);
     }
     async modifyAccountFields(address, accountFields) {
         return this._stateManager.modifyAccountFields(address, accountFields);
@@ -107,7 +107,7 @@ class VmState {
      */
     async deleteAccount(address) {
         await this._stateManager.deleteAccount(address);
-        this.touchAccount(address);
+        await this.touchAccount(address);
     }
     async getContractCode(address) {
         return await this._stateManager.getContractCode(address);
@@ -120,11 +120,11 @@ class VmState {
     }
     async putContractStorage(address, key, value) {
         await this._stateManager.putContractStorage(address, key, value);
-        this.touchAccount(address);
+        await this.touchAccount(address);
     }
     async clearContractStorage(address) {
         await this._stateManager.clearContractStorage(address);
-        this.touchAccount(address);
+        await this.touchAccount(address);
     }
     async accountExists(address) {
         return await this._stateManager.accountExists(address);
@@ -152,17 +152,17 @@ class VmState {
 
         // KLY-EVM extra logic
 
-        let addressAsString = address.buf.toString('hex');
+        let addressAsStringWithout0x = address.buf.toString('hex');
 
-        let bindedSubchain = await global.GET_SUBCHAIN_ASSIGNMENT(addressAsString);
+        let bindedSubchain = await global.GET_SUBCHAIN_ASSIGNMENT(addressAsStringWithout0x);
 
         if(bindedSubchain !== global.CURRENT_SUBCHAIN_EVM_CONTEXT){
 
-            throw new Error(`Account 0x${addressAsString} binded to subchain ${bindedSubchain}, but you try to change the state of it via tx on subchain ${global.CURRENT_SUBCHAIN_EVM_CONTEXT}`)
+            throw new Error(`Account 0x${addressAsStringWithout0x} binded to subchain ${bindedSubchain}, but you try to change the state of it via tx on subchain ${global.CURRENT_SUBCHAIN_EVM_CONTEXT}`)
 
         }
 
-        this._touched.add(addressAsString);
+        this._touched.add(addressAsStringWithout0x);
 
     }
     /**

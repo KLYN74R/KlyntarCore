@@ -427,8 +427,6 @@ export let VERIFIERS = {
 
         let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP
 
-        console.log('Before VERIF CALL ')
-
         let evmResult = await KLY_EVM.callEVM(event.payload,timestamp).catch(_=>false)
 
 
