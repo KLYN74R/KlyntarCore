@@ -2606,6 +2606,7 @@ LOAD_GENESIS=async()=>{
 
     //__________________________________ Load all the configs __________________________________
 
+    
     let filesOfGenesis = fs.readdirSync(process.env.GENESIS_PATH)
 
 
@@ -2703,63 +2704,41 @@ LOAD_GENESIS=async()=>{
 
             quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
 
-            //____________________ Create a separate KLY-EVM for this subchain ____________________
-
-            if(SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.size < CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.QUORUM_SIZE && !isReserve){
-
-                let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${poolPubKey}`)
-
-                await EVM.startEVM()
+            //________________________ Fill the state of KLY-EVM ________________________
     
-                //________________________ Fill the state of given KLY-EVM ________________________
-    
+            if(!isReserve){
+
                 let evmStateForThisSubchain = genesis.EVM[poolPubKey]
-    
+
                 if(evmStateForThisSubchain){
     
                     let evmKeys = Object.keys(evmStateForThisSubchain)
-    
-                    for(let evmKey of evmKeys) {
-            
-                        let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
-            
-                        //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-            
-                        if(isContract){
-            
-                            await EVM.putContract(evmKey,balance,nonce,code,storage)
-            
-                        }else{
-    
-                            await EVM.putAccount(evmKey,balance,nonce)
-    
-                        }
-            
-                    }
         
-                }
+                    for(let evmKey of evmKeys) {
+        
+                        let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
+        
+                        //Put KLY-EVM to KLY-EVM state db which will be used by Trie
+        
+                        if(isContract){
+        
+                            await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
+        
+                        }else{
+                        
+                            await KLY_EVM.putAccount(evmKey,balance,nonce)
+                        }
     
+                        // Add assignment to subchain
     
-                // KLY_EVM minimal suitcase - stateRoot, index of next block, parent hash and(zeroes) and timestamp(based on timestamp of checkpoint from genesis)
+                        atomicBatch.put('SUB:'+evmKey.slice(2),poolPubKey)
+        
+                    }
     
-                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey]={
-                    
-                    STATE_ROOT:await EVM.getStateRoot(),
-            
-                    NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
-            
-                    PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
-                    
-                    TIMESTAMP:Math.floor(checkpointTimestamp/1000)
-                
-                }
-    
-                SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(poolPubKey,EVM)
-
-                SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[poolPubKey]=poolPubKey
+                }    
 
             }
-
+    
         }
 
 
@@ -2860,6 +2839,17 @@ LOAD_GENESIS=async()=>{
     
     }
     
+    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA = {
+
+        STATE_ROOT:await KLY_EVM.getStateRoot(),
+
+        NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+
+        PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+
+        TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+
+    }
 
     SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
@@ -3007,8 +2997,6 @@ PREPARE_SYMBIOTE=async()=>{
 
         STATIC_STUFF_CACHE:new Map(),
 
-        KLY_EVM_PER_SUBCHAIN:new Map(), // subchainID => EVM
-
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
         TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE,SPECIAL_OPERATIONS_MEMPOOL}
@@ -3129,10 +3117,8 @@ PREPARE_SYMBIOTE=async()=>{
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
 
                 POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
-
-                KLY_EVM_METADATA:{}, // SUBCHAIN_ID => {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
-
-                KLY_EVM_REASSIGN:{}, // ASSIGNED_BLS_PUBKEY(poolID) => EVM_ID
+ 
+                KLY_EVM_METADATA:{}, // {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
                 RID_TRACKER:{}, // SUBCHAIN => INDEX
 
@@ -3152,9 +3138,7 @@ PREPARE_SYMBIOTE=async()=>{
         
     })
 
-
-
-
+        
     if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
         await LOAD_GENESIS()
@@ -3169,39 +3153,17 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
-    //_____________________________________ Set the EVM metadata for each subchain______________________________________
+    //________________________________________Set the state of KLY-EVM______________________________________________
 
 
-    for(let [assignedPoolPubKey,evmID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
-
-        let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID]
-
-        let evm = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
+    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
 
 
-        if(!evm){
+    await KLY_EVM.setStateRoot(STATE_ROOT)
 
-            let EVM = new KLY_EVM(process.env.CHAINDATA_PATH+`/KLY_EVM_PER_SUBCHAIN/${evmID}`)
+    // Set the block parameters
 
-            await EVM.startEVM()
-
-            SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.set(assignedPoolPubKey,EVM)
-
-            // Add the global EVM for sandbox execution via API
-
-            if(evmID === CONFIG.EVM.evmID) global.KLY_EVM = EVM
-
-            evm=EVM
-
-        }
-
-        await evm.setStateRoot(STATE_ROOT)
-    
-        // Set the block parameters
-        await evm.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
-        
-    }
-
+    KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
     
 
 

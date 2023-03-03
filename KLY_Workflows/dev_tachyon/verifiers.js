@@ -46,6 +46,8 @@ import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
+
 import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'
@@ -420,21 +422,12 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originSubchain,event,rewardBox,atomicBatch)=>{
-
-        let evmID = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[originSubchain]
-
-        if(!evmID) return
+    EVM_CALL:async(_originSubchain,event,rewardBox,atomicBatch)=>{
 
 
-        let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID].TIMESTAMP
+        let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP
 
-        let evmOfSubchain = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
-
-
-
-        let evmResult = await evmOfSubchain.callEVM(event.payload,timestamp).catch(_=>false)
-
+        let evmResult = await KLY_EVM.callEVM(event.payload,timestamp).catch(_=>false)
 
 
         if(evmResult && !evmResult.execResult.exceptionError){            
@@ -451,9 +444,9 @@ export let VERIFIERS = {
             rewardBox.fees += totalSpentByTxInKLY
 
 
-            let {tx,receipt} = evmOfSubchain.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
+            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-            atomicBatch.put(evmID+':TX:'+tx.hash,{tx,receipt})
+            atomicBatch.put('TX:'+tx.hash,{tx,receipt})
 
             return {isOk:true,reason:'EVM'}
 

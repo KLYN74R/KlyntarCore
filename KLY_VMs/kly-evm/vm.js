@@ -1,3 +1,4 @@
+import {GET_FROM_STATE} from '../../KLY_Workflows/dev_tachyon/utils.js'
 import {DefaultStateManager} from '@ethereumjs/statemanager'
 import {Address,Account} from '@ethereumjs/util'
 import {Transaction} from '@ethereumjs/tx'
@@ -41,6 +42,25 @@ const common = Common.custom({name,networkId,chainId},hardfork)
 const web3 = new Web3()
 
 
+//_________________________________________________________ FUNCTIONS POOL _________________________________________________________
+
+
+global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
+
+    let bindedSubchain = await GET_FROM_STATE('SUB:'+addressAsString)
+    
+    if(!bindedSubchain){
+
+        SYMBIOTE_META.STATE_CACHE.set('SUB:'+addressAsString,global.CURRENT_SUBCHAIN_EVM_CONTEXT)
+
+    }
+
+    return bindedSubchain
+
+}
+
+
+
 /*
 
 Default block template for KLY-EVM
@@ -54,12 +74,8 @@ P.S: BTW everything will be changable
 // const block = Block.fromBlockData({header:{miner:'0x0000000000000000000000000000000000000000',timestamp:133713371337}},{common})
 
 
-//_________________________________________________________ EXPORT SECTION _________________________________________________________
 
-
-
-
-export class KLY_EVM {
+class KLY_EVM_CLASS {
 
 
     constructor(pathToVMState){
@@ -794,3 +810,17 @@ export class KLY_EVM {
     }
 
 }
+
+
+
+
+//_________________________________________________ External usage _________________________________________________
+
+
+let KLY_EVM_INSTANCE = new KLY_EVM_CLASS(process.env.CHAINDATA_PATH+'/KLY_EVM')
+
+await KLY_EVM_INSTANCE.startEVM()
+
+global.KLY_EVM = KLY_EVM_INSTANCE
+
+export {KLY_EVM_INSTANCE as KLY_EVM}

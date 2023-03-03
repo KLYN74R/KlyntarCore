@@ -12,6 +12,8 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
+import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
+
 import Block from './essences/block.js'
 
 import {GRACEFUL_STOP} from './life.js'
@@ -19,6 +21,7 @@ import {GRACEFUL_STOP} from './life.js'
 import fetch from 'node-fetch'
 
 import Web3 from 'web3'
+
 
 
 
@@ -753,8 +756,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         
             ____________________________________After running all SPECIAL_OPERATIONS we should do the following____________________________________        
         
-                [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA - reassign it to other subchains
-                [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
+            [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
 
         */
 
@@ -869,35 +871,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
         
-        }
-
-
-
-        // [*] If some of pools which have KLY-EVMs not present in SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA - reassign it to other subchains
-        
-        let poolsIdsAndMetadata = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
-
-        let alreadyInResponseForEVM = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)
-
-
-        for(let [responsiblePoolID,evmID] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN)){
-
-            if(!SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[responsiblePoolID]){
-
-                // Assing the new subchain to be responsible for appropriate KLY-EVM
-                
-                for(let [poolID,poolMetadata] of poolsIdsAndMetadata) {
-
-                    if(!poolMetadata.IS_RESERVE && !alreadyInResponseForEVM.includes(poolID)){
-
-                        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[poolID]=evmID
-
-                    }
-    
-                }
-
-            }
-
         }
 
 
@@ -1458,9 +1431,13 @@ verifyBlock=async(block,subchainContext)=>{
 
         let currentBlockID = block.creator+":"+block.index
 
-        let evmIDForLogs = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[subchainContext]
+        
+        
+        // Change the EVM context
+        global.CURRENT_SUBCHAIN_EVM_CONTEXT = subchainContext
 
-        if(evmIDForLogs) SYMBIOTE_META.STATE_CACHE.set(evmIDForLogs+'EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+        SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+
 
 
         //To change the state atomically
@@ -1598,56 +1575,44 @@ verifyBlock=async(block,subchainContext)=>{
 
         //___________________ Update the KLY-EVM ___________________
 
-        let evmID = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_REASSIGN[subchainContext]
+        // Update stateRoot
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.STATE_ROOT = await KLY_EVM.getStateRoot()
 
-        if(evmID){
+        // Increase block index
+        let nextIndex = BigInt(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX)+BigInt(1)
+    
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
 
-            let currentEVM = SYMBIOTE_META.KLY_EVM_PER_SUBCHAIN.get(evmID)
-
-            let currentEVMMetadata = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[evmID]
+        // Store previous hash
+        let currentHash = KLY_EVM.getCurrentBlock().hash()
     
-            // Update stateRoot
-            currentEVMMetadata.STATE_ROOT = await currentEVM.getStateRoot()
-    
-            // Increase block index
-            let nextIndex = BigInt(currentEVMMetadata.NEXT_BLOCK_INDEX)+BigInt(1)
-    
-            currentEVMMetadata.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
-    
-            // Store previous hash
-            let currentHash = currentEVM.getCurrentBlock().hash()
-    
-            currentEVMMetadata.PARENT_HASH = currentHash.toString('hex')
-    
-            // Imagine that it's 1 block per 2 seconds
-            let nextTimestamp = currentEVMMetadata.TIMESTAMP+2
-    
-            currentEVMMetadata.TIMESTAMP = nextTimestamp
-
-            let blockToStore = currentEVM.getBlockToStore(currentHash)
-
-
-            atomicBatch.put(evmID+':EVM_BLOCK:'+blockToStore.number,blockToStore)
-
-            atomicBatch.put(evmID+':EVM_INDEX:'+blockToStore.hash,blockToStore.number)
-    
-            atomicBatch.put(evmID+':EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get(evmID+'EVM_LOGS_MAP'))
-    
-            atomicBatch.put(evmID+':EVM_BLOCK_RECEIPT:'+blockToStore.number,`BLOCK_CONTEXT:${currentBlockID}`)
-
-
-            // Set the next block's parameters
-            currentEVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.PARENT_HASH = currentHash.toString('hex')
         
-            atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
 
-                evmContext:evmID,
+        // Imagine that it's 1 block per 2 seconds
+        let nextTimestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP+2
+    
+        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP = nextTimestamp
+        
+        let blockToStore = KLY_EVM.getBlockToStore(currentHash)
+        
+        atomicBatch.put('EVM_BLOCK:'+blockToStore.number,blockToStore)
 
-                rid:currentRID
+        atomicBatch.put('EVM_INDEX:'+blockToStore.hash,blockToStore.number)
 
-            })
+        atomicBatch.put('EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-        }
+        atomicBatch.put('EVM_BLOCK_RECEIPT:'+blockToStore.number,{kly_block:currentBlockID})
+
+        // Set the next block's parameters
+        KLY_EVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
+        
+        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
+
+            rid:currentRID
+
+        })
+
         
         //Commit the state of VERIFICATION_THREAD
 

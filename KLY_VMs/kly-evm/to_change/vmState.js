@@ -160,11 +160,9 @@ class VmState {
 
             throw new Error(`Account 0x${addressAsString} binded to subchain ${bindedSubchain}, but you try to change the state if it via tx on subchain ${global.CURRENT_SUBCHAIN_EVM_CONTEXT}`)
 
-        }else {
-
-            this._touched.add(addressAsString);
-
         }
+
+        this._touched.add(addressAsString);
 
     }
     /**
