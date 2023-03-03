@@ -1543,11 +1543,11 @@ verifyBlock=async(block,subchainContext)=>{
         if(SYMBIOTE_META.STATE_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
 
-        // Store the currently relative block index (RID)
+        // Store the currently subchain block index (SID)
 
-        let currentRID = SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
+        let currentSID = SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
 
-        atomicBatch.put(`RID:${subchainContext}:${currentRID}`,currentBlockID)
+        atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
 
         SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
 
@@ -1609,7 +1609,7 @@ verifyBlock=async(block,subchainContext)=>{
         
         atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
 
-            rid:currentRID
+            sid:currentSID
 
         })
 

@@ -6,7 +6,7 @@ specifiers:
   '@ethereumjs/common': ^3.0.0
   '@ethereumjs/tx': ^4.0.2
   '@idena/vrf-js': ^1.0.1
-  '@klyntar/klyntarevmjsonrpc': github:KLYN74R/KlyntarEVMJsonRPC#feature_bind_to_subchain
+  '@klyntar/klyntarevmjsonrpc': github:KLYN74R/KlyntarEVMJsonRPC
   '@noble/bls12-381': ^1.2.0
   '@solana/web3.js': ^1.62.0
   assemblyscript: ^0.19.9
@@ -36,7 +36,7 @@ dependencies:
   '@chainsafe/bls': 7.1.1
   '@ethereumjs/common': 3.0.0
   '@idena/vrf-js': 1.0.1
-  '@klyntar/klyntarevmjsonrpc': github.com/KLYN74R/KlyntarEVMJsonRPC/826cf264525da190b53aad27a37885e0fb0cf335
+  '@klyntar/klyntarevmjsonrpc': github.com/KLYN74R/KlyntarEVMJsonRPC/cbdccdd2f91e70c2dc60e593ebafd4d69852b2a3
   '@noble/bls12-381': 1.2.0
   assemblyscript: 0.19.23
   base-58: 0.0.1
@@ -4911,8 +4911,8 @@ packages:
     engines: {node: '>=10'}
     dev: false
 
-  github.com/KLYN74R/KlyntarEVMJsonRPC/826cf264525da190b53aad27a37885e0fb0cf335:
-    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/826cf264525da190b53aad27a37885e0fb0cf335}
+  github.com/KLYN74R/KlyntarEVMJsonRPC/cbdccdd2f91e70c2dc60e593ebafd4d69852b2a3:
+    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/cbdccdd2f91e70c2dc60e593ebafd4d69852b2a3}
     name: '@klyntar/klyntarevmjsonrpc'
     version: 3.3.2
     hasBin: true

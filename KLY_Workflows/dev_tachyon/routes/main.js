@@ -64,7 +64,7 @@ acceptBlocks=response=>{
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
+    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCK){
         
         !response.aborted && response.end('Route is off')
         
@@ -253,7 +253,7 @@ acceptManyBlocks=response=>{
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
+    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCKS){
         
         !response.aborted && response.end('Route is off')
         
@@ -424,7 +424,7 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     }
 
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_EVENTS){
+    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_EVENTS){
         
         !response.aborted && response.end('Route is off')
         
@@ -527,7 +527,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
@@ -637,7 +637,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
     let blocksSet = []
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
@@ -802,7 +802,7 @@ getSuperFinalization=async(response,request)=>{
     response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUPER_FINALIZATION_PROOFS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SUPER_FINALIZATION_PROOFS){
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -862,7 +862,7 @@ healthChecker = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_HEALTH_CHECKER){
+    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
         let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
@@ -1849,7 +1849,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_PAYLOAD_FOR_CHECKPOINT){
+    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
 
         let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -1918,7 +1918,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
         return
     }
 
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_SPECIAL_OPERATIONS){
+    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.SPECIAL_OPERATIONS){
 
         !response.aborted && response.end(`Route is off. This node don't accept special operations`)
 
@@ -2006,7 +2006,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     }
 
-    if(!CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_NEW_NODES){
+    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.NEW_NODES){
 
         !response.aborted && response.end('Route is off')
         

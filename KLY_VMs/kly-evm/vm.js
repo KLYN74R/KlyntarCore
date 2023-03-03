@@ -47,13 +47,11 @@ const web3 = new Web3()
 
 global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
 
+    console.log('Asked ',addressAsString)
+
     let bindedSubchain = await GET_FROM_STATE('SUB:'+addressAsString)
-    
-    if(!bindedSubchain){
 
-        SYMBIOTE_META.STATE_CACHE.set('SUB:'+addressAsString,global.CURRENT_SUBCHAIN_EVM_CONTEXT)
-
-    }
+    console.log('FROM ',bindedSubchain)
 
     return bindedSubchain
 

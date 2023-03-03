@@ -22,7 +22,7 @@ const evmAccount0 = {
 
 const evmAccount1 = {
 
-    address:'0xdA0DD318C511025C87217D776Ac2C98E5f655fdC',
+    address:'0x407d73d8a49eeb85d32cf465507dd71d507100c1',
     privateKey:Buffer.from('43818ec87b33c38d65fe835e3143010fe08bce8da962aab996dc239229a6b574','hex')
   
 }
@@ -40,23 +40,23 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     // await web3.eth.getBlock('0xea1c41adc189dc2c7deab8597647deeeaffdd57c728fb900608aaf5543e7cef3').then(data=>console.log(data)).catch(e=>console.log(e))
 
-    await web3.eth.getBlockNumber().then(data=>console.log('Current height is => ',data)).catch(e=>console.log(e))
+    web3.eth.getBlockNumber().then(data=>console.log('Current height is => ',data)).catch(e=>console.log(e))
 
-    await web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
+    web3.eth.getChainId().then(data=>console.log('Chain ID is => ',data)).catch(e=>console.log(e))
 
-    await web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+    web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
-    await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
+    web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
 
-    await web3.eth.getCoinbase().then(miner=>console.log('Coinbase is '+miner)).catch(e=>console.log(e))
+    web3.eth.getCoinbase().then(miner=>console.log('Coinbase is '+miner)).catch(e=>console.log(e))
 
-    await web3.eth.getGasPrice().then(gasPrice=>console.log(`Gas price is ${web3.utils.fromWei(gasPrice.toString(),'Gwei')}`)).catch(e=>console.log(e))
+    web3.eth.getGasPrice().then(gasPrice=>console.log(`Gas price is ${web3.utils.fromWei(gasPrice.toString(),'Gwei')}`)).catch(e=>console.log(e))
 
-    await web3.eth.getNodeInfo().then(nodeInfo=>console.log('Node info is',nodeInfo)).catch(e=>console.log(e))
+    web3.eth.getNodeInfo().then(nodeInfo=>console.log('Node info is',nodeInfo)).catch(e=>console.log(e))
 
-    await web3.eth.getHashrate().then(hashRate=>console.log('Hashrate is ',hashRate)).catch(e=>console.log(e))
+    web3.eth.getHashrate().then(hashRate=>console.log('Hashrate is ',hashRate)).catch(e=>console.log(e))
 
-    await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
+    web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
 
 
 }
@@ -102,7 +102,7 @@ let EVM_DEFAULT_TX=async()=>{
 }
 
 
-// EVM_DEFAULT_TX()
+EVM_DEFAULT_TX()
 
 
 let EVM_CONTRACT_DEPLOY=async()=>{

@@ -26,14 +26,14 @@ getFromState=async(response,request)=>{
     
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_FROM_STATE){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.FROM_STATE){
 
     
         let fullID = request.getParameter(0) === 'X' ? request.getParameter(1) : BLAKE3(request.getParameter(0)+request.getParameter(1))
 
         let data = await SYMBIOTE_META.STATE.get(fullID).catch(_=>'')
 
-        !response.aborted && WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.GET_FROM_STATE).end(JSON.stringify(data))
+        !response.aborted && WRAP_RESPONSE(response,CONFIG.SYMBIOTE.TTL.API.FROM_STATE).end(JSON.stringify(data))
 
     
     }else !response.aborted && response.end('Trigger is off')
@@ -50,7 +50,7 @@ getFromState=async(response,request)=>{
  * @returns {String} Info in JSON
  * 
  * */
-getMyInfo=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
+getMyInfo=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.API.INFO).end(INFO),
 
 
 
@@ -70,9 +70,9 @@ getMyInfo=request=>WRAP_RESPONSE(request,CONFIG.SYMBIOTE.TTL.INFO).end(INFO),
 
 nodes=(response,request)=>{
 
-    response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API_NODES).end(
+    response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+CONFIG.SYMBIOTE.TTL.API.NODES).end(
 
-        CONFIG.SYMBIOTE.TRIGGERS.API_NODES&&JSON.stringify(GET_NODES(request.getParameter(0)))
+        CONFIG.SYMBIOTE.TRIGGERS.API.NODES&&JSON.stringify(GET_NODES(request.getParameter(0)))
 
     )
 
@@ -86,12 +86,12 @@ nodes=(response,request)=>{
 getBlockById=(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.BLOCK}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -121,12 +121,12 @@ Returns array of blocks sorted by RID in reverse order
 getLatestNBlocks=async(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_LATEST_N_BLOCKS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.LATEST_N_BLOCKS){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_LATEST_N_BLOCKS}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.LATEST_N_BLOCKS}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -171,17 +171,17 @@ getLatestNBlocks=async(response,request)=>{
 
 
 
-// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
-// Returns block receipt
-getBlockReceipt=(response,request)=>{
+// 0 - SID(in format <BLS_ValidatorPubkey>:<height>)
+
+getBlockBySID=(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK_RECEIPT){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK_BY_SID){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API_BLOCK_RECEIPT}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.BLOCK_BY_SID}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -202,12 +202,12 @@ getBlockReceipt=(response,request)=>{
 getSyncState=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SYNC_STATE){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.SYNC_STATE){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SYNC_STATE}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.SYNC_STATE}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -224,12 +224,12 @@ getSyncState=response=>{
 getSymbioteInfo=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SYMBIOTE_INFO){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.SYMBIOTE_INFO){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SYMBIOTE_INFO}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.SYMBIOTE_INFO}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -290,12 +290,12 @@ getSymbioteInfo=response=>{
 getBlockByGRID=(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_BLOCK_BY_GRID){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK_BY_GRID){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_BLOCK_BY_GRID}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.BLOCK_BY_GRID}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -319,12 +319,12 @@ getBlockByGRID=(response,request)=>{
 getSearchResult=async(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SEARCH_RESULT){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.SEARCH_RESULT){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SEARCH_RESULT}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.SEARCH_RESULT}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -456,12 +456,12 @@ getSearchResult=async(response,request)=>{
 getEventReceipt=(response,request)=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_EVENT_RECEIPT){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.EVENT_RECEIPT){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_EVENT_RECEIPT}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.EVENT_RECEIPT}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -483,12 +483,12 @@ getEventReceipt=(response,request)=>{
 getPoolsMetadata=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_SUBCHAINS){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.POOLS_METADATA){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_SUBCHAINS}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.POOLS_METADATA}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -505,12 +505,12 @@ getPoolsMetadata=response=>{
 getCurrentQuorumThreadCheckpoint=response=>{
 
     //Set triggers
-    if(CONFIG.SYMBIOTE.TRIGGERS.GET_QUORUM_THREAD_CHECKPOINT){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.QUORUM_THREAD_CHECKPOINT){
 
         response
             
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_QUORUM_THREAD_CHECKPOINT}`)
+            .writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.QUORUM_THREAD_CHECKPOINT}`)
             .onAborted(()=>response.aborted=true)
 
         response.end(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT))
@@ -527,11 +527,11 @@ getCurrentQuorumThreadCheckpoint=response=>{
 
 stuff=async(response,request)=>{
     
-    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.GET_STUFF}`)
+    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${CONFIG.SYMBIOTE.TTL.API.STUFF}`)
     
     let stuffID=request.getParameter(0)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.API_SHARE_STUFF){
+    if(CONFIG.SYMBIOTE.TRIGGERS.API.SHARE_STUFF){
 
         let stuff = await SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
@@ -562,29 +562,44 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 UWS_SERVER
 
+// Get data about checkpoint
+
 .get('/quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
-
-.get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)
-
-.get('/state/:SUBCHAIN_ID/:CELL_ID',getFromState)
-
-.get('/block_receipt/:BLOCK_ID',getBlockReceipt)
-
-.get('/search_result/:QUERY',getSearchResult)
-
-.get('/event_receipt/:TXID',getEventReceipt)
-
-.get('/block_by_grid/:GRID',getBlockByGRID)
 
 .get('/pools_metadata',getPoolsMetadata)
 
 .get('/symbiote_info',getSymbioteInfo)
 
-.get('/sync_state',getSyncState)
+
+.get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)
+
+
+
+// Get blocks
 
 .get('/block/:ID',getBlockById)
 
+.get('/block_by_grid/:GRID',getBlockByGRID)
+
+.get('/block_by_sid/:SUBCHAIN_ID/:INDEX',getBlockBySID)
+
+
+
+// Get data from state
+
+.get('/state/:SUBCHAIN_ID/:CELL_ID',getFromState)
+
+.get('/search_result/:QUERY',getSearchResult)
+
+.get('/event_receipt/:TXID',getEventReceipt)
+
+.get('/sync_state',getSyncState)
+
 .get('/stuff/:STUFF_ID',stuff)
+
+
+
+// Misc
 
 .post('/stuff_add',stuffAdd)
 

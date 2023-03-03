@@ -4,7 +4,7 @@ import {
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY, QUICK_SORT,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY, QUICK_SORT, GET_FROM_STATE,
 
 } from './utils.js'
 
@@ -2729,8 +2729,9 @@ LOAD_GENESIS=async()=>{
                             await KLY_EVM.putAccount(evmKey,balance,nonce)
                         }
     
+                        console.log('SUB:'+evmKey.slice(2),poolPubKey)
+
                         // Add assignment to subchain
-    
                         atomicBatch.put('SUB:'+evmKey.slice(2),poolPubKey)
         
                     }
@@ -3164,6 +3165,8 @@ PREPARE_SYMBIOTE=async()=>{
     // Set the block parameters
 
     KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
+
+    global.CURRENT_SUBCHAIN_EVM_CONTEXT = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
     
 
 
@@ -3200,6 +3203,8 @@ PREPARE_SYMBIOTE=async()=>{
 
     }
 
+
+    console.log(await GET_FROM_STATE('SUB:4741c39e6096c192Db6E1375Ff32526512069dF5'))
 
     
     //_____________________________________Set some values to stuff cache___________________________________________

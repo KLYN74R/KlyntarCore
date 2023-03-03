@@ -205,52 +205,66 @@
         
     "TTL":{
 
-        "INFO":600,
-        "API_NODES":5,
-        "API_BLOCK":6000,
-        "API_BLOCK_RECEIPT":6000,
-        "API_LATEST_N_BLOCKS":5,
+        "MAIN":{},
 
-        "GET_STUFF":5,
-        "GET_SUBCHAINS":5,
-        "GET_QUORUM":5,
-        "GET_PAYLOAD_FOR_CHECKPOINT":6000,
-        "GET_QUORUM_THREAD_CHECKPOINT":5,
-        "GET_BLOCK_BY_GRID":6000,
-        "GET_SYNC_STATE":2,
-        "GET_SYMBIOTE_INFO":5,
-        "GET_EVENT_RECEIPT":100,
-        "GET_FROM_STATE":5,
-        "GET_SEARCH_RESULT":5
+        "API":{
+
+            "FROM_STATE":5,
+            "NODES":5,
+            "BLOCK":6000,
+            "LATEST_N_BLOCKS":5,
+            "BLOCK_BY_SID":6000,
+            "BLOCK_BY_GRID":6000,
+            "INFO":600,
+            "SYNC_STATE":2,
+            "SYMBIOTE_INFO":5,
+            "SEARCH_RESULT":5,
+            "EVENT_RECEIPT":100,
+            "POOLS_METADATA":5,
+            "QUORUM_THREAD_CHECKPOINT":5,
+            "STUFF":5
+        }   
+    
     },
 
     "TRIGGERS":{
 
-        "INFO":1,
-        "API_NODES":1,
-        "API_BLOCK":1,
-        "API_BLOCK_RECEIPT":1,
-        "API_SHARE_STUFF":1,
-        "API_LATEST_N_BLOCKS":1,
+        "MAIN":{
 
-        "ACCEPT_BLOCKS":1,
-        "ACCEPT_EVENTS":1,
-        "ACCEPT_NEW_NODES":1,
-        "ACCEPT_SPECIAL_OPERATIONS":1,
+            "ACCEPT_BLOCK":1,
+            "ACCEPT_BLOCKS":1,
+            "ACCEPT_EVENTS":1,
+            "SHARE_FINALIZATION_PROOF":1,
+            "SUPER_FINALIZATION_PROOFS":1,
+            "HEALTH_CHECKER":1,
+            "PAYLOAD_FOR_CHECKPOINT":1,
+            "SPECIAL_OPERATIONS":1,
+            "NEW_NODES":1
+
+        },
+
+
+        "API":{
+
+            "FROM_STATE":1,
+            "NODES":1,
+            
+            "BLOCK":1,
+            "BLOCK_BY_SID":1,
+            "BLOCK_BY_GRID":1,
+            "LATEST_N_BLOCKS":1,
+
+            "INFO":1,
+            "SYNC_STATE":1,
+            "SYMBIOTE_INFO":1,
+            "SEARCH_RESULT":1,
+            "EVENT_RECEIPT":1,
+            "POOLS_METADATA":1,
+            "QUORUM_THREAD_CHECKPOINT":1,
+            "SHARE_STUFF":1
+        
+        }
     
-        "GET_SUBCHAINS":1,
-        "GET_QUORUM":1,
-        "GET_PAYLOAD_FOR_CHECKPOINT":1,
-        "GET_HEALTH_CHECKER":1,
-        "GET_QUORUM_THREAD_CHECKPOINT":1,
-        "SHARE_FINALIZATION_PROOF":1,
-        "GET_SUPER_FINALIZATION_PROOFS":1,
-        "GET_BLOCK_BY_GRID":1,
-        "GET_SYNC_STATE":1,
-        "GET_SYMBIOTE_INFO":1,
-        "GET_EVENT_RECEIPT":1,
-        "GET_FROM_STATE":1,
-        "GET_SEARCH_RESULT":1
     },
     
     "COMMITMENTS_POOL_LIMIT":100000,
