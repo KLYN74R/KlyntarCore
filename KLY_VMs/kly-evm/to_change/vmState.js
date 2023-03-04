@@ -156,7 +156,14 @@ class VmState {
 
         let bindedSubchain = await global.GET_SUBCHAIN_ASSIGNMENT(addressAsStringWithout0x);
 
-        if(bindedSubchain !== global.CURRENT_SUBCHAIN_EVM_CONTEXT){
+        // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
+        
+        let itsFiltrationCase = global.KLY_EVM_MEMPOOL.has(this.txHash)
+
+        let evmExecutionContext = itsFiltrationCase ? global.CONFIG.EVM.bindContext : global.CURRENT_SUBCHAIN_EVM_CONTEXT
+
+
+        if(bindedSubchain !== evmExecutionContext){
 
             throw new Error(`Account 0x${addressAsStringWithout0x} binded to subchain ${bindedSubchain}, but you try to change the state of it via tx on subchain ${global.CURRENT_SUBCHAIN_EVM_CONTEXT}`)
 

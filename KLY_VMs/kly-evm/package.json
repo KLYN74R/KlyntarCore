@@ -12,7 +12,7 @@
   ],
   "scripts": {
 
-    "build":"pnpm install && cp ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js"
+    "build":"pnpm install ; cp ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js ; cp ./to_change/evm.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/evm.js"
 
   },
   "author": "KlyntarTeam",

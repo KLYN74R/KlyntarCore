@@ -2733,6 +2733,8 @@ LOAD_GENESIS=async()=>{
 
                         let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
+                        console.log('Case ignored ',caseIgnoreAccountAddress)
+
                         // Add assignment to subchain
                         atomicBatch.put('SUB:'+caseIgnoreAccountAddress,poolPubKey)
         

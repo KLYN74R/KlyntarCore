@@ -32,7 +32,8 @@ const {
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
     gasLimitForBlock,
-    creds
+    creds,
+    mempoolLimit
 
 } = CONFIG.EVM
 
@@ -47,15 +48,14 @@ const web3 = new Web3()
 
 global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
 
-    console.log('Asked ',addressAsString)
-
     let bindedSubchain = await GET_FROM_STATE('SUB:'+addressAsString)
-
-    console.log('FROM ',bindedSubchain)
 
     return bindedSubchain
 
 }
+
+
+global.KLY_EVM_MEMPOOL = new Set() // to store txHash for low-level usage in .touchAccount function to understand that this tx is related to .sandboxCall() and we can bind wished subchainID
 
 
 
@@ -141,6 +141,13 @@ class KLY_EVM_CLASS {
         
         let block = this.block
 
+        let txHash = tx.hash().toString('hex')
+
+        if(global.KLY_EVM_MEMPOOL.size === mempoolLimit) return {error:{msg:'Wrong nonce value or insufficient balance'}}
+
+        // Add the hash to mempool
+        global.KLY_EVM_MEMPOOL.add(txHash)
+
 
         if(isJustCall){
 
@@ -152,9 +159,12 @@ class KLY_EVM_CLASS {
             
                 to,data,
             
-                block
+                block,txHash
               
-            })
+            }).catch(err=>({execResult:err}))
+
+            // Now we don't need it, so remove
+            global.KLY_EVM_MEMPOOL.delete(txHash)
 
             return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
 
@@ -180,15 +190,32 @@ class KLY_EVM_CLASS {
             
                         origin,caller,to,data,gasLimit,
                     
-                        block
+                        block,txHash
                       
                     }).catch(err=>({execResult:err}))
   
+                    // Now we don't need it, so remove
+                    global.KLY_EVM_MEMPOOL.delete(txHash)
+
                     return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
                     
-                } return {error:{msg:'Wrong nonce value or insufficient balance'}}
+                }else {
+
+                    // Now we don't need it, so remove
+                    global.KLY_EVM_MEMPOOL.delete(txHash)
+
+                    return {error:{msg:'Wrong nonce value or insufficient balance'}}
+
+                }
     
-            } return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
+            }else {
+
+                // Now we don't need it, so remove
+                global.KLY_EVM_MEMPOOL.delete(txHash)
+
+                return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
+
+            }
     
         }
     

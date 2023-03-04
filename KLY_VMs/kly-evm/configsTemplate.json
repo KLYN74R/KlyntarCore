@@ -10,6 +10,8 @@
     "protocolVersionInHex":"0x1",
     "gasPriceInWeiAndHex":"0x49ad39126",
     "maxAllowedGasAmountForSandboxExecution":100000,
+    "bindContext":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
+    "mempoolLimit":100000,
     "creds":{
     
         "address":"0xEe96057673fC7aF8971B32d8D3458D27f5B7A3F2",
