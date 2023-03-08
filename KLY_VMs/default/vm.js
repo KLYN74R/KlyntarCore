@@ -91,7 +91,7 @@ export let VM = {
      * @param {'RUST'|'ASC'} type
      * @returns 
      */
-    callContract:(contractInstance,contractMetadata,originSubchain,serializedContractStateChunk,functionName,type)=>{
+    callContract:(contractInstance,contractMetadata,serializedContractStateChunk,functionName,type)=>{
 
         contractMetadata.energyUsed=0 //make null before call contract
 

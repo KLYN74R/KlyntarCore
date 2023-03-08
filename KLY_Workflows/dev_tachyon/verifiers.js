@@ -390,6 +390,9 @@ export let VERIFIERS = {
 
                     try{
 
+                        // Get the initial data to pass as '' param
+                        // Check if contract is binded to given subchain
+
                         result = VM.callContract(contractInstance,contractMetadata,originSubchain,'',event.payload.method,contractMeta.type)
 
                     }catch(err){
