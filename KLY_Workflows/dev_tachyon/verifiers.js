@@ -48,7 +48,7 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
-import {VM} from '../../KLY_VMs/default/vm.js'
+import {VM} from '../../KLY_VMs/default/vmX.js'
 
 import * as _ from './specContracts/root.js'
 
@@ -376,16 +376,16 @@ export let VERIFIERS = {
                 }else {
 
                     //Create contract instance
-                    let energyLimit = event.payload.energyLimit * 1_000_000_000, // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
+                    let energyLimit = event.payload.energyLimit * 1_000_000_000 // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
 
                         /*
                 
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
                 
                         */
-                        {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(contractMeta.bytecode,energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports)),
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports))
 
-                        result
+                    let result
             
 
                     try{
@@ -393,7 +393,7 @@ export let VERIFIERS = {
                         // Get the initial data to pass as '' param
                         // Check if contract is binded to given subchain
 
-                        result = VM.callContract(contractInstance,contractMetadata,originSubchain,'',event.payload.method,contractMeta.type)
+                        result = await VM.callContract(contractInstance,contractMetadata,event.payload.params,event.payload.method,contractMeta.type)
 
                     }catch(err){
 
