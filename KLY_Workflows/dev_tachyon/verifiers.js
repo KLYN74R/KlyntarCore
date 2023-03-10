@@ -48,7 +48,7 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
-import {VM} from '../../KLY_VMs/default/vmX.js'
+import {VM} from '../../KLY_VMs/default/vm.js'
 
 import * as _ from './specContracts/root.js'
 
@@ -393,7 +393,7 @@ export let VERIFIERS = {
                         // Get the initial data to pass as '' param
                         // Check if contract is binded to given subchain
 
-                        result = await VM.callContract(contractInstance,contractMetadata,event.payload.params,event.payload.method,contractMeta.type)
+                        result = VM.callContract(contractInstance,contractMetadata,event.payload.params,event.payload.method,contractMeta.type)
 
                     }catch(err){
 
