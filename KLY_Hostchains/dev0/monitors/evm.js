@@ -585,6 +585,7 @@ export default {
     },
 
 
+    
 
 
     //This function gets the information from hostchain and if it's a new day - we can start proposing the checkpoint
