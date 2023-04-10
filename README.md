@@ -213,7 +213,7 @@ pnpm run build
 
 </div>
 
-### <b>...One more thing</b>
+<!-- ### <b>...One more thing</b>
 
 Insofar as KLYNTAR has many chains ( known as <b>symbiotes</b>) which symbiotically linked with the <b>hostchains</b> (Bitcoin,Ethereum,Avalanche,Solana,Dogecoin,XRP and other chains), we need <b>connectors</b> to allow symbiotes to interact with hostchains(e.g. reading contract state, getting blocks, write to hostchains and so on)
 
@@ -429,7 +429,7 @@ KLYNTAR can do literally everything. Described here is less than 0.001% of poten
 
 
 
-<br/><br/>
+<br/><br/> -->
 
 
 <div align="center">
