@@ -4,7 +4,7 @@ import {
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY, QUICK_SORT, GET_FROM_STATE,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,HEAP_SORT,GET_FROM_STATE,
 
 } from './utils.js'
 
@@ -405,7 +405,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             })
     
 
-            let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+            let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
     
             let firstReserveInChain = mapping.get(firstChallenge)
             
@@ -614,7 +614,7 @@ GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint
         })
     
 
-    let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+    let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
     
     return mapping.get(firstChallenge)
 

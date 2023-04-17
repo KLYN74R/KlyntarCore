@@ -2,7 +2,7 @@ import {
     
     GET_POOLS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY,
 
-    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE, QUICK_SORT
+    GET_ACCOUNT_ON_SYMBIOTE,BLOCKLOG,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE,HEAP_SORT
 
 } from './utils.js'
 
@@ -157,7 +157,7 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
     let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
 
 
-    let firstChallenge = QUICK_SORT(
+    let firstChallenge = HEAP_SORT(
 
         activeReservePools.map(
         
@@ -484,7 +484,7 @@ GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,active
         })
     
 
-    let firstChallenge = QUICK_SORT(arrayOfChallanges)[0]
+    let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
     
     return mapping.get(firstChallenge)
     
