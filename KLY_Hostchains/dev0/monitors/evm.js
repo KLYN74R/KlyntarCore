@@ -420,7 +420,7 @@ POOLS_METADATA - object like this
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
                 INDEX: -1,
-                HASH: 'Poyekhali!@Y.A.Gagarin',
+                HASH: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
                 IS_STOPPED:boolean
             }
     

@@ -2631,7 +2631,7 @@ LOAD_GENESIS=async()=>{
                 
                 INDEX:-1,
                 
-                HASH:'Poyekhali!@Y.A.Gagarin',
+                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
                 
                 IS_STOPPED:false,
 
@@ -2838,7 +2838,7 @@ LOAD_GENESIS=async()=>{
         
         INDEX:-1,
         
-        HASH:'Poyekhali!@Y.A.Gagarin',
+        HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
         GRID:0
     
@@ -2868,7 +2868,7 @@ LOAD_GENESIS=async()=>{
 
             ID:-1,
 
-            PAYLOAD_HASH:'',
+            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
 
@@ -2910,7 +2910,7 @@ LOAD_GENESIS=async()=>{
 
             ID:-1,
 
-            PAYLOAD_HASH:'',
+            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
 
@@ -3076,7 +3076,7 @@ PREPARE_SYMBIOTE=async()=>{
         error.notFound
         ?
         {
-            PREV_HASH:`Poyekhali!@Y.A.Gagarin`,//Genesis hash
+            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,//Genesis hash
             NEXT_INDEX:0//So the first block will be with index 0
         }
         :
