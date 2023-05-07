@@ -538,9 +538,9 @@ export default {
 
             majority = GET_MAJORITY(threadID),
 
-            qtPayload = currentCheckpoint.HEADER.PAYLOAD_HASH+currentCheckpoint.HEADER.ID,
+            checkpointFullID = currentCheckpoint.HEADER.PAYLOAD_HASH+"#"+currentCheckpoint.HEADER.ID,
 
-            rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+qtPayload)
+            rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+checkpointFullID)
 
 
         //Find next checkpoint and verify signatures
@@ -630,7 +630,7 @@ export default {
             initiator:<Your pubkey to verify this signature>
 
             aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+qtPayload),
+            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+checkpointFullID),
             afk:[<array of afk from quorum>]
         }
 
@@ -683,20 +683,20 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
                 let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
 
                 for(let event of events){
 
                     let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+qtPayload,aggregatedSignature,reverseThreshold).catch(_=>false)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+checkpointFullID,aggregatedSignature,reverseThreshold).catch(_=>false)
                     
                     let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
 
@@ -704,9 +704,9 @@ export default {
 
 
 
-                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && SYMBIOTE_META.TEMP.has(qtPayload)){
+                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = SYMBIOTE_META.TEMP.get(qtPayload)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = SYMBIOTE_META.TEMP.get(checkpointFullID)
 
                         if(!SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
@@ -748,7 +748,7 @@ export default {
                 hash:<hash of appropriate block>
                 
                 aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>+<QT.CHECKPOINT.HEADER.ID>`)
+                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>+"#"+<QT.CHECKPOINT.HEADER.ID>`)
                 afk:[]
             }
 
@@ -802,28 +802,28 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
                 let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
                 let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtPayload)
+                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
 
                 for(let event of events){
 
                     let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
 
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${qtPayload}`,aggregatedSignature,reverseThreshold).catch(_=>false)
+                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${checkpointFullID}`,aggregatedSignature,reverseThreshold).catch(_=>false)
 
                     let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
 
 
                     
-                    if(majorityVotedForIt && isTheSameDay && SYMBIOTE_META.TEMP.has(qtPayload)){
+                    if(majorityVotedForIt && isTheSameDay && SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = SYMBIOTE_META.TEMP.get(qtPayload)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = SYMBIOTE_META.TEMP.get(checkpointFullID)
 
                         if(!SKIP_PROCEDURE_STAGE_2.has(subchain)){
 

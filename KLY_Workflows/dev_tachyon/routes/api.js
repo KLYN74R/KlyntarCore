@@ -412,9 +412,9 @@ getSearchResult=async(response,request)=>{
         }
 
 
-        let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        let tempObject = SYMBIOTE_META.TEMP.get(qtPayload)
+        let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
 
         if(!tempObject){
 

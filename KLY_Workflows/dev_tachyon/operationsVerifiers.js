@@ -394,7 +394,7 @@ export default {
             }
 
 
-            If it's operation to make subchain active again - verify signature also => VERIFY(stop+subchain+index+hash+qtPayload)
+            If it's operation to make subchain active again - verify signature also => VERIFY(stop+subchain+index+hash+checkpointFullID)
         
         */
 

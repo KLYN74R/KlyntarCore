@@ -118,7 +118,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
 
 
-GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
+GET_ASSIGNED_POOL = async (skipStage3Proof,checkpointFullID) => {
 
     /*
     
@@ -132,12 +132,12 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
         hash,
 
         aggregatedPub,
-        aggregatedSignature, - SIG(`SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`)
+        aggregatedSignature, - SIG(`SKIP_STAGE_3:${subchain}:${index}:${hash}:${checkpointFullID}`)
         afkVoters
     
     }
 
-    Using <subchain>, <index>, <hash> and <qtPayload> fields we can get the hash which will be used to find pool to assign
+    Using <subchain>, <index>, <hash> and <checkpointFullID> fields we can get the hash which will be used to find pool to assign
     
     */
 
@@ -145,7 +145,7 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
 
 
     // Based on this hash - start the cycle over ACTIVE 
-    let pseudoRandomHash = BLAKE3(subchain+index+hash+qtPayload)
+    let pseudoRandomHash = BLAKE3(subchain+index+hash+checkpointFullID)
 
     let activeReservePools = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
     
@@ -183,7 +183,7 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,qtPayload) => {
 
 
 
-GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
+GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (checkpointFullID,subchain,index,hash) => {
 
     // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
 
@@ -194,13 +194,13 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
-    if(!SYMBIOTE_META.TEMP.has(qtPayload)){
+    if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         return
 
     }
 
-    let checkpointTempDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    let checkpointTempDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
     let promises=[], signatures=[], pubKeys=[]
 
@@ -238,7 +238,7 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (qtPayload,subchain,index,hash) => {
 
             //Verify the signature
             
-            let data =`SKIP_STAGE_3:${subchain}:${index}:${hash}:${qtPayload}`
+            let data =`SKIP_STAGE_3:${subchain}:${index}:${hash}:${checkpointFullID}`
 
             if(await bls.singleVerify(data,pubKey,sig)){
 
@@ -310,18 +310,18 @@ Verification process:
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    let qtPayload = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     // Need for async safety
-    if(vtPayload!==qtPayload || !SYMBIOTE_META.TEMP.has(qtPayload)) return {skip:false,verify:false}
+    if(vtPayload!==checkpointFullID || !SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
 
-    let skipStage2Mapping = SYMBIOTE_META.TEMP.get(qtPayload).SKIP_PROCEDURE_STAGE_2
+    let skipStage2Mapping = SYMBIOTE_META.TEMP.get(checkpointFullID).SKIP_PROCEDURE_STAGE_2
 
     let [subchain,index] = blockID.split(':')
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(qtPayload).DATABASE
+    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
     index = +index
 
@@ -338,7 +338,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         let skipStage2Data = skipStage2Mapping.get(subchain)
 
         //Structure is {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
-        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(qtPayload,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
+        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(checkpointFullID,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
         //{INDEX,HASH,IS_STOPPED}
         let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
@@ -394,10 +394,10 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             //Verify it before return
 
-            let qtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+            let checkpointFullID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
 
-            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+qtPayload,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
+            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+checkpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
 
                 rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
 
