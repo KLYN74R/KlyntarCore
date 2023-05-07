@@ -3301,7 +3301,7 @@ PREPARE_SYMBIOTE=async()=>{
     await DECRYPT_KEYS(initSpinner).then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
-        LOG(`Private key on was decrypted successfully`,'S')        
+        LOG(`Private key was decrypted successfully`,'S')        
     
     ).catch(error=>{
     
