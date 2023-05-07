@@ -62,8 +62,6 @@ PATH_RESOLVE=path=>__dirname+'/'+path,//path is relative to this root scope */KL
 
 BLAKE3=v=>hash(v).toString('hex'),
 
-SYMBIOTE_ALIAS=()=>global.CONFIG.ALIASES[global.CONFIG.SYMBIOTE.SYMBIOTE_ID]||global.CONFIG.SYMBIOTE.SYMBIOTE_ID,
-
 GET_GMT_TIMESTAMP=()=>new Date().getTime(),
 
 
@@ -170,40 +168,5 @@ SEND=(url,payload,callback)=>fetch(url,{method:'POST',body:JSON.stringify(payloa
 LOG=(msg,msgColor)=>{
 
     global.CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
-
-},
-
-
-
-
-//Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
-
-    if(global.CONFIG.DAEMON_LOGS){
-
-        LOG(fs.readFileSync(PATH_RESOLVE(`images/events/${msg.includes('Controller')?'controller':'instant'}Block.txt`)).toString(),'CB')
-
-        console.log(' '.repeat(spaces),color,'_'.repeat(74))
-
-        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(16)+`${color}│`)
-
-        let verbose=''
-
-        if(block){
-            
-            //If it's controller
-            if(block.a) verbose+='Height:'+block.i+' # Instant Blocks:'+block.a.length
-
-            else verbose+='Events:'+block.e.length+' # Creator:'+block.c
-        
-        }
-    
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(71),`${color}│ ${verbose}`)
-    
-        console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,`${color}│`)
-
-        console.log(' '.repeat(spaces),' ‾'+'‾'.repeat(73),COLORS.C)
-    
-    }
 
 }

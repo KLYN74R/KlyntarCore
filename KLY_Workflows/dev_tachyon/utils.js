@@ -1,6 +1,6 @@
-import {LOG,SYMBIOTE_ALIAS,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
-
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
+
+import {LOG,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import cryptoModule from 'crypto'
 
@@ -293,22 +293,24 @@ GET_QUORUM = (poolsMetadata,workflowOptions) => {
 
 
 //Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
+BLOCKLOG=(msg,hash,block)=>{
 
     if(global.CONFIG.DAEMON_LOGS){
 
-        console.log(' '.repeat(spaces),color,'_'.repeat(79))
+        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,msg,COLORS.C)
 
-        console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(1)+`${color}│`)
+        console.log('\n')
+        
+        console.log(' │\x1b[33m  ID:\x1b[36;1m',block.creator+":"+block.index,COLORS.C)
 
-        let verbose='Height:'+block.index+` \x1b[33m#${color} Events:`+block.transactions.length+` \x1b[33m#${color} Creator:`+block.creator+` \x1b[33m#${color} Time:`+new Date(block.time).toString()
-            
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(76),`${color}│ ${verbose}`)
+        console.log(' │\x1b[33m  Hash:\x1b[36;1m',hash,COLORS.C)
+
+        console.log(' │\x1b[33m  Txs:\x1b[36;1m',block.transactions.length,COLORS.C)
+
+        console.log(' │\x1b[33m  Time:\x1b[36;1m',new Date(block.time).toString(),COLORS.C)
     
-        console.log(' '.repeat(spaces),'│\x1b[33m  HASH:\x1b[36;1m',hash,COLORS.C,' '.repeat(4),`${color}│`)
+        console.log('\n')
 
-        console.log(' '.repeat(spaces),' ‾'+'‾'.repeat(78),COLORS.C)
-    
     }
 
 },
@@ -431,7 +433,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
                     
             ).catch(_=>{
                 
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mPEERS ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
+                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it`,'W')
 
                 global.SYMBIOTE_META.PEERS.splice(index,1)
 
@@ -591,14 +593,14 @@ DECRYPT_KEYS=async spinner=>{
 
     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
 
-    LOG(`Working on \x1b[31;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1mhostchain:${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
+    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mhostchain:${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
 
 
     
     let HEX_SEED=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[0m in memory of process ———> \x1b[31m`,resolve)
+        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
         
     )
         

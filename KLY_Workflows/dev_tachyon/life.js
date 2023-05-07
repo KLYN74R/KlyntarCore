@@ -4,11 +4,11 @@ import {
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,HEAP_SORT,GET_FROM_STATE,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,HEAP_SORT,
 
 } from './utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
@@ -135,7 +135,7 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
     }else{
 
-        LOG(`Block generation for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Block generation for was stopped`,'I')
 
     }
     
@@ -2566,7 +2566,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
         blockCandidate.sig=await BLS_SIGN_DATA(hash)
             
-        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated —│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
+        BLOCKLOG(`New block generated`,hash,blockCandidate)
 
 
         global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
@@ -2729,11 +2729,8 @@ LOAD_GENESIS=async()=>{
                             await KLY_EVM.putAccount(evmKey,balance,nonce)
                         }
     
-                        console.log('SUB:'+evmKey.slice(2),poolPubKey)
 
                         let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
-
-                        console.log('Case ignored ',caseIgnoreAccountAddress)
 
                         // Add assignment to subchain
                         atomicBatch.put('SUB:'+caseIgnoreAccountAddress,poolPubKey)
@@ -2973,7 +2970,7 @@ PREPARE_SYMBIOTE=async()=>{
         
             color:'red',
         
-            prefixText:`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})  \x1b[36;1mPreparing symbiote \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[0m`
+            prefixText:`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})  \x1b[36;1mPreparing symbiote\x1b[0m`
         
         }).start()
 
@@ -3080,7 +3077,7 @@ PREPARE_SYMBIOTE=async()=>{
             NEXT_INDEX:0//So the first block will be with index 0
         }
         :
-        (LOG(`Some problem with loading metadata of generation thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${error}`,'F'),process.exit(106))
+        (LOG(`Some problem with loading metadata of generation thread\nError:${error}`,'F'),process.exit(106))
                         
     )
 
@@ -3098,7 +3095,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         initSpinner?.stop()
 
-        LOG(`Something wrong with a sequence of generation thread on \x1b[36;1m${SYMBIOTE_ALIAS()}`,'F')
+        LOG(`Something wrong with a sequence of generation thread on`,'F')
             
         process.exit(107)
 
@@ -3135,7 +3132,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         }else{
 
-            LOG(`Some problem with loading metadata of verification thread\nSymbiote:${SYMBIOTE_ALIAS()}\nError:${error}`,'F')
+            LOG(`Some problem with loading metadata of verification thread\nError:${error}`,'F')
             
             process.exit(105)
 
@@ -3304,7 +3301,7 @@ PREPARE_SYMBIOTE=async()=>{
     await DECRYPT_KEYS(initSpinner).then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
-        LOG(`Private key on \x1b[36;1m${SYMBIOTE_ALIAS()}\x1b[32;1m was decrypted successfully`,'S')        
+        LOG(`Private key on was decrypted successfully`,'S')        
     
     ).catch(error=>{
     

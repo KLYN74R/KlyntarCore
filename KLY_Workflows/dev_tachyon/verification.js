@@ -6,7 +6,7 @@ import {
 
 } from './utils.js'
 
-import {LOG,SYMBIOTE_ALIAS,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {LOG,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -53,7 +53,7 @@ GET_BLOCK = async(blockCreator,index) => {
                 
             if(typeof block.transactions==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
     
-                BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
+                BLOCKLOG(`New block fetched`,hash,block)
 
                 global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -63,7 +63,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
         }).catch(async error=>{
     
-            LOG(`No block \x1b[36;1m${blockCreator+":"+index}\u001b[38;5;3m for symbiote \x1b[36;1m${SYMBIOTE_ALIAS()}\u001b[38;5;3m ———> ${error}`,'W')
+            LOG(`No block \x1b[36;1m${blockCreator+":"+index}\u001b[38;5;3m ———> ${error}`,'W')
     
             LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
@@ -97,7 +97,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
                     if(overviewIsOk){
     
-                        BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
+                        BLOCKLOG(`New block fetched`,hash,itsProbablyBlock)
 
                         global.SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
     
@@ -316,6 +316,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     // Need for async safety
     if(vtPayload!==checkpointFullID || !global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
+
 
     let skipStage2Mapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SKIP_PROCEDURE_STAGE_2
 
@@ -1150,7 +1151,6 @@ START_VERIFICATION_THREAD=async()=>{
         //Change the state of validator activity only via checkpoints
 
 
-
         if(currentSessionMetadata.IS_STOPPED){
 
             /*
@@ -1233,7 +1233,6 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(block && quorumSolutionToVerifyBlock){
 
-
                 let subchainContext = currentSessionMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck] : currentPoolToCheck
 
                 await verifyBlock(block,subchainContext)
@@ -1282,7 +1281,7 @@ START_VERIFICATION_THREAD=async()=>{
     
     }else{
 
-        LOG(`Polling for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Polling for was stopped`,'I')
 
     }
 
@@ -1424,7 +1423,6 @@ verifyBlock=async(block,subchainContext)=>{
 
     if(overviewOk){
 
-
         //To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
         
         let rewardBox={fees:0}
@@ -1515,7 +1513,7 @@ verifyBlock=async(block,subchainContext)=>{
 
             global.SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
                 
-                error => LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
+                error => LOG(`Failed to store block ${block.index}\nError:${error}`,'W')
                 
             )
 
@@ -1524,7 +1522,7 @@ verifyBlock=async(block,subchainContext)=>{
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
                 
-                error => LOG(`Failed to delete block ${currentBlockID} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
+                error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,'W')
                 
             )
 
