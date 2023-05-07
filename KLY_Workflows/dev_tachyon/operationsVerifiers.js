@@ -11,9 +11,9 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     let {type,amount}=payload
 
-    let workflowConfigs = SYMBIOTE_META[threadID].WORKFLOW_OPTIONS,
+    let workflowConfigs = global.SYMBIOTE_META[threadID].WORKFLOW_OPTIONS,
         
-        isNotTooOld = stakeOrUnstakeTx.checkpointID >= SYMBIOTE_META[threadID].RUBICON,
+        isNotTooOld = stakeOrUnstakeTx.checkpointID >= global.SYMBIOTE_META[threadID].RUBICON,
     
         isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
 
@@ -24,7 +24,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
@@ -97,14 +97,14 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
 
-                let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+                let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
                 if(stillUnspent){
                     
@@ -175,9 +175,9 @@ export default {
 
                 }
 
-                SYMBIOTE_META.QUORUM_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
+                global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
 
-                poolStorage = SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
+                poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
             
             }
             
@@ -190,7 +190,7 @@ export default {
             
 
             //Put to cache that this tx was spent
-            SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
             
             let workflowConfigs = fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS
@@ -315,22 +315,22 @@ export default {
                 delete poolStorage.waitingRoom[txid]
 
 
-                let workflowConfigs = SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+                let workflowConfigs = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
                 if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
                     // Do it only if pool is not in current POOLS_METADATA
-                    if(!SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
+                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
 
                         if(poolStorage.storedMetadata.HASH){
 
-                            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]=poolStorage.storedMetadata
+                            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]=poolStorage.storedMetadata
                         
                         }else{
     
-                            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
+                            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
                                 
                                 INDEX:-1,
                             
@@ -344,13 +344,13 @@ export default {
 
                             // Add the pointer where pool is created to state
 
-                            SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
+                            global.SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
 
                             if(!poolStorage.isReserve){
 
                                 // Add the RID tracker
 
-                                SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[pool]=0                                
+                                global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[pool]=0                                
                                 
                             }
 
@@ -431,7 +431,7 @@ export default {
 
             // Set the "STOPPED" property to true/false in VT.POOLS_METADATA[<subchain>]
 
-            let poolsMetadata = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
+            let poolsMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
 
             if(stop){
 
@@ -474,7 +474,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
 
         */
 
@@ -487,11 +487,11 @@ export default {
             &&
             typeof data.pool === 'string' && Array.isArray(data.delayedIds)
             &&
-            CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
+            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
             &&
-            await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
 
         if(isFromRoute){
@@ -504,7 +504,7 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolExists = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolExists = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
             if(poolExists){
 
@@ -520,9 +520,9 @@ export default {
             // On VERIFICATION_THREAD we should delete the pool from POOLS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
+            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
 
-            let poolExists = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+            let poolExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
 
 
             if(poolExists){
@@ -555,22 +555,22 @@ export default {
 
             //To check payload received from route
 
-            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
             if(subchainWherePoolStorage){
 
-                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
-                    isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.QUORUM_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.checkpointID >= global.SYMBIOTE_META.QUORUM_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
             
 
                 if(stakingTx && isNotTooOld && isStakeTx){
 
-                    let stillUnspent = !(await SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+                    let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
 
                     if(stillUnspent){
 
@@ -600,7 +600,7 @@ export default {
             let slashHelper = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
-            if(!slashHelper[pool]) SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            if(!slashHelper[pool]) global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
         }
         else{
@@ -610,7 +610,7 @@ export default {
             if(slashHelper[pool]) return
 
 
-            let subchainWherePoolStorage = await SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
             if(subchainWherePoolStorage){
 
@@ -618,7 +618,7 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
-                    isNotTooOld = stakingTx?.checkpointID >= SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.checkpointID >= global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
 
@@ -675,7 +675,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
         
         */
 
@@ -687,11 +687,11 @@ export default {
             &&
             typeof data === 'number' //new value of rubicon. Some previous checkpointID
             &&
-            CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
+            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
             &&
-            SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
+            global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -706,7 +706,7 @@ export default {
         }else{
 
             //Used on VERIFICATION_THREAD
-            if(SYMBIOTE_META.VERIFICATION_THREAD.RUBICON < payload) SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
+            if(global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON < payload) global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
 
         }
 
@@ -743,7 +743,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
         
         
         */
@@ -754,9 +754,9 @@ export default {
 
             isFromRoute //method used on POST /special_operations
             &&
-            CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
+            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -809,7 +809,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)        
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)        
         
         */
 
@@ -819,9 +819,9 @@ export default {
 
             isFromRoute //method used on POST /special_operations
             &&
-            CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
+            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
 
 
 
@@ -836,10 +836,10 @@ export default {
 
             fullCopyOfQuorumThreadWithNewCheckpoint.VERSION=payload.major
 
-        }else if(payload.major > SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
+        }else if(payload.major > global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
 
             //Used on VT
-            SYMBIOTE_META.VERIFICATION_THREAD.VERSION=payload.major
+            global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION=payload.major
 
         }
         

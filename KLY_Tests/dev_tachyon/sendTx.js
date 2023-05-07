@@ -165,7 +165,7 @@ let GET_ACCOUNT_DATA=async account=>{
 let BLAKE3=v=>hash(v).toString('hex')
 
 
-let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
+let GET_TX_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 
     let template = {
@@ -199,15 +199,15 @@ let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 
 
-let SEND_EVENT=event=>{
+let SEND_TRANSACTION=transaction=>{
 
-    return fetch('http://localhost:7331/event',
+    return fetch('http://localhost:7331/transaction',
 
         {
         
             method:'POST',
         
-            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
+            body:JSON.stringify(transaction)
     
         }
 
@@ -236,15 +236,15 @@ let MULTISIG_2_DEFAULT=async()=>{
         amount:25000
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,multisigPayload)
+    let transaction = await GET_TX_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,multisigPayload)
 
-    console.log(event)
+    console.log(transaction)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     // console.log(status)
 
-    console.log('TX_ID is => ',BLAKE3(event.sig))
+    console.log('TX_ID is => ',BLAKE3(transaction.sig))
 
 
 }
@@ -264,12 +264,12 @@ let DEFAULT_2_DEFAULT=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(user1,TX_TYPES.TX,SIG_TYPES.DEFAULT,accData.nonce+1,defaultPayload)
+    let transaction = await GET_TX_TEMPLATE(user1,TX_TYPES.TX,SIG_TYPES.DEFAULT,accData.nonce+1,defaultPayload)
 
-    console.log(event)
+    console.log(transaction)
 
 
-    // let status = await SEND_EVENT(event)
+    // let status = await SEND_TRANSACTION(transaction)
 
     // console.log(status)
 
@@ -297,11 +297,11 @@ let MULTISIG_2_MULTISIG=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,msig2MsigPayload)
+    let transaction = await GET_TX_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,msig2MsigPayload)
 
-    console.log(event)
+    console.log(transaction)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     console.log(status)
 
@@ -326,11 +326,11 @@ let MULTISIG_2_TBLS=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,6,msig2TblsPayload)
+    let transaction = await GET_TX_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,6,msig2TblsPayload)
 
-    console.log(event)
+    console.log(transaction)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     console.log(status)
 
@@ -387,7 +387,7 @@ let TBLS_2_DEFAULT=async()=>{
 
     console.log('IS TBLS OK => ',tbls.verifyTBLS(template.creator,template.sig,dataToSign))
 
-    let status = await SEND_EVENT(template)
+    let status = await SEND_TRANSACTION(template)
 
     console.log(status)
 
@@ -411,12 +411,12 @@ let DEFAULT_2_POST_QUANTUM=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(user1,TX_TYPES.TX,SIG_TYPES.DEFAULT,accData.nonce+1,pqcPayload)
+    let transaction = await GET_TX_TEMPLATE(user1,TX_TYPES.TX,SIG_TYPES.DEFAULT,accData.nonce+1,pqcPayload)
 
-    console.log(event)
+    console.log(transaction)
 
 
-    // let status = await SEND_EVENT(event)
+    // let status = await SEND_TRANSACTION(transaction)
 
     // console.log(status)
 
@@ -440,12 +440,12 @@ let DILITHIUM_2_MULTISIG=async()=>{
     
     }
 
-    let event = await GET_EVENT_TEMPLATE(postQuantumDilithium,TX_TYPES.TX,SIG_TYPES.POST_QUANTUM_DIL,accData.nonce+1,pqcPayload)
+    let transaction = await GET_TX_TEMPLATE(postQuantumDilithium,TX_TYPES.TX,SIG_TYPES.POST_QUANTUM_DIL,accData.nonce+1,pqcPayload)
 
-    console.log(event)
+    console.log(transaction)
 
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     console.log(status)
 

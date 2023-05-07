@@ -33,13 +33,13 @@ export let CONTRACT = {
         [*] ReserveFor - SubchainID of main pool
 
     */
-    constructor:async (event,atomicBatch,originSubchain) => {
+    constructor:async (transaction,atomicBatch,originSubchain) => {
 
-        let{constructorParams}=event.payload,
+        let{constructorParams}=transaction.payload,
 
             [blsPubKey,percentage,overStake,whiteList,poolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
+            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string'){
@@ -73,7 +73,7 @@ export let CONTRACT = {
                     
                 storedMetadata:{},
 
-                totalPower:0, // KLY(converted to UNO by CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                totalPower:0, // KLY(converted to UNO by global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 stakers:{}, // Pubkey => {KLY,UNO,REWARD}
 
@@ -110,11 +110,11 @@ export let CONTRACT = {
     
     */
     
-    stake:async(event,originSubchain) => {
+    stake:async(transaction,originSubchain) => {
 
-        let fullPoolIdWithPostfix=event.payload.contractID, // Format => BLS_pubkey(POOL)
+        let fullPoolIdWithPostfix=transaction.payload.contractID, // Format => BLS_pubkey(POOL)
 
-            {amount,units}=event.payload.params[0],
+            {amount,units}=transaction.payload.params[0],
 
             poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL'))
 
@@ -122,21 +122,21 @@ export let CONTRACT = {
         //Here we also need to check if pool is still not fullfilled
         //Also, instantly check if account is whitelisted
 
-        if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(event.creator))){
+        if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator))
+            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+transaction.creator))
 
             if(stakerAccount){
             
-                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
 
-                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
-                    poolStorage.waitingRoom[BLAKE3(event.sig)]={
+                    poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                        checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                        checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
-                        staker:event.creator,
+                        staker:transaction.creator,
 
                         amount,
 
@@ -174,26 +174,26 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (event,originSubchain) => {
+    unstake:async (transaction,originSubchain) => {
 
-        let fullPoolIdWithPostfix=event.payload.contractID,
+        let fullPoolIdWithPostfix=transaction.payload.contractID,
 
-            {amount,units}=event.payload.params[0],
+            {amount,units}=transaction.payload.params[0],
 
             poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
-            stakerInfo = poolStorage.stakers[event.creator], // Pubkey => {KLY,UNO,REWARD}
+            stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {KLY,UNO,REWARD}
 
             wishedAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
 
 
         if(poolStorage && wishedAmountIsOk){
 
-            poolStorage.waitingRoom[BLAKE3(event.sig)]={
+            poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
-                staker:event.creator,
+                staker:transaction.creator,
 
                 amount,
 
@@ -218,15 +218,15 @@ export let CONTRACT = {
 
     
     */
-    getReward:async (event,originSubchain) => {
+    getReward:async (transaction,originSubchain) => {
 
-        let fullPoolIdWithPostfix=event.payload.contractID,
+        let fullPoolIdWithPostfix=transaction.payload.contractID,
 
             poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
-            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator)),
+            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+transaction.creator)),
 
-            stakerInfo = poolStorage.stakers[event.creator] // Pubkey => {KLY,UNO,REWARD}
+            stakerInfo = poolStorage.stakers[transaction.creator] // Pubkey => {KLY,UNO,REWARD}
 
 
         if(poolStorage && stakerAccount && stakerInfo.reward>0){

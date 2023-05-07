@@ -44,24 +44,24 @@ import {BLAKE3} from '../../KLY_Utils/utils.js'
 
 
 
-let VERIFY_WRAP=async (event,originSubchain)=>{
+let VERIFY_WRAP=async (tx,originSubchain)=>{
 
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator))
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator))
 
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(event,creatorAccount,originSubchain).catch(_=>false)
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originSubchain).catch(_=>false)
 
     
     if(result){
         
         return {
             
-            v:event.v,
-            fee:event.fee,
-            creator:event.creator,
-            type:event.type,
-            nonce:event.nonce,
-            payload:event.payload,
-            sig:event.sig
+            v:tx.v,
+            fee:tx.fee,
+            creator:tx.creator,
+            type:tx.type,
+            nonce:tx.nonce,
+            payload:tx.payload,
+            sig:tx.sig
         
         }
 
@@ -89,11 +89,11 @@ export default {
     }
 
     */
-    TX:async (event,originSubchain) =>
+    TX:async (tx,originSubchain) =>
 
-        typeof event.payload?.amount==='number' && typeof event.payload.to==='string' && event.payload.amount>0 && (!event.payload.rev_t || typeof event.payload.rev_t==='number')
+        typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
         &&
-        await VERIFY_WRAP(event,originSubchain)
+        await VERIFY_WRAP(tx,originSubchain)
     ,
 
     /*
@@ -115,11 +115,11 @@ export default {
     }
 
     */
-    CONTRACT_DEPLOY:async (event,originSubchain) =>
+    CONTRACT_DEPLOY:async (tx,originSubchain) =>
     
-        typeof event.payload?.bytecode==='string' && (event.payload.lang==='RUST'||event.payload.lang==='ASC'||event.payload?.lang?.startsWith('spec/')) && Array.isArray(event.payload.constructorParams)
+        typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('spec/')) && Array.isArray(tx.payload.constructorParams)
         &&
-        await VERIFY_WRAP(event,originSubchain)
+        await VERIFY_WRAP(tx,originSubchain)
 
     ,
 
@@ -138,41 +138,11 @@ export default {
         }
 
     */
-    CONTRACT_CALL:async (event,originSubchain) =>
+    CONTRACT_CALL:async (tx,originSubchain) =>
     
-        typeof event.payload?.contractID==='string' && event.payload.contractID.length<=256 && typeof event.payload.method==='string' && Array.isArray(event.payload.params) && Array.isArray(event.payload.imports)
+        typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
         &&
-        await VERIFY_WRAP(event,originSubchain)
-
-    ,
-
-
-    /*
-    
-        To move funds KLY <=> EVM
-
-        Payload is
-
-        {
-            to:'K|E', - destination env. E-means "add X KLY from my account on KLY env to EVM env". K-means "send X KLY from my EVM env to KLY env"
-            
-            _________ Dependent of path, set appropriate address to move funds to _________
-            
-            address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
-            amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
-        }
-    
-    
-    */
-    // MIGRATE_BETWEEN_ENV:async event=>{
-
-    //     typeof event.payload?.address==='string'
-    //     &&
-    //     typeof event.payload.amount==='number'
-    //     &&
-    //     event.payload.amount>0
-
-    // }
+        await VERIFY_WRAP(tx,originSubchain)
 
 }
 

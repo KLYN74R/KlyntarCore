@@ -35,7 +35,7 @@ const {
     creds,
     mempoolLimit
 
-} = CONFIG.EVM
+} = global.CONFIG.EVM
 
 
 const common = Common.custom({name,networkId,chainId},hardfork)
@@ -369,9 +369,9 @@ class KLY_EVM_CLASS {
 
                 txData.gasLimit = txData.gas || txData.gasLimit
 
-                txData.gasLimit = BigInt(txData.gasLimit) === BigInt(0) ? BigInt(CONFIG.EVM.maxAllowedGasAmountForSandboxExecution) : txData.gasLimit
+                txData.gasLimit = BigInt(txData.gasLimit) === BigInt(0) ? BigInt(global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution) : txData.gasLimit
 
-                txData.gasPrice = BigInt(txData.gasPrice) === BigInt(0) ? BigInt(CONFIG.EVM.gasPriceInWeiAndHex) : txData.gasPrice
+                txData.gasPrice = BigInt(txData.gasPrice) === BigInt(0) ? BigInt(global.CONFIG.EVM.gasPriceInWeiAndHex) : txData.gasPrice
 
                 
                 let finalTx = Transaction.fromTxData(txData)

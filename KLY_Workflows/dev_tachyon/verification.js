@@ -43,19 +43,19 @@ GET_BLOCK = async(blockCreator,index) => {
 
     let blockID=blockCreator+":"+index
     
-    return SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
+    return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
 
-        fetch(CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
+        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
     
         .then(r=>r.json()).then(block=>{
     
             let hash=Block.genHash(block)
                 
-            if(typeof block.events==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
+            if(typeof block.transactions==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
     
                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
 
-                SYMBIOTE_META.BLOCKS.put(blockID,block)
+                global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
                 return block
     
@@ -74,7 +74,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
             for(let url of allVisibleNodes){
 
-                if(url===CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+                if(url===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
                 let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(_=>false)
                 
@@ -84,7 +84,7 @@ GET_BLOCK = async(blockCreator,index) => {
 
                     let overviewIsOk =
                     
-                        typeof itsProbablyBlock.events==='object'
+                        typeof itsProbablyBlock.transactions==='object'
                         &&
                         typeof itsProbablyBlock.prevHash==='string'
                         &&
@@ -99,7 +99,7 @@ GET_BLOCK = async(blockCreator,index) => {
     
                         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m  fetched  \x1b[31m—│`,'S',hash,48,'\x1b[31m',itsProbablyBlock)
 
-                        SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
+                        global.SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
     
                         return itsProbablyBlock
     
@@ -147,7 +147,7 @@ GET_ASSIGNED_POOL = async (skipStage3Proof,checkpointFullID) => {
     // Based on this hash - start the cycle over ACTIVE 
     let pseudoRandomHash = BLAKE3(subchain+index+hash+checkpointFullID)
 
-    let activeReservePools = Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
+    let activeReservePools = Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
     
         .filter(([_,validatorMetadata])=>!validatorMetadata.IS_STOPPED && validatorMetadata.IS_RESERVE) //take only active reservists
 
@@ -194,13 +194,13 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (checkpointFullID,subchain,index,hash)
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
-    if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         return
 
     }
 
-    let checkpointTempDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+    let checkpointTempDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
     let promises=[], signatures=[], pubKeys=[]
 
@@ -259,7 +259,7 @@ GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (checkpointFullID,subchain,index,hash)
 
         let aggregatedPub = bls.aggregatePublicKeys(pubKeys)
 
-        let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pub=>!pubKeys.includes(pub))
+        let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pub=>!pubKeys.includes(pub))
 
         let object={subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
 
@@ -310,18 +310,18 @@ Verification process:
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let vtPayload = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    let vtPayload = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     // Need for async safety
-    if(vtPayload!==checkpointFullID || !SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
+    if(vtPayload!==checkpointFullID || !global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
 
-    let skipStage2Mapping = SYMBIOTE_META.TEMP.get(checkpointFullID).SKIP_PROCEDURE_STAGE_2
+    let skipStage2Mapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SKIP_PROCEDURE_STAGE_2
 
     let [subchain,index] = blockID.split(':')
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
     index = +index
 
@@ -341,7 +341,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
         let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(checkpointFullID,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
 
         //{INDEX,HASH,IS_STOPPED}
-        let currentMetadata = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
+        let currentMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
 
 
         // Initially, check if subchain was stopped from this height:hash on this checkpoint
@@ -369,7 +369,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call GET /super_finalization route
     
-    let quorumMembersURLs = [CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
 
     for(let memberURL of quorumMembersURLs){
@@ -394,14 +394,14 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             //Verify it before return
 
-            let checkpointFullID = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+            let checkpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
 
             let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+checkpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
 
-                rootQuorumKeyIsEqualToProposed = SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
+                rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
 
-                quorumSize = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
+                quorumSize = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
 
                 majority = GET_MAJORITY('VERIFICATION_THREAD')
 
@@ -432,7 +432,7 @@ WAIT_SOME_TIME=async()=>
 
     new Promise(resolve=>
 
-        setTimeout(()=>resolve(),CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT)
+        setTimeout(()=>resolve(),global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT)
 
     )
 ,
@@ -449,12 +449,12 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     poolStorage.lackOfTotalPower=true
 
-    poolStorage.stopCheckpointID=SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    poolStorage.storedMetadata=SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
+    poolStorage.storedMetadata=global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
 
 
-    delete SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
+    delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
 
 },
 
@@ -502,23 +502,23 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
     if(limitsReached && !checkpointIsCompleted){
 
 
-        let operations = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
+        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
 
 
         //_____________________________To change it via operations___________________________
 
-        let workflowOptionsTemplate = {...SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
+        let workflowOptionsTemplate = {...global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
         
-        SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+        global.SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
         //___________________Create array of delayed unstaking transactions__________________
 
-        SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
+        global.SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
 
         //_____________________________Create object for slashing____________________________
 
         // Structure <pool> => <{delayedIds,pool}>
-        SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+        global.SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
 
         //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
         for(let operation of operations){
@@ -559,13 +559,13 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //_______________________Remove pools if lack of staking power_______________________
 
 
-        let poolsToBeRemoved = [], promises = [], poolsArray = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
+        let poolsToBeRemoved = [], promises = [], poolsArray = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
 
         for(let validator of poolsArray){
 
             let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-                if(poolStorage.totalPower<SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push(validator)
+                if(poolStorage.totalPower<global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push(validator)
 
             })
 
@@ -591,7 +591,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //________________________________Remove rogue pools_________________________________
 
         // These operations must be atomic
-        let atomicBatch = SYMBIOTE_META.STATE.batch()
+        let atomicBatch = global.SYMBIOTE_META.STATE.batch()
 
         let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
         
@@ -611,12 +611,12 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             atomicBatch.del(poolIdentifier+'(POOL)')
 
             // Remove from pools tracking
-            delete SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolIdentifier]
+            delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolIdentifier]
 
             // Delete from cache
-            SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+            global.SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
 
-            SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)')
+            global.SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)')
 
 
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
@@ -653,7 +653,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         if(!delayedTableOfIds) delayedTableOfIds=[]
 
         
-        let currentCheckpointIndex = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
         
         let idsToDelete = []
 
@@ -662,7 +662,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             //Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
-            if(delayedTableOfIds[i] + SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointIndex){
+            if(delayedTableOfIds[i] + global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointIndex){
 
                 let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
 
@@ -721,48 +721,48 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             delayedTableOfIds.push(currentCheckpointIndex)
 
-            SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointIndex,currentArrayOfDelayedOperations)
+            global.SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointIndex,currentArrayOfDelayedOperations)
 
         }
 
         // Set the DELAYED_TABLE_OF_IDS to DB
-        SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
+        global.SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
 
         //Delete the temporary from cache
-        SYMBIOTE_META.STATE_CACHE.delete('DELAYED_OPERATIONS')
+        global.SYMBIOTE_META.STATE_CACHE.delete('DELAYED_OPERATIONS')
 
-        SYMBIOTE_META.STATE_CACHE.delete('SLASH_OBJECT')
+        global.SYMBIOTE_META.STATE_CACHE.delete('SLASH_OBJECT')
 
 
         //_______________________Commit changes after operations here________________________
 
         //Update the WORKFLOW_OPTIONS
-        SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-        SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+        global.SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
 
 
         // Mark checkpoint as completed not to repeat the operations twice
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
+        global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED=true
        
         //Create new quorum based on new POOLS_METADATA state
-        SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+        global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
         //Get the new rootpub
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
         /*
         
             ____________________________________After running all SPECIAL_OPERATIONS we should do the following____________________________________        
         
-            [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
+            [*] In case some of subchains were stopped - find worker using hash of global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
 
         */
 
-        // [*] In case some of subchains were stopped - find worker using hash of SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
+        // [*] In case some of subchains were stopped - find worker using hash of global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA and nonces
 
-        let hashOfPoolsMetadataInCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+        let hashOfPoolsMetadataInCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
 
         // Build the graphs
 
@@ -771,7 +771,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
 
         
-        for(let [poolPubKey,poolMetadata] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
+        for(let [poolPubKey,poolMetadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
 
             if(!poolMetadata.IS_RESERVE){
 
@@ -782,9 +782,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 // Otherwise - it's reserve pool
 
-                let originSubchain = await SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
+                let originSubchain = await global.SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
                     
-                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
 
                 if(poolStorage){
 
@@ -802,7 +802,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
          
 
-        let specialOperationsOnThisCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
+        let specialOperationsOnThisCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.OPERATIONS
 
         // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
 
@@ -830,7 +830,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         }
             
 
-        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS={}
+        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS={}
 
 
         for(let subchainPoolID of subchainsIDs){
@@ -843,17 +843,17 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             
             while(skippedPools.has(nextReservePool)){
             
-                if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+                if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
             
-                    SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
             
                 }
             
-                let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfPoolsMetadataInCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
+                let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfPoolsMetadataInCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
             
                 if(possibleNextReservePool){
             
-                    SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]=possibleNextReservePool
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]=possibleNextReservePool
             
                     nextReservePool = possibleNextReservePool
             
@@ -863,29 +863,29 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             
             }
             
-            if(nextReservePool!==subchainPoolID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
+            if(nextReservePool!==subchainPoolID && global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].length===0) delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]
 
-            let initialReserve = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
+            let initialReserve = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
 
-            if(initialReserve) SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[initialReserve]=subchainPoolID
+            if(initialReserve) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[initialReserve]=subchainPoolID
 
-            // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
+            // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools for subchains where main validator is stopped
         
         }
 
 
-        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
 
 
         //Commit the changes of state using atomic batch
-        SYMBIOTE_META.STATE_CACHE.forEach(
+        global.SYMBIOTE_META.STATE_CACHE.forEach(
             
             (value,recordID) => atomicBatch.put(recordID,value)
             
         )
 
 
-        atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+        atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
     
@@ -897,7 +897,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
     let currentTimestamp = GET_GMT_TIMESTAMP(),//due to UTC timestamp format
 
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,currentTimestamp)
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,currentTimestamp)
 
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
@@ -911,21 +911,21 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         if(nextCheckpoint){
 
 
-            let oldQuorum = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
+            let oldQuorum = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
 
-            let oldPoolsMetadataFromCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+            let oldPoolsMetadataFromCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
 
-            let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+            let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
 
 
             //Set the new checkpoint
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
+            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
 
             // But quorum is the same as previous
-            SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = oldQuorum
+            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = oldQuorum
 
             //Get the new rootpub
-            SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+            global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
             //______________________________Check if some subchains were stopped______________________________
@@ -949,7 +949,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                     let originSubchain = await GET_FROM_STATE(poolPubKey+`(POOL)_POINTER`)
                     
-                    let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+                    let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
 
                     if(poolStorage){
 
@@ -1002,19 +1002,19 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 let nextReservePool = subchainPoolID
 
-                if(oldPoolsMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+                if(oldPoolsMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
 
                     /*
                     
                         If some of subchains were stopped on previous checkpoint - it's a signal that the beginning of chain is hidden here:
                         
-                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS  in form like STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS  in form like STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
 
                         and the reponsible for pool is REASSIGNMENTS[<skipped_subchain_id>][0]
                     
                     */
                     
-                    nextReservePool = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
+                    nextReservePool = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
 
                 }
 
@@ -1023,9 +1023,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 while(stoppedPools.has(nextReservePool)){
 
-                    if(!SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
+                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
 
-                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
 
                     }
                     
@@ -1035,13 +1035,13 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                         // if yes - find next responsible for work on this pool in a row
 
-                        let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
+                        let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
 
                         if(possibleNextReservePool){
 
-                            SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].push(possibleNextReservePool)
+                            global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].push(possibleNextReservePool)
 
-                            SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[possibleNextReservePool]=subchainPoolID
+                            global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[possibleNextReservePool]=subchainPoolID
 
                             nextReservePool = possibleNextReservePool
 
@@ -1053,7 +1053,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 }
 
-                // On this step, in SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
+                // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
 
 
             }
@@ -1072,7 +1072,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         } else {
 
-            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT/1000} seconds ...`,'I')
+            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT/1000} seconds ...`,'I')
 
             await WAIT_SOME_TIME()
 
@@ -1087,9 +1087,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL=reservePoolPubKey=>{
 
-    let subchainID = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[reservePoolPubKey]
+    let subchainID = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[reservePoolPubKey]
 
-    return subchainID && SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID][0] === reservePoolPubKey
+    return subchainID && global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID][0] === reservePoolPubKey
 
 },
 
@@ -1104,19 +1104,19 @@ START_VERIFICATION_THREAD=async()=>{
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
-        let currentPoolsMetadataHash = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
+        let currentPoolsMetadataHash = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
-            poolsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+            poolsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
 
         
 
         //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        await SET_UP_NEW_CHECKPOINT(currentPoolsMetadataHash === poolsMetadataHashFromCheckpoint,SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED)
+        await SET_UP_NEW_CHECKPOINT(currentPoolsMetadataHash === poolsMetadataHashFromCheckpoint,global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED)
 
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
         /*
@@ -1131,15 +1131,15 @@ START_VERIFICATION_THREAD=async()=>{
         */
 
 
-        let prevSubchainWeChecked = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
+        let prevSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
-            poolsPubkeys = Object.keys(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA),
+            poolsPubkeys = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA),
 
             //take the next validator in a row. If it's end of pools - start from the first validator in array
             currentPoolToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0],
 
             //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentPoolToCheck],
+            currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentPoolToCheck],
 
             blockID = currentPoolToCheck+":"+(currentSessionMetadata.INDEX+1),
 
@@ -1164,11 +1164,11 @@ START_VERIFICATION_THREAD=async()=>{
             */
 
                 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
 
         }
@@ -1182,9 +1182,9 @@ START_VERIFICATION_THREAD=async()=>{
 
                 quorumSolutionToVerifyBlock = false, //by default
 
-                currentBlockPresentInCurrentCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]?.INDEX > currentSessionMetadata.INDEX,
+                currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]?.INDEX > currentSessionMetadata.INDEX,
 
-                checkPointCompleted  = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
+                checkPointCompleted  = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
         
             
 
@@ -1213,7 +1213,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                     // Probably - hash mismatch 
 
-                    await SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+                    await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
 
                 }
             
@@ -1224,56 +1224,56 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(shouldSkip){
 
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                         
-                SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
 
             }else if(block && quorumSolutionToVerifyBlock){
 
 
-                let subchainContext = currentSessionMetadata.IS_RESERVE ? SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck] : currentPoolToCheck
+                let subchainContext = currentSessionMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck] : currentPoolToCheck
 
                 await verifyBlock(block,subchainContext)
 
                 
                 if(currentSessionMetadata.IS_RESERVE){
 
-                    let metaFromCheckpoint = SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]
+                    let metaFromCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]
 
                     if(metaFromCheckpoint.INDEX === currentSessionMetadata.INDEX && metaFromCheckpoint.HASH === currentSessionMetadata.HASH){
 
                         // Delete from reassignments to move to the next pool in subchain
 
-                        let origin = SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
+                        let origin = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
 
-                        delete SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
+                        delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
 
-                        SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
 
                     }
 
                 }
 
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
                 
 
             }
 
         }else{
 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
 
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
                                     
-            SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
 
         }
 
 
-        if(CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
+        if(global.CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
 
@@ -1282,7 +1282,7 @@ START_VERIFICATION_THREAD=async()=>{
     
     }else{
 
-        LOG(`Polling for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Polling for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
     }
 
@@ -1335,7 +1335,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
 
     feesAccountForGivenPoolOnThisSubchain.reward+=feeReward
 
-    SYMBIOTE_META.STATE_CACHE.set(accountsForFeesId,feesAccountForGivenPoolOnThisSubchain)
+    global.SYMBIOTE_META.STATE_CACHE.set(accountsForFeesId,feesAccountForGivenPoolOnThisSubchain)
 
 },
 
@@ -1353,7 +1353,7 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet)=>{
 
 
 
-        1) Take all the ACTIVE pools from SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA
+        1) Take all the ACTIVE pools from global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA
 
         2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
 
@@ -1368,7 +1368,7 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet)=>{
     
     */
 
-    let payToCreatorAndHisPool = totalFees * SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+    let payToCreatorAndHisPool = totalFees * global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
         payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(activePoolsSet.size-1)), //and share the rest among other pools
     
@@ -1404,14 +1404,14 @@ verifyBlock=async(block,subchainContext)=>{
 
         overviewOk=
     
-            block.events?.length<=SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
+            block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
             &&
-            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
             &&
             await BLS_VERIFY(blockHash,block.sig,block.creator)
 
 
-    // if(block.i === CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
+    // if(block.i === global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
 
     //     LOG(`SYMBIOTE_CHECKPOINT verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
 
@@ -1436,12 +1436,12 @@ verifyBlock=async(block,subchainContext)=>{
         // Change the EVM context
         global.CURRENT_SUBCHAIN_EVM_CONTEXT = subchainContext
 
-        SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+        global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
 
         //To change the state atomically
-        let atomicBatch = SYMBIOTE_META.STATE.batch()
+        let atomicBatch = global.SYMBIOTE_META.STATE.batch()
 
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
@@ -1452,7 +1452,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         let activePools = new Set()
 
-        for(let [validatorPubKey,metadata] of Object.entries(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
+        for(let [validatorPubKey,metadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
 
             if(!metadata.IS_STOPPED && !metadata.IS_RESERVE) activePools.add(validatorPubKey) 
 
@@ -1473,23 +1473,23 @@ verifyBlock=async(block,subchainContext)=>{
         await Promise.all(accountsToAddToCache.splice(0))
 
 
-        //___________________________________________START TO PERFORM EVENTS____________________________________________
+        //___________________________________________START TO PERFORM TXS____________________________________________
 
 
         let txIndexInBlock=0
 
-        for(let event of block.events){
+        for(let transaction of block.transactions){
 
-            if(SYMBIOTE_META.VERIFIERS[event.type]){
+            if(global.SYMBIOTE_META.VERIFIERS[transaction.type]){
 
-                let eventCopy = JSON.parse(JSON.stringify(event))
+                let txCopy = JSON.parse(JSON.stringify(transaction))
 
-                let {isOk,reason} = await SYMBIOTE_META.VERIFIERS[event.type](subchainContext,eventCopy,rewardBox,atomicBatch).catch(_=>{})
+                let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](subchainContext,txCopy,rewardBox,atomicBatch).catch(_=>{})
 
                 // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                 if(reason!=='EVM'){
 
-                    let txid = BLAKE3(eventCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+                    let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
                     atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
     
@@ -1509,20 +1509,20 @@ verifyBlock=async(block,subchainContext)=>{
 
 
         //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(CONFIG.SYMBIOTE.STORE_BLOCKS){
+        if(global.CONFIG.SYMBIOTE.STORE_BLOCKS){
             
             //No matter if we already have this block-resave it
 
-            SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
+            global.SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
                 
                 error => LOG(`Failed to store block ${block.index} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
                 
             )
 
-        }else if(block.creator!==CONFIG.SYMBIOTE.PUB){
+        }else if(block.creator!==global.CONFIG.SYMBIOTE.PUB){
 
             //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
+            global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
                 
                 error => LOG(`Failed to delete block ${currentBlockID} on ${SYMBIOTE_ALIAS()}\nError:${error}`,'W')
                 
@@ -1534,65 +1534,65 @@ verifyBlock=async(block,subchainContext)=>{
         //________________________________________________COMMIT STATE__________________________________________________    
 
 
-        SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
+        global.SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
 
             atomicBatch.put(addr,account)
 
         )
         
-        if(SYMBIOTE_META.STATE_CACHE.size>=CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
+        if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
 
         // Store the currently subchain block index (SID)
 
-        let currentSID = SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
+        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
 
         atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
 
-        SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
+        global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
 
 
-        let oldGRID = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
+        let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
 
         //Change finalization pointer
         
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
 
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
                 
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
 
-        SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID++
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID++
 
         atomicBatch.put(`GRID:${oldGRID}`,currentBlockID)
         
         //Change metadata per validator's thread
         
-        SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].INDEX=block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].INDEX=block.index
 
-        SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].HASH=blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].HASH=blockHash
 
 
         //___________________ Update the KLY-EVM ___________________
 
         // Update stateRoot
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.STATE_ROOT = await KLY_EVM.getStateRoot()
+        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.STATE_ROOT = await KLY_EVM.getStateRoot()
 
         // Increase block index
-        let nextIndex = BigInt(SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX)+BigInt(1)
+        let nextIndex = BigInt(global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX)+BigInt(1)
     
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
+        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
 
         // Store previous hash
         let currentHash = KLY_EVM.getCurrentBlock().hash()
     
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.PARENT_HASH = currentHash.toString('hex')
+        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.PARENT_HASH = currentHash.toString('hex')
         
 
         // Imagine that it's 1 block per 2 seconds
-        let nextTimestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP+2
+        let nextTimestamp = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP+2
     
-        SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP = nextTimestamp
+        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP = nextTimestamp
         
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
         
@@ -1600,7 +1600,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         atomicBatch.put('EVM_INDEX:'+blockToStore.hash,blockToStore.number)
 
-        atomicBatch.put('EVM_LOGS:'+blockToStore.number,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+        atomicBatch.put('EVM_LOGS:'+blockToStore.number,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
         atomicBatch.put('EVM_BLOCK_RECEIPT:'+blockToStore.number,{kly_block:currentBlockID})
 
@@ -1616,7 +1616,7 @@ verifyBlock=async(block,subchainContext)=>{
         
         //Commit the state of VERIFICATION_THREAD
 
-        atomicBatch.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+        atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
         

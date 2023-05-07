@@ -12,6 +12,6 @@ export let RUN_SYMBIOTE = () => {
     console.log('You can skip if you don`t need')
     console.log('************ IMITATION OF RUNNING ************')
 
-    setInterval(()=>LOG('Hello World from dev_helloworld !!!','S',CONFIG.SYMBIOTE.SYMBIOTE_ID),CONFIG.SYMBIOTE.HELLO_WORLD_TIMEOUT)
+    setInterval(()=>LOG('Hello World from dev_helloworld !!!','S',global.CONFIG.SYMBIOTE.SYMBIOTE_ID),global.CONFIG.SYMBIOTE.HELLO_WORLD_TIMEOUT)
 
 }

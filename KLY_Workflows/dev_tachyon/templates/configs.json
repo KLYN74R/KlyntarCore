@@ -52,7 +52,7 @@
             "UNSTAKING_PERIOD":4,
             "QUORUM_SIZE":12727,
             "SUBCHAIN_AFK_LIMIT":120000,
-            "EVENTS_LIMIT_PER_BLOCK":30000,
+            "TRANSACTIONS_LIMIT_PER_BLOCK":30000,
             "CHECKPOINT_SPEC_OPS_LIMIT":1000,
             "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
         
@@ -116,7 +116,7 @@
     "BLOCK_GENERATION_INIT_DELAY":3000,
 
     "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
-    "EVENTS_MEMPOOL_SIZE":300000,
+    "TXS_MEMPOOL_SIZE":300000,
     "SPECIAL_OPERATIONS_MEMPOOL_SIZE":100000,
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
@@ -219,7 +219,7 @@
             "SYNC_STATE":2,
             "SYMBIOTE_INFO":5,
             "SEARCH_RESULT":5,
-            "EVENT_RECEIPT":100,
+            "TX_RECEIPT":100,
             "POOLS_METADATA":5,
             "QUORUM_THREAD_CHECKPOINT":5,
             "STUFF":5
@@ -233,7 +233,7 @@
 
             "ACCEPT_BLOCK":1,
             "ACCEPT_BLOCKS":1,
-            "ACCEPT_EVENTS":1,
+            "ACCEPT_TXS":1,
             "SHARE_FINALIZATION_PROOF":1,
             "SUPER_FINALIZATION_PROOFS":1,
             "HEALTH_CHECKER":1,
@@ -258,7 +258,7 @@
             "SYNC_STATE":1,
             "SYMBIOTE_INFO":1,
             "SEARCH_RESULT":1,
-            "EVENT_RECEIPT":1,
+            "TX_RECEIPT":1,
             "POOLS_METADATA":1,
             "QUORUM_THREAD_CHECKPOINT":1,
             "SHARE_STUFF":1

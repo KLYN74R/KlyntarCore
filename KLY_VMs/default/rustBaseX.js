@@ -8,7 +8,7 @@ import {TextDecoder} from 'util'
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true })
 
-let {TYPE,FUNCTION_NAME,MODULE_NAME}=CONFIG.VM.METERING
+let {TYPE,FUNCTION_NAME,MODULE_NAME}=global.CONFIG.VM.METERING
 
 let cachedTextEncoder = new TextEncoder('utf-8')
 
@@ -116,7 +116,7 @@ export default class ContractInstance {
             moduleStr:MODULE_NAME,
         
             //And cost table to meter energy usage by opcodes price
-            costTable:CONFIG.VM.ENERGY_TABLE,
+            costTable:global.CONFIG.VM.ENERGY_TABLE,
         
         })
 

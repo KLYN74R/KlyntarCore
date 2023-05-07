@@ -8,7 +8,7 @@ import fetch from 'node-fetch'
 
 let REQUEST_TO_NODE = async (btcFork,command,params,isMonitor)=>{
 
-    let {URL,CREDS}=CONFIG.SYMBIOTE[isMonitor?'CONNECTORS':'MONITORS'][btcFork]
+    let {URL,CREDS}=global.CONFIG.SYMBIOTE[isMonitor?'CONNECTORS':'MONITORS'][btcFork]
 
     return fetch(URL,{
 
@@ -102,7 +102,7 @@ export let checkCommit = (btcFork,hostChainHash,blockIndex,klyntarHash) => {
 export let makeCommit=async(TxClassInstance,btcFork,blockIndex,klyntarHash)=>{
 
 
-    let {PUB,PRV,FEE}=CONFIG.SYMBIOTE.CONNECTOR,
+    let {PUB,PRV,FEE}=global.CONFIG.SYMBIOTE.CONNECTOR,
         
         inputs=[],        
         

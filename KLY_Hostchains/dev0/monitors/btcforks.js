@@ -78,7 +78,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async () => {
 
         bestBlock = await getBlockByHash('ltc',await getBestBlockHash('ltc',true),true).catch(e=>false),
 
-        step = CONFIG.SYMBIOTE.MONITOR.FIRST_BLOCK_FIND_STEP,
+        step = global.CONFIG.SYMBIOTE.MONITOR.FIRST_BLOCK_FIND_STEP,
 
         candidateIndex = bestBlock.height - step
 
@@ -126,7 +126,7 @@ let FIND_FIRST_BLOCK_OF_DAY = async () => {
 
 export default (btcFork) => {
 
-    let configs = CONFIG.SYMBIOTE.MONITOR
+    let configs = global.CONFIG.SYMBIOTE.MONITOR
 
     if(configs.MODE==='PARANOIC'){
 
@@ -134,7 +134,7 @@ export default (btcFork) => {
 
         setInterval(()=>{
 
-            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+            console.log(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
         },3000)
 
@@ -144,7 +144,7 @@ export default (btcFork) => {
 
         setInterval(()=>{
 
-            console.log(SYMBIOTE_META.VERIFICATION_THREAD)
+            console.log(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
         },3000)
 

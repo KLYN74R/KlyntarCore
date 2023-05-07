@@ -11,7 +11,7 @@ import Block from '../essences/block.js'
 
 
 
-let BLS_PUBKEY_FOR_FILTER = CONFIG.SYMBIOTE.FILTER_PUB || CONFIG.SYMBIOTE.PUB,
+let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.FILTER_PUB || global.CONFIG.SYMBIOTE.PUB,
 
 
 
@@ -32,10 +32,10 @@ let BLS_PUBKEY_FOR_FILTER = CONFIG.SYMBIOTE.FILTER_PUB || CONFIG.SYMBIOTE.PUB,
     {
         creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
         time:1666744452126,
-        events:[
-            event1,
-            event2,
-            event3,
+        transactions:[
+            tx1,
+            tx2,
+            tx3,
         ]
         index:1337,
         prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
@@ -56,15 +56,15 @@ acceptBlocks=response=>{
     
     let buffer=Buffer.alloc(0)
     
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCK){
+    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCK){
         
         !response.aborted && response.end('Route is off')
         
@@ -72,7 +72,7 @@ acceptBlocks=response=>{
     
     }
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -91,7 +91,7 @@ acceptBlocks=response=>{
     
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
-        if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+        if(total+chunk.byteLength<=global.CONFIG.MAX_PAYLOAD_SIZE){
         
             buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
     
@@ -142,7 +142,7 @@ acceptBlocks=response=>{
                 
                 }
                 
-                let checkIfItsChain = block.index===0 || await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+                let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
 
                     //Compare hashes to make sure it's a chain
 
@@ -157,7 +157,7 @@ acceptBlocks=response=>{
 
                 let allow=
             
-                    typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.events)//make general lightweight overview
+                    typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.transactions)//make general lightweight overview
                     &&
                     await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
                     &&
@@ -169,11 +169,11 @@ acceptBlocks=response=>{
                     let blockID = block.creator+":"+block.index
                     
                     //Store it locally-we'll work with this block later
-                    SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                    global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
                             
                         _ =>
                             
-                            SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                            global.SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
 
                                 BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
 
@@ -221,10 +221,10 @@ acceptBlocks=response=>{
         {
             creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
             time:1666744452126,
-            events:[
-                event1,
-                event2,
-                event3,
+            txs:[
+                tx1,
+                tx2,
+                tx3,
             ]
             index:1337,
             prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
@@ -247,13 +247,13 @@ acceptManyBlocks=response=>{
     
     let buffer=Buffer.alloc(0)
     
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCKS){
+    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCKS){
         
         !response.aborted && response.end('Route is off')
         
@@ -261,7 +261,7 @@ acceptManyBlocks=response=>{
     
     }
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -281,7 +281,7 @@ acceptManyBlocks=response=>{
 
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
-        if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+        if(total+chunk.byteLength<=global.CONFIG.MAX_PAYLOAD_SIZE){
         
             buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
     
@@ -299,7 +299,7 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
+                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
                 
                     if(subchainIsSkipped) continue
    
@@ -319,7 +319,7 @@ acceptManyBlocks=response=>{
                     }
    
                     
-                    let checkIfItsChain = block.index===0 || await SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
     
                         //Compare hashes to make sure it's a chain
     
@@ -334,7 +334,7 @@ acceptManyBlocks=response=>{
     
                     let allow=
                 
-                        typeof block.events==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
+                        typeof block.transactions==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
                         &&
                         await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
                         &&
@@ -346,11 +346,11 @@ acceptManyBlocks=response=>{
   
                         
                         //Store it locally-we'll work with this block later
-                        await SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                        await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
                                 
                             _ =>
                                 
-                                SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
+                                global.SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
     
                                     BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m accepted  \x1b[31m—│`,'S',hash,48,'\x1b[31m',block)
                                 
@@ -390,9 +390,9 @@ acceptManyBlocks=response=>{
 
 //Format of body : {symbiote,body}
 //There is no <creator> field-we get it from tx
-acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {symbiote,event}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let transaction = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
     
     //Reject all txs if route is off and other guards methods
 
@@ -409,22 +409,14 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
     */
 
-    if(typeof event?.creator!=='string' || typeof event.nonce!=='number' || typeof event.sig!=='string'){
+    if(typeof transaction?.creator!=='string' || typeof transaction.nonce!=='number' || typeof transaction.sig!=='string'){
 
         !response.aborted && response.end('Event structure is wrong')
 
         return
     }
 
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
-
-        !response.aborted && response.end(`Wrong symbiote ID => My:${CONFIG.SYMBIOTE.SYMBIOTE_ID} | Your:${symbiote}`)
-
-        return
-
-    }
-
-    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_EVENTS){
+    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_TXS){
         
         !response.aborted && response.end('Route is off')
         
@@ -432,26 +424,26 @@ acceptEvents=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         
     }
 
-    if(!SYMBIOTE_META.FILTERS[event.type]){
+    if(!global.SYMBIOTE_META.FILTERS[transaction.type]){
 
-        !response.aborted && response.end('No such filter. Make sure your <event.type> is supported by current version of workflow runned on symbiote')
+        !response.aborted && response.end('No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote')
         
         return
 
     }
 
     
-    if(SYMBIOTE_META.MEMPOOL.length<CONFIG.SYMBIOTE.EVENTS_MEMPOOL_SIZE){
+    if(global.SYMBIOTE_META.MEMPOOL.length<global.CONFIG.SYMBIOTE.TXS_MEMPOOL_SIZE){
 
-        let filteredEvent=await SYMBIOTE_META.FILTERS[event.type](event,BLS_PUBKEY_FOR_FILTER)
+        let filteredEvent=await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,BLS_PUBKEY_FOR_FILTER)
 
         if(filteredEvent){
 
             !response.aborted && response.end('OK')
 
-            SYMBIOTE_META.MEMPOOL.push(filteredEvent)
+            global.SYMBIOTE_META.MEMPOOL.push(filteredEvent)
                         
-        }else !response.aborted && response.end(`Can't get filtered value of event`)
+        }else !response.aborted && response.end(`Can't get filtered value of tx`)
 
     }else !response.aborted && response.end('Mempool is fullfilled')
 
@@ -525,14 +517,14 @@ ___________________________Verification steps___________________________
 */
 finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let aggregatedCommitments=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    let aggregatedCommitments=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
 
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
             !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -540,9 +532,9 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         }
 
         
-        let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+        let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-        let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
+        let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
 
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
@@ -572,11 +564,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             let [blockCreator,_] = blockID.split(':')
 
 
-            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
             let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
             
@@ -633,23 +625,23 @@ MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,response)=>{
 
 manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let aggregatedCommitmentsArray=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let aggregatedCommitmentsArray=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let blocksSet = []
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
 
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
             !response.aborted && response.end('QT checkpoint is incomplete')
 
             return
         }
 
-        let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+        let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
@@ -672,11 +664,11 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
             }
 
-            let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
             
             
@@ -715,11 +707,11 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 */
 superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject){
 
@@ -730,7 +722,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     
    
-    let possibleSuperFinalizationProof=await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    let possibleSuperFinalizationProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
     let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleSuperFinalizationProof
     
@@ -742,7 +734,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     }
 
-    let myLocalBlock = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+    let myLocalBlock = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let [blockCreator,_] = blockID.split(':')
 
@@ -751,9 +743,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let majorityIsOk = (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
     
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
     let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
 
@@ -802,11 +794,11 @@ getSuperFinalization=async(response,request)=>{
     response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.SUPER_FINALIZATION_PROOFS){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SUPER_FINALIZATION_PROOFS){
 
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
             !response.aborted && response.end('QT checkpoint is not ready')
 
@@ -814,7 +806,7 @@ getSuperFinalization=async(response,request)=>{
         }
 
        
-        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+request.getParameter(0)).catch(_=>false)
+        let superFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+request.getParameter(0)).catch(_=>false)
 
 
         if(superFinalizationProof){
@@ -862,10 +854,10 @@ healthChecker = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
 
         // Get the latest SUPER_FINALIZATION_PROOF that we have
-        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         if(!appropriateDescriptor) !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
 
@@ -873,13 +865,13 @@ healthChecker = async response => {
         
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
 
-        let block = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let block = await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
         let latestHash = block && Block.genHash(block)
 
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
             !response.aborted && response.end('QT checkpoint is not ready')
 
@@ -887,7 +879,7 @@ healthChecker = async response => {
         }
        
 
-        let superFinalizationProof = await USE_TEMPORARY_DB('get',SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let superFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
 
         if(superFinalizationProof){
@@ -931,7 +923,7 @@ healthChecker = async response => {
 
 [Response]:
 
-    [+] In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
+    [+] In case our global.SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
         For this - response with a signature like this SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
 
     [+] If timeout of AFK from subchain is not too old - then response with 'OK'
@@ -941,16 +933,16 @@ healthChecker = async response => {
 */
 skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {session,initiator,requestedSubchain,height,sig} = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -987,7 +979,7 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         if(myLocalHealthCheckingHandler){
 
-            let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
+            let afkLimit = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
             let currentTime = GET_GMT_TIMESTAMP()
 
@@ -1059,13 +1051,13 @@ skipProcedureStage1=response=>response.writeHeader('Access-Control-Allow-Origin'
 */
 skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain,height,hash,finalizationProof}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {subchain,height,hash,finalizationProof}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-    let qtSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     if(!tempObject){
 
@@ -1086,9 +1078,9 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 
 
-    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) 
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) 
 
     let localSyncHandler = tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(subchain)
 
@@ -1098,7 +1090,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
         !response.aborted && response.end('Checkpoint is not fresh')
     
-    }else if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    }else if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
         
@@ -1189,7 +1181,7 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 
 [Response]:
 
-    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(global.SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
         Then,response with SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${checkpointFullID}`)
 
     [+] Otherwise - send NOT_FOUND status
@@ -1198,11 +1190,11 @@ skipProcedureStage2=response=>response.writeHeader('Access-Control-Allow-Origin'
 */
 skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let {subchain}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {subchain}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
     
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject){
 
@@ -1213,7 +1205,7 @@ skipProcedureStage3=response=>response.writeHeader('Access-Control-Allow-Origin'
 
     let skipProof = tempObject.PROOFS_RESPONSES.get(`SKIP_STAGE_3:${subchain}`)
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
         !response.aborted && response.end(JSON.stringify({status:'QT checkpoint is incomplete'}))
 
@@ -1258,9 +1250,9 @@ getSkipProcedureStage3 = async (response,request) => {
     
     let subchain = request.getParameter(0)
     
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     if(!tempObject){
@@ -1270,7 +1262,7 @@ getSkipProcedureStage3 = async (response,request) => {
         return
     }
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1305,11 +1297,11 @@ Used to accept aggregated version of SKIP_STAGE_3 proofs
 */
 acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let aggregatedVersionOfSkipStage3=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let aggregatedVersionOfSkipStage3=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
     
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     if(!tempObject){
@@ -1334,11 +1326,11 @@ acceptAggregatedSkipStage3=response=>response.writeHeader('Access-Control-Allow-
 
     let dataThatShouldBeSigned = `SKIP_STAGE_3:${subchain}:${index}:${hash}:${checkpointFullID}`
 
-    let majorityIsOk =  (SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
         
     let signaIsOk = await bls.singleVerify(dataThatShouldBeSigned,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
             
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
@@ -1367,7 +1359,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
     
     ISSUER:<BLS pubkey of checkpoint grabbing initiator>,
 
-    PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+    PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
     
     POOLS_METADATA: {
                 
@@ -1376,7 +1368,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
         /..other data
             
     },
-    OPERATIONS: GET_SPEC_EVENTS(),
+    OPERATIONS: GET_SPECIAL_OPERATIONS(),
     OTHER_SYMBIOTES: {}
         
 }
@@ -1420,7 +1412,7 @@ Response - it's object with the following structure:
 
     [@] If we have proof that for a specific validator we have height with bigger index(longer valid chain)
 
-        We compare the proposition of index:hash for subchain with own version in SYMBIOTE_META.CHECKPOINT_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
+        We compare the proposition of index:hash for subchain with own version in global.SYMBIOTE_META.CHECKPOINT_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
 
         If we have a bigger index - then we get the FINALIZATION_PROOF from a local storage and send as a part of answer
 
@@ -1445,7 +1437,7 @@ Response - it's object with the following structure:
 */
 checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointProposition=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let checkpointProposition=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     if(typeof checkpointProposition.ISSUER !== 'string' || typeof checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH !== 'string' || typeof checkpointProposition.POOLS_METADATA !== 'object' || !Array.isArray(checkpointProposition.OPERATIONS)){
 
@@ -1455,16 +1447,16 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let currentPoolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let currentPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     let specialOperationsMempool = tempObject?.SPECIAL_OPERATIONS_MEMPOOL
     
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject) {
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject) {
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1522,7 +1514,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
         
-        // [1] Compare proposed POOLS_METADATA with local copy of SYMBIOTE_META.CHECKPOINT_MANAGER
+        // [1] Compare proposed POOLS_METADATA with local copy of global.SYMBIOTE_META.CHECKPOINT_MANAGER
 
         let metadataUpdate = []
         
@@ -1534,7 +1526,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(subchains.toString() !== localCopyOfSubchains.toString()){
 
-            !response.aborted && response.end(JSON.stringify({error:`Subchains set are not equal with my version of subchains metadata since previous checkpoint ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Subchains set are not equal with my version of subchains metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
 
             return
 
@@ -1601,7 +1593,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             !response.aborted && response.end(JSON.stringify({metadataUpdate}))
 
-        }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
+        }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
 
             let finalVersionToSign = {
 
@@ -1636,7 +1628,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
 
-    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
+    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to global.SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
 
     [3] After we store it - generate the signature SIG('STAGE_2'+PAYLOAD_HASH) and response with it
 
@@ -1662,7 +1654,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         ISSUER:<BLS pubkey of checkpoint grabbing initiator>
             
-        PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+        PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
         POOLS_METADATA: {
                 
@@ -1671,7 +1663,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             /..other data
             
         },
-        OPERATIONS: GET_SPEC_EVENTS(),
+        OPERATIONS: GET_SPECIAL_OPERATIONS(),
         OTHER_SYMBIOTES: {}
         
     }
@@ -1701,12 +1693,12 @@ Response - it's object with the following structure:
 */
 checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1717,7 +1709,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProofsResponses = tempObject.PROOFS_RESPONSES
 
-    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
@@ -1764,11 +1756,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
     else{
 
-        let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
         //Verify 2 signatures
 
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
+        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
 
         let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF).catch(error=>({error}))
 
@@ -1849,11 +1841,11 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(CONFIG.SYMBIOTE.TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
 
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
             !response.aborted && response.end('QT checkpoint is not ready')
         
@@ -1861,11 +1853,11 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         }
 
-        let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+        let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
         let payloadHash = request.getParameter(0),
 
-            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
+            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await global.SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
 
         if(checkpoint){
 
@@ -1897,35 +1889,35 @@ Body is
 
 specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let operation = await BODY(bytes,CONFIG.MAX_PAYLOAD_SIZE)
+    let operation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         !response.aborted && response.end('QT checkpoint is not ready')
 
         return
     }
 
-    let specialOperationsMempool = SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
+    let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
 
 
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
 
         !response.aborted && response.end('QT checkpoint is incomplete. Wait some time and repeat the operation later')
 
         return
     }
 
-    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.SPECIAL_OPERATIONS){
+    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SPECIAL_OPERATIONS){
 
         !response.aborted && response.end(`Route is off. This node don't accept special operations`)
 
         return
     }
 
-    if(specialOperationsMempool.size >= CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE){
+    if(specialOperationsMempool.size >= global.CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE){
 
         !response.aborted && response.end('Mempool for special operations is full')
     
@@ -1986,7 +1978,7 @@ Returns:
 
 addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
     
-    let acceptedData = await BODY(bytes,CONFIG.PAYLOAD_SIZE)
+    let acceptedData = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
     if(!Array.isArray(acceptedData)){
 
@@ -1998,7 +1990,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     let [symbiote,domain]=acceptedData
    
-    if(CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
+    if(global.CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
 
         !response.aborted && response.end('Symbiote not supported')
         
@@ -2006,7 +1998,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     }
 
-    if(!CONFIG.SYMBIOTE.TRIGGERS.MAIN.NEW_NODES){
+    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.NEW_NODES){
 
         !response.aborted && response.end('Route is off')
         
@@ -2016,11 +2008,11 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
     if(typeof domain==='string' && domain.length<=256){
         
         //Add more advanced logic in future(or use plugins - it's even better)
-        let nodes=SYMBIOTE_META.PEERS
+        let nodes=global.SYMBIOTE_META.PEERS
         
-        if(!(nodes.includes(domain) || CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
+        if(!(nodes.includes(domain) || global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
             
-            nodes.length<CONFIG.SYMBIOTE.MAX_CONNECTIONS
+            nodes.length<global.CONFIG.SYMBIOTE.MAX_CONNECTIONS
             ?
             nodes.push(domain)
             :
@@ -2088,6 +2080,6 @@ UWS_SERVER
 
 // .post('/many_blocks',acceptManyBlocks)
 
-.post('/event',acceptEvents)
+.post('/transaction',acceptTransactions)
 
 .post('/addpeer',addPeer)

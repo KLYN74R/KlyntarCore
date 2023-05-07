@@ -103,15 +103,15 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-let GET_EVENTS = () => SYMBIOTE_META.MEMPOOL.splice(0,CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
+let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
 
-    GET_EVENTS_FOR_REASSIGNED_SUBCHAINS = () => [],
+    GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS = () => [],
 
-    GET_SPEC_EVENTS = checkpointFullID =>{
+    GET_SPECIAL_OPERATIONS = checkpointFullID =>{
 
-        if(!SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
 
-        let specialOperationsMempool = SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
+        let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
 
         return Array.from(specialOperationsMempool).map(subArr=>subArr[1]) //{type,payload}
 
@@ -127,15 +127,15 @@ GEN_BLOCKS_START_POLLING=async()=>{
 
         await GENERATE_PHANTOM_BLOCKS_PORTION()    
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(GEN_BLOCKS_START_POLLING,CONFIG.SYMBIOTE.BLOCK_TIME)
+        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(GEN_BLOCKS_START_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
         
-        CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
+        global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
         &&
         clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
 
     }else{
 
-        LOG(`Block generation for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Block generation for \x1b[32;1m${SYMBIOTE_ALIAS()}\x1b[36;1m was stopped`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
     }
     
@@ -174,10 +174,10 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
     let workflowOptionsTemplate = {...fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS}
     
-    SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
     
     // Structure is <poolID> => true if pool should be deleted
-    SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
+    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
     
 
     //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
@@ -259,7 +259,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
         delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolIdentifier]
     
         // Remove from cache
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+        global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
 
     }
 
@@ -267,14 +267,14 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
     //Update the WORKFLOW_OPTIONS
     fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-    SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
 
-    SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('SLASH_OBJECT')
+    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('SLASH_OBJECT')
 
 
     //After all ops - commit state and make changes to workflow
 
-    SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
+    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
 
         atomicBatch.put(recordID,value)
 
@@ -299,19 +299,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     if(possibleCheckpoint){
 
         // We need it for changes
-        let fullCopyOfQuorumThreadWithNewCheckpoint = JSON.parse(JSON.stringify(SYMBIOTE_META.QUORUM_THREAD))
+        let fullCopyOfQuorumThreadWithNewCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
 
         // Set the new checkpoint
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
 
         // Store original checkpoint locally
-        await SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
+        await global.SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.HEADER.PAYLOAD_HASH,possibleCheckpoint)
 
         // All operations must be atomic
-        let atomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+        let atomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
 
         // Get the FullID of old checkpoint
-        let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
         // Execute special operations from new checkpoint using our copy of QT and atomic handler
@@ -470,14 +470,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         }
 
-        SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThreadWithNewCheckpoint
+        global.SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThreadWithNewCheckpoint
 
-        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
+        LOG(`QUORUM_THREAD was updated => \x1b[34;1m${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`,'S')
 
         // Get the new ROOTPUB and delete the old one
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextQuorumThreadID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
     
-        SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+checkpointFullID)
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+checkpointFullID)
 
 
         //_______________________Check the version required for the next checkpoint________________________
@@ -497,21 +497,21 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         // Close & delete the old temporary db 
-        await SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE.close()
+        await global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE.close()
         
         fs.rm(process.env.CHAINDATA_PATH+`/${checkpointFullID}`,{recursive:true},()=>{})
         
-        SYMBIOTE_META.TEMP.delete(checkpointFullID)
+        global.SYMBIOTE_META.TEMP.delete(checkpointFullID)
 
 
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
-        let iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB)
+        let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(global.CONFIG.SYMBIOTE.PUB)
 
-        let poolsMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+        let poolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
 
         if(checkpointIsFresh && iAmInTheQuorum){
@@ -537,11 +537,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
         // Set next temporary object by ID
-        SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
+        global.SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
 
         //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
 
-        if(poolsMetadata[CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
+        if(poolsMetadata[global.CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
 
 
         //Continue to find checkpoints
@@ -552,7 +552,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Wait for the new checkpoint will appear on hostchain
 
-        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
+        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,global.CONFIG.SYMBIOTE.POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD)    
 
 
     }
@@ -571,7 +571,7 @@ GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint
 
         if(!poolMetadata.IS_RESERVE && !poolMetadata.IS_STOPPED){
                 
-            let candidatePoolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
+            let candidatePoolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
         
             if(candidatePoolStorage){
         
@@ -635,11 +635,11 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     */
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let oldSubchainMetadata = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let oldSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
-    let currentTempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let currentTempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!currentTempObject){
 
@@ -921,7 +921,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 SKIP_PROCEDURE_MONITORING_START=async()=>{
 
-    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
     // No sense to find skip proofs if checkpoint is not fresh
     if(checkpointIsFresh){
@@ -932,7 +932,7 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 
     }
 
-    setTimeout(SKIP_PROCEDURE_MONITORING_START,CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
+    setTimeout(SKIP_PROCEDURE_MONITORING_START,global.CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
 },
 
@@ -942,9 +942,9 @@ SKIP_PROCEDURE_MONITORING_START=async()=>{
 // Once we've received 2/3N+1 signatures for checkpoint(HEADER,PAYLOAD) - we can start the next stage to get signatures to get another signature which will be valid for checkpoint
 INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
     if(!checkpointTemporaryDB) return
 
@@ -975,7 +975,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
                 ISSUER:<BLS pubkey of checkpoint grabbing initiator>
             
-                PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+                PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
                 POOLS_METADATA: {
                 
@@ -985,7 +985,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 },
         
-                OPERATIONS: GET_SPEC_EVENTS(),
+                OPERATIONS: GET_SPECIAL_OPERATIONS(),
                 OTHER_SYMBIOTES: {}
     
             }
@@ -1006,7 +1006,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         },
 
-        ISSUER_PROOF:await BLS_SIGN_DATA(CONFIG.SYMBIOTE.PUB+myCheckpoint.HEADER.PAYLOAD_HASH),
+        ISSUER_PROOF:await BLS_SIGN_DATA(global.CONFIG.SYMBIOTE.PUB+myCheckpoint.HEADER.PAYLOAD_HASH),
 
         CHECKPOINT_PAYLOAD:myCheckpoint.PAYLOAD
 
@@ -1089,7 +1089,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
         myCheckpoint.HEADER.QUORUM_AGGREGATED_SIGNATURE=bls.aggregateSignatures(signatures)
 
-        myCheckpoint.HEADER.AFK_VOTERS=SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
+        myCheckpoint.HEADER.AFK_VOTERS=global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
 
 
         //Store time tracker to DB
@@ -1111,9 +1111,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     //__________________________ If we've runned the second stage - skip the code below __________________________
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let temporaryObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!temporaryObject){
 
@@ -1123,7 +1123,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    let quorumRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
     let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
 
@@ -1131,7 +1131,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-    if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
+    if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
 
         setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
 
@@ -1164,7 +1164,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         {
             
-            PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
             POOLS_METADATA: {
                 
@@ -1173,7 +1173,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 /..other data
             
             },
-            OPERATIONS: GET_SPEC_EVENTS(),
+            OPERATIONS: GET_SPECIAL_OPERATIONS(),
             OTHER_SYMBIOTES: {}
         
         }
@@ -1185,9 +1185,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let canProposeCheckpoint = await HOSTCHAIN.MONITOR.CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT(),
 
-        iAmInTheQuorum = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB),
+        iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(global.CONFIG.SYMBIOTE.PUB),
 
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
 
@@ -1212,25 +1212,25 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let potentialCheckpointPayload = {
 
-            ISSUER:CONFIG.SYMBIOTE.PUB,
+            ISSUER:global.CONFIG.SYMBIOTE.PUB,
 
-            PREV_CHECKPOINT_PAYLOAD_HASH:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+            PREV_CHECKPOINT_PAYLOAD_HASH:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
 
             POOLS_METADATA:{},
 
-            OPERATIONS:GET_SPEC_EVENTS(checkpointFullID),
+            OPERATIONS:GET_SPECIAL_OPERATIONS(checkpointFullID),
 
             OTHER_SYMBIOTES:{} //don't need now
 
         }
 
-        Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA).forEach(
+        Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA).forEach(
             
             poolPubKey => {
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED,IS_RESERVE} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {IS_STOPPED,IS_RESERVE} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
 
                 potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED,IS_RESERVE}
 
@@ -1415,7 +1415,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 // Publish header to hostchain & share among the rest of network
                 HEADER:{
 
-                    ID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID+1,
+                    ID:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID+1,
         
                     PAYLOAD_HASH:checkpointPayloadHash,
         
@@ -1423,7 +1423,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                     QUORUM_AGGREGATED_SIGNATURE:bls.aggregateSignatures(signatures),
         
-                    AFK_VOTERS:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
+                    AFK_VOTERS:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!otherAgreements.has(pubKey))
         
                 },
                 
@@ -1477,14 +1477,14 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 
 
-    let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
 
-    if(!SYMBIOTE_META.TEMP.has(checkpointFullID)) return
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return
 
 
-    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
@@ -1542,13 +1542,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
     if(finalizationProofsMapping.size>=majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the SUPER_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
+        // Also, increase the counter of global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
         let signatures = [...finalizationProofsMapping.values()]
 
-        let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
+        let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
 
 
         /*
@@ -1593,7 +1593,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 
         // Repeat procedure for the next block and store the progress
 
-        let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(_=>false)
 
@@ -1609,7 +1609,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
 
-    let block = await SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     // Check for this block after a while
     if(!block) return
@@ -1621,7 +1621,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(block)},
 
-        commitmentsMapping = SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
+        commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
         
         majority = GET_MAJORITY('QUORUM_THREAD'),
 
@@ -1694,7 +1694,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
         let signatures = [...commitmentsForCurrentBlock.values()]
 
-        let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
+        let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!signers.includes(pubKey))
 
 
         /*
@@ -1748,7 +1748,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
     // If we don't generate the blocks - skip this function
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
 
@@ -1757,11 +1757,11 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     }
 
     // Descriptor has the following structure - {checkpointID,height}
-    let appropriateDescriptor = SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+    let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH + "#" + SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH + "#" + global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    if(!SYMBIOTE_META.TEMP.has(checkpointFullID)){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
 
@@ -1770,10 +1770,10 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     }
 
 
-    let {FINALIZATION_PROOFS,DATABASE} = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let {FINALIZATION_PROOFS,DATABASE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-    if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
+    if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -1781,11 +1781,11 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
         if(!appropriateDescriptor){
 
-            let myLatestFinalizedHeight = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB].INDEX+1
+            let myLatestFinalizedHeight = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB].INDEX+1
 
             appropriateDescriptor = {
     
-                checkpointID:SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
+                checkpointID:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID,
     
                 height:myLatestFinalizedHeight
     
@@ -1794,12 +1794,12 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         }
         
         // And store new descriptor(till it will be old)
-        SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
     }
 
 
-    let blockID = CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
+    let blockID = global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
 
 
     if(FINALIZATION_PROOFS.has(blockID)){
@@ -1827,13 +1827,13 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub=SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let qtRootPub=global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
-    let temporaryObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
 
@@ -1853,7 +1853,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
         let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
 
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
+        if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -1981,7 +1981,7 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
                 
             let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
 
-            let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+            let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
 
 
             let templateForSkipProcedureStage2 = {
@@ -2030,21 +2030,21 @@ NOT_ACTIVE_POOL=(poolPubKey,poolMetadata,reassignments)=>{
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject){
 
-        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
         return
 
     }
 
-    let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-    let qtRootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
     let proofsRequests = tempObject.PROOFS_REQUESTS
 
@@ -2052,7 +2052,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let reassignments = tempObject.REASSIGNMENTS
 
-    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
 
 
@@ -2077,7 +2077,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         }
 
-        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
         return
 
@@ -2086,11 +2086,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // If we're not in quorum or checkpoint is outdated - don't start health monitoring
-    if(!SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
 
         //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
 
-        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
         return
 
@@ -2109,7 +2109,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let handler of subchainsURLAndPubKey){
         
-        let metadataOfCurrentPool = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[handler.pubKey]
+        let metadataOfCurrentPool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[handler.pubKey]
 
         let mainPoolOrAtLeastReassignment = reassignments.has(handler.pubKey) && metadataOfCurrentPool.IS_RESERVE || !metadataOfCurrentPool.IS_RESERVE
 
@@ -2207,14 +2207,14 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let currentTime = GET_GMT_TIMESTAMP()
 
-    let afkLimit = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
+    let afkLimit = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
-    let checkpointTemporaryDB = SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
 
     if(!checkpointTemporaryDB){
 
-        setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
         return
     }
@@ -2227,7 +2227,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let timestamp = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
 
-        if(timestamp && timestamp + CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
+        if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
     
             continue
     
@@ -2264,7 +2264,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 
                 session,
                 
-                initiator:CONFIG.SYMBIOTE.PUB,
+                initiator:global.CONFIG.SYMBIOTE.PUB,
                 
                 requestedSubchain:candidate,
 
@@ -2333,7 +2333,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     }
 
-                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+CONFIG.SYMBIOTE.PUB+checkpointFullID,answerFromValidator.sig,validatorHandler.pubKey).catch(_=>false)){
+                }else if(answerFromValidator.status==='SKIP' && await BLS_VERIFY('SKIP_STAGE_1'+session+candidate+global.CONFIG.SYMBIOTE.PUB+checkpointFullID,answerFromValidator.sig,validatorHandler.pubKey).catch(_=>false)){
 
                     // Grab the skip agreements to publish to hostchains
 
@@ -2374,7 +2374,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 
                 let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
 
-                let afkVoters = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
+                let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
 
 
                 let templateForSkipProcedureStage1 = {
@@ -2383,7 +2383,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     subchain:candidate,
                 
                     sig:await BLS_SIGN_DATA(session+session),
-                    initiator:CONFIG.SYMBIOTE.PUB,
+                    initiator:global.CONFIG.SYMBIOTE.PUB,
                     
                     aggregatedPub,
                     aggregatedSignature,
@@ -2412,7 +2412,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    setTimeout(SUBCHAINS_HEALTH_MONITORING,CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+    setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
     SKIP_PROCEDURE_STAGE_2().catch(_=>{})
 
@@ -2424,11 +2424,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 RESTORE_STATE=async()=>{
 
     
-    let poolsMetadata = Object.keys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA)
+    let poolsMetadata = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA)
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let tempObject = SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
     
 
 
@@ -2437,7 +2437,7 @@ RESTORE_STATE=async()=>{
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {INDEX,HASH,(?)FINALIZATION_PROOF}
 
-        let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
+        let {INDEX,HASH,FINALIZATION_PROOF} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
 
         
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
@@ -2512,22 +2512,22 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]) return
+    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
 
     // If we are reserve - return
-    if(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
+    if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
 
 
-    let myVerificationThreadStats = SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]
+    let myVerificationThreadStats = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
 
 
 
     //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
     //Set VT_GT_NORMAL_DIFFERENCE to 0 if you don't need any limits
 
-    if(CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE && myVerificationThreadStats.INDEX+CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
+    if(global.CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE && myVerificationThreadStats.INDEX+global.CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
 
-        LOG(`Block generation skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',CONFIG.SYMBIOTE.SYMBIOTE_ID)
+        LOG(`Block generation skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
 
         return
 
@@ -2543,23 +2543,23 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     */
 
 
-    let phantomBlocksNumber=Math.ceil(SYMBIOTE_META.MEMPOOL.length/CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
 
     //DEBUG
-    phantomBlocksNumber++
+    numberOfBlocksToGenerate++
 
     //If nothing to generate-then no sense to generate block,so return
-    if(phantomBlocksNumber===0) return 
+    if(numberOfBlocksToGenerate===0) return 
 
 
-    LOG(`Number of phantoms to generate \x1b[32;1m${phantomBlocksNumber}`,'I')
+    LOG(`Number of phantoms to generate \x1b[32;1m${numberOfBlocksToGenerate}`,'I')
 
-    let atomicBatch = SYMBIOTE_META.BLOCKS.batch()
+    let atomicBatch = global.SYMBIOTE_META.BLOCKS.batch()
 
-    for(let i=0;i<phantomBlocksNumber;i++){
+    for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_EVENTS(),GET_EVENTS_FOR_REASSIGNED_SUBCHAINS()),
+        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS()),
                         
             hash=Block.genHash(blockCandidate)
     
@@ -2569,11 +2569,11 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
         BLOCKLOG(`New \x1b[36m\x1b[41;1mblock\x1b[0m\x1b[32m generated —│\x1b[36;1m`,'S',hash,48,'\x1b[32m',blockCandidate)
 
 
-        SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
+        global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
  
-        SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
+        global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
     
-        let blockID=CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
+        let blockID=global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)
@@ -2581,7 +2581,7 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     }
 
     //Update the GENERATION_THREAD after all
-    atomicBatch.put('GT',SYMBIOTE_META.GENERATION_THREAD)
+    atomicBatch.put('GT',global.SYMBIOTE_META.GENERATION_THREAD)
 
     await atomicBatch.write()
 
@@ -2593,9 +2593,9 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
 LOAD_GENESIS=async()=>{
 
 
-    let atomicBatch = SYMBIOTE_META.STATE.batch(),
+    let atomicBatch = global.SYMBIOTE_META.STATE.batch(),
 
-        quorumThreadAtomicBatch = SYMBIOTE_META.QUORUM_THREAD_METADATA.batch(),
+        quorumThreadAtomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch(),
     
         checkpointTimestamp,
 
@@ -2627,7 +2627,7 @@ LOAD_GENESIS=async()=>{
             startPool=poolPubKey
 
             //Add metadata related to this pool
-            SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
                 
                 INDEX:-1,
                 
@@ -2699,7 +2699,7 @@ LOAD_GENESIS=async()=>{
             
             if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
 
-            else SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[poolPubKey]=0
+            else global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[poolPubKey]=0
 
 
             quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
@@ -2811,16 +2811,16 @@ LOAD_GENESIS=async()=>{
         */
 
         //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
-        SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
 
         //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
-        SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
+        global.SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
 
         //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
 
-        SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
+        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
 
-        SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
+        global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
 
     }
 
@@ -2832,7 +2832,7 @@ LOAD_GENESIS=async()=>{
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
+    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
         
         SUBCHAIN:startPool,
         
@@ -2844,7 +2844,7 @@ LOAD_GENESIS=async()=>{
     
     }
     
-    SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA = {
+    global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA = {
 
         STATE_ROOT:await KLY_EVM.getStateRoot(),
 
@@ -2856,11 +2856,11 @@ LOAD_GENESIS=async()=>{
 
     }
 
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
+    global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
-        RANGE_START_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        RANGE_START_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
 
-        RANGE_FINISH_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        RANGE_FINISH_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
 
         RANGE_POINTER:0,
 
@@ -2882,7 +2882,7 @@ LOAD_GENESIS=async()=>{
 
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            POOLS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
+            POOLS_METADATA:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2898,11 +2898,11 @@ LOAD_GENESIS=async()=>{
 
 
     //Make template, but anyway - we'll find checkpoints on hostchains
-    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
+    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
 
-        RANGE_START_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        RANGE_START_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
 
-        RANGE_FINISH_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        RANGE_FINISH_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
 
         RANGE_POINTER:0,
 
@@ -2924,7 +2924,7 @@ LOAD_GENESIS=async()=>{
             
             PREV_CHECKPOINT_PAYLOAD_HASH:'',
 
-            POOLS_METADATA:JSON.parse(JSON.stringify(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
+            POOLS_METADATA:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
             OPERATIONS:[],
 
@@ -2934,7 +2934,7 @@ LOAD_GENESIS=async()=>{
 
         TIMESTAMP:checkpointTimestamp,
 
-        FOUND_AT_BLOCK:CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
+        FOUND_AT_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
 
         TX:'genesis',
         
@@ -2945,16 +2945,16 @@ LOAD_GENESIS=async()=>{
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
     // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
-    SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=-1
+    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=-1
     
-    SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1
+    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of POOLS_METADATA state
-    SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+    global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
     //...However, quorum for QUORUM_THREAD might be retrieved from POOLS_METADATA of checkpoints. It's because both threads are async
-    SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA,SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
+    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
 
 
 },
@@ -2967,7 +2967,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Loading spinner
     let initSpinner
 
-    if(!CONFIG.PRELUDE.NO_SPINNERS){
+    if(!global.CONFIG.PRELUDE.NO_SPINNERS){
 
         initSpinner = ora({
         
@@ -2988,7 +2988,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
         
-        MEMPOOL:[], //to hold onchain events here(contract calls,txs,delegations and so on)
+        MEMPOOL:[], //to hold onchain transactions here(contract calls,txs,delegations and so on)
 
         //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
         STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
@@ -3015,18 +3015,18 @@ PREPARE_SYMBIOTE=async()=>{
     
     
 
-    //___________________________Load functionality to verify/filter/transform events_______________________________
+    //___________________________Load functionality to verify/filter/transform txs_______________________________
 
 
     //Importnat and must be the same for symbiote at appropriate chunks of time
     await import(`./verifiers.js`).then(mod=>
     
-        SYMBIOTE_META.VERIFIERS=mod.VERIFIERS
+        global.SYMBIOTE_META.VERIFIERS=mod.VERIFIERS
         
     )
 
     //Might be individual for each node
-    SYMBIOTE_META.FILTERS=(await import(`./filters.js`)).default;
+    global.SYMBIOTE_META.FILTERS=(await import(`./filters.js`)).default;
 
 
     //______________________________________Prepare databases and storages___________________________________________
@@ -3056,7 +3056,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     ].forEach(
         
-        dbName => SYMBIOTE_META[dbName]=level(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
+        dbName => global.SYMBIOTE_META[dbName]=level(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
         
     )
     
@@ -3064,14 +3064,14 @@ PREPARE_SYMBIOTE=async()=>{
     //____________________________________________Load stuff to db___________________________________________________
 
 
-    Object.keys(CONFIG.SYMBIOTE.LOAD_STUFF).forEach(
+    Object.keys(global.CONFIG.SYMBIOTE.LOAD_STUFF).forEach(
         
-        id => SYMBIOTE_META.STUFF.put(id,CONFIG.SYMBIOTE.LOAD_STUFF[id])
+        id => global.SYMBIOTE_META.STUFF.put(id,global.CONFIG.SYMBIOTE.LOAD_STUFF[id])
         
     )
 
 
-    SYMBIOTE_META.GENERATION_THREAD = await SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
+    global.SYMBIOTE_META.GENERATION_THREAD = await global.SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
         
         error.notFound
         ?
@@ -3086,15 +3086,15 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Load from db or return empty object
-    SYMBIOTE_META.QUORUM_THREAD = await SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(_=>({}))
+    global.SYMBIOTE_META.QUORUM_THREAD = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(_=>({}))
         
 
-    let nextIsPresent = await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
+    let nextIsPresent = await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
 
-        previousBlock=await SYMBIOTE_META.BLOCKS.get(CONFIG.SYMBIOTE.PUB+":"+(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
+        previousBlock=await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+(global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
 
 
-    if(nextIsPresent || !(SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.events) + CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
+    if(nextIsPresent || !(global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( global.CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.transactions) + global.CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
         
         initSpinner?.stop()
 
@@ -3112,7 +3112,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-    SYMBIOTE_META.VERIFICATION_THREAD = await SYMBIOTE_META.STATE.get('VT').catch(error=>{
+    global.SYMBIOTE_META.VERIFICATION_THREAD = await global.SYMBIOTE_META.STATE.get('VT').catch(error=>{
 
         if(error.notFound){
 
@@ -3144,16 +3144,16 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
         
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
         await LOAD_GENESIS()
 
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
-        await SYMBIOTE_META.STATE.put('VT',SYMBIOTE_META.VERIFICATION_THREAD)
+        await global.SYMBIOTE_META.STATE.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 
-        await SYMBIOTE_META.QUORUM_THREAD_METADATA.put('QT',SYMBIOTE_META.QUORUM_THREAD)
+        await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.put('QT',global.SYMBIOTE_META.QUORUM_THREAD)
 
     }
 
@@ -3161,7 +3161,7 @@ PREPARE_SYMBIOTE=async()=>{
     //________________________________________Set the state of KLY-EVM______________________________________________
 
 
-    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
+    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
 
 
     await KLY_EVM.setStateRoot(STATE_ROOT)
@@ -3170,7 +3170,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
 
-    global.CURRENT_SUBCHAIN_EVM_CONTEXT = SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
+    global.CURRENT_SUBCHAIN_EVM_CONTEXT = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
     
 
 
@@ -3210,24 +3210,24 @@ PREPARE_SYMBIOTE=async()=>{
     
     //_____________________________________Set some values to stuff cache___________________________________________
 
-    SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,SYMBIOTE_META.STUFF)
+    global.SYMBIOTE_META.STUFF_CACHE=new AdvancedCache(global.CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,global.SYMBIOTE_META.STUFF)
 
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
 
     //Because if we don't have quorum, we'll get it later after discovering checkpoints
 
-    SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
-    SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
+    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM))
 
 
     //_________________________________Add the temporary data of current QT__________________________________________
     
     let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${checkpointFullID}`,{valueEncoding:'json'})
 
-    SYMBIOTE_META.TEMP.set(checkpointFullID,{
+    global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
 
         SPECIAL_OPERATIONS_MEMPOOL:new Map(), //to hold operations which should be included to checkpoints
 
@@ -3268,13 +3268,13 @@ PREPARE_SYMBIOTE=async()=>{
 
     //__________________________________Load modules to work with hostchains_________________________________________
 
-    let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER
+    let ticker = global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
     
-    let packID = CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
+    let packID = global.CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
 
 
     //Depending on packID load appropriate module
-    if(CONFIG.EVM_CHAINS.includes(ticker)){
+    if(global.CONFIG.EVM_CHAINS.includes(ticker)){
         
         let EvmHostChainConnector = (await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
         
@@ -3320,9 +3320,9 @@ PREPARE_SYMBIOTE=async()=>{
 
 
         
-    if(CONFIG.SYMBIOTE.BALANCE_VIEW){
+    if(global.CONFIG.SYMBIOTE.BALANCE_VIEW){
 
-        let ticker = CONFIG.SYMBIOTE.CONNECTOR.TICKER
+        let ticker = global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
         
         let spinner = ora({
        
@@ -3342,9 +3342,9 @@ PREPARE_SYMBIOTE=async()=>{
         
         }\x1b[36;1m is \x1b[32;1m${
             
-            CONFIG.SYMBIOTE.BALANCE_VIEW ? balance : '<disabled>'
+            global.CONFIG.SYMBIOTE.BALANCE_VIEW ? balance : '<disabled>'
         
-        }   \x1b[36;1m[${CONFIG.SYMBIOTE.STOP_HOSTCHAIN?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
+        }   \x1b[36;1m[${global.CONFIG.SYMBIOTE.STOP_HOSTCHAIN?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
     
     }
 
@@ -3353,7 +3353,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Ask to approve current set of hostchains
-    !CONFIG.PRELUDE.OPTIMISTIC
+    !global.CONFIG.PRELUDE.OPTIMISTIC
     &&        
     await new Promise(resolve=>
     
@@ -3378,17 +3378,17 @@ START_AWAKENING_PROCEDURE=async()=>{
 
     let quorumMembersURLs = await GET_POOLS_URLS()
 
-    let {INDEX,HASH} = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[CONFIG.SYMBIOTE.PUB]
+    let {INDEX,HASH} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
 
-    let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
     let myPayload = {
     
         stop:false,
-        subchain:CONFIG.SYMBIOTE.PUB,
+        subchain:global.CONFIG.SYMBIOTE.PUB,
         index:INDEX,
         hash:HASH,
-        sig:await BLS_SIGN_DATA(false+CONFIG.SYMBIOTE.PUB+INDEX+HASH+checkpointFullID)
+        sig:await BLS_SIGN_DATA(false+global.CONFIG.SYMBIOTE.PUB+INDEX+HASH+checkpointFullID)
     
     }
 
@@ -3426,7 +3426,7 @@ RUN_SYMBIOTE=async()=>{
 
     await PREPARE_SYMBIOTE()
 
-    if(!CONFIG.SYMBIOTE.STOP_WORK){
+    if(!global.CONFIG.SYMBIOTE.STOP_WORK){
 
         //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
@@ -3454,11 +3454,11 @@ RUN_SYMBIOTE=async()=>{
         let promises=[]
 
         //Check if bootstrap nodes is alive
-        CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
+        global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
 
             promises.push(
                         
-                fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([CONFIG.SYMBIOTE.SYMBIOTE_ID,CONFIG.SYMBIOTE.MY_HOSTNAME])})
+                fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.CONFIG.SYMBIOTE.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
             
                     .then(res=>res.text())
             
@@ -3477,13 +3477,13 @@ RUN_SYMBIOTE=async()=>{
 
 
         //Start generate blocks
-        !CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
+        !global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
                 
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
                 
             GEN_BLOCKS_START_POLLING()
             
-        },CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
+        },global.CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 
 
     }

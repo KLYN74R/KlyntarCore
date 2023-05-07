@@ -299,7 +299,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
         
         let animation=chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
     
-        setTimeout(()=>{ animation.stop() ; r() },CONFIG.PRELUDE.ANIMATION_DURATION)
+        setTimeout(()=>{ animation.stop() ; r() },global.CONFIG.PRELUDE.ANIMATION_DURATION)
     
     })
     
@@ -343,7 +343,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     }
 
     
-    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
+    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${global.CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${global.CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
     
 
 
@@ -354,7 +354,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
-    global.INFO=JSON.stringify(CONFIG.SYMBIOTE.INFO)
+    global.INFO=JSON.stringify(global.CONFIG.SYMBIOTE.INFO)
     
 
 
@@ -367,14 +367,14 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
 
-    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
+    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
 
-    LOG(`Server is working on \u001b[38;5;50m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'CON')
+    LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'CON')
 
-    LOG(CONFIG.PLUGINS.length!==0 ? `Runned plugins(${CONFIG.PLUGINS.length}) are \u001b[38;5;50m${CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
+    LOG(global.CONFIG.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
 
 
-    !CONFIG.PRELUDE.OPTIMISTIC
+    !global.CONFIG.PRELUDE.OPTIMISTIC
     &&
     await new Promise(resolve=>
         
@@ -389,15 +389,15 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 
     //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    if(!CONFIG.SYMBIOTE.STOP_WORK){
+    if(!global.CONFIG.SYMBIOTE.STOP_WORK){
 
-        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
+        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
 
         await RUN_SYMBIOTE()
         
     }
 
-    for(let scriptPath of CONFIG.PLUGINS){
+    for(let scriptPath of global.CONFIG.PLUGINS){
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
             
@@ -415,11 +415,11 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 
 
-global.UWS_SERVER=UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS).listen(CONFIG.INTERFACE,CONFIG.PORT,descriptor=>{
+global.UWS_SERVER=UWS[global.CONFIG.TLS.ENABLED?'SSLApp':'App'](global.CONFIG.TLS.CONFIGS).listen(global.CONFIG.INTERFACE,global.CONFIG.PORT,descriptor=>{
 
     if(descriptor){
 
-        LOG(`Node started on \x1b[36;1m[${CONFIG.INTERFACE}]:${CONFIG.PORT}`,'S')
+        LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
 
         global.UWS_DESC=descriptor
         
@@ -431,7 +431,7 @@ global.UWS_SERVER=UWS[CONFIG.TLS.ENABLED?'SSLApp':'App'](CONFIG.TLS.CONFIGS).lis
 
 
 //Call general code to start import routes
-import(`./KLY_Workflows/${CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/routes.js`)
+import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/routes.js`)
 
 
 

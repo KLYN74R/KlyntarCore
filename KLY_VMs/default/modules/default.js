@@ -2,7 +2,7 @@ export let DEFAULT = {
 
     CONTRACT_CALL:(contractID,params)=>{},
 
-    LOG:(eventID,payload) => {},
+    LOG:(logID,payload) => {},
 
     MULTISIG:()=>{},
 

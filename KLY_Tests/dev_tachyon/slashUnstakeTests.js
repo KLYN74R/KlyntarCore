@@ -31,9 +31,9 @@ After that, if it's allowed - WAITING_ROOM of pool will looks like this
 
     WAITING_ROOM: {
 
-        '<BLAKE3(event.sig)>':
+        '<BLAKE3(tx.sig)>':
 
-            checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+            checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
     
             staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
     

@@ -18,6 +18,6 @@ export let COLORS = {
 //Notify file when ENABLE_CONSOLE_LOGS to handle windows of "freedom"(to know when you off logs and start again)
 export let LOG=(msg,msgColor)=>{
 
-    CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
+    global.CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 
 }

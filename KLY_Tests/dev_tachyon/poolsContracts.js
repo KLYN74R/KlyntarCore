@@ -77,15 +77,15 @@ let GET_ACCOUNT_DATA=async account=>{
 }
 
 
-let SEND_EVENT=event=>{
+let SEND_TRANSACTION=transaction=>{
 
-    return fetch('http://localhost:7331/event',
+    return fetch('http://localhost:7331/transaction',
 
         {
         
             method:'POST',
         
-            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
+            body:JSON.stringify(transaction)
     
         }
 
@@ -272,7 +272,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
     console.log(poolContractCreationTx)
 
-    let status = await SEND_EVENT(poolContractCreationTx)
+    let status = await SEND_TRANSACTION(poolContractCreationTx)
 
     console.log('POOL DEPLOYMENT STATUS => ',status);
 
@@ -329,9 +329,9 @@ The state will look like this
             stakers: {},
             waitingRoom: {
 
-                BLAKE3(event.sig):{
+                BLAKE3(tx.sig):{
 
-                    checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                    checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
                     staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
 
@@ -421,7 +421,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
     console.log(stakingTxToPool)
 
-    let status = await SEND_EVENT(stakingTxToPool)
+    let status = await SEND_TRANSACTION(stakingTxToPool)
 
     console.log('SEND_STAKE TX STATUS => ',status);
 
@@ -442,7 +442,7 @@ We need to add your stake to WAITING_ROOM and only after that - accept the stake
 if you keep node synced - QT will be equal to VT.
 
 So, once you notice that tx was successfully finalized and your stake is in WAITING_ROOM - you can create special operation to become the staker. It's the last step.
-The only thing that you should take from the previous step - hash of event signature BLAKE3(event.sig) - because it's id of our staking transaction
+The only thing that you should take from the previous step - hash of tx signature BLAKE3(tx.sig) - because it's id of our staking transaction
 
 
 
@@ -454,7 +454,7 @@ The only thing that you should take from the previous step - hash of event signa
         payload:{
 
             {
-                txid:BLAKE3(event.sig),
+                txid:BLAKE3(tx.sig),
                 pool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
                 type:'+'
                 amount:55000
@@ -633,9 +633,9 @@ Note: You can unstake the same sum you've staked or less(not more😃)
             },
             WAITING_ROOM: {
 
-                '<BLAKE3(event.sig)>':{
+                '<BLAKE3(tx.sig)>':{
 
-                    checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                    checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
                     staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
 
@@ -663,7 +663,7 @@ For this, we need to send STAKING_CONTRACT_CALL operation to ALL the current quo
     payload:{
 
         {
-            txid:BLAKE3(event.sig)<id in WAITING_ROOM in contract storage> - take this from your contract call tx on previous step
+            txid:BLAKE3(tx.sig)<id in WAITING_ROOM in contract storage> - take this from your contract call tx on previous step
             pool:''7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
             type:'-'
             amount:X
@@ -802,7 +802,7 @@ let UNSTAKING=async()=>{
 
     console.log(unstakingTxToPool)
 
-    let status = await SEND_EVENT(unstakingTxToPool)
+    let status = await SEND_TRANSACTION(unstakingTxToPool)
 
     console.log('UNSTAKING TX STATUS => ',status);
 
@@ -957,7 +957,7 @@ let GET_REWARD=async()=>{
 
     console.log(getRewardTxCall)
 
-    let status = await SEND_EVENT(getRewardTxCall)
+    let status = await SEND_TRANSACTION(getRewardTxCall)
 
     console.log('STATUS => ',status);
 

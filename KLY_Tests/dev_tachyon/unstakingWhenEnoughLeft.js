@@ -90,9 +90,9 @@ Note: You can unstake the same sum you've staked or less(not more😃)
             },
             WAITING_ROOM: {
 
-                '<BLAKE3(event.sig)>':{
+                '<BLAKE3(tx.sig)>':{
 
-                    checkpointID:SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                    checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
 
                     staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
 
@@ -120,7 +120,7 @@ For this, we need to send STAKING_CONTRACT_CALL operation to ALL the current quo
     payload:{
 
         {
-            txid:BLAKE3(event.sig)<id in WAITING_ROOM in contract storage> - take this from your contract call tx on previous step
+            txid:BLAKE3(tx.sig)<id in WAITING_ROOM in contract storage> - take this from your contract call tx on previous step
             pool:''7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
             type:'-'
             amount:X
@@ -234,15 +234,15 @@ let GET_ACCOUNT_DATA=async account=>{
 
 
 
-let SEND_EVENT=event=>{
+let SEND_TRANSACTION=transaction=>{
 
-    return fetch('http://localhost:7332/event',
+    return fetch('http://localhost:7332/transaction',
 
         {
         
             method:'POST',
         
-            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
+            body:JSON.stringify(transaction)
     
         }
 
@@ -309,7 +309,7 @@ let UNSTAKING=async()=>{
 
     console.log(unstakingTxToPool)
 
-    let status = await SEND_EVENT(unstakingTxToPool)
+    let status = await SEND_TRANSACTION(unstakingTxToPool)
 
     console.log('UNSTAKING TX STATUS => ',status);
 

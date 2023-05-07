@@ -96,15 +96,15 @@ let postQuantumBliss={
 
 
 
-let SEND_EVENT=event=>{
+let SEND_TRANSACTION=transaction=>{
 
-    return fetch('http://localhost:7331/event',
+    return fetch('http://localhost:7331/transaction',
 
         {
 
             method:'POST',
 
-            body:JSON.stringify({symbiote:SYMBIOTE_ID,event})
+            body:JSON.stringify(transaction)
 
         }
 
@@ -129,7 +129,7 @@ let GET_ACCOUNT_DATA=async account=>{
 }
 
 
-let GET_EVENT_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
+let GET_TX_TEMPLATE=async(account,txType,sigType,nonce,payload)=>{
 
 
     let template = {
@@ -178,11 +178,11 @@ let MULTISIG_2_DILITHIUM=async()=>{
         amount:2500
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,postQuantumPayload)
+    let transaction = await GET_TX_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,postQuantumPayload)
 
-    console.log(event)
+    console.log(transaction)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     console.log('Dilithium tx status => ',status)
 
@@ -209,11 +209,11 @@ let MULTISIG_2_BLISS=async()=>{
         amount:2500
     }
 
-    let event = await GET_EVENT_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,postQuantumPayload)
+    let transaction = await GET_TX_TEMPLATE(user0,TX_TYPES.TX,SIG_TYPES.MULTISIG,accData.nonce+1,postQuantumPayload)
 
-  console.log(event)
+  console.log(transaction)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
     console.log('Bliss tx status => ',status)
 
@@ -250,7 +250,7 @@ let DILITHIUM_2_DEFAULT=async()=>{
 
     let nonce = accData.nonce+1
 
-    let event = {
+    let tx = {
 
         v:WORKFLOW_VERSION,
         creator:postQuantumDilithium.address,
@@ -264,11 +264,11 @@ let DILITHIUM_2_DEFAULT=async()=>{
 
     let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+TX_TYPES.TX+JSON.stringify(pqcPayload)+nonce+FEE
 
-    event.sig = await ADDONS.sign_DIL(postQuantumDilithium.prv,dataToSign)
+    tx.sig = await ADDONS.sign_DIL(postQuantumDilithium.prv,dataToSign)
 
-    console.log(event)
+    console.log(tx)
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(tx)
 
     console.log('SEND DILITHIUM TX STATUS => ',status)
 
@@ -296,7 +296,7 @@ let BLISS_2_DEFAULT=async()=>{
 
     let nonce = accData.nonce+1
 
-    let event = {
+    let transaction = {
 
         v:WORKFLOW_VERSION,
         creator:postQuantumBliss.address,
@@ -310,11 +310,11 @@ let BLISS_2_DEFAULT=async()=>{
 
     let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+TX_TYPES.TX+JSON.stringify(pqcPayload)+nonce+FEE
 
-    event.sig = await ADDONS.sign_BLISS(postQuantumBliss.prv,dataToSign)
+    transaction.sig = await ADDONS.sign_BLISS(postQuantumBliss.prv,dataToSign)
 
-  console.log('IS SIGNA OK => ',ADDONS.verify_BLISS(dataToSign,postQuantumBliss.pub,event.sig))
+  console.log('IS SIGNA OK => ',ADDONS.verify_BLISS(dataToSign,postQuantumBliss.pub,transaction.sig))
 
-    let status = await SEND_EVENT(event)
+    let status = await SEND_TRANSACTION(transaction)
 
   console.log('SEND BLISS STATUS => ',status)
 

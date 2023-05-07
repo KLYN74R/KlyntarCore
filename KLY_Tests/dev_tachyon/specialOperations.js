@@ -36,7 +36,7 @@ let SEND_VERSION_UPDATE_MESSAGE=async()=>{
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
     
     
     */
@@ -104,7 +104,7 @@ let SEND_WORKFLOW_UPDATE_MESSAGE=async()=>{
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
         
     
     */
@@ -175,7 +175,7 @@ let SEND_RUBICON_UPDATE_MESSAGE=async()=>{
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(data+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.HASH)
 
     
     */

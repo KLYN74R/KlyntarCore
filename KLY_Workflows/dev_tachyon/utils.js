@@ -30,19 +30,19 @@ export let
 /**# Event initiator account
 * 
 * Symbiote level data.Used when we check blocks
-* Here we read from cache or get data about event initiator from state,push to cache and return
+* Here we read from cache or get data about tx initiator from state,push to cache and return
 */
 GET_ACCOUNT_ON_SYMBIOTE = async address =>{
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return SYMBIOTE_META.STATE_CACHE.get(address)||SYMBIOTE_META.STATE.get(address)
+    return global.SYMBIOTE_META.STATE_CACHE.get(address)||global.SYMBIOTE_META.STATE.get(address)
     
     .then(account=>{
  
-        if(account.type==='account') SYMBIOTE_META.STATE_CACHE.set(address,account)
+        if(account.type==='account') global.SYMBIOTE_META.STATE_CACHE.set(address,account)
 
-        return SYMBIOTE_META.STATE_CACHE.get(address)
+        return global.SYMBIOTE_META.STATE_CACHE.get(address)
  
     
     }).catch(_=>false)
@@ -56,13 +56,13 @@ GET_FROM_STATE = async recordID => {
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return SYMBIOTE_META.STATE_CACHE.get(recordID)||SYMBIOTE_META.STATE.get(recordID)
+    return global.SYMBIOTE_META.STATE_CACHE.get(recordID)||global.SYMBIOTE_META.STATE.get(recordID)
     
     .then(something=>{
  
-        SYMBIOTE_META.STATE_CACHE.set(recordID,something)
+        global.SYMBIOTE_META.STATE_CACHE.set(recordID,something)
 
-        return SYMBIOTE_META.STATE_CACHE.get(recordID)
+        return global.SYMBIOTE_META.STATE_CACHE.get(recordID)
  
     
     }).catch(_=>false)
@@ -74,13 +74,13 @@ GET_FROM_STATE = async recordID => {
 
 GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
 
-    return SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
+    return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
     
     .then(something=>{
  
-        SYMBIOTE_META.QUORUM_THREAD_CACHE.set(recordID,something)
+        global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(recordID,something)
 
-        return SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)
+        return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)
  
     
     }).catch(_=>false)
@@ -97,7 +97,7 @@ WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHea
 
 GET_NODES=region=>{
 
-    let nodes=CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
+    let nodes=global.CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
     
     //Default Phisher_Yeits algorithm
     
@@ -107,7 +107,7 @@ GET_NODES=region=>{
             
             arrSize = nodes.length,
             
-            min = arrSize - CONFIG.SYMBIOTE.NODES_PORTION, temp, index
+            min = arrSize - global.CONFIG.SYMBIOTE.NODES_PORTION, temp, index
     
     
         while (arrSize-- > min) {
@@ -295,13 +295,13 @@ GET_QUORUM = (poolsMetadata,workflowOptions) => {
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,type,hash,spaces,color,block)=>{
 
-    if(CONFIG.DAEMON_LOGS){
+    if(global.CONFIG.DAEMON_LOGS){
 
         console.log(' '.repeat(spaces),color,'_'.repeat(79))
 
         console.log(' '.repeat(spaces),'│\x1b[33m  SYMBIOTE:\x1b[36;1m',SYMBIOTE_ALIAS(),COLORS.C,' '.repeat(1)+`${color}│`)
 
-        let verbose='Height:'+block.index+` \x1b[33m#${color} Events:`+block.events.length+` \x1b[33m#${color} Creator:`+block.creator+` \x1b[33m#${color} Time:`+new Date(block.time).toString()
+        let verbose='Height:'+block.index+` \x1b[33m#${color} Events:`+block.transactions.length+` \x1b[33m#${color} Creator:`+block.creator+` \x1b[33m#${color} Time:`+new Date(block.time).toString()
             
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]`,COLORS[type],msg,COLORS.C,' '.repeat(76),`${color}│ ${verbose}`)
     
@@ -373,14 +373,14 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     
     //First of all-send to important destination points - it might be lightweight retranslators, CDNs and so on
-    Object.keys(CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
+    Object.keys(global.CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
         
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
             BLS_SIGN_DATA(JSON.stringify(data)).then(sig=>
 
-                fetch(CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
+                fetch(global.CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 
                     method:'POST',
                     
@@ -399,7 +399,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     )
 
     
-    CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
+    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
     
         fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
         
@@ -421,19 +421,19 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     */
 
 
-    SYMBIOTE_META.PEERS.forEach((addr,index)=>
+    global.SYMBIOTE_META.PEERS.forEach((addr,index)=>
         
         promises.push(
             
             fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
-                value!=='OK' && SYMBIOTE_META.PEERS.splice(index,1)
+                value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(_=>{
                 
                 LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it [From:\x1b[36;1mPEERS ${SYMBIOTE_ALIAS()}\x1b[33;1m]`,'W')
 
-                SYMBIOTE_META.PEERS.splice(index,1)
+                global.SYMBIOTE_META.PEERS.splice(index,1)
 
             })
             
@@ -448,7 +448,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
 
 
-GET_ALL_KNOWN_PEERS=()=>[...CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...SYMBIOTE_META.PEERS],
+GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],
 
 
 
@@ -458,24 +458,24 @@ GET_POOLS_URLS = async withPubkey => {
     let promises=[]
 
 
-    for(let pubKey of SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM){
+    for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM){
 
-        let promise = SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
+        let promise = global.SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
             stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
         ).catch(async _=>{
 
-            let originSubchain = await SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(_=>false)
+            let originSubchain = await global.SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(_=>false)
 
             if(originSubchain){
 
-                let poolStorage = await SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+pubKey+'(POOL)_STORAGE_POOL')).catch(_=>false)
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+pubKey+'(POOL)_STORAGE_POOL')).catch(_=>false)
 
                 if(poolStorage){
 
                     // Set to cache first
-                    SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolStorage.poolURL}})
+                    global.SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolStorage.poolURL}})
 
                     return withPubkey ? {url:poolStorage.poolURL,pubKey} : poolStorage.poolURL
 
@@ -498,10 +498,10 @@ GET_POOLS_URLS = async withPubkey => {
 
 
 
-//SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
+//global.SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
 //We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
 //If major version was changed and we still has an old version - we should stop node and update software
-IS_MY_VERSION_OLD = threadID => SYMBIOTE_META[threadID].VERSION > SYMBIOTE_META.VERSION,
+IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.SYMBIOTE_META.VERSION,
 
 
 
@@ -521,7 +521,7 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
 GET_MAJORITY=threadID=>{
 
-    let quorumNumber = SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
+    let quorumNumber = global.SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
 
         majority = Math.floor(quorumNumber*(2/3))+1
 
@@ -560,21 +560,21 @@ USE_TEMPORARY_DB=async(operationType,dbReference,key,value)=>{
 DECRYPT_KEYS=async spinner=>{
 
     
-    if(CONFIG.PRELUDE.DECRYPTED){
+    if(global.CONFIG.PRELUDE.DECRYPTED){
 
         spinner?.stop()
         
         // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
-        let keys=JSON.parse(fs.readFileSync(CONFIG.DECRYPTED_KEYS_PATH))//use full path
+        let keys=JSON.parse(fs.readFileSync(global.CONFIG.DECRYPTED_KEYS_PATH))//use full path
         
-        let ticker=CONFIG.SYMBIOTE.CONNECTOR.TICKER
+        let ticker=global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
 
         //Main key
         global.PRIVATE_KEY=keys.kly
 
-        if(CONFIG.EVM_CHAINS.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
+        if(global.CONFIG.EVM_CHAINS.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
     
-        else CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
+        else global.CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
         
 
         return
@@ -584,14 +584,14 @@ DECRYPT_KEYS=async spinner=>{
     //Stop loading
     spinner?.stop()
 
-    let symbioteConfigReference=CONFIG.SYMBIOTE,
+    let symbioteConfigReference=global.CONFIG.SYMBIOTE,
     
         rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
+    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
 
-    LOG(`Working on \x1b[31;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1mhostchain:${CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
+    LOG(`Working on \x1b[31;1m${SYMBIOTE_ALIAS()}\x1b[32;1m (\x1b[36;1mhostchain:${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
 
 
@@ -632,11 +632,11 @@ DECRYPT_KEYS=async spinner=>{
     
         privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
         
-    if(CONFIG.EVM_CHAINS.includes(CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
+    if(global.CONFIG.EVM_CHAINS.includes(global.CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
         
     else HOSTCHAIN.CONNECTOR.PRV=privateKey
         
-    LOG(`Hostchain [\x1b[36;1m${CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
+    LOG(`Hostchain [\x1b[36;1m${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
 
     
     rl.close()

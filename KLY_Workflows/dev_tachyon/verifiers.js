@@ -59,17 +59,17 @@ import web3 from 'web3'
 
 
 
-let GET_SPEND_BY_SIG_TYPE = event => {
+let GET_SPEND_BY_SIG_TYPE = transaction => {
 
-    if(event.payload.type==='D') return 0
+    if(transaction.payload.type==='D') return 0
     
-    if(event.payload.type==='T') return 0.01
+    if(transaction.payload.type==='T') return 0.01
 
-    if(event.payload.type==='P/D') return 0.03
+    if(transaction.payload.type==='P/D') return 0.03
 
-    if(event.payload.type==='P/B') return 0.02
+    if(transaction.payload.type==='P/B') return 0.02
 
-    if(event.payload.type==='M') return 0.01+event.payload.afk.length*0.001
+    if(transaction.payload.type==='M') return 0.01+transaction.payload.afk.length*0.001
 
 }
 
@@ -82,37 +82,37 @@ let GET_METHODS_TO_INJECT=imports=>{
 }
 
 
-let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,event,goingToSpend)=>
+let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,tx,goingToSpend)=>
 
     senderAccount.type==='account'
     &&
     senderAccount.balance-goingToSpend>=0
     &&
-    senderAccount.nonce<event.nonce
+    senderAccount.nonce<tx.nonce
 
 
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(event,senderStorageObject,originSubchain) => {
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originSubchain) => {
 
     
-    if(SYMBIOTE_META.VERIFICATION_THREAD.VERSION === event.v){
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION === tx.v){
 
-        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, subchain(where to execute event), event type, JSON'ed payload,nonce and fee
-        let signedData = CONFIG.SYMBIOTE.SYMBIOTE_ID+event.v+originSubchain+event.type+JSON.stringify(event.payload)+event.nonce+event.fee
+        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, subchain(where to execute tx), tx type, JSON'ed payload,nonce and fee
+        let signedData = global.CONFIG.SYMBIOTE.SYMBIOTE_ID+tx.v+originSubchain+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
-        if(event.payload.type==='D') return ED25519_VERIFY(signedData,event.sig,event.creator)
+        if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)
         
-        if(event.payload.type==='T') return tbls.verifyTBLS(event.creator,event.sig,signedData)
+        if(tx.payload.type==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
         
-        if(event.payload.type==='P/D') {
+        if(tx.payload.type==='P/D') {
 
             let isOk = false
 
             try{
 
-                isOk = BLAKE3(event.payload.pubKey) === event.creator && ADDONS['verify_DIL'](signedData,event.payload.pubKey,event.sig)
+                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && ADDONS['verify_DIL'](signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -120,13 +120,13 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(event,senderStorageObjec
             
         }
         
-        if(event.payload.type==='P/B'){
+        if(tx.payload.type==='P/B'){
           
             let isOk=false
 
             try{
 
-                isOk = BLAKE3(event.payload.pubKey) === event.creator && ADDONS['verify_BLISS'](signedData,event.payload.pubKey,event.sig)
+                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && ADDONS['verify_BLISS'](signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -134,7 +134,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(event,senderStorageObjec
 
         }
         
-        if(event.payload.type==='M') return bls.verifyThresholdSignature(event.payload.active,event.payload.afk,event.creator,signedData,event.sig,senderStorageObject.rev_t).catch(_=>false)      
+        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t).catch(_=>false)      
 
     }else return false
 
@@ -174,21 +174,21 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (originSubchain,event,rewardBox,_)=>{
+    TX:async (originSubchain,tx,rewardBox,_)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator)),
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator)),
         
-            recipientAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.payload.to)),
+            recipientAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.payload.to)),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.payload.amount+tx.fee
 
-        event = await FILTERS.TX(event,originSubchain) //pass through the filter
+        tx = await FILTERS.TX(tx,originSubchain) //pass through the filter
 
-        if(!event){
+        if(!tx){
 
-            return {isOk:false,reason:`Can't get filtered value of event`}
+            return {isOk:false,reason:`Can't get filtered value of tx`}
         
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,event,goingToSpend)){
+        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
 
             if(!recipientAccount){
     
@@ -203,19 +203,19 @@ export let VERIFIERS = {
                 }
                 
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
-                if(typeof event.payload.rev_t === 'number') recipientAccount.rev_t=event.payload.rev_t
+                if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
     
-                SYMBIOTE_META.STATE_CACHE.set(BLAKE3(originSubchain+event.payload.to),recipientAccount)//add to cache to collapse after all events in blocks of block
+                global.SYMBIOTE_META.STATE_CACHE.set(BLAKE3(originSubchain+tx.payload.to),recipientAccount)//add to cache to collapse after all events in blocks of block
             
             }
             
             senderAccount.balance-=goingToSpend
                 
-            recipientAccount.balance+=event.payload.amount
+            recipientAccount.balance+=tx.payload.amount
         
-            senderAccount.nonce=event.nonce
+            senderAccount.nonce=tx.nonce
             
-            rewardBox.fees+=event.fee
+            rewardBox.fees+=tx.fee
 
             return {isOk:true}
 
@@ -248,51 +248,51 @@ export let VERIFIERS = {
 
     */
 
-    CONTRACT_DEPLOY:async (originSubchain,event,rewardBox,atomicBatch)=>{
+    CONTRACT_DEPLOY:async (originSubchain,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator))
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator))
 
-        let goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+JSON.stringify(event.payload).length+event.fee
-
-
-        event = await FILTERS.CONTRACT_DEPLOY(event,originSubchain) //pass through the filter
+        let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
-        if(!event){
+        tx = await FILTERS.CONTRACT_DEPLOY(tx,originSubchain) //pass through the filter
 
-            return {isOk:false,reason:`Can't get filtered value of event`}
+
+        if(!tx){
+
+            return {isOk:false,reason:`Can't get filtered value of tx`}
 
         }
-        else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,event,goingToSpend)){
+        else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
 
-            if(event.payload.lang.startsWith('spec/')){
+            if(tx.payload.lang.startsWith('spec/')){
 
-                let typeofContract = event.payload.lang.split('/')[1]
+                let typeofContract = tx.payload.lang.split('/')[1]
 
                 if(SPECIAL_CONTRACTS.has(typeofContract)){
 
-                    await SPECIAL_CONTRACTS.get(typeofContract).constructor(event,atomicBatch) // do deployment logic
+                    await SPECIAL_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
 
                     senderAccount.balance-=goingToSpend
             
-                    senderAccount.nonce=event.nonce
+                    senderAccount.nonce=tx.nonce
                     
-                    rewardBox.fees+=event.fee
+                    rewardBox.fees+=tx.fee
 
                 }else return {isOk:false,reason:`No such type of special contract`}
 
             }else{
 
-                let contractID = BLAKE3(originSubchain+JSON.stringify(event))
+                let contractID = BLAKE3(originSubchain+JSON.stringify(tx))
 
                 let contractTemplate = {
     
                     type:"contract",
-                    lang:event.payload.lang,
+                    lang:tx.payload.lang,
                     balance:0,
                     uno:0,
                     storages:[],
-                    bytecode:event.payload.bytecode
+                    bytecode:tx.payload.bytecode
     
                 }
             
@@ -300,9 +300,9 @@ export let VERIFIERS = {
     
                 senderAccount.balance-=goingToSpend
             
-                senderAccount.nonce=event.nonce
+                senderAccount.nonce=tx.nonce
                 
-                rewardBox.fees+=event.fee
+                rewardBox.fees+=tx.fee
     
             }
 
@@ -331,23 +331,23 @@ export let VERIFIERS = {
 
 
     */
-    CONTRACT_CALL:async(originSubchain,event,rewardBox,atomicBatch)=>{
+    CONTRACT_CALL:async(originSubchain,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+event.creator)),
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator)),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.fee+event.payload.energyLimit
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.energyLimit
 
-        event = await FILTERS.CONTRACT_CALL(event,originSubchain) //pass through the filter
+        tx = await FILTERS.CONTRACT_CALL(tx,originSubchain) //pass through the filter
 
         
-        if(!event){
+        if(!tx){
 
-            return {isOk:false,reason:`Can't get filtered value of event`}
+            return {isOk:false,reason:`Can't get filtered value of tx`}
         
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,event,goingToSpend)){
+        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
 
 
-            let contractMeta = await GET_FROM_STATE(BLAKE3(originSubchain+event.payload.contractID))
+            let contractMeta = await GET_FROM_STATE(BLAKE3(originSubchain+tx.payload.contractID))
 
 
             if(contractMeta){
@@ -360,14 +360,14 @@ export let VERIFIERS = {
 
                         let contract = SPECIAL_CONTRACTS.get(typeofContract)
                         
-                        await contract[event.payload.method](event,originSubchain,atomicBatch)
+                        await contract[tx.payload.method](tx,originSubchain,atomicBatch)
 
 
                         senderAccount.balance-=goingToSpend
             
-                        senderAccount.nonce=event.nonce
+                        senderAccount.nonce=tx.nonce
                     
-                        rewardBox.fees+=event.fee
+                        rewardBox.fees+=tx.fee
 
 
                     }else return {isOk:false,reason:`No such type of special contract`}
@@ -376,14 +376,14 @@ export let VERIFIERS = {
                 }else {
 
                     //Create contract instance
-                    let energyLimit = event.payload.energyLimit * 1_000_000_000 // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
+                    let energyLimit = tx.payload.energyLimit * 1_000_000_000 // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
 
                         /*
                 
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
                 
                         */
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),energyLimit,await GET_METHODS_TO_INJECT(event.payload.imports))
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),energyLimit,await GET_METHODS_TO_INJECT(tx.payload.imports))
 
                     let result
             
@@ -393,7 +393,7 @@ export let VERIFIERS = {
                         // Get the initial data to pass as '' param
                         // Check if contract is binded to given subchain
 
-                        result = VM.callContract(contractInstance,contractMetadata,event.payload.params,event.payload.method,contractMeta.type)
+                        result = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
 
                     }catch(err){
 
@@ -403,9 +403,9 @@ export let VERIFIERS = {
             
                     senderAccount.balance-=goingToSpend
     
-                    senderAccount.nonce=event.nonce
+                    senderAccount.nonce=tx.nonce
             
-                    rewardBox.fees+=event.fee
+                    rewardBox.fees+=tx.fee
 
                 }
 
@@ -425,12 +425,12 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(_originSubchain,event,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(_originSubchain,tx,rewardBox,atomicBatch)=>{
 
 
-        let timestamp = SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP
+        let timestamp = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP
 
-        let evmResult = await KLY_EVM.callEVM(event.payload,timestamp).catch(_=>false)
+        let evmResult = await KLY_EVM.callEVM(tx.payload,timestamp).catch(_=>false)
 
 
         if(evmResult && !evmResult.execResult.exceptionError){            
@@ -447,7 +447,7 @@ export let VERIFIERS = {
             rewardBox.fees += totalSpentByTxInKLY
 
 
-            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(event.payload,evmResult,SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(tx.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
             atomicBatch.put('TX:'+tx.hash,{tx,receipt})
 
@@ -455,82 +455,6 @@ export let VERIFIERS = {
 
         }
 
-    },
-    
+    }
 
-    /*
-    
-        To move funds KLY <=> EVM
-
-        Payload is
-
-        {
-            to:'K|E', - destination env. E-means "add X KLY from my account on KLY env to EVM env". K-means "send X KLY from my EVM env to KLY env"
-            
-            _________ Dependent of path, set appropriate address to move funds to _________
-            
-            address:<20 bytes typical EVM compatible address | other KLY compatible address> | the only one point - if you generate keychain following BIP-44, use 7331 identifier. Details here: https://github.com
-            amount:<KLY> - amount in KLY to mint on EVM and burn on KLY or vice versa
-        }
-    
-
-    */
-    // MIGRATE_BETWEEN_ENV:async(originSubchain,event,rewardBox,atomicBatch)=>{
-
-    //     let {to,address,amount} = event.payload
-
-    //     if(to==='K'){
-
-    //         // Migration from EVM to KLY
-
-    //         let evmAccount = await KLY_EVM.getAccount()
-
-
-
-    //     }else{
-
-    //         let sender=await GET_ACCOUNT_ON_SYMBIOTE(event.creator),
-        
-    //         recipient=await GET_ACCOUNT_ON_SYMBIOTE(event.payload.to),
-
-    //         goingToSpend = GET_SPEND_BY_SIG_TYPE(event)+event.payload.amount+event.fee
-
-    //     event = await FILTERS.TX(event,sender) //pass through the filter
-    
-    //     if(event && await DEFAULT_VERIFICATION_PROCESS(sender,event,goingToSpend)){
-
-    //         if(!recipient){
-    
-    //             //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-    //             recipient={
-                
-    //                 type:'account',
-    //                 balance:0,
-    //                 uno:0,
-    //                 nonce:0
-                
-    //             }
-                
-    //             //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
-    //             if(typeof event.payload.rev_t === 'number') recipient.rev_t=event.payload.rev_t
-    
-    //             SYMBIOTE_META.STATE_CACHE.set(event.payload.to,recipient)//add to cache to collapse after all events in blocks of block
-            
-    //         }
-            
-    //         sender.balance-=goingToSpend
-                
-    //         recipient.balance+=event.payload.amount
-        
-    //         sender.nonce=event.nonce
-            
-    //         rewardBox.fees+=event.fee
-
-    //     }
-
-    //     }
-
-    // }
-    
-        
 }

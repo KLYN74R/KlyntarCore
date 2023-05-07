@@ -39,7 +39,7 @@ GET /skip_procedure_stage_3 [✅] - required by Savitar, so skip for a while
 
 POST /block [✅]
 
-POST /event [✅]
+POST /transaction [✅]
 
 POST /addpeer [✅]
 
@@ -411,7 +411,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
     
     ISSUER:<BLS pubkey of checkpoint grabbing initiator>,
 
-    PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+    PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
     
     POOLS_METADATA: {
                 
@@ -420,7 +420,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
         /..other data
             
     },
-    OPERATIONS: GET_SPEC_EVENTS(),
+    OPERATIONS: GET_SPECIAL_OPERATIONS(),
     OTHER_SYMBIOTES: {}
         
 }
@@ -464,7 +464,7 @@ Response - it's object with the following structure:
 
     [@] If we have proof that for a specific validator we have height with bigger index(longer valid chain)
 
-        We compare the proposition of index:hash for subchain with own version in SYMBIOTE_META.CHECKPOINT_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
+        We compare the proposition of index:hash for subchain with own version in global.SYMBIOTE_META.CHECKPOINT_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
 
         If we have a bigger index - then we get the FINALIZATION_PROOF from a local storage and send as a part of answer
 
@@ -578,7 +578,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
 
     [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
 
-    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
+    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to global.SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
 
     [3] After we store it - generate the signature SIG('STAGE_2'+PAYLOAD_HASH) and response with it
 
@@ -604,7 +604,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
 
         ISSUER:<BLS pubkey of checkpoint grabbing initiator>
             
-        PREV_CHECKPOINT_PAYLOAD_HASH: SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+        PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
         POOLS_METADATA: {
                 
@@ -613,7 +613,7 @@ let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
             /..other data
             
         },
-        OPERATIONS: GET_SPEC_EVENTS(),
+        OPERATIONS: GET_SPECIAL_OPERATIONS(),
         OTHER_SYMBIOTES: {}
         
     }
@@ -741,7 +741,7 @@ let TEST_SKIP_PROCEDURE_STAGE_1_ROUTE=async()=>{
 
 [Response]:
 
-    [+] In case our SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
+    [+] In case our global.SYMBIOTE_META.HEALTH_MONITORING.get(<SUBCHAIN_ID>).LAST_SEEN is too old - we can vote to init skip procedure
         For this - response with a signature like this SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator)
 
     [+] If timeout of AFK from subchain is not too old - then response with 'OK'
@@ -973,7 +973,7 @@ let TEST_SKIP_PROCEDURE_STAGE_3_ROUTE=async()=>{
 
 [Response]:
 
-    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
+    [+] In case we have found & verified agreement of SKIP_PROCEDURE_STAGE_2 from hostchain, we have this subchainID in appropriate mapping(global.SYMBIOTE_META.SKIP_PROCEDURE_STAGE_2)
         Then,response with SIG(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${checkpointFullID}`)
 
     [+] Otherwise - send NOT_FOUND status
@@ -1019,10 +1019,10 @@ let TEST_SEND_BLOCK_AND_GET_COMMITMENT = async() => {
     {
         creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
         time:1666744452126,
-        events:[
-            event1,
-            event2,
-            event3,
+        transactions:[
+            tx1,
+            tx2,
+            tx3,
         ]
         index:1337,
         prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
@@ -1080,7 +1080,7 @@ There is no <creator> field-we get it from tx
 
     // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
 
-    // await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    // await fetch(CREDS.url+'/transaction',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
     // Result => Event structure is wrong
 
@@ -1089,42 +1089,34 @@ There is no <creator> field-we get it from tx
     //______________________ Normal,but no filter ________________________
 
     // let normal = {
-    //     symbiote:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',        
-    //     event:{
     //         creator:'LOL',
     //         nonce:9,
     //         sig:'fdfdf'
     //     }
 
-    // }
-
     // optionsToSend={method:'POST',body:JSON.stringify(normal)}
 
-    // await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    // await fetch(CREDS.url+'/transaction',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-    // Result => No such filter. Make sure your <event.type> is supported by current version of workflow runned on symbiote
+    // Result => No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote
 
 
     //_____________________________ Normal _______________________________
 
     let normal = {
-        symbiote:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',        
-        event:{
-            creator:CREDS.pub,
-            type:'TX',
-            nonce:9,
-            amount:228,
-            sig:'fdfdf',
-            to:'LOL'
-        }
-
+        creator:CREDS.pub,
+        type:'TX',
+        nonce:9,
+        amount:228,
+        sig:'fdfdf',
+        to:'LOL'
     }
 
     optionsToSend={method:'POST',body:JSON.stringify(normal)}
 
-    await fetch(CREDS.url+'/event',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url+'/transaction',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-    // Response => Can't get filtered value of event
+    // Response => Can't get filtered value of tx
 
 
 }

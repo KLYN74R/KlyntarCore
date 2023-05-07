@@ -3,7 +3,7 @@ import {SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
 
 
 
-let SERVICE_RUNNER=await import(`../../../KLY_Runners/${CONFIG.RUNNER}`).then(m=>m.default).catch(error=>console.log(error)),
+let SERVICE_RUNNER=await import(`../../../KLY_Runners/${global.CONFIG.RUNNER}`).then(m=>m.default).catch(error=>console.log(error)),
 
 
 
@@ -15,7 +15,7 @@ services=response=>{
         
         response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async(chunk,last)=>{
          
-            if(total+chunk.byteLength<=CONFIG.MAX_PAYLOAD_SIZE){
+            if(total+chunk.byteLength<=global.CONFIG.MAX_PAYLOAD_SIZE){
             
                 buf=await SAFE_ADD(buf,chunk,response)//build full data from chunks
     

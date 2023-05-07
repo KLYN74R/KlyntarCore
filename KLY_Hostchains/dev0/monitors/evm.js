@@ -90,10 +90,10 @@ import Web3 from 'web3'
 
 
 //Make it global
-let web3=new Web3(CONFIG.SYMBIOTE.MONITOR.URL),
+let web3=new Web3(global.CONFIG.SYMBIOTE.MONITOR.URL),
 
 //Get the requiered stuff from configs
-{ABI,CONTRACT,TICKER} = CONFIG.SYMBIOTE.MONITOR,
+{ABI,CONTRACT,TICKER} = global.CONFIG.SYMBIOTE.MONITOR,
 
 //Create the contract instance
 contractInstance = new web3.eth.Contract(ABI,CONTRACT),
@@ -107,19 +107,19 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
     /*
     
-        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER - <index of array events not to start from 0 each time>
-        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK - <id of the latest block in range>
+        global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER - <index of array events not to start from 0 each time>
+        global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK - <id of the latest block in range>
     
     */
 
 
-    let isInitialLoad = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK === SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK,
+    let isInitialLoad = global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK === global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK,
 
-        nextRangeStartsFrom = isInitialLoad ? CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM : SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK+1,
+        nextRangeStartsFrom = isInitialLoad ? global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM : global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK+1,
 
-        wasLatestRangeEmpty = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === -1,
+        wasLatestRangeEmpty = global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === -1,
 
-        weFinishedToEnumThisRange = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === SYMBIOTE_META[threadID+'_EVENTS'].length && SYMBIOTE_META[threadID+'_EVENTS'].length !==0
+        weFinishedToEnumThisRange = global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER === global.SYMBIOTE_META[threadID+'_EVENTS'].length && global.SYMBIOTE_META[threadID+'_EVENTS'].length !==0
 
 
 
@@ -129,19 +129,19 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
         // Otherwise - get the range from local storage and add to cache
 
 
-        let range = await SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+`_${threadID}_EVENTS`).catch(_=>false)
+        let range = await global.SYMBIOTE_META.HOSTCHAIN_DATA.get(nextRangeStartsFrom+`_${threadID}_EVENTS`).catch(_=>false)
 
         if(range){
             
-            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
+            global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=0 //reset the counter to the start of array
 
-            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
+            global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
 
-            SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=range.latestBlockInRange
+            global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=range.latestBlockInRange
 
-            SYMBIOTE_META[threadID+'_EVENTS']=range.events
+            global.SYMBIOTE_META[threadID+'_EVENTS']=range.events
 
-            return SYMBIOTE_META[threadID+'_EVENTS']
+            return global.SYMBIOTE_META[threadID+'_EVENTS']
 
         }else{
 
@@ -196,7 +196,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
                         }
 
-                        await SYMBIOTE_META.HOSTCHAIN_DATA.put(nextRangeStartsFrom+`_${threadID}_EVENTS`,range).catch(
+                        await global.SYMBIOTE_META.HOSTCHAIN_DATA.put(nextRangeStartsFrom+`_${threadID}_EVENTS`,range).catch(
                         
                             error => LOG(`Error occured when trying to store events => ${error}`)
                         
@@ -208,11 +208,11 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
                         //If no events on range [nextRangeStartsFrom;lastKnownBlockNumber] - change the range
 
-                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=-1 // -1 means that latest received range has no events 
+                        global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER=-1 // -1 means that latest received range has no events 
 
-                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
+                        global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK=nextRangeStartsFrom
 
-                        SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=lastKnownBlockNumber
+                        global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_FINISH_BLOCK=lastKnownBlockNumber
 
                     }
 
@@ -224,13 +224,13 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
     } else {
 
-        if(!SYMBIOTE_META[threadID+'_EVENTS']){
+        if(!global.SYMBIOTE_META[threadID+'_EVENTS']){
 
-            SYMBIOTE_META[threadID+'_EVENTS']=await SYMBIOTE_META.HOSTCHAIN_DATA.get(SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK+`_${threadID}_EVENTS`).catch(_=>false)
+            global.SYMBIOTE_META[threadID+'_EVENTS']=await global.SYMBIOTE_META.HOSTCHAIN_DATA.get(global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK+`_${threadID}_EVENTS`).catch(_=>false)
 
         }
 
-        return SYMBIOTE_META[threadID+'_EVENTS']
+        return global.SYMBIOTE_META[threadID+'_EVENTS']
 
     }
         
@@ -332,7 +332,7 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
         
             */
 
-            let initURLs = [CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
+            let initURLs = [global.CONFIG.SYMBIOTE.GET_CHECKPOINT_PAYLOAD_URL,...GET_ALL_KNOWN_PEERS()]
 
             LOG(`Going to find body to checkpoint \x1b[34;1m${validCheckpoint.HEADER.ID} ### ${validCheckpoint.HEADER.PAYLOAD_HASH}`,'S')
 
@@ -437,7 +437,7 @@ POOLS_METADATA - object like this
 
 export default {
 
-    // threadID - SYMBIOTE_META.VERIFICATION_THREAD | SYMBIOTE_META.QUORUM_THREAD
+    // threadID - global.SYMBIOTE_META.VERIFICATION_THREAD | global.SYMBIOTE_META.QUORUM_THREAD
     //  QUORUM_THREAD - Receive latest valid checkpoint. If checkpoint of today includes our pubkey - then start accept blocks & share commitments due to the POOLS_METADATA state in checkpoint
     /*
     
@@ -532,15 +532,15 @@ export default {
     GET_VALID_CHECKPOINT:async threadID => {
 
 
-        let currentCheckpoint = SYMBIOTE_META[threadID].CHECKPOINT,
+        let currentCheckpoint = global.SYMBIOTE_META[threadID].CHECKPOINT,
 
-            quorumNumber=SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
+            quorumNumber=global.SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
 
             majority = GET_MAJORITY(threadID),
 
             checkpointFullID = currentCheckpoint.HEADER.PAYLOAD_HASH+"#"+currentCheckpoint.HEADER.ID,
 
-            rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+checkpointFullID)
+            rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+checkpointFullID)
 
 
         //Find next checkpoint and verify signatures
@@ -550,11 +550,11 @@ export default {
 
         if(eventsRange){
         
-            //Start array with SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
+            //Start array with global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER(pointer to position in range not to start from 0 position each time)
 
             let possibleValidCheckpoint,
 
-                startFrom = SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
+                startFrom = global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER
             
 
             //Start to enumerate the range of events, starting from position <startFrom>
@@ -571,7 +571,7 @@ export default {
                     if(possibleValidCheckpoint?.PAYLOAD) break
 
                     //If log is not a checkpoint - just increase counter for progress
-                    else SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
+                    else global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_POINTER++
 
     
                 }
@@ -597,14 +597,14 @@ export default {
 
             // We should take previous blocks to make sure that new day has started
 
-            let severalBlocksAgo = CONFIG.SYMBIOTE.MONITOR.BLOCK_STOCK_TO_PROPOSE_CHECKPOINT,
+            let severalBlocksAgo = global.CONFIG.SYMBIOTE.MONITOR.BLOCK_STOCK_TO_PROPOSE_CHECKPOINT,
 
                 block = await web3.eth.getBlock(latestKnownBlock-severalBlocksAgo).catch(_=>false)
 
 
             if(block){
 
-                return CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE((+block.timestamp)*1000,SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP)
+                return CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE((+block.timestamp)*1000,global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP)
 
             }
 
@@ -635,7 +635,7 @@ export default {
         }
 
         [+] To verify => verify aggregated signature by quorum majority and initiator's signature
-        [+] Add subchain to SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1 set to response with the proofs for stage 2
+        [+] Add subchain to global.SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1 set to response with the proofs for stage 2
         
         */
 
@@ -653,7 +653,7 @@ export default {
 
             //Get from the height we stopped till the last known block
 
-            global.SKIP_PROCEDURE_STAGE_1_BLOCK ||= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
+            global.SKIP_PROCEDURE_STAGE_1_BLOCK ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
             let options = {
 
@@ -683,13 +683,13 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
+                let currentCheckpointTimestamp = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
-                let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+                let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
 
                 for(let event of events){
@@ -704,9 +704,9 @@ export default {
 
 
 
-                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && SYMBIOTE_META.TEMP.has(checkpointFullID)){
+                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = SYMBIOTE_META.TEMP.get(checkpointFullID)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
                         if(!SKIP_PROCEDURE_STAGE_1.has(subchain)){
 
@@ -752,7 +752,7 @@ export default {
                 afk:[]
             }
 
-            [+] Note that this is valid only in case that index is bigger that we have in SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain].
+            [+] Note that this is valid only in case that index is bigger that we have in global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain].
                 For this reasons, subchain will be deactivated at least untill the next checkpoint.
                 Also, it should has a valid timestamp(today) to make sure it's between <CURRENT_CHECKPOINT> <=> <NEXT_CHECKPOINT>
             
@@ -773,7 +773,7 @@ export default {
 
             //Get from the height we stopped till the last known block
 
-            global.SKIP_PROCEDURE_STAGE_2_BLOCK ||= SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
+            global.SKIP_PROCEDURE_STAGE_2_BLOCK ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
 
             let options = {
 
@@ -802,13 +802,13 @@ export default {
 
                 // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
 
-                let checkpointFullID = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+                let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-                let currentCheckpointTimestamp = SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
+                let currentCheckpointTimestamp = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
 
-                let reverseThreshold = SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+                let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
 
-                let rootPub = SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
 
                 for(let event of events){
@@ -821,9 +821,9 @@ export default {
 
 
                     
-                    if(majorityVotedForIt && isTheSameDay && SYMBIOTE_META.TEMP.has(checkpointFullID)){
+                    if(majorityVotedForIt && isTheSameDay && global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = SYMBIOTE_META.TEMP.get(checkpointFullID)
+                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
                         if(!SKIP_PROCEDURE_STAGE_2.has(subchain)){
 
