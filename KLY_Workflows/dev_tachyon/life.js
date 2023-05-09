@@ -120,14 +120,14 @@ let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG
 
 
 
-GEN_BLOCKS_START_POLLING=async()=>{
+BLOCKS_GENERATION_POLLING=async()=>{
 
 
     if(!SYSTEM_SIGNAL_ACCEPTED){
 
-        await GENERATE_PHANTOM_BLOCKS_PORTION()    
+        await GENERATE_BLOCKS_PORTION()    
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(GEN_BLOCKS_START_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
+        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
         
         global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
         &&
@@ -339,7 +339,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
 
 
-        let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
+        let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
 
         let stoppedSubchainsIDs = new Set()
 
@@ -350,6 +350,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
 
+            // Find main(not reserve) pools which were stopped
             if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
 
                 stoppedSubchainsIDs.add(poolPubKey)
@@ -377,7 +378,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         /*
-    
+        
+            After this cycle we have:
+
+            [0] stoppedSubchainsIDs - Set(skippedSubchain1,skippedSubchain2,...)
+            [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
+
         
         */
 
@@ -388,13 +394,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                         
             let nonce = 0
 
-            let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) //hence we need to find first reserve pool in chain(among non-stopped reserve pools)
+            let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) // since we need to find first reserve pool in a deterministic chain(among non-stopped reserve pools)
 
-            let arrayOfActiveReservePools = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
+            let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
 
             let mapping=new Map()
 
-            let arrayOfChallanges = arrayOfActiveReservePools.map(validatorPubKey=>{
+            let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
 
                 let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
     
@@ -407,9 +413,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
     
-            let firstReserveInChain = mapping.get(firstChallenge)
+            let firstReservePoolInReassignmentChain = mapping.get(firstChallenge)
             
-            if(firstReserveInChain){
+            if(firstReservePoolInReassignmentChain){
 
                 let reassignmentTemplateForQT = {
 
@@ -417,15 +423,16 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     
                     SKIPPED_RESERVE:[],
                     
-                    CURRENT:firstReserveInChain
+                    CURRENT:firstReservePoolInReassignmentChain
 
                 }
 
                 nextTempDBBatch.put('REASSIGN:'+subchainPoolID,reassignmentTemplateForQT)
+                
 
                 futureReassignments.set(subchainPoolID,reassignmentTemplateForQT)
 
-                futureReassignments.set(firstReserveInChain,subchainPoolID)
+                futureReassignments.set(firstReservePoolInReassignmentChain,subchainPoolID)
 
             }
 
@@ -562,12 +569,16 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
-
-GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint,reassignMetadata)=>{
+/**
+ * @param {string} originSubchain BLS pubkey of subchain
+ * @param {Object} poolsMetadataFromCheckpoint metadata of pool from checkpoint {INDEX,HASH,IS_RESERVE,IS_STOPPED}
+ * @param {Object} reassignmentMetadata metadata like {NONCE,SKIPPED_RESERVE,CURRENT} related to some subchain
+ */
+GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,poolsMetadataFromCheckpoint,reassignmentMetadata)=>{
 
     let arrayOfActiveReservePools = []
 
-    for(let [poolPubKey,poolMetadata] of Object.entries(subchainMetadataFromCheckpoint)){
+    for(let [poolPubKey,poolMetadata] of Object.entries(poolsMetadataFromCheckpoint)){
 
         if(!poolMetadata.IS_RESERVE && !poolMetadata.IS_STOPPED){
                 
@@ -589,19 +600,19 @@ GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,subchainMetadataFromCheckpoint
 
     }
 
-    // Now based on hash of poolsMetadata in checkpoint and nonce - find next reserve pool
+    // Now based on hash of poolsMetadata in checkpoint and nonce - find the next reserve pool in deterministic reassignments chain
 
-    // Hence it's a chain - take a nonce
+    // Since it's a chain - take a nonce
 
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(subchainMetadataFromCheckpoint))
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(poolsMetadataFromCheckpoint))
     
-    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+reassignMetadata.NONCE)
+    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+reassignmentMetadata.NONCE)
 
     let mapping = new Map()
 
     let arrayOfChallanges = arrayOfActiveReservePools
     
-        .filter(pubKey=>!reassignMetadata.SKIPPED_RESERVE.includes(pubKey))
+        .filter(pubKey=>!reassignmentMetadata.SKIPPED_RESERVE.includes(pubKey))
         
         .map(validatorPubKey=>{
 
@@ -742,13 +753,13 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
                     // Add the reassignment
                     
-                    let refToMainPool = reassignments.get(subchain)
+                    let mainPoolSubchainID = reassignments.get(subchain)
         
-                    if(refToMainPool){
+                    if(typeof mainPoolSubchainID === 'string'){
         
-                        let reassignMetadata = JSON.stringify(JSON.parse(reassignments.get(refToMainPool)))
+                        let reassignMetadata = JSON.stringify(JSON.parse(reassignments.get(mainPoolSubchainID)))
         
-                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(refToMainPool,oldSubchainMetadata,reassignMetadata)
+                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(mainPoolSubchainID,oldSubchainMetadata,reassignMetadata)
         
                         if(nextReservePool){
         
@@ -762,13 +773,13 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
         
                             // Put to DB before use
                             
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+refToMainPool,reassignMetadata).then(async()=>{
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPoolSubchainID,reassignMetadata).then(async()=>{
         
                                 // And only after successful store we can add to mapping the final pointer
                                 
-                                reassignments.set(refToMainPool,reassignMetadata)
+                                reassignments.set(mainPoolSubchainID,reassignMetadata)
 
-                                reassignments.set(nextReservePool,refToMainPool)
+                                reassignments.set(nextReservePool,mainPoolSubchainID)
 
         
                             }).catch(_=>false)
@@ -2017,16 +2028,6 @@ SKIP_PROCEDURE_STAGE_2=async()=>{
 
 
 
-NOT_ACTIVE_POOL=(poolPubKey,poolMetadata,reassignments)=>{
-
-    // This function used in SUBCHAINS_HEALTH_MONITORING function to avoid getting health from reserve nodes in case they weren't assigned to some subchain workflow
-
-
-},
-
-
-
-
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
@@ -2085,10 +2086,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
-    // If we're not in quorum or checkpoint is outdated - don't start health monitoring
+    // If you're not in quorum or checkpoint is outdated - don't start health monitoring
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
-
-        //If we're not in quorum - no sense to do this procedure. Just repeat the same procedure later
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -2099,7 +2098,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let subchainsURLAndPubKey = await GET_POOLS_URLS(true)
+    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
 
     let proofsPromises = []
 
@@ -2107,7 +2106,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     
-    for(let handler of subchainsURLAndPubKey){
+    for(let handler of poolsURLsAndPubKeys){
         
         let metadataOfCurrentPool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[handler.pubKey]
 
@@ -2220,9 +2219,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    let poolsURLSandPubKeys = await GET_POOLS_URLS(true)
-
-
     for(let candidate of candidatesForAnotherCheck){
 
         let timestamp = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
@@ -2290,7 +2286,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
 
-            for(let validatorHandler of poolsURLSandPubKeys){
+            for(let validatorHandler of poolsURLsAndPubKeys){
 
                 let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_1',sendOptions).then(r=>r.json()).catch(_=>'<>')
 
@@ -2508,11 +2504,11 @@ RESTORE_STATE=async()=>{
 
 
 
-export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
+export let GENERATE_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
 
     // If we are reserve - return
     if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
@@ -2552,16 +2548,16 @@ export let GENERATE_PHANTOM_BLOCKS_PORTION = async() => {
     if(numberOfBlocksToGenerate===0) return 
 
 
-    LOG(`Number of phantoms to generate \x1b[32;1m${numberOfBlocksToGenerate}`,'I')
+    LOG(`Number of blocks to generate \x1b[32;1m${numberOfBlocksToGenerate}`,'I')
 
     let atomicBatch = global.SYMBIOTE_META.BLOCKS.batch()
 
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS()),
+        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS())
                         
-            hash=Block.genHash(blockCandidate)
+        let hash=Block.genHash(blockCandidate)
     
 
         blockCandidate.sig=await BLS_SIGN_DATA(hash)
@@ -3312,41 +3308,7 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
 
-
-    //___________________________________________Load data from hostchain___________________________________________
-
-
-        
-    if(global.CONFIG.SYMBIOTE.BALANCE_VIEW){
-
-        let ticker = global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
-        
-        let spinner = ora({
-       
-            color:'red',
-       
-            prefixText:`\u001b[38;5;23m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]  \x1b[36;1mGetting balance for \x1b[32;1m${ticker}\x1b[36;1m - keep waiting\x1b[0m`
-       
-        }).start()
-
-        let balance = await HOSTCHAIN.CONNECTOR.getBalance()
-        
-        spinner.stop()
-        
-        LOG(`Balance on hostchain \x1b[32;1m${
-        
-            ticker
-        
-        }\x1b[36;1m is \x1b[32;1m${
-            
-            global.CONFIG.SYMBIOTE.BALANCE_VIEW ? balance : '<disabled>'
-        
-        }   \x1b[36;1m[${global.CONFIG.SYMBIOTE.STOP_HOSTCHAIN?'\x1b[31;1mSTOP':'\x1b[32;1mPUSH'}\x1b[36;1m]`,'I')
-    
-    }
-
-
-    //____________________________________________GENERAL SYMBIOTE INFO____________________________________________
+    //____________________________________________GENERAL INFO OUTPUT____________________________________________
 
 
     //Ask to approve current set of hostchains
@@ -3478,7 +3440,7 @@ RUN_SYMBIOTE=async()=>{
                 
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
                 
-            GEN_BLOCKS_START_POLLING()
+            BLOCKS_GENERATION_POLLING()
             
         },global.CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
 

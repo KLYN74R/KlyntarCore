@@ -118,71 +118,6 @@ GET_BLOCK = async(blockCreator,index) => {
 
 
 
-GET_ASSIGNED_POOL = async (skipStage3Proof,checkpointFullID) => {
-
-    /*
-    
-    SKIP_STAGE_3_PROOF has the following structure
-
-
-    {
-    
-        subchain, - skipped subchain. The work on this chain will be delegated to another pool
-        index,
-        hash,
-
-        aggregatedPub,
-        aggregatedSignature, - SIG(`SKIP_STAGE_3:${subchain}:${index}:${hash}:${checkpointFullID}`)
-        afkVoters
-    
-    }
-
-    Using <subchain>, <index>, <hash> and <checkpointFullID> fields we can get the hash which will be used to find pool to assign
-    
-    */
-
-    let {subchain,index,hash} = skipStage3Proof
-
-
-    // Based on this hash - start the cycle over ACTIVE 
-    let pseudoRandomHash = BLAKE3(subchain+index+hash+checkpointFullID)
-
-    let activeReservePools = Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
-    
-        .filter(([_,validatorMetadata])=>!validatorMetadata.IS_STOPPED && validatorMetadata.IS_RESERVE) //take only active reservists
-
-        .map(([validatorPubKey,_])=>validatorPubKey)
-
-
-    let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
-
-
-    let firstChallenge = HEAP_SORT(
-
-        activeReservePools.map(
-        
-            validatorPubKey => {
-
-                let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
-
-                mapping.set(challenge,validatorPubKey)
-
-                return challenge
-
-            }
-            
-        )
-
-    )[0]
-
-
-    return mapping.get(firstChallenge)
-
-},
-
-
-
-
 GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (checkpointFullID,subchain,index,hash) => {
 
     // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
@@ -465,7 +400,7 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
 
 
-    // Hence it's a chain - take a nonce
+    // Since it's a chain - take a nonce
     let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce)
     
     let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
@@ -781,7 +716,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             }
             else if(!poolMetadata.IS_STOPPED){
 
-                // Otherwise - it's reserve pool
+                // Otherwise - it's active reserve pool
 
                 let originSubchain = await global.SYMBIOTE_META.STATE.get(poolPubKey+`(POOL)_POINTER`)
                     
