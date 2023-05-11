@@ -568,16 +568,10 @@ DECRYPT_KEYS=async spinner=>{
         
         // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
         let keys=JSON.parse(fs.readFileSync(global.CONFIG.DECRYPTED_KEYS_PATH))//use full path
-        
-        let ticker=global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
 
         //Main key
         global.PRIVATE_KEY=keys.kly
 
-        if(global.CONFIG.EVM_CHAINS.includes(ticker)) HOSTCHAIN.CONNECTOR.get(ticker).PRV=Buffer.from(keys[ticker],'hex')
-    
-        else global.CONFIG.SYMBIOTE.CONNECTOR[ticker].PRV=keys[ticker]
-        
 
         return
       
@@ -586,19 +580,19 @@ DECRYPT_KEYS=async spinner=>{
     //Stop loading
     spinner?.stop()
 
-    let symbioteConfigReference=global.CONFIG.SYMBIOTE,
+    let symbioteConfigReference=global.CONFIG.SYMBIOTE
     
-        rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
+    let rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
 
-    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mhostchain:${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER} / workflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
+    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${symbioteConfigReference.MANIFEST.WORKFLOW}[major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
 
 
     
-    let HEX_SEED=await new Promise(resolve=>
+    let hexSeed=await new Promise(resolve=>
         
         rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
         
@@ -606,39 +600,23 @@ DECRYPT_KEYS=async spinner=>{
         
 
     //Get 32 bytes SHA256(Password)
-    HEX_SEED=cryptoModule.createHash('sha256').update(HEX_SEED,'utf-8').digest('hex')
+    hexSeed=cryptoModule.createHash('sha256').update(hexSeed,'utf-8').digest('hex')
 
-    let IV=Buffer.from(HEX_SEED.slice(32),'hex')//Get second 16 bytes for initialization vector
+    let IV=Buffer.from(hexSeed.slice(32),'hex')//Get second 16 bytes for initialization vector
 
 
     console.log('\x1b[0m')
 
-    HEX_SEED=HEX_SEED.slice(0,32)//Retrieve first 16 bytes from hash
+    hexSeed=hexSeed.slice(0,32)//Retrieve first 16 bytes from hash
 
 
 
-    //__________________________________________DECRYPT MAIN PRIVATE KEY____________________________________________
+    //__________________________________________DECRYPT PRIVATE KEY____________________________________________
 
-    
 
-    let decipher = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV)
+    let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,IV)
     
     global.PRIVATE_KEY=decipher.update(symbioteConfigReference.PRV,'hex','utf8')+decipher.final('utf8')
-
-
-
-    //_____________________________________DECRYPT PRIVATE KEYS FOR HOSTCHAIN_______________________________________
-
-
-    let decipherHostchain = cryptoModule.createDecipheriv('aes-256-cbc',HEX_SEED,IV),
-    
-        privateKey=decipherHostchain.update(symbioteConfigReference.CONNECTOR.PRV,'hex','utf8')+decipherHostchain.final('utf8')
-        
-    if(global.CONFIG.EVM_CHAINS.includes(global.CONFIG.SYMBIOTE.CONNECTOR.TICKER)) HOSTCHAIN.CONNECTOR.PRV=Buffer.from(privateKey,'hex')
-        
-    else HOSTCHAIN.CONNECTOR.PRV=privateKey
-        
-    LOG(`Hostchain [\x1b[36;1m${global.CONFIG.SYMBIOTE.CONNECTOR.TICKER}\x1b[32;1m] ~~~> private key was decrypted successfully`,'S')
 
     
     rl.close()

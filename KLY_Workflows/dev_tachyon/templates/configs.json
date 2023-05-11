@@ -60,44 +60,9 @@
         
         "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     },
-    
-    "CONNECTOR":{
-
-        "TICKER":"ltc",
-        "TICKER_INFO":"Litecoin testnet",
-        "PUB":"mtR4CEwS6GwF19ai6L3QgKS1QQtJsXD1oa",
-        "PRV":"b58f0e5bf3e90de2cdd99dd5b1ec8305d281359c7f77231e15ff2dec81dca5fb088371cba6a45cac5feed911c4229396955c542f9aed58b941d2ac633c4babb8",
-        "URL":"http://localhost:2339",
-        "CONFIRMATIONS":1,
-        "CREDS":"Vlad:ltcpassword",
-        "FEE":192666
-        
-    },
-
-    "STOP_HOSTCHAIN":true,
-
-    "MONITOR":{
-
-        "TICKER":"ltc",
-        "PACK":"dev0",
-        "MODE":"PARANOIC",
-        "URL":"http://localhost:7777",
-        "CREDS":"Vlad:ltcpassword",
-        "FIRST_BLOCK_FIND_STEP":30,
-        
-        "MONITORING_START_FROM":200000,
-        "BLOCK_STOCK_TO_PROPOSE_CHECKPOINT":10
-    
-    },
 
     "VT_GT_NORMAL_DIFFERENCE":100,
-    "VERIFICATION_THREAD_POLLING_INTERVAL":1000,
     "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
-
-    "SHARE_COMMITMENTS":1,
-    "SHARE_FINALIZATION_PROOF":1,
-
-    "HEIGHT_ON_HOSTCHAIN_TO_JUMP_OVER":0,
 
     "BLOCK_TIME":3000,
     
@@ -127,8 +92,6 @@
         "SKIP_STAGE_2":300000
 
     },
-
-    "SKIP_PROCEDURE_MONITORING":7000,
 
     "NODES":{
     
@@ -194,10 +157,6 @@
         "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
     
     },
-
-    "BLACKLISTED_NODES":[
-        
-    ],
     
     "NODES_PORTION":8,
     "MAX_CONNECTIONS":15,
@@ -266,21 +225,10 @@
         }
     
     },
-    
-    "COMMITMENTS_POOL_LIMIT":100000,
-    "FINALIZATION_PROOFS_POOL_LIMIT":100000,
-    "SUPER_FINALIZATION_PROOFS_POOL_LIMIT":100000,
-
-    "GET_BLOCKS_URL":"http://localhost:7331",
-    "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:7331",
-    "GET_MULTI":"http://localhost:7331",
-    "GET_CHECKPOINT_PAYLOAD_URL":"http://localhost:7331",
-    
-    "BLOCKS_EXPORT_PORTION":100,
-
-    "BLOCK_ACCEPTION_NORMAL_DIFFERENCE":100,
 
     "GET_STUFF_URL":"http://localhost:7331",
+    "GET_BLOCKS_URL":"http://localhost:7331",
+    "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:7331",
 
     "STUFF_CACHE_SIZE":100000,
     
@@ -305,34 +253,6 @@
         }
     },
 
-    "STORE_QUORUM_COMMITMENTS_CACHE":true,
-
-    "ALSO_SHARE_COMMITMENTS_TO_DEFAULT_NODES":true,
-    
-    "SKIP_BFT_PROOFS":{
-
-        "ACTIVATE":true,
-        
-        "POINT":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:1250"
-
-    },
-
-    "RESPONSIBILITY_ZONES":{
-
-        "COMMITMENTS":{
-
-            "ALL":true
-
-        }
-
-    },
-
-    "WAIT_IF_CANT_FIND_CHECKPOINT":4000,
-
-    "TIMEOUT_TO_PRE_SHARE_COMMITMENTS":2000,
-
-    "AWAKE_HELPER_NODE":"http://localhost:7331",
-
-    "REGION":"EU"
+    "WAIT_IF_CANT_FIND_CHECKPOINT":4000
 
 }

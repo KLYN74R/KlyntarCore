@@ -261,9 +261,6 @@ getSymbioteInfo=response=>{
         let verificationThreadWorkflowOptions = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
         let quorumThreadWorkflowOptions = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
 
-        // Get the additional hostchain info
-        let hostchainInfo = global.CONFIG.SYMBIOTE.CONNECTOR.TICKER_INFO
-
 
         // Send
         !response.aborted && response.end(JSON.stringify({
@@ -272,9 +269,7 @@ getSymbioteInfo=response=>{
 
             verificationThreadWorkflowVersion,quorumThreadWorkflowVersion,
 
-            verificationThreadWorkflowOptions,quorumThreadWorkflowOptions,
-
-            hostchainInfo
+            verificationThreadWorkflowOptions,quorumThreadWorkflowOptions
 
         }))
             

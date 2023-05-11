@@ -76,7 +76,7 @@
 
 
 
-import {GET_ALL_KNOWN_PEERS,GET_MAJORITY,BLS_VERIFY,CHECK_IF_THE_SAME_DAY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_ALL_KNOWN_PEERS,GET_MAJORITY} from '../../../KLY_Workflows/dev_tachyon/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -226,7 +226,7 @@ GET_CONTRACT_EVENTS_RANGE=async threadID=>{
 
         if(!global.SYMBIOTE_META[threadID+'_EVENTS']){
 
-            global.SYMBIOTE_META[threadID+'_EVENTS']=await global.SYMBIOTE_META.HOSTCHAIN_DATA.get(global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK+`_${threadID}_EVENTS`).catch(_=>false)
+            global.SYMBIOTE_META[threadID+'_EVENTS']=await global.c.get(global.SYMBIOTE_META[threadID].CHECKPOINT.RANGE_START_BLOCK+`_${threadID}_EVENTS`).catch(_=>false)
 
         }
 
@@ -249,7 +249,6 @@ CHECK_IF_AT_LEAST_ONE_DAY_DIFFERENCE=(timestampLater,timestampEarlier)=>{
     startOfDayLater.setUTCHours(0, 0, 0, 0)
 
     startOfDayEarlier.setUTCHours(0, 0, 0, 0)
-
 
     return startOfDayLater-startOfDayEarlier >= 86400000
 
@@ -301,10 +300,6 @@ VERIFY_AND_RETURN_CHECKPOINT=async(event,currentCheckpoint,quorumNumber,majority
                 //Based on PAYLOAD.POOLS_METADATA, we get new quorum for QUORUM_THREAD. For VERIFICATION_THREAD we get the quorum based on own verification process
 
                 TIMESTAMP:(+event.returnValues.blocktime)*1000,
-
-                FOUND_AT_BLOCK:event.blockNumber,
-
-                TX:event.transactionHash,
 
                 COMPLETED:false
 
@@ -610,241 +605,6 @@ export default {
 
         }
 
-    },
-
-
-
-
-    GET_SKIP_PROCEDURE_STAGE_1_PROOFS:async()=>{
-
-        /*
-        
-        [+] Call this function periodically to find the proofs of SKIP_PROCEDURE_STAGE_1 on hostchain
-        [+] Once find, verify it. The structure of proof that 2/3N+1 have voted to exclude some subchain
-
-        {
-            session:'0123456701234567012345670123456701234567012345670123456701234567',
-            subchain:'7dNmJLXWf2UUDK5S5KdTKWMoGaG3teqSgGz5oGN3q33eRP1erTZB6QaV8ifJvmoV3X',
-            
-            sig:<signature by initiator to proof that "YES,I've grabbed this agreements and we(the quorum majority) is really want to exclude this subchain from verification process". SIG(session+session)>
-            initiator:<Your pubkey to verify this signature>
-
-            aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-            aggregatedSigna:SIG('SKIP_STAGE_1'+session+requestedSubchain+initiator+checkpointFullID),
-            afk:[<array of afk from quorum>]
-        }
-
-        [+] To verify => verify aggregated signature by quorum majority and initiator's signature
-        [+] Add subchain to global.SYMBIOTE_META.SKIP_PROCEDURE_STAGE_1 set to response with the proofs for stage 2
-        
-        */
-
-
-        let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
-
-            LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
-
-            return false
-
-        })
-
-
-        if(lastKnownBlockNumber){
-
-            //Get from the height we stopped till the last known block
-
-            global.SKIP_PROCEDURE_STAGE_1_BLOCK ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
-
-            let options = {
-
-                fromBlock:global.SKIP_PROCEDURE_STAGE_1_BLOCK,
-
-                toBlock:lastKnownBlockNumber
-
-            };
-
-
-            //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
-            if(options.fromBlock>=lastKnownBlockNumber) return
-            
-
-            let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
-
-                LOG(`Received this error when asking for events => ${error}`,'W')
-
-                return false
-
-            })
-
-
-            if(events.length){
-
-                global.SKIP_PROCEDURE_STAGE_1_BLOCK=options.toBlock                
-
-                // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
-
-                let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-                let currentCheckpointTimestamp = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
-
-                let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
-
-                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-
-                for(let event of events){
-
-                    let {session,subchain,sig,initiator,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
-
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,'SKIP_STAGE_1'+session+subchain+initiator+checkpointFullID,aggregatedSignature,reverseThreshold).catch(_=>false)
-                    
-                    let initiatorSigIsOk = await BLS_VERIFY(session+session,sig,initiator)
-
-                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
-
-
-
-                    if(majorityVotedForIt && initiatorSigIsOk && isTheSameDay && global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_1} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-                        if(!SKIP_PROCEDURE_STAGE_1.has(subchain)){
-
-                            DATABASE.put('SKIP_STAGE_1:'+subchain,true).then(
-
-                                //Now, we can add to set
-                                () => SKIP_PROCEDURE_STAGE_1.add(subchain)
-    
-    
-                            ).catch(_=>{})    
-
-                        }
-
-                    }
-
-                }
-                
-            }
-    
-        }
-
-    },
-    
-
-
-
-    GET_SKIP_PROCEDURE_STAGE_2_PROOFS:async()=>{
-
-        /*
-        
-            [+] Call this function periodically to find the proofs of SKIP_PROCEDURE_STAGE_2 on hostchain
-            [+] This proof means that majority is going to exclude the subchain from verification thread. It contains the height/hash of the latest known segment of subchain
-            [+] During the work in function START_VERIFICATION_THREAD, we'll use this proof to skip appropriate subchain on appropriate height
-            [+] Format is
-
-            {
-                subchain:'<pubkey of subchain that we're going to skip>,
-                index:<latest block index that majority have voted for, but we can't get the index+1 block, that's why-skip>
-                hash:<hash of appropriate block>
-                
-                aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-                aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>+"#"+<QT.CHECKPOINT.HEADER.ID>`)
-                afk:[]
-            }
-
-            [+] Note that this is valid only in case that index is bigger that we have in global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain].
-                For this reasons, subchain will be deactivated at least untill the next checkpoint.
-                Also, it should has a valid timestamp(today) to make sure it's between <CURRENT_CHECKPOINT> <=> <NEXT_CHECKPOINT>
-            
-        */
-
-
-        
-        let lastKnownBlockNumber = await web3.eth.getBlockNumber().catch(error=>{
-
-            LOG(`Some error occured with hostchain node => \x1b[32;1m${error}`,'W')
-
-            return false
-
-        })
-
-
-        if(lastKnownBlockNumber){
-
-            //Get from the height we stopped till the last known block
-
-            global.SKIP_PROCEDURE_STAGE_2_BLOCK ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.FOUND_AT_BLOCK
-
-            let options = {
-
-                fromBlock:global.SKIP_PROCEDURE_STAGE_2_BLOCK,
-
-                toBlock:lastKnownBlockNumber
-
-            };
-
-
-            //If node works too fast - we shoudn't ask blocks from X+1 to X (coz X<Z+1)
-            if(options.fromBlock>=lastKnownBlockNumber) return
-            
-            let events = await contractInstance.getPastEvents('SkipProcedure',options).catch(error=>{
-
-                LOG(`Received this error when asking for events => ${error}`,'W')
-
-                return false
-
-            })
-
-
-            if(events.length){
-
-                global.SKIP_PROCEDURE_STAGE_2_BLOCK=options.toBlock
-
-                // Parse & verify logs here. Everything what will be found will be assumed that relate to the checkpoint
-
-                let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-                let currentCheckpointTimestamp = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP
-
-                let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
-
-                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-
-                for(let event of events){
-
-                    let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = JSON.parse(event.returnValues.payload)
-
-                    let majorityVotedForIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,`SKIP_STAGE_2:${subchain}:${index}:${hash}:${checkpointFullID}`,aggregatedSignature,reverseThreshold).catch(_=>false)
-
-                    let isTheSameDay = CHECK_IF_THE_SAME_DAY(currentCheckpointTimestamp,(+event.returnValues.blocktime)*1000)
-
-
-                    
-                    if(majorityVotedForIt && isTheSameDay && global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-                        let {DATABASE,SKIP_PROCEDURE_STAGE_2} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-                        if(!SKIP_PROCEDURE_STAGE_2.has(subchain)){
-
-                            DATABASE.put('SKIP_STAGE_2:'+subchain,{INDEX:index,HASH:hash}).then(
-                            
-                                //Now, we can add the subchain to map
-                                () => SKIP_PROCEDURE_STAGE_2.set(subchain,{INDEX:index,HASH:hash})
-    
-    
-                            ).catch(_=>{})
-    
-                        }
-
-                    }
-
-                }
-                
-            }
-    
-        }
-
     }
-
+    
 }

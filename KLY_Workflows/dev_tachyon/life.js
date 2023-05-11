@@ -281,19 +281,29 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
     })
 
 
-},
+}
+
+
+
+
+export let GET_VALID_CHECKPOINT = async threadID => {
+
+    // Temporary stub
+    return false
+
+}
 
 
 
 
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
-START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
+let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
     //_________________________________FIND THE NEXT CHECKPOINT AND EXECUTE SPECIAL_OPERATIONS INSTANTLY_________________________________
 
     
-    let possibleCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
+    let possibleCheckpoint = await GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
 
 
     if(possibleCheckpoint){
@@ -445,11 +455,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
 
         await atomicBatch.write()
-            
-
-        // Update the block height to keep progress on hostchain
-        global.SKIP_PROCEDURE_STAGE_1_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
-        global.SKIP_PROCEDURE_STAGE_2_BLOCK = possibleCheckpoint.FOUND_AT_BLOCK
     
 
         // Create mappings & set for the next checkpoint
@@ -930,20 +935,9 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 
 
-SKIP_PROCEDURE_MONITORING_START=async()=>{
+MAKE_CHECKPOINT = async checkpointHeader => {
 
-    let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
-    // No sense to find skip proofs if checkpoint is not fresh
-    if(checkpointIsFresh){
-
-        await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_1_PROOFS().catch(_=>false)
-
-        await HOSTCHAIN.MONITOR.GET_SKIP_PROCEDURE_STAGE_2_PROOFS().catch(_=>false)
-
-    }
-
-    setTimeout(SKIP_PROCEDURE_MONITORING_START,global.CONFIG.SYMBIOTE.SKIP_PROCEDURE_MONITORING)
 
 },
 
@@ -1107,10 +1101,20 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
         await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP()).catch(_=>false)
 
         //Send the header to hostchain
-        await HOSTCHAIN.CONNECTOR.makeCheckpoint(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
+        await MAKE_CHECKPOINT(myCheckpoint.HEADER).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
 
                  
     }
+
+},
+
+
+
+
+CAN_PROPOSE_CHECKPOINT=async()=>{
+
+    // Stub
+    return false
 
 },
 
@@ -1194,7 +1198,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     */
 
 
-    let canProposeCheckpoint = await HOSTCHAIN.MONITOR.CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT(),
+    let canProposeCheckpoint = await CAN_PROPOSE_CHECKPOINT(),
 
         iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.includes(global.CONFIG.SYMBIOTE.PUB),
 
@@ -1834,200 +1838,6 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
-// This function is oriented on founded & valid SKIP_PROCEDURE_STAGE_1 proofs and starts SKIP_PROCEDURE_STAGE_2 - to grab appropriate proofs, aggregate and publish to hostchain to finally skip the subchain 
-SKIP_PROCEDURE_STAGE_2=async()=>{
-
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
-
-    let qtRootPub=global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
-
-    
-    if(!temporaryObject) return
-
-
-    for(let subchain of temporaryObject.SKIP_PROCEDURE_STAGE_1){
-
-        let skipStage3Handler = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'SKIP_STAGE_3:'+subchain).catch(_=>false)
-
-        //No sense to do this procedure for subchain which is already skipped
-        if(skipStage3Handler || temporaryObject.SKIP_PROCEDURE_STAGE_2.has(subchain)) continue
-
-
-        //Also, no sense to perform this procedure for subchains which were recently skipped(by the second stage)
-        let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>false)
-
-
-        if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_2 > GET_GMT_TIMESTAMP()){
-    
-            continue
-    
-        }
-        
-        //Delete the time tracker
-        await USE_TEMPORARY_DB('del',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain).catch(_=>{})
-        
-
-        let localFinalizationHandler = temporaryObject.CHECKPOINT_MANAGER.get(subchain)
-
-        let localFinalizationHandlerSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER.get(subchain)
-        
-        /*
-            
-            Send this to POST /skip_procedure_stage_2
-
-            {
-                subchain:<ID>
-                height:<block index of this subchain on which we're going to skip>
-                hash:<block hash>
-            }
-            
-
-        */
-
-        let payload={
-            
-            subchain,
-            height:localFinalizationHandler.INDEX,
-            hash:localFinalizationHandler.HASH,
-            finalizationProof:localFinalizationHandler.FINALIZATION_PROOF
-        
-        }
-
-        let sendOptions={
-        
-            method:'POST',
-            body:JSON.stringify(payload)
-        
-        }
-
-            
-        //_____________________ Now, go through the quorum members and try to get updates from them or get signatures for SKIP_PROCEDURE_PART_2 _____________________
-        // We'll potentially need it in code below
-        let signaturesForAggregation = [], pubKeysForAggregation = []
-        
-        
-        for(let validatorHandler of poolsURLsAndPubKeys){
-        
-            let answerFromValidator = await fetch(validatorHandler.url+'/skip_procedure_stage_2',sendOptions).then(r=>r.json()).catch(_=>'<>')
-        
-            /*
-            
-                Potential answer might be
-            
-                {status:'NOT_FOUND'}        OR          {status:'SKIP_STAGE_2',sig:SIG(`SKIP_STAGE_2:${subchain}:${INDEX}:${HASH}:${checkpointFullID}`)}     OR      {status:'UPDATE',data:{INDEX,HASH,FINALIZATION_PROOF}}
-            
-            */
-        
-            if(answerFromValidator.status==='UPDATE' && typeof answerFromValidator.data === 'object' && typeof answerFromValidator.data.FINALIZATION_PROOF === 'object'){
-            
-                // In this case it means that validator we've requested has higher version of subchain and a FINALIZATION_PROOF for it, so we just accept it if verification is ok and break the cycle
-                let {INDEX,HASH} = answerFromValidator.data
-            
-                let {aggregatedPub,aggregatedSignature,afkVoters} = answerFromValidator.data.FINALIZATION_PROOF
-            
-                let data = subchain+':'+INDEX+HASH+checkpointFullID
-            
-                let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
-    
-            
-                if(finalizationProofIsOk && localFinalizationHandlerSyncHelper.INDEX < INDEX){
-            
-                    // Update the local version in CHECKPOINT_MANAGER
-                    
-                    localFinalizationHandlerSyncHelper.INDEX = INDEX
-                    
-                    localFinalizationHandlerSyncHelper.HASH = HASH
-                    
-                    localFinalizationHandlerSyncHelper.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
-                    
-                    // And break the cycle for this subchain-candidate
-                    
-                    break
-    
-                }
-    
-            }else if(answerFromValidator.status==='SKIP_STAGE_2' && await BLS_VERIFY(`SKIP_STAGE_2:${subchain}:${localFinalizationHandler.INDEX}:${localFinalizationHandler.HASH}:${checkpointFullID}`,answerFromValidator.sig,validatorHandler.pubKey).catch(_=>false)){
-
-                // Grab the skip agreements to publish to hostchains
-
-                signaturesForAggregation.push(answerFromValidator.sig)
-
-                pubKeysForAggregation.push(validatorHandler.pubKey)
-
-            }
-    
-        }
-
-
-        //______________________ On this step, hense we haven't break, we have a skip agreements in arrays ______________________
-
-        if(pubKeysForAggregation.length >= GET_MAJORITY('QUORUM_THREAD')){
-
-            /*
-                
-                We can aggregate this agreements and publish to hostchain as a signal to skip the subchain and finish the SKIP_PROCEDURE_STAGE_2
-
-                We need to build the following template
-
-                {
-                    subchain:'<pubkey of subchain that we're going to skip>,
-                    index:<latest block index that majority have voted for, but we can't get the index+1 block, that's why-skip>
-                    hash:<hash of appropriate block>
-                
-                    aggregatedPub:'7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu',
-                    aggregatedSigna:SIG(`SKIP_STAGE_2:<SUBCHAIN>:<INDEX>:<HASH>:<QT.CHECKPOINT.HEADER.PAYLOAD_HASH>:<QT.CHECKPOINT.HEADER.ID>`)
-                    afk:[]
-                }
-    
-            */
-
-            let aggregatedSignature = bls.aggregateSignatures(signaturesForAggregation)
-                
-            let aggregatedPub = bls.aggregatePublicKeys(pubKeysForAggregation)
-
-            let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pubKey=>!pubKeysForAggregation.includes(pubKey))
-
-
-            let templateForSkipProcedureStage2 = {
-
-                subchain,
-                index:localFinalizationHandler.INDEX,
-                hash:localFinalizationHandler.HASH,
-
-                aggregatedPub,
-                aggregatedSignature,
-                afkVoters
-
-            }
-
-            //Add time tracker for event
-      
-            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,'TIME_TRACKER_SKIP_STAGE_2_'+subchain,GET_GMT_TIMESTAMP()).then(()=>
-
-                //Send to hostchain proof for SKIP_PROCEDURE_STAGE_2
-                HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage2)
-
-            ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${subchain} => ${error}`,'W'))
-                
-        }
-
-        // Otherwise - do nothing and waiting for the next time
-
-    }
-
-
-},
-
-
-
-
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
 
@@ -2388,14 +2198,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 }
 
 
+                // //Add time tracker for event
+                // await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
 
-                //Add time tracker for event
-                await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
+                //     //Send to hostchain
+                //     HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
 
-                    //Send to hostchain
-                    HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
-
-                ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${candidate} => ${error}`,'W'))
+                // ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${candidate} => ${error}`,'W'))
 
                 
             }
@@ -2851,12 +2660,6 @@ LOAD_GENESIS=async()=>{
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
-        RANGE_START_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
-
-        RANGE_FINISH_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
-
-        RANGE_POINTER:0,
-
         HEADER:{
 
             ID:-1,
@@ -2893,12 +2696,6 @@ LOAD_GENESIS=async()=>{
     //Make template, but anyway - we'll find checkpoints on hostchains
     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
 
-        RANGE_START_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
-
-        RANGE_FINISH_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
-
-        RANGE_POINTER:0,
-
         HEADER:{
 
             ID:-1,
@@ -2926,10 +2723,6 @@ LOAD_GENESIS=async()=>{
         },
 
         TIMESTAMP:checkpointTimestamp,
-
-        FOUND_AT_BLOCK:global.CONFIG.SYMBIOTE.MONITOR.MONITORING_START_FROM,
-
-        TX:'genesis',
         
         COMPLETED:true
     
@@ -3259,39 +3052,8 @@ PREPARE_SYMBIOTE=async()=>{
     await RESTORE_STATE()
 
 
-    //__________________________________Load modules to work with hostchains_________________________________________
+    //__________________________________Decrypt private key to memory of process__________________________________
 
-    let ticker = global.CONFIG.SYMBIOTE.CONNECTOR.TICKER
-    
-    let packID = global.CONFIG.SYMBIOTE.MANIFEST.HOSTCHAINS[ticker].PACK
-
-
-    //Depending on packID load appropriate module
-    if(global.CONFIG.EVM_CHAINS.includes(ticker)){
-        
-        let EvmHostChainConnector = (await import(`../../KLY_Hostchains/${packID}/connectors/evm.js`)).default
-        
-        //Set connector
-        HOSTCHAIN.CONNECTOR=new EvmHostChainConnector(ticker)
-
-        //Set monitor
-        HOSTCHAIN.MONITOR=(await import(`../../KLY_Hostchains/${packID}/monitors/evm.js`)).default
-        
-
-    }else {
-
-        //Also, set connector
-        HOSTCHAIN.CONNECTOR=(await import(`../../KLY_Hostchains/${packID}/connectors/${ticker}.js`)).default
-
-        //Also, set monitor
-        HOSTCHAIN.MONITOR=(await import(`../../KLY_Hostchains/${packID}/monitors/${ticker}.js`)).default
-
-    }
-
-
-    //___________________Decrypt all private keys(for KLYNTAR and hostchains) to memory of process___________________
-
-    
 
 
     await DECRYPT_KEYS(initSpinner).then(()=>

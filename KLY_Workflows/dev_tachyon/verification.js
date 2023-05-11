@@ -10,13 +10,13 @@ import {LOG,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
+
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
 import Block from './essences/block.js'
-
-import {GRACEFUL_STOP} from './life.js'
 
 import fetch from 'node-fetch'
 
@@ -841,7 +841,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
     if(!checkpointIsFresh){
 
 
-        let nextCheckpoint = await HOSTCHAIN.MONITOR.GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
+        let nextCheckpoint = await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
 
 
         if(nextCheckpoint){
