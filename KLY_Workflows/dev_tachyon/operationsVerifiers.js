@@ -200,7 +200,7 @@ export default {
 
                 if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',IS_STOPPED:false,IS_RESERVE:poolStorage.isReserve}
+                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',IS_STOPPED:false,IS_RESERVE:poolStorage.isReserve}
 
                     fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool] = metadataTemplate
     

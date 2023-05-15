@@ -899,6 +899,74 @@ healthChecker = async response => {
 
 /*
 
+To return the stats about the health about another pool
+
+[Params]:
+
+    0 - poolID
+
+[Returns]:
+
+    Our local stats about the health of provided pool
+
+    SUPER_FINALIZATION_PROOF
+            
+        {
+            
+            index,
+            hash,
+
+            (?) aggregatedPub,
+            (?) aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
+            (?) afkVoters
+        
+        }
+
+        (?) - if index and hash are taken from checkpoint, it might be no aggregated proofs of finalization sent in response
+
+*/
+anotherPoolHealthChecker = async(response,request) => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
+
+        
+        let poolID = request.getParameter(0)
+
+        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+    
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+
+        // Get the stats from our HEALTH_CHECKER
+
+        let healthChecker = tempObject.HEALTH_MONITORING.get(poolID)
+
+        if(healthChecker){
+
+            !response.aborted && response.end(JSON.stringify(healthChecker.SUPER_FINALIZATION_PROOF))
+
+        }else !response.aborted && response.end(JSON.stringify({err:'No health handler'}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
+/*
+
 [Info]:
 
     Route to accept requests from other quorum members about development of subchains.
@@ -1965,7 +2033,7 @@ Params:
 
     [symbioteID,hostToAdd(initiator's valid and resolved host)]
 
-    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
 
 
@@ -2035,13 +2103,15 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 UWS_SERVER
 
+
+//_______________________________ Consensus related routes _______________________________
+
+
 //1st stage - accept block and response with the commitment
+.post('/block',acceptBlocks)
 
 //2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
 .post('/finalization',finalization)
-
-
-// .post('/many_finalization',manyFinalization)
 
 //3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/super_finalization',superFinalization)
@@ -2049,9 +2119,7 @@ UWS_SERVER
 .get('/super_finalization/:BLOCK_ID',getSuperFinalization)
 
 
-.get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
-
-.post('/special_operations',specialOperationsAccept)
+//_______________________________ Routes for checkpoint _______________________________
 
 
 // To sign the checkpoints' payloads
@@ -2060,11 +2128,19 @@ UWS_SERVER
 // To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
 .post('/checkpoint_stage_2',checkpointStage2Handler)
 
+.get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
+
+
+//________________________________ Health monitoring __________________________________
+
 
 .get('/health',healthChecker)
 
+.get('/get_health_of_another_pool/:POOL',anotherPoolHealthChecker)
 
-//_______________________________ 3 Routes related to the 3 stages of the skip procedure _______________________________
+
+//______________ 3 Routes related to the 3 stages of the skip procedure _______________
+
 
 .post('/skip_procedure_stage_1',skipProcedureStage1)
 
@@ -2072,13 +2148,16 @@ UWS_SERVER
 
 .post('/skip_procedure_stage_3',skipProcedureStage3)
 
+
 .get('/skip_procedure_stage_3/:SUBCHAIN',getSkipProcedureStage3)
 
 .post('/accept_aggregated_skip_stage_3_proof',acceptAggregatedSkipStage3)
 
-.post('/block',acceptBlocks)
 
-// .post('/many_blocks',acceptManyBlocks)
+//___________________________________ Other ___________________________________________
+
+
+.post('/special_operations',specialOperationsAccept)
 
 .post('/transaction',acceptTransactions)
 

@@ -103,7 +103,7 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK),
+let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
     GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS = () => [],
 
@@ -2317,7 +2317,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
 
     // If we are reserve - return
     if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
@@ -2348,7 +2348,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     */
 
 
-    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
     //DEBUG
     numberOfBlocksToGenerate++
@@ -2436,7 +2436,7 @@ LOAD_GENESIS=async()=>{
                 
                 INDEX:-1,
                 
-                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
                 
                 IS_STOPPED:false,
 
@@ -2640,7 +2640,7 @@ LOAD_GENESIS=async()=>{
         
         INDEX:-1,
         
-        HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
         GRID:0
     
@@ -2664,7 +2664,7 @@ LOAD_GENESIS=async()=>{
 
             ID:-1,
 
-            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
 
@@ -2700,7 +2700,7 @@ LOAD_GENESIS=async()=>{
 
             ID:-1,
 
-            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            PAYLOAD_HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             QUORUM_AGGREGATED_SIGNERS_PUBKEY:'',
 
@@ -2862,7 +2862,7 @@ PREPARE_SYMBIOTE=async()=>{
         error.notFound
         ?
         {
-            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,//Genesis hash
+            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,//Genesis hash
             NEXT_INDEX:0//So the first block will be with index 0
         }
         :
@@ -3166,9 +3166,6 @@ RUN_SYMBIOTE=async()=>{
         //4.Start checking the health of all the subchains
         SUBCHAINS_HEALTH_MONITORING()
 
-        //5.Start checking SKIP_PROCEDURE proofs(for stages 1 and 2)
-        SKIP_PROCEDURE_MONITORING_START()
-
         //6.Run function to work with finalization stuff and avoid async problems
         FINALIZATION_PROOFS_SYNCHRONIZER()
 
@@ -3201,6 +3198,7 @@ RUN_SYMBIOTE=async()=>{
         !global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
                 
             global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
+
                 
             BLOCKS_GENERATION_POLLING()
             

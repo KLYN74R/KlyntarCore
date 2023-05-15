@@ -31,7 +31,7 @@ contract Main {
     //It's address of Controller at least in first releases
     address public owner;//TODO:decentralize
     
-    string public symbiote_hash="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    string public symbiote_hash="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     
     modifier CONTROLLER {
         require(msg.sender==owner);

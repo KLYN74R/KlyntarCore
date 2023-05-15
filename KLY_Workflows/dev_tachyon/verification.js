@@ -48,12 +48,8 @@ GET_BLOCK = async(blockCreator,index) => {
         fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
     
         .then(r=>r.json()).then(block=>{
-    
-            let hash=Block.genHash(block)
                 
             if(typeof block.transactions==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
-    
-                BLOCKLOG(`New block fetched`,hash,block)
 
                 global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -79,8 +75,6 @@ GET_BLOCK = async(blockCreator,index) => {
                 let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(_=>false)
                 
                 if(itsProbablyBlock){
-    
-                    let hash=Block.genHash(itsProbablyBlock)
 
                     let overviewIsOk =
                     
@@ -96,8 +90,6 @@ GET_BLOCK = async(blockCreator,index) => {
                 
 
                     if(overviewIsOk){
-    
-                        BLOCKLOG(`New block fetched`,hash,itsProbablyBlock)
 
                         global.SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(_=>{})
     
@@ -1338,7 +1330,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         overviewOk=
     
-            block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EVENTS_LIMIT_PER_BLOCK
+            block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].HASH === block.prevHash//it should be a chain
             &&
