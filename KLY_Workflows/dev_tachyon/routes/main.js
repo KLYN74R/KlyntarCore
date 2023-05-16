@@ -905,20 +905,24 @@ To return the stats about the health about another pool
 
     Our local stats about the health of provided pool
 
-    SUPER_FINALIZATION_PROOF
-            
-        {
-            
-            index,
-            hash,
+    {
+        INDEX,
+        HASH,
 
-            (?) aggregatedPub,
-            (?) aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
-            (?) afkVoters
+        SUPER_FINALIZATION_PROOF
+            
+            {
+
+                (?) aggregatedPub,
+                (?) aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
+                (?) afkVoters
         
-        }
+            }
 
         (?) - if index and hash are taken from checkpoint, it might be no aggregated proofs of finalization sent in response
+        
+    }
+
 
 */
 anotherPoolHealthChecker = async(response,request) => {
@@ -955,6 +959,33 @@ anotherPoolHealthChecker = async(response,request) => {
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+// Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    
+
+}),
+
+
+
+// Function to accept ASP - AGGREGATED_SKIP_PROOF (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
+acceptAggregatedSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+
+
+}),
+
+
+
+// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
+getReassignmentReadyStatus = async(response,request) => {
+
+    response.onAborted(()=>response.aborted=true)
 
 },
 
@@ -1692,7 +1723,7 @@ UWS_SERVER
 .post('/get_skip_proof',getSkipProof)
 
 // Function to accept ASP - AGGREGATED_SKIP_PROOF (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
-.post('/accept_aggregated_skip_proof',acceptAggregatedSkipStage3)
+.post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
 .get('/get_reassignment_ready_status/:SUBCHAIN',getReassignmentReadyStatus)
