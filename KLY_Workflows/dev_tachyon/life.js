@@ -757,7 +757,7 @@ GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,poolsMetadataFromCheckpoint,re
 
 
 // Function for secured and a sequently update of CHECKPOINT_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
-FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
+PROOFS_SYNCHRONIZER=async()=>{
 
 
     /* 
@@ -779,7 +779,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     if(!currentTempObject){
 
         //Repeat this procedure after a while
-        setTimeout(FINALIZATION_PROOFS_SYNCHRONIZER,1000)
+        setTimeout(PROOFS_SYNCHRONIZER,1000)
 
         return
 
@@ -787,18 +787,15 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     let currentCheckpointsManager = currentTempObject.CHECKPOINT_MANAGER // mapping( validatorID => {INDEX,HASH,(?)FINALIZATION_PROOF} )
 
-    let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF})
+    let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF:{aggregatedPub,aggregatedSigna,afkVoters}}})
 
     let currentFinalizationProofsRequests = currentTempObject.PROOFS_REQUESTS // mapping(blockID=>blockHash)
 
     let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID))
 
-
     let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {FINALIZATION_PROOF:{index,hash,aggregatedPub,aggregatedSigna,afkVoters},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
       
-
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
-
 
     let currentCheckpointSkipSpecialOperationsMempool = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL // mapping(operationID=>{type,payload})
 
@@ -888,6 +885,26 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                 }).catch(_=>false)
 
 
+            }else if (keyValue[0].startsWith('CREATE_SKIP_HANDLER:')){
+
+                let subchain = keyValue[1]
+
+                // This prevents creating FINALIZATION_PROOFS for subchain and initiate the skip procedure
+
+                let futureSkipHandler = {
+
+                    FINALIZATION_PROOF:JSON.parse(JSON.stringify(currentCheckpointSyncHelper.get(subchain))),
+
+                    AGGREGATED_SKIP_PROOF:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
+
+                }
+
+                currentSkipHandlersMapping.set(subchain,futureSkipHandler)
+
+                // Clear the request
+                currentFinalizationProofsRequests.delete(keyValue[0])
+
+
             }else{
 
                 // Generate signature for finalization proofs
@@ -901,7 +918,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
                 index=+index
     
                 // We can't produce finalization proofs for subchains that are stopped
-                if(currentSkipProcedureStage1Set.has(subchain)) continue
+                if(currentSkipHandlersMapping.has(subchain)) continue
 
                 // Put to responses
                 currentFinalizationProofsResponses.set(blockID,await BLS_SIGN_DATA(blockID+hash+'FINALIZATION'+checkpointFullID))
@@ -936,7 +953,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
 
     //Repeat this procedure permanently, but in sync mode
-    setTimeout(FINALIZATION_PROOFS_SYNCHRONIZER,0)
+    setTimeout(PROOFS_SYNCHRONIZER,0)
 
 },
 
@@ -1845,6 +1862,50 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
+//Iterate over SKIP_HANDLERS to get AGGREGATED_SKIP_PROOFs and approvements to move to the next reserve pools
+SKIP_PROCEDURE_MONITORING=async()=>{
+
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+        return
+
+    }
+
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+    let proofsRequests = tempObject.PROOFS_REQUESTS
+
+    let skipHandlers = tempObject.SKIP_HANDLERS
+
+    let reassignments = tempObject.REASSIGNMENTS
+
+    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+
+
+    for(let [poolID,skipHandler] of skipHandlers){
+
+        // If ASP already exsists - ask for 2/3N+1 => GET /get_reassignment_ready_status/:SUBCHAIN
+        // Otherwise, send FP to => POST /get_skip_proof
+
+
+
+    }
+
+
+    setTimeout(SKIP_PROCEDURE_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+
+},
+
+
+
 
 //Function to monitor the available block creators
 SUBCHAINS_HEALTH_MONITORING=async()=>{
@@ -1943,7 +2004,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         let poolIsMain = !metadataOfCurrentPool.IS_RESERVE
 
-        
+
         if(!poolIsInSkipHandlers && (poolIsMain || poolIsInReassignment)){
 
             let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(response=>{
@@ -2162,7 +2223,18 @@ RESTORE_STATE=async()=>{
 
             let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {CURRENT_RESERVE_POOL:<pointer to current reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]>}
 
-            if(reassignmentMetadata) tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
+            if(reassignmentMetadata){
+
+                tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
+
+                // Using pointer - find the appropriate reserve pool
+
+                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[poolPubKey][reassignmentMetadata.CURRENT_RESERVE_POOL]
+
+                tempObject.REASSIGNMENTS.set(reservePool,poolPubKey)                
+
+
+            }
 
         }
 
@@ -3041,8 +3113,11 @@ RUN_SYMBIOTE=async()=>{
         //4.Start checking the health of all the subchains
         SUBCHAINS_HEALTH_MONITORING()
 
+        //5.Iterate over SKIP_HANDLERS to get AGGREGATED_SKIP_PROOFs and approvements to move to the next reserve pools
+        SKIP_PROCEDURE_MONITORING()
+
         //6.Run function to work with finalization stuff and avoid async problems
-        FINALIZATION_PROOFS_SYNCHRONIZER()
+        PROOFS_SYNCHRONIZER()
 
         let promises=[]
 
