@@ -144,6 +144,124 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
 
 
+SET_REASSIGNMENT_CHAINS = async checkpoint => {
+
+
+    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+
+
+    let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
+
+    let stoppedSubchainsIDs = new Set()
+
+    let futureReassignments = new Map()
+
+    let nextTempDBBatch = nextTempDB.batch()
+
+
+    for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
+
+        // Find main(not reserve) pools which were stopped
+        if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
+
+            stoppedSubchainsIDs.add(poolPubKey)
+
+        }
+        else if(!poolMetadata.IS_STOPPED){
+
+            // Otherwise - it's reserve pool
+                    
+            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
+
+            if(poolStorage){
+
+                let {reserveFor} = poolStorage
+
+                if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+
+                activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                    
+            }
+
+        }
+
+    }
+
+
+    /*
+    
+        After this cycle we have:
+
+        [0] stoppedSubchainsIDs - Set(skippedSubchain1,skippedSubchain2,...)
+        [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
+
+    
+    */
+
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+
+    
+    for(let subchainPoolID of stoppedSubchainsIDs){
+                    
+        let nonce = 0
+
+        let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) // since we need to find first reserve pool in a deterministic chain(among non-stopped reserve pools)
+
+        let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
+
+        let mapping=new Map()
+
+        let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+
+
+        let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
+
+        let firstReservePoolInReassignmentChain = mapping.get(firstChallenge)
+        
+        if(firstReservePoolInReassignmentChain){
+
+            let reassignmentTemplateForQT = {
+
+                NONCE:1,
+                
+                SKIPPED_RESERVE:[],
+                
+                CURRENT:firstReservePoolInReassignmentChain
+
+            }
+
+            nextTempDBBatch.put('REASSIGN:'+subchainPoolID,reassignmentTemplateForQT)
+            
+
+            futureReassignments.set(subchainPoolID,reassignmentTemplateForQT)
+
+            futureReassignments.set(firstReservePoolInReassignmentChain,subchainPoolID)
+
+        }
+
+    }
+
+
+    await nextTempDBBatch.write()
+
+    // Commit changes
+    atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
+
+    await atomicBatch.write()
+    
+},
+
+
+
+
 DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async(validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
 
     //Try to get storage "POOL" of appropriate pool
@@ -653,9 +771,11 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let oldSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let currentCheckpointReassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS // {mainPool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+
 
     let currentTempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
 
     if(!currentTempObject){
 
@@ -675,10 +795,8 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID))
 
 
-    let currentSkipProcedureStage1Set = currentTempObject.SKIP_PROCEDURE_STAGE_1 // Set(subchainID)
-   
-    let currentSkipProcedureStage2Map = currentTempObject.SKIP_PROCEDURE_STAGE_2 // Map(subchain=>{INDEX,HASH})
-   
+    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {FINALIZATION_PROOF:{index,hash,aggregatedPub,aggregatedSigna,afkVoters},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
+      
 
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
 
@@ -710,7 +828,7 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
     }
 
 
-    // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & SKIP_STAGE_2 proofs
+    // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & skip proofs
 
     if(currentFinalizationProofsRequests.get('NEXT_CHECKPOINT')){
 
@@ -734,102 +852,40 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
             if(keyValue[0]==='NEXT_CHECKPOINT') continue
 
-            else if(keyValue[0].startsWith('SKIP_STAGE_2:')){
+            else if (keyValue[0].startsWith('REASSIGN:')){
 
-                // Generate signature for skip stage 2
-                let {SUBCHAIN,INDEX,HASH} = keyValue[1]
+                let mainPool = keyValue[1]
 
+                // Add the reassignment
+                    
+                let mainPoolSubchainID = reassignments.get(mainPool)
 
-                if(currentSkipProcedureStage1Set.has(SUBCHAIN)){
+                let reassignmentMetadata = reassignments.get(mainPool) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
 
-                    let signa = await BLS_SIGN_DATA(`SKIP_STAGE_2:${SUBCHAIN}:${INDEX}:${HASH}:${checkpointFullID}`)
+                if(!reassignmentMetadata){
 
-                    currentFinalizationProofsResponses.set(keyValue[0],signa)
-    
-                    currentFinalizationProofsRequests.delete(keyValue[0])
-    
+                    // Create new handler
+
+                    reassignmentMetadata = {CURRENT_RESERVE_POOL:-1}
+
                 }
 
-            }else if (keyValue[0].startsWith('REASSIGN:')){
+                let nextIndex = reassignmentMetadata.CURRENT_RESERVE_POOL+1
 
-                let {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters} = keyValue[1]
+                let nextReservePool = currentCheckpointReassignmentChains[nextIndex]
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_STAGE_3:'+subchain,{subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}).then(async()=>{
 
-                    // Add the reassignment
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPool,{CURRENT_RESERVE_POOL:nextIndex}).then(async()=>{
+    
+                    // And only after successful store we can move to the next pool
+
+                    reassignmentMetadata.CURRENT_RESERVE_POOL++
                     
-                    let mainPoolSubchainID = reassignments.get(subchain)
-        
-                    if(typeof mainPoolSubchainID === 'string'){
-        
-                        let reassignMetadata = JSON.stringify(JSON.parse(reassignments.get(mainPoolSubchainID)))
-        
-                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(mainPoolSubchainID,oldSubchainMetadata,reassignMetadata)
-        
-                        if(nextReservePool){
-        
-                            reassignMetadata.NONCE++
-        
-                            reassignMetadata.SKIPPED_RESERVE.push(reassignMetadata.CURRENT)
-        
-                            reassignMetadata.CURRENT = nextReservePool
+                    reassignments.set(mainPool,reassignmentMetadata)
 
-                            reassignments.delete(subchain)
-        
-                            // Put to DB before use
-                            
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPoolSubchainID,reassignMetadata).then(async()=>{
-        
-                                // And only after successful store we can add to mapping the final pointer
-                                
-                                reassignments.set(mainPoolSubchainID,reassignMetadata)
+                    reassignments.set(nextReservePool,mainPoolSubchainID)
 
-                                reassignments.set(nextReservePool,mainPoolSubchainID)
 
-        
-                            }).catch(_=>false)
-        
-                        }
-        
-                    }else if(!oldSubchainMetadata[subchain].IS_RESERVE){
-        
-                        // Otherwise - add initial value to mapping and find the first reserve pool
-        
-                        let futureMeta = {
-                            
-                            NONCE:0,
-                            
-                            SKIPPED_RESERVE:[],
-
-                            CURRENT:''
-                        
-                        }
-        
-                        let nextReservePool = await GET_NEXT_RESERVE_POOL_IN_ROW(subchain,oldSubchainMetadata,futureMeta)
-
-                        if(nextReservePool){
-        
-                            futureMeta.NONCE++
-
-                            futureMeta.CURRENT = nextReservePool
-                
-                            // Put to DB before use
-                            
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+subchain,futureMeta).then(async()=>{
-        
-                                // And only after successful store we can add to mapping the final pointer
-                                
-                                reassignments.set(subchain,futureMeta)
-
-                                reassignments.set(nextReservePool,subchain)
-
-        
-                            }).catch(_=>false)
-        
-                        }
-        
-                    }
-        
                 }).catch(_=>false)
 
 
@@ -877,53 +933,6 @@ FINALIZATION_PROOFS_SYNCHRONIZER=async()=>{
 
         }
 
-    }
-
-
-    //____________________ GENERATE THE SKIP_PROCEDURE_STAGE_3 ____________________
-
-    // Go through the data in currentSkipProcedureStage2Map and sign it. Put the signatures to PROOFS_RESPONSES
-
-    for (let subchain of currentSkipProcedureStage2Map.keys()){
-
-        let handler = currentSkipProcedureStage2Map.get(subchain)
-
-        let sig = await BLS_SIGN_DATA(`SKIP_STAGE_3:${subchain}:${handler.INDEX}:${handler.HASH}:${checkpointFullID}`)
-
-        //First of all - add to the mempool of special operations
-        let operation = {
-
-            type:'STOP_VALIDATOR',
-
-            payload:{
-
-                stop:true,
-                subchain,
-                index:handler.INDEX,
-                hash:handler.HASH
-
-            }
-
-        }
-
-
-        let operationID = BLAKE3(JSON.stringify(operation.payload))
-
-        operation.id=operationID
-
-
-          //Store to DB
-          await USE_TEMPORARY_DB('put',currentCheckpointDB,'SPECIAL_OPERATION:'+subchain,operation).then(()=>{
-
-            // Only after that we can add it to mempool and create stage_3 proof
-
-            currentCheckpointSkipSpecialOperationsMempool.set(operationID,operation)
-
-            currentFinalizationProofsResponses.set(`SKIP_STAGE_3:${subchain}`,sig)    
-
-        }).catch(_=>{})
-
-    
     }
 
 
@@ -2031,17 +2040,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     for(let candidate of candidatesForAnotherCheck){
 
-        let timestamp = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>false)
-
-        if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.SKIP_STAGE_1 > GET_GMT_TIMESTAMP()){
-    
-            continue
-    
-        }
-        
-        //Delete the time tracker
-        await USE_TEMPORARY_DB('del',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate).catch(_=>{})
-    
 
         //Check if LAST_SEEN is too old. If it's still ok - do nothing(assume that the /health request will be successful next time)
 
@@ -2196,16 +2194,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     afkVoters
 
                 }
-
-
-                // //Add time tracker for event
-                // await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'TIME_TRACKER_SKIP_STAGE_1_'+candidate,GET_GMT_TIMESTAMP()).then(()=>
-
-                //     //Send to hostchain
-                //     HOSTCHAIN.CONNECTOR.skipProcedure(templateForSkipProcedureStage1)
-
-                // ).catch(error=>LOG(`Error occured during SKIP_PROCEDURE_STAGE_1 for subchain ${candidate} => ${error}`,'W'))
-
                 
             }
 
@@ -2250,19 +2238,15 @@ RESTORE_STATE=async()=>{
         tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.set(poolPubKey,{INDEX,HASH,FINALIZATION_PROOF})
 
 
-        //______________________________ SKIP_PROCEDURE functionality ______________________________
+        //______________________________ Try to find SKIP_HANDLER for subchain ______________________________
 
-        let skipStage1Proof = await tempObject.DATABASE.get('SKIP_STAGE_1:'+poolPubKey).catch(_=>false) // true / false
+        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(_=>false) // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
-        let skipStage2Proof = await tempObject.DATABASE.get('SKIP_STAGE_2:'+poolPubKey).catch(_=>false) // {INDEX,HASH} / false
-
-        
-        if(skipStage1Proof) tempObject.SKIP_PROCEDURE_STAGE_1.add(poolPubKey)
-        
-        if(skipStage2Proof) tempObject.SKIP_PROCEDURE_STAGE_2.set(poolPubKey,skipStage2Proof)
+        if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
 
 
-        let skipOperationRelatedToThisPool = await tempObject.DATABASE.get('SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
+
+        let skipOperationRelatedToThisPool = await tempObject.DATABASE.get('SKIP_SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
 
         if(skipOperationRelatedToThisPool){
 
@@ -2276,15 +2260,9 @@ RESTORE_STATE=async()=>{
 
         if(!poolsMetadata.IS_RESERVE){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false)
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {CURRENT_RESERVE_POOL:<pointer to current reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]>}
 
-            if(reassignmentMetadata){
-
-                tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
-
-                tempObject.REASSIGNMENTS.set(reassignmentMetadata.CURRENT,poolPubKey)
-
-            }
+            if(reassignmentMetadata) tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
 
         }
 

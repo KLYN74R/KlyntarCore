@@ -419,18 +419,18 @@ getSearchResult=async(response,request)=>{
 
         }else{
 
-            let possibleSuperFinalizationProofOrSkipStage3 = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(sfpOrSkipStage3=>{
+            let possibleSuperFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(superFinalizationProof=>{
 
-                responseType = query.startsWith('SFP') ? 'SUPER_FINALIZATION_PROOF' : 'SKIP_STAGE_3'
+                responseType = query.startsWith('SFP') && 'SUPER_FINALIZATION_PROOF'
 
-                return sfpOrSkipStage3
+                return superFinalizationProof
 
             }).catch(_=>false)
     
 
-            if(possibleSuperFinalizationProofOrSkipStage3){
+            if(possibleSuperFinalizationProof){
 
-                !response.aborted && response.end(JSON.stringify({responseType,data:possibleSuperFinalizationProofOrSkipStage3}))
+                !response.aborted && response.end(JSON.stringify({responseType,data:possibleSuperFinalizationProof}))
     
                 return
     

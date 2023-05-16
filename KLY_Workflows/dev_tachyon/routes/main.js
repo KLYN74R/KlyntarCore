@@ -58,7 +58,7 @@ acceptBlocks=response=>{
     
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtSubchainsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -101,7 +101,7 @@ acceptBlocks=response=>{
             
                 let block = await PARSE_JSON(buffer)
 
-                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainMetadata[block.creator]?.IS_STOPPED
+                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
             
 
                 if(subchainIsSkipped){
@@ -112,11 +112,7 @@ acceptBlocks=response=>{
 
                 }
 
-                let mainPoolOrAtLeastReassignment = qtSubchainMetadata[block.creator]
-                
-                                                    &&
-                                                    
-                                                    (tempObject.REASSIGNMENTS.has(block.creator) && qtSubchainMetadata[block.creator].IS_RESERVE || !qtSubchainMetadata[block.creator].IS_RESERVE)
+                let mainPoolOrAtLeastReassignment = qtSubchainsMetadata[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && qtSubchainsMetadata[block.creator].IS_RESERVE || !qtSubchainsMetadata[block.creator].IS_RESERVE)
 
 
                 if(!mainPoolOrAtLeastReassignment){
