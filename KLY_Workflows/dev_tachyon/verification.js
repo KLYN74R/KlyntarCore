@@ -110,96 +110,6 @@ GET_BLOCK = async(blockCreator,index) => {
 
 
 
-GET_SKIP_PROCEDURE_STAGE_3_PROOFS = async (checkpointFullID,subchain,index,hash) => {
-
-    // Get the 2/3N+1 of current quorum that they've seen the SKIP_PROCEDURE_STAGE_2 on hostchain
-
-
-    let quorumMembers = await GET_POOLS_URLS(true)
-
-    let payloadInJSON = JSON.stringify({subchain})
-
-    let majority = GET_MAJORITY('QUORUM_THREAD')
-
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-        return
-
-    }
-
-    let checkpointTempDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
-
-    let promises=[], signatures=[], pubKeys=[]
-
-
-    let sendOptions={
-
-        method:'POST',
-
-        body:payloadInJSON
-
-    }
-
-    
-    for(let memberHandler of quorumMembers){
-
-        let responsePromise = fetch(memberHandler.url+'/skip_procedure_stage_3',sendOptions).then(r=>r.json()).then(async response=>{
- 
-            response.pubKey = memberHandler.pubKey
-
-            return response
-
-        }).catch(_=>false)
-
-        promises.push(responsePromise)
-
-    }
-
-    //Run promises
-    let pingbacks = (await Promise.all(promises)).filter(Boolean)
-
-
-    for(let {status,sig,pubKey} of pingbacks){
-
-        if(status==='SKIP_STAGE_3'){
-
-            //Verify the signature
-            
-            let data =`SKIP_STAGE_3:${subchain}:${index}:${hash}:${checkpointFullID}`
-
-            if(await bls.singleVerify(data,pubKey,sig)){
-
-                signatures.push(sig)
-
-                pubKeys.push(pubKey)
-
-            }
-
-        }
-
-    }
-
-
-    if(pubKeys.length>=majority){
-
-        let aggregatedSignature = bls.aggregateSignatures(signatures)
-
-        let aggregatedPub = bls.aggregatePublicKeys(pubKeys)
-
-        let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.filter(pub=>!pubKeys.includes(pub))
-
-        let object={subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
-
-
-        //Store locally in temp db
-        await checkpointTempDB.put('SKIP_STAGE_3:'+subchain,object).catch(_=>false)
-
-        return object
-
-    }
-
-},
-
 /*
 
 <SUPER_FINALIZATION_PROOF> is an aggregated proof from 2/3N+1 pools from quorum that they each have 2/3N+1 commitments from other pools
@@ -245,44 +155,8 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     if(vtPayload!==checkpointFullID || !global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
 
 
-    let skipStage2Mapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SKIP_PROCEDURE_STAGE_2
-
-    let [subchain,index] = blockID.split(':')
-
     let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
 
-    index = +index
-
-
-    if(skipStage2Mapping.has(subchain)){
-
-        let alreadySkipped = await checkpointTemporaryDB.get('FINAL_SKIP_STAGE_3:'+subchain).catch(_=>false)
-
-        if(alreadySkipped) return {skip:true,verify:false}
-
-
-
-        //{INDEX,HASH}
-        let skipStage2Data = skipStage2Mapping.get(subchain)
-
-        //Structure is {subchain,index,hash,aggregatedPub,aggregatedSignature,afkVoters}
-        let skipStage3Proof = await checkpointTemporaryDB.get('SKIP_STAGE_3:'+subchain).catch(_=>false) || await GET_SKIP_PROCEDURE_STAGE_3_PROOFS(checkpointFullID,subchain,skipStage2Data.INDEX,skipStage2Data.HASH).catch(_=>false)
-
-        //{INDEX,HASH,IS_STOPPED}
-        let currentMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
-
-
-        // Initially, check if subchain was stopped from this height:hash on this checkpoint
-        if(skipStage3Proof && skipStage3Proof.index === currentMetadata.INDEX && skipStage3Proof.hash === currentMetadata.HASH){
-    
-            //Stop this subchain for the next iterations
-            let successWrite = await checkpointTemporaryDB.put('FINAL_SKIP_STAGE_3:'+subchain,true).then(()=>true).catch(_=>false)
-
-            if(successWrite) return {skip:true,verify:false}
-             
-        }    
-
-    }
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
 

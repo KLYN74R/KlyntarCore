@@ -101,12 +101,12 @@ acceptBlocks=response=>{
             
                 let block = await PARSE_JSON(buffer)
 
-                let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
+                let subchainIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
             
 
-                if(subchainIsSkipped){
+                if(subchainIsAFK){
 
-                    !response.aborted && response.end('Work on subchain was skipped')
+                    !response.aborted && response.end('This subchain is AFK')
         
                     return
 
@@ -295,7 +295,7 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
+                    let subchainIsSkipped = tempObject.SKIP_HANDLERS.has(block.creator) || global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
                 
                     if(subchainIsSkipped) continue
    

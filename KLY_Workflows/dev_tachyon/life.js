@@ -586,8 +586,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             CHECKPOINT_MANAGER:new Map(),
             CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
  
-            SKIP_PROCEDURE_STAGE_1:new Set(),
-            SKIP_PROCEDURE_STAGE_2:new Map(),
+            SKIP_HANDLERS:new Map(), // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
@@ -1868,7 +1867,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let proofsRequests = tempObject.PROOFS_REQUESTS
 
-    let skipStage1Set = tempObject.SKIP_PROCEDURE_STAGE_1
+    let skipHandlers = tempObject.SKIP_HANDLERS
 
     let reassignments = tempObject.REASSIGNMENTS
 
@@ -1932,8 +1931,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         let mainPoolOrAtLeastReassignment = reassignments.has(handler.pubKey) && metadataOfCurrentPool.IS_RESERVE || !metadataOfCurrentPool.IS_RESERVE
 
 
-        //No sense to get the health of pool which has been stopped | When this pool is reserve and not active | SKIP_PROCEDURE_STAGE_1 was initiated for pool
-        if(metadataOfCurrentPool.IS_STOPPED || !mainPoolOrAtLeastReassignment || skipStage1Set.has(handler.pubKey)) continue
+        //No sense to get the health of pool which has been stopped | When this pool is reserve and not active | Skip procedure was initiated for pool
+        if(metadataOfCurrentPool.IS_STOPPED || !mainPoolOrAtLeastReassignment || skipHandlers.has(handler.pubKey)) continue
 
 
         let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(response=>{
@@ -2993,7 +2992,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
 
-        SPECIAL_OPERATIONS_MEMPOOL:new Map(), //to hold operations which should be included to checkpoints
+        SPECIAL_OPERATIONS_MEMPOOL:new Map(), // to hold operations which should be included to checkpoints
 
         COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
@@ -3009,14 +3008,11 @@ PREPARE_SYMBIOTE=async()=>{
         PROOFS_RESPONSES:new Map(), // mapping(blockID=>FINALIZATION_PROOF)
 
 
-        HEALTH_MONITORING:new Map(), //used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
+        HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
 
+        SKIP_HANDLERS:new Map(), // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
-        SKIP_PROCEDURE_STAGE_1:new Set(), // set(subchainID)
-
-        SKIP_PROCEDURE_STAGE_2:new Map(), // mapping(subchainID=>{INDEX,HASH})
-
-        REASSIGNMENTS:new Map(), // Two types of records. In case key is a primary pool(pubkey===subchainID) - value is {NONCE:<number>,SKIPPED_RESERVE:[<string>,...],CURRENT:<string>}. In case key is reserve pool => value is subchainID
+        REASSIGNMENTS:new Map(), // {CURRENT_RESERVE_POOL:<number>}
 
         //____________________Mapping which contains temporary databases for____________________
 
