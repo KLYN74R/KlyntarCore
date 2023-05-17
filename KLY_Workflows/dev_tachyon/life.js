@@ -1,10 +1,10 @@
 import {
     
-    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,GET_RANDOM_BYTES_AS_HEX,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
+    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,BLS_VERIFY,HEAP_SORT,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,
 
 } from './utils.js'
 
@@ -1880,11 +1880,15 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
+    let currentQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM
+
     let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
     let proofsRequests = tempObject.PROOFS_REQUESTS
+
+    let currentCheckpointDB = tempObject.DATABASE
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
@@ -1898,7 +1902,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     
 
-    for(let [poolID,skipHandler] of skipHandlers){
+    for(let [poolWithSkipHandler,skipHandler] of skipHandlers){
     
         
         if(!skipHandler.AGGREGATED_SKIP_PROOF){
@@ -1913,7 +1917,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
                 body:JSON.stringify({
 
-                    subchain:poolID,
+                    subchain:poolWithSkipHandler,
 
                     extendedFinalizationProof:skipHandler.EXTENDED_FINALIZATION_PROOF
 
@@ -1985,7 +1989,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
             let {INDEX,HASH} = skipHandler.EXTENDED_FINALIZATION_PROOF
 
 
-            let dataThatShouldBeSigned = `SKIP:${poolID}:${INDEX}:${HASH}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolWithSkipHandler}:${INDEX}:${HASH}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -2004,36 +2008,45 @@ SKIP_PROCEDURE_MONITORING=async()=>{
                     if(pubkeysWhoAgreeToSkip.length >= majority) break // if we get 2/3N+1 signatures to skip - we already have ability to create AGGREGATED_SKIP_PROOF
 
 
-                }else if(result.type === 'UPDATE'){
+                }else if(result.type === 'UPDATE' && typeof result.EXTENDED_FINALIZATION_PROOF === 'object'){
 
-                    let {aggregatedPub,aggregatedSignature,afkVoters} = answer.superFinalizationProof
-    
-                    let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
+
+                    let {INDEX,HASH,FINALIZATION_PROOF} = result.EXTENDED_FINALIZATION_PROOF
+
+
+                    if(FINALIZATION_PROOF){
+
+                        let {aggregatedPub,aggregatedSignature,afkVoters} = FINALIZATION_PROOF
             
-            
-                    // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
-                    let localHealthHandler = tempObject.HEALTH_MONITORING.get(pubKey)
-            
-                    // blockID+hash+'FINALIZATION'+checkpointFullID
-                    let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+checkpointFullID
-            
-                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
-            
-                    //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
-            
-                    if(superFinalizationProofIsOk && localHealthHandler.INDEX < latestFullyFinalizedHeight){
-            
-                        localHealthHandler.LAST_SEEN = GET_GMT_TIMESTAMP()
-            
-                        localHealthHandler.INDEX = latestFullyFinalizedHeight
-            
-                        localHealthHandler.HASH = latestHash
-            
-                        localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
-            
-                    }else candidatesForAnotherCheck.push(pubKey)
+                        let dataThatShouldBeSigned = poolWithSkipHandler+':'+INDEX+HASH+'FINALIZATION'+checkpointFullID
+                        
+                        let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
             
 
+                        //If signature is ok and index is bigger than we have - update the EXTENDED_FINALIZATION_PROOF in our local skip handler
+            
+                        if(finalizationProofIsOk && skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX < INDEX){
+            
+                            
+                            skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX = INDEX
+
+                            skipHandler.EXTENDED_FINALIZATION_PROOF.HASH = HASH
+
+                            skipHandler.EXTENDED_FINALIZATION_PROOF.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
+            
+
+                            // Store the updated version of skip handler
+
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,poolWithSkipHandler,skipHandler).catch(_=>{})
+
+                            // If our local version had lower index - break the cycle and try again with updated value
+
+                            break
+
+                        }
+
+                    }
+                
                 }
 
             }
@@ -2042,6 +2055,26 @@ SKIP_PROCEDURE_MONITORING=async()=>{
             //____________________If we get 2/3+1 of votes - aggregate, get the ASP(AGGREGATED_SKIP_PROOF), add to local skip handler and start to grab approvements____________________
 
             if(pubkeysWhoAgreeToSkip.length >= majority){
+
+                skipHandler.AGGREGATED_SKIP_PROOF = {
+
+                    INDEX:skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX,
+
+                    HASH:skipHandler.EXTENDED_FINALIZATION_PROOF.HASH,
+
+                    SKIP_PROOF:{
+
+                        aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+
+                        aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
+
+                        afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+                        
+                    }
+
+                }
+
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,poolWithSkipHandler,skipHandler).catch(_=>{})                
 
 
             }
@@ -2054,7 +2087,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
     
                 for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
     
-                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status/'+poolID).then(r=>r.json()).then(response=>{
+                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status/'+poolWithSkipHandler).then(r=>r.json()).then(response=>{
         
                         response.pubKey = poolUrlWithPubkey.pubKey
             

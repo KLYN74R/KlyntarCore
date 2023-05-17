@@ -965,6 +965,41 @@ anotherPoolHealthChecker = async(response,request) => {
 
 
 // Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+
+/*
+
+
+[Accept]:
+
+    {
+
+        subchain:poolID,
+
+        extendedFinalizationProof:{
+            
+            INDEX,
+            
+            HASH,
+
+            FINALIZATION_PROOF:{
+
+                aggregatedPub,
+                aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
+                afkVoters:[...]
+
+            }
+
+        }
+
+    }
+
+
+[Response]:
+
+
+
+
+*/
 getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     
