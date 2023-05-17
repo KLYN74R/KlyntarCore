@@ -997,14 +997,117 @@ anotherPoolHealthChecker = async(response,request) => {
 [Response]:
 
 
+[1] In case we have skip handler for this subchain in SKIP_HANDLERS and if EXTENDED_FINALIZATION_PROOF in skip handler has <= index than in FP from request we can response:
+        
+        {
+            type:'OK',
+            sig: BLS_SIG('SKIP:<subchain>:<index>:<hash>:<checkpointFullID>')
+        }
+
+
+[2] In case we have bigger index in EXTENDED_FINALIZATION_PROOF - response with 'UPDATE' message:
+
+    {
+        type:'UPDATE',
+                        
+        EXTENDED_FINALIZATION_PROOF:{
+                            
+            INDEX,
+            HASH,
+            FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}
+        
+        }
+                        
+    }
 
 
 */
 getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+
+    let mySkipHandlers = tempObject.SKIP_HANDLERS
+
+    let majority = GET_MAJORITY('QUORUM_THREAD')
+
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
+
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
     
+    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+
+
+    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.subchain) && typeof requestForSkipProof.extendedFinalizationProof){
+
+        
+        
+        let {INDEX,HASH,FINALIZATION_PROOF} = requestForSkipProof.extendedFinalizationProof
+
+        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.subchain)
+
+
+
+        // We can't sign the skip proof in case requested height is lower than our local version of finalization proof. So, send 'UPDATE' message
+        if(localSkipHandler.EXTENDED_FINALIZATION_PROOF.INDEX > requestForSkipProof.extendedFinalizationProof.INDEX){
+
+            let responseData = {
+                
+                type:'UPDATE',
+
+                EXTENDED_FINALIZATION_PROOF:localSkipHandler.EXTENDED_FINALIZATION_PROOF
+
+            }
+
+            !response.aborted && response.end(JSON.stringify(responseData))
+
+
+        }else if(typeof FINALIZATION_PROOF === 'object'){
+
+            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the FINALIZATION_PROOF in request
+
+            let {aggregatedPub,aggregatedSignature,afkVoters} = FINALIZATION_PROOF
+            
+            let dataThatShouldBeSigned = requestForSkipProof.subchain+':'+INDEX+HASH+'FINALIZATION'+checkpointFullID
+            
+            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+
+            // If signature is ok - generate skip proof
+
+            if(finalizationProofIsOk){
+
+                let skipMessage = {
+                    
+                    type:'OK',
+
+                    sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.subchain}:${INDEX}:${HASH}:${checkpointFullID}`)
+                }
+
+                !response.aborted && response.end(JSON.stringify(skipMessage))
+
+                
+            }else !response.aborted && response.end(JSON.stringify({err:'Wrong signature'}))
+
+             
+        }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
 
 }),
+
 
 
 
