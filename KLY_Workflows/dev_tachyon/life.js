@@ -135,7 +135,7 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
     }else{
 
-        LOG(`Block generation for was stopped`,'I')
+        LOG(`Block generation was stopped`,'I')
 
     }
     
@@ -147,29 +147,28 @@ BLOCKS_GENERATION_POLLING=async()=>{
 SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
+    checkpoint.REASSIGNMENT_CHAINS={}
+
+
     //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
 
 
     let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
 
-    let stoppedSubchainsIDs = new Set()
-
-    let futureReassignments = new Map()
-
-    let nextTempDBBatch = nextTempDB.batch()
+    let mainPoolsIDs = new Set()
 
 
-    for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
+    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.PAYLOAD.POOLS_METADATA)){
 
-        // Find main(not reserve) pools which were stopped
-        if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
+        // Find main(not reserve) pools
+        if(!poolMetadata.IS_RESERVE){
 
-            stoppedSubchainsIDs.add(poolPubKey)
+            mainPoolsIDs.add(poolPubKey)
 
         }
         else if(!poolMetadata.IS_STOPPED){
 
-            // Otherwise - it's reserve pool
+            // Otherwise - it's active reserve pool
                     
             let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
 
@@ -192,28 +191,27 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     
         After this cycle we have:
 
-        [0] stoppedSubchainsIDs - Set(skippedSubchain1,skippedSubchain2,...)
+        [0] mainPoolsIDs - Set(subchain1,subchain2,...)
         [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
 
     
     */
 
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.PAYLOAD.POOLS_METADATA))
 
     
-    for(let subchainPoolID of stoppedSubchainsIDs){
-                    
-        let nonce = 0
+    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
+    
+    for(let subchainPoolID of mainPoolsIDs){
 
-        let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) // since we need to find first reserve pool in a deterministic chain(among non-stopped reserve pools)
 
         let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
 
-        let mapping=new Map()
+        let mapping = new Map()
 
         let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
 
-            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
+            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
 
             mapping.set(challenge,validatorPubKey)
 
@@ -222,40 +220,18 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
         })
 
 
-        let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
+        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
 
-        let firstReservePoolInReassignmentChain = mapping.get(firstChallenge)
+        let reassignmentChain = []
+
+        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
+
+        // Set the reassignment chain to checkpoint.REASSIGNMENT_CHAINS[<mainPool>]=reassignmentChain
         
-        if(firstReservePoolInReassignmentChain){
+        checkpoint.REASSIGNMENT_CHAINS[subchainPoolID] = reassignmentChain
 
-            let reassignmentTemplateForQT = {
-
-                NONCE:1,
-                
-                SKIPPED_RESERVE:[],
-                
-                CURRENT:firstReservePoolInReassignmentChain
-
-            }
-
-            nextTempDBBatch.put('REASSIGN:'+subchainPoolID,reassignmentTemplateForQT)
-            
-
-            futureReassignments.set(subchainPoolID,reassignmentTemplateForQT)
-
-            futureReassignments.set(firstReservePoolInReassignmentChain,subchainPoolID)
-
-        }
-
+        
     }
-
-
-    await nextTempDBBatch.write()
-
-    // Commit changes
-    atomicBatch.put('QT',fullCopyOfQuorumThreadWithNewCheckpoint)
-
-    await atomicBatch.write()
     
 },
 
@@ -445,6 +421,8 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Execute special operations from new checkpoint using our copy of QT and atomic handler
         await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
 
+        await SET_REASSIGNMENT_CHAINS(possibleCheckpoint)
+
 
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.HEADER.ID} ### ${possibleCheckpoint.HEADER.PAYLOAD_HASH} (QT)\u001b[0m`,'S')
 
@@ -462,109 +440,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextQuorumThreadID}`,{valueEncoding:'json'})
 
 
-
-        
-        //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
-
-
-        let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
-
-        let stoppedSubchainsIDs = new Set()
-
-        let futureReassignments = new Map()
-
         let nextTempDBBatch = nextTempDB.batch()
-
-
-        for(let [poolPubKey,poolMetadata] of Object.entries(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA)){
-
-            // Find main(not reserve) pools which were stopped
-            if(!poolMetadata.IS_RESERVE && poolMetadata.IS_STOPPED){
-
-                stoppedSubchainsIDs.add(poolPubKey)
-    
-            }
-            else if(!poolMetadata.IS_STOPPED){
-    
-                // Otherwise - it's reserve pool
-                        
-                let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
-    
-                if(poolStorage){
-    
-                    let {reserveFor} = poolStorage
-    
-                    if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
-    
-                    activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
-                        
-                }
-    
-            }
-
-        }
-
-
-        /*
-        
-            After this cycle we have:
-
-            [0] stoppedSubchainsIDs - Set(skippedSubchain1,skippedSubchain2,...)
-            [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
-
-        
-        */
-
-        let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA))
-
-        
-        for(let subchainPoolID of stoppedSubchainsIDs){
-                        
-            let nonce = 0
-
-            let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce) // since we need to find first reserve pool in a deterministic chain(among non-stopped reserve pools)
-
-            let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
-
-            let mapping=new Map()
-
-            let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
-
-                let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
-    
-                mapping.set(challenge,validatorPubKey)
-
-                return challenge
-
-            })
-    
-
-            let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
-    
-            let firstReservePoolInReassignmentChain = mapping.get(firstChallenge)
-            
-            if(firstReservePoolInReassignmentChain){
-
-                let reassignmentTemplateForQT = {
-
-                    NONCE:1,
-                    
-                    SKIPPED_RESERVE:[],
-                    
-                    CURRENT:firstReservePoolInReassignmentChain
-
-                }
-
-                nextTempDBBatch.put('REASSIGN:'+subchainPoolID,reassignmentTemplateForQT)
-                
-
-                futureReassignments.set(subchainPoolID,reassignmentTemplateForQT)
-
-                futureReassignments.set(firstReservePoolInReassignmentChain,subchainPoolID)
-
-            }
-
-        }
 
 
         await nextTempDBBatch.write()
@@ -591,7 +467,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
     
-            REASSIGNMENTS:futureReassignments,
+            REASSIGNMENTS:new Map(),
 
             HEALTH_MONITORING:new Map(),
       
