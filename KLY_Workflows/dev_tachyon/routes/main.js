@@ -1111,15 +1111,6 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-// Function to accept ASP - AGGREGATED_SKIP_PROOF (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
-acceptAggregatedSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-
-
-}),
-
-
-
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
 getReassignmentReadyStatus = async(response,request) => {
 
@@ -1861,7 +1852,7 @@ UWS_SERVER
 .post('/get_skip_proof',getSkipProof)
 
 // Function to accept ASP - AGGREGATED_SKIP_PROOF (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
-.post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
+// .post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
 .get('/get_reassignment_ready_status/:SUBCHAIN',getReassignmentReadyStatus)

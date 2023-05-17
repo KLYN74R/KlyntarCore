@@ -1878,6 +1878,17 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     }
 
+    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
+
+    if(!isCheckpointStillFresh){
+
+        setTimeout(SKIP_PROCEDURE_MONITORING,3000)
+
+        return
+
+    }
+
+
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
     let currentQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM
@@ -1886,16 +1897,11 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
-    let proofsRequests = tempObject.PROOFS_REQUESTS
-
     let currentCheckpointDB = tempObject.DATABASE
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
     let reassignments = tempObject.REASSIGNMENTS
-
-    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
-
     
     // Get the appropriate pubkey & url to check and validate the answer
     let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
