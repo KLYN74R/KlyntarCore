@@ -586,7 +586,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             CHECKPOINT_MANAGER:new Map(),
             CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
  
-            SKIP_HANDLERS:new Map(), // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
+            SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
@@ -793,7 +793,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID))
 
-    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {FINALIZATION_PROOF:{index,hash,aggregatedPub,aggregatedSigna,afkVoters},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
+    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {EXTENDED_FINALIZATION_PROOF:{INDEX,HASH,FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
       
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
 
@@ -893,7 +893,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 let futureSkipHandler = {
 
-                    FINALIZATION_PROOF:JSON.parse(JSON.stringify(currentCheckpointSyncHelper.get(subchain))),
+                    EXTENDED_FINALIZATION_PROOF:JSON.parse(JSON.stringify(currentCheckpointSyncHelper.get(subchain))), // {INDEX,HASH,FINALIZATION_PROOF}
 
                     AGGREGATED_SKIP_PROOF:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
 
@@ -1862,6 +1862,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 
+
 //Iterate over SKIP_HANDLERS to get AGGREGATED_SKIP_PROOFs and approvements to move to the next reserve pools
 SKIP_PROCEDURE_MONITORING=async()=>{
 
@@ -1871,13 +1872,15 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     if(!tempObject){
 
-        setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+        setTimeout(SKIP_PROCEDURE_MONITORING,3000)
 
         return
 
     }
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+    let majority = GET_MAJORITY('QUORUM_THREAD')
+
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -1889,19 +1892,194 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.TIMESTAMP,GET_GMT_TIMESTAMP())
 
+    
+    // Get the appropriate pubkey & url to check and validate the answer
+    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
+
+    
 
     for(let [poolID,skipHandler] of skipHandlers){
+    
+        
+        if(!skipHandler.AGGREGATED_SKIP_PROOF){
 
-        // If ASP already exsists - ask for 2/3N+1 => GET /get_reassignment_ready_status/:SUBCHAIN
-        // Otherwise, send FP to => POST /get_skip_proof
+            // Otherwise, send EXTENDED_FINALIZATION_PROOF in SKIP_HANDLER to => POST /get_skip_proof
 
+            let responsePromises = []
+
+            let sendOptions = {
+                
+                method:'POST',
+
+                body:JSON.stringify({
+
+                    subchain:poolID,
+
+                    extendedFinalizationProof:skipHandler.EXTENDED_FINALIZATION_PROOF
+
+                })
+
+            }
+
+            for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+
+                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_skip_proof',sendOptions).then(r=>r.json()).then(response=>{
+    
+                    response.pubKey = poolUrlWithPubkey.pubKey
+        
+                    return response
+        
+                }).catch(_=>false)
+        
+                responsePromises.push(responsePromise)
+        
+            }
+
+
+            let results = (await Promise.all(responsePromises)).filter(Boolean)
+   
+
+            /*
+            1
+            ___________________________ Now analyze the responses ___________________________
+
+            [1] In case quroum member also has this subchain in SKIP_HANDLER - this is the signal that it also stopped creating finalization proofs for a given subchain
+
+                If its local version of EXTENDED_FINALIZATION_PROOF in skip handler has lower index than in FP that we send - the response format is:
+
+                
+                    {
+                        type:'OK',
+                        sig: BLS_SIG('SKIP:<subchain>:<index>:<hash>:<checkpointFullID>')
+                    }
+
+                    We should just verify this signature and add to local list for further aggregation
+                    And this quorum member update his own local version of FP to have FP with bigger index
+
+
+            [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message with EXTENDED_FINALZATION_PROOF where:
+
+                HIS_EXTENDED_FINALIZATION_PROOF.INDEX > OUR_LOCAL_EXTENDED_FINALIZATION_PROOF.INDEX
+
+                Again - we should verify the signature, update local version of FP in our skip handler and repeat the grabbing procedure
+
+                The response format in this case is:
+
+                    {
+                        type:'UPDATE',
+                        
+                        EXTENDED_FINALIZATION_PROOF:{
+                            
+                            INDEX,
+                            HASH,
+                            FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}
+                        }
+                        
+                    }
+
+            */
+
+
+            let pubkeysWhoAgreeToSkip = [], signaturesToSkip = []
+
+            let {INDEX,HASH} = skipHandler.EXTENDED_FINALIZATION_PROOF
+
+
+            let dataThatShouldBeSigned = `SKIP:${poolID}:${INDEX}:${HASH}:${checkpointFullID}`
+
+            for(let result of results){
+
+                if(result.type === 'OK' && typeof result.sig === 'string'){
+
+                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
+
+                    if(signatureIsOk){
+
+                        pubkeysWhoAgreeToSkip.push(result.pubKey)
+
+                        signaturesToSkip.push(result.sig)
+
+                    }
+
+                    if(pubkeysWhoAgreeToSkip.length >= majority) break // if we get 2/3N+1 signatures to skip - we already have ability to create AGGREGATED_SKIP_PROOF
+
+
+                }else if(result.type === 'UPDATE'){
+
+                    let {aggregatedPub,aggregatedSignature,afkVoters} = answer.superFinalizationProof
+    
+                    let {latestFullyFinalizedHeight,latestHash,pubKey} = answer
+            
+            
+                    // Received {LAST_SEEN,INDEX,HASH,SUPER_FINALIZATION_PROOF}
+                    let localHealthHandler = tempObject.HEALTH_MONITORING.get(pubKey)
+            
+                    // blockID+hash+'FINALIZATION'+checkpointFullID
+                    let data = pubKey+':'+latestFullyFinalizedHeight+latestHash+'FINALIZATION'+checkpointFullID
+            
+                    let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+            
+                    //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
+            
+                    if(superFinalizationProofIsOk && localHealthHandler.INDEX < latestFullyFinalizedHeight){
+            
+                        localHealthHandler.LAST_SEEN = GET_GMT_TIMESTAMP()
+            
+                        localHealthHandler.INDEX = latestFullyFinalizedHeight
+            
+                        localHealthHandler.HASH = latestHash
+            
+                        localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
+            
+                    }else candidatesForAnotherCheck.push(pubKey)
+            
+
+                }
+
+            }
+
+
+            //____________________If we get 2/3+1 of votes - aggregate, get the ASP(AGGREGATED_SKIP_PROOF), add to local skip handler and start to grab approvements____________________
+
+            if(pubkeysWhoAgreeToSkip.length >= majority){
+
+
+            }
+
+            
+
+            if(skipHandler.AGGREGATED_SKIP_PROOF){
+
+                // If ASP already exists - ask for 2/3N+1 => GET /get_reassignment_ready_status/:SUBCHAIN
+    
+                for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+    
+                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status/'+poolID).then(r=>r.json()).then(response=>{
+        
+                        response.pubKey = poolUrlWithPubkey.pubKey
+            
+                        return response
+            
+                    }).catch(_=>{candidatesForAnotherCheck.push(poolUrlWithPubkey.pubKey)})
+            
+                    proofsPromises.push(responsePromise)
+            
+                }
+        
+    
+            }
+                
+
+        }
 
 
     }
 
 
-    setTimeout(SKIP_PROCEDURE_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
+    // Start again
+    setTimeout(SKIP_PROCEDURE_MONITORING,0)
 
+    
 },
 
 
@@ -2983,7 +3161,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
 
-        SKIP_HANDLERS:new Map(), // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
+        SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
         REASSIGNMENTS:new Map(), // {CURRENT_RESERVE_POOL:<number>}
 
