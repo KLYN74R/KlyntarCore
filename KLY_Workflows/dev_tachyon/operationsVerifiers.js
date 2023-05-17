@@ -334,7 +334,7 @@ export default {
                                 
                                 INDEX:-1,
                             
-                                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
         
                                 IS_STOPPED:false,
 

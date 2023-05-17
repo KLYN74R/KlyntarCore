@@ -421,6 +421,8 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Execute special operations from new checkpoint using our copy of QT and atomic handler
         await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
 
+
+        // After execution - create the reassignment chains
         await SET_REASSIGNMENT_CHAINS(possibleCheckpoint)
 
 
@@ -2499,6 +2501,8 @@ LOAD_GENESIS=async()=>{
                 bytecode:''
     
             }
+
+            
             
             let idToAdd = poolPubKey+poolPubKey
 
@@ -2515,8 +2519,9 @@ LOAD_GENESIS=async()=>{
             //NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(BLAKE3(idToAdd+'(POOL)_STORAGE_POOL'),poolContractStorage)
 
-            // Put the pointer to know the subchain which store the pool's data(metadata+storages)
             
+            // Put the pointer to know the subchain which store the pool's data(metadata+storages)
+            // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
             if(isReserve) atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
             
             else atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)

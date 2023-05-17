@@ -295,6 +295,103 @@ GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,active
 
 
 
+SET_REASSIGNMENT_CHAINS = async checkpoint => {
+
+
+    checkpoint.REASSIGNMENT_CHAINS={} // subchainID => [reservePool0,reservePool1,...,reservePoolN]
+
+
+    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+
+
+    let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
+
+    let mainPoolsIDs = new Set()
+
+
+    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.PAYLOAD.POOLS_METADATA)){
+
+        // Find main(not reserve) pools
+        if(!poolMetadata.IS_RESERVE){
+
+            mainPoolsIDs.add(poolPubKey)
+
+        }
+        else if(!poolMetadata.IS_STOPPED){
+
+            // Otherwise - it's active reserve pool
+
+            let subchainWhereReservePoolStorageIsLocated = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
+
+            let reservePoolStorage = await GET_FROM_STATE(BLAKE3(subchainWhereReservePoolStorageIsLocated+poolPubKey+'(POOL)_STORAGE_POOL'))
+
+            
+            if(reservePoolStorage){
+
+                let {reserveFor} = reservePoolStorage
+
+                if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+
+                activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                    
+            }
+
+        }
+
+    }
+
+
+    /*
+    
+        After this cycle we have:
+
+        [0] mainPoolsIDs - Set(subchain1,subchain2,...)
+        [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
+
+    
+    */
+
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.PAYLOAD.POOLS_METADATA))
+
+    
+    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
+    
+    for(let subchainPoolID of mainPoolsIDs){
+
+
+        let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
+
+        let mapping = new Map()
+
+        let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
+
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+
+
+        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
+
+        let reassignmentChain = []
+
+        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
+
+        // Set the reassignment chain to checkpoint.REASSIGNMENT_CHAINS[<mainPool>]=reassignmentChain
+        
+        checkpoint.REASSIGNMENT_CHAINS[subchainPoolID] = reassignmentChain
+
+        
+    }
+    
+},
+
+
+
+
 //Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
