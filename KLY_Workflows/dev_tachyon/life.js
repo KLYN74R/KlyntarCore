@@ -238,7 +238,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async(validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint) => {
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -564,70 +564,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     }
 
-
-},
-
-
-
-/**
- * @param {string} originSubchain BLS pubkey of subchain
- * @param {Object} poolsMetadataFromCheckpoint metadata of pool from checkpoint {INDEX,HASH,IS_RESERVE,IS_STOPPED}
- * @param {Object} reassignmentMetadata metadata like {NONCE,SKIPPED_RESERVE,CURRENT} related to some subchain
- */
-GET_NEXT_RESERVE_POOL_IN_ROW=async(originSubchain,poolsMetadataFromCheckpoint,reassignmentMetadata)=>{
-
-    let arrayOfActiveReservePools = []
-
-    for(let [poolPubKey,poolMetadata] of Object.entries(poolsMetadataFromCheckpoint)){
-
-        if(!poolMetadata.IS_RESERVE && !poolMetadata.IS_STOPPED){
-                
-            let candidatePoolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
-        
-            if(candidatePoolStorage){
-        
-                let {reserveFor} = candidatePoolStorage
-
-                if(originSubchain===reserveFor){
-
-                    arrayOfActiveReservePools.push(originSubchain)
-
-                }
-
-            }
-
-        }        
-
-    }
-
-    // Now based on hash of poolsMetadata in checkpoint and nonce - find the next reserve pool in deterministic reassignments chain
-
-    // Since it's a chain - take a nonce
-
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(poolsMetadataFromCheckpoint))
-    
-    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+reassignmentMetadata.NONCE)
-
-    let mapping = new Map()
-
-    let arrayOfChallanges = arrayOfActiveReservePools
-    
-        .filter(pubKey=>!reassignmentMetadata.SKIPPED_RESERVE.includes(pubKey))
-        
-        .map(validatorPubKey=>{
-
-            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
-    
-            mapping.set(challenge,validatorPubKey)
-
-            return challenge
-
-        })
-    
-
-    let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
-    
-    return mapping.get(firstChallenge)
 
 },
 
@@ -2519,7 +2455,7 @@ LOAD_GENESIS=async()=>{
             //NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(BLAKE3(idToAdd+'(POOL)_STORAGE_POOL'),poolContractStorage)
 
-            
+
             // Put the pointer to know the subchain which store the pool's data(metadata+storages)
             // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
             if(isReserve) atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
