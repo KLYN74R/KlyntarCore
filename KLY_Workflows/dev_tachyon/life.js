@@ -466,7 +466,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             CHECKPOINT_MANAGER:new Map(),
             CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
  
-            SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
+            SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF,WAS_REASSIGNED:boolean}
 
             PROOFS_REQUESTS:new Map(),
             PROOFS_RESPONSES:new Map(),
@@ -605,15 +605,15 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(subchainID=>{INDEX,HASH,FINALIZATION_PROOF:{aggregatedPub,aggregatedSigna,afkVoters}}})
 
+
     let currentFinalizationProofsRequests = currentTempObject.PROOFS_REQUESTS // mapping(blockID=>blockHash)
 
     let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID))
 
-    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {EXTENDED_FINALIZATION_PROOF:{INDEX,HASH,FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
+
+    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // Subchain_ID => {WAS_REASSIGNED:boolean,EXTENDED_FINALIZATION_PROOF:{INDEX,HASH,FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}},AGGREGATED_SKIP_PROOF:{same as FP structure, but aggregatedSigna = `SKIP:{subchain}:{index}:{hash}:{checkpointFullID}`}}
       
     let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
-
-    let currentCheckpointSkipSpecialOperationsMempool = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL // mapping(operationID=>{type,payload})
 
     let reassignments = currentTempObject.REASSIGNMENTS
 
@@ -666,13 +666,11 @@ PROOFS_SYNCHRONIZER=async()=>{
 
             else if (keyValue[0].startsWith('REASSIGN:')){
 
-                let mainPool = keyValue[1]
+                let mainPoolID = keyValue[1]
 
                 // Add the reassignment
-                    
-                let mainPoolSubchainID = reassignments.get(mainPool)
 
-                let reassignmentMetadata = reassignments.get(mainPool) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
+                let reassignmentMetadata = reassignments.get(mainPoolID) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
 
                 if(!reassignmentMetadata){
 
@@ -684,18 +682,18 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 let nextIndex = reassignmentMetadata.CURRENT_RESERVE_POOL+1
 
-                let nextReservePool = currentCheckpointReassignmentChains[nextIndex]
+                let nextReservePool = currentCheckpointReassignmentChains[mainPoolID][nextIndex] // array currentCheckpointReassignmentChains[mainPoolID] might be empty if the main pool doesn't have reserve pools
 
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPool,{CURRENT_RESERVE_POOL:nextIndex}).then(async()=>{
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPoolID,{CURRENT_RESERVE_POOL:nextIndex}).then(async()=>{
     
                     // And only after successful store we can move to the next pool
 
                     reassignmentMetadata.CURRENT_RESERVE_POOL++
                     
-                    reassignments.set(mainPool,reassignmentMetadata)
+                    reassignments.set(mainPoolID,reassignmentMetadata)
 
-                    reassignments.set(nextReservePool,mainPoolSubchainID)
+                    reassignments.set(nextReservePool,mainPoolID)
 
 
                 }).catch(_=>false)
@@ -708,6 +706,8 @@ PROOFS_SYNCHRONIZER=async()=>{
                 // This prevents creating FINALIZATION_PROOFS for subchain and initiate the skip procedure
 
                 let futureSkipHandler = {
+
+                    WAS_REASSIGNED:false, // will be true after we get the 2/3N+1 approvement of having AGGREGATED_SKIP_PROOF from other quorum members
 
                     EXTENDED_FINALIZATION_PROOF:JSON.parse(JSON.stringify(currentCheckpointSyncHelper.get(subchain))), // {INDEX,HASH,FINALIZATION_PROOF}
 
@@ -1713,7 +1713,10 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
+
     let currentCheckpointDB = tempObject.DATABASE
+
+    let currentProofsRequests = tempObject.PROOFS_REQUESTS
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
@@ -1725,6 +1728,9 @@ SKIP_PROCEDURE_MONITORING=async()=>{
     
 
     for(let [poolWithSkipHandler,skipHandler] of skipHandlers){
+
+        // If pool was marked as AFK:true in skip handler - do nothing
+        if(skipHandler.WAS_REASSIGNED) continue
     
         
         if(!skipHandler.AGGREGATED_SKIP_PROOF){
@@ -1920,10 +1926,14 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
                     Response => {type:'OK',sig:SIG(`REASSIGNMENT:<subchain>:<session>:<checkpointFullID>`)}
 
-                    Otherwise => {type:'ERR'}
+                Otherwise:
+                    
+                    Response => {type:'ERR'}
 
 
                 */
+
+                let session = crypto.randomBytes(64).toString('hex')
 
                 let dataToSend = {
 
@@ -1933,11 +1943,14 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
                         subchain: poolWithSkipHandler,
                         
-                        session: crypto.randomBytes(64).toString('hex')
+                        session
                         
                     })
 
                 }
+
+                let proofsPromises=[]
+
 
                 for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
     
@@ -1951,6 +1964,54 @@ SKIP_PROCEDURE_MONITORING=async()=>{
             
                     proofsPromises.push(responsePromise)
             
+                }
+
+                let results = (await Promise.all(responsePromises)).filter(Boolean)
+
+                let dataThatShouldBeSigned = `REASSIGNMENT:${poolWithSkipHandler}:${session}:${checkpointFullID}`
+
+                let numberWhoAgreeToDoReassignment = 0
+
+                
+                //___________________Now analyze the results___________________
+
+
+                for(let result of results){
+
+                    if(result.type === 'OK' && typeof result.sig === 'string'){
+    
+                        let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
+    
+                        if(signatureIsOk) numberWhoAgreeToDoReassignment++
+    
+                        if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
+    
+                    }
+                
+                }
+
+                if(numberWhoAgreeToDoReassignment >= majority){
+
+                    // Now, create the request for reassignment
+
+                    let possibleNothingOrPointerToMainPool = reassignments.get(poolWithSkipHandler)
+                    
+
+                    if(possibleNothingOrPointerToMainPool){
+
+                        // In case typeof is string - it's reserve pool which points to main pool, so we should put appropriate request
+
+                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToMainPool)                        
+
+                    }else{
+
+                        // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's main pool without any reassignments
+
+                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
+
+                    }
+
+
                 }
           
             }        
@@ -2263,7 +2324,7 @@ RESTORE_STATE=async()=>{
 
         //______________________________ Try to find SKIP_HANDLER for subchain ______________________________
 
-        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(_=>false) // {FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
+        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(_=>false) // {WAS_REASSIGNED:boolean,EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
         if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
 
@@ -3048,7 +3109,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. SubchainID => {LAST_SEEN,HEIGHT,HASH,SUPER_FINALIZATION_PROOF:{aggregatedPub,aggregatedSig,afkVoters}}
 
-        SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
+        SKIP_HANDLERS:new Map(), // {WAS_REASSIGNED:boolean,EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
         REASSIGNMENTS:new Map(), // MainPool => {CURRENT_RESERVE_POOL:<number>} | ReservePool => MainPool
 
