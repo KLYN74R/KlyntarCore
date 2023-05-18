@@ -535,19 +535,30 @@ GET_MAJORITY=threadID=>{
 
 
 
-USE_TEMPORARY_DB=async(operationType,dbReference,key,value)=>{
+USE_TEMPORARY_DB=async(operationType,dbReference,keys,values)=>{
 
 
     if(operationType === 'get'){
 
-        let value = await dbReference.get(key)
+        let value = await dbReference.get(keys)
 
         return value
 
     }
-    else if(operationType === 'put') await dbReference.put(key,value)
+    else if(operationType === 'put') await dbReference.put(keys,values)
 
-    else await dbReference.del(key)
+    else if(operationType === 'atomicPut'){
+
+        let atomicBatch = dbReference.batch()
+
+        for(let i=0,len=keys.length;i<len;i++) atomicBatch.put(keys[i],values[i])
+
+        await atomicBatch.write()
+        
+
+    }
+
+    else await dbReference.del(keys)
 
 },
 

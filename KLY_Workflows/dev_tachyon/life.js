@@ -668,9 +668,13 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 let mainPoolID = keyValue[1]
 
+                let currentSubchainAuthority
+
+
                 // Add the reassignment
 
                 let reassignmentMetadata = reassignments.get(mainPoolID) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
+
 
                 if(!reassignmentMetadata){
 
@@ -678,22 +682,63 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                     reassignmentMetadata = {CURRENT_RESERVE_POOL:-1}
 
-                }
+                    currentSubchainAuthority = mainPoolID
+
+                }else currentSubchainAuthority = currentCheckpointReassignmentChains[mainPoolID][reassignmentMetadata.CURRENT_RESERVE_POOL]
+
 
                 let nextIndex = reassignmentMetadata.CURRENT_RESERVE_POOL+1
 
                 let nextReservePool = currentCheckpointReassignmentChains[mainPoolID][nextIndex] // array currentCheckpointReassignmentChains[mainPoolID] might be empty if the main pool doesn't have reserve pools
 
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+mainPoolID,{CURRENT_RESERVE_POOL:nextIndex}).then(async()=>{
+                // We need to mark WAS_REASSIGNED pool that was authority for this subchain
+
+                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(currentSkipHandlersMapping.get(currentSubchainAuthority))) // {WAS_REASSIGNED,EXTENDED_FINALIZATION_PROOF,AGGREGATED_SKIP_PROOF}
+
+                skipHandlerOfAuthority.WAS_REASSIGNED = true
+
+
+                // Use atomic operation here to write reassignment data + updated skip handler
+
+                let keysToAtomicWrite = [
+
+                    'REASSIGN:'+mainPoolID,
+                    
+                    'SKIP_HANDLER:'+currentSubchainAuthority
+
+                ]
+
+                let valuesToAtomicWrite = [
+
+                    {CURRENT_RESERVE_POOL:nextIndex},
+
+                    skipHandlerOfAuthority
+
+                ]
+
+                await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
     
                     // And only after successful store we can move to the next pool
 
-                    reassignmentMetadata.CURRENT_RESERVE_POOL++
+                    // Delete the reassignment in case skipped authority was reserve pool
+
+                    if(currentSubchainAuthority !== mainPoolID) reassignments.delete(currentSubchainAuthority)
                     
+                    currentSkipHandlersMapping.get(currentSubchainAuthority).WAS_REASSIGNED = true
+
+                    
+                    reassignmentMetadata.CURRENT_RESERVE_POOL++
+    
+
+                    // Set new values - handler for main pool and pointer to main pool for reserve pool
+
                     reassignments.set(mainPoolID,reassignmentMetadata)
 
                     reassignments.set(nextReservePool,mainPoolID)
+
+                    // Delete the request
+                    currentFinalizationProofsRequests.delete(keyValue[0])
 
 
                 }).catch(_=>false)
@@ -715,10 +760,15 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 }
 
-                currentSkipHandlersMapping.set(subchain,futureSkipHandler)
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,subchain,futureSkipHandler).then(()=>{
 
-                // Clear the request
-                currentFinalizationProofsRequests.delete(keyValue[0])
+                    currentSkipHandlersMapping.set(subchain,futureSkipHandler)
+
+                    // Delete the request
+                    currentFinalizationProofsRequests.delete(keyValue[0])
+    
+
+                }).catch(_=>false)
 
 
             }else{
@@ -1909,7 +1959,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             
 
-            if(skipHandler.AGGREGATED_SKIP_PROOF){
+            if(skipHandler.AGGREGATED_SKIP_PROOF && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
     
                 /*
 
@@ -2121,7 +2171,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         */
 
-        let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey)
+        let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey) || proofsRequests.has('CREATE_SKIP_HANDLER:'+handler.pubKey)
 
         let poolIsInReassignment = metadataOfCurrentPool.IS_RESERVE && typeof reassignments.get(handler.pubKey) === 'string'
 
