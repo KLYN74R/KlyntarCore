@@ -200,7 +200,7 @@ export default {
 
                 if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',IS_STOPPED:false,IS_RESERVE:poolStorage.isReserve}
+                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',IS_RESERVE:poolStorage.isReserve}
 
                     fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool] = metadataTemplate
     
@@ -335,8 +335,6 @@ export default {
                                 INDEX:-1,
                             
                                 HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        
-                                IS_STOPPED:false,
 
                                 IS_RESERVE:poolStorage.isReserve
                             
@@ -348,9 +346,9 @@ export default {
 
                             if(!poolStorage.isReserve){
 
-                                // Add the RID tracker
+                                // Add the SID tracker
 
-                                global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[pool]=0                                
+                                global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
                                 
                             }
 
@@ -376,76 +374,7 @@ export default {
 
 
 
-
-    //To freeze/unfreeze validators in pool(to skip their thread during VERIFICATION_THREAD)
-    STOP_VALIDATOR:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
-
-        /*
-        
-            Payload structure is
-
-            {
-                stop:<true/false> - if true => stop the pool. If false - unfreeze and going to work with block <blockID+1> of this subchain
-                subchain,
-                index,
-                hash
-             (?)sig
-            
-            }
-
-
-            If it's operation to make subchain active again - verify signature also => VERIFY(stop+subchain+index+hash+checkpointFullID)
-        
-        */
-
-        let {stop,subchain}=payload
-
-
-        if(isFromRoute){
-
-            //Via routes we accept only the "stop:false" operations. This way, appropriate validator informs the quorum about his activity
-   
-            if(stop===false){
-
-                return {stop,subchain}
-
-            }
-
-        }
-        
-        else if(usedOnQuorumThread){
-
-            // Set the "STOPPED" property to true/false in QT.POOLS_METADATA[<subchain>]
-
-            let poolsMetadata = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[subchain]
-
-            if(stop){
-
-                poolsMetadata.IS_STOPPED=true
-
-            }else poolsMetadata.IS_STOPPED=false //unfreeze
-
-        }
-        
-        else{
-
-            // Set the "STOPPED" property to true/false in VT.POOLS_METADATA[<subchain>]
-
-            let poolsMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[subchain]
-
-            if(stop){
-
-                poolsMetadata.IS_STOPPED=true
-
-            }else poolsMetadata.IS_STOPPED=false //unfreeze
-
-        }        
-
-    },
-
-
-
-
+    
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
     SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{

@@ -101,7 +101,7 @@ acceptBlocks=response=>{
             
                 let block = await PARSE_JSON(buffer)
 
-                let subchainIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || qtSubchainsMetadata[block.creator]?.IS_STOPPED
+                let subchainIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
             
 
                 if(subchainIsAFK){
@@ -295,7 +295,7 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_HANDLERS.has(block.creator) || global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator]?.IS_STOPPED
+                    let subchainIsSkipped = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
                 
                     if(subchainIsSkipped) continue
    
@@ -1335,7 +1335,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let metadataUpdate = []
         
-        let wrongSkipStatusPresent=false, subchainWithWrongStopIndex
+        let wrongStatusPresent=false, subchainWithWrongStopIndex
 
         let subchains = Object.keys(checkpointProposition.POOLS_METADATA)
 
@@ -1354,9 +1354,9 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
             
-            if(checkpointProposition.POOLS_METADATA[subchain].IS_STOPPED !== currentPoolsMetadata[subchain].IS_STOPPED || currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.POOLS_METADATA[subchain].IS_RESERVE) {
+            if(currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.POOLS_METADATA[subchain].IS_RESERVE) {
 
-                wrongSkipStatusPresent=true
+                wrongStatusPresent=true
 
                 subchainWithWrongStopIndex=subchain
 
@@ -1401,7 +1401,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         */
 
-        if(wrongSkipStatusPresent){
+        if(wrongStatusPresent){
 
             !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_STOPPED> for subchain ${subchainWithWrongStopIndex}`}))
 
@@ -1475,7 +1475,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         POOLS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
 
             /..other data
             

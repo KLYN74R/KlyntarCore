@@ -111,10 +111,10 @@ getBlockById=(response,request)=>{
 
 /*
 
-0 - START_RID | RID to ask blocks from
+0 - START_GRID | GRID to ask blocks from
 1 - N | Ask N blocks(25 by default)
 
-Returns array of blocks sorted by RID in reverse order
+Returns array of blocks sorted by SID in reverse order
 
 */
 

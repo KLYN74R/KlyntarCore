@@ -162,15 +162,16 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
     for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.PAYLOAD.POOLS_METADATA)){
 
-        // Find main(not reserve) pools
         if(!poolMetadata.IS_RESERVE){
 
+            // Find main(not reserve) pools
+            
             mainPoolsIDs.add(poolPubKey)
 
         }
-        else if(!poolMetadata.IS_STOPPED){
+        else{
 
-            // Otherwise - it's active reserve pool
+            // Otherwise - it's reserve pool
                     
             let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
 
@@ -548,10 +549,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         // Set next temporary object by ID
         global.SYMBIOTE_META.TEMP.set(nextQuorumThreadID,nextTemporaryObject)
 
-        //__________________________ Also, check if we was "skipped" to send the awakening special operation to POST /special_operations __________________________
-
-        if(poolsMetadata[global.CONFIG.SYMBIOTE.PUB]?.IS_STOPPED) START_AWAKENING_PROCEDURE()
-
 
         //Continue to find checkpoints
         setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
@@ -875,7 +872,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 POOLS_METADATA: {
                 
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
 
                     /..other data
             
@@ -1074,7 +1071,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             POOLS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_STOPPED,IS_RESERVE}
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
 
                 /..other data
             
@@ -1136,9 +1133,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
 
-                let {IS_STOPPED,IS_RESERVE} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey] //move the status from the current checkpoint. If "STOP_VALIDATOR" operations will exists in special operations array - than this status will be changed
+                let {IS_RESERVE} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
 
-                potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {INDEX,HASH,IS_STOPPED,IS_RESERVE}
+                potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {INDEX,HASH,IS_RESERVE}
 
             }
 
@@ -2560,8 +2557,6 @@ LOAD_GENESIS=async()=>{
                 INDEX:-1,
                 
                 HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-                
-                IS_STOPPED:false,
 
                 IS_RESERVE:isReserve
             
@@ -2630,7 +2625,7 @@ LOAD_GENESIS=async()=>{
             
             if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
 
-            else global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[poolPubKey]=0
+            else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey]=0
 
 
             quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
@@ -3033,11 +3028,11 @@ PREPARE_SYMBIOTE=async()=>{
             
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
 
-                POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_STOPPED:boolean}
+                POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_RESERVE:boolean}
  
                 KLY_EVM_METADATA:{}, // {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
-                RID_TRACKER:{}, // SUBCHAIN => INDEX
+                SID_TRACKER:{}, // SUBCHAIN => INDEX
 
                 REASSIGNMENTS:{}, // STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
 

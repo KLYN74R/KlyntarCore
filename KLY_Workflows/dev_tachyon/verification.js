@@ -311,13 +311,13 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
     for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.PAYLOAD.POOLS_METADATA)){
 
-        // Find main(not reserve) pools
         if(!poolMetadata.IS_RESERVE){
 
+            // Find main(not reserve) pools
+            
             mainPoolsIDs.add(poolPubKey)
 
-        }
-        else if(!poolMetadata.IS_STOPPED){
+        }else{
 
             // Otherwise - it's active reserve pool
 
@@ -724,7 +724,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                     mainPoolsIDs.add(poolPubKey)
 
-                }else if(!poolMetadata.IS_STOPPED){
+                }else{
 
                     // Otherwise - it's reserve pool
 
@@ -919,7 +919,7 @@ START_VERIFICATION_THREAD=async()=>{
             //take the next validator in a row. If it's end of pools - start from the first validator in array
             currentPoolToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0],
 
-            //We receive {INDEX,HASH,IS_STOPPED} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
+            //We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
             currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentPoolToCheck],
 
             blockID = currentPoolToCheck+":"+(currentSessionMetadata.INDEX+1),
@@ -1232,7 +1232,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         for(let [validatorPubKey,metadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
 
-            if(!metadata.IS_STOPPED && !metadata.IS_RESERVE) activePools.add(validatorPubKey) 
+            if(!metadata.IS_RESERVE) activePools.add(validatorPubKey) 
 
         }
 
@@ -1323,11 +1323,11 @@ verifyBlock=async(block,subchainContext)=>{
 
         // Store the currently subchain block index (SID)
 
-        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]
+        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]
 
         atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.RID_TRACKER[subchainContext]++
+        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
 
 
         let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
