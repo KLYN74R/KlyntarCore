@@ -710,10 +710,10 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
             //______________________________Check if some subchains were stopped______________________________
-
+            
             // Build the graphs
 
-            let subchainsIDs = new Set()
+            let mainPoolsIDs = new Set()
 
             let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
 
@@ -722,7 +722,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 if(!poolMetadata.IS_RESERVE){
 
-                    subchainsIDs.add(poolPubKey)
+                    mainPoolsIDs.add(poolPubKey)
 
                 }else if(!poolMetadata.IS_STOPPED){
 
@@ -777,7 +777,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
 
-            for(let subchainPoolID of subchainsIDs){
+            for(let subchainPoolID of mainPoolsIDs){
 
                 // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
 

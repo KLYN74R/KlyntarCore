@@ -28,6 +28,8 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
+import crypto from 'crypto'
+
 import level from 'level'
 
 import Web3 from 'web3'
@@ -613,7 +615,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     let currentCheckpointSkipSpecialOperationsMempool = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL // mapping(operationID=>{type,payload})
 
-    let reassignments = currentTempObject.SPECIAL_OPERATIONS_MEMPOOL
+    let reassignments = currentTempObject.REASSIGNMENTS
 
 
     //____________________ UPDATE THE CHECKPOINT_MANAGER ____________________
@@ -1902,29 +1904,58 @@ SKIP_PROCEDURE_MONITORING=async()=>{
             
 
             if(skipHandler.AGGREGATED_SKIP_PROOF){
-
-                // If ASP already exists - ask for 2/3N+1 => GET /get_reassignment_ready_status/:SUBCHAIN
     
+                /*
+
+                If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
+
+                We should send
+
+                    {
+                        subchain<subchain BLS public key>,
+                        session:<64-bytes hex string - randomly generated>
+                    }
+
+                If requested quorum member has ASP: 
+
+                    Response => {type:'OK',sig:SIG(`REASSIGNMENT:<subchain>:<session>:<checkpointFullID>`)}
+
+                    Otherwise => {type:'ERR'}
+
+
+                */
+
+                let dataToSend = {
+
+                    method:'POST',
+                    
+                    body:JSON.stringify({
+
+                        subchain: poolWithSkipHandler,
+                        
+                        session: crypto.randomBytes(64).toString('hex')
+                        
+                    })
+
+                }
+
                 for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
     
-                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status/'+poolWithSkipHandler).then(r=>r.json()).then(response=>{
+                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
         
                         response.pubKey = poolUrlWithPubkey.pubKey
             
                         return response
             
-                    }).catch(_=>{candidatesForAnotherCheck.push(poolUrlWithPubkey.pubKey)})
+                    }).catch(_=>false)
             
                     proofsPromises.push(responsePromise)
             
                 }
-        
-    
-            }
-                
+          
+            }        
 
         }
-
 
     }
 
@@ -3019,7 +3050,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_HANDLERS:new Map(), // {EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
-        REASSIGNMENTS:new Map(), // {CURRENT_RESERVE_POOL:<number>}
+        REASSIGNMENTS:new Map(), // MainPool => {CURRENT_RESERVE_POOL:<number>} | ReservePool => MainPool
 
         //____________________Mapping which contains temporary databases for____________________
 

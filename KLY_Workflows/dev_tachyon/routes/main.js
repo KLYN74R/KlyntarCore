@@ -1110,13 +1110,56 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
+/*
 
-// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
-getReassignmentReadyStatus = async(response,request) => {
+[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
 
-    response.onAborted(()=>response.aborted=true)
+[Accept]:
 
-},
+{
+    subchain<subchain BLS public key>,
+    session:<64-bytes hex string>
+}
+
+
+[Response]:
+
+If we also have an AGGREGATED_SKIP_PROOF in our local SKIP_HANDLERS[<subchain>] - we can vote for reassignment:
+
+Response => {type:'OK',sig:SIG(`REASSIGNMENT:<subchain>:<session>:<checkpointFullID>`)}
+
+Otherwise => {type:'ERR'}
+
+*/
+getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+    
+    let reassignmentApprovementRequest = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+
+    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.subchain)
+
+
+    if(skipHandler && skipHandler.AGGREGATED_SKIP_PROOF && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
+
+        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.subchain}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
+
+        !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
+
+    }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
+
+
+}),
 
 
 
@@ -1855,7 +1898,7 @@ UWS_SERVER
 // .post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
-.get('/get_reassignment_ready_status/:SUBCHAIN',getReassignmentReadyStatus)
+.post('/get_reassignment_ready_status',getReassignmentReadyStatus)
 
 
 //___________________________________ Other ___________________________________________
