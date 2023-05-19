@@ -2996,8 +2996,6 @@ PREPARE_SYMBIOTE=async()=>{
     [
     
         'BLOCKS', //For blocks. BlockID => block
-        
-        'HOSTCHAIN_DATA', //To store metadata from hostchains(proofs,refs,contract results and so on)
     
         'STUFF', //Some data like combinations of pools for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
@@ -3037,7 +3035,7 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             CHECKPOINT_FULL_ID:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,//Genesis hash
+            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, //Genesis hash
             NEXT_INDEX:0//So the first block will be with index 0
         }
         :
