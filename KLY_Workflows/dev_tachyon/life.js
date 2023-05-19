@@ -107,8 +107,6 @@ process.on('SIGHUP',GRACEFUL_STOP)
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
-    GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS = () => [],
-
     GET_SPECIAL_OPERATIONS = checkpointFullID =>{
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
@@ -2411,14 +2409,20 @@ RESTORE_STATE=async()=>{
     }
 
 
+},
+
+
+
+
+GET_ASP_FOR_ALL_THE_PREVIOUS_POOLS = async() => {
+
+    let emptyTemplate = {}
+
+    // We should insert the ASPs of all the pools that stay before your pubkey based on reassignment chains(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS)
+
 }
 
 
-GET_ASP_FOR_PREVIOUS_POOL = async() => {
-
-    
-
-}
 
 
 //________________________________________________________________EXTERNAL_______________________________________________________________________
@@ -2432,14 +2436,24 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]) return
 
-    // If we are reserve - return
-    if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
+    // If we are even not in reserve - return
+    
+    let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(qtCheckpointFullID)
+
+
+    if(!tempObject) return
+
+
+    let myDataInReassignments = tempObject.REASSIGNMENTS.get(global.CONFIG.SYMBIOTE.PUB)
+
+
+    if(typeof myDataInReassignments === 'object') return
 
 
     // Check if <checkpointFullID> is the same in QT and in GT
-
-    let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
+    
     if(global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID !== qtCheckpointFullID){
 
         
@@ -2456,6 +2470,41 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     
     }
+
+
+    let extraData = {}
+
+
+    if(typeof myDataInReassignments === 'string'){
+
+        // Build the template to insert to the extraData of block. Structure is {subchain:ASP,subchain:ASP}
+
+        let myMainPool = global.CONFIG.SYMBIOTE.MAIN_POOL_PUBKEY
+
+        let reassignmentArrayOfMyMainPool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[myMainPool]
+
+        let myIndex = reassignmentArrayOfMyMainPool.indexOf(global.CONFIG.SYMBIOTE.PUB)
+
+
+        // Get all previous pools - from zero to <my_position>
+        let allPreviousPools = reassignmentArrayOfMyMainPool.slice(0,myIndex)
+
+
+        //_____________________ Fill the extraData.reassignments _____________________
+
+        extraData.reassignments = {}
+
+        // Add the ASP for main pool
+        extraData.reassignments[myMainPool] = tempObject.SKIP_HANDLERS.get(myMainPool)
+
+        
+        for(let reservePool of allPreviousPools){
+
+            extraData.reassignments[reservePool] = tempObject.SKIP_HANDLERS.get(reservePool)
+
+        }
+
+    }
     
     
     /*
@@ -2466,8 +2515,13 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-
     let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+
+    
+    // Add the extra data to block
+
+    extraData = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
+
 
     //DEBUG
     numberOfBlocksToGenerate++
@@ -2483,7 +2537,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS(),global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID)
+        let blockCandidate=new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID)
                         
         let hash=Block.genHash(blockCandidate)
     
@@ -3016,7 +3070,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SID_TRACKER:{}, // SUBCHAIN => INDEX
 
-                REASSIGNMENTS:{}, // STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
+                REASSIGNMENT_METADATA:{},
 
                 CHECKPOINT:'genesis'
  

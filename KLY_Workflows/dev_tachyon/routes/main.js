@@ -11,7 +11,7 @@ import Block from '../essences/block.js'
 
 
 
-let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.FILTER_PUB || global.CONFIG.SYMBIOTE.PUB,
+let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.MAIN_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB,
 
 
 

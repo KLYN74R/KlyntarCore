@@ -440,7 +440,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignm
 
             let aspForThisReservePool = reassignmentsRef[reservePool]
 
-            if( aspForThisReservePool && await CHECK_ASP_VALIDITY(reservePool,aspForThisReservePool,checkpointFullID)){
+            if(aspForThisReservePool && await CHECK_ASP_VALIDITY(reservePool,aspForThisReservePool,checkpointFullID)){
 
                 if(aspForThisReservePool.INDEX === oldCheckpointMetadata[reservePool].INDEX){
 
@@ -450,6 +450,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignm
 
                 }
 
+                filteredReassignments[reservePool] = {index:aspForThisReservePool.INDEX,hash:aspForThisReservePool.HASH}
                 
                 
             }else{
@@ -474,8 +475,6 @@ CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignm
 BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
 
     // verificationThread is global.SYMBIOTE_META.VERIFICATION_THREAD
-
-    verificationThread.REASSIGNMENT_METADATA = {}
 
     /*
     
@@ -618,7 +617,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     if(isOK){
 
-                        filtratratedReassignment.set(currentReservePool,filteredReassignments) // filteredReassignments = {skippedMainPool:ASP,skippedReservePool0:ASP,...skippedReservePoolX:ASP}
+                        filtratratedReassignment.set(currentReservePool,filteredReassignments) // filteredReassignments = {skippedMainPool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
 
                         if(arrayOfPoolsWithZeroProgress.length) arrayOfPoolsThatShouldBeSkipped = arrayOfPoolsThatShouldBeSkipped.concat(arrayOfPoolsWithZeroProgress)
 
@@ -638,7 +637,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     for(let [skippedPool,asp] of Object.entries(metadataForReassignment)){
 
-                        if(!verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool]) verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool] = {index:asp.INDEX,hash:asp.HASH}
+                        if(!verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool]) verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool] = asp
 
                     }
 
@@ -647,6 +646,56 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
             }
 
         }
+
+
+        /*
+        
+        
+        After execution of this function we have:
+
+        [0] global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS with structure:
+        
+        {
+            mainPoolA:[ReservePool0A,ReservePool1A,....,ReservePoolNA],
+            
+            mainPoolB:[ReservePool0B,ReservePool1B,....,ReservePoolNB]
+        
+            ...
+        }
+
+        Using this chains we'll finish the verification process to get the ranges of checkpoint
+
+        [1] global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA with structure:
+
+        {
+            mainPoolA:{
+
+                ReservePool0A:{index,hash},
+                ReservePool1A:{index,hash},
+                ....,
+                ReservePoolNA:{index,hash}
+
+            },
+            
+            mainPoolB:{
+
+                ReservePool0B:{index,hash},
+                ReservePool1B:{index,hash},
+                ....,
+                ReservePoolNB:{index,hash}
+
+            }
+
+            ...
+        
+        }
+
+        ___________________________________ So ___________________________________
+
+        Using the order in REASSIGNMENT_CHAINS finish the verification based on index:hash pairs in REASSIGNMENT_METADATA
+        
+        
+        */
    
 
 },
