@@ -2414,6 +2414,11 @@ RESTORE_STATE=async()=>{
 }
 
 
+GET_ASP_FOR_PREVIOUS_POOL = async() => {
+
+    
+
+}
 
 
 //________________________________________________________________EXTERNAL_______________________________________________________________________
@@ -2431,19 +2436,25 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]?.IS_RESERVE) return
 
 
-    let myVerificationThreadStats = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
+    // Check if <checkpointFullID> is the same in QT and in GT
+
+    let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    if(global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID !== qtCheckpointFullID){
+
+        
+        global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID = qtCheckpointFullID
 
 
+        // And nullish the index & hash to the ranges of checkpoint
 
-    //!Here check the difference between VT and GT(VT_GT_NORMAL_DIFFERENCE)
-    //Set VT_GT_NORMAL_DIFFERENCE to 0 if you don't need any limits
+        let myMetadataFromCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
 
-    if(global.CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE && myVerificationThreadStats.INDEX+global.CONFIG.SYMBIOTE.VT_GT_NORMAL_DIFFERENCE < global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX){
+        global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH = myMetadataFromCheckpoint.HASH
+ 
+        global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX = myMetadataFromCheckpoint.INDEX + 1
 
-        LOG(`Block generation skipped because GT is faster than VT. Increase \u001b[38;5;157m<VT_GT_NORMAL_DIFFERENCE>\x1b[36;1m if you need`,'I',global.CONFIG.SYMBIOTE.SYMBIOTE_ID)
-
-        return
-
+    
     }
     
     
@@ -2472,7 +2483,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS())
+        let blockCandidate=new Block(GET_TRANSACTIONS(),GET_TRANSACTIONS_FOR_REASSIGNED_SUBCHAINS(),global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID)
                         
         let hash=Block.genHash(blockCandidate)
     
@@ -2971,6 +2982,7 @@ PREPARE_SYMBIOTE=async()=>{
         error.notFound
         ?
         {
+            CHECKPOINT_FULL_ID:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`,//Genesis hash
             NEXT_INDEX:0//So the first block will be with index 0
         }
@@ -2984,26 +2996,8 @@ PREPARE_SYMBIOTE=async()=>{
     global.SYMBIOTE_META.QUORUM_THREAD = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(_=>({}))
         
 
-    let nextIsPresent = await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX).catch(_=>false),//OK is in case of absence of next block
-
-        previousBlock=await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+(global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX-1)).catch(_=>false)//but current block should present at least locally
-
-
-    if(nextIsPresent || !(global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX===0 || global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH === BLAKE3( global.CONFIG.SYMBIOTE.PUB + JSON.stringify(previousBlock.time) + JSON.stringify(previousBlock.transactions) + global.CONFIG.SYMBIOTE.SYMBIOTE_ID + previousBlock.index + previousBlock.prevHash))){
-        
-        initSpinner?.stop()
-
-        LOG(`Something wrong with a sequence of generation thread on`,'F')
-            
-        process.exit(107)
-
-    }
-
-    
-
 
     //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
-
 
 
 

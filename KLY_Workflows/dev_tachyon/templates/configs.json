@@ -61,7 +61,6 @@
         "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     },
 
-    "VT_GT_NORMAL_DIFFERENCE":100,
     "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
 
     "BLOCK_TIME":3000,

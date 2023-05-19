@@ -39,7 +39,7 @@ export let
 //Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URL" node for new blocks
 //If no answer - try to find blocks somewhere else
 
-GET_BLOCK = async(blockCreator,index) => {
+GET_BLOCK = async (blockCreator,index) => {
 
     let blockID=blockCreator+":"+index
     
@@ -230,7 +230,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
 
-WAIT_SOME_TIME=async()=>
+WAIT_SOME_TIME = async() =>
 
     new Promise(resolve=>
 
@@ -242,7 +242,7 @@ WAIT_SOME_TIME=async()=>
 
 
 
-DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
+DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async validatorPubKey => {
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -258,38 +258,6 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER=async validatorPubKey=>{
 
     delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
 
-},
-
-
-
-
-GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN=(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchain,reassignmentsArray)=>{
-
-
-    // Since it's a chain - take a nonce
-    let pseudoRandomHash = BLAKE3(hashOfMetadataFromOldCheckpoint+nonce)
-    
-    let mapping = new Map() // random challenge is 256-bits points to pool public key which will be next reassignment in chain for stopped pool
-
-    let arrayOfChallanges = activeReservePoolsRelatedToSubchain
-    
-        .filter(pubKey=>!reassignmentsArray.includes(pubKey))
-        
-        .map(validatorPubKey=>{
-
-            let challenge = parseInt(BLAKE3(validatorPubKey+pseudoRandomHash),16)
-    
-            mapping.set(challenge,validatorPubKey)
-
-            return challenge
-
-        })
-    
-
-    let firstChallenge = HEAP_SORT(arrayOfChallanges)[0]
-    
-    return mapping.get(firstChallenge)
-    
 },
 
 
@@ -392,7 +360,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-CHECK_ASP_VALIDITY=async (skippedPool,asp,checkpointFullID) => {
+CHECK_ASP_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
 
     /*
 
@@ -444,7 +412,7 @@ CHECK_ASP_VALIDITY=async (skippedPool,asp,checkpointFullID) => {
 
 
 
-CHECK_IF_ALL_ASP_PRESENT=async(mainPool,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpointMetadata)=>{
+CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpointMetadata) => {
 
     // Take all the reservePools from beginning of reassignment chain up to the <position>
 
