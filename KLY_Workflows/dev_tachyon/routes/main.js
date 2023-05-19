@@ -1180,7 +1180,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
     
     POOLS_METADATA: {
                 
-        '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH}
+        '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
 
         /..other data
             
@@ -1290,29 +1290,12 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
     
 
-    // Create copy to delete from
-    let subchainsToSkipThatCantBeExcluded = new Set(tempObject.SKIP_PROCEDURE_STAGE_2.keys())
-
     // [0] Check which operations we don't have locally in mempool - it's signal to exclude it from proposition
     
     let excludeSpecOperations = checkpointProposition.OPERATIONS.filter(
         
-        operation => {
-
-            if(specialOperationsMempool.has(operation.id)){
-
-                // If operation exists - check if it's STOP_VALIDATOR operation. Mark it if it's <SKIP> operation(i.e. stop=true)
-                if(operation.type==='STOP_VALIDATOR' && operation.payload?.stop === true) {
-
-                    subchainsToSkipThatCantBeExcluded.delete(operation.payload?.subchain)
-                }
-
-                return false
-
-            }else return true // Exclude operations which we don't have
-        
-        }
-        
+        operation => !specialOperationsMempool.has(operation.id) // Exclude operations which we don't have
+       
     ).map(operation => operation.id)
 
 
@@ -1324,7 +1307,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         !response.aborted && response.end(JSON.stringify({excludeSpecOperations}))
 
 
-    }else if (subchainsToSkipThatCantBeExcluded.size===0){
+    }else{
 
         // On this step we know that all of proposed operations were checked by us and present in local mempool.
         // Also, we know that all the mandatory STOP_VALIDATOR operations are in current version of payload
@@ -1335,7 +1318,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let metadataUpdate = []
         
-        let wrongStatusPresent=false, subchainWithWrongStopIndex
+        let wrongStatusPresent=false, subchainWithWrongStatus
 
         let subchains = Object.keys(checkpointProposition.POOLS_METADATA)
 
@@ -1358,7 +1341,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
                 wrongStatusPresent=true
 
-                subchainWithWrongStopIndex=subchain
+                subchainWithWrongStatus=subchain
 
                 break
 
@@ -1403,7 +1386,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongStatusPresent){
 
-            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_STOPPED> for subchain ${subchainWithWrongStopIndex}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_RESERVE> for subchain ${subchainWithWrongStatus}`}))
 
         }
         else if(metadataUpdate.length!==0){

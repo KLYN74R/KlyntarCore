@@ -1352,11 +1352,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 if(excludeSpecOperations && excludeSpecOperations.length!==0){
                     
                     for(let operationID of excludeSpecOperations){
-
-                        let operationToDelete = temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.get(operationID)
     
-                        //We can't delete the 'STOP_VALIDATOR' operation
-                        if(operationToDelete.type!=='STOP_VALIDATOR') temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
+                        temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
     
                     }
 
@@ -2371,24 +2368,15 @@ RESTORE_STATE=async()=>{
 
         //______________________________ Try to find SKIP_HANDLER for subchain ______________________________
 
+
         let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(_=>false) // {WAS_REASSIGNED:boolean,EXTENDED_FINALIZATION_PROOF,AGGREGATGED_SKIP_PROOF}
 
         if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
 
 
+        //___________________________________ Check for reassignments _______________________________________
 
-        let skipOperationRelatedToThisPool = await tempObject.DATABASE.get('SKIP_SPECIAL_OPERATION:'+poolPubKey).catch(_=>false)
-
-        if(skipOperationRelatedToThisPool){
-
-            //Store to mempool of special operations
-            
-            tempObject.SPECIAL_OPERATIONS_MEMPOOL.set(skipOperationRelatedToThisPool.id,skipOperationRelatedToThisPool)
-
-        }
-
-        //____________________________ Check for reassignments ____________________________
-
+        
         if(!poolsMetadata.IS_RESERVE){
 
             let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {CURRENT_RESERVE_POOL:<pointer to current reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]>}
@@ -3201,60 +3189,6 @@ PREPARE_SYMBIOTE=async()=>{
         .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
     ).then(answer=>answer!=='YES'&& process.exit(108))
-
-},
-
-
-
-
-/*
-
-    Function to get approvements from other validators to make your validator instance active again
-
-*/
-START_AWAKENING_PROCEDURE=async()=>{
-    
-
-    let quorumMembersURLs = await GET_POOLS_URLS()
-
-    let {INDEX,HASH} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
-
-    let myPayload = {
-    
-        stop:false,
-        subchain:global.CONFIG.SYMBIOTE.PUB,
-        index:INDEX,
-        hash:HASH,
-        sig:await BLS_SIGN_DATA(false+global.CONFIG.SYMBIOTE.PUB+INDEX+HASH+checkpointFullID)
-    
-    }
-
-    let sendOptions = {
-
-        method: 'POST',
-        body: JSON.stringify(myPayload)
-
-    }
-
-    let promises = [], numberOfOkStatus = 0
-
-    for(let url of quorumMembersURLs){
-
-        let promise = fetch(url+'/special_operations',sendOptions).then(r=>r.text()).then(resp=>resp==='OK' && numberOfOkStatus++).catch(_=>{})
-
-        promises.push(promise)
-
-    }
-
-    let majority = GET_MAJORITY('QUORUM_THREAD')
-
-    if(numberOfOkStatus >= majority){
-
-        LOG('Ok, majority received your \u001b[38;5;60m<AWAKE_MESSAGE>\x1b[32;1m, so soon your \x1b[31;1msubchain\x1b[32;1m will be activated','S')
-
-    }else LOG(`Some error occured with sending \u001b[38;5;50m<AWAKE_MESSAGE>\u001b[38;5;3m - probably, less than majority agree with it`,'W')
 
 },
 

@@ -390,6 +390,248 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 },
 
 
+CHECK_ASP_VALIDITY=async (skippedPool,asp,checkpointFullID) => {
+
+    /*
+
+    Check the AGGREGATED_SKIP_PROOF(ASP) signed by majority(2/3N+1) and aggregated
+    
+    ASP structure is:
+    
+    {
+
+        INDEX,
+
+        HASH,
+
+        SKIP_PROOF:{
+
+            aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+
+            aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
+
+            afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+                        
+        }
+
+    }
+
+    */
+
+
+    let dataThatShouldBeSigned = `SKIP:${skippedPool}:${asp.INDEX}:${asp.HASH}:${checkpointFullID}`
+
+    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+
+
+},
+
+
+CHECK_IF_ALL_ASP_PRESENT=async(mainPool,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID)=>{
+
+    // Take all the reservePools from beginning of reassignment chain up to the <position>
+
+    let allAspThatShouldBePresent = reassignmentArray.slice(0,position)
+
+
+    // firstBlockInThisEpochByPool.extraData.reassignments is {subchain:ASP,subchain:ASP}
+
+    let aspForMainPool = firstBlockInThisEpochByPool.extraData?.reassignments?.[mainPool]
+
+
+    if(typeof aspForMainPool === 'object' && await CHECK_ASP_VALIDITY(mainPool,aspForMainPool,checkpointFullID)){
+
+        allAspThatShouldBePresent.every(reservePool=>firstBlockInThisEpochByPool.extraData.reassignments[reservePool])
+
+    } else return false 
+
+},
+
+
+
+
+BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
+
+    // verificationThread is global.SYMBIOTE_META.VERIFICATION_THREAD
+
+    verificationThread.REASSIGNMENT_METADATA = {}
+
+    /*
+    
+    REASSIGNMENT_METADATA has the following structure
+
+        KEY = <main pool>
+    
+        VALUE = {
+
+            mainPool:{index,hash},
+            reservePool0:{index,hash},
+            reservePool1:{index,hash},
+            
+            ...
+
+            reservePoolN:{index,hash}
+
+        }
+
+        
+        We should finish to verify blocks upto height in main pool and reserve pools
+
+        ________________________________Let's use this algorithm________________________________
+
+        0) Once we get the new valid checkpoint, use the REASSIGNMENT_CHAINS built for this checkpoint(from global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
+
+        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<mainpool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the AGGREGATED_SKIP_PROOF for all the previous reserve pools
+
+        2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was skipped on the first block of this epoch
+
+        3) Using this values - we can build the reasssignment metadata to finish verification process on checkpoint and move to a new one
+
+            _________________________________For example:_________________________________
+            
+            Imagine that main pool <MAIN_POOL_A> has 5 reserve pools: [Reserve0,Reserve1,Reserve2,Reserve3,Reserve4]
+
+            The pools metadata from checkpoint shows us that previous epoch finished on these heights for pools:
+            
+                For main pool => INDEX:1337 HASH:adcd...
+
+                For reserve pools:
+
+                    [Reserve0]: INDEX:1245 HASH:0012...
+
+                    [Reserve1]: INDEX:1003 HASH:2363...
+                    
+                    [Reserve2]: INDEX:1000 HASH:fa56...
+
+                    [Reserve3]: INDEX:2003 HASH:ad79...
+
+                    [Reserve4]: INDEX:1566 HASH:ce77...
+
+
+            (1) We run the initial cycle in reverse order to find the AGGREGATED_SKIP_PROOFS
+
+                Each next pool in a row must have ASP for all the previous pools.
+
+                For example, imagine the following situation:
+                    
+                    🙂[Reserve0]: [ASP for main pool]           <==== in header of block 1246(1245+1 - first block in new epoch)
+
+                    🙂[Reserve1]: [ASP for main pool,ASP for reserve pool 0]       <==== in header of block 1004(1003+1 - first block in new epoch)
+                    
+                    🙂[Reserve2]: [ASP for main pool,ASP for reserve pool 0,ASP for reserve pool 1]         <==== in header of block 1001(1000+1 - first block in new epoch)
+
+                    🙂[Reserve3]: [ASP for main pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2]      <==== in header of block 2004(2003+1 - first block in new epoch)
+
+                    🙂[Reserve4]: [ASP for main pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2,ASP for reserve pool 3]       <==== in header of block 1567(1566+1 - first block in new epoch)
+
+
+                It was situation when all the reserve pools are fair players(non malicious). However, some of reserve pools will be byzantine(offline or in ignore mode), so
+
+                we should cope with such a situation. That's why in the first iteration we should go through the pools in reverse order, get only those who have ASP for all the previous pools
+
+                For example, in situation with malicious players:
+                    
+                    🙂[Reserve0]: [ASP for main pool]
+
+                    😈[Reserve1]: []    - nothing because AFK(offline/ignore)
+                    
+                    🙂[Reserve2]: [ASP for main pool,ASP for reserve pool 0,ASP for reserve pool 1]
+
+                    😈[Reserve3]: [ASP for main pool,ASP for reserve pool 2]        - no ASP for ReservePool0  and ReservePool1
+
+                    🙂[Reserve4]: [ASP for main pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2,ASP for reserve pool 3]
+                
+
+                In this case we'll find that reserve pools 0,2,4 is OK because have ASPs for ALL the previous pools(including main pool)
+
+            (2) Then, we should check if all of them weren't skipped on their first block in epoch:
+                
+                    For this, if we've found that pools 0,2,4 are valid, check if:
+
+                        0) Pool 4 doesn't have ASP for ReservePool2 on block 1000. If so, then ReservePool2 is also invalid and should be excluded
+                        0) Pool 2 doesn't have ASP for ReservePool0 on block 1245. If so, then ReservePool0 is also invalid and should be excluded
+                    
+                    After this final filtration, take the first ASP in valid pools and based on this - finish the verification to checkpoint's range.
+
+                    In our case, imagine that Pool2 was skipped on block 1000 and we have a ASP proof in header of block 1567(first block by ReservePool4 in this epoch)
+
+                    That's why, take ASP for MainPool from ReservePool0 and ASPs for reserve pools 0,1,2,3 from pool4
+
+
+            ___________________________________________This is how it works___________________________________________
+
+    */
+
+
+        let filtratratedReassignment = new Map() // poolID => {skippedMainPool:ASP,skippedReservePool0:ASP,...skippedReservePoolX:ASP}
+        
+        let arrayOfPoolsThatShouldBeSkipped = []
+
+        // Start the iteration over main pools in REASSIGNMENT_CHAINS
+
+        for(let [mainPoolID,reassignmentArray] of Object.entries(oldCheckpoint.REASSIGNMENT_CHAINS)){
+
+            // Prepare the empty array
+            verificationThread.REASSIGNMENT_METADATA[mainPoolID] = {}
+
+            // Start the cycle in reverse order
+            for(let position = reassignmentArray.length - 1; position >= 0; position--){
+
+                let currentReservePool = reassignmentArray[position]
+
+
+                if(arrayOfPoolsThatShouldBeSkipped.includes(currentReservePool)) continue
+
+
+                // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as non-valid
+
+                if(newCheckpoint.PAYLOAD.POOLS_METADATA[currentReservePool].INDEX > oldCheckpoint.PAYLOAD.POOLS_METADATA[currentReservePool].INDEX){
+
+                    // Get the first block of this epoch from POOLS_METADATA
+
+                    let firstBlockInThisEpochByPool = await GET_BLOCK(currentReservePool,oldCheckpoint.PAYLOAD.POOLS_METADATA[currentReservePool].INDEX+1)
+
+                    // In this block we should have ASP for all the previous reservePool + mainPool
+
+                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(mainPoolID,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID)
+
+                    if(isOK){
+
+                        filtratratedReassignment.set(currentReservePool,filteredReassignments) // filteredReassignments = {skippedMainPool:ASP,skippedReservePool0:ASP,...skippedReservePoolX:ASP}
+
+                        if(arrayOfPoolsWithZeroProgress.length) arrayOfPoolsThatShouldBeSkipped = arrayOfPoolsThatShouldBeSkipped.concat(arrayOfPoolsWithZeroProgress)
+
+                    }
+
+                }
+
+            }
+
+            // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[mainPoolID] based on ASP
+
+            for(let reservePool of reassignmentArray){
+
+                if(filtratratedReassignment.has(reservePool)){
+
+                    let metadataForReassignment = filtratratedReassignment.get(reservePool)
+
+                    for(let [skippedPool,asp] of Object.entries(metadataForReassignment)){
+
+                        if(!verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool]) verificationThread.REASSIGNMENT_METADATA[mainPoolID][skippedPool] = {index:asp.INDEX,hash:asp.HASH}
+
+                    }
+
+                }
+
+            }
+
+        }
+   
+
+},
+
+
 
 
 //Function to find,validate and process logic with new checkpoint
@@ -691,153 +933,34 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         if(nextCheckpoint){
 
+            let oldCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT))
 
-            let oldQuorum = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM
-
-            let oldPoolsMetadataFromCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
-
-            let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA))
+            let oldCheckpointFullID = oldCheckpoint.HEADER.PAYLOAD_HASH+"#"+oldCheckpoint.ID
 
 
-            //Set the new checkpoint
-            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT=nextCheckpoint
+
+            // Set the new checkpoint to know the ranges that we should get
+            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT = nextCheckpoint
 
             // But quorum is the same as previous
-            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = oldQuorum
+            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = oldCheckpoint.QUORUM
 
-            //Get the new rootpub
+            // And reassignment chains should be the same
+            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS = oldCheckpoint.REASSIGNMENT_CHAINS
+
+
+
+            //Get the rootpub
             global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+           
 
-
-            //______________________________Check if some subchains were stopped______________________________
+            // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify
             
-            // Build the graphs
-
-            let mainPoolsIDs = new Set()
-
-            let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserved pool
-
+            await BUILD_REASSIGNMENT_METADATA(global.SYMBIOTE_META.VERIFICATION_THREAD,oldCheckpoint,nextCheckpoint,oldCheckpointFullID)
             
-            for(let [poolPubKey,poolMetadata] of Object.entries(oldPoolsMetadataFromCheckpoint)){
-
-                if(!poolMetadata.IS_RESERVE){
-
-                    mainPoolsIDs.add(poolPubKey)
-
-                }else{
-
-                    // Otherwise - it's reserve pool
-
-                    let originSubchain = await GET_FROM_STATE(poolPubKey+`(POOL)_POINTER`)
-                    
-                    let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+poolPubKey+`(POOL)_STORAGE_POOL`))
-
-                    if(poolStorage){
-
-                        let {reserveFor} = poolStorage
-
-                        if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
-
-                        activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
-                    
-                    }
-
-                }
-
-            }
-
-         
-
-            let specialOperationsOnThisCheckpoint = nextCheckpoint.PAYLOAD.OPERATIONS
-
-            // First of all - get all the <SKIP> special operations on new checkpoint and add the skipped pools to set
-
-            let stoppedPools = new Set()
-
-            for(let operation of specialOperationsOnThisCheckpoint){
-
-                /* 
-                
-                    Reminder: STOP_VALIDATOR speical operation payload has the following structure
-                
-                    {
-                       type, stop, subchain, index, hash
-                    }
-                
-                */
-
-                if(operation.type==='STOP_VALIDATOR'){
-
-                    stoppedPools.add(operation.payload.subchain)
-
-                }
-
-            }
             
+            // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
 
-
-
-            for(let subchainPoolID of mainPoolsIDs){
-
-                // Find stopped subchains on new checkpoint and assign a new pool to this subchain deterministically
-
-                let nextReservePool = subchainPoolID
-
-                if(oldPoolsMetadataFromCheckpoint[subchainPoolID].IS_STOPPED && global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
-
-                    /*
-                    
-                        If some of subchains were stopped on previous checkpoint - it's a signal that the beginning of chain is hidden here:
-                        
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS  in form like STOPPED_POOL_ID => [<ASSIGNED_POOL_0,<ASSIGNED_POOL_1,...<ASSIGNED_POOL_N>]
-
-                        and the reponsible for pool is REASSIGNMENTS[<skipped_subchain_id>][0]
-                    
-                    */
-                    
-                    nextReservePool = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID][0]
-
-                }
-
-                let nonce = 0
-
-
-                while(stoppedPools.has(nextReservePool)){
-
-                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID]){
-
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID] = []
-
-                    }
-                    
-                    // Now check if <startOfChain> pool wasn't stopped
-
-                    if(stoppedPools.has(nextReservePool)){
-
-                        // if yes - find next responsible for work on this pool in a row
-
-                        let possibleNextReservePool = GET_NEXT_RESERVE_POOL_FOR_SUBCHAIN(hashOfMetadataFromOldCheckpoint,nonce,activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID),global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID])
-
-                        if(possibleNextReservePool){
-
-                            global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainPoolID].push(possibleNextReservePool)
-
-                            global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[possibleNextReservePool]=subchainPoolID
-
-                            nextReservePool = possibleNextReservePool
-
-                            nonce++
-
-                        }else break
-
-                    }
-
-                }
-
-                // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
-
-
-            }
 
 
             //_______________________Check the version required for the next checkpoint________________________
