@@ -390,6 +390,8 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 },
 
 
+
+
 CHECK_ASP_VALIDITY=async (skippedPool,asp,checkpointFullID) => {
 
     /*
@@ -419,16 +421,30 @@ CHECK_ASP_VALIDITY=async (skippedPool,asp,checkpointFullID) => {
     */
 
 
+    let vtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB')
+
     let dataThatShouldBeSigned = `SKIP:${skippedPool}:${asp.INDEX}:${asp.HASH}:${checkpointFullID}`
 
-    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+    let {aggregatedPub,aggregatedSignature,afkVoters} = asp.SKIP_PROOF
+
+    let majority = GET_MAJORITY('VERIFICATION_THREAD')
+
+    let reverseThreshold = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
+
+
+    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,vtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+
+    return aspIsOk
 
 
 
 },
 
 
-CHECK_IF_ALL_ASP_PRESENT=async(mainPool,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID)=>{
+
+
+CHECK_IF_ALL_ASP_PRESENT=async(mainPool,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpointMetadata)=>{
 
     // Take all the reservePools from beginning of reassignment chain up to the <position>
 
@@ -439,12 +455,48 @@ CHECK_IF_ALL_ASP_PRESENT=async(mainPool,firstBlockInThisEpochByPool,reassignment
 
     let aspForMainPool = firstBlockInThisEpochByPool.extraData?.reassignments?.[mainPool]
 
+    let allAspPresentAndValidated = true
+
+    
+    let filteredReassignments = {}
+
+    let arrayOfPoolsWithZeroProgress = []
+
 
     if(typeof aspForMainPool === 'object' && await CHECK_ASP_VALIDITY(mainPool,aspForMainPool,checkpointFullID)){
 
-        allAspThatShouldBePresent.every(reservePool=>firstBlockInThisEpochByPool.extraData.reassignments[reservePool])
+        let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
 
-    } else return false 
+        
+        for(let reservePool of allAspThatShouldBePresent){
+
+            let aspForThisReservePool = reassignmentsRef[reservePool]
+
+            if( aspForThisReservePool && await CHECK_ASP_VALIDITY(reservePool,aspForThisReservePool,checkpointFullID)){
+
+                if(aspForThisReservePool.INDEX === oldCheckpointMetadata[reservePool].INDEX){
+
+                    // If this reserve pool has no progress since previous checkpoint and was skipped on the same height - it's invalid
+
+                    arrayOfPoolsWithZeroProgress.push(reservePool)
+
+                }
+
+                
+                
+            }else{
+
+                allAspPresentAndValidated = false
+
+                break
+
+            }
+
+        }
+
+        return allAspPresentAndValidated ? {isOK:true,filteredReassignments,arrayOfPoolsWithZeroProgress} : {isOK:false} 
+
+    } else return {isOK:false}
 
 },
 
@@ -594,7 +646,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     // In this block we should have ASP for all the previous reservePool + mainPool
 
-                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(mainPoolID,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID)
+                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(mainPoolID,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint.PAYLOAD.POOLS_METADATA)
 
                     if(isOK){
 
