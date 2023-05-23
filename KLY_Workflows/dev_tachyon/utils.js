@@ -307,7 +307,7 @@ BLOCKLOG=(msg,hash,block)=>{
 },
 
 
-BLS_SIGN_DATA=data=>BLS.singleSig(data,PRIVATE_KEY),
+BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 
 
 

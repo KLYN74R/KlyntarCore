@@ -62,7 +62,7 @@ global.PRIVATE_KEY=null
 
 export let GRACEFUL_STOP=()=>{
     
-    SYSTEM_SIGNAL_ACCEPTED=true
+    global.SYSTEM_SIGNAL_ACCEPTED=true
 
     console.log('\n')
 
@@ -74,7 +74,7 @@ export let GRACEFUL_STOP=()=>{
 
     LOG('Closing server connections...','I')
 
-    global.UWS_DESC && UWS.us_listen_socket_close(UWS_DESC)
+    global.UWS_DESC && UWS.us_listen_socket_close(global.UWS_DESC)
 
     LOG('Node was gracefully stopped','I')
         
@@ -123,7 +123,7 @@ let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG
 BLOCKS_GENERATION_POLLING=async()=>{
 
 
-    if(!SYSTEM_SIGNAL_ACCEPTED){
+    if(!global.SYSTEM_SIGNAL_ACCEPTED){
 
         await GENERATE_BLOCKS_PORTION()    
 
@@ -153,7 +153,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
 
 
-    let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of active reserve pools
+    let reservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of reserve pools
 
     let mainPoolsIDs = new Set()
 
@@ -177,9 +177,9 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
                 let {reserveFor} = poolStorage
 
-                if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
+                if(!reservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) reservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
 
-                activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
+                reservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
                     
             }
 
@@ -193,7 +193,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
         After this cycle we have:
 
         [0] mainPoolsIDs - Set(subchain1,subchain2,...)
-        [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
+        [1] reservePoolsRelatedToSubchainAndStillNotUsed - Map(subchainID=>[reservePool1,reservePool2,...reservePoolN])
 
     
     */
@@ -206,11 +206,11 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     for(let subchainPoolID of mainPoolsIDs){
 
 
-        let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
+        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
 
         let mapping = new Map()
 
-        let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
+        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
 
             let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
 
@@ -2409,17 +2409,6 @@ RESTORE_STATE=async()=>{
     }
 
 
-},
-
-
-
-
-GET_ASP_FOR_ALL_THE_PREVIOUS_POOLS = async() => {
-
-    let emptyTemplate = {}
-
-    // We should insert the ASPs of all the pools that stay before your pubkey based on reassignment chains(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS)
-
 }
 
 
@@ -3052,7 +3041,7 @@ PREPARE_SYMBIOTE=async()=>{
     //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
 
 
-
+    
     global.SYMBIOTE_META.VERIFICATION_THREAD = await global.SYMBIOTE_META.STATE.get('VT').catch(error=>{
 
         if(error.notFound){
@@ -3068,10 +3057,8 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SID_TRACKER:{}, // SUBCHAIN => INDEX
 
-                REASSIGNMENT_METADATA:{},
-
                 CHECKPOINT:'genesis'
- 
+
             }
 
         }else{
@@ -3192,6 +3179,10 @@ PREPARE_SYMBIOTE=async()=>{
 
         REASSIGNMENTS:new Map(), // MainPool => {CURRENT_RESERVE_POOL:<number>} | ReservePool => MainPool
 
+
+        TEMP_REASSIGNMENTS:new Map(), // used by VERIFICATION THREAD. Structure: MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
+
+
         //____________________Mapping which contains temporary databases for____________________
 
         DATABASE:quorumTemporaryDB // DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on    
@@ -3234,10 +3225,83 @@ PREPARE_SYMBIOTE=async()=>{
             
         .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current set of hostchains? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
                 
-    ).then(answer=>answer!=='YES'&& process.exit(108))
+    ).then(answer=>answer!=='YES' && process.exit(108))
 
 },
 
+
+
+
+ASP_HUNTING=async()=>{
+
+    /*
+    
+    In this function we should time by time ask for ASPs for subchains to build the reassignment chains
+    
+    */
+
+
+    let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+    let tempObject = global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)
+
+    if(!tempObject){
+
+        setTimeout(ASP_HUNTING,global.CONFIG.SYMBIOTE.ASP_HUNTING_TIMEOUT)
+
+        return
+
+    }
+
+
+    // Used by VERIFICATION THREAD. Structure: MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
+
+    let tempReassignment = tempObject.TEMP_REASSIGNMENTS
+
+    let reassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS
+
+    if(tempReassignment.size===0){
+
+        // Fill with data from here. Structure: mainPool => [reservePool0,reservePool1,...,reservePoolN]
+
+        for(let mainPool of Object.keys(reassignmentChains)){
+
+            tempReassignment.set(mainPool,{
+
+                CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in REASSIGNMENT_CHAINS
+                
+                REASSIGNMENTS:{}
+
+            })
+
+        }
+
+    }
+
+
+    //________________________________ Start to find ________________________________
+
+
+    for(let mainPool of tempReassignment.keys()){
+
+        let handler = tempReassignment.get(mainPool)
+
+        let currentAuthority = reassignmentChains[mainPool][handler.CURRENT_AUTHORITY]
+
+        // If !currentAuthority - then it's main pool
+        if(!currentAuthority) currentAuthority = mainPool
+
+
+        // Make request to /get_asp_and_approved_first_block. Returns => {asp,firstNextBlock,sfp}. Send the current auth + main pool
+
+    }
+
+
+
+    setTimeout(ASP_HUNTING,global.CONFIG.SYMBIOTE.ASP_HUNTING_TIMEOUT)
+
+
+},
 
 
 
@@ -3269,6 +3333,12 @@ RUN_SYMBIOTE=async()=>{
 
         //6.Run function to work with finalization stuff and avoid async problems
         PROOFS_SYNCHRONIZER()
+
+        //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - main pool or reserve pools
+        ASP_HUNTING()
+
+
+
 
         let promises=[]
 

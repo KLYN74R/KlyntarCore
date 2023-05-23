@@ -147,15 +147,15 @@ Verification process:
 GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let vtPayload = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    let verificationThreadCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
     // Need for async safety
-    if(vtPayload!==checkpointFullID || !global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return {skip:false,verify:false}
+    if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
 
 
-    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID).DATABASE
 
     
     let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
@@ -165,7 +165,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     if(superFinalizationProof){
 
-        return superFinalizationProof.blockHash===blockHash ? {skip:false,verify:true} : {skip:false,verify:false,shouldDelete:true}
+        return superFinalizationProof.blockHash===blockHash ? {verify:true} : {verify:false,shouldDelete:true}
 
     }   
 
@@ -196,10 +196,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             //Verify it before return
 
-            let checkpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
-
-
-            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+checkpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
+            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+verificationThreadCheckpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
 
                 rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
 
@@ -213,7 +210,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
 
-                return {skip:false,verify:true}
+                return {verify:true}
 
             }
 
@@ -223,7 +220,7 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //If we can't find - try next time
 
-    return {skip:false,verify:false}
+    return {verify:false}
 
 },
 
@@ -266,7 +263,7 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async validatorPubKey 
 SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
-    checkpoint.REASSIGNMENT_CHAINS={} // subchainID => [reservePool0,reservePool1,...,reservePoolN]
+    checkpoint.REASSIGNMENT_CHAINS={} // subchainID(mainPool) => [reservePool0,reservePool1,...,reservePoolN]
 
 
     //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
@@ -474,11 +471,13 @@ CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignm
 
 BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
 
+    verificationThread.REASSIGNMENT_METADATA={}
+
     // verificationThread is global.SYMBIOTE_META.VERIFICATION_THREAD
 
     /*
     
-    REASSIGNMENT_METADATA has the following structure
+    VT.REASSIGNMENT_METADATA has the following structure
 
         KEY = <main pool>
     
@@ -962,8 +961,23 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
-        // Create the reassignment chains for each main pool
+        // Create the reassignment chains for each main pool based on new data
         await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
+
+
+        // Update the array of main pools
+
+        let mainPools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
+                
+            pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pubKey].IS_RESERVE
+            
+        )
+
+        global.SYMBIOTE_META.STATE_CACHE.set('MAIN_POOLS',mainPools)
+
+
+        // Finally - delete the reassignment metadata
+        delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
 
         LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH} (VT)\u001b[0m`,'S')
@@ -1028,7 +1042,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             await BUILD_REASSIGNMENT_METADATA(global.SYMBIOTE_META.VERIFICATION_THREAD,oldCheckpoint,nextCheckpoint,oldCheckpointFullID)
             
             
-            // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
+            // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
 
 
 
@@ -1058,22 +1072,11 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
 
-CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL=reservePoolPubKey=>{
-
-    let subchainID = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[reservePoolPubKey]
-
-    return subchainID && global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[subchainID][0] === reservePoolPubKey
-
-},
-
-
-
-
 START_VERIFICATION_THREAD=async()=>{
 
     //This option will stop workflow of verification for each symbiote
     
-    if(!SYSTEM_SIGNAL_ACCEPTED){
+    if(!global.SYSTEM_SIGNAL_ACCEPTED){
 
         //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
 
@@ -1103,145 +1106,94 @@ START_VERIFICATION_THREAD=async()=>{
 
         */
 
+        let poolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('MAIN_POOLS')
+
+        if(!poolsPubkeys){
+
+            let mainPools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
+                
+                pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pubKey].IS_RESERVE
+                
+            )
+
+            global.SYMBIOTE_META.STATE_CACHE.set('MAIN_POOLS',mainPools)
+
+            poolsPubkeys = mainPools
+
+        }
+
 
         let prevSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
-            poolsPubkeys = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA),
+            currentSubchainToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0], // Take the next validator in a row. If it's end of pools - start from the first validator in array
 
-            //take the next validator in a row. If it's end of pools - start from the first validator in array
-            currentPoolToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0],
+            currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
 
-            //We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
-            currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentPoolToCheck],
+            blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1)
 
-            blockID = currentPoolToCheck+":"+(currentSessionMetadata.INDEX+1),
 
-            shouldSkip = false
+
+        let block = await GET_BLOCK(currentSubchainToCheck,currentSessionMetadata.INDEX+1),
+
+            blockHash = block && Block.genHash(block),
+
+            quorumSolutionToVerifyBlock = false, //by default
+
+            currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]?.INDEX > currentSessionMetadata.INDEX
         
-
-        //If current validator was marked as "offline" or AFK - skip his blocks till his activity signals
-        //Change the state of validator activity only via checkpoints
-
-
-        if(currentSessionMetadata.IS_STOPPED){
-
-            /*
             
-                Here we do everything to skip this block and move to the next subchains's block
+
+        if(currentBlockPresentInCurrentCheckpoint){
+
+            quorumSolutionToVerifyBlock = true
+
+        }
+
+        else if(updatedIsFreshCheckpoint){
+
+            let {verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
+
+            quorumSolutionToVerifyBlock = verify
+
+            if(shouldDelete){
+
+                // Probably - hash mismatch 
+
+                await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+
+            }
+            
+        }
+
+        if(block && quorumSolutionToVerifyBlock){
+
+            let subchainContext = currentSessionMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck] : currentSubchainToCheck
+
+            await verifyBlock(block,subchainContext)
+
+                
+            if(currentSessionMetadata.IS_RESERVE){
+
+                let metaFromCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]
+
+                if(metaFromCheckpoint.INDEX === currentSessionMetadata.INDEX && metaFromCheckpoint.HASH === currentSessionMetadata.HASH){
+
+                    // Delete from reassignments to move to the next pool in subchain
+
+                    let origin = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck]
+
+                    delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck]
                         
-                If 2/3+1 of quorum have voted to "skip" block - we take the "NEXT+1" block and continue work in verification thread
-                    
-                Here we just need to change finalized pointer to imitate that "skipped" block was successfully checked and next validator's block should be verified(in the next iteration)
-
-            */
-
-                
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
-
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                    
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
-
-
-        }
-        else if(currentSessionMetadata.IS_RESERVE && CAN_WE_CHANGE_THE_STATE_OF_SUBCHAIN_WITH_BLOCKS_OF_THIS_RESERVE_POOL(currentPoolToCheck) || !currentSessionMetadata.IS_RESERVE) {
-
-            //If block creator is active and produce blocks or it's non-fresh checkpoint - we can get block and process it
-
-            let block = await GET_BLOCK(currentPoolToCheck,currentSessionMetadata.INDEX+1),
-
-                blockHash = block && Block.genHash(block),
-
-                quorumSolutionToVerifyBlock = false, //by default
-
-                currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]?.INDEX > currentSessionMetadata.INDEX,
-
-                checkPointCompleted  = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.COMPLETED
-        
-            
-
-            if(currentBlockPresentInCurrentCheckpoint){
-
-                quorumSolutionToVerifyBlock = true
-
-            }
-        
-            else if(!checkPointCompleted) {
-
-                //if no sush block in current uncompleted checkpoint - then we need to skip it.
-                shouldSkip = true
-
-            }
-
-            else if(updatedIsFreshCheckpoint){
-
-                let {skip,verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({skip:false,verify:false}))
-
-                quorumSolutionToVerifyBlock = verify
-
-                shouldSkip = skip
-
-                if(shouldDelete){
-
-                    // Probably - hash mismatch 
-
-                    await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
-
-                }
-            
-            }
-
-            //We skip the block if checkpoint is not completed and no such block in checkpoint
-            //No matter if checkpoint is fresh or not
-
-            if(shouldSkip){
-
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
-
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                        
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
-
-
-            }else if(block && quorumSolutionToVerifyBlock){
-
-                let subchainContext = currentSessionMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck] : currentPoolToCheck
-
-                await verifyBlock(block,subchainContext)
-
-                
-                if(currentSessionMetadata.IS_RESERVE){
-
-                    let metaFromCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentPoolToCheck]
-
-                    if(metaFromCheckpoint.INDEX === currentSessionMetadata.INDEX && metaFromCheckpoint.HASH === currentSessionMetadata.HASH){
-
-                        // Delete from reassignments to move to the next pool in subchain
-
-                        let origin = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
-
-                        delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentPoolToCheck]
-
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
-
-                    }
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
 
                 }
 
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
-                
-
             }
 
-        }else{
-
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=currentPoolToCheck
-
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=currentSessionMetadata.INDEX+1
-                                    
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH='Sleep,the brother of Death @ Homer'
-
+            LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
+                
         }
+        
 
 
         if(global.CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
