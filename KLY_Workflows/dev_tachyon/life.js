@@ -3023,9 +3023,13 @@ PREPARE_SYMBIOTE=async()=>{
         error.notFound
         ?
         {
+            
             CHECKPOINT_FULL_ID:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, //Genesis hash
-            NEXT_INDEX:0//So the first block will be with index 0
+            
+            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
+            
+            NEXT_INDEX:0 // So the first block will be with index 0
+        
         }
         :
         (LOG(`Some problem with loading metadata of generation thread\nError:${error}`,'F'),process.exit(106))
@@ -3054,6 +3058,8 @@ PREPARE_SYMBIOTE=async()=>{
                 POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_RESERVE:boolean}
  
                 KLY_EVM_METADATA:{}, // {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+
+                TEMP_REASSIGNMENTS:{}, // MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
 
                 SID_TRACKER:{}, // SUBCHAIN => INDEX
 
@@ -3180,9 +3186,6 @@ PREPARE_SYMBIOTE=async()=>{
         REASSIGNMENTS:new Map(), // MainPool => {CURRENT_RESERVE_POOL:<number>} | ReservePool => MainPool
 
 
-        TEMP_REASSIGNMENTS:new Map(), // used by VERIFICATION THREAD. Structure: MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
-
-
         //____________________Mapping which contains temporary databases for____________________
 
         DATABASE:quorumTemporaryDB // DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on    
@@ -3232,11 +3235,13 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-ASP_HUNTING=async()=>{
+TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     /*
     
-    In this function we should time by time ask for ASPs for subchains to build the reassignment chains
+        [+] In this function we should time by time ask for ASPs for subchains to build the reassignment chains
+
+        [+] Use VT.TEMP_REASSIGNMENTS
     
     */
 
@@ -3247,58 +3252,97 @@ ASP_HUNTING=async()=>{
 
     if(!tempObject){
 
-        setTimeout(ASP_HUNTING,global.CONFIG.SYMBIOTE.ASP_HUNTING_TIMEOUT)
+        setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
         return
 
     }
 
-
-    // Used by VERIFICATION THREAD. Structure: MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
-
-    let tempReassignment = tempObject.TEMP_REASSIGNMENTS
+    let tempReassignmentOnVerificationThread = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS
 
     let reassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS
 
-    if(tempReassignment.size===0){
+
+    if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
+
+        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]={} // create empty template
 
         // Fill with data from here. Structure: mainPool => [reservePool0,reservePool1,...,reservePoolN]
 
         for(let mainPool of Object.keys(reassignmentChains)){
 
-            tempReassignment.set(mainPool,{
+            tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
 
                 CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in REASSIGNMENT_CHAINS
                 
                 REASSIGNMENTS:{}
 
-            })
+            }
 
         }
 
     }
 
-
     //________________________________ Start to find ________________________________
 
+    let quorumMembers = await GET_POOLS_URLS(true)
 
-    for(let mainPool of tempReassignment.keys()){
+    let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
 
-        let handler = tempReassignment.get(mainPool)
+    let promises=[]
+
+    let sendOptions={
+
+        method:'POST',
+
+        body:payloadInJSON
+
+    }
+
+
+        /*
+        
+            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
+            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
+        
+        */
+        for(let memberHandler of quorumMembers){
+
+            let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_1',sendOptions).then(r=>r.json()).then(async response=>{
+ 
+                response.pubKey = memberHandler.pubKey
+
+                return response
+
+            }).catch(_=>false)
+
+
+            promises.push(responsePromise)
+
+        }
+
+        //Run promises
+        let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
+    
+
+    for(let mainPool of Object.keys(tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID])){
+
+        let handler = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool]
 
         let currentAuthority = reassignmentChains[mainPool][handler.CURRENT_AUTHORITY]
 
         // If !currentAuthority - then it's main pool
         if(!currentAuthority) currentAuthority = mainPool
 
-
         // Make request to /get_asp_and_approved_first_block. Returns => {asp,firstNextBlock,sfp}. Send the current auth + main pool
+
+
 
     }
 
 
 
-    setTimeout(ASP_HUNTING,global.CONFIG.SYMBIOTE.ASP_HUNTING_TIMEOUT)
+    setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
 
 },
@@ -3335,7 +3379,7 @@ RUN_SYMBIOTE=async()=>{
         PROOFS_SYNCHRONIZER()
 
         //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - main pool or reserve pools
-        ASP_HUNTING()
+        TEMPORARY_REASSIGNMENTS_BUILDER()
 
 
 
