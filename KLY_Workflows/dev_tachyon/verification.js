@@ -1125,7 +1125,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let prevSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
 
-            currentSubchainToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0], // Take the next validator in a row. If it's end of pools - start from the first validator in array
+            currentSubchainToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0], // Take the next main pool in a row. If it's end of pools - start from the first validator in array
 
             currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
 
