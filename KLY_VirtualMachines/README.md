@@ -20,11 +20,11 @@ This is the location for KLYNTAR virtual machines. They might be various - KLYNT
 
 ## <b>How to create custom VM</b>
 
-Create subdirectory in <code>KLY_VMs</code> for your implementation.
+Create subdirectory in <code>KLY_VirtualMachines</code> for your implementation.
 
 ```bash
 
-KLY_VMs
+KLY_VirtualMachines
 │     
 │   
 └───default
@@ -54,7 +54,7 @@ export SYMBIOTE_DIR=/some/path/to/symbiote/dir
 # Imagine you want to use some VM CUSTOM_VM
 # You are in core root directory
 
-cp KLY_VMs/CUSTOM_VM/configsTemplate.json "$SYMBIOTE_DIR/CONFIGS/vm.json"
+cp KLY_VirtualMachines/CUSTOM_VM/configsTemplate.json "$SYMBIOTE_DIR/CONFIGS/vm.json"
 
 ```
 

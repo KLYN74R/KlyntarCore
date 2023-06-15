@@ -42,13 +42,13 @@ import {BLAKE3,ED25519_VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
 
 import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from './utils.js'
 
+import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
-
-import {VM} from '../../KLY_VMs/default/vm.js'
+import {VM} from '../../KLY_VirtualMachines/kly_vm/vm.js'
 
 import * as _ from './specContracts/root.js'
 

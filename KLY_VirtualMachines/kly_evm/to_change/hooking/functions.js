@@ -893,7 +893,7 @@ exports.handlers = new Map([
 
             // It's the special address to join with JS & WASM
             
-            if(toAddress.toString()==='0000000000000000000000000000000000000000'){
+            if(toAddress.toString()==='0x0000000000000000000000000000000000000000'){
 
                 // Get the destination address and continue to work with payload
                 

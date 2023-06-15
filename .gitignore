@@ -7,6 +7,10 @@ LOGS/
 .log
 
 
+#Debug
+.pnpm-debug.log
+
+
 #Hello legend
 DEVELOPMENT/useful.txt
 

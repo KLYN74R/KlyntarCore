@@ -36,7 +36,7 @@
         
     },
 
-    "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly-evm"],
+    "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly_evm"],
     
     "BITFORKS":["btc","ltc","doge","dash"],
 

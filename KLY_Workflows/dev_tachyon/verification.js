@@ -8,13 +8,13 @@ import {
 
 import {LOG,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
+import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
 
 import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
-
-import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
 import Block from './essences/block.js'
 

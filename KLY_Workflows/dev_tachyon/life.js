@@ -14,11 +14,11 @@ import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
 import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
 
+import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {START_VERIFICATION_THREAD} from './verification.js'
-
-import {KLY_EVM} from '../../KLY_VMs/kly-evm/vm.js'
 
 import Block from './essences/block.js'
 
