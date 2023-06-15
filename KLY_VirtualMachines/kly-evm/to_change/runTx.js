@@ -143,7 +143,9 @@ async function _runTx(opts) {
      * @property {Transaction} tx emits the Transaction that is about to be processed
      */
     await this._emit('beforeTx', tx);
-    const caller = util_1.Address.fromString(global.CURRENT_EVM_CALLER);//tx.getSenderAddress();
+    
+    const caller = util_1.Address.fromString(opts.evmCaller); //tx.getSenderAddress();
+
     if (this.DEBUG) {
         debug(`New tx run hash=${opts.tx.isSigned() ? opts.tx.hash().toString('hex') : 'unsigned'} sender=${caller}`);
     }

@@ -425,12 +425,10 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(_originSubchain,tx,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(originSubchain,tx,rewardBox,atomicBatch)=>{
 
 
-        let timestamp = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP
-
-        let evmResult = await KLY_EVM.callEVM(tx.payload,timestamp).catch(_=>false)
+        let evmResult = await KLY_EVM.callEVM(originSubchain,tx.payload).catch(_=>false)
 
 
         if(evmResult && !evmResult.execResult.exceptionError){            

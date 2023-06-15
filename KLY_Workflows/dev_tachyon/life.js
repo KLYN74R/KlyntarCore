@@ -3104,10 +3104,8 @@ PREPARE_SYMBIOTE=async()=>{
 
     KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
 
-    global.CURRENT_SUBCHAIN_EVM_CONTEXT = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
+
     
-
-
 
     //_______________________________Check the version of QT and VT and if need - update________________________________
     

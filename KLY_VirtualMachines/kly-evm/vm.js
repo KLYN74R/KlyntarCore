@@ -31,9 +31,7 @@ const {
     chainId,
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
-    gasLimitForBlock,
-    creds,
-    mempoolLimit
+    gasLimitForBlock
 
 } = global.CONFIG.EVM
 
@@ -53,9 +51,6 @@ global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
     return bindedSubchain
 
 }
-
-
-global.KLY_EVM_MEMPOOL = new Set() // to store txHash for low-level usage in .touchAccount function to understand that this tx is related to .sandboxCall() and we can bind wished subchainID
 
 
 
@@ -109,15 +104,17 @@ class KLY_EVM_CLASS {
      * @returns txResult 
      * 
      */
-    callEVM=async serializedEVMTxWith0x=>{
+    callEVM=async(evmContext,serializedEVMTxWith0x)=>{
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
 
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
+        let evmCaller = tx.getSenderAddress()
+
         let block = this.block
 
-        let txResult = await this.vm.runTx({tx,block})
+        let txResult = await this.vm.runTx({tx,block,evmCaller,evmContext})
 
 
         // We'll need full result to store logs and so on
@@ -135,90 +132,41 @@ class KLY_EVM_CLASS {
     */
     sandboxCall=async(txDataOrSerializedTxInHexWith0x,isJustCall)=>{
 
-        // In case it's just KLY-EVM call to read from contract - then ok, otherwise(is isJustCall=false) we assume that it's attempt to add to mempool(so we need to verify signature and other stuff)
+        // In case it's just KLY-EVM call to read from contract - then ok, otherwise(if isJustCall=false) we assume that it's attempt to add to mempool(so we need to verify signature and other stuff)
 
         let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'))
         
         let block = this.block
+        
+        // To prevent spam - limit the maximum allowed gas for free EVM calls
 
-        let txHash = tx.hash().toString('hex')
-
-        if(global.KLY_EVM_MEMPOOL.size === mempoolLimit) return {error:{msg:'Wrong nonce value or insufficient balance'}}
-
-        // Add the hash to mempool
-        global.KLY_EVM_MEMPOOL.add(txHash)
-
-
-        if(isJustCall){
-
-            let {to,data} = tx
+        tx.gasLimit = global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution
+        
+        
+        let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
+    
+        if(evmCaller){
 
             let vmCopy = await this.vm.copy()
 
-            let txResult = await vmCopy.evm.runCall({
-            
-                to,data,
-            
-                block,txHash
-              
-            }).catch(err=>({execResult:err}))
 
-            // Now we don't need it, so remove
-            global.KLY_EVM_MEMPOOL.delete(txHash)
+            let txResult = await vmCopy.runTx({
+                
+                tx,block,
+                
+                skipBalance:isJustCall,
+                isSandboxExecution:true,
+                evmCaller
+            
+            })
 
+            
             return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
-
-        }else {
-
-
-            let vmCopy = await this.vm.copy()
-
-            let origin = tx.getSenderAddress()
-
-            let {to,data,value,gasLimit} = tx
-
-            let caller = origin
-
-
-            if(tx.validate() && tx.verifySignature()){
-
-                let account = await vmCopy.stateManager.getAccount(origin)
-                 
-                if(account.nonce === tx.nonce && account.balance >= value){
-
-                    let txResult = await vmCopy.evm.runCall({
-            
-                        origin,caller,to,data,gasLimit,
-                    
-                        block,txHash
-                      
-                    }).catch(err=>({execResult:err}))
-  
-                    // Now we don't need it, so remove
-                    global.KLY_EVM_MEMPOOL.delete(txHash)
-
-                    return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
-                    
-                }else {
-
-                    // Now we don't need it, so remove
-                    global.KLY_EVM_MEMPOOL.delete(txHash)
-
-                    return {error:{msg:'Wrong nonce value or insufficient balance'}}
-
-                }
     
-            }else {
 
-                // Now we don't need it, so remove
-                global.KLY_EVM_MEMPOOL.delete(txHash)
+        }else return {error:{msg:`Can't get the <evmCaller> value - transaction is not signed or not <from> field in tx data`}}
 
-                return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
-
-            }
-    
-        }
-    
+        
     }
 
      /**
@@ -344,55 +292,30 @@ class KLY_EVM_CLASS {
     */
     estimateGasUsed = async txData => {
 
+
+        txData.gasLimit = global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
+
+
         let tx = Transaction.fromTxData(txData)
 
-        let {to,data} = tx
-
-        let origin = Address.fromString(txData.from) || tx.isSigned() && tx.getSenderAddress()
-        
-        let caller = origin
-
+        let evmCaller = Address.fromString(txData.from) || tx.isSigned() && tx.getSenderAddress()
+    
         let vmCopy = await this.vm.copy()
-
-        let txResult = await vmCopy.evm.runCall({origin,caller,to,data,block})
-
-        let gasUsed = txResult.execResult.executionGasUsed
 
         let block = this.block
 
-        // If gas is 0 - then it's default tx, so we need to run it via .runTx after getting signed with our private key and nonce
 
-        if(gasUsed === BigInt(0)){
-
-            try{
-
-
-                txData.gasLimit = txData.gas || txData.gasLimit
-
-                txData.gasLimit = BigInt(txData.gasLimit) === BigInt(0) ? BigInt(global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution) : txData.gasLimit
-
-                txData.gasPrice = BigInt(txData.gasPrice) === BigInt(0) ? BigInt(global.CONFIG.EVM.gasPriceInWeiAndHex) : txData.gasPrice
-
-                
-                let finalTx = Transaction.fromTxData(txData)
-
-                
-                finalTx = finalTx.sign(Buffer.from(creds.privateKey,'hex'))
+        let txResult = await vmCopy.runTx({
             
-                txResult = await vmCopy.runTx({tx:finalTx,block,skipBalance:true,skipNonce:true})
-    
-                gasUsed = txResult.totalGasSpent
-                
-            }catch(e){
-
-                return {error:{msg:JSON.stringify(e)}}
-
-            }
-
-        }
+            tx,block,
+            
+            skipBalance:true,
+            isSandboxExecution:true,
+            evmCaller
         
-
-        return txResult.execResult.exceptionError || web3.utils.toHex(gasUsed.toString())
+        })
+    
+        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed.toString())
         
     }
 

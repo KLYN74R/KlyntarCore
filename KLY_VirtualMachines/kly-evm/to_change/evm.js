@@ -156,7 +156,11 @@ class EVM {
     }
     async _executeCall(message) {
 
-        this.eei.txHash = message.txHash
+        // Add two extra fields
+        this.eei.isSandboxExecution = message.isSandboxExecution
+
+        this.eei.evmContext = message.evmContext
+
 
         const account = await this.eei.getAccount(message.authcallOrigin ?? message.caller);
 
@@ -239,7 +243,13 @@ class EVM {
     }
     async _executeCreate(message) {
 
-        this.eei.txHash = message.txHash
+        // Add two extra fields
+
+        this.eei.isSandboxExecution = message.isSandboxExecution
+
+        this.eei.evmContext = message.evmContext
+
+
 
         const account = await this.eei.getAccount(message.caller);
         // Reduce tx value from sender
@@ -448,7 +458,8 @@ class EVM {
             contract: await this.eei.getAccount(message.to ?? util_1.Address.zero()),
             codeAddress: message.codeAddress,
             gasRefund: message.gasRefund,
-            txHash:message.txHash
+            isSandboxExecution:message.isSandboxExecution,
+            evmContext:message.evmContext
         };
 
         const interpreter = new interpreter_1.Interpreter(this, this.eei, env, message.gasLimit);
@@ -524,7 +535,12 @@ class EVM {
             });
         }
 
-        message.txHash = opts.txHash
+        
+        // Add two extra fields
+
+        message.isSandboxExecution = opts.isSandboxExecution
+
+        message.evmContext = opts.evmContext
 
 
         await this._emit('beforeMessage', message);

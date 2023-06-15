@@ -1353,10 +1353,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         let currentBlockID = block.creator+":"+block.index
 
-        
-        
-        // Change the EVM context
-        global.CURRENT_SUBCHAIN_EVM_CONTEXT = subchainContext
+    
 
         global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
