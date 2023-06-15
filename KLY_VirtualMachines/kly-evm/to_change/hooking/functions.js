@@ -871,32 +871,48 @@ exports.handlers = new Map([
     [
         0xf1,
         async function (runState) {
-            const [_currentGasLimit, toAddr, value, inOffset, inLength, outOffset, outLength] = runState.stack.popN(7);
 
-            console.log('Debug: CALL called => ');
-            console.log('Values from stack => ',[_currentGasLimit, toAddr, value, inOffset, inLength, outOffset, outLength]);
 
-            const toAddress = new util_1.Address((0, util_2.addressToBuffer)(toAddr));
+            const [_currentGasLimit, toAddr, value, inOffset, inLength, outOffset, outLength] = runState.stack.popN(7)
 
-            console.log('Real toAddress => ',toAddress);
+            const toAddress = new util_1.Address((0, util_2.addressToBuffer)(toAddr))
 
-            let data = Buffer.alloc(0);
-            if (inLength !== BigInt(0)) {
-                data = runState.memory.read(Number(inOffset), Number(inLength));
+            let data = Buffer.alloc(0)
+
+
+            if (inLength !== BigInt(0)) data = runState.memory.read(Number(inOffset), Number(inLength))
+
+
+            const gasLimit = runState.messageGasLimit
+
+            runState.messageGasLimit = undefined
+
+            let ret = 1n
+
+
+
+            // It's the special address to join with JS & WASM
+            
+            if(toAddress.toString()==='0000000000000000000000000000000000000000'){
+
+                // Get the destination address and continue to work with payload
+                
+                ret = 1n // TODO: call function here. Pass the <data> as payload. Get the result, store somewhere and return the result to EVM
+
+
+            }else{
+
+                ret = await runState.interpreter.call(gasLimit, toAddress, value, data)
+
             }
-            const gasLimit = runState.messageGasLimit;
-            runState.messageGasLimit = undefined;
 
-            console.log('Data => ',data);
-
-            const ret = await runState.interpreter.call(gasLimit, toAddress, value, data);
-
-            console.log('Ret is => ',ret);
-
-            console.log('Values from stack => ',[_currentGasLimit, toAddr, value, inOffset, inLength, outOffset, outLength]);
+            
+            
             // Write return data to memory
-            (0, util_2.writeCallOutput)(runState, outOffset, outLength);
-            runState.stack.push(ret);
+            (0, util_2.writeCallOutput)(runState, outOffset, outLength)
+
+            runState.stack.push(ret)
+
         },
     ],
     // 0xf2: CALLCODE
