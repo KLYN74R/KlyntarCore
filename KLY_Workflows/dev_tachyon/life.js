@@ -166,6 +166,10 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
             
             mainPoolsIDs.add(poolPubKey)
 
+            // Create the empty array for main pool
+
+            reservePoolsRelatedToSubchainAndStillNotUsed.set(poolPubKey,[])
+
         }
         else{
 
@@ -2906,6 +2910,10 @@ LOAD_GENESIS=async()=>{
     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
 
 
+    //Finally, build the reassignment chains for current checkpoint in QT
+
+    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
+
 },
 
 
@@ -3081,7 +3089,6 @@ PREPARE_SYMBIOTE=async()=>{
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
         await LOAD_GENESIS()
-
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
