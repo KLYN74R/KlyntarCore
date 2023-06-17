@@ -1163,6 +1163,164 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 
 
+/*
+
+
+[Info]:
+
+    Route to ask for AGGREGATED_SKIP_PROOF(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
+
+
+[Accept]:
+
+    Nothing
+
+
+[Returns]:
+
+Object like {
+
+    mainPool => {currentReservePoolIndex,aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+
+}
+
+___________________________________________________________
+
+[0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
+
+[1] aspForPreviousAuthority - 
+
+    {
+
+        INDEX:skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX,
+
+        HASH:skipHandler.EXTENDED_FINALIZATION_PROOF.HASH,
+
+        SKIP_PROOF:{
+
+            aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+
+            aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),      === SIG(`SKIP:${poolThatShouldBeSkipped}:${INDEX}:${HASH}:${checkpointFullID}`)
+
+            afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+                        
+        }
+
+    }
+
+[2] firstBlockByCurrentAuthority - default block structure
+
+[3] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
+
+
+    {
+        
+        blockID,
+        blockHash,
+        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
+        aggregatedPub:<>,
+        afkVoters
+        
+    }
+
+
+*/
+getDataForTempReassignments = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
+
+        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+        // Get the current authorities for subchains from REASSIGNMENTS
+
+        let currentMainPools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS) // [mainPool0, mainPool1, ...]
+
+        let templateForResponse = {} // mainPool => {aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+
+        for(let mainPool of currentMainPools){
+
+            // Get the current authority
+
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(mainPool) // mainPool => {CURRENT_RESERVE_POOL:<number>}
+
+            if(reassignmentHandler){
+
+                let currentReservePoolIndex = reassignmentHandler.CURRENT_RESERVE_POOL
+
+                let currentSubchainAuthority = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex]
+
+                // Now, get the ASP for previous authority in a chain, first block in current epoch by <currentSubchainAuthority> and SFP for it
+
+                let previousChainAuthority = currentReservePoolIndex - 1 === -1 ? mainPool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex-1]
+
+                let aspForPreviousAuthority = tempObject.SKIP_HANDLERS.get(previousChainAuthority)?.AGGREGATED_SKIP_PROOF
+
+
+
+                if(aspForPreviousAuthority){
+
+                    // Now get the first block & SFP for it
+
+                    let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.INDEX
+
+                    if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
+
+                        let blockID = currentSubchainAuthority+":"+(indexOfLatestBlockInPreviousEpoch+1)
+
+                        let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+
+                        if(firstBlockByCurrentAuthority){
+
+                            // Finally, find the SFP for this block
+
+                            let sfpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+blockID).catch(_=>false)
+
+                            // Put to response
+
+                            templateForResponse[mainPool]={
+
+                                currentReservePoolIndex,
+                                
+                                aspForPreviousAuthority,
+                            
+                                firstBlockByCurrentAuthority,
+                            
+                                sfpForFirstBlockByCurrentAuthority
+                            
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
+        // Finally, send the <templateForResponse> back
+
+        !response.aborted && response.end(JSON.stringify(templateForResponse))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
 
 /*
 
@@ -1882,6 +2040,10 @@ UWS_SERVER
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)
+
+
+// We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally)
+.get('/get_data_for_temp_reassign',getDataForTempReassignments)
 
 
 //___________________________________ Other ___________________________________________

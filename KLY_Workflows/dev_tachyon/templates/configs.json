@@ -199,7 +199,8 @@
             "HEALTH_CHECKER":1,
             "PAYLOAD_FOR_CHECKPOINT":1,
             "SPECIAL_OPERATIONS":1,
-            "NEW_NODES":1
+            "NEW_NODES":1,
+            "GET_DATA_FOR_TEMP_REASSIGN":1
 
         },
 

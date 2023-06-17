@@ -2910,9 +2910,11 @@ LOAD_GENESIS=async()=>{
     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
 
 
-    //Finally, build the reassignment chains for current checkpoint in QT
+    //Finally, build the reassignment chains for current checkpoint in QT and VT
 
     await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
+
+    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
 
 },
 
@@ -3170,12 +3172,12 @@ PREPARE_SYMBIOTE=async()=>{
 
         SPECIAL_OPERATIONS_MEMPOOL:new Map(), // to hold operations which should be included to checkpoints
 
-        COMMITMENTS:new Map(), // the first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+        COMMITMENTS:new Map(), // blockID => SIG(blockID+hash).     The first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
 
-        FINALIZATION_PROOFS:new Map(), // aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+        FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
     
-        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints. Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {INDEX,HASH} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
         CHECKPOINT_MANAGER_SYNC_HELPER:new Map(), // map(subchainID=>Set({INDEX,HASH,FINALIZATION_PROOF})) here will be added propositions to update the finalization proof for subchain which will be checked in sync mode
 
@@ -3247,6 +3249,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         [+] In this function we should time by time ask for ASPs for subchains to build the reassignment chains
 
         [+] Use VT.TEMP_REASSIGNMENTS
+
+
+        Based on current checkpoint in QUORUM_THREAD - build the temporary reassignments
     
     */
 
@@ -3263,9 +3268,12 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     }
 
+
+
     let tempReassignmentOnVerificationThread = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS
 
-    let reassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS
+    let reassignmentChains = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS
+
 
 
     if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
@@ -3278,9 +3286,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
             tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
 
-                CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in REASSIGNMENT_CHAINS
+                CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
-                REASSIGNMENTS:{}
+                REASSIGNMENTS:{} // poolPubKey => {INDEX,HASH}
 
             }
 
@@ -3292,43 +3300,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let quorumMembers = await GET_POOLS_URLS(true)
 
-    let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
+    let promises = []
 
-    let promises=[]
-
-    let sendOptions={
-
-        method:'POST',
-
-        body:payloadInJSON
-
-    }
-
-
-        /*
-        
-            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
-            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
-        
-        */
-        for(let memberHandler of quorumMembers){
-
-            let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_1',sendOptions).then(r=>r.json()).then(async response=>{
- 
-                response.pubKey = memberHandler.pubKey
-
-                return response
-
-            }).catch(_=>false)
-
-
-            promises.push(responsePromise)
-
-        }
-
-        //Run promises
-        let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
-    
 
     for(let mainPool of Object.keys(tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID])){
 
@@ -3339,14 +3312,33 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         // If !currentAuthority - then it's main pool
         if(!currentAuthority) currentAuthority = mainPool
 
-        // Make request to /get_asp_and_approved_first_block. Returns => {asp,firstNextBlock,sfp}. Send the current auth + main pool
+        // Make request to /get_asp_and_approved_first_block. Returns => {aspForPreviousAuthority,firstBlockOfCurrentAuthority,sfpForFirstBlockByCurrentAuthority}. Send the current auth + main pool
+
+        let responsePromise = fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
 
 
+
+        promises.push(responsePromise)
 
     }
 
+    /*
+        
+        Start to find ASPs for current authorities of subchains
+        
+    */
+    for(let memberHandler of quorumMembers){
+
+        // Ask the GET /get_data_for_temp_reassign
+
+    }
+
+    //Run promises
+    let responsePingBacks = (await Promise.all(promises)).filter(Boolean)
+   
 
 
+    
     setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
 
