@@ -3274,7 +3274,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let reassignmentChains = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS
 
-
+    
 
     if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
 
@@ -3283,7 +3283,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         // Fill with data from here. Structure: mainPool => [reservePool0,reservePool1,...,reservePoolN]
 
         for(let mainPool of Object.keys(reassignmentChains)){
-
+            
             tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
 
                 CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
@@ -3300,43 +3300,119 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let quorumMembers = await GET_POOLS_URLS(true)
 
-    let promises = []
+    let reassignmentResponses = []
 
+    // Ask quorum members about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains
 
-    for(let mainPool of Object.keys(tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID])){
-
-        let handler = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool]
-
-        let currentAuthority = reassignmentChains[mainPool][handler.CURRENT_AUTHORITY]
-
-        // If !currentAuthority - then it's main pool
-        if(!currentAuthority) currentAuthority = mainPool
-
-        // Make request to /get_asp_and_approved_first_block. Returns => {aspForPreviousAuthority,firstBlockOfCurrentAuthority,sfpForFirstBlockByCurrentAuthority}. Send the current auth + main pool
-
-        let responsePromise = fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
-
-
-
-        promises.push(responsePromise)
-
-    }
-
-    /*
-        
-        Start to find ASPs for current authorities of subchains
-        
-    */
     for(let memberHandler of quorumMembers){
 
-        // Ask the GET /get_data_for_temp_reassign
+        // Make requests to /get_asp_and_approved_first_block. Returns => {aspForPreviousAuthority,firstBlockOfCurrentAuthority,sfpForFirstBlockByCurrentAuthority}. Send the current auth + main pool
+
+        reassignmentResponses.push(
+            
+            fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
+            
+        )
 
     }
 
-    //Run promises
-    let responsePingBacks = (await Promise.all(promises)).filter(Boolean)
+    // Run promises
+    let responsePingBacks = (await Promise.all(reassignmentResponses)).filter(Boolean)
    
+    // And analyze the results
+    for(let responseForTempReassignment of responsePingBacks){
 
+        /*
+        
+            The response from each of quorum member has the following structure:
+
+                [0] - {err:'Some error text'} - ignore, do nothing
+
+                [1] - Object with this structure
+
+                {
+
+                    mainPool0:{currentReservePoolIndex,aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
+
+                    mainPool1:{currentReservePoolIndex,aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
+
+                    ...
+
+                    mainPoolN:{currentReservePoolIndex,aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+
+                }
+
+
+                -----------------------------------------------[Decomposition]-----------------------------------------------
+
+
+                [0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
+
+                [1] aspForPreviousAuthority - 
+
+                    {
+
+                        INDEX:skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX,
+
+                        HASH:skipHandler.EXTENDED_FINALIZATION_PROOF.HASH,
+
+                        SKIP_PROOF:{
+
+                            aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+
+                            aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),      === SIG(`SKIP:${poolThatShouldBeSkipped}:${INDEX}:${HASH}:${checkpointFullID}`)
+
+                            afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+                        
+                        }
+
+                    }
+
+                [2] firstBlockByCurrentAuthority - default block structure
+
+                [3] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
+
+
+                    {
+        
+                        blockID,
+                        blockHash,
+                        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
+                        aggregatedPub:<>,
+                        afkVoters
+        
+                    }
+
+
+                -----------------------------------------------[What to do next?]-----------------------------------------------
+        
+                Compare the <currentReservePoolIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+
+                    In case our local version has bigger index - ignore
+
+                    In case proposed version has bigger index it's a clear signal that some of reassignments occured and we need to update our local data
+
+                    For this:
+
+                        0) Verify the <aspForPreviousAuthority>. If should be OK for pool reassignmentChains[mainPool][<currentReservePoolIndex>-1]
+
+                        1) Then, verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for main pool) in a row
+
+                        2) Verify that this block was approved by quorum majority(2/3N+1) by checking the <sfpForFirstBlockByCurrentAuthority>
+
+
+                If all the verification steps is OK - add to some cache
+
+                -----------------------------------------------[After the verification of all the responses?]-----------------------------------------------
+
+                Start to build the temporary reassignment chains
+
+        */
+
+        
+        
+
+    }
 
     
     setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
