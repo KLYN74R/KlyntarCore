@@ -535,7 +535,7 @@ export default {
 
             checkpointFullID = currentCheckpoint.HEADER.PAYLOAD_HASH+"#"+currentCheckpoint.HEADER.ID,
 
-            rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get(threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB'+checkpointFullID)
+            rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get((threadID==='VERIFICATION_THREAD' ? 'VT_ROOTPUB':'QT_ROOTPUB')+checkpointFullID)
 
 
         //Find next checkpoint and verify signatures

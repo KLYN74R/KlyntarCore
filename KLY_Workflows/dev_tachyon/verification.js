@@ -110,6 +110,47 @@ GET_BLOCK = async (blockCreator,index) => {
 
 
 
+VERIFY_SUPER_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablySuperFinalizationProof,checkpointFullID,checkpoint) => {
+
+    // Make the initial overview
+    let generalAndTypeCheck =   itsProbablySuperFinalizationProof
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.aggregatedPub === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.aggregatedSignature === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.blockID === 'string'
+                                    &&
+                                    typeof itsProbablySuperFinalizationProof.blockHash === 'string'
+                                    &&
+                                    Array.isArray(itsProbablySuperFinalizationProof.afkVoters)
+
+
+    if(generalAndTypeCheck){
+
+        //Verify it before return
+
+        let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+checkpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
+
+            rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID) === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
+
+            quorumSize = checkpoint.QUORUM.length,
+
+            majority = GET_MAJORITY('VERIFICATION_THREAD',checkpoint)
+
+            
+        let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkVoters.length >= majority
+
+
+        if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis) return {verify:true}
+
+    }
+
+},
+
+
+
+
 /*
 
 <SUPER_FINALIZATION_PROOF> is an aggregated proof from 2/3N+1 pools from quorum that they each have 2/3N+1 commitments from other pools
@@ -149,7 +190,10 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let verificationThreadCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+    let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+
+    let verificationThreadCheckpointFullID = vtCheckpoint.HEADER.PAYLOAD_HASH+"#"+vtCheckpoint.HEADER.ID
+
 
     // Need for async safety
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
@@ -177,44 +221,11 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     for(let memberURL of quorumMembersURLs){
 
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/super_finalization/'+blockID).then(r=>r.json()).catch(_=>false),
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/super_finalization/'+blockID).then(r=>r.json()).catch(_=>false)
 
-            generalAndTypeCheck =   itsProbablySuperFinalizationProof
-                                    &&
-                                    typeof itsProbablySuperFinalizationProof.aggregatedPub === 'string'
-                                    &&
-                                    typeof itsProbablySuperFinalizationProof.aggregatedSignature === 'string'
-                                    &&
-                                    typeof itsProbablySuperFinalizationProof.blockID === 'string'
-                                    &&
-                                    typeof itsProbablySuperFinalizationProof.blockHash === 'string'
-                                    &&
-                                    Array.isArray(itsProbablySuperFinalizationProof.afkVoters)
+        let isOK = await VERIFY_SUPER_FINALIZATION_PROOF(blockID,blockHash,itsProbablySuperFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
 
-
-        if(generalAndTypeCheck){
-
-            //Verify it before return
-
-            let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+verificationThreadCheckpointFullID,itsProbablySuperFinalizationProof.aggregatedSignature,itsProbablySuperFinalizationProof.aggregatedPub),
-
-                rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB') === bls.aggregatePublicKeys([itsProbablySuperFinalizationProof.aggregatedPub,...itsProbablySuperFinalizationProof.afkVoters]),
-
-                quorumSize = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length,
-
-                majority = GET_MAJORITY('VERIFICATION_THREAD')
-
-            
-            let majorityVotedForThis = quorumSize-itsProbablySuperFinalizationProof.afkVoters.length >= majority
-
-
-            if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis){
-
-                return {verify:true}
-
-            }
-
-        }
+        if(isOK.verify) return isOK 
 
     }
 
@@ -386,7 +397,7 @@ CHECK_ASP_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
     */
 
 
-    let vtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB')
+    let vtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
     let dataThatShouldBeSigned = `SKIP:${skippedPool}:${asp.INDEX}:${asp.HASH}:${checkpointFullID}`
 
@@ -602,7 +613,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
                 if(arrayOfPoolsThatShouldBeSkipped.includes(currentReservePool)) continue
 
 
-                // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as non-valid
+                // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
 
                 if(newCheckpoint.PAYLOAD.POOLS_METADATA[currentReservePool].INDEX > oldCheckpoint.PAYLOAD.POOLS_METADATA[currentReservePool].INDEX){
 
@@ -957,8 +968,10 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //Create new quorum based on new POOLS_METADATA state
         global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
+        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+
         //Get the new rootpub
-        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
 
 
         // Create the reassignment chains for each main pool based on new data
@@ -1031,10 +1044,8 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             // And reassignment chains should be the same
             global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS = oldCheckpoint.REASSIGNMENT_CHAINS
 
-
-
             //Get the rootpub
-            global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
+            // global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM))
            
 
             // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify

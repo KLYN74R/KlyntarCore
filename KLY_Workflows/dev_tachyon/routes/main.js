@@ -1180,7 +1180,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    mainPool => {currentReservePoolIndex,aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+    mainPool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
 
 }
 
@@ -1188,29 +1188,9 @@ ___________________________________________________________
 
 [0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
 
-[1] aspForPreviousAuthority - 
+[1] firstBlockByCurrentAuthority - default block structure
 
-    {
-
-        INDEX:skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX,
-
-        HASH:skipHandler.EXTENDED_FINALIZATION_PROOF.HASH,
-
-        SKIP_PROOF:{
-
-            aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
-
-            aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),      === SIG(`SKIP:${poolThatShouldBeSkipped}:${INDEX}:${HASH}:${checkpointFullID}`)
-
-            afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
-                        
-        }
-
-    }
-
-[2] firstBlockByCurrentAuthority - default block structure
-
-[3] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
+[2] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
 
 
     {
@@ -1246,7 +1226,7 @@ getDataForTempReassignments = async response => {
 
         let currentMainPools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS) // [mainPool0, mainPool1, ...]
 
-        let templateForResponse = {} // mainPool => {aspForPreviousAuthority,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+        let templateForResponse = {} // mainPool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
 
         for(let mainPool of currentMainPools){
 
@@ -1258,48 +1238,34 @@ getDataForTempReassignments = async response => {
 
                 let currentReservePoolIndex = reassignmentHandler.CURRENT_RESERVE_POOL
 
-                let currentSubchainAuthority = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex]
+                let currentSubchainAuthority = currentReservePoolIndex === -1 ? mainPool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex]
 
-                // Now, get the ASP for previous authority in a chain, first block in current epoch by <currentSubchainAuthority> and SFP for it
+                // Now get the first block & SFP for it
 
-                let previousChainAuthority = currentReservePoolIndex - 1 === -1 ? mainPool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex-1]
+                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.INDEX
 
-                let aspForPreviousAuthority = tempObject.SKIP_HANDLERS.get(previousChainAuthority)?.AGGREGATED_SKIP_PROOF
+                if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
 
+                    let blockID = currentSubchainAuthority+":"+(indexOfLatestBlockInPreviousEpoch+1)
 
+                    let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
-                if(aspForPreviousAuthority){
+                    if(firstBlockByCurrentAuthority){
 
-                    // Now get the first block & SFP for it
+                        // Finally, find the SFP for this block
 
-                    let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.INDEX
+                        let sfpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+blockID).catch(_=>false)
 
-                    if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
+                        // Put to response
 
-                        let blockID = currentSubchainAuthority+":"+(indexOfLatestBlockInPreviousEpoch+1)
+                        templateForResponse[mainPool]={
 
-                        let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
-
-                        if(firstBlockByCurrentAuthority){
-
-                            // Finally, find the SFP for this block
-
-                            let sfpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+blockID).catch(_=>false)
-
-                            // Put to response
-
-                            templateForResponse[mainPool]={
-
-                                currentReservePoolIndex,
-                                
-                                aspForPreviousAuthority,
+                            currentReservePoolIndex,
                             
-                                firstBlockByCurrentAuthority,
+                            firstBlockByCurrentAuthority,
                             
-                                sfpForFirstBlockByCurrentAuthority
+                            sfpForFirstBlockByCurrentAuthority
                             
-                            }
-
                         }
 
                     }
