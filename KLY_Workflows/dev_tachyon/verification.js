@@ -480,6 +480,15 @@ CHECK_IF_ALL_ASP_PRESENT = async (mainPool,firstBlockInThisEpochByPool,reassignm
 
 
 
+MAKE_SURE_ITS_THE_FIRST_APPROVED_BLOCK_IN_CHECKPOINT = async (poolID,block,checkpointFullID) => {
+
+    // Here we need to ask the quorum if some block X is really the first block in epoch
+
+},
+
+
+
+
 BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
 
     verificationThread.REASSIGNMENT_METADATA={}

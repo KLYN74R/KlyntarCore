@@ -3320,191 +3320,221 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
 
         if(responseForTempReassignment){
-
-            // And analyze the results
+    
+            /*
         
-            for(let responseForTempReassignment of responsePingBacks){
+                The response from each of quorum member has the following structure:
 
-                /*
+                [0] - {err:'Some error text'} - ignore, do nothing
+
+                [1] - Object with this structure
+
+                {
+
+                    mainPool0:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
+
+                    mainPool1:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
+
+                    ...
+
+                    mainPoolN:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+
+                }
+
+
+                -----------------------------------------------[Decomposition]-----------------------------------------------
+
+
+                [0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
+
+                [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a row
+
+                [2] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
+
+
+                    {
         
-                    The response from each of quorum member has the following structure:
-
-                        [0] - {err:'Some error text'} - ignore, do nothing
-
-                        [1] - Object with this structure
-
-                        {
-
-                            mainPool0:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
-
-                            mainPool1:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority},
-
-                            ...
-
-                            mainPoolN:{currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
-
-                        }
-
-
-                    -----------------------------------------------[Decomposition]-----------------------------------------------
-
-
-                    [0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
-
-                    [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a row
-
-                    [2] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
-
-
-                        {
+                        blockID,
+                        blockHash,
+                        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
+                        aggregatedPub:<>,
+                        afkVoters
         
-                            blockID,
-                            blockHash,
-                            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
-                            aggregatedPub:<>,
-                            afkVoters
+                    }
+
+
+                -----------------------------------------------[What to do next?]-----------------------------------------------
         
-                        }
+                Compare the <currentReservePoolIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+
+                    In case our local version has bigger index - ignore
+
+                    In case proposed version has bigger index it's a clear signal that some of reassignments occured and we need to update our local data
+
+                    For this:
+
+                        0) Verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for main pool) in a row
+
+                        1) Verify that this block was approved by quorum majority(2/3N+1) by checking the <sfpForFirstBlockByCurrentAuthority>
 
 
-                    -----------------------------------------------[What to do next?]-----------------------------------------------
-        
-                    Compare the <currentReservePoolIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+                    If all the verification steps is OK - add to some cache
 
-                        In case our local version has bigger index - ignore
+                -----------------------------------------------[After the verification of all the responses?]-----------------------------------------------
 
-                        In case proposed version has bigger index it's a clear signal that some of reassignments occured and we need to update our local data
+                Start to build the temporary reassignment chains
 
-                        For this:
+            */
 
-                            0) Verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for main pool) in a row
+            for(let [mainPool,reassignMetadata] of Object.entries(responseForTempReassignment)){
 
-                            1) Verify that this block was approved by quorum majority(2/3N+1) by checking the <sfpForFirstBlockByCurrentAuthority>
-
-
-                        If all the verification steps is OK - add to some cache
-
-                    -----------------------------------------------[After the verification of all the responses?]-----------------------------------------------
-
-                    Start to build the temporary reassignment chains
-
-                */
-
-                for(let [mainPool,reassignMetadata] of Object.entries(responseForTempReassignment)){
-
-                    if(typeof mainPool === 'string' && typeof reassignMetadata==='object'){
-
-                        let {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority} = reassignMetadata
-
-                        if(typeof currentReservePoolIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof sfpForFirstBlockByCurrentAuthority==='object'){
-        
-
-                            let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
-
-                            let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].INDEX+1
-
-
-                            if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
-
+                if(typeof mainPool === 'string' && typeof reassignMetadata==='object'){
+    
+                    let {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority} = reassignMetadata
+    
+                    if(typeof currentReservePoolIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof sfpForFirstBlockByCurrentAuthority==='object'){
+            
                         
-                                // Verify the SFP for block
+                        let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+    
+                        let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].INDEX+1
+    
+    
+                        if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
+    
+                            
+                            // Verify the SFP for block
+    
+                        
+                            let blockID = firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
+    
+                            let blockHash = Block.genHash(firstBlockByCurrentAuthority)
+    
+                            let sfpIsOk = await VERIFY_SUPER_FINALIZATION_PROOF(blockID,blockHash,sfpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
+    
+                            let shouldChangeThisSubchain = true
+    
 
+                            if(sfpIsOk.verify){
+    
+                                // Verify all the ASPs in block header
+    
+                                let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
+                                
+                                    mainPool, firstBlockByCurrentAuthority, reassignmentChains[mainPool], currentReservePoolIndex, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
+                                
+                                )
+    
+                                /*
+                                
+                                    tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
+    
+                                        CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                     
-                                let blockID = firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
+                                        REASSIGNMENTS:{} // poolPubKey => {index,hash}
+    
+                                    }
+                                
+                                
+                                */
+    
+                                if(isOK){
+    
+                                            
+                                    // Fill the tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool]
+    
+                                    // let previousAuthorityIndexInReassignmentChain = currentReservePoolIndex-1
+    
+                                    // let previousAuthority = previousAuthorityIndexInReassignmentChain === -1 ? mainPool : reassignmentChains[mainPool][previousAuthorityIndexInReassignmentChain]
+    
+                                    // tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].REASSIGNMENTS[previousAuthority] = filteredReassignments[previousAuthority]
+    
+                                    // And do the same from currentReservePoolIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+    
+                                    let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
+                               
+                                    let limitPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
+                               
 
-                                let blockHash = Block.genHash(firstBlockByCurrentAuthority)
 
-                                let sfpIsOk = await VERIFY_SUPER_FINALIZATION_PROOF(blockID,blockHash,sfpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
-
-
-
-                                if(sfpIsOk.verify){
-
-                                    // Verify all the ASPs in block header
-
-                                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
-                            
-                                        mainPool, firstBlockByCurrentAuthority, reassignmentChains[mainPool], currentReservePoolIndex, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
-                            
-                                    )
-
-                                    /*
-                            
-                                        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
-
-                                            CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
-                
-                                            REASSIGNMENTS:{} // poolPubKey => {index,hash}
-
-                                        }
-                            
-                            
-                                    */
-
-                                    if(isOK){
-
-                                        // Fill the tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool]
-
-                                        // let previousAuthorityIndexInReassignmentChain = currentReservePoolIndex-1
-
-                                        // let previousAuthority = previousAuthorityIndexInReassignmentChain === -1 ? mainPool : reassignmentChains[mainPool][previousAuthorityIndexInReassignmentChain]
-
-                                        // tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].REASSIGNMENTS[previousAuthority] = filteredReassignments[previousAuthority]
-
-                                        // And do the same from currentReservePoolIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
-
-                                        let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
-
-                                        let limitPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
-
-                                        for(let position = currentReservePoolIndex-1 ; position >= limitPointer ; position--){
-
-                                            let poolWithThisPosition = position === -1 ? mainPool : reassignmentChains[mainPool][position]
-
-                                            let blockIndexInASP = filteredReassignments[poolWithThisPosition].index
-
+                                    for(let position = currentReservePoolIndex-1 ; position >= limitPointer ; position--){
+    
+                                        let poolWithThisPosition = position === -1 ? mainPool : reassignmentChains[mainPool][position]
+            
+                                        if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
+    
                                             let latestBlockInPreviousCheckpointByThisPool = poolsMetadataFromVtCheckpoint[poolWithThisPosition].INDEX
+    
+                                            // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
+    
+                                            // Here ask the first block by this pool in this epoch, verify the SFP and continue
+    
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
+    
+                                            // In this block we should have ASP for all the previous reservePools + mainPool
+                                
+                                            let resultForCurrentPool = await CHECK_IF_ALL_ASP_PRESENT(
+                                                        
+                                                mainPool, firstBlockInThisEpochByPool, reassignmentChains[mainPool], position, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
+                                                        
+                                            )
+                                
+                                            if(resultForCurrentPool.isOK){
+    
+                                                // If ok - fill the <potentialReassignments>
+    
+                                                if(resultForCurrentPool.arrayOfPoolsWithZeroProgress.length) arrayOfPoolsWithZeroProgress = arrayOfPoolsWithZeroProgress.concat(resultForCurrentPool.arrayOfPoolsWithZeroProgress)
+    
+                                                potentialReassignments.push(resultForCurrentPool.filteredReassignments)
+    
+                                            }else{
+    
+                                                shouldChangeThisSubchain = false
 
-                                            if(blockIndexInASP !== latestBlockInPreviousCheckpointByThisPool){
+                                                break
+    
+                                            }
+                                            
 
-                                                // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
+                                        } else continue
+    
+                                    }
+    
+                                    if(shouldChangeThisSubchain){
 
-                                                // Here ask the first block by this pool in this epoch, verify the SFP and continue
+                                        // Update the reassignment data
 
-                                                let firstBlockInThisEpochByPool = await GET_BLOCK(poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
+                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].REASSIGNMENTS // poolPubKey => {INDEX,HASH}
 
-                                                // In this block we should have ASP for all the previous reservePools + mainPool
-                            
-                                                let resultForCurrentPool = await CHECK_IF_ALL_ASP_PRESENT(
-                                                    
-                                                    mainPool, firstBlockInThisEpochByPool, reassignmentChains[mainPool], position, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
-                                                    
-                                                )
-                            
-                                                if(resultForCurrentPool.isOK){
 
-                                                    
+                                        for(let reassignStats of potentialReassignments.reverse()){
 
-                                                }                            
+                                            // potentialReassignments[i] = {mainPool:{INDEX,HASH},pool0:{INDEX,HASH},poolN:{INDEX,HASH}}
 
+                                            for(let [skippedPool,descriptor] of Object.entries(reassignStats)){
+
+                                                if(!tempReassignmentChain[skippedPool]) tempReassignmentChain[skippedPool]=descriptor
+                        
                                             }
 
                                         }
 
-                                        // Потом после цикла обновляем данные по реасайнменту.
+                                        // Finally, set the CURRENT_AUTHORITY to the new pointer
+
+                                        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY = currentReservePoolIndex
 
                                     }
-
+    
                                 }
-
+    
                             }
-        
-                        }    
-
-                    }
-
+    
+                        }
+            
+                    }    
+    
                 }
-
+    
             }
 
         }
