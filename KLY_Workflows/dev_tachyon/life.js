@@ -2709,7 +2709,17 @@ LOAD_GENESIS=async()=>{
         
                     }
     
-                }    
+                }
+
+                global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
+            
+                    NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+            
+                    PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+            
+                    TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+            
+                }
 
             }
     
@@ -2812,18 +2822,10 @@ LOAD_GENESIS=async()=>{
         GRID:0
     
     }
-    
-    global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA = {
 
-        STATE_ROOT:await KLY_EVM.getStateRoot(),
 
-        NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+    global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
-        PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
-
-        TIMESTAMP:Math.floor(checkpointTimestamp/1000)
-
-    }
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
@@ -3066,8 +3068,10 @@ PREPARE_SYMBIOTE=async()=>{
                 FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
 
                 POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_RESERVE:boolean}
+
+                KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
  
-                KLY_EVM_METADATA:{}, // {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+                KLY_EVM_METADATA:{}, // MainPool => {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
                 TEMP_REASSIGNMENTS:{}, // MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
 
@@ -3104,12 +3108,14 @@ PREPARE_SYMBIOTE=async()=>{
     //________________________________________Set the state of KLY-EVM______________________________________________
 
 
-    let {STATE_ROOT,NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA
+    await KLY_EVM.setStateRoot(global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
 
+    // Set the block parameters based on current subchain that we'll verify in VERIFICATION_THREAD
 
-    await KLY_EVM.setStateRoot(STATE_ROOT)
+    let currentSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
 
-    // Set the block parameters
+    let {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[currentSubchain]
+    
 
     KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
 

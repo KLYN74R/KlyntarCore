@@ -1094,7 +1094,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 START_VERIFICATION_THREAD=async()=>{
 
-    //This option will stop workflow of verification for each symbiote
+    //This option will stop verification for symbiote
     
     if(!global.SYSTEM_SIGNAL_ACCEPTED){
 
@@ -1147,19 +1147,19 @@ START_VERIFICATION_THREAD=async()=>{
 
             currentSubchainToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0], // Take the next main pool in a row. If it's end of pools - start from the first validator in array
 
-            currentSessionMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
+            currentSubchainMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
 
-            blockID = currentSubchainToCheck+":"+(currentSessionMetadata.INDEX+1)
+            blockID = currentSubchainToCheck+":"+(currentSubchainMetadata.INDEX+1)
 
 
 
-        let block = await GET_BLOCK(currentSubchainToCheck,currentSessionMetadata.INDEX+1),
+        let block = await GET_BLOCK(currentSubchainToCheck,currentSubchainMetadata.INDEX+1),
 
             blockHash = block && Block.genHash(block),
 
             quorumSolutionToVerifyBlock = false, //by default
 
-            currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]?.INDEX > currentSessionMetadata.INDEX
+            currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]?.INDEX > currentSubchainMetadata.INDEX
         
             
 
@@ -1187,16 +1187,16 @@ START_VERIFICATION_THREAD=async()=>{
 
         if(block && quorumSolutionToVerifyBlock){
 
-            let subchainContext = currentSessionMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck] : currentSubchainToCheck
+            let subchainContext = currentSubchainMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck] : currentSubchainToCheck
 
             await verifyBlock(block,subchainContext)
 
                 
-            if(currentSessionMetadata.IS_RESERVE){
+            if(currentSubchainMetadata.IS_RESERVE){
 
                 let metaFromCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]
 
-                if(metaFromCheckpoint.INDEX === currentSessionMetadata.INDEX && metaFromCheckpoint.HASH === currentSessionMetadata.HASH){
+                if(metaFromCheckpoint.INDEX === currentSubchainMetadata.INDEX && metaFromCheckpoint.HASH === currentSubchainMetadata.HASH){
 
                     // Delete from reassignments to move to the next pool in subchain
 
@@ -1373,21 +1373,28 @@ verifyBlock=async(block,subchainContext)=>{
 
         let currentBlockID = block.creator+":"+block.index
 
-    
 
         global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
+        //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
-        //To change the state atomically
+        
+        let currentKlyEvmContextMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainContext] // {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+
+        // Set the next block's parameters
+        KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.NEXT_BLOCK_INDEX,currentKlyEvmContextMetadata.TIMESTAMP,currentKlyEvmContextMetadata.PARENT_HASH)
+
+        // To change the state atomically
         let atomicBatch = global.SYMBIOTE_META.STATE.batch()
 
 
         //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
+        
         let accountsToAddToCache=[]
     
-        //Push accounts for fees of subchains authorities
+        // Push accounts for fees of subchains authorities
 
         let activePools = new Set()
 
@@ -1408,7 +1415,7 @@ verifyBlock=async(block,subchainContext)=>{
             
         )
 
-        //Now cache has all accounts and ready for the next cycles
+        // Now cache has all accounts and ready for the next cycles
         await Promise.all(accountsToAddToCache.splice(0))
 
 
@@ -1447,10 +1454,10 @@ verifyBlock=async(block,subchainContext)=>{
         await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools)
 
 
-        //Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
+        // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
         if(global.CONFIG.SYMBIOTE.STORE_BLOCKS){
             
-            //No matter if we already have this block-resave it
+            // No matter if we already have this block-resave it
 
             global.SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
                 
@@ -1460,7 +1467,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         }else if(block.creator!==global.CONFIG.SYMBIOTE.PUB){
 
-            //...but if we shouldn't store and have it locally(received probably by range loading)-then delete
+            // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
                 
                 error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,'W')
@@ -1493,7 +1500,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
 
-        //Change finalization pointer
+        // Change finalization pointer
         
         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
 
@@ -1505,7 +1512,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         atomicBatch.put(`GRID:${oldGRID}`,currentBlockID)
         
-        //Change metadata per validator's thread
+        // Change metadata per validator's thread
         
         global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].INDEX=block.index
 
@@ -1515,45 +1522,46 @@ verifyBlock=async(block,subchainContext)=>{
         //___________________ Update the KLY-EVM ___________________
 
         // Update stateRoot
-        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.STATE_ROOT = await KLY_EVM.getStateRoot()
+        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
         // Increase block index
-        let nextIndex = BigInt(global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX)+BigInt(1)
-    
-        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
+        let nextIndex = BigInt(currentKlyEvmContextMetadata.NEXT_BLOCK_INDEX)+BigInt(1)
+
+        currentKlyEvmContextMetadata.NEXT_BLOCK_INDEX = Web3.utils.toHex(nextIndex.toString())
 
         // Store previous hash
         let currentHash = KLY_EVM.getCurrentBlock().hash()
     
-        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.PARENT_HASH = currentHash.toString('hex')
+        currentKlyEvmContextMetadata.PARENT_HASH = currentHash.toString('hex')
         
 
         // Imagine that it's 1 block per 2 seconds
-        let nextTimestamp = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP+2
+        let nextTimestamp = currentKlyEvmContextMetadata.TIMESTAMP+2
     
-        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA.TIMESTAMP = nextTimestamp
+        currentKlyEvmContextMetadata.TIMESTAMP = nextTimestamp
         
+
+        // Finally, store the block
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
         
-        atomicBatch.put('EVM_BLOCK:'+blockToStore.number,blockToStore)
-
-        atomicBatch.put('EVM_INDEX:'+blockToStore.hash,blockToStore.number)
-
-        atomicBatch.put('EVM_LOGS:'+blockToStore.number,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
-
-        atomicBatch.put('EVM_BLOCK_RECEIPT:'+blockToStore.number,{kly_block:currentBlockID})
-
-        // Set the next block's parameters
-        KLY_EVM.setCurrentBlockParams(nextIndex,nextTimestamp,currentHash)
         
-        atomicBatch.put('BLOCK_RECEIPT:'+currentBlockID,{
+        atomicBatch.put(`${subchainContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
+
+        atomicBatch.put(`${subchainContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+
+        atomicBatch.put(`${subchainContext}:EVM_LOGS:${blockToStore.number}`,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+
+        atomicBatch.put(`${subchainContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
+        
+        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
 
             sid:currentSID
 
         })
 
         
-        //Commit the state of VERIFICATION_THREAD
+        //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
+
 
         atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 

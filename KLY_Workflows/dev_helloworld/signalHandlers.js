@@ -31,7 +31,6 @@ let graceful=()=>{
     //Probably stop logs on this step
     setInterval(async()=>{
 
-        //Each subprocess in each symbiote must be stopped
         if(!THREADS_STILL_WORKS.GENERATION && !THREADS_STILL_WORKS.VERIFICATION || Object.values(SIG_PROCESS).every(x=>x)){
 
             console.log('\n')
