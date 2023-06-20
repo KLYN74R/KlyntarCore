@@ -3274,7 +3274,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let verificationThread = global.SYMBIOTE_META.VERIFICATION_THREAD
 
-
+    
     let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
 
     let reassignmentChains = verificationThread.CHECKPOINT.REASSIGNMENT_CHAINS
@@ -3504,12 +3504,12 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // Update the reassignment data
 
-                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].REASSIGNMENTS // poolPubKey => {INDEX,HASH}
+                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].REASSIGNMENTS // poolPubKey => {index,hash}
 
 
                                         for(let reassignStats of potentialReassignments.reverse()){
 
-                                            // potentialReassignments[i] = {mainPool:{INDEX,HASH},pool0:{INDEX,HASH},poolN:{INDEX,HASH}}
+                                            // potentialReassignments[i] = {mainPool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
 
                                             for(let [skippedPool,descriptor] of Object.entries(reassignStats)){
 
