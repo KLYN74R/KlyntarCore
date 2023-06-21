@@ -1153,14 +1153,13 @@ START_VERIFICATION_THREAD=async()=>{
         
         // Get the stats from reassignments
 
-
-        let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
-
         let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {CURRENT_AUTHORITY,CURRENT_TO_VERIFY,REASSGINMENTS:{pool:{index,hash}}}
 
 
 
-        if(reassignmentsBasedOnCheckpointData){
+        if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
+
+            let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
 
             // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
 
@@ -1252,7 +1251,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }
 
-            if(metadataOfThisPoolLocal.INDEX === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.CURRENT_TO_VERIFY++
+            if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.INDEX === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.CURRENT_TO_VERIFY++
             
         }
 
