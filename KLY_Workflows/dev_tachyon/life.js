@@ -3073,7 +3073,7 @@ PREPARE_SYMBIOTE=async()=>{
  
                 KLY_EVM_METADATA:{}, // MainPool => {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
 
-                TEMP_REASSIGNMENTS:{}, // MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
+                TEMP_REASSIGNMENTS:{}, // CheckpointID => MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
 
                 SID_TRACKER:{}, // SUBCHAIN => INDEX
 
@@ -3110,17 +3110,6 @@ PREPARE_SYMBIOTE=async()=>{
 
     await KLY_EVM.setStateRoot(global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
 
-    // Set the block parameters based on current subchain that we'll verify in VERIFICATION_THREAD
-
-    let currentSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
-
-    let {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP} = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[currentSubchain]
-    
-
-    KLY_EVM.setCurrentBlockParams(BigInt(NEXT_BLOCK_INDEX),TIMESTAMP,PARENT_HASH)
-
-
-    
 
     //_______________________________Check the version of QT and VT and if need - update________________________________
     
@@ -3301,6 +3290,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
+                CURRENT_TO_VERIFY:-1, // to start the verification in START_VERIFICATION_THREAD from main pool(-1 index) and continue with reserve pools(0,1,2,...N)
+
                 REASSIGNMENTS:{} // poolPubKey => {INDEX,HASH}
 
             }

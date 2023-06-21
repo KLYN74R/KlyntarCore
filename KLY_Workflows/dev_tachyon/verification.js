@@ -1126,9 +1126,9 @@ START_VERIFICATION_THREAD=async()=>{
 
         */
 
-        let poolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('MAIN_POOLS')
+        let mainPoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('MAIN_POOLS')
 
-        if(!poolsPubkeys){
+        if(!mainPoolsPubkeys){
 
             let mainPools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
                 
@@ -1138,18 +1138,80 @@ START_VERIFICATION_THREAD=async()=>{
 
             global.SYMBIOTE_META.STATE_CACHE.set('MAIN_POOLS',mainPools)
 
-            poolsPubkeys = mainPools
+            mainPoolsPubkeys = mainPools
 
         }
 
 
-        let prevSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN,
+        
+        let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
 
-            currentSubchainToCheck = poolsPubkeys[poolsPubkeys.indexOf(prevSubchainWeChecked)+1] || poolsPubkeys[0], // Take the next main pool in a row. If it's end of pools - start from the first validator in array
+        let currentSubchainToCheck = mainPoolsPubkeys[mainPoolsPubkeys.indexOf(previousSubchainWeChecked)+1] || mainPoolsPubkeys[0] // Take the next main pool in a row. If it's end of pools - start from the first validator in array
 
-            currentSubchainMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
+        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-            blockID = currentSubchainToCheck+":"+(currentSubchainMetadata.INDEX+1)
+        
+        // Get the stats from reassignments
+
+
+        let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
+
+        let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {CURRENT_AUTHORITY,CURRENT_TO_VERIFY,REASSGINMENTS:{pool:{index,hash}}}
+
+
+
+        if(reassignmentsBasedOnCheckpointData){
+
+            // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
+
+            let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY
+
+            if(typeof indexOfCurrentPoolToVerify !== 'number'){
+
+                reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY = indexOfCurrentPoolToVerify = -1
+
+            }
+
+            // Take the pool by it's position in reassignment chains. If -1 - then it's main pool, otherwise - get the reserve pool by index
+
+            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+
+            let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {INDEX,HASH,IS_RESERVE}
+
+            let metadataOfThisPoolBasedOnReassignmentsFromCheckpoint = reassignmentsBasedOnCheckpointData[poolToVerifyRightNow] // {index,hash}
+            
+
+            //_________________________Now check - if this pool already have the same index & hash as in checkpoint - change the pointer to the next in a row_________________________
+
+            if(metadataOfThisPoolLocal.INDEX < metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
+
+                // Process the block
+                
+                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.INDEX+1)
+
+                await verifyBlock(block,currentSubchainToCheck)
+                
+
+            }else if(metadataOfThisPoolLocal.INDEX === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
+
+                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolToVerifyRightNow]
+
+                reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY++
+
+            }
+
+
+        }else if(tempReassignments){
+
+
+
+        }
+
+
+        
+            // currentSubchainMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
+
+            // blockID = currentSubchainToCheck+":"+(currentSubchainMetadata.INDEX+1)
 
 
 
