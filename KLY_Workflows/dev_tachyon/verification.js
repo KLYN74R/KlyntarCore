@@ -1144,7 +1144,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
         
-        let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN
+        let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.SUBCHAIN
 
         let currentSubchainToCheck = mainPoolsPubkeys[mainPoolsPubkeys.indexOf(previousSubchainWeChecked)+1] || mainPoolsPubkeys[0] // Take the next main pool in a row. If it's end of pools - start from the first validator in array
 
@@ -1190,7 +1190,10 @@ START_VERIFICATION_THREAD=async()=>{
                 let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.INDEX+1)
 
                 await verifyBlock(block,currentSubchainToCheck)
+
                 
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.CURRENT_AUTHORITY} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.HASH}\n`,'I')
+
 
             }else if(metadataOfThisPoolLocal.INDEX === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
 
@@ -1201,81 +1204,57 @@ START_VERIFICATION_THREAD=async()=>{
             }
 
 
-        }else if(tempReassignments){
+        }else if(tempReassignments && updatedIsFreshCheckpoint){
+
+            let indexOfCurrentPoolToVerify = tempReassignments.CURRENT_TO_VERIFY
 
 
+            // Take the pool by it's position in reassignment chains. If -1 - then it's main pool, otherwise - get the reserve pool by index
 
-        }
+            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+
+            let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {INDEX,HASH,IS_RESERVE}
+
+            let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.REASSIGNMENTS[poolToVerifyRightNow] // {index,hash}
 
 
+            if(tempReassignments.CURRENT_TO_VERIFY === tempReassignments.CURRENT_AUTHORITY){
+
+                // Ask the N+1 block
+
+                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.INDEX+1)
+
+                if(block){
+
+                    let blockHash = Block.genHash(block)
+
+                    let blockID = poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.INDEX+1)
+
+                    // Get the SFP for this block
+
+                    let {verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
         
-            // currentSubchainMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[currentSubchainToCheck], // We receive {INDEX,HASH,IS_RESERVE} - it's data from previously checked blocks on this pools' track. We're going to verify next block(INDEX+1)
-
-            // blockID = currentSubchainToCheck+":"+(currentSubchainMetadata.INDEX+1)
-
-
-
-        let block = await GET_BLOCK(currentSubchainToCheck,currentSubchainMetadata.INDEX+1),
-
-            blockHash = block && Block.genHash(block),
-
-            quorumSolutionToVerifyBlock = false, //by default
-
-            currentBlockPresentInCurrentCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]?.INDEX > currentSubchainMetadata.INDEX
+                    if(shouldDelete){
         
-            
+                        // Probably - hash mismatch 
+        
+                        await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+        
+                    }else if(verify){
 
-        if(currentBlockPresentInCurrentCheckpoint){
+                        await verifyBlock(block,currentSubchainToCheck)
 
-            quorumSolutionToVerifyBlock = true
+                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.CURRENT_AUTHORITY} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.HASH}\n`,'I')
 
-        }
-
-        else if(updatedIsFreshCheckpoint){
-
-            let {verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
-
-            quorumSolutionToVerifyBlock = verify
-
-            if(shouldDelete){
-
-                // Probably - hash mismatch 
-
-                await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
-
-            }
-            
-        }
-
-        if(block && quorumSolutionToVerifyBlock){
-
-            let subchainContext = currentSubchainMetadata.IS_RESERVE ? global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck] : currentSubchainToCheck
-
-            await verifyBlock(block,subchainContext)
-
-                
-            if(currentSubchainMetadata.IS_RESERVE){
-
-                let metaFromCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainToCheck]
-
-                if(metaFromCheckpoint.INDEX === currentSubchainMetadata.INDEX && metaFromCheckpoint.HASH === currentSubchainMetadata.HASH){
-
-                    // Delete from reassignments to move to the next pool in subchain
-
-                    let origin = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck]
-
-                    delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[currentSubchainToCheck]
-                        
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENTS[origin].shift()
+                    } 
 
                 }
 
             }
 
-            LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH}\n`,'I')
-                
+            if(metadataOfThisPoolLocal.INDEX === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.CURRENT_TO_VERIFY++
+            
         }
-        
 
 
         if(global.CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
@@ -1551,8 +1530,28 @@ verifyBlock=async(block,subchainContext)=>{
         if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
 
 
-        // Store the currently subchain block index (SID)
+        /*
+        
+            Store the current subchain block index (SID)
+        
+            NOTE: Since the subchainID is pubkey of main pool, but not only main pool can generate blocks(reserve pools generate blocks in case main pool is AFK)
 
+            So, we need to mark each next block in subchain with SID
+
+            For example
+
+            _______________[Subchain 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta]________________
+
+            Block 0     ===> 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0   (SID:0)
+            Block 1     ===> 61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8:0   (SID:1)
+            Block 2     ===> 75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG:0   (SID:2)
+            Block 3     ===> 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:1   (SID:3)
+        
+            ... and so on
+
+            To clearly understand that 'block N on subchain X is ...<this>' we need SID
+        
+        */
         let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]
 
         atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
@@ -1560,17 +1559,19 @@ verifyBlock=async(block,subchainContext)=>{
         global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
 
 
-        let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID
+        let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.GRID
 
         // Change finalization pointer
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.SUBCHAIN=block.creator
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.SUBCHAIN = subchainContext
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.INDEX=block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.CURRENT_AUTHORITY = block.creator
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.INDEX = block.index
                 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.HASH=blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.HASH = blockHash
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER.GRID++
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.GRID++
 
         atomicBatch.put(`GRID:${oldGRID}`,currentBlockID)
         

@@ -211,7 +211,7 @@ getSyncState=response=>{
             .onAborted(()=>response.aborted=true)
 
 
-        !response.aborted && response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER))
+        !response.aborted && response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER))
             
 
     }else !response.aborted && response.end('Route is off')

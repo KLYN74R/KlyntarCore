@@ -2811,9 +2811,11 @@ LOAD_GENESIS=async()=>{
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZED_POINTER={
+    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER={
         
         SUBCHAIN:startPool,
+
+        CURRENT_AUTHORITY:startPool,
         
         INDEX:-1,
         
@@ -3065,7 +3067,7 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                FINALIZED_POINTER:{SUBCHAIN:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
+                FINALIZATION_POINTER:{SUBCHAIN:'',CURRENT_AUTHORITY:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
 
                 POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_RESERVE:boolean}
 
