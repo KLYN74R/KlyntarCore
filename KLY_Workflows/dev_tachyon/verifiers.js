@@ -48,7 +48,7 @@ import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {VM} from '../../KLY_VirtualMachines/kly_vm/vm.js'
+import {VM} from '../../KLY_VirtualMachines/kly_wvm/vm.js'
 
 import * as _ from './specContracts/root.js'
 
