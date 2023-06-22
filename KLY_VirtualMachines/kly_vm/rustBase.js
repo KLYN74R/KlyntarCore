@@ -60,11 +60,11 @@ export default class ContractInstance {
                 
                 __wbindgen_is_undefined:this.__wbindgen_is_undefined,
 
-                __wbg_stringify_029a979dfb73aa17:this.__wbg_stringify_029a979dfb73aa17,
+                __wbg_stringify_029a979dfb73aa17:this.__wbg_stringify_e25465938f3f611f,
 
                 __wbindgen_object_drop_ref:this.__wbindgen_object_drop_ref,
 
-                __wbg_parse_3ac95b51fc312db8:this.__wbg_parse_3ac95b51fc312db8,
+                __wbg_parse_3ac95b51fc312db8:this.__wbg_parse_670c19d4e984792e,
 
                 __wbindgen_string_get:this.__wbindgen_string_get,
                 
@@ -178,7 +178,7 @@ export default class ContractInstance {
 
             let buf = cachedTextEncoder.encode(arg),
 
-                ptr = malloc(buf.length)
+                ptr = malloc(buf.length, 1) >>> 0
 
             this.getUint8Memory0().subarray(ptr, ptr + buf.length).set(buf)
 
@@ -190,7 +190,7 @@ export default class ContractInstance {
 
         let len = arg.length, 
 
-            ptr = malloc(len),
+            ptr = malloc(len, 1) >>> 0,
 
             mem = this.getUint8Memory0(),
 
@@ -211,7 +211,7 @@ export default class ContractInstance {
 
             if (offset !== 0) arg = arg.slice(offset)
 
-            ptr = realloc(ptr, len, len = offset + arg.length * 3)
+            ptr = realloc(ptr, len, len = offset + arg.length * 3, 1) >>> 0
 
             let view = this.getUint8Memory0().subarray(ptr + offset, ptr + len), ret = encodeString(arg, view)
 
@@ -245,7 +245,13 @@ export default class ContractInstance {
     
     }
 
-    getStringFromWasm0 = (ptr, len) => cachedTextDecoder.decode(this.getUint8Memory0().subarray(ptr, ptr + len))
+    getStringFromWasm0 = (ptr, len) => {
+
+        ptr = ptr >>> 0
+
+        return cachedTextDecoder.decode(this.getUint8Memory0().subarray(ptr, ptr + len))
+
+    }
 
     addHeapObject = obj => {
         
@@ -275,7 +281,7 @@ export default class ContractInstance {
     
     }
 
-    __wbg_parse_3ac95b51fc312db8=(...args)=>{
+    __wbg_parse_670c19d4e984792e=(...args)=>{
         
         return this.handleError((arg0, arg1)=>{
             
@@ -296,7 +302,7 @@ export default class ContractInstance {
     
     }
 
-    __wbg_stringify_029a979dfb73aa17=(...args)=>{
+    __wbg_stringify_e25465938f3f611f=(...args)=>{
         
         return this.handleError(arg0 => {
             
