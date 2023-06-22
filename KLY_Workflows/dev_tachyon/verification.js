@@ -1229,7 +1229,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                     let blockID = poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.INDEX+1)
 
-                    // Get the SFP for this block
+                    // Get the SFP for this blockк
 
                     let {verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
         
