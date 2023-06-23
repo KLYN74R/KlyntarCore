@@ -1,0 +1,262 @@
+{
+    "SYMBIOTE":{
+
+        "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        
+        "INFO":{
+            "MAIL":"hello@example.com",
+            "TELEGRAM":"@youraddress"
+        },
+        
+        "STOP_WORK":false,
+        
+        "PUB":"75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG",
+        "PRV":"fc5568356f96161b33e049bd5dfc340677b78d61cdf541095d9f4c6942318e9ab0710c28eebeaafa91843c9a49bb6b53f2a0ff8b7684ccb833c8ced334da135fcc9b716752d7b7eaa82c2677c85d26cd",
+        
+        "MAIN_POOL_PUBKEY":false,
+
+        "MANIFEST":{
+        
+            "CONTACT":{
+                "TELEGRAM":"@Something",
+                "MAIL":"user@email.com",
+                "SITE":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
+            },
+        
+            "HIVEMIND":[
+                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ],
+                        
+            "HOSTCHAINS":{
+            
+                "ltc":{
+                    "PACK":"dev0",
+                    "MANIFEST_OPTIONS":{}
+                },
+                "bsc":{
+                    "PACK":"dev0",
+                    "MANIFEST_OPTIONS":{
+                        "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
+                    }
+                    
+                }
+                        
+            },
+        
+            "WORKFLOW":"dev_tachyon",
+            "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
+            "WORKFLOW_OPTIONS":{
+    
+                "VALIDATOR_STAKE":50000,
+                "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
+                "MINIMAL_STAKE_PER_ENTITY":20,
+                "POOL_AFK_MAX_TIME":10,
+                "UNSTAKING_PERIOD":4,
+                "QUORUM_SIZE":127,
+                "SUBCHAIN_AFK_LIMIT":120000,
+                "TXS_LIMIT_PER_BLOCK":30000,
+                "CHECKPOINT_SPEC_OPS_LIMIT":1000,
+                "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
+            
+            },
+            
+            "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+    
+        "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
+    
+        "BLOCK_TIME":2000,
+        "EXTRA_DATA_TO_BLOCK":{
+
+            "hello":"world"
+    
+        },
+    
+        "STOP_GENERATE_BLOCKS":false,
+        "STOP_VERIFY":false,
+    
+    
+        "TRUSTED_POOLS":{
+            "VERSION_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
+            "RUBICON_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
+            "WORKFLOW_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
+            "SLASH_UNSTAKE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"]
+        },
+    
+        "STORE_BLOCKS":true,
+        "BLOCK_GENERATION_INIT_DELAY":3000,
+    
+        "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
+
+        "TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT":10000,
+
+        "TXS_MEMPOOL_SIZE":300000,
+        "SPECIAL_OPERATIONS_MEMPOOL_SIZE":100000,
+        "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
+    
+        "NODES":{
+        
+            "AF":[
+                "https://0.mynearpub.com:7777",
+                "https://1.mynearpub.com:7777",
+                "https://2.mynearpub.com:7777",
+                "https://3.mynearpub.com:7777",
+                "https://4.mynearpub.com:7777",
+                "https://5.mynearpub.com:7777",
+                "https://6.mynearpub.com:7777",
+                "https://7.mynearpub.com:7777",
+                "https://8.mynearpub.com:7777",
+                "https://9.mynearpub.com:7777",
+                "https://10.mynearpub.com:7777",
+                "https://11.mynearpub.com:7777",
+                "https://12.mynearpub.com:7777",
+                "https://13.mynearpub.com:7777",
+                "https://14.mynearpub.com:7777",
+                "https://15.mynearpub.com:7777",
+                "https://16.mynearpub.com:7777",
+                "https://17.mynearpub.com:7777",
+                "https://18.mynearpub.com:7777"
+            ],
+                
+            "AS":[
+                "https://0.mynearpub.com:7777",
+                "https://1.mynearpub.com:7777",
+                "https://2.mynearpub.com:7777",
+                "https://3.mynearpub.com:7777",
+                "https://4.mynearpub.com:7777",
+                "https://5.mynearpub.com:7777",
+                "https://6.mynearpub.com:7777",
+                "https://7.mynearpub.com:7777",
+                "https://8.mynearpub.com:7777",
+                "https://9.mynearpub.com:7777",
+                "https://10.mynearpub.com:7777",
+                "https://11.mynearpub.com:7777",
+                "https://12.mynearpub.com:7777",
+                "https://13.mynearpub.com:7777",
+                "https://14.mynearpub.com:7777",
+                "https://15.mynearpub.com:7777",
+                "https://16.mynearpub.com:7777",
+                "https://17.mynearpub.com:7777",
+                "https://18.mynearpub.com:7777"
+            ]
+        
+        },
+        
+        "BOOTSTRAP_NODES":[
+            "http://localhost:7332",
+            "http://localhost:7333",
+            "http://localhost:44444"
+        ],
+        
+                
+        "MUST_SEND":{
+    
+            "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
+        
+            "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
+        
+            "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
+        
+        },
+        
+        "NODES_PORTION":8,
+        "MAX_CONNECTIONS":15,
+        "MY_HOSTNAME":"http://somenode.com:6666",
+            
+        "TTL":{
+    
+            "MAIN":{},
+    
+            "API":{
+    
+                "FROM_STATE":5,
+                "NODES":5,
+                "BLOCK":6000,
+                "LATEST_N_BLOCKS":5,
+                "BLOCK_BY_SID":6000,
+                "BLOCK_BY_GRID":6000,
+                "INFO":600,
+                "SYNC_STATE":2,
+                "SYMBIOTE_INFO":5,
+                "SEARCH_RESULT":5,
+                "TX_RECEIPT":100,
+                "POOLS_METADATA":5,
+                "QUORUM_THREAD_CHECKPOINT":5,
+                "STUFF":5
+            }   
+        
+        },
+    
+        "TRIGGERS":{
+    
+            "MAIN":{
+    
+                "ACCEPT_BLOCK":1,
+                "ACCEPT_BLOCKS":1,
+                "ACCEPT_TXS":1,
+                "SHARE_FINALIZATION_PROOF":1,
+                "SUPER_FINALIZATION_PROOFS":1,
+                "HEALTH_CHECKER":1,
+                "PAYLOAD_FOR_CHECKPOINT":1,
+                "SPECIAL_OPERATIONS":1,
+                "NEW_NODES":1,
+                "GET_DATA_FOR_TEMP_REASSIGN":1
+    
+            },
+    
+    
+            "API":{
+    
+                "FROM_STATE":1,
+                "NODES":1,
+                
+                "BLOCK":1,
+                "BLOCK_BY_SID":1,
+                "BLOCK_BY_GRID":1,
+                "LATEST_N_BLOCKS":1,
+    
+                "INFO":1,
+                "SYNC_STATE":1,
+                "SYMBIOTE_INFO":1,
+                "SEARCH_RESULT":1,
+                "TX_RECEIPT":1,
+                "POOLS_METADATA":1,
+                "QUORUM_THREAD_CHECKPOINT":1,
+                "SHARE_STUFF":1
+            
+            }
+        
+        },
+    
+        "GET_STUFF_URL":"http://localhost:7332",
+        "GET_BLOCKS_URL":"http://localhost:7332",
+        "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:7332",
+    
+        "STUFF_CACHE_SIZE":100000,
+        
+        "LOAD_STUFF":{
+            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
+                "payload":{
+                    "url":"http://localhost:7332"
+                },
+                "sig":""
+            },
+            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
+                "payload":{
+                    "url":"http://localhost:7332"
+                },
+                "sig":""
+            },
+            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
+                "payload":{
+                    "url":"http://localhost:7333"
+                },
+                "sig":""
+            }
+        },
+    
+        "WAIT_IF_CANT_FIND_CHECKPOINT":4000
+    
+    }
+}
