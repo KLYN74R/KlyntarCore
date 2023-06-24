@@ -1274,15 +1274,18 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-SHARE_FEES_AMONG_STAKERS=async(poolId,feeToPay)=>{
+SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
 
+    let poolPointer = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
 
-    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolId+poolId+'(POOL)_STORAGE_POOL'))
+    console.log(poolPointer)
+
+    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolPointer+poolPubKey+'(POOL)_STORAGE_POOL'))
 
     if(mainStorageOfPool.percentage!==0){
 
         //Get the pool percentage and send to appropriate BLS address
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolId+poolId))
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolPointer+poolPubKey))
 
         poolBindedAccount.balance += mainStorageOfPool.percentage*feeToPay
         
