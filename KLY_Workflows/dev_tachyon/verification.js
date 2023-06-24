@@ -1274,18 +1274,41 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
+GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(poolOrigin,poolPubKey)=>{
+
+    let emptyTemplate = {
+        
+        type:"account",
+        balance:0,
+        uno:0,
+        nonce:0,
+        rev_t:0,
+        subchain:poolOrigin
+    
+    }
+
+    // Add to cache to write to permanent db after block verification
+
+    global.SYMBIOTE_META.STATE_CACHE.set(BLAKE3(poolOrigin+poolPubKey),emptyTemplate)
+
+    return emptyTemplate
+
+},
+
+
+
+
 SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
 
-    let poolPointer = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
+    let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
 
-    console.log(poolPointer)
+    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolOrigin+poolPubKey+'(POOL)_STORAGE_POOL'))
 
-    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolPointer+poolPubKey+'(POOL)_STORAGE_POOL'))
-
+    // Transfer part of fees to account with pubkey associated with block creator
     if(mainStorageOfPool.percentage!==0){
 
         //Get the pool percentage and send to appropriate BLS address
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolPointer+poolPubKey))
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolOrigin+poolPubKey)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(poolOrigin,poolPubKey)
 
         poolBindedAccount.balance += mainStorageOfPool.percentage*feeToPay
         
@@ -1293,7 +1316,8 @@ SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
 
     let restOfFees = feeToPay - mainStorageOfPool.percentage*feeToPay
 
-    //Iteration over the {KLY,UNO,REWARD}
+    // Iteration over the {KLY,UNO,REWARD}
+    // Share the rest of fees among stakers due to their % part in total pool stake
     Object.values(mainStorageOfPool.stakers).forEach(stakerStats=>{
 
         let stakerTotalPower = stakerStats.uno + stakerStats.kly
@@ -1309,7 +1333,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
 
 
 
-// We need this method to send fees to this special account and 
+// We need this method to send fees to this special accounts
 SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientPool,feeReward) => {
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"

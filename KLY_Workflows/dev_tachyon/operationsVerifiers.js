@@ -309,7 +309,7 @@ export default {
                 }
 
                 //Assign updated state
-                poolStorage.stakers[stakeOrUnstakeTx.staker]=stakerAccount
+                poolStorage.stakers[stakeOrUnstakeTx.staker] = stakerAccount
 
                 //Remove from WAITING_ROOM
                 delete poolStorage.waitingRoom[txid]
