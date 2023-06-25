@@ -16,15 +16,14 @@
             "stakers":{
                 "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
                     "kly":55000,
-                    "uno":0,
-                    "reward":0
+                    "uno":0
                 }
             },
             "waitingRoom":{},
             "poolURL":"http://localhost:7332",
             "wssPoolURL":"wss://localhost:9332"
         
-        },
+        }
 
     },
 

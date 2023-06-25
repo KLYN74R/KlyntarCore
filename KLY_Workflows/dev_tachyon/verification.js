@@ -1278,7 +1278,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(poolOrigin,poolPubKey)=>{
+GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>{
 
     let emptyTemplate = {
         
@@ -1287,13 +1287,13 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(poolOrigin,poolPubKey)=>{
         uno:0,
         nonce:0,
         rev_t:0,
-        subchain:poolOrigin
+        subchain:subchainContext
     
     }
 
     // Add to cache to write to permanent db after block verification
 
-    global.SYMBIOTE_META.STATE_CACHE.set(BLAKE3(poolOrigin+poolPubKey),emptyTemplate)
+    global.SYMBIOTE_META.STATE_CACHE.set(BLAKE3(subchainContext+publicKey),emptyTemplate)
 
     return emptyTemplate
 
@@ -1302,35 +1302,40 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(poolOrigin,poolPubKey)=>{
 
 
 
-SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
+SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCreator)=>{
 
-    let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
+    let blockCreatorOrigin = await GET_FROM_STATE(blockCreator+'(POOL)_POINTER')
 
-    let mainStorageOfPool = await GET_FROM_STATE(BLAKE3(poolOrigin+poolPubKey+'(POOL)_STORAGE_POOL'))
+    let mainStorageOfBlockCreator = await GET_FROM_STATE(BLAKE3(blockCreatorOrigin+blockCreator+'(POOL)_STORAGE_POOL'))
 
     // Transfer part of fees to account with pubkey associated with block creator
-    if(mainStorageOfPool.percentage!==0){
+    if(mainStorageOfBlockCreator.percentage!==0){
 
-        //Get the pool percentage and send to appropriate BLS address
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(poolOrigin+poolPubKey)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(poolOrigin,poolPubKey)
+        // Get the pool percentage and send to appropriate BLS address in the <subchainContext>
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainContext+blockCreator)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,blockCreator)
 
-        poolBindedAccount.balance += mainStorageOfPool.percentage*feeToPay
+        poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
         
     }
 
-    let restOfFees = feeToPay - mainStorageOfPool.percentage*feeToPay
+    let restOfFees = feeToPay - mainStorageOfBlockCreator.percentage*feeToPay
 
-    // Iteration over the {KLY,UNO,REWARD}
+
     // Share the rest of fees among stakers due to their % part in total pool stake
-    Object.values(mainStorageOfPool.stakers).forEach(stakerStats=>{
+    
+    for(let [stakerPubKey,stakerMetadata] of Object.entries(mainStorageOfBlockCreator.stakers)){
 
-        let stakerTotalPower = stakerStats.uno + stakerStats.kly
+        // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno}
 
-        let totalStakerPowerPercent = stakerTotalPower/mainStorageOfPool.totalPower
+        let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
 
-        stakerStats.reward += totalStakerPowerPercent*restOfFees
+        let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
 
-    })
+        let stakerAccountBindedToCurrentSubchainContext = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainContext+stakerPubKey)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,stakerPubKey)
+
+        stakerAccountBindedToCurrentSubchainContext.balance += totalStakerPowerPercent*restOfFees
+
+    }
 
 },
 
@@ -1338,7 +1343,7 @@ SHARE_FEES_AMONG_STAKERS=async(poolPubKey,feeToPay)=>{
 
 
 // We need this method to send fees to this special accounts
-SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepientPool,feeReward) => {
+SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPool,feeReward) => {
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
@@ -1347,7 +1352,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
 
     let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(accountsForFeesId) || {reward:0}
 
-    feesAccountForGivenPoolOnThisSubchain.reward+=feeReward
+    feesAccountForGivenPoolOnThisSubchain.reward += feeReward
 
     global.SYMBIOTE_META.STATE_CACHE.set(accountsForFeesId,feesAccountForGivenPoolOnThisSubchain)
 
@@ -1357,7 +1362,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN = async(subchainID,feeRecepie
 
 
 //Function to distribute stakes among blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet)=>{
+DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
 
     /*
 
@@ -1377,7 +1382,7 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet)=>{
 
             3.1) Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
 
-            3.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {KLY,UNO,REWARD}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
+            3.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {kly,uno}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
 
     
     */
@@ -1394,13 +1399,13 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet)=>{
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
 
-    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS(subchainContext,payToCreatorAndHisPool))
+    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR(subchainContext,payToCreatorAndHisPool,blockCreator))
 
     //_____________________________________________ THE REST ______________________________________________
 
     activePoolsSet.forEach(feesRecepientPoolPubKey=>
 
-        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN(subchainContext,feesRecepientPoolPubKey,payToEachPool))
+        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPoolPubKey,payToEachPool))
             
     )
      
@@ -1522,7 +1527,7 @@ verifyBlock=async(block,subchainContext)=>{
         //__________________________________________SHARE FEES AMONG POOLS_________________________________________
         
         
-        await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools)
+        await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools,block.creator)
 
 
         // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely

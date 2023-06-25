@@ -250,7 +250,7 @@ export default {
 
             Struct in POOL.STAKERS
 
-            PUBKEY => {KLY,UNO,REWARD}
+            PUBKEY => {kly,uno}
             
             */
 
@@ -270,7 +270,7 @@ export default {
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
 
-                let stakerAccount = poolStorage.stakers[stakeOrUnstakeTx.staker] || {kly:0,uno:0,reward:0}
+                let stakerAccount = poolStorage.stakers[stakeOrUnstakeTx.staker] || {kly:0,uno:0}
 
                 if(stakeOrUnstakeTx.type==='+'){
 

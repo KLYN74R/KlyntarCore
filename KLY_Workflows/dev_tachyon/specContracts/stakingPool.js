@@ -75,7 +75,7 @@ export let CONTRACT = {
 
                 totalPower:0, // KLY(converted to UNO by global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
-                stakers:{}, // Pubkey => {KLY,UNO,REWARD}
+                stakers:{}, // Pubkey => {kly,uno}
 
                 waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
 
@@ -182,7 +182,7 @@ export let CONTRACT = {
 
             poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
 
-            stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {KLY,UNO,REWARD}
+            stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
 
             wishedUnstakingAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
 
@@ -203,38 +203,6 @@ export let CONTRACT = {
 
             }
     
-        }
-
-    },
-
-
-
-    
-    /*
-     
-        Method to withdraw your money by staking
-
-        Payload is PoolID(because we send instantly full reward)
-
-    
-    */
-    getReward:async (transaction,originSubchain) => {
-
-        let fullPoolIdWithPostfix=transaction.payload.contractID,
-
-            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
-
-            stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+transaction.creator)),
-
-            stakerInfo = poolStorage.stakers[transaction.creator] // Pubkey => {KLY,UNO,REWARD}
-
-
-        if(poolStorage && stakerAccount && stakerInfo.reward>0){
-
-            stakerAccount.balance += stakerInfo.reward
-
-            stakerInfo.reward=0
-
         }
 
     }
