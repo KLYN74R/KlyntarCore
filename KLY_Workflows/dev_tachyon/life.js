@@ -2322,8 +2322,25 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             }
 
+            let reassignmentHandlerOrPointerToMainPool = reassignments.get(candidate)
 
-            if(!updateWasFound){
+            let mainPoolPointer = candidate
+
+            if(typeof reassignmentHandlerOrPointerToMainPool === 'string'){
+
+                mainPoolPointer = reassignmentHandlerOrPointerToMainPool
+
+                // If candidate is not a main pool - get the handler for main pool to get the .CURRENT_RESERVE_POOL property
+                reassignmentHandlerOrPointerToMainPool = reassignments.get(reassignmentHandlerOrPointerToMainPool)
+
+            }
+
+            
+            // No sense to skip the latest pool in chain. Because in this case nobody won't have ability to continue work on subchain
+            let candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToMainPool.CURRENT_RESERVE_POOL === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length-1)
+
+            
+            if(!(updateWasFound || candidateIsLatestInReassignmentChain)){
 
                 // If no updates - add the request to create SKIP_HANDLER via a sync and secured way
 

@@ -901,7 +901,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                 if(oldDelayOperations){
 
-                    for(let delayedTX of oldDelayOperations){
+                    for(let delayedTx of oldDelayOperations){
 
                         /*
 
@@ -911,6 +911,8 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
                             {
                                 fromPool:<id of pool that staker withdraw stake from>,
+
+                                storageOrigin:<origin of where your pool created. Your unstaking will be returned there>,
 
                                 to:<staker pubkey/address>,
                     
@@ -922,12 +924,12 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
                         
                         */
 
-                        let account = await GET_ACCOUNT_ON_SYMBIOTE(delayedTX.to)
+                        let account = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
 
                         //Return back staked KLY / UNO to the state of user's account
-                        if(delayedTX.units==='kly') account.balance += delayedTX.amount
+                        if(delayedTx.units==='kly') account.balance += delayedTx.amount
 
-                        else account.uno += delayedTX.amount
+                        else account.uno += delayedTx.amount
                         
 
                     }

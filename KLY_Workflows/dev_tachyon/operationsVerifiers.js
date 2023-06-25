@@ -295,6 +295,8 @@ export default {
 
                         fromPool:pool,
 
+                        storageOrigin,
+
                         to:stakeOrUnstakeTx.staker,
                         
                         amount:stakeOrUnstakeTx.amount,
