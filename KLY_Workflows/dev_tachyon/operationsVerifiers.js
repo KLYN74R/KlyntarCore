@@ -254,7 +254,7 @@ export default {
             
             */
 
-            //To check payload received from route
+            // To check payload received from route
 
 
             let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
@@ -288,7 +288,7 @@ export default {
 
                     poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
-                    //Add KLY / UNO to the user's account
+                    // Add KLY / UNO to the user's account
                     let delayedOperationsArray = await GET_FROM_STATE('DELAYED_OPERATIONS')
 
                     let txTemplate={
@@ -303,15 +303,15 @@ export default {
 
                     }
 
-                    //This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
+                    // This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
                     delayedOperationsArray.push(txTemplate)
 
                 }
 
-                //Assign updated state
+                // Assign updated state
                 poolStorage.stakers[stakeOrUnstakeTx.staker] = stakerAccount
 
-                //Remove from WAITING_ROOM
+                // Remove from WAITING_ROOM
                 delete poolStorage.waitingRoom[txid]
 
 
@@ -457,6 +457,8 @@ export default {
             if(poolExists){
 
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
+
+                payload.poolOrigin = subchainWherePoolStorage
             
                 slashObject[payload.pool]=payload
 

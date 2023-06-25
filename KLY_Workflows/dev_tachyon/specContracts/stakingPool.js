@@ -184,10 +184,10 @@ export let CONTRACT = {
 
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {KLY,UNO,REWARD}
 
-            wishedAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
+            wishedUnstakingAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
 
 
-        if(poolStorage && wishedAmountIsOk){
+        if(poolStorage && wishedUnstakingAmountIsOk){
 
             poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 

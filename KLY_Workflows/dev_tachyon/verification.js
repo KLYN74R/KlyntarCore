@@ -250,21 +250,22 @@ WAIT_SOME_TIME = async() =>
 
 
 
-DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async validatorPubKey => {
+DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
+    
     //Try to get storage "POOL" of appropriate pool
 
-    let poolStorage = await GET_FROM_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
+    let poolStorage = await GET_FROM_STATE(poolHashID)
 
 
     poolStorage.lackOfTotalPower=true
 
     poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
 
-    poolStorage.storedMetadata=global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
+    poolStorage.storedMetadata=global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
 
-    delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[validatorPubKey]
+    delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
 },
 
@@ -788,29 +789,28 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //_______________________Remove pools if lack of staking power_______________________
 
 
-        let poolsToBeRemoved = [], promises = [], poolsArray = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
+        let poolsToBeRemoved = [], poolsArray = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)
 
-        for(let validator of poolsArray){
 
-            let promise = GET_FROM_STATE(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+        for(let poolPubKey of poolsArray){
 
-                if(poolStorage.totalPower<global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push(validator)
+            let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
 
-            })
+            let poolHashID = BLAKE3(poolOrigin+poolPubKey+'(POOL)_STORAGE_POOL')
 
-            promises.push(promise)
+            let poolStorage = await GET_FROM_STATE(poolHashID)
+
+            if(poolStorage.totalPower<global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
 
         }
-
-        await Promise.all(promises.splice(0))
 
         //Now in toRemovePools we have IDs of pools which should be deleted from POOLS
 
         let deletePoolsPromises=[]
 
-        for(let poolBLSAddress of poolsToBeRemoved){
+        for(let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved){
 
-            deletePoolsPromises.push(DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(poolBLSAddress))
+            deletePoolsPromises.push(DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID))
 
         }
 
@@ -831,21 +831,25 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         for(let poolIdentifier of slashObjectKeys){
 
 
-            //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool}> _____________
+            //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
             
+            let poolStorageHashID = BLAKE3(slashObject[poolIdentifier].poolOrigin+poolIdentifier+'(POOL)_STORAGE_POOL')
+
+            let poolMetadataHashID = BLAKE3(slashObject[poolIdentifier].poolOrigin+poolIdentifier+poolIdentifier+'(POOL)')
+
             // Delete the single storage
-            atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
+            atomicBatch.del(poolStorageHashID)
 
             // Delete metadata
-            atomicBatch.del(poolIdentifier+'(POOL)')
+            atomicBatch.del(poolMetadataHashID)
 
             // Remove from pools tracking
             delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolIdentifier]
 
             // Delete from cache
-            global.SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+            global.SYMBIOTE_META.STATE_CACHE.delete(poolStorageHashID)
 
-            global.SYMBIOTE_META.STATE_CACHE.delete(poolIdentifier+'(POOL)')
+            global.SYMBIOTE_META.STATE_CACHE.delete(poolMetadataHashID)
 
 
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
@@ -1632,7 +1636,6 @@ verifyBlock=async(block,subchainContext)=>{
 
         // Finally, store the block
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
-        
         
         atomicBatch.put(`${subchainContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 

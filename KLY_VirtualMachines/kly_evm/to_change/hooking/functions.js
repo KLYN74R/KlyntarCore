@@ -525,7 +525,7 @@ exports.handlers = new Map([
                 runState.stack.push(BigInt(0));
                 return;
             }
-            const hash = await runState.eei.getBlockHash(number);
+            const hash = BigInt(global.KLY_EVM.getCurrentBlock().hash());
             runState.stack.push(hash);
         },
     ],
