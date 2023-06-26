@@ -1771,9 +1771,11 @@ SKIP_PROCEDURE_MONITORING=async()=>{
     // Get the appropriate pubkey & url to check and validate the answer
     let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
 
-    
+
 
     for(let [poolWithSkipHandler,skipHandler] of skipHandlers){
+
+        console.log('DEBUG: Skip handlers are => ',skipHandlers)
 
         // If pool was marked as AFK:true in skip handler - do nothing
         if(skipHandler.WAS_REASSIGNED) continue
@@ -2153,6 +2155,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     let candidatesForAnotherCheck = []
 
 
+    console.log('DEBUG: Health monitoring is ', tempObject.HEALTH_MONITORING)
+
     
     for(let handler of poolsURLsAndPubKeys){
         
@@ -2279,7 +2283,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             
             //_____________________ Now, go through the quorum members and try to get updates from them_____________________
 
-            for(let validatorHandler of poolsURLSandPubKeys){
+            for(let validatorHandler of poolsURLsAndPubKeys){
 
                 let sfpOfPoolXFromAnotherQuorumMember = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate).then(r=>r.json()).catch(_=>false)
 
@@ -2322,27 +2326,46 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             }
 
+            
             let reassignmentHandlerOrPointerToMainPool = reassignments.get(candidate)
 
-            let mainPoolPointer = candidate
+            let mainPoolPointer
 
-            if(typeof reassignmentHandlerOrPointerToMainPool === 'string'){
+            let candidateIsLatestInReassignmentChain
 
-                mainPoolPointer = reassignmentHandlerOrPointerToMainPool
 
-                // If candidate is not a main pool - get the handler for main pool to get the .CURRENT_RESERVE_POOL property
-                reassignmentHandlerOrPointerToMainPool = reassignments.get(reassignmentHandlerOrPointerToMainPool)
+            if(!reassignmentHandlerOrPointerToMainPool){
+
+                // If nothing - then it's attempt to skip the main pool(index -1 in reassignment chain)
+                mainPoolPointer = candidate
+
+                candidateIsLatestInReassignmentChain = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length === 0
+
+            }else{
+
+                mainPoolPointer = candidate
+
+                // In case it's string - then this string is a pubkey of main pool
+                if(typeof reassignmentHandlerOrPointerToMainPool === 'string'){
+    
+                    mainPoolPointer = reassignmentHandlerOrPointerToMainPool
+    
+                    // If candidate is not a main pool - get the handler for main pool to get the .CURRENT_RESERVE_POOL property
+                    reassignmentHandlerOrPointerToMainPool = reassignments.get(reassignmentHandlerOrPointerToMainPool)
+    
+                }
+
+                // No sense to skip the latest pool in chain. Because in this case nobody won't have ability to continue work on subchain
+                candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToMainPool.CURRENT_RESERVE_POOL === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length-1)
 
             }
-
-            
-            // No sense to skip the latest pool in chain. Because in this case nobody won't have ability to continue work on subchain
-            let candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToMainPool.CURRENT_RESERVE_POOL === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length-1)
 
             
             if(!(updateWasFound || candidateIsLatestInReassignmentChain)){
 
                 // If no updates - add the request to create SKIP_HANDLER via a sync and secured way
+
+                console.log('DEBUG: Going to create SKIP handler for ',candidate)
 
                 proofsRequests.set('CREATE_SKIP_HANDLER:'+candidate,candidate)
                 
