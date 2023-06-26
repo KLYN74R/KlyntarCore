@@ -406,8 +406,7 @@ CHECK_ASP_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
 
     let majority = GET_MAJORITY('VERIFICATION_THREAD')
 
-    let reverseThreshold = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
-
+    let reverseThreshold = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.QUORUM.length-majority
 
     let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,vtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 

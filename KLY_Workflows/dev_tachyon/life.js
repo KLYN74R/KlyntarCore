@@ -1755,7 +1755,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     let currentQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
+    let reverseThreshold = currentQuorum.length-majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -1800,6 +1800,8 @@ SKIP_PROCEDURE_MONITORING=async()=>{
                 })
 
             }
+
+            console.log('DEBUG: SendOptions => ',sendOptions)
 
             for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
 
@@ -1859,6 +1861,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             */
 
+            console.log('DEBUG: Results are => ',results)
 
             let pubkeysWhoAgreeToSkip = [], signaturesToSkip = []
 
@@ -2093,7 +2096,10 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+
+    let majority = GET_MAJORITY('QUORUM_THREAD')
+
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -2453,7 +2459,7 @@ RESTORE_STATE=async()=>{
     }
 
 
-    console.log('DEBUG: Temp object => ',tempObject)
+    console.log('DEBUG: Temp object => ',tempObject.SKIP_HANDLERS)
 
 
 }

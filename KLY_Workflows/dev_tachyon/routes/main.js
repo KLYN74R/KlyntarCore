@@ -1040,7 +1040,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE - majority
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -1078,10 +1078,11 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             let {aggregatedPub,aggregatedSignature,afkVoters} = FINALIZATION_PROOF
             
-            let dataThatShouldBeSigned = requestForSkipProof.subchain+':'+INDEX+HASH+'FINALIZATION'+checkpointFullID
+            let dataThatShouldBeSigned = requestForSkipProof.subchain+':'+INDEX+HASH+checkpointFullID
             
             let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
+            console.log('DEBUG: Is FP ok => ',finalizationProofIsOk)
 
             // If signature is ok - generate skip proof
 
@@ -1093,6 +1094,8 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
                     sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.subchain}:${INDEX}:${HASH}:${checkpointFullID}`)
                 }
+
+                console.log('DEBUG: Return the skip signature => ',skipMessage)
 
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
@@ -1680,7 +1683,9 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
     else{
 
-        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.QUORUM_SIZE-GET_MAJORITY('QUORUM_THREAD')
+        let majority = GET_MAJORITY('QUORUM_THREAD')
+
+        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-majority
 
         //Verify 2 signatures
 
