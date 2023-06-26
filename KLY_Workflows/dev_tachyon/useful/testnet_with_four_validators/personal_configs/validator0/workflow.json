@@ -13,7 +13,7 @@
         "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
         "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
         
-        "MAIN_POOL_PUBKEY":false,
+        "PRIME_POOL_PUBKEY":false,
 
         "MANIFEST":{
         

@@ -414,9 +414,9 @@ POOLS_METADATA - object like this
 
         {
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
-                INDEX: -1,
-                HASH: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-                IS_RESERVE:boolean
+                index: -1,
+                hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                isReserve:boolean
             }
     
         }
@@ -460,13 +460,13 @@ export default {
 
                 POOLS_METADATA:{
                 
-                    VALIDATOR_0 : {INDEX:number,HASH:string,IS_RESERVE:boolean},
+                    VALIDATOR_0 : {index:number,hash:string,isReserve:boolean},
 
-                    VALIDATOR_1 : {INDEX:number,HASH:string,IS_RESERVE:boolean},
+                    VALIDATOR_1 : {index:number,hash:string,isReserve:boolean},
 
                     ...
 
-                    VALIDATOR_N : {INDEX:number,HASH:string,IS_RESERVE:boolean}
+                    VALIDATOR_N : {index:number,hash:string,isReserve:boolean}
                 
                 }
 

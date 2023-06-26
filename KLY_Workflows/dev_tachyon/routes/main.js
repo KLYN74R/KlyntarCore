@@ -11,7 +11,7 @@ import Block from '../essences/block.js'
 
 
 
-let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.MAIN_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB,
+let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB,
 
 
 
@@ -58,7 +58,7 @@ acceptBlocks=response=>{
     
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -112,7 +112,7 @@ acceptBlocks=response=>{
 
                 }
 
-                let mainPoolOrAtLeastReassignment = qtSubchainsMetadata[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && qtSubchainsMetadata[block.creator].IS_RESERVE || !qtSubchainsMetadata[block.creator].IS_RESERVE)
+                let mainPoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && poolsMetadataOnQuorumThread[block.creator].isReserve || !poolsMetadataOnQuorumThread[block.creator].isReserve)
 
 
                 if(!mainPoolOrAtLeastReassignment){
@@ -530,7 +530,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-        let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
+        let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
 
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
@@ -566,17 +566,17 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
-            let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
+            let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
             
             
-            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && mainPoolOrAtLeastReassignment){
+            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && primePoolOrAtLeastReassignment){
 
                 // Add request to sync function 
                 tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
-            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | mainPoolOrAtLeastReassignment:${mainPoolOrAtLeastReassignment}`)
+            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | mainPoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
 
         }
 
@@ -705,7 +705,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let qtSubchainMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -743,7 +743,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
     
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
-    let mainPoolOrAtLeastReassignment = qtSubchainMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && qtSubchainMetadata[blockCreator].IS_RESERVE || !qtSubchainMetadata[blockCreator].IS_RESERVE)
+    let mainPoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
 
     let checkpointTempDB = tempObject.DATABASE
 
@@ -1059,7 +1059,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
         // We can't sign the skip proof in case requested height is lower than our local version of finalization proof. So, send 'UPDATE' message
-        if(localSkipHandler.EXTENDED_FINALIZATION_PROOF.INDEX > requestForSkipProof.extendedFinalizationProof.INDEX){
+        if(localSkipHandler.EXTENDED_FINALIZATION_PROOF.index > requestForSkipProof.extendedFinalizationProof.index){
 
             let responseData = {
                 
@@ -1245,7 +1245,7 @@ getDataForTempReassignments = async response => {
 
                 // Now get the first block & SFP for it
 
-                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.INDEX
+                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.index
 
                 if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
 
@@ -1307,7 +1307,7 @@ Accept checkpoints from other pools in quorum and returns own version as answer
     
     POOLS_METADATA: {
                 
-        '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
+        '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
         /..other data
             
@@ -1393,7 +1393,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
-    let currentPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataInCurrentCheckpointOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1445,45 +1445,45 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let metadataUpdate = []
         
-        let wrongStatusPresent=false, subchainWithWrongStatus
+        let wrongStatusPresent=false, poolWithWrongStatus
 
-        let subchains = Object.keys(checkpointProposition.POOLS_METADATA)
+        let pools = Object.keys(checkpointProposition.POOLS_METADATA)
 
-        let localCopyOfSubchains = Object.keys(currentPoolsMetadata)
+        let localCopyOfPools = Object.keys(poolsMetadataInCurrentCheckpointOnQuorumThread)
 
-        if(subchains.toString() !== localCopyOfSubchains.toString()){
+        if(pools.toString() !== localCopyOfPools.toString()){
 
-            !response.aborted && response.end(JSON.stringify({error:`Subchains set are not equal with my version of subchains metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Pools set are not equal with my version of subchains metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
 
             return
 
         }
 
 
-        for(let subchain of subchains){
+        for(let poolPubKey of pools){
 
-            let localVersion = tempObject.CHECKPOINT_MANAGER.get(subchain)
+            let localVersion = tempObject.CHECKPOINT_MANAGER.get(poolPubKey)
             
-            if(currentPoolsMetadata[subchain].IS_RESERVE !== checkpointProposition.POOLS_METADATA[subchain].IS_RESERVE) {
+            if(poolsMetadataInCurrentCheckpointOnQuorumThread[poolPubKey].isReserve !== checkpointProposition.POOLS_METADATA[poolPubKey].isReserve) {
 
-                wrongStatusPresent=true
+                wrongStatusPresent = true
 
-                subchainWithWrongStatus=subchain
+                poolWithWrongStatus = poolPubKey
 
                 break
 
             }
 
-            if(localVersion?.INDEX > checkpointProposition.POOLS_METADATA[subchain].INDEX){
+            if(localVersion?.index > checkpointProposition.POOLS_METADATA[poolPubKey].index){
 
                 // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
 
                 let template = {
                     
-                    subchain,
-                    index:localVersion.INDEX,
-                    hash:localVersion.HASH,
-                    finalizationProof:localVersion.FINALIZATION_PROOF
+                    subchain: poolPubKey,
+                    index:localVersion.index,
+                    hash:localVersion.hash,
+                    aggregatedCommitments:localVersion.aggregatedCommitments
 
                 }
 
@@ -1513,7 +1513,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongStatusPresent){
 
-            !response.aborted && response.end(JSON.stringify({error:`Wrong <IS_RESERVE> for subchain ${subchainWithWrongStatus}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Wrong <isReserve> for pool ${poolWithWrongStatus}`}))
 
         }
         else if(metadataUpdate.length!==0){
@@ -1585,7 +1585,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
             
         POOLS_METADATA: {
                 
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
             /..other data
             

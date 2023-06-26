@@ -21,28 +21,33 @@ export let CONTRACT = {
 
     Required params:[BLSPoolRootKey,Percentage,OverStake,WhiteList,PoolAddress]
 
-        [*] BLSPoolRootKey - BLS pubkey for validator. The same as PoolID
-        [*] Percentage - % of fees that will be earned by BLS pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
-        [*] OverStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
-        [*] WhiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
-        [*] PoolAddress - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
-        
+        [*] blsPubKey - BLS pubkey for validator. The same as PoolID
+        [*] percentage - % of fees that will be earned by BLS pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
+        [*] overStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
+        [*] whiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
+        [*] poolURL - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
+        [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
+
         ------------ For reserve pools ------------
 
-        [*] IsReserve - define type of pool. isReserve=false means that this pool will have a separate subchain. isReserve=false means that you pool will be in reserve and will be used only when main pool will be stopped
-        [*] ReserveFor - SubchainID of main pool
+        [*] isReserve - define type of pool
+        
+                isReserve=false means that this pool is a prime pool and will have a separate subchain
+                isReserve=true means that you pool will be in reserve and will be used only when prime pool will be stopped
+        
+        [*] reserveFor - SubchainID(pubkey of prime pool)
 
     */
     constructor:async (transaction,atomicBatch,originSubchain) => {
 
         let{constructorParams}=transaction.payload,
-
-            [blsPubKey,percentage,overStake,whiteList,poolURL,isReserve,reserveFor]=constructorParams,
+        
+            [blsPubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
             poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
 
 
-        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string'){
+        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -62,6 +67,8 @@ export let CONTRACT = {
                 overStake,
 
                 poolURL,
+
+                wssPoolURL,
 
                 whiteList,
 

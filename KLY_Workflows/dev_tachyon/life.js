@@ -18,7 +18,7 @@ import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
-import {CHECK_IF_ALL_ASP_PRESENT, GET_BLOCK, START_VERIFICATION_THREAD, VERIFY_SUPER_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_IF_ALL_ASP_PRESENT, GET_BLOCK, START_VERIFICATION_THREAD, VERIFY_SUPER_FINALIZATION_PROOF as VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import Block from './essences/block.js'
 
@@ -155,18 +155,18 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
     let reservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of reserve pools
 
-    let mainPoolsIDs = new Set()
+    let primePoolsPubKeys = new Set()
 
 
     for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.PAYLOAD.POOLS_METADATA)){
 
-        if(!poolMetadata.IS_RESERVE){
+        if(!poolMetadata.isReserve){
 
-            // Find main(not reserve) pools
+            // Find prime(not reserve) pools
             
-            mainPoolsIDs.add(poolPubKey)
+            primePoolsPubKeys.add(poolPubKey)
 
-            // Create the empty array for main pool
+            // Create the empty array for prime pool
 
             reservePoolsRelatedToSubchainAndStillNotUsed.set(poolPubKey,[])
 
@@ -207,7 +207,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     
     //___________________________________________________ Now, build the reassignment chains ___________________________________________________
     
-    for(let subchainPoolID of mainPoolsIDs){
+    for(let subchainPoolID of primePoolsPubKeys){
 
 
         let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchainAndStillNotUsed.get(subchainPoolID)
@@ -665,14 +665,14 @@ PROOFS_SYNCHRONIZER=async()=>{
 
             else if (keyValue[0].startsWith('REASSIGN:')){
 
-                let mainPoolID = keyValue[1]
+                let primePoolPubKey = keyValue[1]
 
                 let currentSubchainAuthority
 
 
                 // Add the reassignment
 
-                let reassignmentMetadata = reassignments.get(mainPoolID) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
+                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {CURRENT_RESERVE_POOL:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]
 
 
                 if(!reassignmentMetadata){
@@ -681,14 +681,14 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                     reassignmentMetadata = {CURRENT_RESERVE_POOL:-1}
 
-                    currentSubchainAuthority = mainPoolID
+                    currentSubchainAuthority = primePoolPubKey
 
-                }else currentSubchainAuthority = currentCheckpointReassignmentChains[mainPoolID][reassignmentMetadata.CURRENT_RESERVE_POOL]
+                }else currentSubchainAuthority = currentCheckpointReassignmentChains[primePoolPubKey][reassignmentMetadata.CURRENT_RESERVE_POOL]
 
 
                 let nextIndex = reassignmentMetadata.CURRENT_RESERVE_POOL+1
 
-                let nextReservePool = currentCheckpointReassignmentChains[mainPoolID][nextIndex] // array currentCheckpointReassignmentChains[mainPoolID] might be empty if the main pool doesn't have reserve pools
+                let nextReservePool = currentCheckpointReassignmentChains[primePoolPubKey][nextIndex] // array currentCheckpointReassignmentChains[mainPoolID] might be empty if the prime pool doesn't have reserve pools
 
 
                 // We need to mark WAS_REASSIGNED pool that was authority for this subchain
@@ -702,7 +702,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 let keysToAtomicWrite = [
 
-                    'REASSIGN:'+mainPoolID,
+                    'REASSIGN:'+primePoolPubKey,
                     
                     'SKIP_HANDLER:'+currentSubchainAuthority
 
@@ -722,7 +722,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                     // Delete the reassignment in case skipped authority was reserve pool
 
-                    if(currentSubchainAuthority !== mainPoolID) reassignments.delete(currentSubchainAuthority)
+                    if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
                     
                     currentSkipHandlersMapping.get(currentSubchainAuthority).WAS_REASSIGNED = true
 
@@ -730,11 +730,11 @@ PROOFS_SYNCHRONIZER=async()=>{
                     reassignmentMetadata.CURRENT_RESERVE_POOL++
     
 
-                    // Set new values - handler for main pool and pointer to main pool for reserve pool
+                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
 
-                    reassignments.set(mainPoolID,reassignmentMetadata)
+                    reassignments.set(primePoolPubKey,reassignmentMetadata)
 
-                    reassignments.set(nextReservePool,mainPoolID)
+                    reassignments.set(nextReservePool,primePoolPubKey)
 
                     // Delete the request
                     currentFinalizationProofsRequests.delete(keyValue[0])
@@ -798,11 +798,11 @@ PROOFS_SYNCHRONIZER=async()=>{
                 
                 let subchainState = currentCheckpointSyncHelper.get(subchain)
 
-                if(subchainState && subchainState.INDEX<index){
+                if(subchainState && subchainState.index<index){
 
-                    subchainState.INDEX=index
+                    subchainState.index=index
                     
-                    subchainState.HASH=hash
+                    subchainState.hash=hash
                     
                     subchainState.FINALIZATION_PROOF=finalizationProof
 
@@ -874,7 +874,7 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
             
                 POOLS_METADATA: {
                 
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
+                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
                     /..other data
             
@@ -1073,7 +1073,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             POOLS_METADATA: {
                 
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {INDEX,HASH,IS_RESERVE}
+                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
                 /..other data
             
@@ -1133,11 +1133,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             poolPubKey => {
 
-                let {INDEX,HASH} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{INDEX,HASH,(?)FINALIZATION_PROOF}
+                let {index,hash} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{index,hash,(?)aggregatedCommitments}
 
-                let {IS_RESERVE} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
+                let {isReserve} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolPubKey]
 
-                potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {INDEX,HASH,IS_RESERVE}
+                potentialCheckpointPayload.POOLS_METADATA[poolPubKey] = {index,hash,isReserve}
 
             }
 
@@ -1244,14 +1244,14 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 for(let updateOp of metadataUpdate){
 
                     // Get the data about the current subchain
-                    let subchainMetadata = currentSyncHelper.get(updateOp.subchain)
+                    let poolMetadata = currentSyncHelper.get(updateOp.subchain)
 
-                    if(!subchainMetadata) continue
+                    if(!poolMetadata) continue
 
                     else{
 
                         // If we received proof about bigger height on this subchain
-                        if(updateOp.index>subchainMetadata.INDEX && typeof updateOp.finalizationProof === 'string'){
+                        if(updateOp.index > poolMetadata.index && typeof updateOp.finalizationProof === 'string'){
 
                             let {aggregatedSignature,aggregatedPub,afkVoters} = updateOp.finalizationProof
     
@@ -1683,7 +1683,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
         if(!appropriateDescriptor){
 
-            let myLatestFinalizedHeight = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB].INDEX+1
+            let myLatestFinalizedHeight = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB].index+1
 
             appropriateDescriptor = {
     
@@ -1726,7 +1726,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
 
 //Iterate over SKIP_HANDLERS to get AGGREGATED_SKIP_PROOFs and approvements to move to the next reserve pools
-SKIP_PROCEDURE_MONITORING=async()=>{
+REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -1734,7 +1734,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     if(!tempObject){
 
-        setTimeout(SKIP_PROCEDURE_MONITORING,3000)
+        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
         return
 
@@ -1744,7 +1744,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
     if(!isCheckpointStillFresh){
 
-        setTimeout(SKIP_PROCEDURE_MONITORING,3000)
+        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
         return
 
@@ -1841,7 +1841,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message with EXTENDED_FINALZATION_PROOF where:
 
-                HIS_EXTENDED_FINALIZATION_PROOF.INDEX > OUR_LOCAL_EXTENDED_FINALIZATION_PROOF.INDEX
+                HIS_EXTENDED_FINALIZATION_PROOF.index > OUR_LOCAL_EXTENDED_FINALIZATION_PROOF.index
 
                 Again - we should verify the signature, update local version of FP in our skip handler and repeat the grabbing procedure
 
@@ -1865,10 +1865,10 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             let pubkeysWhoAgreeToSkip = [], signaturesToSkip = []
 
-            let {INDEX,HASH} = skipHandler.EXTENDED_FINALIZATION_PROOF
+            let {index,hash} = skipHandler.EXTENDED_FINALIZATION_PROOF
 
 
-            let dataThatShouldBeSigned = `SKIP:${poolWithSkipHandler}:${INDEX}:${HASH}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolWithSkipHandler}:${index}:${hash}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -1890,26 +1890,26 @@ SKIP_PROCEDURE_MONITORING=async()=>{
                 }else if(result.type === 'UPDATE' && typeof result.EXTENDED_FINALIZATION_PROOF === 'object'){
 
 
-                    let {INDEX,HASH,FINALIZATION_PROOF} = result.EXTENDED_FINALIZATION_PROOF
+                    let {index,hash,FINALIZATION_PROOF} = result.EXTENDED_FINALIZATION_PROOF
 
 
                     if(FINALIZATION_PROOF){
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = FINALIZATION_PROOF
             
-                        let dataThatShouldBeSigned = poolWithSkipHandler+':'+INDEX+HASH+'FINALIZATION'+checkpointFullID
+                        let dataThatShouldBeSigned = poolWithSkipHandler+':'+index+hash+'FINALIZATION'+checkpointFullID
                         
                         let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
             
 
                         //If signature is ok and index is bigger than we have - update the EXTENDED_FINALIZATION_PROOF in our local skip handler
             
-                        if(finalizationProofIsOk && skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX < INDEX){
+                        if(finalizationProofIsOk && skipHandler.EXTENDED_FINALIZATION_PROOF.index < index){
             
                             
-                            skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX = INDEX
+                            skipHandler.EXTENDED_FINALIZATION_PROOF.index = index
 
-                            skipHandler.EXTENDED_FINALIZATION_PROOF.HASH = HASH
+                            skipHandler.EXTENDED_FINALIZATION_PROOF.hash = hash
 
                             skipHandler.EXTENDED_FINALIZATION_PROOF.FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
             
@@ -1935,13 +1935,13 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             if(pubkeysWhoAgreeToSkip.length >= majority){
 
-                skipHandler.AGGREGATED_SKIP_PROOF = {
+                skipHandler.aggregatedSkipProof = {
 
-                    INDEX:skipHandler.EXTENDED_FINALIZATION_PROOF.INDEX,
+                    index:skipHandler.EXTENDED_FINALIZATION_PROOF.index,
 
-                    HASH:skipHandler.EXTENDED_FINALIZATION_PROOF.HASH,
+                    hash:skipHandler.EXTENDED_FINALIZATION_PROOF.hash,
 
-                    SKIP_PROOF:{
+                    skipProof:{
 
                         aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
 
@@ -1960,7 +1960,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
             
 
-            if(skipHandler.AGGREGATED_SKIP_PROOF && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
+            if(skipHandler.aggregatedSkipProof && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
     
                 /*
 
@@ -2045,18 +2045,18 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
                     // Now, create the request for reassignment
 
-                    let possibleNothingOrPointerToMainPool = reassignments.get(poolWithSkipHandler)
+                    let possibleNothingOrPointerToPrimePool = reassignments.get(poolWithSkipHandler)
                     
 
-                    if(possibleNothingOrPointerToMainPool){
+                    if(possibleNothingOrPointerToPrimePool){
 
-                        // In case typeof is string - it's reserve pool which points to main pool, so we should put appropriate request
+                        // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
 
-                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToMainPool)                        
+                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
 
                     }else{
 
-                        // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's main pool without any reassignments
+                        // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
 
                         currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
 
@@ -2073,7 +2073,7 @@ SKIP_PROCEDURE_MONITORING=async()=>{
 
 
     // Start again
-    setTimeout(SKIP_PROCEDURE_MONITORING,0)
+    setTimeout(REASSIGN_PROCEDURE_MONITORING,0)
 
     
 },
@@ -2173,18 +2173,18 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         We should monitor the health only for:
 
         [0] Pools that are not in SKIP_HANDLERS
-        [1] Reserve pools that are currently work for main pool
+        [1] Reserve pools that are currently work for prime pool
 
         */
 
         let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey) || proofsRequests.has('CREATE_SKIP_HANDLER:'+handler.pubKey)
 
-        let poolIsInReassignment = metadataOfCurrentPool.IS_RESERVE && typeof reassignments.get(handler.pubKey) === 'string'
+        let poolIsInReassignment = metadataOfCurrentPool.isReserve && typeof reassignments.get(handler.pubKey) === 'string'
 
-        let poolIsMain = !metadataOfCurrentPool.IS_RESERVE
+        let isItPrimePool = !metadataOfCurrentPool.isReserve
 
 
-        if(!poolIsInSkipHandlers && (poolIsMain || poolIsInReassignment)){
+        if(!poolIsInSkipHandlers && (isItPrimePool || poolIsInReassignment)){
 
             let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(response=>{
 
@@ -2256,13 +2256,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new height/hash/superFinalizationProof
 
-        if(superFinalizationProofIsOk && localHealthHandler.INDEX < latestFullyFinalizedHeight){
+        if(superFinalizationProofIsOk && localHealthHandler.index < latestFullyFinalizedHeight){
 
             localHealthHandler.LAST_SEEN = GET_GMT_TIMESTAMP()
 
-            localHealthHandler.INDEX = latestFullyFinalizedHeight
+            localHealthHandler.index = latestFullyFinalizedHeight
 
-            localHealthHandler.HASH = latestHash
+            localHealthHandler.hash = latestHash
 
             localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
 
@@ -2297,26 +2297,26 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     // Verify and if ok - break the cycle
 
-                    let {INDEX,HASH,SUPER_FINALIZATION_PROOF} = sfpOfPoolXFromAnotherQuorumMember
+                    let {index,hash,SUPER_FINALIZATION_PROOF} = sfpOfPoolXFromAnotherQuorumMember
 
                     if(SUPER_FINALIZATION_PROOF){
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = SUPER_FINALIZATION_PROOF
 
                         // blockID+hash+'FINALIZATION'+quorumThreadCheckpointFullID
-                        let data = candidate+':'+INDEX+HASH+'FINALIZATION'+checkpointFullID
+                        let data = candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
     
                         let superFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
-                        //If signature is ok and index is bigger than we have - update the LAST_SEEN time and set new superFinalizationProof
+                        //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new superFinalizationProof
     
-                        if(superFinalizationProofIsOk && localHealthHandler.INDEX < INDEX){
+                        if(superFinalizationProofIsOk && localHealthHandler.index < index){
     
-                            localHealthHandler.LAST_SEEN = currentTime
+                            localHealthHandler.lastSeen = currentTime
 
-                            localHealthHandler.INDEX = INDEX
+                            localHealthHandler.index = index
 
-                            localHealthHandler.HASH = HASH
+                            localHealthHandler.hash = hash
     
                             localHealthHandler.SUPER_FINALIZATION_PROOF = {aggregatedPub,aggregatedSignature,afkVoters}
     
@@ -2333,36 +2333,36 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             }
 
             
-            let reassignmentHandlerOrPointerToMainPool = reassignments.get(candidate)
+            let reassignmentHandlerOrPointerToPrimePool = reassignments.get(candidate)
 
-            let mainPoolPointer
+            let primePoolPointer
 
             let candidateIsLatestInReassignmentChain
 
 
-            if(!reassignmentHandlerOrPointerToMainPool){
+            if(!reassignmentHandlerOrPointerToPrimePool){
 
-                // If nothing - then it's attempt to skip the main pool(index -1 in reassignment chain)
-                mainPoolPointer = candidate
+                // If nothing - then it's attempt to skip the prime pool(index -1 in reassignment chain)
+                primePoolPointer = candidate
 
-                candidateIsLatestInReassignmentChain = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length === 0
+                candidateIsLatestInReassignmentChain = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[primePoolPointer].length === 0
 
             }else{
 
-                mainPoolPointer = candidate
+                primePoolPointer = candidate
 
-                // In case it's string - then this string is a pubkey of main pool
-                if(typeof reassignmentHandlerOrPointerToMainPool === 'string'){
+                // In case it's string - then this string is a pubkey of prime pool
+                if(typeof reassignmentHandlerOrPointerToPrimePool === 'string'){
     
-                    mainPoolPointer = reassignmentHandlerOrPointerToMainPool
+                    primePoolPointer = reassignmentHandlerOrPointerToPrimePool
     
-                    // If candidate is not a main pool - get the handler for main pool to get the .CURRENT_RESERVE_POOL property
-                    reassignmentHandlerOrPointerToMainPool = reassignments.get(reassignmentHandlerOrPointerToMainPool)
+                    // If candidate is not a prime pool - get the handler for prime pool to get the .CURRENT_RESERVE_POOL property
+                    reassignmentHandlerOrPointerToPrimePool = reassignments.get(reassignmentHandlerOrPointerToPrimePool)
     
                 }
 
                 // No sense to skip the latest pool in chain. Because in this case nobody won't have ability to continue work on subchain
-                candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToMainPool.CURRENT_RESERVE_POOL === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPoolPointer].length-1)
+                candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToPrimePool.CURRENT_RESERVE_POOL === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[primePoolPointer].length-1)
 
             }
 
@@ -2425,7 +2425,7 @@ RESTORE_STATE=async()=>{
         //___________________________________ Check for reassignments _______________________________________
 
         
-        if(!poolsMetadata.IS_RESERVE){
+        if(!poolsMetadata.isReserve){
 
             let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {CURRENT_RESERVE_POOL:<pointer to current reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>]>}
 
@@ -2496,19 +2496,19 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     // Check if <checkpointFullID> is the same in QT and in GT
     
-    if(global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID !== qtCheckpointFullID){
+    if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId !== qtCheckpointFullID){
 
         
-        global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID = qtCheckpointFullID
+        global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId = qtCheckpointFullID
 
 
         // And nullish the index & hash to the ranges of checkpoint
 
         let myMetadataFromCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[global.CONFIG.SYMBIOTE.PUB]
 
-        global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH = myMetadataFromCheckpoint.HASH
+        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = myMetadataFromCheckpoint.hash
  
-        global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX = myMetadataFromCheckpoint.INDEX + 1
+        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex = myMetadataFromCheckpoint.index + 1
 
     
     }
@@ -2521,23 +2521,23 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // Build the template to insert to the extraData of block. Structure is {subchain:ASP,subchain:ASP}
 
-        let myMainPool = global.CONFIG.SYMBIOTE.MAIN_POOL_PUBKEY
+        let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
-        let reassignmentArrayOfMyMainPool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[myMainPool]
+        let reassignmentArrayOfMyMainPool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[myPrimePool]
 
-        let myIndex = reassignmentArrayOfMyMainPool.indexOf(global.CONFIG.SYMBIOTE.PUB)
+        let myIndexInReassignmentChain = reassignmentArrayOfMyMainPool.indexOf(global.CONFIG.SYMBIOTE.PUB)
 
 
         // Get all previous pools - from zero to <my_position>
-        let allPreviousPools = reassignmentArrayOfMyMainPool.slice(0,myIndex)
+        let allPreviousPools = reassignmentArrayOfMyMainPool.slice(0,myIndexInReassignmentChain)
 
 
         //_____________________ Fill the extraData.reassignments _____________________
 
         extraData.reassignments = {}
 
-        // Add the ASP for main pool
-        extraData.reassignments[myMainPool] = tempObject.SKIP_HANDLERS.get(myMainPool)
+        // Add the ASP for prime pool
+        extraData.reassignments[myPrimePool] = tempObject.SKIP_HANDLERS.get(myPrimePool)
 
         
         for(let reservePool of allPreviousPools){
@@ -2579,7 +2579,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.CHECKPOINT_FULL_ID)
+        let blockCandidate=new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
                         
         let hash=Block.genHash(blockCandidate)
     
@@ -2589,9 +2589,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         BLOCKLOG(`New block generated`,hash,blockCandidate)
 
 
-        global.SYMBIOTE_META.GENERATION_THREAD.PREV_HASH=hash
+        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = hash
  
-        global.SYMBIOTE_META.GENERATION_THREAD.NEXT_INDEX++
+        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
         let blockID=global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
@@ -2644,16 +2644,16 @@ LOAD_GENESIS=async()=>{
 
             let {isReserve} = poolContractStorage
 
-            startPool=poolPubKey
+            startPool = poolPubKey
 
             //Add metadata related to this pool
             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
                 
-                INDEX:-1,
+                index:-1,
                 
-                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-                IS_RESERVE:isReserve
+                isReserve
             
             }
 
@@ -2762,11 +2762,11 @@ LOAD_GENESIS=async()=>{
 
                 global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
             
-                    NEXT_BLOCK_INDEX:Web3.utils.toHex(BigInt(0).toString()),
+                    nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
             
-                    PARENT_HASH:'0000000000000000000000000000000000000000000000000000000000000000',
+                    parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
             
-                    TIMESTAMP:Math.floor(checkpointTimestamp/1000)
+                    timestamp:Math.floor(checkpointTimestamp/1000)
             
                 }
 
@@ -2862,15 +2862,15 @@ LOAD_GENESIS=async()=>{
     
     global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER={
         
-        SUBCHAIN:startPool,
+        subchain:startPool,
 
-        CURRENT_AUTHORITY:startPool,
+        currentAuthority:startPool,
         
-        INDEX:-1,
+        index:-1,
         
-        HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-        GRID:0
+        grid:0
     
     }
 
@@ -3087,11 +3087,11 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             
-            CHECKPOINT_FULL_ID:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             
-            PREV_HASH:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
+            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
             
-            NEXT_INDEX:0 // So the first block will be with index 0
+            nextIndex:0 // So the first block will be with index 0
         
         }
         :
@@ -3116,17 +3116,17 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                FINALIZATION_POINTER:{SUBCHAIN:'',CURRENT_AUTHORITY:'',INDEX:-1,HASH:'',GRID:0}, // pointer to know where we should start to process further blocks
+                FINALIZATION_POINTER:{subchain:'',currentAuthority:'',index:-1,hash:'',grid:0}, // pointer to know where we should start to process further blocks
 
-                POOLS_METADATA:{}, // PUBKEY => {INDEX:'',HASH:'',IS_RESERVE:boolean}
+                POOLS_METADATA:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
                 KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
  
-                KLY_EVM_METADATA:{}, // MainPool => {NEXT_BLOCK_INDEX,PARENT_HASH,TIMESTAMP}
+                KLY_EVM_METADATA:{}, // primePoolBlsPubKey => {nextBlockIndex,parentHash,timestamp}
 
-                TEMP_REASSIGNMENTS:{}, // CheckpointID => MainPool => {CURRENT_GENERATOR:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,REASSIGNMENTS:{ReservePool=>{index,hash}}}
+                TEMP_REASSIGNMENTS:{}, // CheckpointID => primePool => {currentAuthority:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
 
-                SID_TRACKER:{}, // SUBCHAIN => INDEX
+                SID_TRACKER:{}, // subchainID(BLS pubkey of prime pool) => index
 
                 CHECKPOINT:'genesis'
 
@@ -3339,9 +3339,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
             
             tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
 
-                CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
+                CURRENT_AUTHORITY:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
-                CURRENT_TO_VERIFY:-1, // to start the verification in START_VERIFICATION_THREAD from main pool(-1 index) and continue with reserve pools(0,1,2,...N)
+                CURRENT_TO_VERIFY:-1, // to start the verification in START_VERIFICATION_THREAD from prime pool(-1 index) and continue with reserve pools(0,1,2,...N)
 
                 REASSIGNMENTS:{} // poolPubKey => {INDEX,HASH}
 
@@ -3363,7 +3363,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     for(let memberHandler of quorumMembers){
 
-        // Make requests to /get_asp_and_approved_first_block. Returns => {currentReservePoolIndex,firstBlockOfCurrentAuthority,sfpForFirstBlockByCurrentAuthority}. Send the current auth + main pool
+        // Make requests to /get_asp_and_approved_first_block. Returns => {currentReservePoolIndex,firstBlockOfCurrentAuthority,sfpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
 
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
 
@@ -3421,7 +3421,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                     For this:
 
-                        0) Verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for main pool) in a row
+                        0) Verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for prime pool) in a row
 
                         1) Verify that this block was approved by quorum majority(2/3N+1) by checking the <sfpForFirstBlockByCurrentAuthority>
 
@@ -3445,7 +3445,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool].CURRENT_AUTHORITY
     
-                        let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].INDEX+1
+                        let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].index+1
     
     
                         if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
@@ -3458,7 +3458,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                             let blockHash = Block.genHash(firstBlockByCurrentAuthority)
     
-                            let sfpIsOk = await VERIFY_SUPER_FINALIZATION_PROOF(blockID,blockHash,sfpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
+                            let sfpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,sfpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
     
                             let shouldChangeThisSubchain = true
     
@@ -3477,7 +3477,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                 
                                     tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][mainPool] = {
     
-                                        CURRENT_AUTHORITY:-1, // -1 means that it's main pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
+                                        CURRENT_AUTHORITY:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                     
                                         REASSIGNMENTS:{} // poolPubKey => {index,hash}
     
@@ -3511,7 +3511,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
             
                                         if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
     
-                                            let latestBlockInPreviousCheckpointByThisPool = poolsMetadataFromVtCheckpoint[poolWithThisPosition].INDEX
+                                            let latestBlockInPreviousCheckpointByThisPool = poolsMetadataFromVtCheckpoint[poolWithThisPosition].index
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
@@ -3623,12 +3623,12 @@ RUN_SYMBIOTE=async()=>{
         SUBCHAINS_HEALTH_MONITORING()
 
         //5.Iterate over SKIP_HANDLERS to get AGGREGATED_SKIP_PROOFs and approvements to move to the next reserve pools
-        SKIP_PROCEDURE_MONITORING()
+        REASSIGN_PROCEDURE_MONITORING()
 
         //6.Run function to work with finalization stuff and avoid async problems
         PROOFS_SYNCHRONIZER()
 
-        //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - main pool or reserve pools
+        //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
         TEMPORARY_REASSIGNMENTS_BUILDER()
 
 

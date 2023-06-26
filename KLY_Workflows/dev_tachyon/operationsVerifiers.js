@@ -200,7 +200,7 @@ export default {
 
                 if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {INDEX:-1,HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',IS_RESERVE:poolStorage.isReserve}
+                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
 
                     fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool] = metadataTemplate
     
@@ -326,7 +326,7 @@ export default {
                     // Do it only if pool is not in current POOLS_METADATA
                     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
 
-                        if(poolStorage.storedMetadata.HASH){
+                        if(poolStorage.storedMetadata.hash){
 
                             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]=poolStorage.storedMetadata
                         
@@ -334,11 +334,11 @@ export default {
     
                             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
                                 
-                                INDEX:-1,
+                                index:-1,
                             
-                                HASH:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-                                IS_RESERVE:poolStorage.isReserve
+                                isReserve:poolStorage.isReserve
                             
                             }
 
