@@ -110,7 +110,7 @@ GET_BLOCK = async (blockCreator,index) => {
 
 
 
-VERIFY_SUPER_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablySuperFinalizationProof,checkpointFullID,checkpoint) => {
+VERIFY_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablySuperFinalizationProof,checkpointFullID,checkpoint) => {
 
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablySuperFinalizationProof
@@ -185,7 +185,7 @@ Verification process:
 
 */
 
-GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
+GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
     let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
@@ -202,28 +202,28 @@ GET_SUPER_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID).DATABASE
 
     
-    let superFinalizationProof = await checkpointTemporaryDB.get('SFP:'+blockID).catch(_=>false)
+    let aggregatedFinalizationProof = await checkpointTemporaryDB.get('AFP:'+blockID).catch(_=>false)
 
 
-    //We shouldn't verify local version of SFP, because we already did it. See the GET /super_finalization route handler
+    //We shouldn't verify local version of AFP, because we already did it. See the GET /aggregated_finalization_proof route handler
 
-    if(superFinalizationProof){
+    if(aggregatedFinalizationProof){
 
-        return superFinalizationProof.blockHash===blockHash ? {verify:true} : {verify:false,shouldDelete:true}
+        return aggregatedFinalizationProof.blockHash===blockHash ? {verify:true} : {verify:false,shouldDelete:true}
 
     }   
 
-    //Go through known hosts and find SUPER_FINALIZATION_PROOF. Call GET /super_finalization route
+    //Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
-    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_SUPER_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
 
     for(let memberURL of quorumMembersURLs){
 
 
-        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/super_finalization/'+blockID).then(r=>r.json()).catch(_=>false)
+        let itsProbablySuperFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(_=>false)
 
-        let isOK = await VERIFY_SUPER_FINALIZATION_PROOF(blockID,blockHash,itsProbablySuperFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
+        let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,itsProbablySuperFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
 
         if(isOK.verify) return isOK 
 
@@ -373,7 +373,7 @@ CHECK_ASP_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
 
     /*
 
-    Check the AGGREGATED_SKIP_PROOF(ASP) signed by majority(2/3N+1) and aggregated
+    Check the <aggregatedSkipProof>(ASP) signed by majority(2/3N+1) and aggregated
     
     ASP structure is:
     
@@ -520,7 +520,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
         0) Once we get the new valid checkpoint, use the REASSIGNMENT_CHAINS built for this checkpoint(from global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
 
-        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<mainpool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the AGGREGATED_SKIP_PROOF for all the previous reserve pools
+        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<mainpool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <aggregatedSkipProof> for all the previous reserve pools
 
         2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was skipped on the first block of this epoch
 
@@ -547,7 +547,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
                     [Reserve4]: INDEX:1566 HASH:ce77...
 
 
-            (1) We run the initial cycle in reverse order to find the AGGREGATED_SKIP_PROOFS
+            (1) We run the initial cycle in reverse order to find the <aggregatedSkipProof>
 
                 Each next pool in a row must have ASP for all the previous pools.
 
@@ -1158,7 +1158,7 @@ START_VERIFICATION_THREAD=async()=>{
         
         // Get the stats from reassignments
 
-        let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {CURRENT_AUTHORITY,CURRENT_TO_VERIFY,REASSGINMENTS:{pool:{index,hash}}}
+        let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
 
@@ -1168,11 +1168,11 @@ START_VERIFICATION_THREAD=async()=>{
 
             // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
 
-            let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY
+            let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.currentToVerify
 
             if(typeof indexOfCurrentPoolToVerify !== 'number'){
 
-                reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY = indexOfCurrentPoolToVerify = -1
+                reassignmentsBasedOnCheckpointData.currentToVerify = indexOfCurrentPoolToVerify = -1
 
             }
 
@@ -1203,14 +1203,14 @@ START_VERIFICATION_THREAD=async()=>{
 
                 global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[poolToVerifyRightNow]
 
-                reassignmentsBasedOnCheckpointData.CURRENT_TO_VERIFY++
+                reassignmentsBasedOnCheckpointData.currentToVerify++
 
             }
 
 
         }else if(tempReassignments && updatedIsFreshCheckpoint){
 
-            let indexOfCurrentPoolToVerify = tempReassignments.CURRENT_TO_VERIFY
+            let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
 
 
             // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
@@ -1219,10 +1219,10 @@ START_VERIFICATION_THREAD=async()=>{
 
             let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
-            let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.REASSIGNMENTS[poolToVerifyRightNow] // {index,hash}
+            let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
 
 
-            if(tempReassignments.CURRENT_TO_VERIFY === tempReassignments.CURRENT_AUTHORITY){
+            if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
 
                 // Ask the N+1 block
 
@@ -1236,7 +1236,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                     // Get the SFP for this blockк
 
-                    let {verify,shouldDelete} = await GET_SUPER_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
+                    let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
         
                     if(shouldDelete){
         
@@ -1256,7 +1256,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }
 
-            if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.CURRENT_TO_VERIFY++
+            if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.currentToVerify++
             
         }
 

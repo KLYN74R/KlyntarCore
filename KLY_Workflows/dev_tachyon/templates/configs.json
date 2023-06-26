@@ -230,7 +230,7 @@
 
     "GET_STUFF_URL":"http://localhost:7331",
     "GET_BLOCKS_URL":"http://localhost:7331",
-    "GET_SUPER_FINALIZATION_PROOF_URL":"http://localhost:7331",
+    "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
 
     "STUFF_CACHE_SIZE":100000,
     

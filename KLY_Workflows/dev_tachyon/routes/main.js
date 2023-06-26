@@ -693,15 +693,15 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
 /*
 
-****************************************************************
-                                                               *
-Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
-                                                               *
-****************************************************************
+*********************************************************************
+                                                                    *
+Accept AGGREGATED_FINALIZATION_PROOF or send if it exists locally   *
+                                                                    *
+*********************************************************************
 
 
 */
-superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
 
@@ -751,7 +751,7 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && mainPoolOrAtLeastReassignment){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'SFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
@@ -765,9 +765,9 @@ superFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','
 
 /*
 
-To return SUPER_FINALIZATION_PROOF related to some block PubX:Index
+To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index
 
-Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
 
 Params:
 
@@ -785,7 +785,7 @@ Returns:
     }
 
 */
-getSuperFinalization=async(response,request)=>{
+getAggregatedFinalizationProof=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
@@ -802,12 +802,12 @@ getSuperFinalization=async(response,request)=>{
         }
 
        
-        let superFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+request.getParameter(0)).catch(_=>false)
+        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+request.getParameter(0)).catch(_=>false)
 
 
-        if(superFinalizationProof){
+        if(aggregatedFinalizationProof){
 
-            !response.aborted && response.end(JSON.stringify(superFinalizationProof))
+            !response.aborted && response.end(JSON.stringify(aggregatedFinalizationProof))
 
         }else !response.aborted && response.end('No proof')
 
@@ -875,12 +875,12 @@ healthChecker = async response => {
         }
        
 
-        let superFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'SFP:'+global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
 
 
-        if(superFinalizationProof){
+        if(aggregatedFinalizationProof){
 
-            let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof}
+            let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof: aggregatedFinalizationProof}
 
             !response.aborted && response.end(JSON.stringify(healthProof))
 
@@ -997,7 +997,7 @@ anotherPoolHealthChecker = async(response,request) => {
 [Response]:
 
 
-[1] In case we have skip handler for this subchain in SKIP_HANDLERS and if EXTENDED_FINALIZATION_PROOF in skip handler has <= index than in FP from request we can response:
+[1] In case we have skip handler for this subchain in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response:
         
         {
             type:'OK',
@@ -1005,16 +1005,16 @@ anotherPoolHealthChecker = async(response,request) => {
         }
 
 
-[2] In case we have bigger index in EXTENDED_FINALIZATION_PROOF - response with 'UPDATE' message:
+[2] In case we have bigger index in <extendedAggregatedCommitments> - response with 'UPDATE' message:
 
     {
         type:'UPDATE',
                         
-        EXTENDED_FINALIZATION_PROOF:{
+        <extendedAggregatedCommitments>:{
                             
-            INDEX,
-            HASH,
-            FINALIZATION_PROOF:{aggregatedPub,aggregatedSignature,afkVoters}
+            index,
+            hash,
+            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
         
         }
                         
@@ -1059,13 +1059,13 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
         // We can't sign the skip proof in case requested height is lower than our local version of finalization proof. So, send 'UPDATE' message
-        if(localSkipHandler.EXTENDED_FINALIZATION_PROOF.index > requestForSkipProof.extendedFinalizationProof.index){
+        if(localSkipHandler.extendedAggregatedCommitments.index > requestForSkipProof.extendedFinalizationProof.index){
 
             let responseData = {
                 
                 type:'UPDATE',
 
-                EXTENDED_FINALIZATION_PROOF:localSkipHandler.EXTENDED_FINALIZATION_PROOF
+                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
 
             }
 
@@ -1127,7 +1127,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 [Response]:
 
-If we also have an AGGREGATED_SKIP_PROOF in our local SKIP_HANDLERS[<subchain>] - we can vote for reassignment:
+If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
 
 Response => {type:'OK',sig:SIG(`REASSIGNMENT:<subchain>:<session>:<checkpointFullID>`)}
 
@@ -1153,7 +1153,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
     let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.subchain)
 
 
-    if(skipHandler && skipHandler.AGGREGATED_SKIP_PROOF && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
+    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
 
         let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.subchain}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
 
@@ -1171,7 +1171,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 [Info]:
 
-    Route to ask for AGGREGATED_SKIP_PROOF(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
+    Route to ask for <aggregatedSkipProof>(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
 
 
 [Accept]:
@@ -1183,7 +1183,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    mainPool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+    primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
 
 }
 
@@ -1231,17 +1231,17 @@ getDataForTempReassignments = async response => {
 
         let templateForResponse = {} // mainPool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
 
-        for(let mainPool of currentMainPools){
+        for(let primePool of currentMainPools){
 
             // Get the current authority
 
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(mainPool) // mainPool => {CURRENT_RESERVE_POOL:<number>}
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentReservePool:<number>}
 
             if(reassignmentHandler){
 
-                let currentReservePoolIndex = reassignmentHandler.CURRENT_RESERVE_POOL
+                let currentReservePoolIndex = reassignmentHandler.currentReservePool
 
-                let currentSubchainAuthority = currentReservePoolIndex === -1 ? mainPool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[mainPool][currentReservePoolIndex]
+                let currentSubchainAuthority = currentReservePoolIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[primePool][currentReservePoolIndex]
 
                 // Now get the first block & SFP for it
 
@@ -1257,17 +1257,17 @@ getDataForTempReassignments = async response => {
 
                         // Finally, find the SFP for this block
 
-                        let sfpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'SFP:'+blockID).catch(_=>false)
+                        let afpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP:'+blockID).catch(_=>false)
 
                         // Put to response
 
-                        templateForResponse[mainPool]={
+                        templateForResponse[primePool]={
 
                             currentReservePoolIndex,
                             
                             firstBlockByCurrentAuthority,
                             
-                            sfpForFirstBlockByCurrentAuthority
+                            afpForFirstBlockByCurrentAuthority
                             
                         }
 
@@ -1383,7 +1383,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProposition=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    if(typeof checkpointProposition.ISSUER !== 'string' || typeof checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH !== 'string' || typeof checkpointProposition.POOLS_METADATA !== 'object' || !Array.isArray(checkpointProposition.OPERATIONS)){
+    if(typeof checkpointProposition.issuer !== 'string' || typeof checkpointProposition.prevCheckpointPayloadHash !== 'string' || typeof checkpointProposition.poolsMetadata !== 'object' || !Array.isArray(checkpointProposition.operations)){
 
         !response.aborted && response.end(JSON.stringify({error:'Wrong input formats'}))
 
@@ -1524,11 +1524,11 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             let finalVersionToSign = {
 
-                ISSUER:checkpointProposition.ISSUER,
-                PREV_CHECKPOINT_PAYLOAD_HASH:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,                
-                POOLS_METADATA:checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH,
-                OPERATIONS:checkpointProposition.OPERATIONS,
-                OTHER_SYMBIOTES:{}                        
+                issuer:checkpointProposition.issuer,
+                prevCheckpointPayloadHash:checkpointProposition.prevCheckpointPayloadHash,                
+                poolsMetadata:checkpointProposition.poolsMetadata,
+                operations:checkpointProposition.operations,
+                otherSymbiotes:{}                        
             
             }
 
@@ -1551,7 +1551,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     Route for the second stage of checkpoint distribution
 
-    [0] Here we accept the checkpoint's payload and a proof that majority has the same. Also, ISSUER_PROOF is a BLS signature of proposer of this checkpoint. We need this signature to prevent spam
+    [0] Here we accept the checkpoint's payload and a proof that majority has the same. Also, <issuerProof> is a BLS signature of proposer of this checkpoint. We need this signature to prevent spam
 
     [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
 
@@ -1567,7 +1567,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
 {
-    CHECKPOINT_FINALIZATION_PROOF:{
+    checkpointFinalizationProof:{
 
         aggregatedPub:<2/3N+1 from QUORUM>,
         aggregatedSigna:<SIG(PAYLOAD_HASH)>,
@@ -1575,23 +1575,23 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }
 
-    ISSUER_PROOF:SIG(ISSUER+PAYLOAD_HASH)
+    issuerProof:SIG(ISSUER+PAYLOAD_HASH)
 
-    CHECKPOINT_PAYLOAD:{
+    checkpointPayload:{
 
-        ISSUER:<BLS pubkey of checkpoint grabbing initiator>
+        issuer:<BLS pubkey of checkpoint grabbing initiator>
             
-        PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+        prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
             
-        POOLS_METADATA: {
+        poolsMetadata: {
                 
             '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
             /..other data
             
         },
-        OPERATIONS: GET_SPECIAL_OPERATIONS(),
-        OTHER_SYMBIOTES: {}
+        operations: GET_SPECIAL_OPERATIONS(),
+        otherSymbiotes: {}
         
     }
 
@@ -1636,7 +1636,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let checkpointProofsResponses = tempObject.PROOFS_RESPONSES
 
-    let {CHECKPOINT_FINALIZATION_PROOF,CHECKPOINT_PAYLOAD,ISSUER_PROOF}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let {checkpointFinalizationProof,checkpointPayload,issuerProof}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
@@ -1647,7 +1647,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }
 
-    if(!CHECKPOINT_FINALIZATION_PROOF){
+    if(!checkpointFinalizationProof){
 
         !response.aborted && response.end(JSON.stringify({error:'No CHECKPOINT_FINALIZATION_PROOF in input data'}))
 
@@ -1656,9 +1656,9 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
 
 
-    let {aggregatedPub,aggregatedSignature,afkVoters} = CHECKPOINT_FINALIZATION_PROOF
+    let {aggregatedPub,aggregatedSignature,afkVoters} = checkpointFinalizationProof
 
-    let payloadHash = BLAKE3(JSON.stringify(CHECKPOINT_PAYLOAD))
+    let payloadHash = BLAKE3(JSON.stringify(checkpointPayload))
 
     let checkpointTemporaryDB = tempObject.DATABASE
 
@@ -1666,7 +1666,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let payloadIsAlreadyInDb = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false)
 
-    let proposerAlreadyInDB = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER).catch(_=>false)
+    let proposerAlreadyInDB = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'PROPOSER_'+checkpointPayload.issuer).catch(_=>false)
     
 
 
@@ -1691,7 +1691,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
 
-        let issuerSignatureIsOk = await bls.singleVerify(CHECKPOINT_PAYLOAD.ISSUER+payloadHash,CHECKPOINT_PAYLOAD.ISSUER,ISSUER_PROOF).catch(error=>({error}))
+        let issuerSignatureIsOk = await bls.singleVerify(checkpointPayload.issuer+payloadHash,checkpointPayload.issuer,issuerProof).catch(error=>({error}))
 
 
 
@@ -1720,9 +1720,9 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
                 let atomicBatch = checkpointTemporaryDB.batch()
 
-                atomicBatch.put('PROPOSER_'+CHECKPOINT_PAYLOAD.ISSUER,true)
+                atomicBatch.put('PROPOSER_'+checkpointPayload.issuer,true)
             
-                atomicBatch.put(payloadHash,CHECKPOINT_PAYLOAD)
+                atomicBatch.put(payloadHash,checkpointPayload)
 
                 await atomicBatch.write()
 
@@ -1974,10 +1974,10 @@ UWS_SERVER
 //2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
 .post('/finalization',finalization)
 
-//3rd stage - logic with super finalization proofs. Accept SUPER_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
-.post('/super_finalization',superFinalization)
+//3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
+.post('/aggregated_finalization_proof',acceptAggregatedFinalizationProof)
 
-.get('/super_finalization/:BLOCK_ID',getSuperFinalization)
+.get('/aggregated_finalization_proof/:BLOCK_ID',getAggregatedFinalizationProof)
 
 
 //_______________________________ Routes for checkpoint _______________________________
@@ -2006,7 +2006,7 @@ UWS_SERVER
 // Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
 .post('/get_skip_proof',getSkipProof)
 
-// Function to accept ASP - AGGREGATED_SKIP_PROOF (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
+// Function to accept ASP(aggregatedSkipProof) (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
 // .post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain

@@ -150,7 +150,7 @@ export default {
                     totalPower:<number>
                     lackOfTotalPower:<boolean>
                     stopCheckpointID:<number>
-                    storedMetadata:{INDEX,HASH},
+                    storedMetadata:{index,hash},
                     isReserve:<boolean>
                 }
             

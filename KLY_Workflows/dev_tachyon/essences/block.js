@@ -15,7 +15,7 @@ export default class Block{
 
         this.transactions=transactionsSet //array of transactions,contract calls, services logic,etc.
 
-        this.extraData = extraData //extradata to be added to block. Used mostly to add AGGREGATED_SKIP_PROOF
+        this.extraData = extraData //extradata to be added to block. Used mostly to add <aggregatedSkipProof>
 
         this.index=global.SYMBIOTE_META.GENERATION_THREAD.nextIndex //index of block in validator's thread
         
