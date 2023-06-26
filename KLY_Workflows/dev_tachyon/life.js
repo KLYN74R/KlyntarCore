@@ -759,7 +759,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 }
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,subchain,futureSkipHandler).then(()=>{
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+subchain,futureSkipHandler).then(()=>{
 
                     currentSkipHandlersMapping.set(subchain,futureSkipHandler)
 
@@ -2451,6 +2451,9 @@ RESTORE_STATE=async()=>{
         tempObject.PROOFS_RESPONSES.set('READY_FOR_CHECKPOINT',true)
 
     }
+
+
+    console.log('DEBUG: Temp object => ',tempObject)
 
 
 }
