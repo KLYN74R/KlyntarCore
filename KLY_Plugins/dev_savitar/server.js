@@ -36,7 +36,7 @@
  * 
  * => Once 2/3N+1 commitments will be received for block, the Savitar client send the aggregated version of commitments and we return the finalization proof
  * 
- * => Aggragated version of 2/3N+1 finalization proofs === SUPER_FINALIZATION_PROOF for block X with hash H
+ * => Aggragated version of 2/3N+1 finalization proofs === AGGREGATED_FINALIZATION_PROOF for block X with hash H
  * 
  */
 
@@ -205,9 +205,9 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
     // connection.sendUTF(message.utf8Data);
     
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
-    let qtPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let qtPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -221,7 +221,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
     
     }
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
         connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
 
@@ -246,9 +246,9 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
         let blockID = block.creator+":"+block.index
 
-        let subchainlackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
+        let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
     
-        if(subchainlackOfTotalPowerForCurrentCheckpoint) continue
+        if(poolHasLackOfTotalPowerForCurrentCheckpoint) continue
 
         
         let hash=GEN_HASH(block)
@@ -334,10 +334,10 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
     let blocksSet = []
 
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
             
@@ -371,7 +371,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
             }
 
-            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
@@ -382,7 +382,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 blocksSet.push(blockID)
 

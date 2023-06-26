@@ -196,7 +196,7 @@
                 "ACCEPT_BLOCKS":1,
                 "ACCEPT_TXS":1,
                 "SHARE_FINALIZATION_PROOF":1,
-                "SUPER_FINALIZATION_PROOFS":1,
+                "GET_AGGREGATED_FINALIZATION_PROOFS":1,
                 "HEALTH_CHECKER":1,
                 "PAYLOAD_FOR_CHECKPOINT":1,
                 "SPECIAL_OPERATIONS":1,

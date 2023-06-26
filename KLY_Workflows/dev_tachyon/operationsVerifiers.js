@@ -24,7 +24,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.HEADER.ID - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.header.id - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
@@ -74,7 +74,7 @@ export default {
             pool:<BLS pubkey of pool>,
             type:<'-' for unstake and '+' for stake>
             amount:<integer> - staking power
-            storageOrigin:<string> - subchain where metadata/storage of pool
+            storageOrigin:<string> - origin where metadata/storage of pool
             
             ---- Only for reserve pools ----
 
@@ -198,11 +198,11 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool]){
+                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.HASH ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
+                    let metadataTemplate = poolStorage.storedMetadata.hash ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
 
-                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.PAYLOAD.POOLS_METADATA[pool] = metadataTemplate
+                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool] = metadataTemplate
     
                 }
 
@@ -405,7 +405,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
 
         */
 
@@ -420,7 +420,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
             &&
             await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
@@ -451,16 +451,16 @@ export default {
             // On VERIFICATION_THREAD we should delete the pool from POOLS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
 
-            let poolExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+            let poolExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(originWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
 
 
             if(poolExists){
 
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
 
-                payload.poolOrigin = subchainWherePoolStorage
+                payload.poolOrigin = originWherePoolStorage
             
                 slashObject[payload.pool]=payload
 
@@ -488,11 +488,11 @@ export default {
 
             //To check payload received from route
 
-            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
-            if(subchainWherePoolStorage){
+            if(originWherePoolStorage){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
@@ -543,11 +543,11 @@ export default {
             if(slashHelper[pool]) return
 
 
-            let subchainWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
 
-            if(subchainWherePoolStorage){
+            if(originWherePoolStorage){
 
-                let poolStorage = await GET_FROM_STATE(BLAKE3(subchainWherePoolStorage+pool+'(POOL)_STORAGE_POOL')),
+                let poolStorage = await GET_FROM_STATE(BLAKE3(originWherePoolStorage+pool+'(POOL)_STORAGE_POOL')),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
@@ -562,7 +562,7 @@ export default {
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
 
-                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainWherePoolStorage+stakingTx.staker))
+                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originWherePoolStorage+stakingTx.staker))
 
                     if(stakerAccount){
                     
@@ -608,7 +608,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
         
         */
 
@@ -624,7 +624,7 @@ export default {
             &&
             global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -676,7 +676,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
         
         
         */
@@ -689,7 +689,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -742,7 +742,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.HASH)        
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)        
         
         */
 
@@ -754,7 +754,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
 
 
 

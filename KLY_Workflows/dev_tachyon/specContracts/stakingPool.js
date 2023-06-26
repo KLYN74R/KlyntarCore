@@ -141,7 +141,7 @@ export let CONTRACT = {
 
                     poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                        checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                        checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id,
 
                         staker:transaction.creator,
 
@@ -198,7 +198,7 @@ export let CONTRACT = {
 
             poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID,
+                checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id,
 
                 staker:transaction.creator,
 

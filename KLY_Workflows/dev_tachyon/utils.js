@@ -451,7 +451,7 @@ GET_POOLS_URLS = async withPubkey => {
     let promises=[]
 
 
-    for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM){
+    for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum){
 
         let promise = global.SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
         
@@ -514,7 +514,7 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
 GET_MAJORITY=(threadID,checkpoint)=>{
 
-    let quorumNumber = checkpoint ? checkpoint.QUORUM.length : global.SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
+    let quorumNumber = checkpoint ? checkpoint.QUORUM.length : global.SYMBIOTE_META[threadID].CHECKPOINT.quorum.length,
 
         majority = Math.floor(quorumNumber*(2/3))+1
 

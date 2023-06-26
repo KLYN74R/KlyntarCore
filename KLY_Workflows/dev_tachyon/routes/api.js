@@ -407,7 +407,7 @@ getSearchResult=async(response,request)=>{
         }
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -419,18 +419,18 @@ getSearchResult=async(response,request)=>{
 
         }else{
 
-            let possibleSuperFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(superFinalizationProof=>{
+            let possibleAggregatedFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(aggregatedFinalizationProof=>{
 
-                responseType = query.startsWith('SFP') && 'SUPER_FINALIZATION_PROOF'
+                responseType = query.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
 
-                return superFinalizationProof
+                return aggregatedFinalizationProof
 
             }).catch(_=>false)
     
 
-            if(possibleSuperFinalizationProof){
+            if(possibleAggregatedFinalizationProof){
 
-                !response.aborted && response.end(JSON.stringify({responseType,data:possibleSuperFinalizationProof}))
+                !response.aborted && response.end(JSON.stringify({responseType,data:possibleAggregatedFinalizationProof}))
     
                 return
     
@@ -605,15 +605,10 @@ UWS_SERVER
 
 /*
 
-
 TODO:
-
-GET /health/:subchain - get own version about health of some subchain(pool)
 
 GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
 
 GET /checkpoint/:type - get the current checkpoint based on type(QT - quorum thread, VT - verification thread).
-
-GET 
 
 */

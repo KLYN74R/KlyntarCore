@@ -56,9 +56,9 @@ acceptBlocks=response=>{
     
     let buffer=Buffer.alloc(0)
     
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
-    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -72,7 +72,7 @@ acceptBlocks=response=>{
     
     }
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -101,21 +101,21 @@ acceptBlocks=response=>{
             
                 let block = await PARSE_JSON(buffer)
 
-                let subchainIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
+                let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
             
 
-                if(subchainIsAFK){
+                if(poolIsAFK){
 
-                    !response.aborted && response.end('This subchain is AFK')
+                    !response.aborted && response.end('This pool is AFK')
         
                     return
 
                 }
 
-                let mainPoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && poolsMetadataOnQuorumThread[block.creator].isReserve || !poolsMetadataOnQuorumThread[block.creator].isReserve)
+                let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && poolsMetadataOnQuorumThread[block.creator].isReserve || !poolsMetadataOnQuorumThread[block.creator].isReserve)
 
 
-                if(!mainPoolOrAtLeastReassignment){
+                if(!primePoolOrAtLeastReassignment){
 
                     !response.aborted && response.end(`This block creator can't produce blocks`)
         
@@ -243,7 +243,7 @@ acceptManyBlocks=response=>{
     
     let buffer=Buffer.alloc(0)
     
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -257,7 +257,7 @@ acceptManyBlocks=response=>{
     
     }
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
         !response.aborted && response.end('QT checkpoint is incomplete')
 
@@ -295,9 +295,9 @@ acceptManyBlocks=response=>{
 
                     let blockID = block.creator+":"+block.index
 
-                    let subchainIsSkipped = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
+                    let poolIsSkipped = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
                 
-                    if(subchainIsSkipped) continue
+                    if(poolIsSkipped) continue
    
                     
                     let hash=Block.genHash(block)
@@ -515,10 +515,10 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let aggregatedCommitments=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -530,7 +530,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-        let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA 
+        let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
 
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
@@ -560,7 +560,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             let [blockCreator,_] = blockID.split(':')
 
 
-            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
@@ -572,11 +572,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && primePoolOrAtLeastReassignment){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
-            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | mainPoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
+            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
 
         }
 
@@ -625,10 +625,10 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
     let blocksSet = []
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -660,7 +660,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
             }
 
-            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
@@ -672,7 +672,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,finalizationProof:{aggregatedPub,aggregatedSignature,afkVoters}})
+                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 blocksSet.push(blockID)
 
@@ -703,9 +703,9 @@ Accept AGGREGATED_FINALIZATION_PROOF or send if it exists locally   *
 */
 acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
-    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -718,9 +718,9 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     
    
-    let possibleSuperFinalizationProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let possibleAggregatedFinalizationProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleSuperFinalizationProof
+    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
     
     if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
@@ -739,23 +739,23 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
     
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
-    let mainPoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
+    let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
 
     let checkpointTempDB = tempObject.DATABASE
 
 
 
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && mainPoolOrAtLeastReassignment){
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
 
         await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end('OK')
 
-    }else !response.aborted && response.end(`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | mainPoolOrAtLeastReassignment:${mainPoolOrAtLeastReassignment}`)
+    }else !response.aborted && response.end(`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
 
 
 }),
@@ -790,9 +790,9 @@ getAggregatedFinalizationProof=async(response,request)=>{
     response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SUPER_FINALIZATION_PROOFS){
+    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -820,9 +820,9 @@ getAggregatedFinalizationProof=async(response,request)=>{
 
 /*
 
-To return SUPER_FINALIZATION_PROOF related to the latest block we have 
+To return AFP(AGGREGATED_FINALIZATION_PROOF) related to the latest block we have 
 
-Only in case when we have SUPER_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+Only in case when we have AFP we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
 
 Params:
 
@@ -830,11 +830,11 @@ Returns:
 
     {
         
-        latestFullyFinalizedHeight, // height of block that we already finalized. Also, below you can see the SUPER_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
-        latestHash:<>,
+        hash:<>,
 
-        superFinalizationProof:{
+        aggregatedFinalizationProof:{
             
             aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
             aggregatedPub:<>,
@@ -852,7 +852,7 @@ healthChecker = async response => {
 
     if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
 
-        // Get the latest SUPER_FINALIZATION_PROOF that we have
+        // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
         let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         if(!appropriateDescriptor) !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
@@ -865,7 +865,7 @@ healthChecker = async response => {
 
         let latestHash = block && Block.genHash(block)
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -880,7 +880,7 @@ healthChecker = async response => {
 
         if(aggregatedFinalizationProof){
 
-            let healthProof = {latestFullyFinalizedHeight,latestHash,superFinalizationProof: aggregatedFinalizationProof}
+            let healthProof = {index:latestFullyFinalizedHeight,hash:latestHash,aggregatedFinalizationProof}
 
             !response.aborted && response.end(JSON.stringify(healthProof))
 
@@ -906,10 +906,10 @@ To return the stats about the health about another pool
     Our local stats about the health of provided pool
 
     {
-        INDEX,
-        HASH,
+        index,
+        hash,
 
-        SUPER_FINALIZATION_PROOF
+        aggregatedFinalizationProof:
             
             {
 
@@ -932,9 +932,9 @@ anotherPoolHealthChecker = async(response,request) => {
     if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
 
         
-        let poolID = request.getParameter(0)
+        let requestedPoolPubKey = request.getParameter(0)
 
-        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
 
@@ -949,11 +949,11 @@ anotherPoolHealthChecker = async(response,request) => {
 
         // Get the stats from our HEALTH_CHECKER
 
-        let healthChecker = tempObject.HEALTH_MONITORING.get(poolID)
+        let healthHandler = tempObject.HEALTH_MONITORING.get(requestedPoolPubKey)
 
-        if(healthChecker){
+        if(healthHandler){
 
-            !response.aborted && response.end(JSON.stringify(healthChecker.SUPER_FINALIZATION_PROOF))
+            !response.aborted && response.end(JSON.stringify(healthHandler))
 
         }else !response.aborted && response.end(JSON.stringify({err:'No health handler'}))
 
@@ -973,18 +973,18 @@ anotherPoolHealthChecker = async(response,request) => {
 
     {
 
-        subchain:poolID,
+        poolPubKey,
 
-        extendedFinalizationProof:{
+        extendedAggregatedCommitments:{
             
-            INDEX,
+            index,
             
-            HASH,
+            hash,
 
-            FINALIZATION_PROOF:{
+            aggregatedCommitments:{
 
                 aggregatedPub,
-                aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
+                aggregatedSignature:<>, // SIG(blockID+blockHash+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID)
                 afkVoters:[...]
 
             }
@@ -997,11 +997,11 @@ anotherPoolHealthChecker = async(response,request) => {
 [Response]:
 
 
-[1] In case we have skip handler for this subchain in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response:
+[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response:
         
         {
             type:'OK',
-            sig: BLS_SIG('SKIP:<subchain>:<index>:<hash>:<checkpointFullID>')
+            sig: BLS_SIG('SKIP:<poolPubKey>:<index>:<hash>:<checkpointFullID>')
         }
 
 
@@ -1024,7 +1024,7 @@ anotherPoolHealthChecker = async(response,request) => {
 */
 getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1040,7 +1040,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let majority = GET_MAJORITY('QUORUM_THREAD')
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-majority
+    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -1048,18 +1048,18 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
 
-    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.subchain) && typeof requestForSkipProof.extendedFinalizationProof){
+    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments){
 
         
         
-        let {INDEX,HASH,FINALIZATION_PROOF} = requestForSkipProof.extendedFinalizationProof
+        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
 
-        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.subchain)
+        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
 
 
 
-        // We can't sign the skip proof in case requested height is lower than our local version of finalization proof. So, send 'UPDATE' message
-        if(localSkipHandler.extendedAggregatedCommitments.index > requestForSkipProof.extendedFinalizationProof.index){
+        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+        if(localSkipHandler.extendedAggregatedCommitments.index > index){
 
             let responseData = {
                 
@@ -1072,27 +1072,27 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             !response.aborted && response.end(JSON.stringify(responseData))
 
 
-        }else if(typeof FINALIZATION_PROOF === 'object'){
+        }else if(typeof aggregatedCommitments === 'object'){
 
-            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the FINALIZATION_PROOF in request
+            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
 
-            let {aggregatedPub,aggregatedSignature,afkVoters} = FINALIZATION_PROOF
+            let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
             
-            let dataThatShouldBeSigned = requestForSkipProof.subchain+':'+INDEX+HASH+checkpointFullID
+            let dataThatShouldBeSigned = requestForSkipProof.poolPubKey+':'+index+hash+checkpointFullID
             
-            let finalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-            console.log('DEBUG: Is FP ok => ',finalizationProofIsOk)
+            console.log('DEBUG: Is FP ok => ',aggregatedCommitmentsIsOk)
 
             // If signature is ok - generate skip proof
 
-            if(finalizationProofIsOk){
+            if(aggregatedCommitmentsIsOk){
 
                 let skipMessage = {
                     
                     type:'OK',
 
-                    sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.subchain}:${INDEX}:${HASH}:${checkpointFullID}`)
+                    sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.poolPubKey}:${index}:${hash}:${checkpointFullID}`)
                 }
 
                 console.log('DEBUG: Return the skip signature => ',skipMessage)
@@ -1115,12 +1115,12 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 /*
 
-[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
+[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>] and start to monitor health for this pool
 
 [Accept]:
 
 {
-    subchain<subchain BLS public key>,
+    poolPubKey:<pool BLS public key>,
     session:<64-bytes hex string>
 }
 
@@ -1129,14 +1129,14 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
 
-Response => {type:'OK',sig:SIG(`REASSIGNMENT:<subchain>:<session>:<checkpointFullID>`)}
+Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
 
 Otherwise => {type:'ERR'}
 
 */
 getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1150,12 +1150,12 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
     
     let reassignmentApprovementRequest = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.subchain)
+    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.poolPubKey)
 
 
     if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
 
-        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.subchain}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
+        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.poolPubKey}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
 
         !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
 
@@ -1183,17 +1183,17 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+    primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
 }
 
 ___________________________________________________________
 
-[0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>][currentReservePoolIndex]
+[0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentReservePoolIndex]
 
 [1] firstBlockByCurrentAuthority - default block structure
 
-[2] sfpForFirstBlockByCurrentAuthority - default SFP structure -> 
+[2] afpForFirstBlockByCurrentAuthority - default SFP structure -> 
 
 
     {
@@ -1214,7 +1214,7 @@ getDataForTempReassignments = async response => {
 
     if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
 
-        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
 
@@ -1227,11 +1227,11 @@ getDataForTempReassignments = async response => {
 
         // Get the current authorities for subchains from REASSIGNMENTS
 
-        let currentMainPools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS) // [mainPool0, mainPool1, ...]
+        let currentPrimePools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains) // [primePool0, primePool1, ...]
 
-        let templateForResponse = {} // mainPool => {currentReservePoolIndex,firstBlockByCurrentAuthority,sfpForFirstBlockByCurrentAuthority}
+        let templateForResponse = {} // primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
-        for(let primePool of currentMainPools){
+        for(let primePool of currentPrimePools){
 
             // Get the current authority
 
@@ -1241,11 +1241,11 @@ getDataForTempReassignments = async response => {
 
                 let currentReservePoolIndex = reassignmentHandler.currentReservePool
 
-                let currentSubchainAuthority = currentReservePoolIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[primePool][currentReservePoolIndex]
+                let currentSubchainAuthority = currentReservePoolIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePool][currentReservePoolIndex]
 
                 // Now get the first block & SFP for it
 
-                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA[currentSubchainAuthority]?.index
+                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[currentSubchainAuthority]?.index
 
                 if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
 
@@ -1301,19 +1301,19 @@ Accept checkpoints from other pools in quorum and returns own version as answer
 
 {
     
-    ISSUER:<BLS pubkey of checkpoint grabbing initiator>,
+    issuer:<BLS pubkey of checkpoint grabbing initiator>,
 
-    PREV_CHECKPOINT_PAYLOAD_HASH: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+    prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
     
-    POOLS_METADATA: {
+    poolsMetadata: {
                 
         '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
 
         /..other data
             
     },
-    OPERATIONS: GET_SPECIAL_OPERATIONS(),
-    OTHER_SYMBIOTES: {}
+    operations: GET_SPECIAL_OPERATIONS(),
+    otherSymbiotes: {}
         
 }
 
@@ -1356,26 +1356,24 @@ Response - it's object with the following structure:
 
     [@] If we have proof that for a specific validator we have height with bigger index(longer valid chain)
 
-        We compare the proposition of index:hash for subchain with own version in global.SYMBIOTE_META.CHECKPOINT_MANAGER (validatorID => {INDEX,HASH,FINALIZATION_PROOF})
+        We compare the proposition of index:hash for pools with own version in global.SYMBIOTE_META.CHECKPOINT_MANAGER (poolPubKey => {index,hash,aggregatedCommitments})
 
-        If we have a bigger index - then we get the FINALIZATION_PROOF from a local storage and send as a part of answer
+        If we have a bigger index - then we get the <aggregatedCommitments> from a local storage and send as a part of answer
 
         {
             metadataUpdate:[
 
                 {
-                    subchain:<id of subchain>
+                    poolPubKey:<BLS pubkey of pool>
                     index:<index of block>,
                     hash:<>,
-                    finalizationProof
+                    aggregatedCommitments
 
                 },...
 
             ]
         
         }
-
-    *finalizationProof - contains the aggregated signature SIG(blockID+hash+checkpointFullID) signed by the current quorum
 
 
 */
@@ -1391,16 +1389,16 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
-    let poolsMetadataInCurrentCheckpointOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.PAYLOAD.POOLS_METADATA
+    let poolsMetadataInCurrentCheckpointOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     let specialOperationsMempool = tempObject?.SPECIAL_OPERATIONS_MEMPOOL
     
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject) {
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject) {
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1453,7 +1451,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(pools.toString() !== localCopyOfPools.toString()){
 
-            !response.aborted && response.end(JSON.stringify({error:`Pools set are not equal with my version of subchains metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH}`}))
+            !response.aborted && response.end(JSON.stringify({error:`Pools set are not equal with my version of pools metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash}`}))
 
             return
 
@@ -1476,11 +1474,11 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             if(localVersion?.index > checkpointProposition.POOLS_METADATA[poolPubKey].index){
 
-                // Send the <HEIGHT UPDATE> notification with the FINALIZATION_PROOF
+                // Send the <HEIGHT UPDATE> notification with the AGGREGATED_COMMITMENT
 
                 let template = {
                     
-                    subchain: poolPubKey,
+                    poolPubKey,
                     index:localVersion.index,
                     hash:localVersion.hash,
                     aggregatedCommitments:localVersion.aggregatedCommitments
@@ -1499,10 +1497,10 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         /* In metadataUpdate we have objects with the structure
         
             {
-                subchain:<id of subchain>
+                poolPubKey:<BLS pubkey of pool>
                 index:<index of >,
                 hash:<>,
-                finalizationProof
+                aggregatedCommitments
 
             }
 
@@ -1520,7 +1518,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             !response.aborted && response.end(JSON.stringify({metadataUpdate}))
 
-        }else if(checkpointProposition.PREV_CHECKPOINT_PAYLOAD_HASH === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH){
+        }else if(checkpointProposition.prevCheckpointPayloadHash === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash){
 
             let finalVersionToSign = {
 
@@ -1575,13 +1573,13 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }
 
-    issuerProof:SIG(ISSUER+PAYLOAD_HASH)
+    issuerProof:SIG(issuer+payloadHash)
 
     checkpointPayload:{
 
         issuer:<BLS pubkey of checkpoint grabbing initiator>
             
-        prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH,
+        prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
             
         poolsMetadata: {
                 
@@ -1620,12 +1618,12 @@ Response - it's object with the following structure:
 */
 checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED || !tempObject){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
         !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
 
@@ -1685,7 +1683,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         let majority = GET_MAJORITY('QUORUM_THREAD')
 
-        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.QUORUM.length-majority
+        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-majority
 
         //Verify 2 signatures
 
@@ -1759,10 +1757,10 @@ Params:
 Returns:
 
     {
-        PREV_CHECKPOINT_PAYLOAD_HASH: '',
-        POOLS_METADATA: [Object],
-        OPERATIONS: [],
-        OTHER_SYMBIOTES: {}
+        prevCheckpointPayloadHash: '',
+        poolsMetadata: [Object],
+        operations: [],
+        otherSymbiotes: {}
     }
 
 */
@@ -1772,7 +1770,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -1786,7 +1784,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
         let payloadHash = request.getParameter(0),
 
-            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await global.SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.PAYLOAD).catch(_=>false)
+            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await global.SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.payload).catch(_=>false)
 
         if(checkpoint){
 
@@ -1820,7 +1818,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let operation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.HEADER.ID
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -1832,7 +1830,7 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
     let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
 
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.COMPLETED){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
         !response.aborted && response.end('QT checkpoint is incomplete. Wait some time and repeat the operation later')
 
@@ -2003,13 +2001,13 @@ UWS_SERVER
 //______________________ Routes related to the skip procedure _________________________
 
 
-// Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+// Function to return signature of skip proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
 .post('/get_skip_proof',getSkipProof)
 
 // Function to accept ASP(aggregatedSkipProof) (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
 // .post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
-// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<mainPool>] and start to monitor health for this subchain
+// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)
 
 
