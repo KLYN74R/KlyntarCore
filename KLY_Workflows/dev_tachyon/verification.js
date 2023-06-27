@@ -134,7 +134,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablyAggre
 
             rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID) === bls.aggregatePublicKeys([itsProbablyAggregatedFinalizationProof.aggregatedPub,...itsProbablyAggregatedFinalizationProof.afkVoters]),
 
-            quorumSize = checkpoint.QUORUM.length,
+            quorumSize = checkpoint.quorum.length,
 
             majority = GET_MAJORITY('VERIFICATION_THREAD',checkpoint)
 
@@ -199,19 +199,21 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
 
 
+
     let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID).DATABASE
 
     
     let aggregatedFinalizationProof = await checkpointTemporaryDB.get('AFP:'+blockID).catch(_=>false)
 
 
+
     //We shouldn't verify local version of AFP, because we already did it. See the GET /aggregated_finalization_proof route handler
 
     if(aggregatedFinalizationProof){
 
-        return aggregatedFinalizationProof.blockHash===blockHash ? {verify:true} : {verify:false,shouldDelete:true}
+        return aggregatedFinalizationProof.blockHash === blockHash ? {verify:true} : {verify:false,shouldDelete:true}
 
-    }   
+    }
 
     //Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
@@ -219,7 +221,6 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
     for(let memberURL of quorumMembersURLs){
-
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(_=>false)
 
@@ -1237,7 +1238,7 @@ START_VERIFICATION_THREAD=async()=>{
                     // Get the SFP for this blockк
 
                     let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
-        
+
                     if(shouldDelete){
         
                         // Probably - hash mismatch 

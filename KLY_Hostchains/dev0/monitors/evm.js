@@ -529,7 +529,7 @@ export default {
 
         let currentCheckpoint = global.SYMBIOTE_META[threadID].CHECKPOINT,
 
-            quorumNumber=global.SYMBIOTE_META[threadID].CHECKPOINT.QUORUM.length,
+            quorumNumber=global.SYMBIOTE_META[threadID].CHECKPOINT.quorum.length,
 
             majority = GET_MAJORITY(threadID),
 

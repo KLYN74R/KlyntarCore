@@ -514,7 +514,7 @@ CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
 
 GET_MAJORITY=(threadID,checkpoint)=>{
 
-    let quorumNumber = checkpoint ? checkpoint.QUORUM.length : global.SYMBIOTE_META[threadID].CHECKPOINT.quorum.length,
+    let quorumNumber = checkpoint ? checkpoint.quorum.length : global.SYMBIOTE_META[threadID].CHECKPOINT.quorum.length,
 
         majority = Math.floor(quorumNumber*(2/3))+1
 

@@ -801,9 +801,9 @@ getAggregatedFinalizationProof=async(response,request)=>{
             return
         }
 
+        let blockID = request.getParameter(0)
        
-        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+request.getParameter(0)).catch(_=>false)
-
+        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+blockID).catch(_=>false)
 
         if(aggregatedFinalizationProof){
 
@@ -1082,8 +1082,6 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             
             let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-            console.log('DEBUG: Is FP ok => ',aggregatedCommitmentsIsOk)
-
             // If signature is ok - generate skip proof
 
             if(aggregatedCommitmentsIsOk){
@@ -1094,8 +1092,6 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
                     sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.poolPubKey}:${index}:${hash}:${checkpointFullID}`)
                 }
-
-                console.log('DEBUG: Return the skip signature => ',skipMessage)
 
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
