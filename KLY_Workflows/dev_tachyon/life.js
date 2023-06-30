@@ -1988,7 +1988,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                 body:JSON.stringify({
 
-                    poolPubKey: poolWithSkipHandler,
+                    poolPubKey:poolWithSkipHandler,
                     
                     session
                     
@@ -2455,7 +2455,9 @@ RESTORE_STATE=async()=>{
     }
 
 
-    console.log('DEBUG: Temp object => ',tempObject.SKIP_HANDLERS)
+    console.log('DEBUG: Temp object => ',tempObject)
+
+    console.log(global.SYMBIOTE_META.GENERATION_THREAD)
 
 
 }
@@ -2473,8 +2475,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]) return
-
-    // If we are even not in reserve - return
     
     let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -2488,6 +2488,24 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
     if(typeof myDataInReassignments === 'object') return
+
+
+    let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
+
+    let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
+
+    let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
+
+
+    // If we are even not in reserve - return
+
+    if(myPrimePool){
+
+        let myPrimePoolInReassignments = tempObject.REASSIGNMENTS.get(myPrimePool)
+
+        if(myPrimePoolInReassignments && myDataInReassignments.currentReservePool !== myIndexInReassignmentChain) return
+
+    }
 
 
     // Check if <checkpointFullID> is the same in QT and in GT
@@ -2516,12 +2534,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(typeof myDataInReassignments === 'string'){
 
         // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
-
-        let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
-
-        let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
-
-        let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
 
 
         // Get all previous pools - from zero to <my_position>

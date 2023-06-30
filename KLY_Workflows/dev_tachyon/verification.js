@@ -1161,7 +1161,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
-
+        console.log('DEBUG: Current verify => ',currentSubchainToCheck)
+        console.log(tempReassignments)
 
         if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
 
@@ -1213,15 +1214,21 @@ START_VERIFICATION_THREAD=async()=>{
 
             let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
 
+            console.log('DEBUG: Index of current to verify => ',indexOfCurrentPoolToVerify)
 
             // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
             let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
+            console.log('DEBUG: Index of current to verify now => ',poolToVerifyRightNow)
+
             let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+
+            console.log(metadataOfThisPoolLocal)
 
             let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
 
+            console.log(metadataOfThisPoolBasedOnTempReassignments)
 
             if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
 
