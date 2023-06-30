@@ -2490,23 +2490,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(typeof myDataInReassignments === 'object') return
 
 
-    let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
-
-    let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
-
-    let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
-
-
-    // If we are even not in reserve - return
-
-    if(myPrimePool){
-
-        let myPrimePoolInReassignments = tempObject.REASSIGNMENTS.get(myPrimePool)
-
-        if(myPrimePoolInReassignments && myDataInReassignments.currentReservePool !== myIndexInReassignmentChain) return
-
-    }
-
 
     // Check if <checkpointFullID> is the same in QT and in GT
     
@@ -2530,11 +2513,19 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     let extraData = {}
 
+    
+    // If we are even not in reserve - return
 
     if(typeof myDataInReassignments === 'string'){
 
         // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
+        
+        let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
+        let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
+    
+        let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
+    
 
         // Get all previous pools - from zero to <my_position>
         let allPreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain)
@@ -2554,7 +2545,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         }
 
-    }
+    }else return
     
     
     /*
