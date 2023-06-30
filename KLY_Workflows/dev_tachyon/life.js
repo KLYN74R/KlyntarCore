@@ -1772,13 +1772,11 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     for(let [poolWithSkipHandler,skipHandler] of skipHandlers){
 
-        console.log('DEBUG: Skip handlers are => ',skipHandlers)
-
         // If pool was marked as AFK:true in skip handler - do nothing
         if(skipHandler.wasReassigned) continue
-    
         
         if(!skipHandler.aggregatedSkipProof){
+
 
             // Otherwise, send <extendedAggregatedCommitments> in SKIP_HANDLER to => POST /get_skip_proof
 
@@ -1913,7 +1911,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                             // Store the updated version of skip handler
 
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,poolWithSkipHandler,skipHandler).catch(_=>{})
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(_=>{})
 
                             // If our local version had lower index - break the cycle and try again with updated value
 
@@ -1944,126 +1942,127 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
 
-                        afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+                        afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
                         
                     }
 
                 }
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,poolWithSkipHandler,skipHandler).catch(_=>{})                
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(_=>{})                
 
 
             }
 
-            
+        }
 
-            if(skipHandler.aggregatedSkipProof && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
+
+        if(skipHandler.aggregatedSkipProof && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
     
-                /*
+            /*
 
-                If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
+            If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
 
-                We should send
+            We should send
 
-                    {
-                        poolPubKey<pool's BLS public key>,
-                        session:<64-bytes hex string - randomly generated>
-                    }
-
-                If requested quorum member has ASP: 
-
-                    Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
-
-                Otherwise:
-                    
-                    Response => {type:'ERR'}
-
-
-                */
-
-                let session = crypto.randomBytes(64).toString('hex')
-
-                let dataToSend = {
-
-                    method:'POST',
-                    
-                    body:JSON.stringify({
-
-                        poolPubKey: poolWithSkipHandler,
-                        
-                        session
-                        
-                    })
-
+                {
+                    poolPubKey<pool's BLS public key>,
+                    session:<64-bytes hex string - randomly generated>
                 }
 
-                let proofsPromises=[]
+            If requested quorum member has ASP: 
+
+                Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
+
+            Otherwise:
+                
+                Response => {type:'ERR'}
 
 
-                for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+            */
+
+            let session = crypto.randomBytes(64).toString('hex')
+
+            let dataToSend = {
+
+                method:'POST',
+                
+                body:JSON.stringify({
+
+                    poolPubKey: poolWithSkipHandler,
+                    
+                    session
+                    
+                })
+
+            }
+
+            let proofsPromises=[]
+
+
+            for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+
+                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
     
-                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
+                    response.pubKey = poolUrlWithPubkey.pubKey
         
-                        response.pubKey = poolUrlWithPubkey.pubKey
+                    return response
+        
+                }).catch(_=>false)
+        
+                proofsPromises.push(responsePromise)
+        
+            }
+
+            let results = (await Promise.all(proofsPromises)).filter(Boolean)
+
+            let dataThatShouldBeSigned = `REASSIGNMENT:${poolWithSkipHandler}:${session}:${checkpointFullID}`
+
+            let numberWhoAgreeToDoReassignment = 0
+
             
-                        return response
-            
-                    }).catch(_=>false)
-            
-                    proofsPromises.push(responsePromise)
-            
+            //___________________Now analyze the results___________________
+
+
+            for(let result of results){
+
+                console.log('DEBUG: Received result => ',result)
+
+                if(result.type === 'OK' && typeof result.sig === 'string'){
+
+                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
+
+                    if(signatureIsOk) numberWhoAgreeToDoReassignment++
+
+                    if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
+
                 }
+            
+            }
 
-                let results = (await Promise.all(responsePromises)).filter(Boolean)
+            if(numberWhoAgreeToDoReassignment >= majority){
 
-                let dataThatShouldBeSigned = `REASSIGNMENT:${poolWithSkipHandler}:${session}:${checkpointFullID}`
+                // Now, create the request for reassignment
 
-                let numberWhoAgreeToDoReassignment = 0
-
+                let possibleNothingOrPointerToPrimePool = reassignments.get(poolWithSkipHandler)
                 
-                //___________________Now analyze the results___________________
 
+                if(possibleNothingOrPointerToPrimePool){
 
-                for(let result of results){
+                    // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
 
-                    if(result.type === 'OK' && typeof result.sig === 'string'){
-    
-                        let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
-    
-                        if(signatureIsOk) numberWhoAgreeToDoReassignment++
-    
-                        if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
-    
-                    }
-                
-                }
+                    currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
 
-                if(numberWhoAgreeToDoReassignment >= majority){
+                }else{
 
-                    // Now, create the request for reassignment
+                    // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
 
-                    let possibleNothingOrPointerToPrimePool = reassignments.get(poolWithSkipHandler)
-                    
-
-                    if(possibleNothingOrPointerToPrimePool){
-
-                        // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
-
-                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
-
-                    }else{
-
-                        // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
-
-                        currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
-
-                    }
-
+                    currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
 
                 }
-          
-            }        
 
+
+            }
+      
         }
 
     }
