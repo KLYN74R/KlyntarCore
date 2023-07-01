@@ -224,9 +224,13 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(_=>false)
 
-        let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,itsProbablyAggregatedFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
+        if(itsProbablyAggregatedFinalizationProof){
 
-        if(isOK.verify) return isOK 
+            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,itsProbablyAggregatedFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
+
+            if(isOK.verify) return isOK 
+
+        }
 
     }
 
@@ -1161,8 +1165,6 @@ START_VERIFICATION_THREAD=async()=>{
 
         let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
-        console.log('DEBUG: Current verify => ',currentSubchainToCheck)
-        console.log(tempReassignments)
 
         if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
 
@@ -1214,21 +1216,15 @@ START_VERIFICATION_THREAD=async()=>{
 
             let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
 
-            console.log('DEBUG: Index of current to verify => ',indexOfCurrentPoolToVerify)
-
             // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
             let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
-            console.log('DEBUG: Index of current to verify now => ',poolToVerifyRightNow)
-
             let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-
-            console.log(metadataOfThisPoolLocal)
 
             let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
 
-            console.log(metadataOfThisPoolBasedOnTempReassignments)
+
 
             if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
 
@@ -1242,7 +1238,9 @@ START_VERIFICATION_THREAD=async()=>{
 
                     let blockID = poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.index+1)
 
-                    // Get the SFP for this blockк
+                    // Get the SFP for this block
+
+                    console.log('DEBUG: Going to find AFP for block => ',block)
 
                     let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
 
@@ -1253,6 +1251,8 @@ START_VERIFICATION_THREAD=async()=>{
                         await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
         
                     }else if(verify){
+
+                        console.log('DEBUG: Going to verify => ',block)
 
                         await verifyBlock(block,currentSubchainToCheck)
 

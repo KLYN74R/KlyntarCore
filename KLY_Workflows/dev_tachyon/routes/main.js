@@ -861,7 +861,11 @@ healthChecker = async response => {
         
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
 
-        let block = await global.SYMBIOTE_META.BLOCKS.get(global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        console.log('DEBUG: Going to send AFP with index => ',latestFullyFinalizedHeight)
+
+        let blockID = global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight
+
+        let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
         let latestHash = block && Block.genHash(block)
 
@@ -875,7 +879,7 @@ healthChecker = async response => {
         }
        
 
-        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight).catch(_=>false)
+        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+blockID).catch(_=>false)
 
 
         if(aggregatedFinalizationProof){

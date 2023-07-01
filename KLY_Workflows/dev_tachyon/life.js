@@ -2137,6 +2137,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
+    console.log('DEBUG: =========== Current quorum is ',global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum)
 
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
@@ -2156,8 +2157,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let candidatesForAnotherCheck = []
 
-
-    console.log('DEBUG: Health monitoring is ', tempObject.HEALTH_MONITORING)
 
     
     for(let handler of poolsURLsAndPubKeys){
@@ -2377,6 +2376,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
+    console.log('DEBUG: Health monitoring is ', tempObject.HEALTH_MONITORING)
+
 
     setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -2454,12 +2455,6 @@ RESTORE_STATE=async()=>{
 
     }
 
-
-    console.log('DEBUG: Temp object => ',tempObject)
-
-    console.log(global.SYMBIOTE_META.GENERATION_THREAD)
-
-
 }
 
 
@@ -2518,34 +2513,55 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     if(typeof myDataInReassignments === 'string'){
 
-        // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
+        // Do it only for the first block in epoch
+
+        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]+1){
+
+            // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         
-        let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
+            let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
-        let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
+            let reassignmentArrayOfMyPrimePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[myPrimePool]
     
-        let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
+            let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
     
 
-        // Get all previous pools - from zero to <my_position>
-        let allPreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain)
+            // Get all previous pools - from zero to <my_position>
+            let allPreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain)
 
 
-        //_____________________ Fill the extraData.reassignments _____________________
+            //_____________________ Fill the extraData.reassignments _____________________
 
-        extraData.reassignments = {}
+            extraData.reassignments = {}
 
-        // Add the ASP for prime pool
-        extraData.reassignments[myPrimePool] = tempObject.SKIP_HANDLERS.get(myPrimePool)
+            // Add the ASP for prime pool
+
+            if(tempObject.SKIP_HANDLERS.has(myPrimePool)){
+
+                extraData.reassignments[myPrimePool] = tempObject.SKIP_HANDLERS.get(myPrimePool).aggregatedSkipProof
+
+            }
 
         
-        for(let reservePool of allPreviousPools){
+            for(let reservePool of allPreviousPools){
 
-            extraData.reassignments[reservePool] = tempObject.SKIP_HANDLERS.get(reservePool)
+                if(tempObject.SKIP_HANDLERS.has(reservePool)){
+
+                    extraData.reassignments[reservePool] = tempObject.SKIP_HANDLERS.get(reservePool).aggregatedSkipProof
+
+                }
+
+            }
+
+
+            console.log('DEBUG: ======================== Going to add reasignments field for first block in epoch ========================')
+
+            console.log(extraData)
 
         }
 
-    }else return
+
+    }else if(global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY) return
     
     
     /*
@@ -3450,7 +3466,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
     
                             
-                            // Verify the SFP for block
+                            // Verify the AFP for block
     
                         
                             let blockID = firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
