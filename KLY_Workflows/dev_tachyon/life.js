@@ -2137,8 +2137,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    console.log('DEBUG: =========== Current quorum is ',global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum)
-
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
 
@@ -2515,7 +2513,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // Do it only for the first block in epoch
 
-        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]+1){
+        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB].index+1){
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         
@@ -2577,7 +2575,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     // Add the extra data to block
 
-    extraData = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
+    extraData.rest = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
+
+    console.log('DEBUG: ExtraData after all => ',extraData)
 
 
     //DEBUG
@@ -2598,6 +2598,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
                         
         let hash=Block.genHash(blockCandidate)
     
+        console.log('Block candidate is ',blockCandidate)
 
         blockCandidate.sig=await BLS_SIGN_DATA(hash)
             
@@ -3343,6 +3344,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     let poolsMetadataFromVtCheckpoint = verificationThread.CHECKPOINT.payload.poolsMetadata
     
 
+    console.log('DEBUG: ============= Find temp reassignments for ',tempReassignmentOnVerificationThread)
+
 
     if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
 
@@ -3383,6 +3386,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
 
         if(responseForTempReassignment){
+
+            console.log('DEBUG: Response for temp reassignment => ',responseForTempReassignment)
     
             /*
         
@@ -3417,11 +3422,11 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                     {
         
-                        blockID,
-                        blockHash,
-                        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
-                        aggregatedPub:<>,
-                        afkVoters
+                        blockID:<string>,
+                        blockHash:<string>,
+                        aggregatedSignature:<string>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID
+                        aggregatedPub:<string>,
+                        afkVoters:[<string>,...]
         
                     }
 
@@ -3462,6 +3467,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                         let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].index+1
     
+                        console.log('DEBUG: Here => ',localPointer,' => ',firstBlockIndexInNewCheckpoint)
+
+                        console.log(localPointer <= currentReservePoolIndex , ' => ', firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index)
     
                         if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
     
@@ -3473,12 +3481,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                             let blockHash = Block.genHash(firstBlockByCurrentAuthority)
     
-                            let sfpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,afpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
+                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,afpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
     
                             let shouldChangeThisSubchain = true
     
 
-                            if(sfpIsOk.verify){
+
+                            if(afpIsOk.verify){
     
                                 // Verify all the ASPs in block header
     
@@ -3487,6 +3496,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                     primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentReservePoolIndex, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
                                 
                                 )
+
+                                console.log('DEBUG: Here x2 => ',isOK,filteredReassignments,arrayOfPoolsWithZeroProgress)
     
                                 /*
                                 
@@ -3527,6 +3538,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                         let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
             
+                                        console.log('DEBUG: Here x6 => ',poolWithThisPosition)
+
                                         if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
     
                                             let latestBlockInPreviousCheckpointByThisPool = poolsMetadataFromVtCheckpoint[poolWithThisPosition].index
@@ -3537,13 +3550,17 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                             let firstBlockInThisEpochByPool = await GET_BLOCK(poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
     
+                                            console.log('DEBUG: Here x6.5 => ',firstBlockInThisEpochByPool)
+
                                             // In this block we should have ASP for all the previous reservePools + primePool
                                 
-                                            let resultForCurrentPool = await CHECK_IF_ALL_ASP_PRESENT(
+                                            let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{},arrayOfPoolsWithZeroProgress:[]} : await CHECK_IF_ALL_ASP_PRESENT(
                                                         
                                                 primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
                                                         
                                             )
+
+                                            console.log('DEBUG: Here x7 => ',resultForCurrentPool)
                                 
                                             if(resultForCurrentPool.isOK){
     
@@ -3584,6 +3601,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                             }
 
                                         }
+
+                                        console.log('DEBUG: Finally => ',tempReassignmentChain)
 
                                         // Finally, set the <currentAuthority> to the new pointer
 

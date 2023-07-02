@@ -429,7 +429,9 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
     // Take all the reservePools from beginning of reassignment chain up to the <position>
 
-    let allAspThatShouldBePresent = reassignmentArray.slice(0,position)
+    let allAspThatShouldBePresent = [primePoolPubKey]
+
+    allAspThatShouldBePresent = allAspThatShouldBePresent.concat(reassignmentArray.slice(0,position))
 
 
     // firstBlockInThisEpochByPool.extraData.reassignments is {primePool:ASP,reservePool0:ASP,...}
@@ -443,27 +445,34 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
     let arrayOfPoolsWithZeroProgress = []
 
+    console.log('DEBUG: Here x3 => ',firstBlockInThisEpochByPool)
+
 
     if(typeof aspForPrimePool === 'object' && await CHECK_ASP_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID)){
 
         let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
 
+        console.log('DEBUG: Here x4 => ',reassignmentsRef)
         
-        for(let reservePool of allAspThatShouldBePresent){
+        console.log(allAspThatShouldBePresent)
 
-            let aspForThisReservePool = reassignmentsRef[reservePool]
+        for(let poolPubKey of allAspThatShouldBePresent){
 
-            if(aspForThisReservePool && await CHECK_ASP_VALIDITY(reservePool,aspForThisReservePool,checkpointFullID)){
+            console.log('DEBUG: x5 => ',poolPubKey)
 
-                if(aspForThisReservePool.index === oldCheckpointMetadata[reservePool].index){
+            let aspForThisReservePool = reassignmentsRef[poolPubKey]
+
+            if(aspForThisReservePool && await CHECK_ASP_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID)){
+
+                if(aspForThisReservePool.index === oldCheckpointMetadata[poolPubKey].index){
 
                     // If this reserve pool has no progress since previous checkpoint and was skipped on the same height - it's invalid
 
-                    arrayOfPoolsWithZeroProgress.push(reservePool)
+                    arrayOfPoolsWithZeroProgress.push(poolPubKey)
 
                 }
 
-                filteredReassignments[reservePool] = {index:aspForThisReservePool.index,hash:aspForThisReservePool.hash}
+                filteredReassignments[poolPubKey] = {index:aspForThisReservePool.index,hash:aspForThisReservePool.hash}
                 
                 
             }else{

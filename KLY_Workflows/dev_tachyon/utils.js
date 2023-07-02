@@ -288,17 +288,19 @@ BLOCKLOG=(msg,hash,block)=>{
 
     if(global.CONFIG.DAEMON_LOGS){
 
+        let preColor = msg.includes('accepted') ? '\x1b[31m' : '\x1b[32m'
+
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,msg,COLORS.C)
 
         console.log('\n')
         
-        console.log(' │\x1b[33m  ID:\x1b[36;1m',block.creator+":"+block.index,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,block.creator+":"+block.index,COLORS.C)
 
-        console.log(' │\x1b[33m  Hash:\x1b[36;1m',hash,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.C)
 
-        console.log(' │\x1b[33m  Txs:\x1b[36;1m',block.transactions.length,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Txs:\x1b[36;1m`,block.transactions.length,COLORS.C)
 
-        console.log(' │\x1b[33m  Time:\x1b[36;1m',new Date(block.time).toString(),COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Time:\x1b[36;1m`,new Date(block.time).toString(),COLORS.C)
     
         console.log('\n')
 
