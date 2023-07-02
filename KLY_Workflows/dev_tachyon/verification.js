@@ -445,20 +445,14 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
     let arrayOfPoolsWithZeroProgress = []
 
-    console.log('DEBUG: Here x3 => ',firstBlockInThisEpochByPool)
-
 
     if(typeof aspForPrimePool === 'object' && await CHECK_ASP_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID)){
 
-        let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
-
-        console.log('DEBUG: Here x4 => ',reassignmentsRef)
         
-        console.log(allAspThatShouldBePresent)
+        let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
+        
 
         for(let poolPubKey of allAspThatShouldBePresent){
-
-            console.log('DEBUG: x5 => ',poolPubKey)
 
             let aspForThisReservePool = reassignmentsRef[poolPubKey]
 
@@ -1165,9 +1159,12 @@ START_VERIFICATION_THREAD=async()=>{
         
         let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
 
-        let currentSubchainToCheck = primePoolsPubkeys[primePoolsPubkeys.indexOf(previousSubchainWeChecked)+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
+        let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
+
+        let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
         let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+
 
         
         // Get the stats from reassignments
@@ -1206,11 +1203,20 @@ START_VERIFICATION_THREAD=async()=>{
                 
                 let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
-                await verifyBlock(block,currentSubchainToCheck)
+                if(block){
 
+                    await verifyBlock(block,currentSubchainToCheck)
+
+                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+
+                }else{
+
+                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
+
+                }
                 
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-
 
             }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
 
@@ -1247,9 +1253,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                     let blockID = poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.index+1)
 
-                    // Get the SFP for this block
-
-                    console.log('DEBUG: Going to find AFP for block => ',block)
+                    // Get the AFP for this block
 
                     let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
 
@@ -1258,16 +1262,27 @@ START_VERIFICATION_THREAD=async()=>{
                         // Probably - hash mismatch 
         
                         await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+
         
                     }else if(verify){
-
-                        console.log('DEBUG: Going to verify => ',block)
 
                         await verifyBlock(block,currentSubchainToCheck)
 
                         LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
 
-                    } 
+                    }else{
+
+                        // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
+
+                    }
+
+                }else{
+
+                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
 
                 }
 

@@ -1380,6 +1380,8 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 
     let blockHash = Block.genHash(block)
 
+
+    
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return
 
 
@@ -1796,8 +1798,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             }
 
-            console.log('DEBUG: SendOptions => ',sendOptions)
-
             for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
 
                 let responsePromise = fetch(poolUrlWithPubkey.url+'/get_skip_proof',sendOptions).then(r=>r.json()).then(response=>{
@@ -1855,8 +1855,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     }
 
             */
-
-            console.log('DEBUG: Results are => ',results)
 
             let pubkeysWhoAgreeToSkip = [], signaturesToSkip = []
 
@@ -2024,8 +2022,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
             for(let result of results){
-
-                console.log('DEBUG: Received result => ',result)
 
                 if(result.type === 'OK' && typeof result.sig === 'string'){
 
@@ -2364,8 +2360,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 // If no updates - add the request to create SKIP_HANDLER via a sync and secured way
 
-                console.log('DEBUG: Going to create SKIP handler for ',candidate)
-
                 proofsRequests.set('CREATE_SKIP_HANDLER:'+candidate,candidate)
                 
             }
@@ -2552,10 +2546,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             }
 
 
-            console.log('DEBUG: ======================== Going to add reasignments field for first block in epoch ========================')
-
-            console.log(extraData)
-
         }
 
 
@@ -2577,8 +2567,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     extraData.rest = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
 
-    console.log('DEBUG: ExtraData after all => ',extraData)
-
 
     //DEBUG
     numberOfBlocksToGenerate++
@@ -2597,8 +2585,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         let blockCandidate=new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
                         
         let hash=Block.genHash(blockCandidate)
-    
-        console.log('Block candidate is ',blockCandidate)
+
 
         blockCandidate.sig=await BLS_SIGN_DATA(hash)
             
@@ -3344,8 +3331,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     let poolsMetadataFromVtCheckpoint = verificationThread.CHECKPOINT.payload.poolsMetadata
     
 
-    console.log('DEBUG: ============= Find temp reassignments for ',tempReassignmentOnVerificationThread)
-
 
     if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
 
@@ -3387,7 +3372,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         if(responseForTempReassignment){
 
-            console.log('DEBUG: Response for temp reassignment => ',responseForTempReassignment)
     
             /*
         
@@ -3466,10 +3450,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
     
                         let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].index+1
-    
-                        console.log('DEBUG: Here => ',localPointer,' => ',firstBlockIndexInNewCheckpoint)
 
-                        console.log(localPointer <= currentReservePoolIndex , ' => ', firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index)
     
                         if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
     
@@ -3496,8 +3477,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                     primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentReservePoolIndex, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
                                 
                                 )
-
-                                console.log('DEBUG: Here x2 => ',isOK,filteredReassignments,arrayOfPoolsWithZeroProgress)
     
                                 /*
                                 
@@ -3537,8 +3516,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                     for(let position = currentReservePoolIndex-1 ; position >= limitPointer ; position--){
     
                                         let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
-            
-                                        console.log('DEBUG: Here x6 => ',poolWithThisPosition)
 
                                         if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
     
@@ -3549,8 +3526,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                             // Here ask the first block by this pool in this epoch, verify the SFP and continue
     
                                             let firstBlockInThisEpochByPool = await GET_BLOCK(poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
-    
-                                            console.log('DEBUG: Here x6.5 => ',firstBlockInThisEpochByPool)
 
                                             // In this block we should have ASP for all the previous reservePools + primePool
                                 
@@ -3559,8 +3534,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                                 primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
                                                         
                                             )
-
-                                            console.log('DEBUG: Here x7 => ',resultForCurrentPool)
                                 
                                             if(resultForCurrentPool.isOK){
     
@@ -3601,8 +3574,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                             }
 
                                         }
-
-                                        console.log('DEBUG: Finally => ',tempReassignmentChain)
 
                                         // Finally, set the <currentAuthority> to the new pointer
 

@@ -861,8 +861,6 @@ healthChecker = async response => {
         
         let latestFullyFinalizedHeight = appropriateDescriptor.height-1
 
-        console.log('DEBUG: Going to send AFP with index => ',latestFullyFinalizedHeight)
-
         let blockID = global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight
 
         let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
