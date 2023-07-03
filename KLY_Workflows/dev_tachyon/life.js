@@ -1381,7 +1381,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
     let blockHash = Block.genHash(block)
 
 
-    
+
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return
 
 
@@ -2526,7 +2526,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
             extraData.reassignments = {}
 
-            // Add the ASP for prime pool
+            // 0.Add the ASP for prime pool
 
             if(tempObject.SKIP_HANDLERS.has(myPrimePool)){
 
@@ -2534,7 +2534,8 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
             }
 
-        
+            // 1.And for all the previous reserve pools from position 0 to (<YOUR_POSITION>-1)
+
             for(let reservePool of allPreviousPools){
 
                 if(tempObject.SKIP_HANDLERS.has(reservePool)){

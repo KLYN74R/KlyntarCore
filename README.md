@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<img src="./images/CorePreview.png" height="600px">
+<img src="./images/CorePreview.png">
 
 #
 

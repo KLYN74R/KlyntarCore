@@ -384,7 +384,7 @@ acceptManyBlocks=response=>{
 
 
 
-//Format of body : {symbiote,body}
+//Format of body : <transaction>
 //There is no <creator> field-we get it from tx
 acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
@@ -407,14 +407,14 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     if(typeof transaction?.creator!=='string' || typeof transaction.nonce!=='number' || typeof transaction.sig!=='string'){
 
-        !response.aborted && response.end('Event structure is wrong')
+        !response.aborted && response.end(JSON.stringify({err:'Event structure is wrong'}))
 
         return
     }
 
     if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_TXS){
         
-        !response.aborted && response.end('Route is off')
+        !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
         
         return
         
@@ -422,7 +422,7 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     if(!global.SYMBIOTE_META.FILTERS[transaction.type]){
 
-        !response.aborted && response.end('No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote')
+        !response.aborted && response.end(JSON.stringify({err:'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'}))
         
         return
 
@@ -435,13 +435,13 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
 
         if(filteredEvent){
 
-            !response.aborted && response.end('OK')
+            !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
             global.SYMBIOTE_META.MEMPOOL.push(filteredEvent)
                         
-        }else !response.aborted && response.end(`Can't get filtered value of tx`)
+        }else !response.aborted && response.end(JSON.stringify({err:`Can't get filtered value of tx`}))
 
-    }else !response.aborted && response.end('Mempool is fullfilled')
+    }else !response.aborted && response.end(JSON.stringify({err:'Mempool is fullfilled'}))
 
 }),
 

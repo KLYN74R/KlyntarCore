@@ -171,8 +171,8 @@ getLatestNBlocks=async(response,request)=>{
 
 
 
-// 0 - SID(in format <BLS_ValidatorPubkey>:<height>)
-
+// 0 - subchainID
+// 1 - SID
 getBlockBySID=(response,request)=>{
 
     //Set triggers
@@ -184,11 +184,17 @@ getBlockBySID=(response,request)=>{
             .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.BLOCK_BY_SID}`)
             .onAborted(()=>response.aborted=true)
 
+        let subchainContext = request.getParameter(0)
+        let sid = request.getParameter(1)
 
-        global.SYMBIOTE_META.STATE.get('BLOCK_RECEIPT:'+request.getParameter(0)).then(block=>
+        global.SYMBIOTE_META.STATE.get(`SID:${subchainContext}:${sid}`).then(blockID =>
 
-            !response.aborted && response.end(JSON.stringify(block))
+            global.SYMBIOTE_META.BLOCKS.get(blockID).then(
+                
+                block => !response.aborted && response.end(JSON.stringify(block))
             
+            )
+
         ).catch(_=>response.end('No block receipt'))
 
 
@@ -576,7 +582,7 @@ UWS_SERVER
 
 .get('/block_by_grid/:GRID',getBlockByGRID)
 
-.get('/block_by_sid/:SUBCHAIN_ID/:INDEX',getBlockBySID)
+.get('/block_by_sid/:SUBCHAIN/:SID',getBlockBySID)
 
 
 
