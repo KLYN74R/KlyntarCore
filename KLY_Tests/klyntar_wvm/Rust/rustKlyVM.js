@@ -6,7 +6,7 @@ import fs from 'fs'
 /*
 Contract has such function
 
-    getCoords(JSON'ed Point object) -> [number sum,number energyUsed]
+    getCoords(JSON'ed Point object) -> [number sum,number gasBurned]
 
 */
 
@@ -27,7 +27,7 @@ let result2 = VM.callContract(contractInstance,contractMetadata,attempt2,'getCoo
 console.log('(2) Execution result ',result2)
 
 
-//Must be error because of lack of energy
+//Must be error because of lack of gas
 try{
     
     let attempt2 = JSON.stringify({alias1:"Cool",alias2:"KLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLYKLY",x:1337,y:result.result})
@@ -38,7 +38,7 @@ try{
 
 }catch(e){
 
-    console.log(e.message)//No more energy
+    console.log(e.message)//No more gas
 
 }
 

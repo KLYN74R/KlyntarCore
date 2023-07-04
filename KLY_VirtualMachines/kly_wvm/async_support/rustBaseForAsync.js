@@ -103,7 +103,7 @@ export default class ContractInstance {
         
     }
 
-    setUpContract = async energyLimit => {
+    setUpContract = async gasLimit => {
 
 
         //Modify contract to inject metering functions
@@ -115,17 +115,17 @@ export default class ContractInstance {
         
             moduleStr:MODULE_NAME,
         
-            //And cost table to meter energy usage by opcodes price
-            costTable:global.CONFIG.VM.ENERGY_TABLE,
+            //And cost table to meter gas usage by opcodes price
+            costTable:global.CONFIG.VM.GAS_TABLE,
         
         })
 
 
-        //Prepare pointer to contract metadata to track changes in energy changes
+        //Prepare pointer to contract metadata to track changes in gas changes
         let contractMetadata = {
 
-            energyLimit,
-            energyUsed:0
+            gasLimit: gasLimit,
+            gasBurned:0
 
         }
 
@@ -135,11 +135,11 @@ export default class ContractInstance {
 
             metering: {
                 
-                energyUse: energy => {
+                burnGas: gasAmount => {
                     
-                    contractMetadata.energyUsed += energy
+                    contractMetadata.gasBurned += gasAmount
             
-                    if (contractMetadata.energyUsed > contractMetadata.energyLimit) throw new Error(`No more energy => Limit:${contractMetadata.energyLimit}        |       Used:${contractMetadata.energyUsed}`)
+                    if (contractMetadata.gasBurned > contractMetadata.gasLimit) throw new Error(`No more gas => Limit:${contractMetadata.gasLimit}        |       Burned:${contractMetadata.gasBurned}`)
           
                 }
             

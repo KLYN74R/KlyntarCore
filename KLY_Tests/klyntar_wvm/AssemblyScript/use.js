@@ -18,7 +18,7 @@ let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(bytes,
 
             //Let's change manually
 
-            contractMetadata.energyUsed+=10_000_00
+            contractMetadata.gasBurned+=10_000_00
 
             console.log('Energy after manual manipulation ',contractMetadata)            
 

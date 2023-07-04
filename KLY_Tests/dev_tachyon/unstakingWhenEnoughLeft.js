@@ -36,7 +36,7 @@ PAYLOD = {
 
     contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
     method:'unstake',
-    energyLimit:0,
+    gasLimit:0,
     params:[A] params to pass to function. A is alias - see below
     imports:[]
 
@@ -283,7 +283,7 @@ let UNSTAKING=async()=>{
 
             contractID:GENESIS_VALIDATOR_2.pubKey+'(POOL)',
             method:'unstake',
-            energyLimit:0,
+            gasLimit:0,
             params:[
 
                 {

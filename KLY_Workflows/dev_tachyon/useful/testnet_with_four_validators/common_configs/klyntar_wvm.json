@@ -7,7 +7,7 @@
             
             "TYPE":"i32",
             
-            "FUNCTION_NAME":"energyUse",
+            "FUNCTION_NAME":"burnGas",
     
             "MODULE_NAME":"metering"
         
@@ -19,7 +19,7 @@
     
         "ALLOWED_MODULES":["github","btc","polygon","twitter"],
 
-        "ENERGY_TABLE":{
+        "GAS_TABLE":{
             
             "start": 0,
             

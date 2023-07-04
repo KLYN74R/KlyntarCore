@@ -323,7 +323,7 @@ export let VERIFIERS = {
 
             contractID:<BLAKE3 hashID of contract OR alias of contract(for example, SPECIAL_CONTRACTS)>,
             method:<string method to call>,
-            energyLimit:<maximum allowed in KLY to execute contract>
+            gasLimit:<maximum allowed in KLY to execute contract>
             params:[] params to pass to function
             imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
         
@@ -335,7 +335,7 @@ export let VERIFIERS = {
 
         let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator)),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.energyLimit
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.gasLimit
 
         tx = await FILTERS.CONTRACT_CALL(tx,originSubchain) //pass through the filter
 
@@ -376,14 +376,14 @@ export let VERIFIERS = {
                 }else {
 
                     //Create contract instance
-                    let energyLimit = tx.payload.energyLimit * 1_000_000_000 // 1 KLY = 10^9 energy. You set the energyLimit in KLY(to avoid confusing)
+                    let gasLimit = tx.payload.gasLimit * 1_000_000_000 // 1 KLY = 10^9 gas. You set the gasLimit in KLY(to avoid confusing)
 
                         /*
                 
-                        TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & energy used
+                        TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
                         */
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),energyLimit,await GET_METHODS_TO_INJECT(tx.payload.imports))
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),gasLimit,await GET_METHODS_TO_INJECT(tx.payload.imports))
 
                     let result
             

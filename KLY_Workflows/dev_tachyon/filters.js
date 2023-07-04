@@ -131,7 +131,7 @@ export default {
 
             contractID:<BLAKE3 hashID of contract OR alias of contract(for example, PANDORA(mint unobtanium), ALIAS_BIND and so on)>,
             method:<string method to call>,
-            energyLimit:<maximum allowed in KLY to execute contract>,
+            gasLimit:<maximum allowed in KLY to execute contract>,
             params:[] params to pass to function,
             imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
 
