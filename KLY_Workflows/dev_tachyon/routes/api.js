@@ -28,13 +28,19 @@ getFromState=async(response,request)=>{
 
     if(global.CONFIG.SYMBIOTE.TRIGGERS.API.FROM_STATE){
 
-    
-        let fullID = request.getParameter(0) === 'X' ? request.getParameter(1) : BLAKE3(request.getParameter(0)+request.getParameter(1))
+        let subchainContext = request.getParameter(0)
+
+        let cellID = request.getParameter(1)
+
+        let fullID = subchainContext === 'X' ? cellID : BLAKE3(subchainContext+cellID)
 
         let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(_=>'')
 
+
+
         !response.aborted && WRAP_RESPONSE(response,global.CONFIG.SYMBIOTE.TTL.API.FROM_STATE).end(JSON.stringify(data))
 
+        
     
     }else !response.aborted && response.end('Trigger is off')
 

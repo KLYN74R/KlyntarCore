@@ -84,7 +84,7 @@ let server = https.createServer({
 
 
 //TESTS:
-
+if(global.CONFIG.SYMBIOTE.PUB==='7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta') configs.PORT=9332
 if(global.CONFIG.SYMBIOTE.PUB==='75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG') configs.PORT=9333
 if(global.CONFIG.SYMBIOTE.PUB==='61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8') configs.PORT=9334
 if(global.CONFIG.SYMBIOTE.PUB==='6YHBZxZfBPk8oDPARGT4ZM9ZUPksMUngyCBYw8Ec6ufWkR6jpnjQ9HAJRLcon76sE7') configs.PORT=9335
@@ -131,9 +131,9 @@ let IS_ORIGIN_ALLOWED=origin=>{
 //__________________________________________ Additional functionality __________________________________________
 
 
-let GEN_HASH = block => {
+let GEN_BLOCK_HASH = block => {
 
-    return BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + global.CONFIG.SYMBIOTE.SYMBIOTE_ID + block.index + block.prevHash)
+    return BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + global.CONFIG.SYMBIOTE.SYMBIOTE_ID + block.checkpoint + block.index + block.prevHash)
 
 }
 
@@ -155,13 +155,17 @@ let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
 
         let finalObject = {
 
-            from:global.CONFIG.SYMBIOTE.PUB,
+            type:'FINALIZATION_PROOF_ACCEPT',
+
+            payload:{
+
+                from:global.CONFIG.SYMBIOTE.PUB,
             
-            finalizationProofs:fpObject // blockId => FP
+                finalizationProofs:fpObject // blockId => FP
+
+            }
 
         }
-
-        console.log('Going to send ',finalObject)
 
         // Instantly send response
 
@@ -187,7 +191,7 @@ let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
 let RETURN_BLOCK = (blockID,connection)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API_BLOCK){
+    if(true){
 
         global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
 
@@ -213,7 +217,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.ACCEPT_BLOCKS){
+    if(!true){
         
         connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Route is off'}}))
         
@@ -246,21 +250,19 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
         let blockID = block.creator+":"+block.index
 
-        let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
+        // let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
     
-        if(poolHasLackOfTotalPowerForCurrentCheckpoint) continue
+        // if(poolHasLackOfTotalPowerForCurrentCheckpoint) continue
 
         
-        let hash=GEN_HASH(block)
-
-        console.log('REQ FOR ',blockID)
+        let hash = GEN_BLOCK_HASH(block)
 
         let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
  
 
         if(myCommitment){
 
-            commitmentsMap[blockID]=myCommitment
+            commitmentsMap[blockID] = myCommitment
 
             continue
         
@@ -271,7 +273,7 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
             //Compare hashes to make sure it's a chain
 
-            let prevHash = GEN_HASH(prevBlock)
+            let prevHash = GEN_BLOCK_HASH(prevBlock)
 
             return prevHash === block.prevHash
 
@@ -319,8 +321,6 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
 
     commitmentsMap.from=global.CONFIG.SYMBIOTE.PUB
 
-    console.log('Answer ',commitmentsMap)
-
     connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:commitmentsMap}))
 
 }
@@ -334,14 +334,16 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
     let blocksSet = []
 
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    // global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed
+
+    if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
             
-            connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
+            connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
 
             return
         }
@@ -350,7 +352,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-            connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
+            connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
             
             return
     
@@ -365,7 +367,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
             if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
 
-                connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Wrong format of input params'}}))
+                connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Wrong format of input params'}}))
 
                 return
 
@@ -435,11 +437,6 @@ WEBSOCKET_SERVER.on('request',request=>{
                 RETURN_MANY_FINALIZATION_PROOFS(data.payload,connection)
 
             }else if(data.route==='get_block'){
-
-                RETURN_BLOCK(data.payload,connection)
-
-            }
-            else if(data.route==='get_super_finalization'){
 
                 RETURN_BLOCK(data.payload,connection)
 

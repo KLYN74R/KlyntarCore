@@ -140,7 +140,7 @@ export default {
     */
     CONTRACT_CALL:async (tx,originSubchain) =>
     
-        typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
+        typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
         &&
         await VERIFY_WRAP(tx,originSubchain)
 

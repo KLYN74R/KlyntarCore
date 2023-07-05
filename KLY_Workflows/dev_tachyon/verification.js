@@ -488,7 +488,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
 
 
-MAKE_SURE_ITS_THE_FIRST_APPROVED_BLOCK_IN_CHECKPOINT = async (poolID,block,checkpointFullID) => {
+MAKE_SURE_ITS_THE_FIRST_APPROVED_BLOCK = async (poolID,block,checkpointFullID) => {
 
     // Here we need to ask the quorum if some block X is really the first block in epoch
 
