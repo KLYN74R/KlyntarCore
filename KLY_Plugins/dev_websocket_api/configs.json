@@ -3,8 +3,8 @@
     "PORT":9999,
     "HOST":"::",
 
-    "TLS_KEY":"C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_tips/certificates/2022.key",
-    "TLS_CERT":"C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_tips/certificates/2022.crt",
+    "TLS_KEY":"KLY_Plugins/certificates/2022.key",
+    "TLS_CERT":"KLY_Plugins/certificates/2022.crt",
 
     "mTLS":false,
     "mTLS_CA":"",
@@ -15,6 +15,5 @@
     
     "MAX_FRAME_SIZE":65536,
     "MAX_MSG_SIZE":1049000000
-
 
 }

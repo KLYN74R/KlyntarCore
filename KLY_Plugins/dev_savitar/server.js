@@ -58,7 +58,7 @@ import {GET_MAJORITY,USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/uti
 
 
 
-let configs=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev_savitar/config.json')))
+let configs=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Plugins/dev_savitar/configs.json')))
 
 let WebSocketServer = WS.server;
 
@@ -294,7 +294,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
         await Promise.all(promises)
     
-        LOG({data:`Range verified: ${lastBlockOfRange.creator} => ${firstBlockOfRange}:${lastBlockOfRange}`},'CD')
+        LOG({data:`Range verified: ${lastBlockOfRange.creator} => ${firstBlockOfRange.index}:${lastBlockOfRange.index}`},'CD')
 
         // Now we can generate commitment for the last block in range - <lastBlockOfRange>
 

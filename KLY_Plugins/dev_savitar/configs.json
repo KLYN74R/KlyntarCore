@@ -3,8 +3,8 @@
     "PORT":9332,
     "HOST":"::",
 
-    "TLS_KEY":"KLY_Plugins/dev_tips/certificates/2022.key",
-    "TLS_CERT":"KLY_Plugins/dev_tips/certificates/2022.crt",
+    "TLS_KEY":"KLY_Plugins/certificates/2022.key",
+    "TLS_CERT":"KLY_Plugins/certificates/2022.crt",
 
     "mTLS":false,
     "mTLS_CA":"",
