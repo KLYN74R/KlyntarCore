@@ -6,7 +6,7 @@ import https from 'https'
 import fs from 'fs'
 
 
-let configs=JSON.parse(fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_websocket/config.json'))
+let configs=JSON.parse(fs.readFileSync('C:/Users/Acer/MyProjects/Klyntar/KlyntarCore/KLY_Plugins/dev_websocket/configs.json'))
 
 
 global.__dirname = await import('path').then(async mod=>

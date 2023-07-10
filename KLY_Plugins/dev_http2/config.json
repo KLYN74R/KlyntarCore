@@ -1,8 +1,0 @@
-{
-    "PORT":7979,
-    "HOST":"::",
-    "TLS_KEY":"KLY_Plugins/dev/security/ip.key",
-    "TLS_CERT":"KLY_Plugins/dev/security/ip.crt",
-    "mTLS":false,
-    "mTLS_CA":"KLY_Plugins/dev/security/localcert.pem"
-}

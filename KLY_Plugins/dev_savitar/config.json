@@ -3,14 +3,14 @@
     "PORT":9332,
     "HOST":"::",
 
-    "TLS_KEY":"KLY_Plugins/dev_tips/security/2022.key",
-    "TLS_CERT":"KLY_Plugins/dev_tips/security/2022.crt",
+    "TLS_KEY":"KLY_Plugins/dev_tips/certificates/2022.key",
+    "TLS_CERT":"KLY_Plugins/dev_tips/certificates/2022.crt",
 
     "mTLS":false,
     "mTLS_CA":"",
 
     "KEEP_ALIVE_INTERVAL":20000,
-    "KEEP_ALIVE":true,
+    "KEEP_ALIVE":false,
     "KEEP_ALIVE_GRACE_PERIOD":10000,
     
     "MAX_FRAME_SIZE":65536,

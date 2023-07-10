@@ -30,7 +30,7 @@ RELEASES
 SERVICES
 DOCS
 DEVELOPMENT
-CIIPs
+KIPs
 dist
 *.exe
 *.pdb
@@ -92,7 +92,7 @@ RELEASES
 SERVICES
 DOCS
 DEVELOPMENT
-CIIPs
+KIPs
 dist
 *.exe
 *.pdb

@@ -138,7 +138,7 @@ let GEN_BLOCK_HASH = block => {
 }
 
 
-let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
+let FINALIZATION_PROOF_POLLING=(tempObject,blocksSet,connection)=>{
 
     if(blocksSet.every(blockID=>tempObject.PROOFS_RESPONSES.has(blockID))){
 
@@ -175,7 +175,7 @@ let MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,connection)=>{
 
         //Wait a while
 
-        setTimeout(()=>MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection),0)
+        setTimeout(()=>FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection),0)
 
     }
 
@@ -205,7 +205,7 @@ let RETURN_BLOCK = (blockID,connection)=>{
 }
 
 
-let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
+let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,connection)=>{
 
     // connection.sendUTF(message.utf8Data);
     
@@ -245,90 +245,152 @@ let ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS=async(blocksArray,connection)=>{
     let commitmentsMap={}
 
 
+    if(blocksArray.length!==0){
 
-    for(let block of blocksArray){
+        let firstBlockOfRange = blocksArray[0]
 
-        let blockID = block.creator+":"+block.index
-
-        // let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
+        let rangeSize = blocksArray.length
     
-        // if(poolHasLackOfTotalPowerForCurrentCheckpoint) continue
-
+        let lastBlockOfRange = blocksArray[rangeSize-1]
+    
+        blocksArray = blocksArray.reverse()
+    
+        let startPosition = 0
+    
+    
+        // Check if range is a valid chain
         
-        let hash = GEN_BLOCK_HASH(block)
-
-        let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
- 
-
-        if(myCommitment){
-
-            commitmentsMap[blockID] = myCommitment
-
-            continue
+        if(firstBlockOfRange.index !== 0){
+    
+            let localPreFirstBlock = await global.SYMBIOTE_META.BLOCKS.get(firstBlockOfRange.creator+':'+(firstBlockOfRange.index-1)).catch(_=>false)
+    
+            if(GEN_BLOCK_HASH(localPreFirstBlock) !== firstBlockOfRange.prevHash) return
+    
+        }
+    
+    
+        // Now we know that the first block in range continue the subchain segment that you have locally 
+        // But anyway we still need to verify the whole range - from the latest block to current
         
+        let promises = []
+
+        for(let block of blocksArray){
+    
+            promises.push(global.SYMBIOTE_META.BLOCKS.put(block.creator+':'+block.index,block).catch(_=>false))
+                
+            let nextPosition = startPosition + 1
+    
+            if(nextPosition !== rangeSize){
+    
+                let nextBlock = blocksArray[nextPosition]
+    
+                if(block.prevHash !== GEN_BLOCK_HASH(nextBlock)) return
+    
+                startPosition++
+    
+            }
+    
         }
 
-        
-        let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
-
-            //Compare hashes to make sure it's a chain
-
-            let prevHash = GEN_BLOCK_HASH(prevBlock)
-
-            return prevHash === block.prevHash
-
-        }).catch(_=>false)
-
-
-        //Otherwise - check if we can accept this block
-
-        let allow=
+        await Promise.all(promises)
     
-            typeof block.transactions==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
-            &&
-            await bls.singleVerify(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
-            &&
-            checkIfItsChain
-        
+        LOG({data:`Range verified: ${lastBlockOfRange.creator} => ${firstBlockOfRange}:${lastBlockOfRange}`},'CD')
 
+        // Now we can generate commitment for the last block in range - <lastBlockOfRange>
 
-        if(allow){
+        let lastBlockID = lastBlockOfRange.creator+':'+lastBlockOfRange.index
 
-            
-            //Store it locally-we'll work with this block later
-            await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
-                    
-                _ => global.SYMBIOTE_META.BLOCKS.put(blockID,block)
-                    
-            ).catch(_=>{})
-            
-            
-            let commitment = await bls.singleSig(blockID+hash+checkpointFullID,global.PRIVATE_KEY)
-        
+        commitmentsMap[lastBlockID] = await bls.singleSig(lastBlockID+GEN_BLOCK_HASH(lastBlockOfRange)+checkpointFullID,global.PRIVATE_KEY)
 
-            //Put to local storage to prevent double voting
-            await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
+        commitmentsMap.from=global.CONFIG.SYMBIOTE.PUB
 
-                commitmentsMap[blockID]=commitment
+        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:commitmentsMap}))
 
-            ).catch(_=>{})
-
-
-        }
-
-        
     }
 
-    commitmentsMap.from=global.CONFIG.SYMBIOTE.PUB
+    // for(let block of blocksArray){
 
-    connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:commitmentsMap}))
+    //     let blockID = block.creator+":"+block.index
+
+    //     // let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
+    
+    //     // if(poolHasLackOfTotalPowerForCurrentCheckpoint) continue
+
+        
+    //     let hash = GEN_BLOCK_HASH(block)
+
+    //     let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
+ 
+
+    //     if(myCommitment){
+
+    //         commitmentsMap[blockID] = myCommitment
+
+    //         continue
+        
+    //     }
+
+        
+    //     let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+
+    //         //Compare hashes to make sure it's a chain
+
+    //         let prevHash = GEN_BLOCK_HASH(prevBlock)
+
+    //         return prevHash === block.prevHash
+
+    //     }).catch(_=>false)
+
+
+    //     //Otherwise - check if we can accept this block
+
+    //     let allow=
+    
+    //         typeof block.transactions==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
+    //         &&
+    //         await bls.singleVerify(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
+    //         &&
+    //         checkIfItsChain
+        
+
+
+    //     if(allow){
+
+            
+    //         //Store it locally-we'll work with this block later
+    //         await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                    
+    //             _ => global.SYMBIOTE_META.BLOCKS.put(blockID,block)
+                    
+    //         ).catch(_=>{})
+            
+            
+    //         let commitment = await bls.singleSig(blockID+hash+checkpointFullID,global.PRIVATE_KEY)
+        
+
+    //         //Put to local storage to prevent double voting
+    //         await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
+
+    //             commitmentsMap[blockID]=commitment
+
+    //         ).catch(_=>{})
+
+
+    //     }
+
+        
+    // }
+
+    // commitmentsMap.from=global.CONFIG.SYMBIOTE.PUB
+
+    // connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:commitmentsMap}))
 
 }
 
 
 
 
-let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)=>{
+let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connection)=>{
 
 
     let blocksSet = []
@@ -392,7 +454,7 @@ let RETURN_MANY_FINALIZATION_PROOFS=async(aggregatedCommitmentsArray,connection)
 
         }
 
-        MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,connection)
+        FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection)
 
     }else connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Route is off or checkpoint is incomplete'}}))
 
@@ -428,13 +490,13 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             let data = JSON.parse(message.utf8Data)
 
-            if(data.route==='many_blocks'){
+            if(data.route==='get_commitment_for_block_range'){
 
-                ACCEPT_MANY_BLOCKS_AND_RETURN_COMMITMENTS(data.payload,connection)
+                ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK(data.payload,connection)
 
-            }else if(data.route==='many_finalization_proofs'){
+            }else if(data.route==='get_finalization_proof_for_range'){
 
-                RETURN_MANY_FINALIZATION_PROOFS(data.payload,connection)
+                RETURN_FINALIZATION_PROOF_FOR_RANGE(data.payload,connection)
 
             }else if(data.route==='get_block'){
 
@@ -443,7 +505,7 @@ WEBSOCKET_SERVER.on('request',request=>{
             }
             else{
 
-                connection.close(1337,'No available route. You can use <many_blocks> | <many_finalization_proofs>')
+                connection.close(1337,'No available route. You can use <get_commitment_for_block_range> | <get_finalization_proof_for_range>')
 
             }
 
