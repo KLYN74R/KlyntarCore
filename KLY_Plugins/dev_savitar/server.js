@@ -188,16 +188,46 @@ let FINALIZATION_PROOF_POLLING=(tempObject,blocksSet,connection)=>{
 //__________________________________________ TWO MAIN ROUTES FOR TEST __________________________________________
 
 
-let RETURN_BLOCK = (blockID,connection)=>{
+let RETURN_BLOCK = async(blockID,connection) => {
 
     //Set triggers
     if(true){
 
-        global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
+        let promises = []
 
-            connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:block}))
+        let [blockCreator,initIndex] = blockID.split(':')
+
+        let limit
+
+        initIndex = +initIndex
+
+        let myCurrentGenerationThreadIndex = global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
+
+        if(myCurrentGenerationThreadIndex > initIndex) limit = myCurrentGenerationThreadIndex-initIndex < 500 ? myCurrentGenerationThreadIndex : initIndex+500
+
+        else {
+
+            connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'Route is off'}}))
+
+            return
+
+        }
+
+
+        // Return the blocks from <initIndex> to <limit>
+
+        for(let final = initIndex;final<limit;final++) promises.push(global.SYMBIOTE_META.BLOCKS.get(blockCreator+':'+final).catch(_=>false))
+
+
+        let blocks = (await Promise.all(promises)).filter(Boolean)
+
+        connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:blocks}))
+
+        // global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
+
+
             
-        ).catch(_=>connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'No block'}})))
+        // ).catch(_=>connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'No block'}})))
 
 
     }else connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'Route is off'}}))
