@@ -1,1 +1,1 @@
-Get the `common_configs` and `personal_configs` from net_with_four_validators directory
+Get the `common_configs` and `personal_configs` from `testnet_with_four_validators` directory

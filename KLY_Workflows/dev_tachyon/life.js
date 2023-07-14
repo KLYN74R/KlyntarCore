@@ -122,7 +122,6 @@ let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG
 
 BLOCKS_GENERATION_POLLING=async()=>{
 
-
     if(!global.SYSTEM_SIGNAL_ACCEPTED){
 
         await GENERATE_BLOCKS_PORTION()    
@@ -2459,13 +2458,13 @@ RESTORE_STATE=async()=>{
 
 export let GENERATE_BLOCKS_PORTION = async() => {
 
-
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]) return
     
     let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(qtCheckpointFullID)
+
 
 
     if(!tempObject) return
@@ -2475,7 +2474,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
     if(typeof myDataInReassignments === 'object') return
-
 
 
     // Check if <checkpointFullID> is the same in QT and in GT
@@ -3358,8 +3356,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     //________________________________ Start to find ________________________________
 
     let quorumMembers = await GET_POOLS_URLS(true)
-
-    
     
     //___________________Ask quorum members about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 

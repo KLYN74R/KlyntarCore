@@ -1213,7 +1213,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                     // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
 
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
                 }
                 
@@ -1240,12 +1240,12 @@ START_VERIFICATION_THREAD=async()=>{
             let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
 
 
-
             if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
 
                 // Ask the N+1 block
 
                 let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+
 
                 if(block){
 
@@ -1256,6 +1256,7 @@ START_VERIFICATION_THREAD=async()=>{
                     // Get the AFP for this block
 
                     let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
+
 
                     if(shouldDelete){
         
@@ -1274,7 +1275,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                         // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
 
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
                     }
 
@@ -1282,11 +1283,30 @@ START_VERIFICATION_THREAD=async()=>{
 
                     // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
 
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = poolToVerifyRightNow
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
                 }
 
+            }else{
+
+                // Just verify block with no AFP
+                
+                
+                // Ask the N+1 block
+
+                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+
+                if(block){
+
+                    await verifyBlock(block,currentSubchainToCheck)
+
+                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+
+                } else global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+
             }
+
+            // To move to the next one
 
             if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.currentToVerify++
             
