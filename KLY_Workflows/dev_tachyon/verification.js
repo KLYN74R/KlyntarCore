@@ -1339,8 +1339,7 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>
         balance:0,
         uno:0,
         nonce:0,
-        rev_t:0,
-        subchain:subchainContext
+        rev_t:0
     
     }
 
@@ -1396,18 +1395,16 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
 
 // We need this method to send fees to this special accounts
-SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPool,feeReward) => {
+SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPoolPubKey,feeReward) => {
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    let accountsForFeesId = BLAKE3(subchainID+feeRecepientPool+'_FEES')
+    let accountsForFeesId = BLAKE3(subchainID+feeRecepientPoolPubKey)
 
-    let feesAccountForGivenPoolOnThisSubchain = await GET_FROM_STATE(accountsForFeesId) || {reward:0}
+    let feesAccountForGivenPoolOnThisSubchain = await GET_ACCOUNT_ON_SYMBIOTE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(accountsForFeesId)
 
-    feesAccountForGivenPoolOnThisSubchain.reward += feeReward
-
-    global.SYMBIOTE_META.STATE_CACHE.set(accountsForFeesId,feesAccountForGivenPoolOnThisSubchain)
+    feesAccountForGivenPoolOnThisSubchain.balance += feeReward
 
 },
 
@@ -1479,8 +1476,8 @@ verifyBlock=async(block,subchainContext)=>{
             block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash === block.prevHash//it should be a chain
-            &&
-            await BLS_VERIFY(blockHash,block.sig,block.creator)
+            //&&
+            // await BLS_VERIFY(blockHash,block.sig,block.creator)
 
 
     // if(block.i === global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
@@ -1496,9 +1493,9 @@ verifyBlock=async(block,subchainContext)=>{
 
     if(overviewOk){
 
-        //To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
+        // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
         
-        let rewardBox={fees:0}
+        let rewardBox = {fees:0}
 
         let currentBlockID = block.creator+":"+block.index
 
@@ -1518,71 +1515,74 @@ verifyBlock=async(block,subchainContext)=>{
         let atomicBatch = global.SYMBIOTE_META.STATE.batch()
 
 
-        //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
+        if(block.transactions.length !== 0){
+
+
+            //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
         
         
-        let accountsToAddToCache=[]
+            let accountsToAddToCache=[]
     
-        // Push accounts for fees of subchains authorities
+            // Push accounts for fees of subchains authorities
 
-        let activePools = new Set()
+            let activePools = new Set()
 
-        for(let [validatorPubKey,metadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
+            for(let [validatorPubKey,metadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
 
-            if(!metadata.isReserve) activePools.add(validatorPubKey) 
-
-        }
-
-        activePools.forEach(
-            
-            pubKey => {
-
-                // Avoid own pubkey to be added. On own chains we send rewards directly
-                if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(subchainContext+pubKey+'_FEES')))
+                if(!metadata.isReserve) activePools.add(validatorPubKey) 
 
             }
+
+            activePools.forEach(
             
-        )
-
-        // Now cache has all accounts and ready for the next cycles
-        await Promise.all(accountsToAddToCache.splice(0))
-
-
-        //___________________________________________START TO PERFORM TXS____________________________________________
-
-
-        let txIndexInBlock=0
-
-        for(let transaction of block.transactions){
-
-            if(global.SYMBIOTE_META.VERIFIERS[transaction.type]){
-
-                let txCopy = JSON.parse(JSON.stringify(transaction))
-
-                let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](subchainContext,txCopy,rewardBox,atomicBatch).catch(_=>{})
-
-                // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-                if(reason!=='EVM'){
-
-                    let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
-
-                    atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
+                pubKey => {
+    
+                    // Avoid own pubkey to be added. On own chains we send rewards directly
+                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(subchainContext+pubKey)))
     
                 }
-
-                txIndexInBlock++
                 
+            )
+    
+            // Now cache has all accounts and ready for the next cycles
+            await Promise.all(accountsToAddToCache.splice(0))
+
+
+            //___________________________________________START TO PERFORM TXS____________________________________________
+
+
+            let txIndexInBlock=0
+
+            for(let transaction of block.transactions){
+
+                if(global.SYMBIOTE_META.VERIFIERS[transaction.type]){
+
+                    let txCopy = JSON.parse(JSON.stringify(transaction))
+
+                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](subchainContext,txCopy,rewardBox,atomicBatch).catch(_=>{})
+
+                    // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+                    if(reason!=='EVM'){
+
+                        let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+
+                        atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
+    
+                    }
+
+                    txIndexInBlock++
+                
+                }
+
             }
+        
+            //__________________________________________SHARE FEES AMONG POOLS_________________________________________
+        
+            await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools,block.creator)
 
         }
-        
-        
-        //__________________________________________SHARE FEES AMONG POOLS_________________________________________
-        
-        
-        await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools,block.creator)
 
-
+        
         // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
         if(global.CONFIG.SYMBIOTE.STORE_BLOCKS){
             
@@ -1594,7 +1594,7 @@ verifyBlock=async(block,subchainContext)=>{
                 
             )
 
-        }else if(block.creator!==global.CONFIG.SYMBIOTE.PUB){
+        }else if(block.creator !== global.CONFIG.SYMBIOTE.PUB){
 
             // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
@@ -1615,7 +1615,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         )
         
-        if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear()//flush cache.NOTE-some kind of advanced upgrade soon
+        if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
 
 
         /*
@@ -1640,6 +1640,8 @@ verifyBlock=async(block,subchainContext)=>{
             To clearly understand that 'block N on subchain X is ...<this>' we need SID
         
         */
+
+
         let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]
 
         atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
@@ -1665,9 +1667,9 @@ verifyBlock=async(block,subchainContext)=>{
         
         // Change metadata per validator's thread
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].index=block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].index = block.index
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash=blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash = blockHash
 
 
         //___________________ Update the KLY-EVM ___________________

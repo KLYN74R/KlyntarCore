@@ -86,7 +86,7 @@ process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.
 
 //____________________SET MODE__________________________
 
-//All symbiotes are runned in a single instance as mainnets by default
+// All symbiotes are runned in a single instance as mainnets by default
 process.env.KLY_MODE||='main'
 
 

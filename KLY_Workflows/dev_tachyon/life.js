@@ -2639,7 +2639,7 @@ LOAD_GENESIS=async()=>{
         
         checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
 
-        let authorities = new Set(Object.keys(genesis.POOLS))
+        let primePools = new Set(Object.keys(genesis.POOLS))
 
 
         for(let [poolPubKey,poolContractStorage] of Object.entries(genesis.POOLS)){
@@ -2698,11 +2698,20 @@ LOAD_GENESIS=async()=>{
 
 
             // Add the account for fees for each authority
-            authorities.forEach(anotherValidatorPubKey=>{
+            primePools.forEach(anotherValidatorPubKey=>{
 
                 if(anotherValidatorPubKey!==poolPubKey){
 
-                    atomicBatch.put(BLAKE3(poolPubKey+anotherValidatorPubKey+'_FEES'),{reward:0})
+                    atomicBatch.put(BLAKE3(poolPubKey+anotherValidatorPubKey),{
+        
+                        type:"account",
+                        balance:0,
+                        uno:0,
+                        nonce:0,
+                        rev_t:0,
+                        subchain:poolPubKey
+                    
+                    })
 
                 }
 

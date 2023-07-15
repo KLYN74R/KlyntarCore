@@ -23,17 +23,17 @@ export let
 * Symbiote level data.Used when we check blocks
 * Here we read from cache or get data about tx initiator from state,push to cache and return
 */
-GET_ACCOUNT_ON_SYMBIOTE = async address =>{
+GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return global.SYMBIOTE_META.STATE_CACHE.get(address)||global.SYMBIOTE_META.STATE.get(address)
+    return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash)||global.SYMBIOTE_META.STATE.get(identificationHash)
     
     .then(account=>{
  
-        if(account.type==='account') global.SYMBIOTE_META.STATE_CACHE.set(address,account)
+        if(account.type==='account') global.SYMBIOTE_META.STATE_CACHE.set(identificationHash,account)
 
-        return global.SYMBIOTE_META.STATE_CACHE.get(address)
+        return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash)
  
     
     }).catch(_=>false)
