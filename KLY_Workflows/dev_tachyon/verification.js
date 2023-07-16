@@ -1317,7 +1317,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
 
-        setTimeout(START_VERIFICATION_THREAD,0)
+        setImmediate(START_VERIFICATION_THREAD)
 
     
     }else{
@@ -1469,13 +1469,13 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
 verifyBlock=async(block,subchainContext)=>{
 
 
-    let blockHash=Block.genHash(block),
+    let blockHash = Block.genHash(block),
 
         overviewOk=
     
             block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash === block.prevHash//it should be a chain
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash === block.prevHash // it should be a chain
             //&&
             // await BLS_VERIFY(blockHash,block.sig,block.creator)
 
@@ -1551,7 +1551,7 @@ verifyBlock=async(block,subchainContext)=>{
             //___________________________________________START TO PERFORM TXS____________________________________________
 
 
-            let txIndexInBlock=0
+            let txIndexInBlock = 0
 
             for(let transaction of block.transactions){
 
@@ -1576,9 +1576,20 @@ verifyBlock=async(block,subchainContext)=>{
 
             }
         
+
             //__________________________________________SHARE FEES AMONG POOLS_________________________________________
         
             await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools,block.creator)
+
+            
+            //________________________________________________COMMIT STATE__________________________________________________    
+
+
+            global.SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
+
+                atomicBatch.put(addr,account)
+
+            )
 
         }
 
@@ -1606,14 +1617,6 @@ verifyBlock=async(block,subchainContext)=>{
         }
 
 
-        //________________________________________________COMMIT STATE__________________________________________________    
-
-
-        global.SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
-
-            atomicBatch.put(addr,account)
-
-        )
         
         if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
 

@@ -169,12 +169,7 @@ acceptBlocks=response=>{
                             
                         _ =>
                             
-                            global.SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
-
-                                BLOCKLOG(`New block accepted`,hash,block)
-
-                            
-                        ).catch(_=>{})
+                            global.SYMBIOTE_META.BLOCKS.put(blockID,block).catch(_=>{})
                          
                     )
                     
@@ -344,13 +339,7 @@ acceptManyBlocks=response=>{
                         //Store it locally-we'll work with this block later
                         await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
                                 
-                            _ =>
-                                
-                                global.SYMBIOTE_META.BLOCKS.put(blockID,block).then(()=>
-    
-                                    BLOCKLOG(`New block accepted`,hash,block)
-                                
-                            ).catch(_=>{})
+                            _ => global.SYMBIOTE_META.BLOCKS.put(blockID,block).catch(_=>{})
                              
                         )
                         
@@ -460,7 +449,7 @@ FINALIZATION_PROOFS_POLLING=(tempObject,blockID,response)=>{
 
         //Wait a while
 
-        setTimeout(()=>FINALIZATION_PROOFS_POLLING(tempObject,blockID,response),0)
+        setImmediate(()=>FINALIZATION_PROOFS_POLLING(tempObject,blockID,response))
 
     }
 
@@ -609,7 +598,7 @@ MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,response)=>{
 
         //Wait a while
 
-        setTimeout(()=>MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,response),0)
+        setImmediate(()=>MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,response))
 
     }
 

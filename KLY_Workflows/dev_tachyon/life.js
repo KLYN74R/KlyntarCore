@@ -126,7 +126,7 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
         await GENERATE_BLOCKS_PORTION()    
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER=setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
+        STOP_GEN_BLOCKS_CLEAR_HANDLER = setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
         
         global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
         &&
@@ -550,7 +550,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         //Continue to find checkpoints
-        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,0)
+        setImmediate(START_QUORUM_THREAD_CHECKPOINT_TRACKER)
 
 
     }else{
@@ -815,7 +815,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
 
     //Repeat this procedure permanently, but in sync mode
-    setTimeout(PROOFS_SYNCHRONIZER,0)
+    setImmediate(PROOFS_SYNCHRONIZER)
 
 },
 
@@ -1716,7 +1716,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     }
 
-    setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,0)
+    setImmediate(SEND_BLOCKS_AND_GRAB_COMMITMENTS)
 
 },
 
@@ -2064,7 +2064,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
     // Start again
-    setTimeout(REASSIGN_PROCEDURE_MONITORING,0)
+    setImmediate(REASSIGN_PROCEDURE_MONITORING)
 
     
 },

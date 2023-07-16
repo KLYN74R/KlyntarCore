@@ -181,7 +181,7 @@ let FINALIZATION_PROOF_POLLING=(tempObject,blocksSet,connection)=>{
 
         //Wait a while
 
-        setTimeout(()=>FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection),0)
+        setImmediate(()=>FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection))
 
     }
 
