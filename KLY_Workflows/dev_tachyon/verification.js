@@ -305,7 +305,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
             let originWhereReservePoolStorageIsLocated = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
 
-            let reservePoolStorage = await GET_FROM_STATE(BLAKE3(originWhereReservePoolStorageIsLocated+poolPubKey+'(POOL)_STORAGE_POOL'))
+            let reservePoolStorage = await GET_FROM_STATE(originWhereReservePoolStorageIsLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL')
 
             
             if(reservePoolStorage){
@@ -803,7 +803,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
 
-            let poolHashID = BLAKE3(poolOrigin+poolPubKey+'(POOL)_STORAGE_POOL')
+            let poolHashID = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
 
             let poolStorage = await GET_FROM_STATE(poolHashID)
 
@@ -840,9 +840,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
             
-            let poolStorageHashID = BLAKE3(slashObject[poolIdentifier].poolOrigin+poolIdentifier+'(POOL)_STORAGE_POOL')
+            let poolStorageHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)_STORAGE_POOL'
 
-            let poolMetadataHashID = BLAKE3(slashObject[poolIdentifier].poolOrigin+poolIdentifier+poolIdentifier+'(POOL)')
+            let poolMetadataHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)'
 
             // Delete the single storage
             atomicBatch.del(poolStorageHashID)
@@ -1345,7 +1345,7 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>
 
     // Add to cache to write to permanent db after block verification
 
-    global.SYMBIOTE_META.STATE_CACHE.set(BLAKE3(subchainContext+publicKey),emptyTemplate)
+    global.SYMBIOTE_META.STATE_CACHE.set(subchainContext+':'+publicKey,emptyTemplate)
 
     return emptyTemplate
 
@@ -1358,13 +1358,13 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
     let blockCreatorOrigin = await GET_FROM_STATE(blockCreator+'(POOL)_POINTER')
 
-    let mainStorageOfBlockCreator = await GET_FROM_STATE(BLAKE3(blockCreatorOrigin+blockCreator+'(POOL)_STORAGE_POOL'))
+    let mainStorageOfBlockCreator = await GET_FROM_STATE(blockCreatorOrigin+':'+blockCreator+'(POOL)_STORAGE_POOL')
 
     // Transfer part of fees to account with pubkey associated with block creator
     if(mainStorageOfBlockCreator.percentage!==0){
 
         // Get the pool percentage and send to appropriate BLS address in the <subchainContext>
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainContext+blockCreator)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,blockCreator)
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(subchainContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,blockCreator)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
         
@@ -1383,7 +1383,7 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
 
-        let stakerAccountBindedToCurrentSubchainContext = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(subchainContext+stakerPubKey)) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,stakerPubKey)
+        let stakerAccountBindedToCurrentSubchainContext = await GET_ACCOUNT_ON_SYMBIOTE(subchainContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,stakerPubKey)
 
         stakerAccountBindedToCurrentSubchainContext.balance += totalStakerPowerPercent*restOfFees
 
@@ -1400,7 +1400,7 @@ SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,fe
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    let accountsForFeesId = BLAKE3(subchainID+feeRecepientPoolPubKey)
+    let accountsForFeesId = subchainID+':'+feeRecepientPoolPubKey
 
     let feesAccountForGivenPoolOnThisSubchain = await GET_ACCOUNT_ON_SYMBIOTE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(accountsForFeesId)
 
@@ -1538,7 +1538,7 @@ verifyBlock=async(block,subchainContext)=>{
                 pubKey => {
     
                     // Avoid own pubkey to be added. On own chains we send rewards directly
-                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(BLAKE3(subchainContext+pubKey)))
+                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(subchainContext+':'+pubKey))
     
                 }
                 

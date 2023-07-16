@@ -1151,7 +1151,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
     let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.poolPubKey)
 
 
-    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 128){
+    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
 
         let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.poolPubKey}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
 
@@ -1890,7 +1890,7 @@ Params:
 
     [symbioteID,hostToAdd(initiator's valid and resolved host)]
 
-    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    [0] - symbiote ID       EXAMPLE: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     [1] - host to add       EXAMPLE: http://example.org | https://some.subdomain.org | http://cafe::babe:8888
 
 

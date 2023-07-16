@@ -39,14 +39,12 @@
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
 import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
-import {BLAKE3} from '../../KLY_Utils/utils.js'
-
 
 
 
 let VERIFY_WRAP=async (tx,originSubchain)=>{
 
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+tx.creator))
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator)
 
     let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originSubchain).catch(_=>false)
 

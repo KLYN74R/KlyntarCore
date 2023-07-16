@@ -2,8 +2,6 @@ import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD}
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
-import {BLAKE3} from '../../KLY_Utils/utils.js'
-
 
 
 
@@ -97,7 +95,7 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
@@ -200,7 +198,7 @@ export default {
 
                 if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.hash ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
+                    let metadataTemplate = poolStorage.storedMetadata.hash ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
 
                     fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool] = metadataTemplate
     
@@ -263,7 +261,7 @@ export default {
 
 
 
-            let poolStorage = await GET_FROM_STATE(BLAKE3(storageOrigin+pool+'(POOL)_STORAGE_POOL'))
+            let poolStorage = await GET_FROM_STATE(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL')
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
             
@@ -336,7 +334,7 @@ export default {
                                 
                                 index:-1,
                             
-                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
                                 isReserve:poolStorage.isReserve
                             
@@ -453,7 +451,7 @@ export default {
 
             let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
 
-            let poolExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(originWherePoolStorage+payload.pool+'(POOL)_STORAGE_POOL')).catch(_=>false)
+            let poolExists = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
 
             if(poolExists){
@@ -492,7 +490,7 @@ export default {
 
             if(originWherePoolStorage){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originWherePoolStorage+pool+'(POOL)_STORAGE_POOL')).catch(_=>false),
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(_=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
@@ -547,7 +545,7 @@ export default {
 
             if(originWherePoolStorage){
 
-                let poolStorage = await GET_FROM_STATE(BLAKE3(originWherePoolStorage+pool+'(POOL)_STORAGE_POOL')),
+                let poolStorage = await GET_FROM_STATE(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL'),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
@@ -562,7 +560,7 @@ export default {
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
 
-                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originWherePoolStorage+stakingTx.staker))
+                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originWherePoolStorage+':'+stakingTx.staker)
 
                     if(stakerAccount){
                     

@@ -465,7 +465,7 @@ GET_POOLS_URLS = async withPubkey => {
 
             if(originSubchain){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+pubKey+'(POOL)_STORAGE_POOL')).catch(_=>false)
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+pubKey+'(POOL)_STORAGE_POOL').catch(_=>false)
 
                 if(poolStorage){
 

@@ -1,5 +1,4 @@
 import {WRAP_RESPONSE,GET_NODES,USE_TEMPORARY_DB} from '../utils.js'
-import {BLAKE3} from '../../../KLY_Utils/utils.js'
 import Block from '../essences/block.js'
 
 
@@ -32,7 +31,7 @@ getFromState=async(response,request)=>{
 
         let cellID = request.getParameter(1)
 
-        let fullID = subchainContext === 'X' ? cellID : BLAKE3(subchainContext+cellID)
+        let fullID = subchainContext === 'X' ? cellID : subchainContext+':'+cellID
 
         let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(_=>'')
 

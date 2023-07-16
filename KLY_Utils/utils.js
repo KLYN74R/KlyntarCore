@@ -60,7 +60,7 @@ COLORS = {
 
 PATH_RESOLVE=path=>__dirname+'/'+path,//path is relative to this root scope */KLYNTARCORE
 
-BLAKE3=(input,length=64)=>hash(input,{length}).toString('hex'),
+BLAKE3=(input,length)=>hash(input,{length}).toString('hex'),
 
 GET_GMT_TIMESTAMP=()=>new Date().getTime(),
 

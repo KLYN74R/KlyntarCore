@@ -1977,7 +1977,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             */
 
-            let session = crypto.randomBytes(64).toString('hex')
+            let session = crypto.randomBytes(32).toString('hex')
 
             let dataToSend = {
 
@@ -2653,7 +2653,7 @@ LOAD_GENESIS=async()=>{
                 
                 index:-1,
                 
-                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
                 isReserve
             
@@ -2670,24 +2670,22 @@ LOAD_GENESIS=async()=>{
                 storages:['POOL'],
                 bytecode:''
     
-            }
-
+            }            
             
-            
-            let idToAdd = poolPubKey+poolPubKey
+            let idToAdd = poolPubKey+':'+poolPubKey
 
             if(isReserve){
 
-                idToAdd = poolContractStorage.reserveFor+poolPubKey
+                idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
 
             }
 
             //Put metadata
-            atomicBatch.put(BLAKE3(idToAdd+'(POOL)'),contractMetadataTemplate)
+            atomicBatch.put(idToAdd+'(POOL)',contractMetadataTemplate)
     
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(BLAKE3(idToAdd+'(POOL)_STORAGE_POOL'),poolContractStorage)
+            atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
 
 
             // Put the pointer to know the subchain which store the pool's data(metadata+storages)
@@ -2702,14 +2700,13 @@ LOAD_GENESIS=async()=>{
 
                 if(anotherValidatorPubKey!==poolPubKey){
 
-                    atomicBatch.put(BLAKE3(poolPubKey+anotherValidatorPubKey),{
+                    atomicBatch.put(BLAKE3(poolPubKey+':'+anotherValidatorPubKey),{
         
                         type:"account",
                         balance:0,
                         uno:0,
                         nonce:0,
-                        rev_t:0,
-                        subchain:poolPubKey
+                        rev_t:0
                     
                     })
 
@@ -2731,7 +2728,7 @@ LOAD_GENESIS=async()=>{
             
             if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
 
-            else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey]=0
+            else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
 
 
             quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
@@ -2765,7 +2762,7 @@ LOAD_GENESIS=async()=>{
                         let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
                         // Add assignment to subchain
-                        atomicBatch.put('SUB:'+caseIgnoreAccountAddress,poolPubKey)
+                        atomicBatch.put('SUB:'+caseIgnoreAccountAddress,{subchain:poolPubKey})
         
                     }
     
@@ -2810,12 +2807,14 @@ LOAD_GENESIS=async()=>{
                     } 
 
                     //Write metadata first
-                    atomicBatch.put(BLAKE3(subchain+addressOrContractID),contractMeta)
+                    atomicBatch.put(subchain+':'+addressOrContractID,contractMeta)
 
                     //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
                     for(let storageID of genesis.STATE[addressOrContractID].storages){
 
-                        atomicBatch.put(BLAKE3(subchain+addressOrContractID+'_STORAGE_'+storageID),genesis.STATE[addressOrContractID][storageID])
+                        genesis.STATE[addressOrContractID][storageID].subchain = subchain
+
+                        atomicBatch.put(subchain+':'+addressOrContractID+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
 
                     }
 
@@ -2823,9 +2822,7 @@ LOAD_GENESIS=async()=>{
 
                     let subchainID = genesis.STATE[addressOrContractID].subchain
 
-                    delete genesis.STATE[addressOrContractID].subchain
-
-                    atomicBatch.put(BLAKE3(subchainID+addressOrContractID),genesis.STATE[addressOrContractID]) //else - it's default account
+                    atomicBatch.put(subchainID+':'+addressOrContractID,genesis.STATE[addressOrContractID]) //else - it's default account
 
                 }
 
@@ -2879,7 +2876,7 @@ LOAD_GENESIS=async()=>{
         
         index:-1,
         
-        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
         grid:0
     
@@ -2895,7 +2892,7 @@ LOAD_GENESIS=async()=>{
 
             id:-1,
 
-            payloadHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            payloadHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             quorumAggregatedSignersPubKey:'',
 
@@ -2931,7 +2928,7 @@ LOAD_GENESIS=async()=>{
 
             id:-1,
 
-            payloadHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            payloadHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
             quorumAggregatedSignersPubKey:'',
 
@@ -3098,9 +3095,9 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             
-            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde',
             
-            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
+            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
             
             nextIndex:0 // So the first block will be with index 0
         

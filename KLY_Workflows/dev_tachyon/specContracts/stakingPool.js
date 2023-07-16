@@ -44,7 +44,7 @@ export let CONTRACT = {
         
             [blsPubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(BLAKE3(originSubchain+blsPubKey+'(POOL)')).catch(_=>false)
+            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+blsPubKey+'(POOL)').catch(_=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
@@ -93,11 +93,11 @@ export let CONTRACT = {
 
             
             //Put metadata
-            atomicBatch.put(BLAKE3(originSubchain+blsPubKey+'(POOL)'),contractMetadataTemplate)
+            atomicBatch.put(originSubchain+':'+blsPubKey+'(POOL)',contractMetadataTemplate)
 
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(BLAKE3(originSubchain+blsPubKey+'(POOL)_STORAGE_POOL'),onlyOnePossibleStorageForStakingContract)
+            atomicBatch.put(originSubchain+':'+blsPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
         }
 
@@ -123,7 +123,7 @@ export let CONTRACT = {
 
             {amount,units}=transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL'))
+            poolStorage = await GET_FROM_STATE(originSubchain+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -131,7 +131,7 @@ export let CONTRACT = {
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(originSubchain+transaction.creator))
+            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+transaction.creator)
 
             if(stakerAccount){
             
@@ -187,7 +187,7 @@ export let CONTRACT = {
 
             {amount,units}=transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(BLAKE3(originSubchain+fullPoolIdWithPostfix+'_STORAGE_POOL')),
+            poolStorage = await GET_FROM_STATE(originSubchain+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
 
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
 
