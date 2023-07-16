@@ -48,7 +48,7 @@ global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
 
     let bindedSubchain = await GET_FROM_STATE('SUB:'+addressAsString)
 
-    return bindedSubchain
+    if(bindedSubchain) return bindedSubchain.subchain
 
 }
 
