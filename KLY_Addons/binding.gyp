@@ -39,13 +39,13 @@
                 }],
                 ["OS=='win'", {
                     "libraries": [
-                        '<!(pwd)/dilithium.dll',
-                        '<!(pwd)/kyber.dll',
-                        '<!(pwd)/sidh.dll',
-                        '<!(pwd)/sike.dll',
-                        '<!(pwd)/csidh.dll',
-                        '<!(pwd)/bliss.dll',
-                        "<!(pwd)/kyber_pke.dll",
+                        '<!(cd ")/dilithium.dll',
+                        '<!(cd ")/kyber.dll',
+                        '<!(cd ")/sidh.dll',
+                        '<!(cd ")/sike.dll',
+                        '<!(cd ")/csidh.dll',
+                        '<!(cd ")/bliss.dll',
+                        '<!(cd ")/kyber_pke.dll',
                     ]
 
                 }]

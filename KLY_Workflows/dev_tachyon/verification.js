@@ -1167,6 +1167,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
         
+        
         // Get the stats from reassignments
 
         let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
@@ -1240,6 +1241,7 @@ START_VERIFICATION_THREAD=async()=>{
             let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
 
 
+            
             if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
 
                 // Ask the N+1 block

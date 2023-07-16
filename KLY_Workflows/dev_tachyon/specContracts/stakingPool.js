@@ -119,9 +119,9 @@ export let CONTRACT = {
     
     stake:async(transaction,originSubchain) => {
 
-        let fullPoolIdWithPostfix=transaction.payload.contractID, // Format => BLS_pubkey(POOL)
+        let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => BLS_pubkey(POOL)
 
-            {amount,units}=transaction.payload.params[0],
+            {amount,units} = transaction.payload.params[0],
 
             poolStorage = await GET_FROM_STATE(originSubchain+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
 

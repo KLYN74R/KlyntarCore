@@ -500,6 +500,16 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
 
 
+let ACCEPT_AGGREGATED_FINALIZATION_PROOF=(aggregatedFinalizationProof,_connection)=>{
+
+    global.NEW_VERIFIED_HEIGHT = +(aggregatedFinalizationProof.blockID.split(':')[1])
+
+    LOG({data:`Accept AFP for ${aggregatedFinalizationProof.blockID}`},'CD')    
+
+}
+
+
+
 
 WEBSOCKET_SERVER.on('request',request=>{
 
@@ -537,6 +547,11 @@ WEBSOCKET_SERVER.on('request',request=>{
             }else if(data.route==='get_block'){
 
                 RETURN_BLOCK(data.payload,connection)
+
+            }
+            else if(data.route==='accept_afp'){
+
+                ACCEPT_AGGREGATED_FINALIZATION_PROOF(data.payload,connection)
 
             }
             else{
