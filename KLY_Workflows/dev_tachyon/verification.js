@@ -1322,10 +1322,6 @@ START_VERIFICATION_THREAD=async()=>{
         setImmediate(START_VERIFICATION_THREAD)
 
     
-    }else{
-
-        LOG(`Polling for was stopped`,'I')
-
     }
 
 },

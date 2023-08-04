@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "init": "npm ci --only=production && node klyn74r.js",
-    "build": "cd KLY_Utils/signatures/ringsig/lrs-ecdsa && pnpm install && npm install typescript -g && tsc ; cd ../../../../ ; pnpm install --unsafe-perm ; npm link ; chmod 700 klyn74r.js ; chmod 700 build_addons.sh ; ./build_addons.sh",
+    "build:linux": "cd KLY_Utils/signatures/ringsig/lrs-ecdsa && pnpm install && npm install typescript -g && tsc ; cd ../../../../ ; pnpm install --unsafe-perm ; npm link ; chmod 700 klyn74r.js ; cd KLY_VirtualMachines/kly_evm ; pnpm run build ; cd - ; chmod 700 build_must_have_addons.sh ; ./build_must_have_addons.sh",
+    "build:windows": "cd KLY_Utils/signatures/ringsig/lrs-ecdsa && pnpm install && npm install typescript -g && tsc ; cd ../../../../ ; pnpm install --unsafe-perm ; npm link ; cd KLY_VirtualMachines/kly_evm ; pnpm run build ; cd ../../ ; ./build_must_have_addons.bat",
     "test": "node tr.js",
     "postinstall": "node ./npm_scripts/script.js"
   },

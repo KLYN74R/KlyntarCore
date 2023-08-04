@@ -384,6 +384,8 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
 export let GET_VALID_CHECKPOINT = async threadID => {
 
+    console.log('DEBUG: Calling <GET_VALID_CHECKPOINT>')
+
     // Temporary stub
     return false
 
@@ -998,6 +1000,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
 
 CAN_PROPOSE_CHECKPOINT=async()=>{
+
+    console.log('DEBUG: Calling <CALL_PROPOSE_CHECKPOINT>')
 
     // Stub
     return false
