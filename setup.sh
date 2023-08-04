@@ -99,4 +99,4 @@ cd ..
 
 
 #Run building addons script
-./build_addons.sh
+./build_must_have_addons.sh

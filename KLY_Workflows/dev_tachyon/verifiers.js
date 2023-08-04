@@ -38,13 +38,13 @@
 
 
 
-import {BLAKE3,ED25519_VERIFY,ADDONS} from '../../KLY_Utils/utils.js'
-
 import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from './utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import tbls from '../../KLY_Utils/signatures/threshold/tbls.js'
+
+import {BLAKE3,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -112,7 +112,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
             try{
 
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && ADDONS['verify_DIL'](signedData,tx.payload.pubKey,tx.sig)
+                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -126,7 +126,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
             try{
 
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && ADDONS['verify_BLISS'](signedData,tx.payload.pubKey,tx.sig)
+                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyBlissSignature(signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -147,9 +147,9 @@ export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE=(type,pubkey,signa,data)=>{
 
     if(type==='D') return ED25519_VERIFY(data,signa,pubkey)
     
-    if(type==='P/D') return ADDONS['verify_DIL'](data,pubkey,signa)
+    if(type==='P/D') return globalThis.verifyDilithiumSignature(data,pubkey,signa)
     
-    if(type==='P/B') return ADDONS['verify_BLISS'](data,pubkey,signa)
+    if(type==='P/B') return globalThis.verifyBlissSignature(data,pubkey,signa)
     
 }
 
