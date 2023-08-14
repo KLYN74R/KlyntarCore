@@ -1315,7 +1315,7 @@ START_VERIFICATION_THREAD=async()=>{
         }
 
 
-        if(global.CONFIG.SYMBIOTE.STOP_VERIFY) return//step over initiation of another timeout and this way-stop the Verification Thread
+        if(global.CONFIG.SYMBIOTE.STOP_WORK_ON_VERIFICATION_THREAD) return//step over initiation of another timeout and this way-stop the Verification Thread
 
         //If next block is available-instantly start perform.Otherwise-wait few seconds and repeat request
 
@@ -1593,7 +1593,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         
         // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(global.CONFIG.SYMBIOTE.STORE_BLOCKS){
+        if(global.CONFIG.SYMBIOTE.STORE_BLOCKS_IN_LOCAL_DATABASE){
             
             // No matter if we already have this block-resave it
 

@@ -1,5 +1,51 @@
 {
+    
+    "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+
     "VERSION":0,
+
+    "CHECKPOINT_TIMESTAMP":1673825543232,
+
+    "SYMBIOTE_CREATORS_CONTACT":{
+        "telegram":"@symbiote_creator",
+        "email":"user@email.com",
+        "tor":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
+    },
+
+    "HIVEMIND":[
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    ],
+                
+    "HOSTCHAINS":{
+    
+        "ltc":{
+            "blockWithGenesisCommit":13371337
+        },
+        "bsc":{
+            "blockWithGenesisCommit":13371337
+        }
+                
+    },
+
+    "WORKFLOW":"dev_tachyon",
+
+    "WORKFLOW_OPTIONS":{
+
+        "VALIDATOR_STAKE":50000,
+        "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
+        "MINIMAL_STAKE_PER_ENTITY":20,
+        "POOL_AFK_MAX_TIME":10,
+        "UNSTAKING_PERIOD":4,
+        "QUORUM_SIZE":12727,
+        "SUBCHAIN_AFK_LIMIT":120000,
+        "TXS_LIMIT_PER_BLOCK":30000,
+        "CHECKPOINT_SPEC_OPS_LIMIT":1000,
+        "DEFAULT_PAYMENT_IF_WRONG_TYPE":5,
+        "MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_STAKING":100
+    
+    },
+
 
     "POOLS":{
 
@@ -91,8 +137,6 @@
         }
 
     },
-
-    "CHECKPOINT_TIMESTAMP":1673825543232,
     
     "STATE":{
 

@@ -1831,13 +1831,6 @@ specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Ori
         return
     }
 
-    if(specialOperationsMempool.size >= global.CONFIG.SYMBIOTE.SPECIAL_OPERATIONS_MEMPOOL_SIZE){
-
-        !response.aborted && response.end('Mempool for special operations is full')
-    
-        return
-    }
-
     //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
 
     if(OPERATIONS_VERIFIERS[operation.type]){

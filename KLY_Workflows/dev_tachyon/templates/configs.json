@@ -1,80 +1,31 @@
 {
-
-    "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    
-    "INFO":{
-        "MAIL":"hello@example.com",
-        "TELEGRAM":"@youraddress"
-    },
-    
-    "STOP_WORK":false,
     
     "PUB":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
     "PRV":"48d428d810f8e6e7c74d8e1fb99fe0089737759951fcf6d8a6bd8f942a95472324a1232d152fd84844b8633f31949897885d32e6ec75b7be7c171f6c0febbfb4e0514787153bef6703b22ee7adc64ba3",
 
     "PRIME_POOL_PUBKEY":false,
-    
-    "MANIFEST":{
-    
-        "CONTACT":{
-            "TELEGRAM":"@Something",
-            "MAIL":"user@email.com",
-            "SITE":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
-        },
-    
-        "HIVEMIND":[
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-        ],
-                    
-        "HOSTCHAINS":{
-        
-            "ltc":{
-                "PACK":"dev0",
-                "MANIFEST_OPTIONS":{}
-            },
-            "bsc":{
-                "PACK":"dev0",
-                "MANIFEST_OPTIONS":{
-                    "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
-                }
-                
-            }
-                    
-        },
-    
-        "WORKFLOW":"dev_tachyon",
-        "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
-        "WORKFLOW_OPTIONS":{
 
-            "VALIDATOR_STAKE":50000,
-            "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
-            "MINIMAL_STAKE_PER_ENTITY":20,
-            "POOL_AFK_MAX_TIME":10,
-            "UNSTAKING_PERIOD":4,
-            "QUORUM_SIZE":12727,
-            "SUBCHAIN_AFK_LIMIT":120000,
-            "TXS_LIMIT_PER_BLOCK":30000,
-            "CHECKPOINT_SPEC_OPS_LIMIT":1000,
-            "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
-        
-        },
-        
-        "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    "INFO":{
+        "MAIL":"hello@example.com",
+        "TELEGRAM":"@youraddress"
     },
 
-    "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
+    "STOP_WORK_ON_GENERATION_THREAD":true,
+    "STOP_WORK_ON_VERIFICATION_THREAD":false,
+    "GENERATION_THREAD_INIT_DELAY":3000,
+    "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
 
     "BLOCK_TIME":3000,
     "EXTRA_DATA_TO_BLOCK":{
-
         "hello":"world"
-
     },
-    
-    "STOP_GENERATE_BLOCKS":true,
-    "STOP_VERIFY":false,
 
+    "WAIT_IF_CANT_FIND_CHECKPOINT":4000,
+
+    "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
+    "TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT":10000,
+    "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
+    
 
     "TRUSTED_POOLS":{
         "VERSION_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
@@ -83,15 +34,8 @@
         "SLASH_UNSTAKE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"]
     },
 
-    "STORE_BLOCKS":true,
-    "BLOCK_GENERATION_INIT_DELAY":3000,
-
-    "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
     
-    "TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT":10000,
-
     "TXS_MEMPOOL_SIZE":300000,
-    "SPECIAL_OPERATIONS_MEMPOOL_SIZE":100000,
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
 
     "NODES":{
@@ -152,9 +96,7 @@
     "MUST_SEND":{
 
         "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
-    
         "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
-    
         "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
     
     },
@@ -183,6 +125,7 @@
             "POOLS_METADATA":5,
             "QUORUM_THREAD_CHECKPOINT":5,
             "STUFF":5
+
         }   
     
     },
@@ -253,8 +196,6 @@
             },
             "sig":""
         }
-    },
-
-    "WAIT_IF_CANT_FIND_CHECKPOINT":4000
+    }
 
 }

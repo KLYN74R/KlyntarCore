@@ -24,9 +24,6 @@ Give the template of configuration for your workflow to allow other to customize
 
 <ul>
 
-<li><code>STOP_WORK</code></li>
-
-true/false - if you want to stop your symbiote
 
 <li><code>VERSION</code></li>
 
@@ -61,7 +58,6 @@ These options are inside <code>MANIFEST</code> object used to load appropriate w
 ```json
 
 {
-    "STOP_WORK":false,
     "VERSION":"13.3.7",
     "MANIFEST":{
         "WORKFLOW":"<YOUR_WORKFLOW>",

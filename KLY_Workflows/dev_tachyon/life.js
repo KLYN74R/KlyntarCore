@@ -128,7 +128,7 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
         STOP_GEN_BLOCKS_CLEAR_HANDLER = setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
         
-        global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS
+        global.CONFIG.SYMBIOTE.STOP_WORK_ON_GENERATION_THREAD
         &&
         clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
 
@@ -3241,6 +3241,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         CHECKPOINT_MANAGER_SYNC_HELPER:new Map(), // map(poolPubKey=>Set({index,hash,aggregatedCommitments})) here will be added propositions to update the aggregated commitments for pool which will be checked in sync mode
 
+        
         PROOFS_REQUESTS:new Map(), // mapping(blockID=>FINALIZATION_PROOF_REQUEST)
 
         PROOFS_RESPONSES:new Map(), // mapping(blockID=>FINALIZATION_PROOF)
@@ -3618,72 +3619,69 @@ RUN_SYMBIOTE=async()=>{
 
     await PREPARE_SYMBIOTE()
 
-    if(!global.CONFIG.SYMBIOTE.STOP_WORK){
 
-        //_________________________ RUN SEVERAL ASYNC THREADS _________________________
+    //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-        //0.Start verification process - process blocks and find new checkpoints step-by-step
-        START_VERIFICATION_THREAD()
+    //0.Start verification process - process blocks and find new checkpoints step-by-step
+    START_VERIFICATION_THREAD()
 
-        //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
-        START_QUORUM_THREAD_CHECKPOINT_TRACKER()
+    //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
+    START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
-        //2.Share our blocks within quorum members and get the commitments / finalization proofs 
-        SEND_BLOCKS_AND_GRAB_COMMITMENTS()
+    //2.Share our blocks within quorum members and get the commitments / finalization proofs 
+    SEND_BLOCKS_AND_GRAB_COMMITMENTS()
 
-        //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
-        CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
+    //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
+    CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
-        //4.Start checking the health of all the subchains
-        SUBCHAINS_HEALTH_MONITORING()
+    //4.Start checking the health of all the subchains
+    SUBCHAINS_HEALTH_MONITORING()
 
-        //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-        REASSIGN_PROCEDURE_MONITORING()
+    //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
+    REASSIGN_PROCEDURE_MONITORING()
 
-        //6.Run function to work with finalization stuff and avoid async problems
-        PROOFS_SYNCHRONIZER()
+    //6.Run function to work with finalization stuff and avoid async problems
+    PROOFS_SYNCHRONIZER()
 
-        //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
-        TEMPORARY_REASSIGNMENTS_BUILDER()
-
+    //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
+    TEMPORARY_REASSIGNMENTS_BUILDER()
 
 
 
-        let promises=[]
 
-        //Check if bootstrap nodes is alive
-        global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
+    let promises=[]
 
-            promises.push(
+    //Check if bootstrap nodes is alive
+    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
+
+        promises.push(
                         
-                fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.CONFIG.SYMBIOTE.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
+            fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.CONFIG.SYMBIOTE.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
             
-                    .then(res=>res.text())
+                .then(res=>res.text())
             
-                    .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,'I'))
+                .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,'I'))
             
-                    .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,'F'))
+                .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,'F'))
                         
-            )
-
         )
 
-        await Promise.all(promises.splice(0))
+    )
+
+    await Promise.all(promises.splice(0))
 
 
-        //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
+    //______________________________________________________RUN BLOCKS GENERATION PROCESS____________________________________________________________
 
 
-        //Start generate blocks
-        !global.CONFIG.SYMBIOTE.STOP_GENERATE_BLOCKS && setTimeout(()=>{
+    //Start generate blocks
+    !global.CONFIG.SYMBIOTE.STOP_WORK_ON_GENERATION_THREAD && setTimeout(()=>{
                 
-            global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
+        global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
 
-            BLOCKS_GENERATION_POLLING()
+        BLOCKS_GENERATION_POLLING()
             
-        },global.CONFIG.SYMBIOTE.BLOCK_GENERATION_INIT_DELAY)
+    },global.CONFIG.SYMBIOTE.GENERATION_THREAD_INIT_DELAY)
 
-
-    }
 
 }

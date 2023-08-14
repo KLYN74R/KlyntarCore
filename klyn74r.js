@@ -388,15 +388,13 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
 
 
-    //If some chain marked as "STOP",we don't prepare something for it,otherwise-force preparation work
-    if(!global.CONFIG.SYMBIOTE.STOP_WORK){
 
-        let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
+    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
 
-        await RUN_SYMBIOTE()
+    await RUN_SYMBIOTE()
         
-    }
-
+    
+    
     for(let scriptPath of global.CONFIG.PLUGINS){
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
