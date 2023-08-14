@@ -99,7 +99,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION === tx.v){
 
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, subchain(context where to execute tx), tx type, JSON'ed payload,nonce and fee
-        let signedData = global.CONFIG.SYMBIOTE.SYMBIOTE_ID+tx.v+originSubchain+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
+        let signedData = global.GENESIS.SYMBIOTE_ID+tx.v+originSubchain+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
         if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)

@@ -139,7 +139,7 @@ let IS_ORIGIN_ALLOWED=origin=>{
 
 let GEN_BLOCK_HASH = block => {
 
-    return BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + global.CONFIG.SYMBIOTE.SYMBIOTE_ID + block.checkpoint + block.index + block.prevHash)
+    return BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + global.GENESIS.SYMBIOTE_ID + block.checkpoint + block.index + block.prevHash)
 
 }
 

@@ -231,7 +231,7 @@ getSyncState=response=>{
 
 
 
-
+// Returns info about symbiotic chain
 getSymbioteInfo=response=>{
 
     //Set triggers
@@ -253,9 +253,9 @@ getSymbioteInfo=response=>{
         let {
         
             WORKFLOW:workflowID,
-            WORKFLOW_HASH:workflowHash,
             HIVEMIND:hivemind,
             HOSTCHAINS:hostchains,
+            CHECKPOINT_TIMESTAMP:createTimestamp
         
         } = global.GENESIS
 
@@ -275,11 +275,25 @@ getSymbioteInfo=response=>{
         // Send
         !response.aborted && response.end(JSON.stringify({
 
-            symbioteID, workflowID, workflowHash,hivemind,hostchains,genesisHash,
+            genesis:{
 
-            verificationThreadWorkflowVersion,quorumThreadWorkflowVersion,
+                symbioteID,createTimestamp,workflowID,hivemind,hostchains
+            
+            },
 
-            verificationThreadWorkflowOptions,quorumThreadWorkflowOptions
+            verificationThread:{
+
+                version:verificationThreadWorkflowVersion,
+                options:verificationThreadWorkflowOptions
+
+            },
+
+            quorumThread:{
+
+                version:quorumThreadWorkflowVersion,
+                options:quorumThreadWorkflowOptions
+            
+            }
 
         }))
             

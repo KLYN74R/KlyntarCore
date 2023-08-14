@@ -1895,11 +1895,11 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     }
 
-    let [symbiote,domain]=acceptedData
+    let [symbioteID,domain]=acceptedData
    
-    if(global.CONFIG.SYMBIOTE.SYMBIOTE_ID!==symbiote){
+    if(global.GENESIS.SYMBIOTE_ID!==symbioteID){
 
-        !response.aborted && response.end('Symbiote not supported')
+        !response.aborted && response.end('Symbiotic chain not supported')
         
         return
 

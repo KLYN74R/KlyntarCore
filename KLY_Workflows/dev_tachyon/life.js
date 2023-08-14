@@ -296,7 +296,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
 
         let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(validator+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-            if(poolStorage.totalPower<fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
+            if(poolStorage.totalPower < fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(validator)
 
         })
 
@@ -3624,7 +3624,7 @@ RUN_SYMBIOTE=async()=>{
 
         promises.push(
                         
-            fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.CONFIG.SYMBIOTE.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
+            fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
             
                 .then(res=>res.text())
             
