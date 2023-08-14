@@ -244,9 +244,9 @@ getSymbioteInfo=response=>{
             .onAborted(()=>response.aborted=true)
 
 
-        // SymbioteID - it's BLAKE3 hash of manifest( SYMBIOTE_ID = BLAKE3(JSON.stringify(global.CONFIG.SYMBIOTE.MANIFEST)))
+        // SymbioteID - it's BLAKE3 hash of genesis( SYMBIOTE_ID = BLAKE3(JSON.stringify(<genesis object without SYMBIOTE_ID field>)))
         
-        let symbioteID = global.CONFIG.SYMBIOTE.SYMBIOTE_ID
+        let symbioteID = global.GENESIS.SYMBIOTE_ID
 
         //Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
 
@@ -256,9 +256,8 @@ getSymbioteInfo=response=>{
             WORKFLOW_HASH:workflowHash,
             HIVEMIND:hivemind,
             HOSTCHAINS:hostchains,
-            GENESIS_HASH:genesisHash
         
-        }=global.CONFIG.SYMBIOTE.MANIFEST
+        } = global.GENESIS
 
         
         //Get the current version of VT and QT

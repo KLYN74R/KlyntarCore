@@ -126,7 +126,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
     if(process.env.KLY_MODE==='main'){
     
-        //If SYMBIOTE_DIR is setted-it will be a location for all the subdirs above(CHAINDATA,GENESIS,etc.)
+        //If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
         if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
 
         //If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
@@ -255,6 +255,8 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 )
 
 
+//Load genesis
+global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
 
 
 //________________________________________________SHARED RESOURCES______________________________________________
@@ -389,12 +391,12 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 
 
-    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/life.js`)
+    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
 
     await RUN_SYMBIOTE()
         
     
-    
+
     for(let scriptPath of global.CONFIG.PLUGINS){
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
@@ -429,7 +431,7 @@ global.UWS_SERVER=UWS[global.CONFIG.TLS.ENABLED?'SSLApp':'App'](global.CONFIG.TL
 
 
 //Call general code to start import routes
-import(`./KLY_Workflows/${global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW}/routes.js`)
+import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
 
 
 

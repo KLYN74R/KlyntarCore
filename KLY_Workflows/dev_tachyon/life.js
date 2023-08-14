@@ -105,19 +105,7 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
-
-    GET_SPECIAL_OPERATIONS = checkpointFullID =>{
-
-        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
-
-        let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
-
-        return Array.from(specialOperationsMempool).map(subArr=>subArr[1]) //{type,payload}
-
-    },
-
-
+let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
 
 BLOCKS_GENERATION_POLLING=async()=>{
@@ -132,11 +120,7 @@ BLOCKS_GENERATION_POLLING=async()=>{
         &&
         clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
 
-    }else{
-
-        LOG(`Block generation was stopped`,'I')
-
-    }
+    }else LOG(`Block generation was stopped`,'I')
     
 },
 
@@ -459,8 +443,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Create mappings & set for the next checkpoint
         let nextTemporaryObject={
-
-            SPECIAL_OPERATIONS_MEMPOOL:new Map(),
 
             COMMITMENTS:new Map(), 
             FINALIZATION_PROOFS:new Map(),
@@ -1123,7 +1105,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             poolsMetadata:{},
 
-            operations:GET_SPECIAL_OPERATIONS(checkpointFullID),
+            operations:[],
 
             otherSymbiotes:{} //don't need now
 
@@ -1352,12 +1334,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             for(let {excludeSpecOperations} of checkpointsPingBacks){
 
                 if(excludeSpecOperations && excludeSpecOperations.length!==0){
-                    
-                    for(let operationID of excludeSpecOperations){
-    
-                        temporaryObject.SPECIAL_OPERATIONS_MEMPOOL.delete(operationID)
-    
-                    }
 
                 }
 
@@ -2563,7 +2539,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
     
     // Add the extra data to block
@@ -2632,242 +2608,236 @@ LOAD_GENESIS=async()=>{
 
     //__________________________________ Load all the configs __________________________________
 
-    
-    let filesOfGenesis = fs.readdirSync(process.env.GENESIS_PATH)
-
-
-    for(let filePath of filesOfGenesis){
-
-        let genesis=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/${filePath}`))
-
         
-        checkpointTimestamp=genesis.CHECKPOINT_TIMESTAMP
+    checkpointTimestamp = global.GENESIS.CHECKPOINT_TIMESTAMP
 
-        let primePools = new Set(Object.keys(genesis.POOLS))
+    let primePools = new Set(Object.keys(global.GENESIS.POOLS))
 
 
-        for(let [poolPubKey,poolContractStorage] of Object.entries(genesis.POOLS)){
+    for(let [poolPubKey,poolContractStorage] of Object.entries(global.GENESIS.POOLS)){
 
-            let {isReserve} = poolContractStorage
+        let {isReserve} = poolContractStorage
 
-            startPool = poolPubKey
+        startPool = poolPubKey
 
-            //Add metadata related to this pool
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
-                
-                index:-1,
-                
-                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-                isReserve
+        //Add metadata related to this pool
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
             
-            }
-
-            //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
+            index:-1,
             
-            let contractMetadataTemplate = {
-    
-                type:"contract",
-                lang:'spec/stakingPool',
-                balance:0,
-                uno:0,
-                storages:['POOL'],
-                bytecode:''
-    
-            }            
-            
-            let idToAdd = poolPubKey+':'+poolPubKey
+            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-            if(isReserve){
-
-                idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
-
-            }
-
-            //Put metadata
-            atomicBatch.put(idToAdd+'(POOL)',contractMetadataTemplate)
-    
-            //Put storage
-            //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
-
-
-            // Put the pointer to know the subchain which store the pool's data(metadata+storages)
-            // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
-            if(isReserve) atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
-            
-            else atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
-
-
-            // Add the account for fees for each authority
-            primePools.forEach(anotherValidatorPubKey=>{
-
-                if(anotherValidatorPubKey!==poolPubKey){
-
-                    atomicBatch.put(BLAKE3(poolPubKey+':'+anotherValidatorPubKey),{
+            isReserve
         
-                        type:"account",
-                        balance:0,
-                        uno:0,
-                        nonce:0,
-                        rev_t:0
-                    
-                    })
-
-                }
-
-            })
-
-
-            let templateForQt = {
-
-                totalPower:poolContractStorage.totalPower,
-                lackOfTotalPower:false,
-                stopCheckpointID:-1,
-                storedMetadata:{},
-                isReserve
-            
-            }
-
-            
-            if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
-
-            else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
-
-
-            quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
-
-            //________________________ Fill the state of KLY-EVM ________________________
-    
-            if(!isReserve){
-
-                let evmStateForThisSubchain = genesis.EVM[poolPubKey]
-
-                if(evmStateForThisSubchain){
-    
-                    let evmKeys = Object.keys(evmStateForThisSubchain)
-        
-                    for(let evmKey of evmKeys) {
-        
-                        let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
-        
-                        //Put KLY-EVM to KLY-EVM state db which will be used by Trie
-        
-                        if(isContract){
-        
-                            await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
-        
-                        }else{
-                        
-                            await KLY_EVM.putAccount(evmKey,balance,nonce)
-                        }
-    
-
-                        let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
-
-                        // Add assignment to subchain
-                        atomicBatch.put('SUB:'+caseIgnoreAccountAddress,{subchain:poolPubKey})
-        
-                    }
-    
-                }
-
-                global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
-            
-                    nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
-            
-                    parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
-            
-                    timestamp:Math.floor(checkpointTimestamp/1000)
-            
-                }
-
-            }
-    
         }
 
-
-        //_______________________ Now add the data to state _______________________
-    
-        // * Each account / contract must have <subchain> property to assign it to appropriate shard(subchain)
-
-        Object.keys(genesis.STATE).forEach(
+        //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
-            addressOrContractID => {
+        let contractMetadataTemplate = {
 
-                if(genesis.STATE[addressOrContractID].type==='contract'){
+            type:"contract",
+            lang:'spec/stakingPool',
+            balance:0,
+            uno:0,
+            storages:['POOL'],
+            bytecode:''
 
-                    let {lang,balance,uno,storages,bytecode,subchain} = genesis.STATE[addressOrContractID]
+        }            
+        
+        let idToAdd = poolPubKey+':'+poolPubKey
 
-                    let contractMeta = {
+        if(isReserve){
 
-                        type:"contract",
-                        lang,
-                        balance,
-                        uno,
-                        storages,
-                        bytecode
+            idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
+
+        }
+
+        //Put metadata
+        atomicBatch.put(idToAdd+'(POOL)',contractMetadataTemplate)
+
+        //Put storage
+        //NOTE: We just need a simple storage with ID="POOL"
+        atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
+
+
+        // Put the pointer to know the subchain which store the pool's data(metadata+storages)
+        // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
+        if(isReserve) atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
+        
+        else atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
+
+
+        // Add the account for fees for each authority
+        primePools.forEach(anotherValidatorPubKey=>{
+
+            if(anotherValidatorPubKey!==poolPubKey){
+
+                atomicBatch.put(BLAKE3(poolPubKey+':'+anotherValidatorPubKey),{
+    
+                    type:"account",
+                    balance:0,
+                    uno:0,
+                    nonce:0,
+                    rev_t:0
+                
+                })
+
+            }
+
+        })
+
+
+        let templateForQt = {
+
+            totalPower:poolContractStorage.totalPower,
+            lackOfTotalPower:false,
+            stopCheckpointID:-1,
+            storedMetadata:{},
+            isReserve
+        
+        }
+
+        
+        if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
+
+        else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
+
+
+        quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+
+        //________________________ Fill the state of KLY-EVM ________________________
+
+        if(!isReserve){
+
+            let evmStateForThisSubchain = global.GENESIS.EVM[poolPubKey]
+
+            if(evmStateForThisSubchain){
+
+                let evmKeys = Object.keys(evmStateForThisSubchain)
+    
+                for(let evmKey of evmKeys) {
+    
+                    let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
+    
+                    //Put KLY-EVM to KLY-EVM state db which will be used by Trie
+    
+                    if(isContract){
+    
+                        await KLY_EVM.putContract(evmKey,balance,nonce,code,storage)
+    
+                    }else{
                     
-                    } 
-
-                    //Write metadata first
-                    atomicBatch.put(subchain+':'+addressOrContractID,contractMeta)
-
-                    //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
-                    for(let storageID of genesis.STATE[addressOrContractID].storages){
-
-                        genesis.STATE[addressOrContractID][storageID].subchain = subchain
-
-                        atomicBatch.put(subchain+':'+addressOrContractID+'_STORAGE_'+storageID,genesis.STATE[addressOrContractID][storageID])
-
+                        await KLY_EVM.putAccount(evmKey,balance,nonce)
                     }
 
-                } else {
 
-                    let subchainID = genesis.STATE[addressOrContractID].subchain
+                    let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
-                    atomicBatch.put(subchainID+':'+addressOrContractID,genesis.STATE[addressOrContractID]) //else - it's default account
-
+                    // Add assignment to subchain
+                    atomicBatch.put('SUB:'+caseIgnoreAccountAddress,{subchain:poolPubKey})
+    
                 }
 
             }
-            
-        )
 
-
-        /*
+            global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
         
-        Set the initial workflow version from genesis
-
-        We keep the official semver notation x.y.z(major.minor.patch)
-
-        You can't continue to work if QUORUM and major part of POOLS decided to vote for major update.
+                nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
         
-        However, if workflow_version has differences in minor or patch values - you can continue to work
+                parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
+        
+                timestamp:Math.floor(checkpointTimestamp/1000)
+        
+            }
 
-
-        KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and QUORUM_THREAD) because only this matter
-
-        */
-
-        //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION=genesis.VERSION
-
-        //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
-        global.SYMBIOTE_META.QUORUM_THREAD.VERSION=genesis.VERSION
-
-        //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
-
-        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
-
-        global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS}
+        }
 
     }
+
+
+    //_______________________ Now add the data to state _______________________
+
+    // * Each account / contract must have <subchain> property to assign it to appropriate shard(subchain)
+
+    Object.keys(global.GENESIS.STATE).forEach(
+    
+        addressOrContractID => {
+
+            if(global.GENESIS.STATE[addressOrContractID].type==='contract'){
+
+                let {lang,balance,uno,storages,bytecode,subchain} = global.GENESIS.STATE[addressOrContractID]
+
+                let contractMeta = {
+
+                    type:"contract",
+                    lang,
+                    balance,
+                    uno,
+                    storages,
+                    bytecode
+                
+                } 
+
+                //Write metadata first
+                atomicBatch.put(subchain+':'+addressOrContractID,contractMeta)
+
+                //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+                for(let storageID of global.GENESIS.STATE[addressOrContractID].storages){
+
+                    global.GENESIS.STATE[addressOrContractID][storageID].subchain = subchain
+
+                    atomicBatch.put(subchain+':'+addressOrContractID+'_STORAGE_'+storageID,global.GENESIS.STATE[addressOrContractID][storageID])
+
+                }
+
+            } else {
+
+                let subchainID = global.GENESIS.STATE[addressOrContractID].subchain
+
+                atomicBatch.put(subchainID+':'+addressOrContractID,global.GENESIS.STATE[addressOrContractID]) //else - it's default account
+
+            }
+
+        }
+        
+    )
+
+
+    /*
+    
+    Set the initial workflow version from genesis
+
+    We keep the official semver notation x.y.z(major.minor.patch)
+
+    You can't continue to work if QUORUM and major part of POOLS decided to vote for major update.
+    
+    However, if workflow_version has differences in minor or patch values - you can continue to work
+
+
+    KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and QUORUM_THREAD) because only this matter
+
+    */
+
+    //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
+    global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION = global.GENESIS.VERSION
+
+    //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
+    global.SYMBIOTE_META.QUORUM_THREAD.VERSION = global.GENESIS.VERSION
+
+    //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
+
+    global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...global.GENESIS.WORKFLOW_OPTIONS}
+
+    global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...global.GENESIS.WORKFLOW_OPTIONS}
+
+
 
     
     await atomicBatch.write()
 
     await quorumThreadAtomicBatch.write()
+
+
 
 
     //Node starts to verify blocks from the first validator in genesis, so sequency matter
@@ -2963,9 +2933,9 @@ LOAD_GENESIS=async()=>{
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
     // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
-    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=-1
+    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON = -1
     
-    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON=-1
+    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON = -1
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of POOLS_METADATA state
@@ -3028,7 +2998,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         //____________________ CONSENSUS RELATED MAPPINGS ____________________
 
-        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE,SPECIAL_OPERATIONS_MEMPOOL}
+        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE}
 
     
     }
@@ -3230,9 +3200,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
 
-        SPECIAL_OPERATIONS_MEMPOOL:new Map(), // to hold operations which should be included to checkpoints
-
-        COMMITMENTS:new Map(), // blockID => SIG(blockID+hash).     The first level of "proofs". Commitments is just signatures by some validator from current quorum that validator accept some block X by ValidatorY with hash H
+        COMMITMENTS:new Map(), // blockID => BLS_SIG(blockID+hash).     The first level of "proofs". Commitments is just signatures by some validator from current quorum that "validator accept some block X by ValidatorY with hash H"
 
         FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HEADER.PAYLOAD_HASH+"#"+QT.CHECKPOINT.HEADER.ID).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 

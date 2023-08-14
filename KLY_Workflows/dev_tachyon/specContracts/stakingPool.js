@@ -80,7 +80,7 @@ export let CONTRACT = {
                     
                 storedMetadata:{},
 
-                totalPower:0, // KLY(converted to UNO by global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than global.CONFIG.SYMBIOTE.MANIFEST.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 stakers:{}, // Pubkey => {kly,uno}
 
