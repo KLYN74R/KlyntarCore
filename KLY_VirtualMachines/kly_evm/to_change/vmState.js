@@ -158,7 +158,7 @@ class VmState {
 
         // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
 
-        let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.EVM.bindContext : this.evmContext
+        let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
 
 
         if(bindedSubchain !== evmExecutionContext){

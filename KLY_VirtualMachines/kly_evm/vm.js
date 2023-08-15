@@ -33,7 +33,7 @@ const {
     hardfork,
     gasLimitForBlock
 
-} = global.CONFIG.EVM
+} = global.CONFIG.KLY_EVM
 
 
 const common = Common.custom({name,networkId,chainId},hardfork)
@@ -140,7 +140,7 @@ class KLY_EVM_CLASS {
         
         // To prevent spam - limit the maximum allowed gas for free EVM calls
 
-        tx.gasLimit = global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution
+        tx.gasLimit = global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution
         
         
         let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
@@ -293,7 +293,7 @@ class KLY_EVM_CLASS {
     estimateGasUsed = async txData => {
 
 
-        txData.gasLimit = global.CONFIG.EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
+        txData.gasLimit = global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
 
 
         let tx = Transaction.fromTxData(txData)

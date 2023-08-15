@@ -1366,7 +1366,7 @@ Response - it's object with the following structure:
 */
 checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointProposition=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let checkpointProposition = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     if(typeof checkpointProposition.issuer !== 'string' || typeof checkpointProposition.prevCheckpointPayloadHash !== 'string' || typeof checkpointProposition.poolsMetadata !== 'object' || !Array.isArray(checkpointProposition.operations)){
 
@@ -1799,48 +1799,40 @@ Body is
     * Payload has different structure depending on type
 
 
-Returns object like:
-
-{
-    signer:<BLS pubkey of quorum member> - CONFIG.SYMBIOTE.PUB
-    sig:<BLS signature is - SIG( BLAKE3(JSON({type,payload})) + checkpointFullID)> - json'ed object of system sync operation + checkpoint full ID
-}
-
-
-Then you need to grab at least 2/3N+1 signatures for your system sync operation and paste this proof to blocks of subchains at the beginning of new epoch
-
-
 */
 
 systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let operation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    
+    let systemSyncOperation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
+
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
-        !response.aborted && response.end('QT checkpoint is not ready')
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
         return
     }
 
+
     if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SYSTEM_SYNC_OPERATIONS){
 
-        !response.aborted && response.end(`Route is off. This node don't accept system sync operations`)
+        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept system sync operations`}))
 
         return
     }
 
     //Verify and if OK - generate signature and return
 
-    if(SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type]){
+    if(SYSTEM_SYNC_OPERATIONS_VERIFIERS[systemSyncOperation.type]){
 
-        let possibleSystemSyncOperation = await SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(error=>({isError:true,error})) // it's just verify without state changes
+        let possibleSystemSyncOperation = await SYSTEM_SYNC_OPERATIONS_VERIFIERS[systemSyncOperation.type](systemSyncOperation.payload,true,false).catch(error=>({isError:true,error})) // it's just verify without state changes
 
         if(possibleSystemSyncOperation?.isError){
             
-            !response.aborted && response.end(`Verification failed. Reason => ${JSON.stringify(possibleSystemSyncOperation)}`)
+            !response.aborted && response.end(JSON.stringify({err:`Verification failed. Reason => ${JSON.stringify(possibleSystemSyncOperation)}`}))
 
         }
         else if(possibleSystemSyncOperation){
@@ -1864,7 +1856,117 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
         }
         else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleSystemSyncOperation)}`)
 
-    }else !response.aborted && response.end(`No verification function for this system sync operation => ${operation.type}`)
+    }else !response.aborted && response.end(`No verification function for this system sync operation => ${systemSyncOperation.type}`)
+
+}),
+
+
+
+
+// To accept system sync operation, verify that majority from quorum agree with it and add to mempool
+
+/*
+
+
+    {
+        aggreementProof:{
+
+            aggregatedPub:<Base58 encoded BLS pubkey>,
+            aggregatedSignature:BLS_SIGNATURE(
+                
+                BLAKE3( JSON(systemSyncOperation) + checkpointFullID)
+                
+            ),
+            afkVoters:[]
+
+        }
+
+        systemSyncOperation:{<your operation here>}
+
+    }
+
+
+
+
+Returns object like:
+
+    [If verification is OK and system sync operation was added to mempool]:
+
+        {status:'OK'}
+
+    [Else]:
+
+        {err:''}
+
+
+
+*/
+systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+
+    let systemSyncOperationWithAgreementProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
+
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+
+        return
+    }
+
+    
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SYSTEM_SYNC_OPERATIONS){
+
+        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept system sync operations`}))
+
+        return
+    }
+
+
+    if(typeof systemSyncOperationWithAgreementProof.systemSyncOperation !== 'object' || typeof systemSyncOperationWithAgreementProof.aggreementProof !== 'object'){
+
+        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <systemSyncOperation>(your operation) and <agreementProof>(aggregated version of verification proofs from quorum members majority)`}))
+
+        return
+
+    }
+
+    // Verify agreement and if OK - add to mempool
+
+    let hashOfCheckpointFullIDAndOperation = BLAKE3(
+
+        JSON.stringify(systemSyncOperationWithAgreementProof.systemSyncOperation) + checkpointFullID
+
+    )
+
+    let {aggregatedPub,aggregatedSignature,afkVoters} = systemSyncOperationWithAgreementProof.aggreementProof
+
+    let signaIsOk = await bls.singleVerify(hashOfCheckpointFullIDAndOperation,aggregatedPub,aggregatedSignature).catch(_=>false)
+
+    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+
+        // Add to mempool
+        
+        tempObject.SYSTEM_SYNC_OPERATIONS_MEMPOOL.push(systemSyncOperationWithAgreementProof.systemSyncOperation)
+
+        !response.aborted && response.end(JSON.stringify({status:`OK`}))
+
+
+    }else{
+
+        !response.aborted && response.end(JSON.stringify({err:`Verification failed => {signaIsOk:${signaIsOk},majorityIsOk:${majorityIsOk},rootPubIsEqualToReal:${rootPubIsEqualToReal}}`}))
+
+    }
 
 }),
 
@@ -2005,7 +2107,9 @@ UWS_SERVER
 //___________________________________ Other ___________________________________________
 
 
-.post('/system_sync_operations',systemSyncOperationsVerifier)
+.post('/sign_system_sync_operation',systemSyncOperationsVerifier)
+
+.post('/system_sync_operation_to_mempool',systemSyncOperationToMempool)
 
 .post('/transaction',acceptTransactions)
 

@@ -108,6 +108,19 @@ process.on('SIGHUP',GRACEFUL_STOP)
 let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
 
+GET_SYSTEM_SYNC_OPERATIONS = checkpointFullID => {
+
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
+
+    let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SYSTEM_SYNC_OPERATIONS_MEMPOOL
+
+    return specialOperationsMempool.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SYSTEM_SYNC_OPERATIONS_LIMIT_PER_BLOCK)
+
+},
+
+
+
+
 BLOCKS_GENERATION_POLLING=async()=>{
 
     if(!global.SYSTEM_SIGNAL_ACCEPTED){
@@ -406,7 +419,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
 
-        // Execute special operations from new checkpoint using our copy of QT and atomic handler
+        // Execute system sync operations from new checkpoint using our copy of QT and atomic handler
         await EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
 
 
@@ -414,7 +427,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         await SET_REASSIGNMENT_CHAINS(possibleCheckpoint)
 
 
-        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.header.id} ### ${possibleCheckpoint.header.payloadHash} (QT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mSystem sync operations were executed for checkpoint \u001b[38;5;93m${possibleCheckpoint.header.id} ### ${possibleCheckpoint.header.payloadHash} (QT)\u001b[0m`,'S')
 
         // Mark as completed
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.completed = true
@@ -449,6 +462,8 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             CHECKPOINT_MANAGER:new Map(),
             CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
+
+            SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
  
             SKIP_HANDLERS:new Map(), // {wasReassigned:boolean,extendedAggregatedCommitments,aggregatedSkipProof}
 
@@ -1276,9 +1291,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         On this step, sooner or later, the propositionsToUpdateMetadata will be equal to 0 - because in case the QUORUM majority is honest,
         there were no AGGREGATED_FINALIZATION_PROOF for another height/hash
 
-        On this step - we start to exclude the special operations from our proposition to get the wished 2/3N+1 signatures of checkpoint proposition
+        On this step - we start to exclude the system sync operations from our proposition to get the wished 2/3N+1 signatures of checkpoint proposition
 
-        But, initialy we check if 2/3N+1 agreements we have. If no and no propositions to update metadata - then it's problem with the special operations, so we should exclude some of them
+        But, initialy we check if 2/3N+1 agreements we have. If no and no propositions to update metadata - then it's problem with the system sync operations, so we should exclude some of them
         
         */
 
@@ -1328,7 +1343,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }else if(propositionsToUpdateMetadata===0){
 
-            // Delete the special operations due to which the rest could not agree with our version of checkpoints
+            // Delete the system sync operations due to which the rest could not agree with our version of checkpoints
             //! NOTE - we can't delete operations of SKIP_PROCEDURE, so check the type of operation too
 
             for(let {excludeSpecOperations} of checkpointsPingBacks){
@@ -1341,7 +1356,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }
 
-        //Clear everything and repeat the attempt(round) of checkpoint proposition - with updated values of pools' metadata & without special operations
+        //Clear everything and repeat the attempt(round) of checkpoint proposition - with updated values of pools' metadata & without system sync operations
 
     }
 
@@ -2541,6 +2556,10 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
+
+    // Add the system sync operations to block extra data
+
+    extraData.systemSyncOperations = GET_SYSTEM_SYNC_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
     
     // Add the extra data to block
 
@@ -3209,6 +3228,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         CHECKPOINT_MANAGER_SYNC_HELPER:new Map(), // map(poolPubKey=>Set({index,hash,aggregatedCommitments})) here will be added propositions to update the aggregated commitments for pool which will be checked in sync mode
 
+        SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
         
         PROOFS_REQUESTS:new Map(), // mapping(blockID=>FINALIZATION_PROOF_REQUEST)
 

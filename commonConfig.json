@@ -36,12 +36,6 @@
         
     },
 
-    "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly_evm"],
-    
-    "BITFORKS":["btc","ltc","doge","dash"],
-
-    "PLUGINS":[],
-
-    "RUNNER":"dev_andromeda/runner.js"
+    "PLUGINS":["dev_savitar/savitarServer.js"]
     
 }

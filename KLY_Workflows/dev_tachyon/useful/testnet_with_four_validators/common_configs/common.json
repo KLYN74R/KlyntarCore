@@ -17,12 +17,6 @@
 
     "DAEMON_LOGS":true,
 
-    "EVM_CHAINS":["bsc","eth","celo","arbitrum","avax","ftm","heco","matic","one","rsk","sys","tomo","kly-evm"],
+    "PLUGINS":["dev_savitar/server.js"]
     
-    "BITFORKS":["btc","ltc","doge","dash"],
-
-    "PLUGINS":["dev_savitar/server.js"],
-
-    "RUNNER":"dev_andromeda/runner.js"
-
 }

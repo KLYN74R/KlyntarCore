@@ -220,6 +220,7 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
 
+
     for(let memberURL of quorumMembersURLs){
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(_=>false)
@@ -1155,8 +1156,9 @@ START_VERIFICATION_THREAD=async()=>{
 
         }
 
-
         
+
+
         let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
 
         let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
@@ -1228,7 +1230,7 @@ START_VERIFICATION_THREAD=async()=>{
             }
 
 
-        }else if(tempReassignments && updatedIsFreshCheckpoint){
+        }else if(updatedIsFreshCheckpoint && tempReassignments){
 
             let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
 
@@ -1243,6 +1245,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             
             if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
+
 
                 // Ask the N+1 block
 

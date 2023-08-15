@@ -8,7 +8,7 @@ import {TextDecoder} from 'util'
 
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true })
 
-let {TYPE,FUNCTION_NAME,MODULE_NAME}=global.CONFIG.VM.METERING
+let {TYPE,FUNCTION_NAME,MODULE_NAME} = global.CONFIG.KLY_WVM.METERING
 
 let cachedTextEncoder = new TextEncoder('utf-8')
 
@@ -106,7 +106,7 @@ export default class ContractInstance {
             moduleStr:MODULE_NAME,
         
             //And cost table to meter gas usage by opcodes price
-            costTable:global.CONFIG.VM.GAS_TABLE,
+            costTable:global.CONFIG.KLY_WVM.GAS_TABLE,
         
         })
 

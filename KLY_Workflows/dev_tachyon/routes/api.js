@@ -45,7 +45,7 @@ getFromState=async(response,request)=>{
 
 
 
-        !response.aborted && WRAP_RESPONSE(response,global.CONFIG.SYMBIOTE.TTL.API.FROM_STATE).end(JSON.stringify(data))
+        !response.aborted && WRAP_RESPONSE(response,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.FROM_STATE).end(JSON.stringify(data))
 
     
     }else !response.aborted && response.end(JSON.stringify({err:'Trigger is off'}))
@@ -76,7 +76,7 @@ getFromState=async(response,request)=>{
  * 
  *  
  * */
-getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.TTL.API.MY_KLY_INFRASTRUCTURE).end(INFO),
+getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE).end(INFO),
 
 
 
@@ -103,7 +103,7 @@ getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.T
  * */
 nodes=(response,request)=>{
 
-    response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.TTL.API.NODES).end(
+    response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.ROUTE_TTL.API.NODES).end(
 
         global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.NODES && JSON.stringify(GET_NODES(request.getParameter(0)))
 
@@ -124,7 +124,7 @@ getBlockById=(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.BLOCK}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -159,7 +159,7 @@ getLatestNBlocks=async(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.LATEST_N_BLOCKS}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -214,7 +214,7 @@ getBlockBySID=(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.BLOCK_BY_SID}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_SID}`)
             .onAborted(()=>response.aborted=true)
 
         let subchainContext = request.getParameter(0)
@@ -246,7 +246,7 @@ getSyncState=response=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.SYNC_STATE}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYNC_STATE}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -268,7 +268,7 @@ getSymbioteInfo=response=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.SYMBIOTE_INFO}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYMBIOTE_INFO}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -342,7 +342,7 @@ getBlockByGRID=(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.BLOCK_BY_GRID}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_GRID}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -371,7 +371,7 @@ getSearchResult=async(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.SEARCH_RESULT}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SEARCH_RESULT}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -508,7 +508,7 @@ getTransactionReceipt=(response,request)=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.TX_RECEIPT}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.TX_RECEIPT}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -535,7 +535,7 @@ getPoolsMetadata=response=>{
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.POOLS_METADATA}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.POOLS_METADATA}`)
             .onAborted(()=>response.aborted=true)
 
 
@@ -557,7 +557,7 @@ getCurrentQuorumThreadCheckpoint=response=>{
         response
             
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.QUORUM_THREAD_CHECKPOINT}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.QUORUM_THREAD_CHECKPOINT}`)
             .onAborted(()=>response.aborted=true)
 
         response.end(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT))
@@ -574,7 +574,7 @@ getCurrentQuorumThreadCheckpoint=response=>{
 
 stuff=async(response,request)=>{
     
-    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.TTL.API.STUFF}`)
+    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.STUFF}`)
     
     let stuffID=request.getParameter(0)
 
