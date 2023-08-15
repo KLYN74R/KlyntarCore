@@ -1,10 +1,10 @@
 import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
+import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
+
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-
-import OPERATIONS_VERIFIERS from '../operationsVerifiers.js'
 
 import Block from '../essences/block.js'
 
@@ -64,9 +64,9 @@ acceptBlocks=response=>{
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCK){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCK){
         
-        !response.aborted && response.end('Route is off')
+        !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
         
         return
     
@@ -74,7 +74,7 @@ acceptBlocks=response=>{
 
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
-        !response.aborted && response.end('QT checkpoint is incomplete')
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
         return
 
@@ -82,7 +82,7 @@ acceptBlocks=response=>{
 
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-        !response.aborted && response.end('Checkpoint is not fresh')
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
         
         return
 
@@ -106,7 +106,7 @@ acceptBlocks=response=>{
 
                 if(poolIsAFK){
 
-                    !response.aborted && response.end('This pool is AFK')
+                    !response.aborted && response.end(JSON.stringify({err:'This pool is AFK'}))
         
                     return
 
@@ -117,7 +117,7 @@ acceptBlocks=response=>{
 
                 if(!primePoolOrAtLeastReassignment){
 
-                    !response.aborted && response.end(`This block creator can't produce blocks`)
+                    !response.aborted && response.end(JSON.stringify({err:`This block creator can't produce blocks`}))
         
                     return
 
@@ -132,7 +132,7 @@ acceptBlocks=response=>{
                 
                 if(myCommitment){
 
-                    !response.aborted && response.end(myCommitment)
+                    !response.aborted && response.end(JSON.stringify({commitment:myCommitment}))
 
                     return
                 
@@ -180,16 +180,16 @@ acceptBlocks=response=>{
                     //Put to local storage to prevent double voting
                     await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
     
-                        !response.aborted && response.end(commitment)
+                        !response.aborted && response.end(JSON.stringify({commitment:commitment}))
                     
-                    ).catch(error=>!response.aborted && response.end(`Something wrong => ${JSON.stringify(error)}`))
+                    ).catch(error=>!response.aborted && response.end(JSON.stringify({err:`Something wrong => ${JSON.stringify(error)}`})))
 
 
-                }else !response.aborted && response.end('Overview failed. Make sure input data is ok')
+                }else !response.aborted && response.end(JSON.stringify({err:'Overview failed. Make sure input data is ok'}))
             
             }
         
-        }else !response.aborted && response.end('Payload limit')
+        }else !response.aborted && response.end(JSON.stringify({err:'Payload limit'}))
     
     })
 
@@ -244,9 +244,9 @@ acceptManyBlocks=response=>{
 
 
     //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_BLOCKS){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS){
         
-        !response.aborted && response.end('Route is off')
+        !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
         
         return
     
@@ -254,7 +254,7 @@ acceptManyBlocks=response=>{
 
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
-        !response.aborted && response.end('QT checkpoint is incomplete')
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
         return
 
@@ -262,7 +262,7 @@ acceptManyBlocks=response=>{
 
     if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-        !response.aborted && response.end('Checkpoint is not fresh')
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
         
         return
 
@@ -364,7 +364,7 @@ acceptManyBlocks=response=>{
             
             }
         
-        }else !response.aborted && response.end('Payload limit')
+        }else !response.aborted && response.end(JSON.stringify({err:'Payload limit'}))
     
     })
 
@@ -401,7 +401,7 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
         return
     }
 
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.ACCEPT_TXS){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
         
         !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
         
@@ -504,14 +504,14 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let aggregatedCommitments=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-            !response.aborted && response.end('QT checkpoint is incomplete')
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
             return
         }
@@ -524,13 +524,13 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-            !response.aborted && response.end('Checkpoint is not fresh')
+            !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
             
     
         }else if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
 
             // Instantly send response
-            !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID))
+            !response.aborted && response.end(JSON.stringify({fp:tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID)}))
 
 
         }else{
@@ -540,7 +540,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
-                !response.aborted && response.end('Wrong format of input params')
+                !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
 
                 return
 
@@ -565,11 +565,11 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     
                 FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
                 
-            }else !response.aborted && response.end(`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
+            }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
 
         }
 
-    }else !response.aborted && response.end('Route is off or QT checkpoint is incomplete')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off or QT checkpoint is incomplete'}))
 
 }),
 
@@ -592,7 +592,7 @@ MANY_FINALIZATION_PROOFS_POLLING=(tempObject,blocksSet,response)=>{
 
 
         // Instantly send response
-        !response.aborted && response.end(JSON.stringify(fpArray))
+        !response.aborted && response.end(JSON.stringify({err:JSON.stringify(fpArray)}))
 
     }else{
 
@@ -614,14 +614,14 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
     let blocksSet = []
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-            !response.aborted && response.end('QT checkpoint is incomplete')
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
             return
         }
@@ -630,7 +630,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
         if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
 
-            !response.aborted && response.end('Checkpoint is not fresh')
+            !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
             
     
         }
@@ -643,7 +643,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
 
             if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
-                !response.aborted && response.end('Wrong format of input params')
+                !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
 
                 return
 
@@ -673,7 +673,7 @@ manyFinalization=response=>response.writeHeader('Access-Control-Allow-Origin','*
         MANY_FINALIZATION_PROOFS_POLLING(tempObject,blocksSet,response)
         
 
-    }else !response.aborted && response.end('Route is off or QT checkpoint is incomplete')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off or QT checkpoint is incomplete'}))
 
 }),
 
@@ -700,7 +700,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     if(!tempObject){
 
-        !response.aborted && response.end('Checkpoint is not fresh')
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
 
         return
     }
@@ -713,7 +713,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
     
     if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
-        !response.aborted && response.end('Wrong format of input params')
+        !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
 
         return
 
@@ -742,9 +742,9 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
         await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
-        !response.aborted && response.end('OK')
+        !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
-    }else !response.aborted && response.end(`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`)
+    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
 
 
 }),
@@ -779,13 +779,13 @@ getAggregatedFinalizationProof=async(response,request)=>{
     response.onAborted(()=>response.aborted=true).writeHeader('Access-Control-Allow-Origin','*')
 
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-            !response.aborted && response.end('QT checkpoint is not ready')
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
             return
         }
@@ -798,9 +798,9 @@ getAggregatedFinalizationProof=async(response,request)=>{
 
             !response.aborted && response.end(JSON.stringify(aggregatedFinalizationProof))
 
-        }else !response.aborted && response.end('No proof')
+        }else !response.aborted && response.end(JSON.stringify({err:'No proof'}))
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -839,7 +839,7 @@ healthChecker = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
 
         // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
         let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
@@ -860,7 +860,7 @@ healthChecker = async response => {
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-            !response.aborted && response.end('QT checkpoint is not ready')
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
             return
         }
@@ -920,7 +920,7 @@ anotherPoolHealthChecker = async(response,request) => {
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.HEALTH_CHECKER){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
 
         
         let requestedPoolPubKey = request.getParameter(0)
@@ -1199,7 +1199,7 @@ getDataForTempReassignments = async response => {
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
 
         let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -1370,7 +1370,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(typeof checkpointProposition.issuer !== 'string' || typeof checkpointProposition.prevCheckpointPayloadHash !== 'string' || typeof checkpointProposition.poolsMetadata !== 'object' || !Array.isArray(checkpointProposition.operations)){
 
-        !response.aborted && response.end(JSON.stringify({error:'Wrong input formats'}))
+        !response.aborted && response.end(JSON.stringify({err:'Wrong input formats'}))
 
         return
 
@@ -1382,12 +1382,11 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-    let specialOperationsMempool = tempObject?.SPECIAL_OPERATIONS_MEMPOOL
     
 
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject) {
 
-        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
         return
 
@@ -1395,7 +1394,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
 
-        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or not ready for checkpoint'}))
+        !response.aborted && response.end(JSON.stringify({err:'This checkpoint is fresh or not ready for checkpoint'}))
 
         return
 
@@ -1438,7 +1437,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(pools.toString() !== localCopyOfPools.toString()){
 
-            !response.aborted && response.end(JSON.stringify({error:`Pools set are not equal with my version of pools metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash}`}))
+            !response.aborted && response.end(JSON.stringify({err:`Pools set are not equal with my version of pools metadata since previous checkpoint ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash}`}))
 
             return
 
@@ -1498,7 +1497,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(wrongStatusPresent){
 
-            !response.aborted && response.end(JSON.stringify({error:`Wrong <isReserve> for pool ${poolWithWrongStatus}`}))
+            !response.aborted && response.end(JSON.stringify({err:`Wrong <isReserve> for pool ${poolWithWrongStatus}`}))
 
         }
         else if(metadataUpdate.length!==0){
@@ -1521,7 +1520,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             !response.aborted && response.end(JSON.stringify({sig}))
 
-        }else !response.aborted && response.end(JSON.stringify({error:`Everything failed(wrongSkipStatusPresent:false | metadataUpdate.length!==0 | hashes not equal)`}))
+        }else !response.aborted && response.end(JSON.stringify({err:`Everything failed(wrongSkipStatusPresent:false | metadataUpdate.length!==0 | hashes not equal)`}))
 
     }
 
@@ -1612,7 +1611,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
-        !response.aborted && response.end(JSON.stringify({error:'QT checkpoint is incomplete'}))
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
         return
 
@@ -1626,7 +1625,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
 
-        !response.aborted && response.end(JSON.stringify({error:'This checkpoint is fresh or not ready for checkpoint'}))
+        !response.aborted && response.end(JSON.stringify({err:'This checkpoint is fresh or not ready for checkpoint'}))
 
         return
 
@@ -1634,7 +1633,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     if(!checkpointFinalizationProof){
 
-        !response.aborted && response.end(JSON.stringify({error:'No CHECKPOINT_FINALIZATION_PROOF in input data'}))
+        !response.aborted && response.end(JSON.stringify({err:'No CHECKPOINT_FINALIZATION_PROOF in input data'}))
 
         return
 
@@ -1663,7 +1662,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
     }else if(proposerAlreadyInDB){
 
-        !response.aborted && response.end(JSON.stringify({error:`You've already sent a majority agreed payload for checkpoint`}))
+        !response.aborted && response.end(JSON.stringify({err:`You've already sent a majority agreed payload for checkpoint`}))
 
     }
     else{
@@ -1682,7 +1681,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(issuerSignatureIsOk.error){
 
-            !response.aborted && response.end(JSON.stringify({error:`Issuer signature is not ok => ${issuerSignatureIsOk.error}`}))
+            !response.aborted && response.end(JSON.stringify({err:`Issuer signature is not ok => ${issuerSignatureIsOk.error}`}))
 
             return
 
@@ -1690,7 +1689,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
         if(majorityHasSignedIt.error){
 
-            !response.aborted && response.end(JSON.stringify({error:`Majority signature is not ok => ${majorityHasSignedIt.error}`}))
+            !response.aborted && response.end(JSON.stringify({err:`Majority signature is not ok => ${majorityHasSignedIt.error}`}))
 
             return
 
@@ -1719,11 +1718,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
             }catch{
 
-                !response.aborted && response.end(JSON.stringify({error:'Something wrong with batch'}))
+                !response.aborted && response.end(JSON.stringify({err:'Something wrong with batch'}))
 
             }
             
-        }else !response.aborted && response.end(JSON.stringify({error:'Something wrong'}))
+        }else !response.aborted && response.end(JSON.stringify({err:'Something wrong'}))
 
     }
 
@@ -1755,7 +1754,7 @@ getPayloadForCheckpoint=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -1791,7 +1790,7 @@ Body is
 
 {
     
-    type:<SPECIAL_OPERATION id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../operationsVerifiers.js
+    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../systemOperationsVerifiers.js
     
     payload:{}
 
@@ -1799,65 +1798,73 @@ Body is
 
     * Payload has different structure depending on type
 
+
+Returns object like:
+
+{
+    signer:<BLS pubkey of quorum member> - CONFIG.SYMBIOTE.PUB
+    sig:<BLS signature is - SIG( BLAKE3(JSON({type,payload})) + checkpointFullID)> - json'ed object of system sync operation + checkpoint full ID
+}
+
+
+Then you need to grab at least 2/3N+1 signatures for your system sync operation and paste this proof to blocks of subchains at the beginning of new epoch
+
+
 */
 
-specialOperationsAccept=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let operation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
         !response.aborted && response.end('QT checkpoint is not ready')
 
         return
     }
 
-    let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SPECIAL_OPERATIONS_MEMPOOL
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SYSTEM_SYNC_OPERATIONS){
 
-
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
-
-        !response.aborted && response.end('QT checkpoint is incomplete. Wait some time and repeat the operation later')
+        !response.aborted && response.end(`Route is off. This node don't accept system sync operations`)
 
         return
     }
 
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.SPECIAL_OPERATIONS){
+    //Verify and if OK - generate signature and return
 
-        !response.aborted && response.end(`Route is off. This node don't accept special operations`)
+    if(SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type]){
 
-        return
-    }
+        let possibleSystemSyncOperation = await SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(error=>({isError:true,error})) // it's just verify without state changes
 
-    //Verify and if OK - put to SPECIAL_OPERATIONS_MEMPOOL
-
-    if(OPERATIONS_VERIFIERS[operation.type]){
-
-        let possibleSpecialOperation = await OPERATIONS_VERIFIERS[operation.type](operation.payload,true,false).catch(error=>({isError:true,error})) //it's just verify without state changes
-
-        if(possibleSpecialOperation?.isError){
+        if(possibleSystemSyncOperation?.isError){
             
-            !response.aborted && response.end(`Verification failed. Reason => ${JSON.stringify(possibleSpecialOperation)}`)
+            !response.aborted && response.end(`Verification failed. Reason => ${JSON.stringify(possibleSystemSyncOperation)}`)
 
         }
-        else if(possibleSpecialOperation){
+        else if(possibleSystemSyncOperation){
 
-            // Assign the ID to operation to easily detect what we should exclude from checkpoints propositions
-            let payloadHash = BLAKE3(JSON.stringify(possibleSpecialOperation.payload))
+            // Generate signature
 
-            possibleSpecialOperation.id = payloadHash
+            let signature = await BLS_SIGN_DATA(
+                
+                BLAKE3(JSON.stringify(possibleSystemSyncOperation)+checkpointFullID)
+                
+            )
 
-            // Add to mempool
-            specialOperationsMempool.set(payloadHash,possibleSpecialOperation)
+            !response.aborted && response.end(JSON.stringify({
 
-            !response.aborted && response.end('OK')
+                signer:global.CONFIG.SYMBIOTE.PUB,
+                
+                signature
+
+            }))
        
         }
-        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleSpecialOperation)}`)
+        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleSystemSyncOperation)}`)
 
-    }else !response.aborted && response.end(`No verification function for this special operation => ${operation.type}`)
+    }else !response.aborted && response.end(`No verification function for this system sync operation => ${operation.type}`)
 
 }),
 
@@ -1905,7 +1912,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
     }
 
-    if(!global.CONFIG.SYMBIOTE.TRIGGERS.MAIN.NEW_NODES){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.NEW_NODES){
 
         !response.aborted && response.end('Route is off')
         
@@ -1961,13 +1968,13 @@ UWS_SERVER
 //_______________________________ Routes for checkpoint _______________________________
 
 
-// To sign the checkpoints' payloads
-.post('/checkpoint_stage_1',checkpointStage1Handler)
+// // To sign the checkpoints' payloads
+// .post('/checkpoint_stage_1',checkpointStage1Handler)
 
-// To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
-.post('/checkpoint_stage_2',checkpointStage2Handler)
+// // To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
+// .post('/checkpoint_stage_2',checkpointStage2Handler)
 
-.get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
+// .get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 
 //________________________________ Health monitoring __________________________________
@@ -1998,7 +2005,7 @@ UWS_SERVER
 //___________________________________ Other ___________________________________________
 
 
-.post('/special_operations',specialOperationsAccept)
+.post('/system_sync_operations',systemSyncOperationsVerifier)
 
 .post('/transaction',acceptTransactions)
 

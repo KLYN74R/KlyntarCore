@@ -8,24 +8,32 @@ let
 
 
 
-/**## API/account
- * 
- *  Returns account's state on given subchain
- * 
- *  0 - subchainID
- *  1 - cellID
+
+/**## Returns the data directrly from state
  * 
  * 
- * @param {string} cellID publicKey/address of account(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on)
+ * ### Info
  * 
- * @returns {Account} Account instance
+ *  This GET route returns data from state - it might be account, contract metadata, contract storage, KLY-EVM address binding and so on!
  * 
+ * 
+ * ### Params
+ * 
+ *  + 0 - subchainID - Base58 encoded 48-bytes public key which is also ID of subchain
+ *  + 1 - cellID - identifier of what you want to get - contract ID, account address(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on), etc.
+ * 
+ * 
+ * ### Returns
+ * 
+ *  + JSON'ed value
+ * 
+ *  
  * */
 getFromState=async(response,request)=>{
     
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.FROM_STATE){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.FROM_STATE){
 
         let subchainContext = request.getParameter(0)
 
@@ -39,45 +47,65 @@ getFromState=async(response,request)=>{
 
         !response.aborted && WRAP_RESPONSE(response,global.CONFIG.SYMBIOTE.TTL.API.FROM_STATE).end(JSON.stringify(data))
 
-        
     
-    }else !response.aborted && response.end('Trigger is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Trigger is off'}))
 
 },
 
 
 
-/**## API/info
- * 
- *  Returns general info about node/infrastructure
- *  
- * 
- * @returns {String} Info in JSON
- * 
- * */
-getMyInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.TTL.API.INFO).end(INFO),
 
-
-
-
-/**## API/nodes
- * 
- *  Returns set of nodes for P2P communications
- * 
- *  0 - preffered region(close to another node)
- * 
+/**## Returns the info about your KLY infrastructure
  *
- * @param {string} prefferedRegion Continent,Country code and so on
  * 
- * @returns {Array} Array of urls. Example [http://somenode.io,https://dead::beaf,...]
+ * ### Info
  * 
+ * This route returns the JSON object that you set manually in CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE
+ * Here you can describe your infrastructure - redirects, supported services, plugins installed
+ *  Set the CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE with extra data 
+ * 
+ * 
+ * ### Params
+ * 
+ *  + 0 - Nothing
+ * 
+ * 
+ * ### Returns
+ * 
+ *  + JSON'ed value in CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE
+ * 
+ *  
  * */
+getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.TTL.API.MY_KLY_INFRASTRUCTURE).end(INFO),
 
+
+
+
+/**## Returns the portion of KLY nodes to connect with
+ *
+ * 
+ * ### Info
+ * 
+ * This route returns the nodes in CONFIG.SYMBIOTE.NODES[<region ID>]
+ * Here are addresses of KLY nodes which works on the same symbiote
+ * 
+ * 
+ * ### Params
+ * 
+ *  + 0 - preffered region(close to another node)
+ * 
+ * 
+ * ### Returns
+ * 
+ *  + Array of urls. Example [http://somenode.io,https://dead::beaf,...]
+ * 
+ *  
+ * */
 nodes=(response,request)=>{
 
     response.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.TTL.API.NODES).end(
 
-        global.CONFIG.SYMBIOTE.TRIGGERS.API.NODES&&JSON.stringify(GET_NODES(request.getParameter(0)))
+        global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.NODES && JSON.stringify(GET_NODES(request.getParameter(0)))
 
     )
 
@@ -91,7 +119,7 @@ nodes=(response,request)=>{
 getBlockById=(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK){
 
         response
         
@@ -104,10 +132,10 @@ getBlockById=(response,request)=>{
 
             !response.aborted && response.end(JSON.stringify(block))
             
-        ).catch(_=>response.end('No block'))
+        ).catch(_=>response.end(JSON.stringify({err:'No block'})))
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -126,7 +154,7 @@ Returns array of blocks sorted by SID in reverse order
 getLatestNBlocks=async(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.LATEST_N_BLOCKS){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
 
         response
         
@@ -169,7 +197,7 @@ getLatestNBlocks=async(response,request)=>{
         !response.aborted && response.end(JSON.stringify(blocks))
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -181,7 +209,7 @@ getLatestNBlocks=async(response,request)=>{
 getBlockBySID=(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK_BY_SID){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
         response
         
@@ -200,10 +228,10 @@ getBlockBySID=(response,request)=>{
             
             )
 
-        ).catch(_=>response.end('No block receipt'))
+        ).catch(_=>response.end(JSON.stringify({err:'No block receipt'})))
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -213,7 +241,7 @@ getBlockBySID=(response,request)=>{
 getSyncState=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.SYNC_STATE){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYNC_STATE){
 
         response
         
@@ -225,7 +253,7 @@ getSyncState=response=>{
         !response.aborted && response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER))
             
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -235,7 +263,7 @@ getSyncState=response=>{
 getSymbioteInfo=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.SYMBIOTE_INFO){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYMBIOTE_INFO){
 
         response
         
@@ -298,7 +326,7 @@ getSymbioteInfo=response=>{
         }))
             
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -309,7 +337,7 @@ getSymbioteInfo=response=>{
 getBlockByGRID=(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.BLOCK_BY_GRID){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK_BY_GRID){
 
         response
         
@@ -325,10 +353,10 @@ getBlockByGRID=(response,request)=>{
                 !response.aborted && response.end(JSON.stringify(block))
             )    
             
-        ).catch(_=>!response.aborted && response.end('No block'))
+        ).catch(_=>!response.aborted && response.end(JSON.stringify({err:'No block'})))
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -338,7 +366,7 @@ getBlockByGRID=(response,request)=>{
 getSearchResult=async(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.SEARCH_RESULT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SEARCH_RESULT){
 
         response
         
@@ -464,7 +492,7 @@ getSearchResult=async(response,request)=>{
         }
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -475,7 +503,7 @@ getSearchResult=async(response,request)=>{
 getTransactionReceipt=(response,request)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.TX_RECEIPT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.TX_RECEIPT){
 
         response
         
@@ -488,10 +516,10 @@ getTransactionReceipt=(response,request)=>{
             
             txReceipt => !response.aborted && response.end(JSON.stringify(txReceipt))
             
-        ).catch(_=>!response.aborted && response.end('No tx with such id'))
+        ).catch(_=>!response.aborted && response.end(JSON.stringify({err:'No tx with such id'})))
 
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -502,7 +530,7 @@ getTransactionReceipt=(response,request)=>{
 getPoolsMetadata=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.POOLS_METADATA){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.POOLS_METADATA){
 
         response
         
@@ -513,7 +541,7 @@ getPoolsMetadata=response=>{
 
         response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA))
 
-    }else !response.aborted && response.end('Symbiote not supported')
+    }else !response.aborted && response.end(JSON.stringify({err:'Symbiote not supported'}))
 
 },
 
@@ -524,7 +552,7 @@ getPoolsMetadata=response=>{
 getCurrentQuorumThreadCheckpoint=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.QUORUM_THREAD_CHECKPOINT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.QUORUM_THREAD_CHECKPOINT){
 
         response
             
@@ -534,7 +562,7 @@ getCurrentQuorumThreadCheckpoint=response=>{
 
         response.end(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT))
 
-    }else !response.aborted && response.end('Route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -550,7 +578,7 @@ stuff=async(response,request)=>{
     
     let stuffID=request.getParameter(0)
 
-    if(global.CONFIG.SYMBIOTE.TRIGGERS.API.SHARE_STUFF){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SHARE_STUFF){
 
         let stuff = await global.SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
 
@@ -562,7 +590,7 @@ stuff=async(response,request)=>{
 
         !response.aborted && response.end(JSON.stringify(stuff))
 
-    }else !response.aborted && response.end('Symbiote not supported or route is off')
+    }else !response.aborted && response.end(JSON.stringify({err:'Symbiote not supported or route is off'}))
 
 },
 
@@ -620,11 +648,11 @@ UWS_SERVER
 
 // Misc
 
+.get('/get_kly_infrastructure_info',getKlyInfrastructureInfo)
+
 .post('/stuff_add',stuffAdd)
 
 .get('/nodes/:REGION',nodes)
-
-.get('/my_info',getMyInfo)
 
 
 /*

@@ -14,7 +14,7 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
 
-import OPERATIONS_VERIFIERS from './operationsVerifiers.js'
+import OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
 import Block from './essences/block.js'
 
@@ -734,7 +734,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
-    //When we reach the limits of current checkpoint - then we need to execute the special operations
+    // When we reach the limits of current checkpoint - then we need to execute the system sync operations
 
     if(limitsReached && !checkpointIsCompleted){
 
@@ -781,8 +781,8 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             OPERATION in checkpoint has the following structure
 
             {
-                type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+                type:<TYPE> - type from './systemOperationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./systemOperationsVerifiers.js
             }
             
 
@@ -1015,7 +1015,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
 
-        LOG(`\u001b[38;5;154mSpecial operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mSystem sync operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash} (VT)\u001b[0m`,'S')
 
 
         //Commit the changes of state using atomic batch
@@ -1392,8 +1392,7 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
 
 
-// We need this method to send fees to this special accounts
-SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPoolPubKey,feeReward) => {
+SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPoolPubKey,feeReward) => {
 
     // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
     // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
@@ -1453,7 +1452,7 @@ DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
 
     activePoolsSet.forEach(feesRecepientPoolPubKey=>
 
-        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_SPECIAL_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPoolPubKey,payToEachPool))
+        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPoolPubKey,payToEachPool))
             
     )
      

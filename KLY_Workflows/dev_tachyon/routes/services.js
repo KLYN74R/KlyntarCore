@@ -40,6 +40,6 @@ services=response=>{
 
 
 
-UWS_SERVER
+// UWS_SERVER
 
-.post('/service',services)
+// .post('/service',services)

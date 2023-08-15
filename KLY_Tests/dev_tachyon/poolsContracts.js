@@ -120,7 +120,7 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
                                                                                 We need to test:
 
 
-![*] ------------------------------------------------------- Pool deployment. See dev_tachyon/specContracts/stakingPool.js --------------------------------------------------------
+![*] ------------------------------------------------------- Pool deployment. See dev_tachyon/systemContracts/stakingPool.js --------------------------------------------------------
 
 
     0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload

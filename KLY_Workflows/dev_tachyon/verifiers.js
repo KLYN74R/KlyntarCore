@@ -50,7 +50,7 @@ import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VM} from '../../KLY_VirtualMachines/kly_wvm/vm.js'
 
-import * as _ from './specContracts/root.js'
+import * as _ from './systemContracts/root.js'
 
 import FILTERS from './filters.js'
 
@@ -265,13 +265,13 @@ export let VERIFIERS = {
         }
         else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
 
-            if(tx.payload.lang.startsWith('spec/')){
+            if(tx.payload.lang.startsWith('system/')){
 
                 let typeofContract = tx.payload.lang.split('/')[1]
 
-                if(SPECIAL_CONTRACTS.has(typeofContract)){
+                if(global.SYSTEM_CONTRACTS.has(typeofContract)){
 
-                    await SPECIAL_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
+                    await global.SYSTEM_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
 
                     senderAccount.balance-=goingToSpend
             
@@ -279,7 +279,7 @@ export let VERIFIERS = {
                     
                     rewardBox.fees+=tx.fee
 
-                }else return {isOk:false,reason:`No such type of special contract`}
+                }else return {isOk:false,reason:`No such type of system contract`}
 
             }else{
 
@@ -321,7 +321,7 @@ export let VERIFIERS = {
 
         {
 
-            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, SPECIAL_CONTRACTS)>,
+            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, system contracts)>,
             method:<string method to call>,
             gasLimit:<maximum allowed in KLY to execute contract>
             params:[] params to pass to function
@@ -356,9 +356,9 @@ export let VERIFIERS = {
 
                     let typeofContract = contractMeta.lang.split('/')[1]
 
-                    if(SPECIAL_CONTRACTS.has(typeofContract)){
+                    if(global.SYSTEM_CONTRACTS.has(typeofContract)){
 
-                        let contract = SPECIAL_CONTRACTS.get(typeofContract)
+                        let contract = global.SYSTEM_CONTRACTS.get(typeofContract)
                         
                         await contract[tx.payload.method](tx,originSubchain,atomicBatch)
 
@@ -370,7 +370,7 @@ export let VERIFIERS = {
                         rewardBox.fees+=tx.fee
 
 
-                    }else return {isOk:false,reason:`No such type of special contract`}
+                    }else return {isOk:false,reason:`No such type of system contract`}
 
 
                 }else {

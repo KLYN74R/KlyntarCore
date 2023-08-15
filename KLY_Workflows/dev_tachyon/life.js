@@ -14,7 +14,7 @@ import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.j
 
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
-import SPECIAL_OPERATIONS_VERIFIERS from './operationsVerifiers.js'
+import SYSTEM_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -247,7 +247,7 @@ DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyO
 
 
 
-EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint) => {
+EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
@@ -263,7 +263,7 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
     //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
     for(let operation of fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.operations){
      
-        if(operation.type==='SLASH_UNSTAKE') await SPECIAL_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
+        if(operation.type==='SLASH_UNSTAKE') await SYSTEM_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
     
     }
 
@@ -278,12 +278,12 @@ EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuor
             
             OPERATION in checkpoint has the following structure
             {
-                type:<TYPE> - type from './operationsVerifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./operationsVerifiers.js
+                type:<TYPE> - type from './systemOperationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./systemOperationsVerifiers.js
             }
             
         */
-        await SPECIAL_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThreadWithNewCheckpoint)
+        await SYSTEM_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThreadWithNewCheckpoint)
     
     }
 
@@ -382,7 +382,7 @@ export let GET_VALID_CHECKPOINT = async threadID => {
 let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
-    //_________________________________FIND THE NEXT CHECKPOINT AND EXECUTE SPECIAL_OPERATIONS INSTANTLY_________________________________
+    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE SYNC SYSTEM OPERATIONS INSTANTLY_____________________________
 
     
     let possibleCheckpoint = await GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
@@ -407,7 +407,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
         // Execute special operations from new checkpoint using our copy of QT and atomic handler
-        await EXECUTE_SPECIAL_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
+        await EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
 
 
         // After execution - create the reassignment chains
@@ -1394,11 +1394,11 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
             if(finalizationProofsMapping.has(descriptor.pubKey)) continue
     
     
-            let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.text()).then(async possibleFinalizationProof=>{
+            let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.json()).then(async possibleFinalizationProof=>{
                 
-                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof).catch(_=>false)
+                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(_=>false)
     
-                if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof)
+                if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof.fp)
     
             
             }).catch(_=>false)
@@ -1546,11 +1546,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
             */
 
     
-            let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.text()).then(async possibleCommitment=>{
+            let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
 
-                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment).catch(_=>false)
+                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(_=>false)
     
-                if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment)
+                if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment.commitment)
 
             }).catch(_=>{})
     
