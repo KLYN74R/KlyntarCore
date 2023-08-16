@@ -6,7 +6,7 @@ import {
 
     GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT, GET_ALL_KNOWN_PEERS,
 
 } from './utils.js'
 
@@ -2445,10 +2445,97 @@ RESTORE_STATE=async()=>{
 
 
 
+/*
 
-GET_PREVIOUS_EPOCH_FINALIZATION_PROOF = async previousCheckpointFullId => {
+Function to find the EPOCH_FINALIZATION_PROOFS for appropriate subchain
 
-    // payloadHash + "#" + index
+Ask the network in special order:
+
+    1) Special configured URL (it might be plugin's API)
+    2) Quorum members
+    3) Other known peers
+
+*/
+GET_PREVIOUS_EPOCH_FINALIZATION_PROOF = async() => {
+
+    // global.SYMBIOTE_META.GENERATION_THREAD
+
+    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+
+    let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
+
+    
+    for(let nodeURL of allKnownNodes){
+
+        let itsProbablyEpochFinalizationProof = await fetch(nodeURL+'/epoch_finalization_proof/'+subchainID).then(r=>r.json()).catch(_=>false)
+
+        let overviewIsOK =
+        
+            typeof itsProbablyEpochFinalizationProof.lastAuthority === 'string'
+            &&
+            typeof itsProbablyEpochFinalizationProof.lastIndex === 'number'
+            &&
+            typeof itsProbablyEpochFinalizationProof.lastHash === 'string'
+            &&
+            typeof itsProbablyEpochFinalizationProof.proof === 'object'
+
+
+        if(overviewIsOK && itsProbablyEpochFinalizationProof){
+
+            /*
+            
+                The structure of EPOCH_FINALIZATION_PROOF is
+
+                {
+                    lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+                    lastIndex:<index of his block in previous epoch>,
+                    lastHash:<hash of this block>,
+
+                    proof:{
+
+                        aggregatedPub:<BLS aggregated pubkey of signers>,
+                        aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                        afkVoters:[] - array of BLS pubkeys who haven't voted
+
+                    }
+                }
+
+                We need to verify that majority have voted for such solution
+
+                For this:
+
+                    0) reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length-global.SYMBIOTE_META.GENERATION_THREAD.majority
+                    1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+            */
+
+            let {aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyEpochFinalizationProof.proof
+
+            let reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length - global.SYMBIOTE_META.GENERATION_THREAD.majority
+
+            let rootPub = global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub
+
+            let {lastAuthority,lastIndex,lastHash} = itsProbablyEpochFinalizationProof
+
+            let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
+
+            let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+            if(proofIsOk){
+
+                return {
+                    
+                    lastAuthority,lastIndex,lastHash,
+                
+                    proof:{aggregatedPub,aggregatedSignature,afkVoters}
+
+                }
+
+            }
+
+        }
+
+    }
     
 }
 
@@ -2490,7 +2577,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
-        extraData.previousEpochFinalizationProof = await GET_PREVIOUS_EPOCH_FINALIZATION_PROOF(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+        extraData.previousEpochFinalizationProof = await GET_PREVIOUS_EPOCH_FINALIZATION_PROOF()
 
         // If we can't find a proof - try to do it later
         
@@ -2528,7 +2615,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // Do it only for the first block in epoch(with index 0)
 
-        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB].index+1){
+        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 0){
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         
@@ -2547,13 +2634,15 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
             extraData.reassignments = {}
 
+            // If we can't find all the ASPs (from primePool to you) - skip this iteration to try again later
+
             // 0.Add the ASP for prime pool
 
             if(tempObject.SKIP_HANDLERS.has(myPrimePool)){
 
                 extraData.reassignments[myPrimePool] = tempObject.SKIP_HANDLERS.get(myPrimePool).aggregatedSkipProof
 
-            }
+            }else return
 
             // 1.And for all the previous reserve pools from position 0 to (<YOUR_POSITION>-1)
 
@@ -2563,10 +2652,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
                     extraData.reassignments[reservePool] = tempObject.SKIP_HANDLERS.get(reservePool).aggregatedSkipProof
 
-                }
+                }else return
 
             }
-
 
         }
 
