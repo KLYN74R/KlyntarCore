@@ -39,9 +39,9 @@ export let
 //Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URL" node for new blocks
 //If no answer - try to find blocks somewhere else
 
-GET_BLOCK = async (blockCreator,index) => {
+GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
-    let blockID=blockCreator+":"+index
+    let blockID = epochIndex+":"+blockCreator+":"+index
     
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
 
@@ -157,7 +157,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablyAggre
 
 Structure => {
     
-    blockID:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
+    blockID:"521:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
 
     blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
 
@@ -375,7 +375,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-CHECK_ASP_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
 
     /*
 
@@ -447,7 +447,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     let arrayOfPoolsWithZeroProgress = []
 
 
-    if(typeof aspForPrimePool === 'object' && await CHECK_ASP_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID)){
+    if(typeof aspForPrimePool === 'object' && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID)){
 
         
         let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
@@ -457,7 +457,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             let aspForThisReservePool = reassignmentsRef[poolPubKey]
 
-            if(aspForThisReservePool && await CHECK_ASP_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID)){
+            if(aspForThisReservePool && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID)){
 
                 if(aspForThisReservePool.index === oldCheckpointMetadata[poolPubKey].index){
 
@@ -637,7 +637,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     // Get the first block of this epoch from POOLS_METADATA
 
-                    let firstBlockInThisEpochByPool = await GET_BLOCK(currentReservePool,oldCheckpoint.payload.poolsMetadata[currentReservePool].index+1)
+                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.header.id,currentReservePool,oldCheckpoint.payload.poolsMetadata[currentReservePool].index+1)
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 
@@ -1167,6 +1167,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
 
+        let vtCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
 
         
         
@@ -1204,7 +1205,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 // Process the block
                 
-                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
                 if(block){
 
@@ -1249,14 +1250,14 @@ START_VERIFICATION_THREAD=async()=>{
 
                 // Ask the N+1 block
 
-                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
 
                 if(block){
 
                     let blockHash = Block.genHash(block)
 
-                    let blockID = poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.index+1)
+                    let blockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.index+1)
 
                     // Get the AFP for this block
 
@@ -1299,7 +1300,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
                 // Ask the N+1 block
 
-                let block = await GET_BLOCK(poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
                 if(block){
 
@@ -1412,7 +1413,7 @@ SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepie
 
 
 //Function to distribute stakes among blockCreator/staking pools
-DISTRIBUTE_FEES=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
+DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
 
     /*
 
@@ -1497,7 +1498,9 @@ verifyBlock=async(block,subchainContext)=>{
         
         let rewardBox = {fees:0}
 
-        let currentBlockID = block.creator+":"+block.index
+        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.index
+
+        let currentBlockID = currentCheckpointIndex+":"+block.creator+":"+block.index
 
 
         global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
@@ -1579,7 +1582,7 @@ verifyBlock=async(block,subchainContext)=>{
 
             //__________________________________________SHARE FEES AMONG POOLS_________________________________________
         
-            await DISTRIBUTE_FEES(rewardBox.fees,subchainContext,activePools,block.creator)
+            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,subchainContext,activePools,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    

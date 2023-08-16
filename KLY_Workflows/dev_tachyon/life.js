@@ -774,7 +774,7 @@ PROOFS_SYNCHRONIZER=async()=>{
                 
                 let {hash,aggregatedCommitments} = keyValue[1]
     
-                let [poolPubKey,index] = blockID.split(':')
+                let [_,poolPubKey,index] = blockID.split(':')
 
                 index=+index
     
@@ -815,15 +815,6 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     //Repeat this procedure permanently, but in sync mode
     setImmediate(PROOFS_SYNCHRONIZER)
-
-},
-
-
-
-
-MAKE_CHECKPOINT = async checkpointHeader => {
-
-
 
 },
 
@@ -982,9 +973,6 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
         myCheckpoint.header.afkVoters=global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.filter(pubKey=>!otherAgreements.has(pubKey))
 
 
-        //Store time tracker to DB
-        await USE_TEMPORARY_DB('put',checkpointTemporaryDB,'CHECKPOINT_TIME_TRACKER',GET_GMT_TIMESTAMP()).catch(_=>false)
-
         //Send the header to hostchain
         await MAKE_CHECKPOINT(myCheckpoint.header).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
 
@@ -996,22 +984,8 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
 
 
-CAN_PROPOSE_CHECKPOINT=async()=>{
-
-    console.log('DEBUG: Calling <CALL_PROPOSE_CHECKPOINT>')
-
-    // Stub
-    return false
-
-},
-
-
-
-
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
-
-    //__________________________ If we've runned the second stage - skip the code below __________________________
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -1025,75 +999,17 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-    let timestamp = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
-
-    let myPotentialCheckpoint = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,`CHECKPOINT`).catch(_=>false)
 
 
-
-    if(timestamp && timestamp + global.CONFIG.SYMBIOTE.TIME_TRACKER.COMMIT > GET_GMT_TIMESTAMP()){
-
-        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
-
-        return
-
-    }
-
-
-    //Delete the time tracker
-    await USE_TEMPORARY_DB('del',temporaryObject.DATABASE,`CHECKPOINT_TIME_TRACKER`).catch(_=>false)
- 
-
-    if(myPotentialCheckpoint){
-        
-        await INITIATE_CHECKPOINT_STAGE_2_GRABBING(myPotentialCheckpoint).catch(_=>{})
-
-        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
-
-        return
-
-    }
-
-    // Get the latest known block and check if it's next day. In this case - make currentFinalizationProofsRequests.set('NEXT_CHECKPOINT',true) to prevent generating  COMMITMENTS / FINALIZATION_PROOFS and so on
-
-    /*
+    let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
     
-        Here we generate the checkpoint and go through the other quorum members to get signatures of proposed checkpoint PAYLOAD
-
-        Here is the structure we should build & distribute
-
-        {
-            
-            prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
-            
-            poolsMetadata: {
-                
-                '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
-
-                /..other data
-            
-            },
-            operations: GET_SPECIAL_OPERATIONS(),
-            otherSymbiotes: {}
-        
-        }
-
-        To sign it => SIG(BLAKE3(JSON.stringify(<PROPOSED>)))
-    
-    */
-
-
-    let canProposeCheckpoint = await CAN_PROPOSE_CHECKPOINT(),
-
         iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB),
 
         checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.timestamp,GET_GMT_TIMESTAMP())
 
 
 
-    if(canProposeCheckpoint && iAmInTheQuorum && !checkpointIsFresh){
+    if(iAmInTheQuorum && !checkpointIsFresh){
 
 
         // Stop to generate commitments/finalization proofs
@@ -1360,7 +1276,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) //each 3 seconds - do monitoring
+    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) // each 3 seconds - do monitoring
 
 },
 
@@ -1452,7 +1368,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
         
         {
         
-            blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+            blockID:"93:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
 
             blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
         
@@ -1656,6 +1572,8 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash + "#" + global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
@@ -1694,7 +1612,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     }
 
 
-    let blockID = global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
+    let blockID = checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
 
 
     if(FINALIZATION_PROOFS.has(blockID)){
@@ -2072,6 +1990,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject){
@@ -2110,7 +2030,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let {index,hash}=tempObject.CHECKPOINT_MANAGER.get(poolPubKey)
 
-            let baseBlockID = poolPubKey+":"+index
+            let baseBlockID = checkpointIndex+":"+poolPubKey+":"+index
 
             let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP:'+baseBlockID).catch(_=>false)
             
@@ -2233,7 +2153,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(pubKey)
 
         // blockID+hash+'FINALIZATION'+checkpointFullID
-        let data = pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
+        let data = checkpointIndex+':'+pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
 
         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
@@ -2287,7 +2207,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedFinalizationProof
 
                         // blockID+hash+'FINALIZATION'+quorumThreadCheckpointFullID
-                        let data = candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
+                        let data = checkpointIndex+":"+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
     
                         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
@@ -3441,6 +3361,8 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let quorumThreadCheckpointFullID = qtCheckpoint.header.payloadHash+"#"+qtCheckpoint.header.id
 
+    let quorumThreadCheckpointIndex = qtCheckpoint.header.id
+
     let tempObject = global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)
 
     if(!tempObject){
@@ -3587,7 +3509,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                             // Verify the AFP for block
     
                         
-                            let blockID = firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
+                            let blockID = quorumThreadCheckpointIndex+':'+firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
     
                             let blockHash = Block.genHash(firstBlockByCurrentAuthority)
     
@@ -3654,7 +3576,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                             // Here ask the first block by this pool in this epoch, verify the SFP and continue
     
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
 
                                             // In this block we should have ASP for all the previous reservePools + primePool
                                 

@@ -201,7 +201,7 @@ let RETURN_BLOCK = async(blockID,connection) => {
 
         let promises = []
 
-        let [blockCreator,initIndex] = blockID.split(':')
+        let [_epochIndex,blockCreator,initIndex] = blockID.split(':')
 
         let limit
 
@@ -248,6 +248,8 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let qtPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
+
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -298,7 +300,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
         
         if(firstBlockOfRange.index !== 0){
     
-            let localPreFirstBlock = await global.SYMBIOTE_META.BLOCKS.get(firstBlockOfRange.creator+':'+(firstBlockOfRange.index-1)).catch(_=>false)
+            let localPreFirstBlock = await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+':'+firstBlockOfRange.creator+':'+(firstBlockOfRange.index-1)).catch(_=>false)
     
             if(GEN_BLOCK_HASH(localPreFirstBlock) !== firstBlockOfRange.prevHash) return
     
@@ -312,7 +314,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
         for(let block of blocksArray){
     
-            promises.push(global.SYMBIOTE_META.BLOCKS.put(block.creator+':'+block.index,block).catch(_=>false))
+            promises.push(global.SYMBIOTE_META.BLOCKS.put(checkpointIndex+':'+block.creator+':'+block.index,block).catch(_=>false))
                 
             let nextPosition = startPosition + 1
     
@@ -334,7 +336,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
         // Now we can generate commitment for the last block in range - <lastBlockOfRange>
 
-        let lastBlockID = lastBlockOfRange.creator+':'+lastBlockOfRange.index
+        let lastBlockID = checkpointIndex+':'+lastBlockOfRange.creator+':'+lastBlockOfRange.index
 
         commitmentsMap[lastBlockID] = await bls.singleSig(lastBlockID+GEN_BLOCK_HASH(lastBlockOfRange)+checkpointFullID,global.PRIVATE_KEY)
 
@@ -502,7 +504,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
 let ACCEPT_AGGREGATED_FINALIZATION_PROOF=(aggregatedFinalizationProof,_connection)=>{
 
-    global.NEW_VERIFIED_HEIGHT = +(aggregatedFinalizationProof.blockID.split(':')[1])
+    global.NEW_VERIFIED_HEIGHT = +(aggregatedFinalizationProof.blockID.split(':')[2])
 
     LOG({data:`Accept AFP for ${aggregatedFinalizationProof.blockID}`},'CD')    
 

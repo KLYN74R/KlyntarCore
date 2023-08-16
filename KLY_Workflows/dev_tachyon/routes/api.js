@@ -114,7 +114,7 @@ nodes=(response,request)=>{
 
 
 
-// 0 - blockID(in format <BLS_ValidatorPubkey>:<height>)
+// 0 - blockID(in format <EpochID>:<BLS_ValidatorPubkey>:<Index of block in epoch>)
 // Returns block
 getBlockById=(response,request)=>{
 
@@ -205,7 +205,7 @@ getLatestNBlocks=async(response,request)=>{
 
 
 // 0 - subchainID
-// 1 - SID
+// 1 - SID(format subchainID:Index)
 getBlockBySID=(response,request)=>{
 
     //Set triggers
