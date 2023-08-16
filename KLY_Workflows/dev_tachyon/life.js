@@ -2385,9 +2385,11 @@ GET_PREVIOUS_EPOCH_FINALIZATION_PROOF = async() => {
     let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
 
     
-    for(let nodeURL of allKnownNodes){
+    for(let nodeEndpoint of allKnownNodes){
 
-        let itsProbablyEpochFinalizationProof = await fetch(nodeURL+'/epoch_finalization_proof/'+subchainID).then(r=>r.json()).catch(_=>false)
+        let finalURL = `${nodeEndpoint}/epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
+
+        let itsProbablyEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(_=>false)
 
         let overviewIsOK =
         

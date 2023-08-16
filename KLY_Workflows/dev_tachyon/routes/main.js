@@ -1459,29 +1459,30 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
 /*
-
-To return payload of some checkpoint by it's hash
-
-Params:
-
-    [0] - payloadHash
-
-
-Returns:
+            
+    The structure of EPOCH_FINALIZATION_PROOF is
 
     {
-        prevCheckpointPayloadHash: '',
-        poolsMetadata: [Object],
-        operations: [],
-        otherSymbiotes: {}
+        lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+        lastIndex:<index of his block in previous epoch>,
+        lastHash:<hash of this block>,
+
+        proof:{
+
+                aggregatedPub:<BLS aggregated pubkey of signers>,
+                aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                afkVoters:[] - array of BLS pubkeys who haven't voted
+
+        }
+    
     }
 
 */
-getPayloadForCheckpoint=async(response,request)=>{
+getEpochFinalizationProof=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.PAYLOAD_FOR_CHECKPOINT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_EPOCH_FINALIZATION_PROOF){
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -1492,20 +1493,22 @@ getPayloadForCheckpoint=async(response,request)=>{
             return
 
         }
+        
 
-        let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
+        let epochIndex = request.getParameter(0)
 
-        let payloadHash = request.getParameter(0),
+        let subchainID = request.getParameter(1)
 
-            checkpoint = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false) || await global.SYMBIOTE_META.CHECKPOINTS.get(payloadHash).then(headerAndPayload=>headerAndPayload.payload).catch(_=>false)
+        let epochFinalizationProofForSubchain = await global.SYMBIOTE_META.CHECKPOINTS.get(`EFP:${epochIndex}:${subchainID}`).catch(_=>false)
 
-        if(checkpoint){
 
-            !response.aborted && response.end(JSON.stringify(checkpoint))
+        if(epochFinalizationProofForSubchain){
 
-        }else !response.aborted && response.end('No checkpoint')
+            !response.aborted && response.end(JSON.stringify(epochFinalizationProofForSubchain))
 
-    }else !response.aborted && response.end('Route is off')
+        }else !response.aborted && response.end(JSON.stringify({err:'No EFP'}))
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
 
@@ -1795,6 +1798,9 @@ UWS_SERVER
 
 
 //_______________________________ Routes for checkpoint _______________________________
+
+
+.get('/epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getEpochFinalizationProof)
 
 
 // // To sign the checkpoints' payloads
