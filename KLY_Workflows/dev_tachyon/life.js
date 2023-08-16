@@ -2441,6 +2441,15 @@ RESTORE_STATE=async()=>{
 
     }
 
+},
+
+
+
+
+GET_PREVIOUS_EPOCH_FINALIZATION_PROOF = async previousCheckpointFullId => {
+
+    // payloadHash + "#" + index
+    
 }
 
 
@@ -2458,6 +2467,8 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     let qtCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
     let tempObject = global.SYMBIOTE_META.TEMP.get(qtCheckpointFullID)
 
 
@@ -2471,34 +2482,51 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(typeof myDataInReassignments === 'object') return
 
 
+    let extraData = {}
+
     // Check if <checkpointFullID> is the same in QT and in GT
     
     if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId !== qtCheckpointFullID){
 
+        // If new epoch - add the aggregated proof of previous epoch finalization
+
+        extraData.previousEpochFinalizationProof = await GET_PREVIOUS_EPOCH_FINALIZATION_PROOF(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+
+        // If we can't find a proof - try to do it later
         
+        if(!extraData.previousEpochFinalizationProof) return
+
+            
+
+        // Update the index & hash of epoch
+
         global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId = qtCheckpointFullID
 
+        global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex = checkpointIndex
 
-        // And nullish the index & hash to the ranges of checkpoint
+        // Recount new values
 
-        let myMetadataFromCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]
+        global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = myMetadataFromCheckpoint.hash
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtCheckpointFullID)
+
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY('QUORUM_THREAD')
+
+
+        // And nullish the index & hash in generation thread for new epoch
+
+        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde'
  
-        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex = myMetadataFromCheckpoint.index + 1
-
+        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex = 0
     
     }
-
-
-    let extraData = {}
 
     
     // If we are even not in reserve - return
 
     if(typeof myDataInReassignments === 'string'){
 
-        // Do it only for the first block in epoch
+        // Do it only for the first block in epoch(with index 0)
 
         if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[global.CONFIG.SYMBIOTE.PUB].index+1){
 
@@ -2554,16 +2582,22 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-    let numberOfBlocksToGenerate=Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate = Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
 
-    // Add the system sync operations to block extra data
+
+
+    //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
+
+    // 0.Add the system sync operations to block extra data
 
     extraData.systemSyncOperations = GET_SYSTEM_SYNC_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
-    
-    // Add the extra data to block
+
+    // 1.Add the extra data to block from configs(it might be your note, for instance)
 
     extraData.rest = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
+
+
 
 
     //DEBUG
@@ -2580,12 +2614,12 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate=new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
                         
-        let hash=Block.genHash(blockCandidate)
+        let hash = Block.genHash(blockCandidate)
 
 
-        blockCandidate.sig=await BLS_SIGN_DATA(hash)
+        blockCandidate.sig = await BLS_SIGN_DATA(hash)
             
         BLOCKLOG(`New block generated`,hash,blockCandidate)
 
@@ -2594,7 +2628,8 @@ export let GENERATE_BLOCKS_PORTION = async() => {
  
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
-        let blockID=global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
+        // BlockID has the following format => epochID(checkpointIndex):BLS_Pubkey:IndexOfBlockInCurrentEpoch
+        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)
@@ -3088,11 +3123,11 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             
-            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde',
+            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde#-1',
             
-            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // Genesis hash
+            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
             
-            nextIndex:0 // So the first block will be with index 0
+            nextIndex:0 // so the first block will be with index 0
         
         }
         :
@@ -3212,6 +3247,16 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
 
+
+    if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId === checkpointFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
+
+        global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
+
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY('QUORUM_THREAD')
+
+    }
 
     //_________________________________Add the temporary data of current QT__________________________________________
     
