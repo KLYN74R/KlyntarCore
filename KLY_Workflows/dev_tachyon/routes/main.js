@@ -59,11 +59,13 @@ acceptBlocks=response=>{
     
     let buffer = Buffer.alloc(0)
     
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let checkpointFullID = checkpoint.header.payloadHash+"#"+checkpoint.header.id
 
-    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
+    let checkpointIndex = checkpoint.header.id
+
+    let poolsMetadataOnQuorumThread = checkpoint.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -191,11 +193,19 @@ acceptBlocks=response=>{
                         1) EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.previousEpochFinalizationProof
                         2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
+                        Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
+
 
                     */
 
-                    allChecksPassed &&= itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,block,)
+                    let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
+
+                    let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+
+                    allChecksPassed &&= block.index!==0 || itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,block,positionOfBlockCreatorInReassignmentChain,checkpointFullID,poolsMetadataOnQuorumThread,'QUORUM_THREAD')
     
+
+
                     if(allChecksPassed){
                         
                         //Store it locally-we'll work with this block later

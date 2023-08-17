@@ -375,7 +375,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFullID) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFullID,checkpoint,threadID) => {
 
     /*
 
@@ -403,18 +403,17 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
     */
 
-
-    let vtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
-
     let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.index}:${asp.hash}:${checkpointFullID}`
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = asp.skipProof
 
-    let majority = GET_MAJORITY('VERIFICATION_THREAD')
+    let quorumRootPub = threadID==='QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
-    let reverseThreshold = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum.length-majority
+    let majority = GET_MAJORITY(_,checkpoint)
 
-    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,vtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+    let reverseThreshold = checkpoint.quorum.length-majority
+
+    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
 
     return aspIsOk
@@ -426,7 +425,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
 
 
-CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpointMetadata) => {
+CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID) => {
 
     // Take all the reservePools from beginning of reassignment chain up to the <position>
 
@@ -447,7 +446,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     let arrayOfPoolsWithZeroProgress = []
 
 
-    if(typeof aspForPrimePool === 'object' && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID)){
+    if(typeof aspForPrimePool === 'object' && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)){
 
         
         let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
@@ -457,9 +456,9 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             let aspForThisReservePool = reassignmentsRef[poolPubKey]
 
-            if(aspForThisReservePool && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID)){
+            if(aspForThisReservePool && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID,oldCheckpoint,threadID)){
 
-                if(aspForThisReservePool.index === oldCheckpointMetadata[poolPubKey].index){
+                if(aspForThisReservePool.index === oldCheckpoint[poolPubKey].index){
 
                     // If this reserve pool has no progress since previous checkpoint and was skipped on the same height - it's invalid
 
@@ -641,7 +640,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 
-                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint.payload.poolsMetadata)
+                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
 
                     if(isOK){
 

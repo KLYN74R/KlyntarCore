@@ -3412,9 +3412,11 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
     let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
 
-    let reassignmentChains = verificationThread.CHECKPOINT.reassignmentChains
+    let vtCheckpoint = verificationThread.CHECKPOINT
 
-    let poolsMetadataFromVtCheckpoint = verificationThread.CHECKPOINT.payload.poolsMetadata
+    let reassignmentChains = vtCheckpoint.reassignmentChains
+
+    let poolsMetadataFromVtCheckpoint = vtCheckpoint.payload.poolsMetadata
     
 
 
@@ -3558,7 +3560,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentReservePoolIndex, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentReservePoolIndex, quorumThreadCheckpointFullID, vtCheckpoint
                                 
                                 )
     
@@ -3615,7 +3617,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                 
                                             let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{},arrayOfPoolsWithZeroProgress:[]} : await CHECK_IF_ALL_ASP_PRESENT(
                                                         
-                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, poolsMetadataFromVtCheckpoint
+                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint
                                                         
                                             )
                                 
@@ -3653,7 +3655,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                             for(let [skippedPool,descriptor] of Object.entries(reassignStats)){
 
-                                                if(!tempReassignmentChain[skippedPool]) tempReassignmentChain[skippedPool]=descriptor
+                                                if(!tempReassignmentChain[skippedPool]) tempReassignmentChain[skippedPool] = descriptor
                         
                                             }
 
