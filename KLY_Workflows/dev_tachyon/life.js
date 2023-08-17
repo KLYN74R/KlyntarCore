@@ -1015,45 +1015,126 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             return
 
         }
-
-
-        let promisesToFindFirstBlock = []
-        
-        let numberOfPrimePools = 0
     
+        let numberOfPrimePools = 0
 
+        let checkpointProposition = {}
+    
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
-
-            // Now iterate over subchains, get the current authority in each subchain and check
-            // if the first block in current epoch contains all the ASPs for previous pools in reassignment chain
 
             let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) // {currentReservePool:<number>}
 
-            // If nothing - then this prime pool is still active in current epoch. So, we'll need to find a proof for prime pool 
+            let pubKeyOfAuthority, indexOfAuthority
+            
+            
+            if(handlerWithIndexOfCurrentAuthorityOnSubchain){
 
-            // Otherwise, index is >=0. This is the signal that in the first block in current epoch by reserve pool
-            // reassignmentArray[currentAuthorityOnSubchain.currentReservePool] we need to find ASPs(Aggregated Skip Proofs) for prime pool and all the reserve
-            // pool from  reassignmentArray[0] to reassignmentArray[index-1](until this reserve pool)
+                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool]
 
-            let pubKeyOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain ? reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool] : primePoolPubKey
+                indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool
 
-            // Find this block, find AFP for it, verify ASPs and if everything is OK for ALL the subchains - we can stop FP & commitments creating and prepare for checkpoint creation
+            }else{
 
-            promisesToFindFirstBlock.push(GET_BLOCK(checkpointIndex,pubKeyOfAuthority,0))
+                pubKeyOfAuthority = primePoolPubKey
 
-            numberOfPrimePools++
+                indexOfAuthority = -1
 
+            }
+            
+            
+
+
+            /*
+            
+                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by subchain authority will contain all the ASPs
+        
+                1) Start to build so called CHECKPOINT_PROPOSITION. This object has the following structure
+
+
+                {
+                
+                    "subchain0":{
+
+                        currentAuth:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
+
+                        finalizationProof:{
+                            index:,
+                            hash:,
+                            aggregatedCommitments:{
+
+                                aggregatedPub:,
+                                aggregatedSignature:,
+                                afkVoters:[],
+
+                            }
+                    
+                        }
+
+                    },
+
+                    "subchain1":{
+                        
+                    }
+
+                    ...
+                    
+                    "subchainN":{
+                        ...
+                    }
+                
+                }
+
+
+                2) Take the finalizationProof for currentAuth from TEMP.get(<checkpointID>).CHECKPOINT_MANAGER
+
+                3) If nothing in CHECKPOINT_MANAGER - then set index to -1 and hash to default(0123...)
+
+                4) Send CHECKPOINT_PROPOSITION to POST /checkpoint_proposition to all(or at least 2/3N+1) quorum members
+
+
+                ____________________________________________After we get responses____________________________________________
+
+                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.epochFinalizationProof)
+
+                6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called EPOCH_FINALIZATION_PROOF
+
+                    The structure is
+
+
+                    {
+                        
+                        lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+                        lastIndex:<index of his block in previous epoch>,
+                        lastHash:<hash of this block>,
+
+                        proof:{
+
+                            aggregatedPub:<BLS aggregated pubkey of signers>,
+                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                            afkVoters:[] - array of BLS pubkeys who haven't voted
+
+                        }
+                    
+                    }
+
+                7) Then, we can share these proofs by route GET /epoch_finalization_proof/:EPOCH_ID/:SUBCHAIN_ID
+
+                8) Prime pool and other reserve pools on each subchain can query network for this proofs to set to
+                
+                    block.extraData.epochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
+                
+
+            */
+         
+            checkpointProposition[primePoolPubKey] = {
+
+                currentAuthority:indexOfAuthority,
+
+                finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+
+            }
+            
         }
-
-
-        let blocks = (await Promise.all(promisesToFindFirstBlock)).filter(Boolean)
-
-
-        if(blocks.length === numberOfPrimePools){
-
-            // Make sure that all the ASPs present in the first block
-
-        }else return
 
         
         //____________________________________ Build the template of checkpoint's payload ____________________________________
