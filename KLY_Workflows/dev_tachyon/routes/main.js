@@ -6,6 +6,8 @@ import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
+import {CHECK_IF_ALL_ASP_PRESENT} from '../verification.js'
+
 import Block from '../essences/block.js'
 
 
@@ -17,6 +19,7 @@ let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.C
 
 
 //__________________________________________________________BASIC FUNCTIONAL_____________________________________________________________________
+
 
 
 
@@ -52,9 +55,9 @@ let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.C
 */
 acceptBlocks=response=>{
     
-    let total=0
+    let total = 0
     
-    let buffer=Buffer.alloc(0)
+    let buffer = Buffer.alloc(0)
     
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -114,12 +117,35 @@ acceptBlocks=response=>{
 
                 }
 
-                let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[block.creator] && (tempObject.REASSIGNMENTS.has(block.creator) && poolsMetadataOnQuorumThread[block.creator].isReserve || !poolsMetadataOnQuorumThread[block.creator].isReserve)
+                let poolIsReal = poolsMetadataOnQuorumThread[block.creator]
 
+                let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow, itsPrimePool
 
-                if(!primePoolOrAtLeastReassignment){
+                if(poolIsReal){
 
-                    !response.aborted && response.end(JSON.stringify({err:`This block creator can't produce blocks`}))
+                    if(!poolsMetadataOnQuorumThread[block.creator].isReserve){
+
+                        primePoolPubKey = block.creator
+
+                        itsPrimePool = true
+
+                    }
+
+                    else if(typeof tempObject.REASSIGNMENTS.get(block.creator) === 'string'){
+
+                        primePoolPubKey = tempObject.REASSIGNMENTS.get(block.creator)
+
+                        itIsReservePoolWhichIsAuthorityNow = true
+
+                    }
+
+                }
+
+                let thisAuthorityCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsAuthorityNow || itsPrimePool )
+
+                if(!thisAuthorityCanGenerateBlocksNow){
+
+                    !response.aborted && response.end(JSON.stringify({err:`This block creator can't generate blocks`}))
         
                     return
 
@@ -131,8 +157,8 @@ acceptBlocks=response=>{
 
                 let blockID = checkpointIndex+":"+block.creator+":"+block.index
 
-
                 let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
+
                 
                 if(myCommitment){
 
@@ -141,51 +167,60 @@ acceptBlocks=response=>{
                     return
                 
                 }
+
                 
-                let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
+                if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.transactions)){
 
-                    //Compare hashes to make sure it's a chain
-
-                    let prevHash = Block.genHash(prevBlock)
-
-                    return prevHash === block.prevHash
-
-                }).catch(_=>false)
-
-
-                //Otherwise - check if we can accept this block
-
-                let allow=
-            
-                    typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.transactions)//make general lightweight overview
-                    &&
-                    await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
-                    &&
-                    checkIfItsChain
-                
-
-                if(allow){
-                    
-                    //Store it locally-we'll work with this block later
-                    global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
-                            
-                        _ =>
-                            
-                            global.SYMBIOTE_META.BLOCKS.put(blockID,block).catch(_=>{})
-                         
-                    )
-                    
-
-                    let commitment = await BLS_SIGN_DATA(blockID+hash+checkpointFullID)
-                
-
-                    //Put to local storage to prevent double voting
-                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
+                    // Make sure that it's a chain
+                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
     
-                        !response.aborted && response.end(JSON.stringify({commitment:commitment}))
-                    
-                    ).catch(error=>!response.aborted && response.end(JSON.stringify({err:`Something wrong => ${JSON.stringify(error)}`})))
+                        let prevHash = Block.genHash(prevBlock)
+    
+                        return prevHash === block.prevHash
+    
+                    }).catch(_=>false)
+        
 
+                    // Verify signature    
+                    let allChecksPassed = checkIfItsChain && await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)                    
+
+                    /*
+                    
+                        And finally, if it's the first block in epoch - verify that it contains:
+                        
+                        1) EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.previousEpochFinalizationProof
+                        2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
+
+
+                    */
+
+                    allChecksPassed &&= itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,block,)
+    
+                    if(allChecksPassed){
+                        
+                        //Store it locally-we'll work with this block later
+                        global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
+                                
+                            _ =>
+                                
+                                global.SYMBIOTE_META.BLOCKS.put(blockID,block).catch(_=>{})
+                             
+                        )
+                        
+    
+                        let commitment = await BLS_SIGN_DATA(blockID+hash+checkpointFullID)
+                    
+    
+                        //Put to local storage to prevent double voting
+                        await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
+        
+                            !response.aborted && response.end(JSON.stringify({commitment:commitment}))
+                        
+                        ).catch(error=>!response.aborted && response.end(JSON.stringify({err:`Something wrong => ${JSON.stringify(error)}`})))
+    
+    
+                    }else !response.aborted && response.end(JSON.stringify({err:'Overview failed. Make sure input data is ok'}))
+    
 
                 }else !response.aborted && response.end(JSON.stringify({err:'Overview failed. Make sure input data is ok'}))
             
@@ -1493,7 +1528,7 @@ getEpochFinalizationProof=async(response,request)=>{
             return
 
         }
-        
+
 
         let epochIndex = request.getParameter(0)
 

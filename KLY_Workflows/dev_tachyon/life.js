@@ -237,7 +237,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint) => {
+DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint) => {
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -325,7 +325,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOf
     
     for(let address of toRemovePools){
     
-        deletePoolsPromises.push(DELETE_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThreadWithNewCheckpoint))
+        deletePoolsPromises.push(DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThreadWithNewCheckpoint))
     
     }
 
@@ -379,18 +379,6 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOf
 
 
 
-export let GET_VALID_CHECKPOINT = async threadID => {
-
-    console.log('DEBUG: Calling <GET_VALID_CHECKPOINT>')
-
-    // Temporary stub
-    return false
-
-}
-
-
-
-
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
@@ -398,7 +386,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE SYNC SYSTEM OPERATIONS INSTANTLY_____________________________
 
     
-    let possibleCheckpoint = await GET_VALID_CHECKPOINT('QUORUM_THREAD').catch(_=>false)
+    let possibleCheckpoint = false
 
 
     if(possibleCheckpoint){
@@ -989,7 +977,12 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
+    let reassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+
     let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
 
     if(!temporaryObject){
 
@@ -998,7 +991,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         return
 
     }
-
 
 
     let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
@@ -1010,7 +1002,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
     if(iAmInTheQuorum && !checkpointIsFresh){
-
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
@@ -1025,6 +1016,46 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }
 
+
+        let promisesToFindFirstBlock = []
+        
+        let numberOfPrimePools = 0
+    
+
+        for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
+
+            // Now iterate over subchains, get the current authority in each subchain and check
+            // if the first block in current epoch contains all the ASPs for previous pools in reassignment chain
+
+            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) // {currentReservePool:<number>}
+
+            // If nothing - then this prime pool is still active in current epoch. So, we'll need to find a proof for prime pool 
+
+            // Otherwise, index is >=0. This is the signal that in the first block in current epoch by reserve pool
+            // reassignmentArray[currentAuthorityOnSubchain.currentReservePool] we need to find ASPs(Aggregated Skip Proofs) for prime pool and all the reserve
+            // pool from  reassignmentArray[0] to reassignmentArray[index-1](until this reserve pool)
+
+            let pubKeyOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain ? reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool] : primePoolPubKey
+
+            // Find this block, find AFP for it, verify ASPs and if everything is OK for ALL the subchains - we can stop FP & commitments creating and prepare for checkpoint creation
+
+            promisesToFindFirstBlock.push(GET_BLOCK(checkpointIndex,pubKeyOfAuthority,0))
+
+            numberOfPrimePools++
+
+        }
+
+
+        let blocks = (await Promise.all(promisesToFindFirstBlock)).filter(Boolean)
+
+
+        if(blocks.length === numberOfPrimePools){
+
+            // Make sure that all the ASPs present in the first block
+
+        }else return
+
+        
         //____________________________________ Build the template of checkpoint's payload ____________________________________
 
 

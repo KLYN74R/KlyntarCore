@@ -6,6 +6,8 @@ import {
 
 } from './utils.js'
 
+import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
+
 import {LOG,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
@@ -13,8 +15,6 @@ import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
-
-import OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
 import Block from './essences/block.js'
 
@@ -375,7 +375,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPool,asp,checkpointFullID) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFullID) => {
 
     /*
 
@@ -406,7 +406,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPool,asp,checkpointFullID) 
 
     let vtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
-    let dataThatShouldBeSigned = `SKIP:${skippedPool}:${asp.index}:${asp.hash}:${checkpointFullID}`
+    let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.index}:${asp.hash}:${checkpointFullID}`
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = asp.skipProof
 
@@ -731,7 +731,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
 
 
-//Function to find,validate and process logic with new checkpoint
+// Function to find,validate and process logic with new checkpoint
 SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
@@ -761,7 +761,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
         for(let operation of operations){
         
-            if(operation.type==='SLASH_UNSTAKE') await OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
+            if(operation.type==='SLASH_UNSTAKE') await SYSTEM_SYNC_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
         
         }
 
@@ -789,7 +789,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             */
 
-            await OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
+            await SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
     
         }
 
@@ -1009,7 +1009,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             
         )
 
-        global.SYMBIOTE_META.STATE_CACHE.set('MAIN_POOLS',primePools)
+        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
 
 
         // Finally - delete the reassignment metadata
@@ -1140,7 +1140,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         */
 
-        let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('MAIN_POOLS')
+        let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
 
         if(!primePoolsPubkeys){
 
@@ -1150,7 +1150,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
             )
 
-            global.SYMBIOTE_META.STATE_CACHE.set('MAIN_POOLS',primePools)
+            global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
 
             primePoolsPubkeys = primePools
 
