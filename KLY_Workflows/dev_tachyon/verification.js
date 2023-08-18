@@ -624,19 +624,19 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
             // Start the cycle in reverse order
             for(let position = reassignmentArray.length - 1; position >= 0; position--){
 
-                let currentReservePool = reassignmentArray[position]
+                let currentAuthorityPubKey = reassignmentArray[position]
 
 
-                if(arrayOfPoolsThatShouldBeSkipped.includes(currentReservePool)) continue
+                if(arrayOfPoolsThatShouldBeSkipped.includes(currentAuthorityPubKey)) continue
 
 
                 // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
 
-                if(newCheckpoint.payload.poolsMetadata[currentReservePool].index > oldCheckpoint.payload.poolsMetadata[currentReservePool].index){
+                if(newCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index > oldCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index){
 
                     // Get the first block of this epoch from POOLS_METADATA
 
-                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.header.id,currentReservePool,oldCheckpoint.payload.poolsMetadata[currentReservePool].index+1)
+                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.header.id,currentAuthorityPubKey,oldCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index+1)
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 
@@ -644,7 +644,7 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     if(isOK){
 
-                        filtratratedReassignment.set(currentReservePool,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
+                        filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
 
                         if(arrayOfPoolsWithZeroProgress.length) arrayOfPoolsThatShouldBeSkipped = arrayOfPoolsThatShouldBeSkipped.concat(arrayOfPoolsWithZeroProgress)
 

@@ -973,13 +973,13 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
 }
 
 ___________________________________________________________
 
-[0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentReservePoolIndex]
+[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
 
 [1] firstBlockByCurrentAuthority - default block structure
 
@@ -1021,19 +1021,19 @@ getDataForTempReassignments = async response => {
 
         let currentPrimePools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains) // [primePool0, primePool1, ...]
 
-        let templateForResponse = {} // primePool => {currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
         for(let primePool of currentPrimePools){
 
             // Get the current authority
 
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentReservePool:<number>}
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
 
             if(reassignmentHandler){
 
-                let currentReservePoolIndex = reassignmentHandler.currentReservePool
+                let currentAuthorityIndex = reassignmentHandler.currentAuthority
 
-                let currentSubchainAuthority = currentReservePoolIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePool][currentReservePoolIndex]
+                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePool][currentAuthorityIndex]
 
                 // Now get the first block & SFP for it
 
@@ -1055,7 +1055,7 @@ getDataForTempReassignments = async response => {
 
                         templateForResponse[primePool]={
 
-                            currentReservePoolIndex,
+                            currentAuthorityIndex,
                             
                             firstBlockByCurrentAuthority,
                             
@@ -1340,7 +1340,7 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
-        lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
 
@@ -1394,11 +1394,12 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
 
 acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
+    let checkpointFullID = qtCheckpoint.header.payloadHash+"#"+qtCheckpoint.header.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
 
     if(!tempObject){
 
@@ -1477,74 +1478,169 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
         !Reminder: Response structure is
 
         {
+            
             subchainA:{
                                 
-            status:'UPGRADE'|'OK',
+                status:'UPGRADE'|'OK',
 
-            -------------------------------[In case 'OK']-------------------------------
+                -------------------------------[In case 'OK']-------------------------------
 
-            signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                         
-            -----------------------------[In case 'UPGRADE']----------------------------
+                -----------------------------[In case 'UPGRADE']----------------------------
 
-            currentAuthority:<index>,
-            finalizationProof:{
-                index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                currentAuthority:<index>,
+                finalizationProof:{
+                    index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                }   
+
+            },
+
+            subchainB:{
+                ...(same)
+            },
+            ...,
+            subchainQ:{
+                ...(same)
             }
-
-        },
-
-        subchainB:{
-            ...(same)
-        },
-        ...,
-        subchainQ:{
-            ...(same)
-        }
     
-    }
+        }
 
 
     */
    
-    let possibleAggregatedFinalizationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let possibleCheckpointProposition = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
-    
-    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
-
-        !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
-
-        return
-
-    }
-
-    let myLocalBlock = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
-
-    let [_epochIndex,blockCreator,_] = blockID.split(':')
+    let responseStructure = {}
 
 
-    let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
+    if(typeof possibleCheckpointProposition === 'object'){
 
-    let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
-
-    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
-    
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-    
-    let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
-
-    let checkpointTempDB = tempObject.DATABASE
+        for(let [subchainID,proposition] of Object.entries(possibleCheckpointProposition)){
 
 
+            if(responseStructure[subchainID]) continue
 
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
+            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.finalizationProof === 'object' && typeof proposition.finalizationProof.aggregatedCommitments === 'object'){
 
-        !response.aborted && response.end(JSON.stringify({status:'OK'}))
+                // Get the local version of REASSIGNMENTS and CHECKPOINT_MANAGER
 
-    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+                let reassignmentForThisSubchain = tempObject.REASSIGNMENTS.get(subchainID) // {currentAuthority:<uint>}
+
+                let pubKeyOfCurrentAuthorityOnSubchain, localIndexOfAuthority
+                
+
+                if(typeof reassignmentForThisSubchain === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that subchainID is pubkey of reserve pool what is impossible. So, continue
+
+                else if(typeof reassignmentForThisSubchain === 'object') {
+
+                    localIndexOfAuthority = reassignmentForThisSubchain.currentAuthority
+
+                    pubKeyOfCurrentAuthorityOnSubchain = qtCheckpoint.reassignmentChains[subchainID][localIndexOfAuthority]
+
+                }else{
+
+                    // Assume that there is no data about reassignments for given subchain locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === subchainID)
+
+                    localIndexOfAuthority = -1
+
+                    pubKeyOfCurrentAuthorityOnSubchain = subchainID
+
+                }
+
+
+                // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
+
+                let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+
+
+
+                //_________________________________________ Now compare _________________________________________
+
+                if(proposition.currentAuthority === localIndexOfAuthority){
+
+                    if(checkpointManagerForAuthority.index === proposition.finalizationProof.index && checkpointManagerForAuthority.hash === proposition.finalizationProof.hash){
+
+                        // Send EPOCH_FINALIZATION_PROOF signature
+
+                    }else if(checkpointManagerForAuthority.index < proposition.finalizationProof.index){
+
+                        // Verify & upgrade local version
+
+                    }else if(checkpointManagerForAuthority.index > proposition.finalizationProof.index){
+
+                        // Send 'UPGRADE' msg
+
+                    }
+
+
+
+                }else if(proposition.currentAuthority > localIndexOfAuthority){
+
+                    // Verify aggregated commitments and if OK - update the local values in REASSIGNMENTS[subchainID] and CHECKPOINT_MANAGER[pubKeyOfCurrentAuthorityOnSubchain]
+
+                    let {index,hash,aggregatedCommitments} = proposition.finalizationProof
+
+                    let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+
+                    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+                    let dataThatShouldBeSigned = `${qtCheckpoint.header.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
+
+                    let majority = GET_MAJORITY(_,qtCheckpoint)
+
+                    let reverseThreshold = qtCheckpoint.quorum.length-majority
+
+                    let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+
+                    if(isOk){
+
+                        if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
+
+                        else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
+
+
+                        if(checkpointManagerForAuthority){
+
+                            checkpointManagerForAuthority.index = index
+
+                            checkpointManagerForAuthority.hash = hash
+
+                            checkpointManagerForAuthority.aggregatedCommitments = aggregatedCommitments
+
+                        }else tempObject.CHECKPOINT_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,aggregatedCommitments})
+
+                        // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
+
+                        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+checkpointFullID
+
+                        responseStructure[subchainID] = {
+                            
+                            status:'OK',
+                        
+                            sig:await BLS_SIGN_DATA(dataToSign)
+                        
+                        }
+
+                    }
+
+                }else{
+
+                    // Send 'UPGRADE' message
+
+
+
+                }
+
+
+            }            
+
+        }
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
 
 
 }),
@@ -1842,14 +1938,6 @@ UWS_SERVER
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 .post('/checkpoint_proposition',acceptCheckpointProposition)
-
-// // To sign the checkpoints' payloads
-// .post('/checkpoint_stage_1',checkpointStage1Handler)
-
-// // To confirm the checkpoints' payloads. Only after grabbing this signatures we can publish it to hostchain
-// .post('/checkpoint_stage_2',checkpointStage2Handler)
-
-// .get('/payload_for_checkpoint/:PAYLOAD_HASH',getPayloadForCheckpoint)
 
 
 //________________________________ Health monitoring __________________________________

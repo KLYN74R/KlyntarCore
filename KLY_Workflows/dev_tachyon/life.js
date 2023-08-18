@@ -656,21 +656,21 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 // Add the reassignment
 
-                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentReservePool:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
+                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
 
 
                 if(!reassignmentMetadata){
 
                     // Create new handler
 
-                    reassignmentMetadata = {currentReservePool:-1}
+                    reassignmentMetadata = {currentAuthority:-1}
 
                     currentSubchainAuthority = primePoolPubKey
 
-                }else currentSubchainAuthority = currentCheckpointReassignmentChains[primePoolPubKey][reassignmentMetadata.currentReservePool]
+                }else currentSubchainAuthority = currentCheckpointReassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority]
 
 
-                let nextIndex = reassignmentMetadata.currentReservePool+1
+                let nextIndex = reassignmentMetadata.currentAuthority+1
 
                 let nextReservePool = currentCheckpointReassignmentChains[primePoolPubKey][nextIndex] // array currentCheckpointReassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
 
@@ -694,7 +694,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
                 let valuesToAtomicWrite = [
 
-                    {currentReservePool:nextIndex},
+                    {currentAuthority:nextIndex},
 
                     skipHandlerOfAuthority
 
@@ -711,7 +711,7 @@ PROOFS_SYNCHRONIZER=async()=>{
                     currentSkipHandlersMapping.get(currentSubchainAuthority).wasReassigned = true
 
                     
-                    reassignmentMetadata.currentReservePool++
+                    reassignmentMetadata.currentAuthority++
     
 
                     // Set new values - handler for prime pool and pointer to prime pool for reserve pool
@@ -1023,16 +1023,16 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
 
-            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) // {currentReservePool:<number>}
+            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>}
 
             let pubKeyOfAuthority, indexOfAuthority
             
             
             if(handlerWithIndexOfCurrentAuthorityOnSubchain){
 
-                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool]
+                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority]
 
-                indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentReservePool
+                indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority
 
             }else{
 
@@ -1125,7 +1125,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     {
                         
-                        lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+                        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
 
@@ -1191,7 +1191,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
@@ -2507,13 +2507,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
                     primePoolPointer = reassignmentHandlerOrPointerToPrimePool
     
-                    // If candidate is not a prime pool - get the handler for prime pool to get the .currentReservePool property
+                    // If candidate is not a prime pool - get the handler for prime pool to get the .currentAuthority property
                     reassignmentHandlerOrPointerToPrimePool = reassignments.get(reassignmentHandlerOrPointerToPrimePool)
     
                 }
 
                 // No sense to skip the latest pool in chain. Because in this case nobody won't have ability to continue work on subchain
-                candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToPrimePool.currentReservePool === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePoolPointer].length-1)
+                candidateIsLatestInReassignmentChain = reassignmentHandlerOrPointerToPrimePool.currentAuthority === (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePoolPointer].length-1)
 
             }
 
@@ -2578,7 +2578,7 @@ RESTORE_STATE=async()=>{
         
         if(!poolsMetadata.isReserve){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {currentReservePool:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
 
             if(reassignmentMetadata){
 
@@ -2586,7 +2586,7 @@ RESTORE_STATE=async()=>{
 
                 // Using pointer - find the appropriate reserve pool
 
-                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[poolPubKey][reassignmentMetadata.currentReservePool]
+                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[poolPubKey][reassignmentMetadata.currentAuthority]
 
                 tempObject.REASSIGNMENTS.set(reservePool,poolPubKey)                
 
@@ -2860,7 +2860,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
     let overviewIsOK =
         
-        typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'string'
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
         &&
@@ -2875,7 +2875,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
-                lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+                lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
 
@@ -3565,7 +3565,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_HANDLERS:new Map(), // {wasReassigned:boolean,extendedAggregatedCommitments,aggregatedSkipProof}
 
-        REASSIGNMENTS:new Map(), // PrimePool => {currentReservePool:<number>} | ReservePool => PrimePool
+        REASSIGNMENTS:new Map(), // PrimePool => {currentAuthority:<number>} | ReservePool => PrimePool
 
 
         //____________________Mapping which contains temporary databases for____________________
@@ -3692,7 +3692,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     for(let memberHandler of quorumMembers){
 
-        // Make requests to /get_asp_and_approved_first_block. Returns => {currentReservePoolIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
+        // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
 
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
 
@@ -3709,13 +3709,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 {
 
-                    primePool0:{currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
+                    primePool0:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
 
-                    primePool1:{currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
+                    primePool1:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
 
                     ...
 
-                    primePoolN:{currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+                    primePoolN:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
                 }
 
@@ -3723,7 +3723,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                 -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-                [0] currentReservePoolIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentReservePoolIndex]
+                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
 
                 [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a row
 
@@ -3743,7 +3743,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 -----------------------------------------------[What to do next?]-----------------------------------------------
         
-                Compare the <currentReservePoolIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
+                Compare the <currentAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
 
                     In case our local version has bigger index - ignore
 
@@ -3768,9 +3768,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 if(typeof primePoolPubKey === 'string' && typeof reassignMetadata==='object'){
     
-                    let {currentReservePoolIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority} = reassignMetadata
+                    let {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority} = reassignMetadata
     
-                    if(typeof currentReservePoolIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForFirstBlockByCurrentAuthority==='object'){
+                    if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForFirstBlockByCurrentAuthority==='object'){
             
                         
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
@@ -3778,7 +3778,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].index+1
 
     
-                        if(localPointer <= currentReservePoolIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
+                        if(localPointer <= currentAuthorityIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
     
                             
                             // Verify the AFP for block
@@ -3800,7 +3800,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentReservePoolIndex, quorumThreadCheckpointFullID, vtCheckpoint
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint
                                 
                                 )
     
@@ -3824,13 +3824,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                             
                                     // Fill the tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool]
     
-                                    // let previousAuthorityIndexInReassignmentChain = currentReservePoolIndex-1
+                                    // let previousAuthorityIndexInReassignmentChain = currentAuthorityIndex-1
     
                                     // let previousAuthority = previousAuthorityIndexInReassignmentChain === -1 ? primePool : reassignmentChains[primePool][previousAuthorityIndexInReassignmentChain]
     
                                     // tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].reassignments[previousAuthority] = filteredReassignments[previousAuthority]
     
-                                    // And do the same from currentReservePoolIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
+                                    // And do the same from currentAuthorityIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
     
 
                                     let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
@@ -3839,7 +3839,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                
 
 
-                                    for(let position = currentReservePoolIndex-1 ; position >= limitPointer ; position--){
+                                    for(let position = currentAuthorityIndex-1 ; position >= limitPointer ; position--){
     
                                         let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
 
@@ -3903,7 +3903,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // Finally, set the <currentAuthority> to the new pointer
 
-                                        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority = currentReservePoolIndex
+                                        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority = currentAuthorityIndex
 
                                     }
     
