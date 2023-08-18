@@ -4,6 +4,8 @@ import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
 
 import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 
+import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
+
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {CHECK_IF_ALL_ASP_PRESENT} from '../verification.js'
@@ -53,7 +55,7 @@ let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.C
     <OR> nothing
 
 */
-acceptBlocks=response=>{
+acceptBlocks = response => {
     
     let total = 0
     
@@ -62,10 +64,6 @@ acceptBlocks=response=>{
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
     let checkpointFullID = checkpoint.header.payloadHash+"#"+checkpoint.header.id
-
-    let checkpointIndex = checkpoint.header.id
-
-    let poolsMetadataOnQuorumThread = checkpoint.payload.poolsMetadata
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -119,6 +117,8 @@ acceptBlocks=response=>{
 
                 }
 
+                let poolsMetadataOnQuorumThread = checkpoint.payload.poolsMetadata
+
                 let poolIsReal = poolsMetadataOnQuorumThread[block.creator]
 
                 let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow, itsPrimePool
@@ -157,7 +157,7 @@ acceptBlocks=response=>{
 
                 let hash = Block.genHash(block)
 
-                let blockID = checkpointIndex+":"+block.creator+":"+block.index
+                let blockID = checkpoint.header.id+":"+block.creator+":"+block.index
 
                 let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
 
@@ -174,7 +174,7 @@ acceptBlocks=response=>{
                 if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.transactions)){
 
                     // Make sure that it's a chain
-                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
+                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpoint.header.id+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
     
                         let prevHash = Block.genHash(prevBlock)
     
@@ -190,7 +190,7 @@ acceptBlocks=response=>{
                     
                         And finally, if it's the first block in epoch - verify that it contains:
                         
-                        1) EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.previousEpochFinalizationProof
+                        1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.previousAggregatedEpochFinalizationProof
                         2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
@@ -198,14 +198,47 @@ acceptBlocks=response=>{
 
                     */
 
+                    //_________________________________________1_________________________________________
+
+                    allChecksPassed &&= block.index!==0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                        
+                        block.extraData.previousAggregatedEpochFinalizationProof,
+                        
+                        checkpoint.quorum,
+                        
+                        GET_MAJORITY(_,checkpoint),
+                        
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+
+                        checkpointFullID
+                        
+                    )
+
+                    //_________________________________________2_________________________________________
+
                     let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
 
                     let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
 
-                    allChecksPassed &&= block.index!==0 || itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,block,positionOfBlockCreatorInReassignmentChain,checkpointFullID,poolsMetadataOnQuorumThread,'QUORUM_THREAD')
+                    allChecksPassed &&= block.index!==0 || itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(
+                        
+                        primePoolPubKey,
+                        
+                        block,
+                        
+                        positionOfBlockCreatorInReassignmentChain,
+                        
+                        checkpointFullID,
+                        
+                        poolsMetadataOnQuorumThread,
+                        
+                        'QUORUM_THREAD'
+                        
+                    )
     
 
 
+                    
                     if(allChecksPassed){
                         
                         //Store it locally-we'll work with this block later
@@ -878,7 +911,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 {
     poolPubKey:<pool BLS public key>,
-    session:<64-bytes hex string>
+    session:<32-bytes hex string>
 }
 
 
@@ -1505,7 +1538,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 /*
             
-    The structure of EPOCH_FINALIZATION_PROOF is
+    The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
         lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
@@ -1523,11 +1556,11 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
     }
 
 */
-getEpochFinalizationProof=async(response,request)=>{
+getAggregatedEpochFinalizationProof=async(response,request)=>{
 
     response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_EPOCH_FINALIZATION_PROOF){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
         let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
 
@@ -1544,12 +1577,12 @@ getEpochFinalizationProof=async(response,request)=>{
 
         let subchainID = request.getParameter(1)
 
-        let epochFinalizationProofForSubchain = await global.SYMBIOTE_META.CHECKPOINTS.get(`EFP:${epochIndex}:${subchainID}`).catch(_=>false)
+        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.CHECKPOINTS.get(`AEFP:${epochIndex}:${subchainID}`).catch(_=>false)
 
 
-        if(epochFinalizationProofForSubchain){
+        if(aggregatedEpochFinalizationProofForSubchain){
 
-            !response.aborted && response.end(JSON.stringify(epochFinalizationProofForSubchain))
+            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))
 
         }else !response.aborted && response.end(JSON.stringify({err:'No EFP'}))
 
@@ -1845,7 +1878,7 @@ UWS_SERVER
 //_______________________________ Routes for checkpoint _______________________________
 
 
-.get('/epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getEpochFinalizationProof)
+.get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 
 // // To sign the checkpoints' payloads

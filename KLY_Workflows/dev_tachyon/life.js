@@ -974,12 +974,11 @@ INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
 
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
+    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let checkpointFullID = qtCheckpoint.header.payloadHash+"#"+qtCheckpoint.header.id
 
-    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
-
-    let reassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+    let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
     let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1016,9 +1015,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         }
     
-        let numberOfPrimePools = 0
 
         let checkpointProposition = {}
+
+        let majority = GET_MAJORITY(_,qtCheckpoint)
+
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
 
@@ -1042,7 +1043,28 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             
             
+            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)))
+            let checkpointAgreements = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID)
 
+            if(!checkpointAgreements){
+
+                checkpointAgreements = new Map()
+
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('CHECKPOINT_PROPOSITION' + checkpointFullID,checkpointAgreements)
+            
+            }
+
+            let agreementsForThisSubchain = checkpointAgreements.get(primePoolPubKey)
+
+            if(!agreementsForThisSubchain){
+
+                agreementsForThisSubchain = new Map()
+
+                checkpointAgreements.set(primePoolPubKey,agreementsForThisSubchain)
+            
+            }
+
+            if(agreementsForThisSubchain.size >= majority) continue
 
             /*
             
@@ -1094,9 +1116,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 ____________________________________________After we get responses____________________________________________
 
-                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.epochFinalizationProof)
+                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.aggregatedEpochFinalizationProof)
 
-                6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called EPOCH_FINALIZATION_PROOF
+                6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
 
                     The structure is
 
@@ -1117,11 +1139,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     
                     }
 
-                7) Then, we can share these proofs by route GET /epoch_finalization_proof/:EPOCH_ID/:SUBCHAIN_ID
+                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SUBCHAIN_ID
 
                 8) Prime pool and other reserve pools on each subchain can query network for this proofs to set to
                 
-                    block.extraData.epochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
+                    block.extraData.aggregatedEpochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
                 
 
             */
@@ -1133,26 +1155,144 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
 
             }
+
             
         }
 
         
-        //____________________________________ Build the template of checkpoint's payload ____________________________________
+        //____________________________________ Send the checkpoint proposition ____________________________________
 
 
-        let potentialCheckpointPayload = {
+        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition)}
+        
+        let quorumMembers = await GET_POOLS_URLS(true)
 
-            issuer:global.CONFIG.SYMBIOTE.PUB,
+        let promises = []
 
-            prevCheckpointPayloadHash:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
+        let upgradesForNextIterations = new Map() // poolPubKey => {index,hash,aggregatedCommitments}
 
-            poolsMetadata:{},
 
-            operations:[],
+        //Descriptor is {url,pubKey}
+        for(let descriptor of quorumMembers){
 
-            otherSymbiotes:{} //don't need now
+            // No sense to get the commitment if we already have
+            
+            let promise = fetch(descriptor.url+'/checkpoint_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
+
+                /*
+                
+                    possibleAgreements structure is:
+                    
+                    
+                        {
+                            subchainA:{
+                                
+                                status:'UPGRADE'|'OK',
+
+                                -------------------------------[In case 'OK']-------------------------------
+
+                                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                        
+                                -----------------------------[In case 'UPGRADE']----------------------------
+
+                                currentAuthority:<index>,
+                                finalizationProof:{
+                                    index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                                }
+
+                            },
+
+                            subchainB:{
+                                ...(same)
+                            },
+                            ...,
+                            subchainQ:{
+                                ...(same)
+                            }
+                        }
+                
+                
+                */
+
+                if(typeof possibleAgreements === 'object'){
+
+                    // Start iteration
+
+                    for(let [primePoolPubKey] of checkpointProposition){
+
+                        let response = possibleAgreements[primePoolPubKey]
+
+                        if(response){
+
+                            if(response.status==='OK'){
+
+                                // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
+
+                            }else if(response.status==='UPGRADE'){
+
+                                // Verify finalization proof and add to upgradesForNextIterations
+
+                            }
+
+                        }
+
+                    }
+
+                }
+                
+            }).catch(_=>{})
+            
+            // To make sharing async
+            promises.push(promise)
+            
+        }
+            
+        await Promise.all(promises)
+    
+        // Iterate over upgrades and set new values for finalization proofs
+
+        for(let [primePoolPubKey,metadata] of checkpointProposition){
+
+            let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature
+
+            if(agreementsForThisSubchain.size >= majority){
+
+                // Now, aggregate EPOCH_FINALIZATION_PROOFs to get the AGGREGATED_EPOCH_FINALIZATION_PROOF and store locally
+
+                let signers = [...agreementsForThisSubchain.keys()]
+
+                let signatures = [...agreementsForThisSubchain.values()]
+        
+                let afkVoters = qtCheckpoint.quorum.filter(pubKey=>!signers.includes(pubKey))
+        
+                let aggregatedEpochFinalizationProof = {
+
+                    subchain:primePoolPubKey,
+
+                    lastAuthority:metadata.currentAuthority,
+                    
+                    lastIndex:metadata.finalizationProof.index,
+                    
+                    lastHash:metadata.finalizationProof.hash,
+
+                    proof:{
+
+                        aggregatedPub:bls.aggregatePublicKeys(signers),
+                    
+                        aggregatedSignature:bls.aggregateSignatures(signatures),
+                        
+                        afkVoters
+            
+                    }
+                    
+                }
+
+                await global.SYMBIOTE_META.CHECKPOINTS.put(`AEFP:${qtCheckpoint.header.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(_=>{})
+
+            }
 
         }
+
 
         Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata).forEach(
             
@@ -1174,11 +1314,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         //________________________________________ Exchange with other quorum members ________________________________________
 
-        let quorumMembers = await GET_POOLS_URLS(true)
-
         let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
-
-        let promises=[]
 
         let sendOptions={
 
@@ -2477,9 +2613,10 @@ RESTORE_STATE=async()=>{
 
 
 
+
 /*
 
-Function to find the EPOCH_FINALIZATION_PROOFS for appropriate subchain
+Function to find the AGGREGATED_EPOCH_FINALIZATION_PROOFS for appropriate subchain
 
 Ask the network in special order:
 
@@ -2488,86 +2625,36 @@ Ask the network in special order:
     3) Other known peers
 
 */
-GET_PREVIOUS_EPOCH_FINALIZATION_PROOF = async() => {
+GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     // global.SYMBIOTE_META.GENERATION_THREAD
 
-    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
     let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
 
-    
+
     for(let nodeEndpoint of allKnownNodes){
 
-        let finalURL = `${nodeEndpoint}/epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
+        let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
 
-        let itsProbablyEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(_=>false)
+        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(_=>false)
 
-        let overviewIsOK =
-        
-            typeof itsProbablyEpochFinalizationProof.lastAuthority === 'string'
-            &&
-            typeof itsProbablyEpochFinalizationProof.lastIndex === 'number'
-            &&
-            typeof itsProbablyEpochFinalizationProof.lastHash === 'string'
-            &&
-            typeof itsProbablyEpochFinalizationProof.proof === 'object'
-
-
-        if(overviewIsOK && itsProbablyEpochFinalizationProof){
-
-            /*
+        let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
             
-                The structure of EPOCH_FINALIZATION_PROOF is
+            itsProbablyAggregatedEpochFinalizationProof,
 
-                {
-                    lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
-                    lastIndex:<index of his block in previous epoch>,
-                    lastHash:<hash of this block>,
+            global.SYMBIOTE_META.GENERATION_THREAD.quorum,
 
-                    proof:{
+            global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub,
 
-                        aggregatedPub:<BLS aggregated pubkey of signers>,
-                        aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
-                        afkVoters:[] - array of BLS pubkeys who haven't voted
+            global.SYMBIOTE_META.GENERATION_THREAD.majority,        
 
-                    }
-                }
+            global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
+        
+        )
 
-                We need to verify that majority have voted for such solution
-
-                For this:
-
-                    0) reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length-global.SYMBIOTE_META.GENERATION_THREAD.majority
-                    1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
-
-            */
-
-            let {aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyEpochFinalizationProof.proof
-
-            let reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length - global.SYMBIOTE_META.GENERATION_THREAD.majority
-
-            let rootPub = global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub
-
-            let {lastAuthority,lastIndex,lastHash} = itsProbablyEpochFinalizationProof
-
-            let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
-
-            let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
-
-            if(proofIsOk){
-
-                return {
-                    
-                    lastAuthority,lastIndex,lastHash,
-                
-                    proof:{aggregatedPub,aggregatedSignature,afkVoters}
-
-                }
-
-            }
-
-        }
+        if(aefpProof) return aefpProof
 
     }
     
@@ -2611,11 +2698,11 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
-        extraData.previousEpochFinalizationProof = await GET_PREVIOUS_EPOCH_FINALIZATION_PROOF()
+        extraData.previousAggregatedEpochFinalizationProof = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
 
         // If we can't find a proof - try to do it later
         
-        if(!extraData.previousEpochFinalizationProof) return
+        if(!extraData.previousAggregatedEpochFinalizationProof) return
 
             
 
@@ -2762,6 +2849,78 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     atomicBatch.put('GT',global.SYMBIOTE_META.GENERATION_THREAD)
 
     await atomicBatch.write()
+
+},
+
+
+
+
+
+VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,rootPub,majority,checkpointFullID) => {
+
+    let overviewIsOK =
+        
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.proof === 'object'
+
+    if(overviewIsOK && itsProbablyAggregatedEpochFinalizationProof){
+
+        /*
+    
+            The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
+
+            {
+                lastAuthority:<BLS pubkey of some pool in subchain's reassignment chain>,
+                lastIndex:<index of his block in previous epoch>,
+                lastHash:<hash of this block>,
+
+                proof:{
+
+                    aggregatedPub:<BLS aggregated pubkey of signers>,
+                    aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                    afkVoters:[] - array of BLS pubkeys who haven't voted
+
+                }
+            }
+
+            We need to verify that majority have voted for such solution
+
+           For this:
+
+                0) reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length-global.SYMBIOTE_META.GENERATION_THREAD.majority
+                1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+        */
+
+        let {aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedEpochFinalizationProof.proof
+
+        let reverseThreshold = quorum.length - majority
+
+        let {lastAuthority,lastIndex,lastHash} = itsProbablyAggregatedEpochFinalizationProof
+
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+checkpointFullID
+
+        let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+        if(proofIsOk){
+
+            return {
+            
+                lastAuthority,lastIndex,lastHash,
+        
+                proof:{aggregatedPub,aggregatedSignature,afkVoters}
+
+            }
+
+        }
+
+    }
+
 
 },
 
