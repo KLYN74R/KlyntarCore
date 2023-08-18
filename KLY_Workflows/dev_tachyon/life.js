@@ -1043,7 +1043,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             
             
-            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)))
+            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)))
             let checkpointAgreements = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID)
 
             if(!checkpointAgreements){
@@ -1132,7 +1132,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                         proof:{
 
                             aggregatedPub:<BLS aggregated pubkey of signers>,
-                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                             afkVoters:[] - array of BLS pubkeys who haven't voted
 
                         }
@@ -1191,7 +1191,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
@@ -2882,7 +2882,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
                 proof:{
 
                     aggregatedPub:<BLS aggregated pubkey of signers>,
-                    aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                    aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                     afkVoters:[] - array of BLS pubkeys who haven't voted
 
                 }

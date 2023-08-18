@@ -238,7 +238,7 @@ acceptBlocks = response => {
     
 
 
-                    
+
                     if(allChecksPassed){
                         
                         //Store it locally-we'll work with this block later
@@ -508,7 +508,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     
    
-    let possibleAggregatedFinalizationProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let possibleAggregatedFinalizationProof=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
     
@@ -1334,207 +1334,6 @@ checkpointStage1Handler=response=>response.writeHeader('Access-Control-Allow-Ori
 
 
 
-/*
-
-[Description]:
-
-    Route for the second stage of checkpoint distribution
-
-    [0] Here we accept the checkpoint's payload and a proof that majority has the same. Also, <issuerProof> is a BLS signature of proposer of this checkpoint. We need this signature to prevent spam
-
-    [1] If payload with appropriate hash is already in our local db - then re-sign the same hash 
-
-    [2] If no, after verification this signature, we store this payload by its hash (<PAYLOAD_HASH> => <PAYLOAD>) to global.SYMBIOTE_META.TEMP[<QT_PAYLOAD>]
-
-    [3] After we store it - generate the signature SIG('STAGE_2'+PAYLOAD_HASH) and response with it
-
-    This way, we prevent the spam and make sure that at least 2/3N+1 has stored the same payload related to appropriate checkpoint's header
-
-
-
-[Accept]:
-
-
-{
-    checkpointFinalizationProof:{
-
-        aggregatedPub:<2/3N+1 from QUORUM>,
-        aggregatedSigna:<SIG(PAYLOAD_HASH)>,
-        afkVoters:[]
-
-    }
-
-    issuerProof:SIG(issuer+payloadHash)
-
-    checkpointPayload:{
-
-        issuer:<BLS pubkey of checkpoint grabbing initiator>
-            
-        prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
-            
-        poolsMetadata: {
-                
-            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
-
-            /..other data
-            
-        },
-        operations: GET_SPECIAL_OPERATIONS(),
-        otherSymbiotes: {}
-        
-    }
-
-
-}
-
-To verify it => VERIFY(aggPub,aggSigna,afkVoters,data), where data - BLAKE3(JSON.stringify(<PROPOSED PAYLOAD>))
-
-To sign it => SIG('STAGE_2'+BLAKE3(JSON.stringify(<PROPOSED>)))
-
-We sign the BLAKE3 hash received from JSON'ed proposition of payload for the next checkpoint
-
-
-[Response]
-
-Response - it's object with the following structure:
-
-{
-
-    ? sig:<BLS signature>
-
-    ? error:'Something gets wrong'
-
-}
-
-*/
-checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
-
-        return
-
-    }
-
-
-    let checkpointProofsResponses = tempObject.PROOFS_RESPONSES
-
-    let {checkpointFinalizationProof,checkpointPayload,issuerProof}=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
-
-
-    if(!checkpointProofsResponses.has('READY_FOR_CHECKPOINT')){
-
-        !response.aborted && response.end(JSON.stringify({err:'This checkpoint is fresh or not ready for checkpoint'}))
-
-        return
-
-    }
-
-    if(!checkpointFinalizationProof){
-
-        !response.aborted && response.end(JSON.stringify({err:'No CHECKPOINT_FINALIZATION_PROOF in input data'}))
-
-        return
-
-    }
-
-
-    let {aggregatedPub,aggregatedSignature,afkVoters} = checkpointFinalizationProof
-
-    let payloadHash = BLAKE3(JSON.stringify(checkpointPayload))
-
-    let checkpointTemporaryDB = tempObject.DATABASE
-
-
-
-    let payloadIsAlreadyInDb = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,payloadHash).catch(_=>false)
-
-    let proposerAlreadyInDB = await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'PROPOSER_'+checkpointPayload.issuer).catch(_=>false)
-    
-
-
-    if(payloadIsAlreadyInDb){
-
-        let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
-
-        !response.aborted && response.end(JSON.stringify({sig}))
-
-    }else if(proposerAlreadyInDB){
-
-        !response.aborted && response.end(JSON.stringify({err:`You've already sent a majority agreed payload for checkpoint`}))
-
-    }
-    else{
-
-        let majority = GET_MAJORITY('QUORUM_THREAD')
-
-        let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-majority
-
-        //Verify 2 signatures
-
-        let majorityHasSignedIt = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),payloadHash,aggregatedSignature,reverseThreshold).catch(error=>({error}))
-
-        let issuerSignatureIsOk = await bls.singleVerify(checkpointPayload.issuer+payloadHash,checkpointPayload.issuer,issuerProof).catch(error=>({error}))
-
-
-
-        if(issuerSignatureIsOk.error){
-
-            !response.aborted && response.end(JSON.stringify({err:`Issuer signature is not ok => ${issuerSignatureIsOk.error}`}))
-
-            return
-
-        }
-
-        if(majorityHasSignedIt.error){
-
-            !response.aborted && response.end(JSON.stringify({err:`Majority signature is not ok => ${majorityHasSignedIt.error}`}))
-
-            return
-
-        }
-        
-
-        if(majorityHasSignedIt && issuerSignatureIsOk){
-
-            // Store locally, mark that this issuer has already sent us a finalized version of checkpoint
-
-            try{
-
-                let atomicBatch = checkpointTemporaryDB.batch()
-
-                atomicBatch.put('PROPOSER_'+checkpointPayload.issuer,true)
-            
-                atomicBatch.put(payloadHash,checkpointPayload)
-
-                await atomicBatch.write()
-
-                // Generate the signature for the second stage
-
-                let sig = await BLS_SIGN_DATA('STAGE_2'+payloadHash)
-
-                !response.aborted && response.end(JSON.stringify({sig}))
-
-            }catch{
-
-                !response.aborted && response.end(JSON.stringify({err:'Something wrong with batch'}))
-
-            }
-            
-        }else !response.aborted && response.end(JSON.stringify({err:'Something wrong'}))
-
-    }
-
-}),
-
-
-
 
 /*
             
@@ -1548,7 +1347,7 @@ checkpointStage2Handler=response=>response.writeHeader('Access-Control-Allow-Ori
         proof:{
 
                 aggregatedPub:<BLS aggregated pubkey of signers>,
-                aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+                aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
                 afkVoters:[] - array of BLS pubkeys who haven't voted
 
         }
@@ -1589,6 +1388,168 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
 },
+
+
+
+
+acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+
+    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+    if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
+
+        !response.aborted && response.end(JSON.stringify({err:'This checkpoint is fresh or not ready for checkpoint'}))
+
+        return
+
+    }
+    
+
+
+    /* 
+    
+        Parse the checkpoint proposition
+
+        !Reminder:  The structure of checkpoint proposition is(see life.js/CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT function):
+
+        {
+                
+            "subchain0":{
+
+                currentAuth:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
+
+                finalizationProof:{
+                    index:,
+                    hash:,
+                    aggregatedCommitments:{
+
+                        aggregatedPub:,
+                        aggregatedSignature:,
+                        afkVoters:[],
+
+                    }
+                    
+                }
+
+            },
+
+            "subchain1":{
+                ...            
+            }
+
+            ...
+                    
+            "subchainN":{
+                ...
+            }
+                
+        }
+
+
+        1) We need to iterate over propositions(per subchain)
+        2) Compare <currentAuth> with our local version of current authority on subchain(take it from tempObj.REASSIGNMENTS)
+        
+            [If proposed.currentAuth >= local.currentAuth]:
+
+                1) Verify index & hash & aggregated commitments in <finalizationProof>
+                
+                2) If proposed height >= local version - generate and return signature SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+
+                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash
+
+            [Else if proposed.currentAuth < local.currentAuth AND tempObj.CHECKPOINT_MANAGER.has(local.currentAuth)]:
+
+                1) Send status:'UPGRADE' with local version of currentAuthority, finalization proof, index and hash
+
+
+
+        !Reminder: Response structure is
+
+        {
+            subchainA:{
+                                
+            status:'UPGRADE'|'OK',
+
+            -------------------------------[In case 'OK']-------------------------------
+
+            signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                        
+            -----------------------------[In case 'UPGRADE']----------------------------
+
+            currentAuthority:<index>,
+            finalizationProof:{
+                index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+            }
+
+        },
+
+        subchainB:{
+            ...(same)
+        },
+        ...,
+        subchainQ:{
+            ...(same)
+        }
+    
+    }
+
+
+    */
+   
+    let possibleAggregatedFinalizationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+
+    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
+    
+    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
+
+        !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
+
+        return
+
+    }
+
+    let myLocalBlock = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+
+    let [_epochIndex,blockCreator,_] = blockID.split(':')
+
+
+    let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
+
+    let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
+
+    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    
+    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    
+    let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
+
+    let checkpointTempDB = tempObject.DATABASE
+
+
+
+    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
+
+        await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
+
+        !response.aborted && response.end(JSON.stringify({status:'OK'}))
+
+    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+
+
+}),
+
+
 
 
 /*
@@ -1880,6 +1841,7 @@ UWS_SERVER
 
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
+.post('/checkpoint_proposition',acceptCheckpointProposition)
 
 // // To sign the checkpoints' payloads
 // .post('/checkpoint_stage_1',checkpointStage1Handler)
