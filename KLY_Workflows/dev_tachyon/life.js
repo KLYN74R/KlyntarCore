@@ -809,169 +809,6 @@ PROOFS_SYNCHRONIZER=async()=>{
 
 
 
-// Once we've received 2/3N+1 signatures for checkpoint(HEADER,PAYLOAD) - we can start the next stage to get signatures to get another signature which will be valid for checkpoint
-INITIATE_CHECKPOINT_STAGE_2_GRABBING=async(myCheckpoint,quorumMembersHandler)=>{
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
-
-    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE
-
-    if(!checkpointTemporaryDB) return
-
-
-    myCheckpoint ||= await USE_TEMPORARY_DB('get',checkpointTemporaryDB,'CHECKPOINT').catch(_=>false)
-
-    quorumMembersHandler ||= await GET_POOLS_URLS(true)
-
-    
-    //_____________________ Go through the quorum and share our pre-signed object with checkpoint payload and issuer proof____________________
-
-    /*
-    
-        We should send the following object to the POST /checkpoint_stage_2
-
-        {
-            checkpointFinalizationProof:{
-
-                aggregatedPub:<2/3N+1 from QUORUM>,
-                aggregatedSigna:<SIG(PAYLOAD_HASH)>,
-                afkVoters:[]
-
-            }
-
-            issuerProof:SIG(issuer+payloadHash)
-
-            checkpointPayload:{
-
-                issuer:<BLS pubkey of checkpoint grabbing initiator>
-            
-                prevCheckpointPayloadHash: global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash,
-            
-                poolsMetadata: {
-                
-                    '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {index,hash,isReserve}
-
-                    /..other data
-            
-                },
-        
-                operations: GET_SPECIAL_OPERATIONS(),
-                otherSymbiotes: {}
-    
-            }
-
-        }
-    
-    */
-
-
-    let everythingAtOnce={
-            
-        checkpointFinalizationProof:{
-
-            aggregatedPub:myCheckpoint.header.quorumAggregatedSignersPubKey,
-            aggregatedSignature:myCheckpoint.header.quorumAggregatedSignature,
-            afkVoters:myCheckpoint.header.afkVoters
-
-        },
-
-        issuerProof:await BLS_SIGN_DATA(global.CONFIG.SYMBIOTE.PUB+myCheckpoint.header.payloadHash),
-
-        checkpointPayload:myCheckpoint.payload
-
-    }
-
-
-
-    let sendOptions={
-        
-        method:'POST',
-        
-        body:JSON.stringify(everythingAtOnce)
-
-    }
-
-    let promises=[]
-
-
-    //memberHandler is {pubKey,url}
-    for(let memberHandler of quorumMembersHandler){
-
-        let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_2',sendOptions).then(r=>r.json()).then(async response=>{
- 
-            response.pubKey = memberHandler.pubKey
-
-            return response
-
-        }).catch(_=>false)
-
-
-        promises.push(responsePromise)
-
-    }
-
-
-    //Run promises
-    let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
-    
-    let otherAgreements = new Map()
-  
-    
-    for(let obj of checkpointsPingBacks){
-
-        if(typeof obj !== 'object') continue
-
-        let {pubKey,sig} = obj
-
-        if(sig){
-
-            let isSignaOk = await bls.singleVerify('STAGE_2'+myCheckpoint.header.payloadHash,pubKey,sig).catch(_=>false)
-
-            if(isSignaOk) otherAgreements.set(pubKey,sig)
-
-        }
-
-    }
-
-
-    //______________________ Finally, once we have 2/3N+1 signatures - aggregate it, modify checkpoint header and publish to hostchain ______________________
-
-
-    if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
-
-        // Hooray - we can create checkpoint and publish to hostchain & share among other members
-
-        let signatures=[], pubKeys=[]
-
-        otherAgreements.forEach((signa,pubKey)=>{
-
-            signatures.push(signa)
-
-            pubKeys.push(pubKey)
-
-        })
-
-
-        // Modify the checkpoint header
-
-        myCheckpoint.header.quorumAggregatedSignersPubKey=bls.aggregatePublicKeys(pubKeys)
-
-        myCheckpoint.header.quorumAggregatedSignature=bls.aggregateSignatures(signatures)
-
-        myCheckpoint.header.afkVoters=global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.filter(pubKey=>!otherAgreements.has(pubKey))
-
-
-        //Send the header to hostchain
-        await MAKE_CHECKPOINT(myCheckpoint.header).catch(error=>LOG(`Some error occured during the process of checkpoint commit => ${error}`))
-
-                 
-    }
-
-},
-
-
-
-
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
@@ -1167,17 +1004,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
         let quorumMembers = await GET_POOLS_URLS(true)
 
-        let promises = []
-
-        let upgradesForNextIterations = new Map() // poolPubKey => {index,hash,aggregatedCommitments}
-
 
         //Descriptor is {url,pubKey}
         for(let descriptor of quorumMembers){
 
             // No sense to get the commitment if we already have
             
-            let promise = fetch(descriptor.url+'/checkpoint_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
+            await fetch(descriptor.url+'/checkpoint_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 
                 /*
                 
@@ -1218,7 +1051,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     // Start iteration
 
-                    for(let [primePoolPubKey] of checkpointProposition){
+                    for(let [primePoolPubKey,metadata] of checkpointProposition){
+
+                        let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature                        
 
                         let response = possibleAgreements[primePoolPubKey]
 
@@ -1228,9 +1063,44 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.finalizationProof.index+metadata.finalizationProof.hash+checkpointFullID
+
+                                let isOk = await bls.singleVerify(dataThatShouldBeSigned,descriptor.pubKey,response.sig).catch(_=>false)
+
+                                if(isOk) agreementsForThisSubchain.set(descriptor.pubKey,response.sig)
+
                             }else if(response.status==='UPGRADE'){
 
                                 // Verify finalization proof and add to upgradesForNextIterations
+
+                                let {index,hash,aggregatedCommitments} = response.finalizationProof
+                            
+                                let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+                            
+                                let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority]
+
+                                let dataThatShouldBeSigned = `${qtCheckpoint.header.id}:${pubKeyOfProposedAuthority}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
+                            
+                                let reverseThreshold = qtCheckpoint.quorum.length - majority
+                            
+                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                            
+                            
+                                if(isOk){
+                            
+                                    // Update the REASSIGNMENTS
+
+                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey) = {currentAuthority:response.currentAuthority}
+                                    
+                                    // Update CHECKPOINT_MANAGER
+
+                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority) = {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}                                    
+                            
+                                    // Clear the mapping with signatures because it becomes invalid
+
+                                    agreementsForThisSubchain.clear()
+
+                                }
 
                             }
 
@@ -1242,12 +1112,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 
             }).catch(_=>{})
             
-            // To make sharing async
-            promises.push(promise)
             
         }
             
-        await Promise.all(promises)
     
         // Iterate over upgrades and set new values for finalization proofs
 
@@ -1292,235 +1159,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
 
         }
-
-
-        Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata).forEach(
-            
-            poolPubKey => {
-
-                let {index,hash} = temporaryObject.CHECKPOINT_MANAGER.get(poolPubKey) //{index,hash,(?)aggregatedCommitments}
-
-                let {isReserve} = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata[poolPubKey]
-
-                potentialCheckpointPayload.poolsMetadata[poolPubKey] = {index,hash,isReserve}
-
-            }
-
-        )
-
-
-        let otherAgreements = new Map()
-
-
-        //________________________________________ Exchange with other quorum members ________________________________________
-
-        let payloadInJSON = JSON.stringify(potentialCheckpointPayload)
-
-        let sendOptions={
-
-            method:'POST',
-
-            body:payloadInJSON
-
-        }
-
-
-        /*
-        
-            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
-            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
-        
-        */
-        for(let memberHandler of quorumMembers){
-
-            let responsePromise = fetch(memberHandler.url+'/checkpoint_stage_1',sendOptions).then(r=>r.json()).then(async response=>{
- 
-                response.pubKey = memberHandler.pubKey
-
-                return response
-
-            }).catch(_=>false)
-
-
-            promises.push(responsePromise)
-
-        }
-
-        //Run promises
-        let checkpointsPingBacks = (await Promise.all(promises)).filter(Boolean)
-
-
-        /*
-        
-            First of all, we do the HEIGHT_UPDATE operations and repeat grabbing checkpoints.
-            We execute the DEL_SPEC_OP transactions only in case if no valid <HEIGHT_UPDATE> operations were received during round.
-        
-        */
-
-        // QUORUM members should sign the hash of payload related to the next checkpoint
-        let checkpointPayloadHash = BLAKE3(payloadInJSON)
-        
-        let propositionsToUpdateMetadata=0
-
-
-
-        for(let obj of checkpointsPingBacks){
-
-            
-            if(typeof obj !== 'object') continue
-
-
-            let {pubKey,sig,metadataUpdate} = obj
-
-            /*
-            
-                checkpointPingback has the following structure
-
-                {
-                    pubKey  - we add it after answer
-                    
-                    ? sig:<> - if exists - then validator agree with the proposed checkpoint
-                        
-                    ? excludeSpecOperations:[] - array of ids of operation we should exclude from checkpoint proposition to get the agreement from validator
-
-                    ? metadataUpdate:{} - array of updated hash:index where index > than our local version, so we check the inner FINALIZATION_PROOF and if OK - update the local CHECKPOINT_MANAGER to propose next checkpoint with the nex height
-
-                }
-            
-            */
-
-            if(sig){
-
-                let isSignaOk = await bls.singleVerify(checkpointPayloadHash,pubKey,sig).catch(_=>false)
-
-                if(isSignaOk) otherAgreements.set(pubKey,sig)
-
-            }else if(metadataUpdate && metadataUpdate.length!==0){
-
-                // Update the data of CHECKPOINT_MANAGER_SYNC_HELPER if quorum voted for appropriate block:hash:index
-
-                let currentSyncHelper = temporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(poolPubKey=>{index,hash,aggregatedCommitments})
-
-
-                for(let updateOp of metadataUpdate){
-
-                    // Get the data about the current pool
-                    let poolMetadata = currentSyncHelper.get(updateOp.poolPubKey)
-
-                    if(!poolMetadata) continue
-
-                    else{
-
-                        // If we received proof about bigger height on this pool
-                        if(updateOp.index > poolMetadata.index && typeof updateOp.aggregatedCommitments === 'object'){
-
-                            let {aggregatedSignature,aggregatedPub,afkVoters} = updateOp.aggregatedCommitments
-    
-                            let signaIsOk = await bls.singleVerify(updateOp.poolPubKey+":"+updateOp.index+updateOp.hash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
-        
-                            try{
-
-                                let rootPubIsOK = quorumRootPub === bls.aggregatePublicKeys([aggregatedPub,...afkVoters])
-        
-        
-                                if(signaIsOk && rootPubIsOK){
-
-                                    let latestFinalized = {index:updateOp.index,hash:updateOp.hash,aggregatedCommitments:updateOp.aggregatedCommitments}
-
-                                    // Send to synchronizer to update the local stats
-
-                                    currentSyncHelper.set(updateOp.poolPubKey,latestFinalized)
-
-                                    propositionsToUpdateMetadata++
-        
-                                }
-
-
-                            }catch(_){}
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-        }
-
-        /*
-        
-        ___________________________ WHAT NEXT ? ___________________________
-        
-        On this step, sooner or later, the propositionsToUpdateMetadata will be equal to 0 - because in case the QUORUM majority is honest,
-        there were no AGGREGATED_FINALIZATION_PROOF for another height/hash
-
-        On this step - we start to exclude the system sync operations from our proposition to get the wished 2/3N+1 signatures of checkpoint proposition
-
-        But, initialy we check if 2/3N+1 agreements we have. If no and no propositions to update metadata - then it's problem with the system sync operations, so we should exclude some of them
-        
-        */
-
-        if(otherAgreements.size>=GET_MAJORITY('QUORUM_THREAD')){
-
-            // Hooray - we can create checkpoint and publish to hostchain & share among other members
-
-            let signatures=[], pubKeys=[]
-
-            otherAgreements.forEach((signa,pubKey)=>{
-
-                signatures.push(signa)
-
-                pubKeys.push(pubKey)
-
-            })
-
-
-            let newCheckpoint = {
-
-                // Publish header to hostchain & share among the rest of network
-                header:{
-
-                    id:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id+1,
-        
-                    payloadHash:checkpointPayloadHash,
-        
-                    quorumAggregatedSignersPubKey:bls.aggregatePublicKeys(pubKeys),
-        
-                    quorumAggregatedSignature:bls.aggregateSignatures(signatures),
-        
-                    afkVoters:global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.filter(pubKey=>!otherAgreements.has(pubKey))
-        
-                },
-                
-                // Store & share among the rest of network
-                payload:potentialCheckpointPayload,        
-
-            }
-
-            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,`CHECKPOINT`,newCheckpoint).catch(_=>false)
-
-            //___________________________ Run the second stage - share via POST /checkpoint_stage_2 ____________________________________
-
-            await INITIATE_CHECKPOINT_STAGE_2_GRABBING(newCheckpoint,quorumMembers).catch(_=>{})
-
-
-        }else if(propositionsToUpdateMetadata===0){
-
-            // Delete the system sync operations due to which the rest could not agree with our version of checkpoints
-            //! NOTE - we can't delete operations of SKIP_PROCEDURE, so check the type of operation too
-
-            for(let {excludeSpecOperations} of checkpointsPingBacks){
-
-                if(excludeSpecOperations && excludeSpecOperations.length!==0){
-
-                }
-
-            }
-
-        }
-
-        //Clear everything and repeat the attempt(round) of checkpoint proposition - with updated values of pools' metadata & without system sync operations
 
     }
 
