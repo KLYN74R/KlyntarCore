@@ -1392,6 +1392,61 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
 
 
 
+VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoint,pubKeyOfCurrentAuthorityOnSubchain,reassignmentForThisSubchain,tempObject,subchainID,checkpointManagerForAuthority,responseStructure) => {
+
+    let checkpointFullID = checkpoint.header.payloadHash+'#'+checkpoint.header.id
+
+    let {index,hash,aggregatedCommitments} = proposition.finalizationProof
+
+    let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+
+    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+    let dataThatShouldBeSigned = `${checkpoint.header.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
+
+    let majority = GET_MAJORITY(_,checkpoint)
+
+    let reverseThreshold = checkpoint.quorum.length-majority
+
+    let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+
+    if(isOk){
+
+        if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
+
+        else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
+
+
+        if(checkpointManagerForAuthority){
+
+            checkpointManagerForAuthority.index = index
+
+            checkpointManagerForAuthority.hash = hash
+
+            checkpointManagerForAuthority.aggregatedCommitments = aggregatedCommitments
+
+        }else tempObject.CHECKPOINT_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,aggregatedCommitments})
+
+        // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
+
+        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+checkpointFullID
+
+        responseStructure[subchainID] = {
+                            
+            status:'OK',
+                        
+            sig:await BLS_SIGN_DATA(dataToSign)
+                        
+        }
+
+    }
+
+},
+
+
+
+
 acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
@@ -1509,6 +1564,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
     */
    
+    
     let possibleCheckpointProposition = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let responseStructure = {}
@@ -1564,13 +1620,55 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                         // Send EPOCH_FINALIZATION_PROOF signature
 
+                        let {index,hash} = proposition.finalizationProof
+
+                        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+checkpointFullID
+
+                        responseStructure[subchainID] = {
+                                            
+                            status:'OK',
+                                        
+                            sig:await BLS_SIGN_DATA(dataToSign)
+                                        
+                        }
+
                     }else if(checkpointManagerForAuthority.index < proposition.finalizationProof.index){
 
-                        // Verify & upgrade local version
+                        // Verify AC & upgrade local version & send EPOCH_FINALIZATION_PROOF
+
+                        await VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA(
+                            
+                            proposition,
+
+                            qtCheckpoint,
+
+                            pubKeyOfCurrentAuthorityOnSubchain,
+
+                            reassignmentForThisSubchain,
+
+                            tempObject,
+
+                            subchainID,
+
+                            checkpointManagerForAuthority,
+
+                            responseStructure
+                            
+                        )
 
                     }else if(checkpointManagerForAuthority.index > proposition.finalizationProof.index){
 
                         // Send 'UPGRADE' msg
+
+                        responseStructure[subchainID] = {
+
+                            status:'UPGRADE',
+                                
+                            currentAuthority:localIndexOfAuthority,
+                    
+                            finalizationProof:checkpointManagerForAuthority
+                        
+                        }
 
                     }
 
@@ -1580,57 +1678,40 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                     // Verify aggregated commitments and if OK - update the local values in REASSIGNMENTS[subchainID] and CHECKPOINT_MANAGER[pubKeyOfCurrentAuthorityOnSubchain]
 
-                    let {index,hash,aggregatedCommitments} = proposition.finalizationProof
-
-                    let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
-
-                    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-                    let dataThatShouldBeSigned = `${qtCheckpoint.header.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
-
-                    let majority = GET_MAJORITY(_,qtCheckpoint)
-
-                    let reverseThreshold = qtCheckpoint.quorum.length-majority
-
-                    let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
-
-
-                    if(isOk){
-
-                        if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
-
-                        else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
-
-
-                        if(checkpointManagerForAuthority){
-
-                            checkpointManagerForAuthority.index = index
-
-                            checkpointManagerForAuthority.hash = hash
-
-                            checkpointManagerForAuthority.aggregatedCommitments = aggregatedCommitments
-
-                        }else tempObject.CHECKPOINT_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,aggregatedCommitments})
-
-                        // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
-
-                        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+checkpointFullID
-
-                        responseStructure[subchainID] = {
+                    await VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA(
                             
-                            status:'OK',
-                        
-                            sig:await BLS_SIGN_DATA(dataToSign)
-                        
-                        }
+                        proposition,
 
-                    }
+                        qtCheckpoint,
+
+                        pubKeyOfCurrentAuthorityOnSubchain,
+
+                        reassignmentForThisSubchain,
+
+                        tempObject,
+
+                        subchainID,
+
+                        checkpointManagerForAuthority,
+
+                        responseStructure
+                        
+                    )
+
 
                 }else{
 
                     // Send 'UPGRADE' message
 
+                    responseStructure[subchainID] = {
 
+                        status:'UPGRADE',
+                            
+                        currentAuthority:localIndexOfAuthority,
+                
+                        finalizationProof:checkpointManagerForAuthority
+                    
+                    }
 
                 }
 
