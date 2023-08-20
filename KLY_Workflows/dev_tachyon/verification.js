@@ -188,11 +188,11 @@ Verification process:
 GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
 
-    let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
     let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
 
-    let verificationThreadCheckpointFullID = vtCheckpoint.header.payloadHash+"#"+vtCheckpoint.header.id
+    let verificationThreadCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
 
 
     // Need for async safety
@@ -266,7 +266,7 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async ({poolHashID,poo
 
     poolStorage.lackOfTotalPower=true
 
-    poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+    poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
     poolStorage.storedMetadata=global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
@@ -292,7 +292,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     let primePoolsPubKeys = new Set()
 
 
-    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.payload.poolsMetadata)){
+    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.poolsMetadata)){
 
         if(!poolMetadata.isReserve){
 
@@ -334,7 +334,7 @@ SET_REASSIGNMENT_CHAINS = async checkpoint => {
     
     */
 
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.payload.poolsMetadata))
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.poolsMetadata))
 
     
     //___________________________________________________ Now, build the reassignment chains ___________________________________________________
@@ -632,11 +632,11 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                 // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
 
-                if(newCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index > oldCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index){
+                if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > oldCheckpoint.poolsMetadata[currentAuthorityPubKey].index){
 
                     // Get the first block of this epoch from POOLS_METADATA
 
-                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.header.id,currentAuthorityPubKey,oldCheckpoint.payload.poolsMetadata[currentAuthorityPubKey].index+1)
+                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,oldCheckpoint.poolsMetadata[currentAuthorityPubKey].index+1)
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 
@@ -739,7 +739,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
     if(limitsReached && !checkpointIsCompleted){
 
 
-        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.payload.operations
+        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.operations
 
 
         //_____________________________To change it via operations___________________________
@@ -893,7 +893,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         if(!delayedTableOfIds) delayedTableOfIds=[]
 
         
-        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
         
         let idsToDelete = []
 
@@ -990,7 +990,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //Create new quorum based on new POOLS_METADATA state
         global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
-        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
         //Get the new rootpub
         global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
@@ -1015,7 +1015,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
 
-        LOG(`\u001b[38;5;154mSystem sync operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mSystem sync operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash} (VT)\u001b[0m`,'S')
 
 
         //Commit the changes of state using atomic batch
@@ -1053,7 +1053,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             let oldCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT))
 
-            let oldCheckpointFullID = oldCheckpoint.header.payloadHash+"#"+oldCheckpoint.header.id
+            let oldCheckpointFullID = oldCheckpoint.hash+"#"+oldCheckpoint.id
 
 
 
@@ -1115,7 +1115,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let currentPoolsMetadataHash = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
 
-            poolsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.payload.poolsMetadata))
+            poolsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.poolsMetadata))
 
         
 
@@ -1164,9 +1164,9 @@ START_VERIFICATION_THREAD=async()=>{
 
         let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
-        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
-        let vtCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.id
+        let vtCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
         
         
@@ -1223,7 +1223,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
 
-                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.payload.poolsMetadata[poolToVerifyRightNow]
+                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.poolsMetadata[poolToVerifyRightNow]
 
                 reassignmentsBasedOnCheckpointData.currentToVerify++
 
@@ -1497,7 +1497,7 @@ verifyBlock=async(block,subchainContext)=>{
         
         let rewardBox = {fees:0}
 
-        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.header.index
+        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
         let currentBlockID = currentCheckpointIndex+":"+block.creator+":"+block.index
 

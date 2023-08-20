@@ -459,7 +459,7 @@ getSearchResult=async(response,request)=>{
         }
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 

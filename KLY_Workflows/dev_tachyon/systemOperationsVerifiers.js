@@ -22,7 +22,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.header.id - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.id - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
@@ -196,11 +196,11 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool]){
+                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool]){
 
                     let metadataTemplate = poolStorage.storedMetadata.hash ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
 
-                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.payload.poolsMetadata[pool] = metadataTemplate
+                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool] = metadataTemplate
     
                 }
 
@@ -403,7 +403,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
 
         */
 
@@ -418,7 +418,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
             &&
             await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
@@ -606,7 +606,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
+        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
         
         */
 
@@ -622,7 +622,7 @@ export default {
             &&
             global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -674,7 +674,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
         
         
         */
@@ -687,7 +687,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -740,7 +740,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash)        
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)        
         
         */
 
@@ -752,7 +752,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
 
 
 

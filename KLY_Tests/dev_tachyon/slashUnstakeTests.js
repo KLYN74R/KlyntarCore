@@ -33,7 +33,7 @@ After that, if it's allowed - WAITING_ROOM of pool will looks like this
 
         '<BLAKE3(tx.sig)>':
 
-            checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.HEADER.ID
+            checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
     
             staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
     

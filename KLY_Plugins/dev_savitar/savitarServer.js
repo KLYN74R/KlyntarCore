@@ -245,11 +245,9 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
     // connection.sendUTF(message.utf8Data);
     
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
-    let qtPoolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.payload.poolsMetadata
-
-    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -439,7 +437,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
     if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.payloadHash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.header.id
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
             
