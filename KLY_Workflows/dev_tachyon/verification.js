@@ -198,13 +198,8 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
     // Need for async safety
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
 
-
-
-    let checkpointTemporaryDB = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID).DATABASE
-
     
-    let aggregatedFinalizationProof = await checkpointTemporaryDB.get('AFP:'+blockID).catch(_=>false)
-
+    let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
 
 
     //We shouldn't verify local version of AFP, because we already did it. See the GET /aggregated_finalization_proof route handler

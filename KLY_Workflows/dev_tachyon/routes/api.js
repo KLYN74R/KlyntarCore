@@ -1,4 +1,4 @@
-import {WRAP_RESPONSE,GET_NODES,USE_TEMPORARY_DB} from '../utils.js'
+import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
 import Block from '../essences/block.js'
 
 
@@ -471,7 +471,8 @@ getSearchResult=async(response,request)=>{
 
         }else{
 
-            let possibleAggregatedFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,query).then(aggregatedFinalizationProof=>{
+
+            let possibleAggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get(query).then(aggregatedFinalizationProof=>{
 
                 responseType = query.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
 

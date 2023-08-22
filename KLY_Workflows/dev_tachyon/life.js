@@ -418,7 +418,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
 
         // Store original checkpoint locally
-        await global.SYMBIOTE_META.CHECKPOINTS.put(possibleCheckpoint.hash,possibleCheckpoint)
+        await global.SYMBIOTE_META.EPOCH_DATA.put(possibleCheckpoint.hash,possibleCheckpoint)
 
         // All operations must be atomic
         let atomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
@@ -645,11 +645,11 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & skip proofs
 
-    if(currentFinalizationProofsRequests.get('NEXT_CHECKPOINT')){
+    if(currentFinalizationProofsRequests.get('TIME_TO_NEW_EPOCH')){
 
 
         //Store to DB
-        await USE_TEMPORARY_DB('put',currentCheckpointDB,'NEXT_CHECKPOINT',true).then(()=>{
+        await USE_TEMPORARY_DB('put',currentCheckpointDB,'TIME_TO_NEW_EPOCH',true).then(()=>{
 
             // On this step, we have the latest info about finalization_proofs
             currentFinalizationProofsResponses.set('READY_FOR_CHECKPOINT',true)
@@ -665,7 +665,7 @@ PROOFS_SYNCHRONIZER=async()=>{
         // Now, check the requests, delete and add to responses
         for(let keyValue of currentFinalizationProofsRequests){
 
-            if(keyValue[0]==='NEXT_CHECKPOINT') continue
+            if(keyValue[0]==='TIME_TO_NEW_EPOCH') continue
 
             else if (keyValue[0].startsWith('REASSIGN:')){
 
@@ -860,7 +860,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     if(iAmInTheQuorum && !checkpointIsFresh){
 
         // Stop to generate commitments/finalization proofs
-        temporaryObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+        temporaryObject.PROOFS_REQUESTS.set('TIME_TO_NEW_EPOCH',true)
 
 
         // Check the safety
@@ -1174,7 +1174,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     
                 }
 
-                await global.SYMBIOTE_META.CHECKPOINTS.put(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(_=>{})
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(_=>{})
 
             }
 
@@ -1306,7 +1306,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
         //Share here
         BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
 
-        await USE_TEMPORARY_DB('put',DATABASE,'AFP:'+blockID,aggregatedFinalizationProof).catch(_=>false)
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(_=>false)
 
         // Repeat procedure for the next block and store the progress
 
@@ -1938,7 +1938,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             let baseBlockID = checkpointIndex+":"+poolPubKey+":"+index
 
-            let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP:'+baseBlockID).catch(_=>false)
+            let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+baseBlockID).catch(_=>false)
             
         
             //Store to mapping
@@ -1954,7 +1954,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('NEXT_CHECKPOINT') || !isCheckpointStillFresh){
+    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('TIME_TO_NEW_EPOCH') || !isCheckpointStillFresh){
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -2257,11 +2257,11 @@ RESTORE_STATE=async()=>{
 
     // Finally, once we've started the "next checkpoint generation" process - restore it
 
-    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('NEXT_CHECKPOINT').catch(_=>false)
+    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(_=>false)
 
     if(itsTimeForTheNextCheckpoint) {
 
-        tempObject.PROOFS_REQUESTS.set('NEXT_CHECKPOINT',true)
+        tempObject.PROOFS_REQUESTS.set('TIME_TO_NEW_EPOCH',true)
 
         tempObject.PROOFS_RESPONSES.set('READY_FOR_CHECKPOINT',true)
 
@@ -2986,15 +2986,15 @@ PREPARE_SYMBIOTE=async()=>{
     //Create subdirs due to rational solutions
     [
     
-        'BLOCKS', //For blocks. BlockID => block
+        'BLOCKS', // For blocks. BlockID => block
     
-        'STUFF', //Some data like combinations of pools for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
+        'STUFF', // Some data like combinations of pools for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
 
-        'STATE', //Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
+        'STATE', // Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
-        'CHECKPOINTS', //Contains object like CHECKPOINT_ID => {HEADER,PAYLOAD}
+        'EPOCH_DATA', // Contains epoch data - AEFPs, FBIEPs, AFPs, etc.
 
-        'QUORUM_THREAD_METADATA', //QUORUM_THREAD itself and other stuff
+        'QUORUM_THREAD_METADATA', // QUORUM_THREAD itself and other stuff
 
         //_______________________________ EVM storage _______________________________
 

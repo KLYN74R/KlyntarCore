@@ -85,7 +85,7 @@ acceptBlocks = response => {
 
     }
 
-    if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+    if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
 
         !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
         
@@ -427,7 +427,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata
 
 
-        if(tempObject.PROOFS_REQUESTS.has('NEXT_CHECKPOINT')){
+        if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
 
             !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
             
@@ -541,7 +541,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
 
-        await USE_TEMPORARY_DB('put',checkpointTempDB,'AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
@@ -593,7 +593,8 @@ getAggregatedFinalizationProof=async(response,request)=>{
 
         let blockID = request.getParameter(0)
        
-        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+blockID).catch(_=>false)
+        let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
+
 
         if(aggregatedFinalizationProof){
 
@@ -669,7 +670,7 @@ healthChecker = async response => {
         }
        
 
-        let aggregatedFinalizationProof = await USE_TEMPORARY_DB('get',global.SYMBIOTE_META.TEMP.get(checkpointFullID)?.DATABASE,'AFP:'+blockID).catch(_=>false)
+        let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
 
 
         if(aggregatedFinalizationProof){
@@ -1049,7 +1050,7 @@ getDataForTempReassignments = async response => {
 
                         // Finally, find the SFP for this block
 
-                        let afpForFirstBlockByCurrentAuthority = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP:'+blockID).catch(_=>false)
+                        let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
 
                         // Put to response
 
@@ -1124,7 +1125,7 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
 
         let subchainID = request.getParameter(1)
 
-        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.CHECKPOINTS.get(`AEFP:${epochIndex}:${subchainID}`).catch(_=>false)
+        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${subchainID}`).catch(_=>false)
 
 
         if(aggregatedEpochFinalizationProofForSubchain){
