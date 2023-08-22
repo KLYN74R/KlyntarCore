@@ -420,7 +420,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
 
 
-CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID) => {
+CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID,dontCheckSignature) => {
 
     // Take all the reservePools from beginning of reassignment chain up to the <position>
 
@@ -440,8 +440,9 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
     let arrayOfPoolsWithZeroProgress = []
 
+    let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)
 
-    if(typeof aspForPrimePool === 'object' && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)){
+    if(typeof aspForPrimePool === 'object' && signaIsOk){
 
         
         let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
@@ -451,7 +452,9 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             let aspForThisReservePool = reassignmentsRef[poolPubKey]
 
-            if(aspForThisReservePool && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID,oldCheckpoint,threadID)){
+            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID,oldCheckpoint,threadID)
+
+            if(aspForThisReservePool && signaIsOk){
 
                 if(aspForThisReservePool.index === -1){
 

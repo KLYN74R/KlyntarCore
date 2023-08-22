@@ -3306,8 +3306,6 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let reassignmentChains = vtCheckpoint.reassignmentChains
 
-    let poolsMetadataFromVtCheckpoint = vtCheckpoint.poolsMetadata
-    
 
 
     if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
@@ -3401,14 +3399,12 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                     For this:
 
-                        0) Verify the first block in this epoch(checkpoint) by current autority - make sure block.extraData contains all ASPs for previous reserve pools(+ for prime pool) in a row
-
-                        1) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForFirstBlockByCurrentAuthority>
+                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForFirstBlockByCurrentAuthority>
 
 
                     If all the verification steps is OK - add to some cache
 
-                -----------------------------------------------[After the verification of all the responses?]-----------------------------------------------
+                ---------------------------------[After the verification of all the responses?]---------------------------------
 
                 Start to build the temporary reassignment chains
 
@@ -3421,14 +3417,10 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                     let {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority} = reassignMetadata
     
                     if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForFirstBlockByCurrentAuthority==='object'){
-            
-                        
+                                    
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
     
-                        let firstBlockIndexInNewCheckpoint = poolsMetadataFromVtCheckpoint[firstBlockByCurrentAuthority.creator].index+1
-
-    
-                        if(localPointer <= currentAuthorityIndex && firstBlockIndexInNewCheckpoint === firstBlockByCurrentAuthority.index){
+                        if(localPointer <= currentAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
     
                             
                             // Verify the AFP for block
@@ -3450,7 +3442,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, _, true
                                 
                                 )
     
@@ -3495,19 +3487,17 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
     
-                                            let latestBlockInPreviousCheckpointByThisPool = poolsMetadataFromVtCheckpoint[poolWithThisPosition].index
-    
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
                                             // Here ask the first block by this pool in this epoch, verify the SFP and continue
     
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,latestBlockInPreviousCheckpointByThisPool+1)
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,0)
 
                                             // In this block we should have ASP for all the previous reservePools + primePool
                                 
                                             let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{},arrayOfPoolsWithZeroProgress:[]} : await CHECK_IF_ALL_ASP_PRESENT(
                                                         
-                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint
+                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, _, true
                                                         
                                             )
                                 
