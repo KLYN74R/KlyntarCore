@@ -453,7 +453,7 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             if(aspForThisReservePool && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID,oldCheckpoint,threadID)){
 
-                if(aspForThisReservePool.index === oldCheckpoint[poolPubKey].index){
+                if(aspForThisReservePool.index === -1){
 
                     // If this reserve pool has no progress since previous checkpoint and was skipped on the same height - it's invalid
 
@@ -627,11 +627,11 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                 // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
 
-                if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > oldCheckpoint.poolsMetadata[currentAuthorityPubKey].index){
+                if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > -1){
 
                     // Get the first block of this epoch from POOLS_METADATA
 
-                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,oldCheckpoint.poolsMetadata[currentAuthorityPubKey].index+1)
+                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,0)
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 

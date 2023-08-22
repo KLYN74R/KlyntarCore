@@ -148,7 +148,6 @@ export default {
                     totalPower:<number>
                     lackOfTotalPower:<boolean>
                     stopCheckpointID:<number>
-                    storedMetadata:{index,hash},
                     isReserve:<boolean>
                 }
             
@@ -160,8 +159,7 @@ export default {
 
                     totalPower:0,       
                     lackOfTotalPower:true,
-                    stopCheckpointID:-1,
-                    storedMetadata:{}
+                    stopCheckpointID:-1
                 
                 }
 
@@ -196,21 +194,15 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                if(!fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool]){
 
-                    let metadataTemplate = poolStorage.storedMetadata.hash ? poolStorage.storedMetadata : {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
+                fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
 
-                    fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool] = metadataTemplate
-    
-                }
 
                 // Make it "null" again
 
-                poolStorage.lackOfTotalPower=false
+                poolStorage.lackOfTotalPower = false
 
-                poolStorage.stopCheckpointID=-1
-
-                poolStorage.storedMetadata={}
+                poolStorage.stopCheckpointID = -1
 
             }
         
@@ -324,35 +316,22 @@ export default {
                     // Do it only if pool is not in current POOLS_METADATA
                     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
 
-                        if(poolStorage.storedMetadata.hash){
-
-                            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]=poolStorage.storedMetadata
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
+                                
+                            index:-1,
                         
-                        }else{
-    
-                            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
-                                
-                                index:-1,
-                            
-                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-                                isReserve:poolStorage.isReserve
-                            
-                            }
-
-                            // Add the pointer where pool is created to state
-
-                            global.SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
-
-                            if(!poolStorage.isReserve){
-
-                                // Add the SID tracker
-
-                                global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
-                                
-                            }
-
+                            isReserve:poolStorage.isReserve
+                        
                         }
+
+                        // Add the pointer where pool is created to state
+
+                        global.SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
+
+                        // Add the SID tracker
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
         
                     }
                     
@@ -361,8 +340,6 @@ export default {
                     poolStorage.lackOfTotalPower=false
 
                     poolStorage.stopCheckpointID=-1
-
-                    poolStorage.storedMetadata={}
 
                 }
                 

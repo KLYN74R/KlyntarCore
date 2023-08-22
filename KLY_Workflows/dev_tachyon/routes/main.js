@@ -411,8 +411,9 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
 
+        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -423,8 +424,6 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
         
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-        let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata
 
 
         if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
@@ -454,13 +453,13 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             let [_epochID,blockCreator,_blockIndexInEpoch] = blockID.split(':')
 
 
-            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+            let majorityIsOk =  (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(_,checkpoint)
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
             let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
-            let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
+            let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
             
             
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && primePoolOrAtLeastReassignment){
@@ -493,11 +492,12 @@ Accept AGGREGATED_FINALIZATION_PROOF or send if it exists locally   *
 */
 acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    let poolsMetadataOnQuorumThread = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
 
     if(!tempObject){
 
@@ -529,14 +529,11 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
 
-    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    let majorityIsOk = (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(_,checkpoint)
     
     let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
-    let primePoolOrAtLeastReassignment = poolsMetadataOnQuorumThread[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && poolsMetadataOnQuorumThread[blockCreator].isReserve || !poolsMetadataOnQuorumThread[blockCreator].isReserve)
-
-    let checkpointTempDB = tempObject.DATABASE
-
+    let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
 
 
     if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
@@ -561,7 +558,7 @@ Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with
 
 Params:
 
-    [0] - blockID
+    [0] - blockID in format EpochID:BlockCreatorBLSPubKey:IndexOfBlockInEpoch. Example 733:75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG:99
 
 Returns:
 
@@ -620,19 +617,38 @@ Params:
 Returns:
 
     {
-        
-        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
-        
-        hash:<>,
 
-        aggregatedFinalizationProof:{
+        afpForFirstBlock:{
+
+            blockID,
             
-            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-            aggregatedPub:<>,
+            blockHash,
+
+            aggregatedPub:bls.aggregatePublicKeys(signers),
+            
+            aggregatedSignature:bls.aggregateSignatures(signatures),
+            
             afkVoters
+
+        },
+
+
+        currentHealth:{
+
+            index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
+            hash:<>,
+
+            aggregatedFinalizationProof:{
+            
+                aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                aggregatedPub:<>,
+                afkVoters
+        
+            }
+
         }
-    
+            
     
     }
 
@@ -644,42 +660,34 @@ healthChecker = async response => {
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
 
         // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
-        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        if(!appropriateDescriptor) !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
+        let currentHealth = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('HEALTH')
 
+        // Now, try to get the AFP for the first block in epoch
 
-        
-        let latestFullyFinalizedHeight = appropriateDescriptor.height-1
+        let afpForFirstBlock = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('AFP_FOR_MY_FIRST_BLOCK_IN_EPOCH')
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        if(!afpForFirstBlock){
 
-        let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+            // Find the AFP proof for the first block in current epoch
+            let firstBlockInEpochID = `${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id}:${global.CONFIG.SYMBIOTE.PUB}:0`
 
-        let blockID = checkpointIndex+":"+global.CONFIG.SYMBIOTE.PUB+":"+latestFullyFinalizedHeight
+            let afpForMyBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockInEpochID).catch(_=>false)
 
-        let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+            // Add to cache
+            global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('AFP_FOR_MY_FIRST_BLOCK_IN_EPOCH',afpForMyBlock)
 
-        let latestHash = block && Block.genHash(block)
-
-        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
-
-            return
         }
-       
-
-        let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
 
 
-        if(aggregatedFinalizationProof){
+        if(currentHealth && afpForFirstBlock){
 
-            let healthProof = {index:latestFullyFinalizedHeight,hash:latestHash,aggregatedFinalizationProof}
+            let healthProof = {afpForFirstBlock,currentHealth}
 
             !response.aborted && response.end(JSON.stringify(healthProof))
 
-        }else !response.aborted && response.end(JSON.stringify({err:'No proof'}))
+        }else !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
+
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
@@ -700,22 +708,40 @@ To return the stats about the health about another pool
 
     Our local stats about the health of provided pool
 
+
     {
-        index,
-        hash,
 
-        aggregatedFinalizationProof:
+        afpForFirstBlock:{
+
+            blockID,
             
-            {
+            blockHash,
 
-                (?) aggregatedPub,
-                (?) aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
-                (?) afkVoters
+            aggregatedPub:bls.aggregatePublicKeys(signers),
+            
+            aggregatedSignature:bls.aggregateSignatures(signatures),
+            
+            afkVoters
+
+        },
+
+
+        currentHealth:{
+
+            index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+            hash:<>,
+
+            aggregatedFinalizationProof:{
+
+                aggregatedPub,
+                aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
+                afkVoters
         
             }
 
-        (?) - if index and hash are taken from checkpoint, it might be no aggregated proofs of finalization sent in response
-        
+        }
+    
     }
 
 
