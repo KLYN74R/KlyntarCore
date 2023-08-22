@@ -110,7 +110,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
 
 
-VERIFY_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablyAggregatedFinalizationProof,checkpointFullID,checkpoint) => {
+VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,checkpoint,rootPub) => {
 
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
@@ -128,21 +128,19 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash,itsProbablyAggre
 
     if(generalAndTypeCheck){
 
-        //Verify it before return
+        let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-        let aggregatedSignatureIsOk = await BLS_VERIFY(blockID+blockHash+'FINALIZATION'+checkpointFullID,itsProbablyAggregatedFinalizationProof.aggregatedSignature,itsProbablyAggregatedFinalizationProof.aggregatedPub),
+        let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedFinalizationProof
 
-            rootQuorumKeyIsEqualToProposed = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID) === bls.aggregatePublicKeys([itsProbablyAggregatedFinalizationProof.aggregatedPub,...itsProbablyAggregatedFinalizationProof.afkVoters]),
+        let dataThatShouldBeSigned = blockID+blockHash+'FINALIZATION'+checkpointFullID
 
-            quorumSize = checkpoint.quorum.length,
+        let majority = GET_MAJORITY(false,checkpoint)
 
-            majority = GET_MAJORITY('VERIFICATION_THREAD',checkpoint)
+        let reverseThreshold = checkpoint.quorum.length-majority
 
-            
-        let majorityVotedForThis = quorumSize-itsProbablyAggregatedFinalizationProof.afkVoters.length >= majority
+        let signaIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-
-        if(aggregatedSignatureIsOk && rootQuorumKeyIsEqualToProposed && majorityVotedForThis) return {verify:true}
+        if(signaIsOk) return {verify:true}
 
     }
 
@@ -194,6 +192,8 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let verificationThreadCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
 
+    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+verificationThreadCheckpointFullID)
+
 
     // Need for async safety
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
@@ -222,9 +222,9 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
         if(itsProbablyAggregatedFinalizationProof){
 
-            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,itsProbablyAggregatedFinalizationProof,verificationThreadCheckpointFullID,vtCheckpoint)
+            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPub)
 
-            if(isOK.verify) return isOK 
+            if(isOK.verify && itsProbablyAggregatedFinalizationProof.blockID === blockID && itsProbablyAggregatedFinalizationProof.blockHash === blockHash) return isOK 
 
         }
 
@@ -404,7 +404,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
     let quorumRootPub = threadID==='QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
-    let majority = GET_MAJORITY(_,checkpoint)
+    let majority = GET_MAJORITY(false,checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
 

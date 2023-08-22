@@ -875,7 +875,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let checkpointProposition = {}
 
-        let majority = GET_MAJORITY(_,qtCheckpoint)
+        let majority = GET_MAJORITY(false,qtCheckpoint)
 
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
@@ -1933,7 +1933,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    let majority = GET_MAJORITY(_,checkpoint)
+    let majority = GET_MAJORITY(false,checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
 
@@ -2076,28 +2076,71 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         if(!localHealthHandler){
 
-            localHealthHandler = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            localHealthHandler = {
+
+                afpForFirstBlock:{},
+
+                currentHealth:{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+            }
 
             tempObject.HEALTH_MONITORING.set(pubKey,localHealthHandler)            
 
         }
 
-        // blockID+hash+'FINALIZATION'+checkpointFullID
+
+        //__________________________________Verify the AFP proof_________________________________________________
+
+        
         let data = checkpointIndex+':'+pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
 
         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-        //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new height/hash/aggregatedFinalizationProof
 
-        if(aggregatedFinalizationProofIsOk && (localHealthHandler.index < index || localHealthHandler.index === -1)){
+        //_____Verify the AFP for the first block in case we still don't have assumptions for subchain_____
 
-            localHealthHandler.lastSeen = GET_GMT_TIMESTAMP()
+        let afpForFirstBlockSignatureIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(answer.afpForFirstBlock,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
 
-            localHealthHandler.index = index
+        let subchainID = checkpoint.poolsMetadata[pubKey].isReserve ? reassignments.get(pubKey) : pubKey
 
-            localHealthHandler.hash = hash
+        let assumptionForFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
 
-            localHealthHandler.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
+        let afpForFirstBlockIsOk = assumptionForFirstBlockExists || afpForFirstBlockSignatureIsOk
+
+
+        // If signature is ok and index is bigger than we have - update the <lastSeen> time and set new height/hash/aggregatedFinalizationProof
+
+        if(aggregatedFinalizationProofIsOk && afpForFirstBlockIsOk && (localHealthHandler.index < index || localHealthHandler.index === -1)){
+
+            localHealthHandler.currentHealth.lastSeen = GET_GMT_TIMESTAMP()
+
+            localHealthHandler.currentHealth.index = index
+
+            localHealthHandler.currentHealth.hash = hash
+
+            localHealthHandler.currentHealth.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
+
+
+            if(!assumptionForFirstBlockExists && afpForFirstBlockSignatureIsOk){
+
+                // This branch in case when we haven't had assumption, so store it
+
+                let pureObj = {
+                    
+                    blockID:answer.afpForFirstBlock.blockID,
+                    blockHash:answer.afpForFirstBlock.blockHash,
+                    aggregatedPub:answer.afpForFirstBlock.aggregatedPub,
+                    aggregatedSignature:answer.afpForFirstBlock.aggregatedSignature,
+                    afkVoters:answer.afpForFirstBlock.afkVoters
+                
+                }
+
+                await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)
+
+                localHealthHandler.afpForFirstBlock = pureObj
+
+            }else candidatesForAnotherCheck.push(pubKey)
+
 
         }else candidatesForAnotherCheck.push(pubKey)
         
@@ -2114,9 +2157,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let candidate of candidatesForAnotherCheck){
 
-        let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate) // {lastSeen,index,hash,aggregatedFinalizationProof}
+        let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate) // {currentHealth:{lastSeen,index,hash,aggregatedFinalizationProof},afpForFirstBlock}
 
-        if(currentTime-localHealthHandler.lastSeen >= afkLimit){
+        if(currentTime-localHealthHandler.currentHealth.lastSeen >= afkLimit){
 
             let updateWasFound = false
             
@@ -2124,39 +2167,74 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             for(let validatorHandler of poolsURLsAndPubKeys){
 
-                let afpOfPoolXFromAnotherQuorumMember = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate).then(r=>r.json()).catch(_=>false)
+                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate).then(r=>r.json()).catch(_=>false)
 
-                if(afpOfPoolXFromAnotherQuorumMember){
+                if(typeof answer.afpOfPoolXFromAnotherQuorumMember === 'object' && typeof answer.currentHealth === 'object' && typeof answer.afpForFirstBlock){
 
                     // Verify and if ok - break the cycle
 
-                    let {index,hash,aggregatedFinalizationProof} = afpOfPoolXFromAnotherQuorumMember
+                    let {index,hash,aggregatedFinalizationProof} = answer.currentHealth
 
                     if(aggregatedFinalizationProof){
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedFinalizationProof
 
-                        // blockID+hash+'FINALIZATION'+quorumThreadCheckpointFullID
                         let data = checkpointIndex+":"+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
     
                         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
+                        
+                        //_____Verify the AFP for the first block in case we still don't have assumptions for subchain_____
+
+                        let afpForFirstBlockSignatureIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(answer.afpForFirstBlock,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
+
+                        let subchainID = checkpoint.poolsMetadata[pubKey].isReserve ? reassignments.get(pubKey) : pubKey
+                
+                        let assumptionForFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
+                
+                        let afpForFirstBlockIsOk = assumptionForFirstBlockExists || afpForFirstBlockSignatureIsOk
+
                         //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new aggregatedFinalizationProof
     
-                        if(aggregatedFinalizationProofIsOk && localHealthHandler.index < index){
+                        if(aggregatedFinalizationProofIsOk && afpForFirstBlockIsOk && (localHealthHandler.currentHealth.index < index || localHealthHandler.currentHealth.index === -1)){
     
-                            localHealthHandler.lastSeen = currentTime
+                            localHealthHandler.currentHealth.lastSeen = currentTime
 
-                            localHealthHandler.index = index
+                            localHealthHandler.currentHealth.index = index
 
-                            localHealthHandler.hash = hash
+                            localHealthHandler.currentHealth.hash = hash
     
-                            localHealthHandler.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
+                            localHealthHandler.currentHealth.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
     
-                            updateWasFound = true
 
-                            break // No more sense to find updates
+                            if(!assumptionForFirstBlockExists && afpForFirstBlockSignatureIsOk){
 
+                                // This branch in case when we haven't had assumption, so store it
+                
+                                let pureObj = {
+                                    
+                                    blockID:answer.afpForFirstBlock.blockID,
+                                    blockHash:answer.afpForFirstBlock.blockHash,
+                                    aggregatedPub:answer.afpForFirstBlock.aggregatedPub,
+                                    aggregatedSignature:answer.afpForFirstBlock.aggregatedSignature,
+                                    afkVoters:answer.afpForFirstBlock.afkVoters
+                                
+                                }
+                
+                                await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)
+                
+                                localHealthHandler.afpForFirstBlock = pureObj
+                
+
+                                // No more sense to find updates
+
+                                
+                                updateWasFound = true
+
+                                break
+    
+                            }
+                
                         }
                     
                     }
@@ -3442,7 +3520,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, _, true
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                 
                                 )
     
@@ -3497,7 +3575,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                 
                                             let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{},arrayOfPoolsWithZeroProgress:[]} : await CHECK_IF_ALL_ASP_PRESENT(
                                                         
-                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, _, true
+                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                                         
                                             )
                                 

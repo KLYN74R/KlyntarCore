@@ -8,7 +8,7 @@ import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
-import {CHECK_IF_ALL_ASP_PRESENT} from '../verification.js'
+import {CHECK_IF_ALL_ASP_PRESENT, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import Block from '../essences/block.js'
 
@@ -206,7 +206,7 @@ acceptBlocks = response => {
                         
                         checkpoint.quorum,
                         
-                        GET_MAJORITY(_,checkpoint),
+                        GET_MAJORITY(false,checkpoint),
                         
                         global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
 
@@ -453,7 +453,7 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
             let [_epochID,blockCreator,_blockIndexInEpoch] = blockID.split(':')
 
 
-            let majorityIsOk =  (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(_,checkpoint)
+            let majorityIsOk =  (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(false,checkpoint)
 
             let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
     
@@ -508,7 +508,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     
    
-    let possibleAggregatedFinalizationProof=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let possibleAggregatedFinalizationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
     
@@ -527,22 +527,18 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
 
-    let signaIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
-
-    let majorityIsOk = (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(_,checkpoint)
-    
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
     
     let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
 
 
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && hashesAreEqual && primePoolOrAtLeastReassignment){
+    if(quorumSignaIsOk && hashesAreEqual && primePoolOrAtLeastReassignment){
 
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
-    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 5 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 3 must be true => signa_is_ok:${quorumSignaIsOk} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
 
 
 }),
@@ -1179,7 +1175,7 @@ VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoi
 
     let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
 
-    let majority = GET_MAJORITY(_,checkpoint)
+    let majority = GET_MAJORITY(false,checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
 
