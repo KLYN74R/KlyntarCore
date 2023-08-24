@@ -1,6 +1,6 @@
-import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
+import {LOG,COLORS,BLAKE3, GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
-import {LOG,COLORS,BLAKE3} from '../../KLY_Utils/utils.js'
+import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import cryptoModule from 'crypto'
 
@@ -517,13 +517,13 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 
 
-CHECK_IF_THE_SAME_DAY=(timestamp1,timestamp2)=>{
+CHECK_IF_CHECKPOINT_STILL_FRESH = thread => {
 
-    let date1 = new Date(timestamp1),
-        
-        date2 = new Date(timestamp2)
-    
-    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate()
+    let checkpointTime = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.timestamp
+
+    let currentTime = GET_GMT_TIMESTAMP()
+
+    return checkpointTime + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
 
 },
 

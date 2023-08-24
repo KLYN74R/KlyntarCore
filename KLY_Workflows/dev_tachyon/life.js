@@ -2,19 +2,19 @@ import {CHECK_IF_ALL_ASP_PRESENT,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGR
 
 import {
     
-    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,CHECK_IF_THE_SAME_DAY,USE_TEMPORARY_DB,
+    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
 
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD,
+    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT, GET_ALL_KNOWN_PEERS,
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD
 
 } from './utils.js'
 
 import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
-import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
-
 import SYSTEM_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
+
+import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -535,14 +535,12 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-        let checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.timestamp,GET_GMT_TIMESTAMP())
-
         let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
         let poolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata
 
 
-        if(checkpointIsFresh && iAmInTheQuorum){
+        if(CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
 
             // Fill the checkpoints manager with the latest data
 
@@ -865,13 +863,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
     
-        iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB),
-
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.timestamp,GET_GMT_TIMESTAMP())
+        iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
 
-    if(iAmInTheQuorum && !checkpointIsFresh){
+    if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.PROOFS_REQUESTS.set('TIME_TO_NEW_EPOCH',true)
@@ -1593,9 +1589,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     }
 
-    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.timestamp,GET_GMT_TIMESTAMP())
 
-    if(!isCheckpointStillFresh){
+    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
@@ -1963,7 +1958,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let reassignments = tempObject.REASSIGNMENTS
 
-    let isCheckpointStillFresh = CHECK_IF_THE_SAME_DAY(checkpoint.timestamp,GET_GMT_TIMESTAMP())
+    let isCheckpointStillFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(checkpoint)
 
 
 

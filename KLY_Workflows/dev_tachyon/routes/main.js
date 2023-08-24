@@ -1500,6 +1500,43 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
 
 
+getFirstBlockAssumptions=async(response,request)=>{
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
+
+        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+
+        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
+
+            !response.aborted && response.end('QT checkpoint is not ready')
+        
+            return
+
+        }
+
+
+        let epochIndex = request.getParameter(0)
+
+        let subchainID = request.getParameter(1)
+
+        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${subchainID}`).catch(_=>false)
+
+
+        if(aggregatedEpochFinalizationProofForSubchain){
+
+            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))
+
+        }else !response.aborted && response.end(JSON.stringify({err:'No EFP'}))
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
 /*
 
 Body is
@@ -1790,6 +1827,8 @@ UWS_SERVER
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 .post('/checkpoint_proposition',acceptCheckpointProposition)
+
+.get('/first_block_assumptions',getFirstBlockAssumptions)
 
 
 //________________________________ Health monitoring __________________________________

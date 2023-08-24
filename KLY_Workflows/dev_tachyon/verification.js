@@ -1,20 +1,20 @@
 import {
     
-    GET_POOLS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_THE_SAME_DAY,
+    GET_POOLS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,BLS_VERIFY,GET_QUORUM,GET_FROM_STATE,HEAP_SORT
+    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE,HEAP_SORT
 
 } from './utils.js'
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
-
-import {LOG,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
 import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
+
+import {LOG,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import Block from './essences/block.js'
 
@@ -72,7 +72,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
                 if(url===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock=await fetch(url+`/block/`+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                let itsProbablyBlock = await fetch(url+`/block/`+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
                 
                 if(itsProbablyBlock){
 
@@ -1034,14 +1034,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
     //________________________________________ FIND NEW CHECKPOINT ________________________________________
 
 
-    let currentTimestamp = GET_GMT_TIMESTAMP(),//due to UTC timestamp format
-
-        checkpointIsFresh = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.timestamp,currentTimestamp)
-
-
     //If checkpoint is not fresh - find "fresh" one on hostchain
 
-    if(!checkpointIsFresh){
+    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)){
 
 
         let nextCheckpoint = await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(_=>false)
@@ -1123,7 +1118,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
 
-        let updatedIsFreshCheckpoint = CHECK_IF_THE_SAME_DAY(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.timestamp,GET_GMT_TIMESTAMP())
+        let updatedIsFreshCheckpoint = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
 
         /*
