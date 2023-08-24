@@ -388,9 +388,23 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         1. Check if new epoch must be started(new day by default)
     
-        2. Find first X blocks in epoch per each subchain. This value is defined in global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SYSTEM_SYNC_OPERATIONS_LIMIT_PER_BLOCK
+        2. Find first X blocks in epoch per each subchain(1 block by default). This value is defined in global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SYSTEM_SYNC_OPERATIONS_LIMIT_PER_BLOCK
 
-                To do it, start the naive mode(cyclic) and get blocks & AFPs for it. In case of reassignments we still can easily get the first X blocks thanks to proofs in ASPs(aggregated skip proofs)
+            To do it, follow the steps bellow:
+                
+                1) Check the await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)    
+                
+                start the naive mode(cyclic) and perform a GET /first_block_assumptions requests to the quorum members
+
+                We'll receive the object like this:
+
+
+                {
+
+                }
+                
+                
+                get blocks & AFPs for it. In case of reassignments we still can easily get the first X blocks thanks to proofs in ASPs(aggregated skip proofs)
 
                 Because it contains {index,hash} we can extract required number of blocks and finish grabbing
 
@@ -1020,7 +1034,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         //____________________________________ Send the checkpoint proposition ____________________________________
 
 
-        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition)}
+        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition),agent:global.FETCH_HTTP_AGENT}
         
         let quorumMembers = await GET_POOLS_URLS(true)
 
@@ -1213,7 +1227,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
     let aggregatedCommitments = COMMITMENTS.get(blockID) //voterValidatorPubKey => his commitment 
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
+    let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments),agent:global.FETCH_HTTP_AGENT},
 
         quorumMembers = await GET_POOLS_URLS(true),
 
@@ -1356,7 +1370,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(block)},
+    let optionsToSend = {method:'POST',body:JSON.stringify(block),agent:global.FETCH_HTTP_AGENT},
 
         commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
         
@@ -1634,7 +1648,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
 
-                })
+                }),
+
+                agent:global.FETCH_HTTP_AGENT
 
             }
 
@@ -1830,7 +1846,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     
                     session
                     
-                })
+                }),
+
+                agent:global.FETCH_HTTP_AGENT
 
             }
 
@@ -1991,7 +2009,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         if(!poolIsInSkipHandlers && (isItPrimePool || poolIsInReassignment)){
 
-            let responsePromise = fetch(handler.url+'/health').then(r=>r.json()).then(response=>{
+            let responsePromise = fetch(handler.url+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
 
                 response.pubKey = handler.pubKey
     
@@ -2167,7 +2185,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             for(let validatorHandler of poolsURLsAndPubKeys){
 
-                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate).then(r=>r.json()).catch(_=>false)
+                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
                 if(typeof answer.afpOfPoolXFromAnotherQuorumMember === 'object' && typeof answer.currentHealth === 'object' && typeof answer.afpForFirstBlock){
 
@@ -2228,7 +2246,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                                 // No more sense to find updates
 
-                                
+
                                 updateWasFound = true
 
                                 break
@@ -2400,7 +2418,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
         let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
 
-        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(_=>false)
+        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
         let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
             
@@ -3420,7 +3438,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
 
-        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign').then(r=>r.json()).catch(_=>false)
+        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
         if(responseForTempReassignment){
 
@@ -3685,7 +3703,7 @@ RUN_SYMBIOTE=async()=>{
 
 
 
-    let promises=[]
+    let promises = []
 
     //Check if bootstrap nodes is alive
     global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>

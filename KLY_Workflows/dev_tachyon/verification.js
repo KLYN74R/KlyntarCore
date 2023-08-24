@@ -45,7 +45,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
 
-        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index)
+        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index,{agent:global.FETCH_HTTP_AGENT})
     
         .then(r=>r.json()).then(block=>{
                 
@@ -72,7 +72,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
                 if(url===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock=await fetch(url+`/block/`+blockID).then(r=>r.json()).catch(_=>false)
+                let itsProbablyBlock=await fetch(url+`/block/`+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
                 
                 if(itsProbablyBlock){
 
@@ -218,7 +218,7 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(_=>false)
+        let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
         if(itsProbablyAggregatedFinalizationProof){
 

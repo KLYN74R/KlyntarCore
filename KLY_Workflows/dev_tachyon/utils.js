@@ -10,6 +10,20 @@ import fetch from 'node-fetch'
 
 import fs from 'fs'
 
+import http from 'http'
+
+
+global.FETCH_HTTP_AGENT = new http.Agent({
+
+    keepAlive: true,
+    maxSockets: 100
+
+})
+
+
+
+
+
 
 
 
@@ -362,7 +376,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     quorumMembers.forEach(url=>
     
-        fetch(url+route,{method:'POST',body:JSON.stringify(data)}).catch(_=>{})
+        fetch(url+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).catch(_=>{})
         
     )
 
@@ -379,7 +393,9 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
                 
                     method:'POST',
                     
-                    body:JSON.stringify({data,sig})
+                    body:JSON.stringify({data,sig}),
+
+                    agent:global.FETCH_HTTP_AGENT
                 
                 }).catch(_=>
                     
@@ -396,7 +412,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     
     global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
     
-        fetch(addr+route,{method:'POST',body:JSON.stringify(data)})
+        fetch(addr+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT})
         
         .catch(_=>
             
@@ -420,7 +436,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
         
         promises.push(
             
-            fetch(addr+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
+            fetch(addr+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).then(v=>v.text()).then(value=>
                 
                 value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
                     

@@ -20,7 +20,7 @@ export default class{
 
         if(!value){
 
-            let stuff = await fetch(global.CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${key}`).then(r=>r.json()).catch(_=>false)
+            let stuff = await fetch(global.CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${key}`,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
             if(stuff){
     
