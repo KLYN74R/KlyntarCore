@@ -269,7 +269,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
     }
 
-    if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
+    if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
         connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
         
@@ -448,7 +448,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-        if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
+        if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
             connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
             
@@ -482,7 +482,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
             if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
 
                 // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
+                tempObject.SYNCHRONIZER.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
     
                 blocksSet.push(blockID)
 

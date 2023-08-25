@@ -1,3 +1,5 @@
+import {CHECK_IF_ALL_ASP_PRESENT,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+
 import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
@@ -7,8 +9,6 @@ import{BODY,SAFE_ADD,PARSE_JSON,BLAKE3} from '../../../KLY_Utils/utils.js'
 import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-
-import {CHECK_IF_ALL_ASP_PRESENT, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import Block from '../essences/block.js'
 
@@ -55,7 +55,7 @@ let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.C
     <OR> nothing
 
 */
-acceptBlocks = response => {
+acceptBlocksAndReturnCommitment = response => {
     
     let total = 0
     
@@ -77,6 +77,14 @@ acceptBlocks = response => {
     
     }
 
+    if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+        
+        return
+
+    }
+
     if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
 
         !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
@@ -85,18 +93,10 @@ acceptBlocks = response => {
 
     }
 
-    if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
-
-        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
-        
-        return
-
-    }
-
     
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
-        if(total+chunk.byteLength<=global.CONFIG.MAX_PAYLOAD_SIZE){
+        if(total+chunk.byteLength <= global.CONFIG.MAX_PAYLOAD_SIZE){
         
             buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
     
@@ -106,7 +106,7 @@ acceptBlocks = response => {
             
                 let block = await PARSE_JSON(buffer)
 
-                let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.PROOFS_REQUESTS.has('CREATE_SKIP_HANDLER:'+block.creator)
+                let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+block.creator)
             
 
                 if(poolIsAFK){
@@ -241,7 +241,7 @@ acceptBlocks = response => {
 
                     if(allChecksPassed){
                         
-                        //Store it locally-we'll work with this block later
+                        // Store it locally-we'll work with this block later
                         global.SYMBIOTE_META.BLOCKS.get(blockID).catch(
                                 
                             _ =>
@@ -250,16 +250,29 @@ acceptBlocks = response => {
                              
                         )
                         
-    
-                        let commitment = await BLS_SIGN_DATA(blockID+hash+checkpointFullID)
+                        // Check the synchronizer to make sure if we're not voting for the same block
+                        
+                        if(!tempObject.SYNCHRONIZER.has('COM:'+blockID)){
+
+                            // Add the synchronization moment to prevent double voting for two different blocks(with hashes H1, H2) on the same height
+                            tempObject.SYNCHRONIZER.set('COM:'+blockID,true)
+
+                            // Now we can safely generate commitment for block without problems with async stuff
+                            let commitment = await BLS_SIGN_DATA(blockID+hash+checkpointFullID)
                     
     
-                        //Put to local storage to prevent double voting
-                        await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>
-        
-                            !response.aborted && response.end(JSON.stringify({commitment:commitment}))
-                        
-                        ).catch(error=>!response.aborted && response.end(JSON.stringify({err:`Something wrong => ${JSON.stringify(error)}`})))
+                            // Put to local storage to prevent double voting
+                            await USE_TEMPORARY_DB('put',tempObject.DATABASE,blockID,commitment).then(()=>{
+
+                                // Now we can remove the sync lock
+                                tempObject.SYNCHRONIZER.delete('COM:'+blockID)
+
+                                !response.aborted && response.end(JSON.stringify({commitment}))
+
+                            }).catch(error=>!response.aborted && response.end(JSON.stringify({err:`Something wrong => ${JSON.stringify(error)}`})))
+    
+
+                        } else !response.aborted && response.end(JSON.stringify({err:'Wait'}))
     
     
                     }else !response.aborted && response.end(JSON.stringify({err:'Overview failed. Make sure input data is ok'}))
@@ -342,26 +355,6 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
 
 
 
-FINALIZATION_PROOFS_POLLING=(tempObject,blockID,response)=>{
-
-
-    if(tempObject.PROOFS_RESPONSES.has(blockID)){
-
-        // Instantly send response
-        !response.aborted && response.end(tempObject.PROOFS_RESPONSES.get(blockID))
-
-    }else{
-
-        //Wait a while
-
-        setImmediate(()=>FINALIZATION_PROOFS_POLLING(tempObject,blockID,response))
-
-    }
-
-
-},
-
-
 /*
 
 [Description]:
@@ -405,7 +398,7 @@ ___________________________Verification steps___________________________
 
     
 */
-finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let aggregatedCommitments = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
@@ -426,17 +419,10 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
         let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-        if(tempObject.PROOFS_REQUESTS.has('TIME_TO_NEW_EPOCH')){
+        if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
             !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
-            
     
-        }else if(tempObject.PROOFS_RESPONSES.has(aggregatedCommitments.blockID)){
-
-            // Instantly send response
-            !response.aborted && response.end(JSON.stringify({fp:tempObject.PROOFS_RESPONSES.get(aggregatedCommitments.blockID)}))
-
-
         }else{
 
             
@@ -452,24 +438,97 @@ finalization=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             let [_epochID,blockCreator,_blockIndexInEpoch] = blockID.split(':')
 
-
-            let majorityIsOk =  (checkpoint.quorum.length-afkVoters.length) >= GET_MAJORITY(false,checkpoint)
-
-            let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
-    
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-    
-            let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
+            let poolIsAFK = tempObject.SKIP_HANDLERS.has(blockCreator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+blockCreator)
             
-            
-            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal && primePoolOrAtLeastReassignment){
 
-                // Add request to sync function 
-                tempObject.PROOFS_REQUESTS.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
-    
-                FINALIZATION_PROOFS_POLLING(tempObject,blockID,response)
+            if(poolIsAFK){
+
+                !response.aborted && response.end(JSON.stringify({err:'This pool is AFK'}))
+        
+                return
+
+            }
+
+
+            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+            let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
+
+            let majority = GET_MAJORITY(false,checkpoint)
+        
+            let reverseThreshold = checkpoint.length - majority
+
+            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 4 must be true => signa_is_ok:${signaIsOk} | majority_voted_for_it:${majorityIsOk} | quorum_root_pubkey_is_current:${rootPubIsEqualToReal} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+                aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold
+                
+            ).catch(_=>false)
+
+            let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
+                        
+
+            if(aggregatedCommitmentsIsOk && primePoolOrAtLeastReassignment){
+
+                if(!tempObject.SYNCHRONIZER.has('FP:'+blockID)){
+
+                    // Add request to sync function
+
+                    tempObject.SYNCHRONIZER.set('FP:'+blockID,true)
+
+                    let [_epochID,poolPubKey,index] = blockID.split(':')
+
+                    index=+index
+                
+                    let fpSignature = await BLS_SIGN_DATA(blockID+blockHash+'FINALIZATION'+checkpointFullID)
+
+                    // Now, try to update the checkpoint manager
+
+                    let currentDataInCheckpointManager = tempObject.CHECKPOINT_MANAGER.get(poolPubKey) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+
+                    if(currentDataInCheckpointManager.index < index){
+
+                        // Update the local checkpoint manager
+
+                        let updatedHandler = {
+                            
+                            index,
+                            
+                            hash:blockHash,
+
+                            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                        
+                        }
+
+                        // Now push to persistent DB first
+
+                        await USE_TEMPORARY_DB('put',tempObject.DATABASE,poolPubKey,updatedHandler).then(()=>{
+
+                            // And only after db - update the finalization height for CHECKPOINT_MANAGER
+                            tempObject.CHECKPOINT_MANAGER.set(poolPubKey,updatedHandler)
+
+                            // Delete from sync mode
+                            tempObject.SYNCHRONIZER.delete('FP:'+blockID)
+
+                            // And finally - send response
+                            !response.aborted && response.end(JSON.stringify({fp:fpSignature}))
+
+
+                        }).catch(_=>!response.aborted && response.end(JSON.stringify({err:'Wait'})))
+
+
+                    }else{
+
+                        // Delete from sync mode
+                        tempObject.SYNCHRONIZER.delete('FP:'+blockID)
+
+                        // And finally - send response
+                        !response.aborted && response.end(JSON.stringify({fp:fpSignature}))
+
+                    }
+
+                }else !response.aborted && response.end(JSON.stringify({err:'Wait'}))
+                
+            }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 2 must be true => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
 
         }
 
@@ -1234,7 +1293,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
         return
     }
 
-    if(!tempObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
+    if(!tempObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
 
         !response.aborted && response.end(JSON.stringify({err:'This checkpoint is fresh or not ready for checkpoint'}))
 
@@ -1810,10 +1869,10 @@ UWS_SERVER
 
 
 //1st stage - accept block and response with the commitment
-.post('/block',acceptBlocks)
+.post('/block',acceptBlocksAndReturnCommitment)
 
 //2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
-.post('/finalization',finalization)
+.post('/finalization',acceptAggregatedCommitmentsAndReturnFinalizationProof)
 
 //3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/aggregated_finalization_proof',acceptAggregatedFinalizationProof)

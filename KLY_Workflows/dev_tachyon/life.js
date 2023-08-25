@@ -487,9 +487,8 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
  
             SKIP_HANDLERS:new Map(), // {wasReassigned:boolean,extendedAggregatedCommitments,aggregatedSkipProof}
 
-            PROOFS_REQUESTS:new Map(),
-            PROOFS_RESPONSES:new Map(), 
-    
+            SYNCHRONIZER:new Map(),
+            
             REASSIGNMENTS:new Map(),
 
             HEALTH_MONITORING:new Map(),
@@ -603,7 +602,6 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     let currentCheckpointReassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
 
-
     let currentTempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
@@ -616,15 +614,9 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     }
 
-    let currentCheckpointsManager = currentTempObject.CHECKPOINT_MANAGER // mapping( poolPubKey => {index,hash,(?)aggregatedCommitments} )
-
     let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(poolPubKey => {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSigna,afkVoters}}})
 
-
-    let currentFinalizationProofsRequests = currentTempObject.PROOFS_REQUESTS // mapping(blockID=>blockHash)
-
-    let currentFinalizationProofsResponses = currentTempObject.PROOFS_RESPONSES // mapping(blockID=>SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id))
-
+    let synchronizer = currentTempObject.SYNCHRONIZER // mapping(blockID=>blockHash)
 
     let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // poolPubKey => {wasReassigned:boolean,extendedAggregatedCommitments:{index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}},aggregatedSkipProof:{same as FP structure, but aggregatedSigna = `SKIP:{poolPubKey}:{index}:{hash}:{checkpointFullID}`}}
       
@@ -633,38 +625,17 @@ PROOFS_SYNCHRONIZER=async()=>{
     let reassignments = currentTempObject.REASSIGNMENTS
 
 
-    //____________________ UPDATE THE CHECKPOINT_MANAGER ____________________
-
-
-    for(let keyValue of currentCheckpointSyncHelper){
-
-        let poolPubKey = keyValue[0]
-        
-        let handlerWithMaximumHeight = keyValue[1] // {index,hash,aggregatedCommitments}
-
-        //Store to DB
-        await USE_TEMPORARY_DB('put',currentCheckpointDB,poolPubKey,handlerWithMaximumHeight).then(()=>{
-
-            // And only after db - update the finalization height for CHECKPOINT_MANAGER
-            currentCheckpointsManager.set(poolPubKey,handlerWithMaximumHeight)
-
-        }).catch(_=>{})
-
-        // currentCheckpointSyncHelper.delete(poolPubKey)
-
-    }
-
 
     // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & skip proofs
 
-    if(currentFinalizationProofsRequests.get('TIME_TO_NEW_EPOCH')){
+    if(synchronizer.get('TIME_TO_NEW_EPOCH')){
 
 
         //Store to DB
         await USE_TEMPORARY_DB('put',currentCheckpointDB,'TIME_TO_NEW_EPOCH',true).then(()=>{
 
             // On this step, we have the latest info about finalization_proofs
-            currentFinalizationProofsResponses.set('READY_FOR_CHECKPOINT',true)
+            synchronizer.set('READY_FOR_CHECKPOINT',true)
 
         }).catch(_=>{})
 
@@ -675,7 +646,7 @@ PROOFS_SYNCHRONIZER=async()=>{
         //____________________ GENERATE THE FINALIZATION_PROOFS ____________________
 
         // Now, check the requests, delete and add to responses
-        for(let keyValue of currentFinalizationProofsRequests){
+        for(let keyValue of synchronizer){
 
             if(keyValue[0]==='TIME_TO_NEW_EPOCH') continue
 
@@ -753,7 +724,7 @@ PROOFS_SYNCHRONIZER=async()=>{
                     reassignments.set(nextReservePool,primePoolPubKey)
 
                     // Delete the request
-                    currentFinalizationProofsRequests.delete(keyValue[0])
+                    synchronizer.delete(keyValue[0])
 
 
                 }).catch(_=>false)
@@ -780,51 +751,11 @@ PROOFS_SYNCHRONIZER=async()=>{
                     currentSkipHandlersMapping.set(poolPubKey,futureSkipHandler)
 
                     // Delete the request
-                    currentFinalizationProofsRequests.delete(keyValue[0])
+                    synchronizer.delete(keyValue[0])
     
 
                 }).catch(_=>false)
 
-
-            }else{
-
-                // Generate signature for finalization proofs
-
-                let blockID = keyValue[0]
-                
-                let {hash,aggregatedCommitments} = keyValue[1]
-    
-                let [_,poolPubKey,index] = blockID.split(':')
-
-                index=+index
-    
-                // We can't produce finalization proofs for pools that are stopped
-                if(currentSkipHandlersMapping.has(poolPubKey)) continue
-
-                //Update the CHECKPOINTS_MANAGER
-                
-                let poolState = currentCheckpointSyncHelper.get(poolPubKey)
-
-                if(poolState && poolState.index<index){
-
-                    poolState.index=index
-                    
-                    poolState.hash=hash
-                    
-                    poolState.aggregatedCommitments=aggregatedCommitments
-
-                    currentCheckpointSyncHelper.set(poolPubKey,poolState)
-
-                }
-
-
-                // Put to responses
-                currentFinalizationProofsResponses.set(blockID,await BLS_SIGN_DATA(blockID+hash+'FINALIZATION'+checkpointFullID))
-    
-                currentFinalizationProofsRequests.delete(blockID)
-
-                // Delete the response for the previous block from responses
-                // currentFinalizationProofsResponses.delete(poolPubKey+':'+(index-1))
 
             }
 
@@ -870,11 +801,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         // Stop to generate commitments/finalization proofs
-        temporaryObject.PROOFS_REQUESTS.set('TIME_TO_NEW_EPOCH',true)
+        temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
 
         // Check the safety
-        if(!temporaryObject.PROOFS_RESPONSES.has('READY_FOR_CHECKPOINT')){
+        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
 
             setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
 
@@ -1610,7 +1541,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     let currentCheckpointDB = tempObject.DATABASE
 
-    let currentProofsRequests = tempObject.PROOFS_REQUESTS
+    let synchronizer = tempObject.SYNCHRONIZER
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
@@ -1805,7 +1736,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         }
 
 
-        if(skipHandler.aggregatedSkipProof && !currentProofsRequests.has('REASSIGN:'+poolWithSkipHandler)){
+        if(skipHandler.aggregatedSkipProof && !synchronizer.has('REASSIGN:'+poolWithSkipHandler)){
     
             /*
 
@@ -1899,13 +1830,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
 
-                    currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
+                    synchronizer.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
 
                 }else{
 
                     // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
 
-                    currentProofsRequests.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
+                    synchronizer.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
 
                 }
 
@@ -1952,7 +1883,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
-    let proofsRequests = tempObject.PROOFS_REQUESTS
+    let synchronizer = tempObject.SYNCHRONIZER
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
@@ -1963,7 +1894,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
-    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || proofsRequests.has('TIME_TO_NEW_EPOCH') || !isCheckpointStillFresh){
+    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || synchronizer.has('TIME_TO_NEW_EPOCH') || !isCheckpointStillFresh){
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -1995,7 +1926,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         */
 
-        let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey) || proofsRequests.has('CREATE_SKIP_HANDLER:'+handler.pubKey)
+        let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey) || synchronizer.has('CREATE_SKIP_HANDLER:'+handler.pubKey)
 
         let poolIsInReassignment = metadataOfCurrentPool.isReserve && typeof reassignments.get(handler.pubKey) === 'string'
 
@@ -2295,7 +2226,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 // If no updates - add the request to create SKIP_HANDLER via a sync and secured way
 
-                proofsRequests.set('CREATE_SKIP_HANDLER:'+candidate,candidate)
+                synchronizer.set('CREATE_SKIP_HANDLER:'+candidate,candidate)
                 
             }
 
@@ -2378,9 +2309,9 @@ RESTORE_STATE=async()=>{
 
     if(itsTimeForTheNextCheckpoint) {
 
-        tempObject.PROOFS_REQUESTS.set('TIME_TO_NEW_EPOCH',true)
+        tempObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
-        tempObject.PROOFS_RESPONSES.set('READY_FOR_CHECKPOINT',true)
+        tempObject.SYNCHRONIZER.set('READY_FOR_CHECKPOINT',true)
 
     }
 
@@ -3297,10 +3228,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
         
-        PROOFS_REQUESTS:new Map(), // mapping(blockID=>FINALIZATION_PROOF_REQUEST)
-
-        PROOFS_RESPONSES:new Map(), // mapping(blockID=>FINALIZATION_PROOF)
-
+        SYNCHRONIZER:new Map(),
 
         HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. poolPubKey => {lastSeen,index,hash,aggregatedFinalizationProof:{aggregatedPub,aggregatedSig,afkVoters}}
 
