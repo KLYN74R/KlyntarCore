@@ -469,11 +469,16 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
             if(aggregatedCommitmentsIsOk && primePoolOrAtLeastReassignment){
 
-                if(!tempObject.SYNCHRONIZER.has('FP:'+blockID)){
+                let poolIsAFK2 = tempObject.SKIP_HANDLERS.has(blockCreator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+blockCreator)
 
-                    // Add request to sync function
+                if(!tempObject.SYNCHRONIZER.has('FP:'+blockID) && !poolIsAFK2){
 
+                    // Sync flag
                     tempObject.SYNCHRONIZER.set('FP:'+blockID,true)
+
+                    // Add the flag for function SUBCHAINS_HEALTH_MONITORING where we need to create skip handler to avoid async problems
+                    tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,false)
+
 
                     let [_epochID,poolPubKey,index] = blockID.split(':')
 
@@ -509,6 +514,9 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
                             // Delete from sync mode
                             tempObject.SYNCHRONIZER.delete('FP:'+blockID)
 
+                            // Make it possible to create skip handler in function SUBCHAINS_HEALTH_MONITORING
+                            tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,true)
+
                             // And finally - send response
                             !response.aborted && response.end(JSON.stringify({fp:fpSignature}))
 
@@ -520,6 +528,9 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
                         // Delete from sync mode
                         tempObject.SYNCHRONIZER.delete('FP:'+blockID)
+
+                        // Make it possible to create skip handler in function SUBCHAINS_HEALTH_MONITORING
+                        tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,true)
 
                         // And finally - send response
                         !response.aborted && response.end(JSON.stringify({fp:fpSignature}))

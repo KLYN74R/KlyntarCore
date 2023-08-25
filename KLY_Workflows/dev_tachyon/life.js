@@ -614,8 +614,7 @@ PROOFS_SYNCHRONIZER=async()=>{
 
     }
 
-    let currentCheckpointSyncHelper = currentTempObject.CHECKPOINT_MANAGER_SYNC_HELPER // mapping(poolPubKey => {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSigna,afkVoters}}})
-
+    
     let synchronizer = currentTempObject.SYNCHRONIZER // mapping(blockID=>blockHash)
 
     let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // poolPubKey => {wasReassigned:boolean,extendedAggregatedCommitments:{index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}},aggregatedSkipProof:{same as FP structure, but aggregatedSigna = `SKIP:{poolPubKey}:{index}:{hash}:{checkpointFullID}`}}
@@ -726,33 +725,6 @@ PROOFS_SYNCHRONIZER=async()=>{
                     // Delete the request
                     synchronizer.delete(keyValue[0])
 
-
-                }).catch(_=>false)
-
-
-            }else if (keyValue[0].startsWith('CREATE_SKIP_HANDLER:')){
-
-                let poolPubKey = keyValue[1]
-
-                // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
-
-                let futureSkipHandler = {
-
-                    wasReassigned:false, // will be true after we get the 2/3N+1 approvement of having <aggregatedSkipProof> from other quorum members
-
-                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(currentCheckpointSyncHelper.get(poolPubKey))), // {index,hash,aggregatedCommitments}
-
-                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
-
-                }
-
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).then(()=>{
-
-                    currentSkipHandlersMapping.set(poolPubKey,futureSkipHandler)
-
-                    // Delete the request
-                    synchronizer.delete(keyValue[0])
-    
 
                 }).catch(_=>false)
 
@@ -1864,8 +1836,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-    let checkpointIndex = checkpoint.id
-
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject){
@@ -1877,24 +1847,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     }
 
 
-    let majority = GET_MAJORITY(false,checkpoint)
-
-    let reverseThreshold = checkpoint.quorum.length-majority
-
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
     let synchronizer = tempObject.SYNCHRONIZER
-
-    let skipHandlers = tempObject.SKIP_HANDLERS
-
-    let reassignments = tempObject.REASSIGNMENTS
-
-    let isCheckpointStillFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(checkpoint)
-
 
 
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
-    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || synchronizer.has('TIME_TO_NEW_EPOCH') || !isCheckpointStillFresh){
+    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || synchronizer.has('TIME_TO_NEW_EPOCH') || !CHECK_IF_CHECKPOINT_STILL_FRESH(checkpoint)){
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -1911,6 +1868,12 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let candidatesForAnotherCheck = []
 
+    let reassignments = tempObject.REASSIGNMENTS
+    
+    let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(false,checkpoint)
+
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
 
     
     for(let handler of poolsURLsAndPubKeys){
@@ -1926,27 +1889,57 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         */
 
-        let poolIsInSkipHandlers = skipHandlers.has(handler.pubKey) || synchronizer.has('CREATE_SKIP_HANDLER:'+handler.pubKey)
-
         let poolIsInReassignment = metadataOfCurrentPool.isReserve && typeof reassignments.get(handler.pubKey) === 'string'
 
         let isItPrimePool = !metadataOfCurrentPool.isReserve
 
 
-        if(!poolIsInSkipHandlers && (isItPrimePool || poolIsInReassignment)){
+        if(!tempObject.SKIP_HANDLERS.has(handler.pubKey) && (isItPrimePool || poolIsInReassignment)){
 
-            let responsePromise = fetch(handler.url+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
+            let createRequest = synchronizer.get('CREATE_SKIP_HANDLER:'+handler.pubKey)
 
-                response.pubKey = handler.pubKey
-    
-                return response
-    
-            }).catch(_=>{candidatesForAnotherCheck.push(handler.pubKey)})
-    
-            proofsPromises.push(responsePromise)
-    
+            if(createRequest && synchronizer.get('NO_FP_NOW:'+handler.pubKey)){
+
+                // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
+
+                let futureSkipHandler = {
+
+                    wasReassigned:false, // will be true after we get the 2/3N+1 approvement of having <aggregatedSkipProof> from other quorum members
+
+                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(handler.pubKey))), // {index,hash,aggregatedCommitments}
+
+                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
+
+                }
+
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+handler.pubKey,futureSkipHandler).then(()=>{
+
+                    tempObject.SKIP_HANDLERS.set(handler.pubKey,futureSkipHandler)
+
+                    // Delete the request
+                    synchronizer.delete('CREATE_SKIP_HANDLER:'+handler.pubKey)
+
+                    // Clear the NO_FP_NOW protection
+                    synchronizer.delete('NO_FP_NOW:'+handler.pubKey)
+
+
+                }).catch(_=>false)
+
+            }else if(!createRequest){
+
+                let responsePromise = fetch(handler.url+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
+
+                    response.pubKey = handler.pubKey
+        
+                    return response
+        
+                }).catch(_=>{candidatesForAnotherCheck.push(handler.pubKey)})
+        
+                proofsPromises.push(responsePromise)    
+
+            }
+
         }
-
 
     }
 
@@ -2036,7 +2029,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         //__________________________________Verify the AFP proof_________________________________________________
 
         
-        let data = checkpointIndex+':'+pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
+        let data = checkpoint.id+':'+pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
 
         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
@@ -2123,7 +2116,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedFinalizationProof
 
-                        let data = checkpointIndex+":"+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
+                        let data = checkpoint.id+":"+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
     
                         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
@@ -2225,8 +2218,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
             if(!(updateWasFound || candidateIsLatestInReassignmentChain)){
 
                 // If no updates - add the request to create SKIP_HANDLER via a sync and secured way
-
-                synchronizer.set('CREATE_SKIP_HANDLER:'+candidate,candidate)
+                synchronizer.set('CREATE_SKIP_HANDLER:'+candidate,true)
                 
             }
 
