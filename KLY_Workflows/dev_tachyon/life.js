@@ -586,163 +586,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
-// Function for secured and a sequently update of CHECKPOINT_MANAGER and to prevent giving FINALIZATION_PROOFS when it's restricted. In general - function to avoid async problems
-PROOFS_SYNCHRONIZER=async()=>{
-
-
-    /* 
-    
-        [*] Here we update the values in DB and CHECKPOINT_MANAGER using values from CHECKPOINT_MANAGER_SYNC_HELPER
-        
-        [*] Also, take the finalization proof from PROOFS_REQUESTS, sign and push to PROOFS_RESPONSES
-
-    */
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
-
-    let currentCheckpointReassignmentChains = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
-
-    let currentTempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-
-    if(!currentTempObject){
-
-        //Repeat this procedure after a while
-        setTimeout(PROOFS_SYNCHRONIZER,1000)
-
-        return
-
-    }
-
-    
-    let synchronizer = currentTempObject.SYNCHRONIZER // mapping(blockID=>blockHash)
-
-    let currentSkipHandlersMapping = currentTempObject.SKIP_HANDLERS // poolPubKey => {wasReassigned:boolean,extendedAggregatedCommitments:{index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}},aggregatedSkipProof:{same as FP structure, but aggregatedSigna = `SKIP:{poolPubKey}:{index}:{hash}:{checkpointFullID}`}}
-      
-    let currentCheckpointDB = currentTempObject.DATABASE // LevelDB instance
-
-    let reassignments = currentTempObject.REASSIGNMENTS
-
-
-
-    // Here we should check if we still can generate proofs, so it's not time to generate checkpoint & skip proofs
-
-    if(synchronizer.get('TIME_TO_NEW_EPOCH')){
-
-
-        //Store to DB
-        await USE_TEMPORARY_DB('put',currentCheckpointDB,'TIME_TO_NEW_EPOCH',true).then(()=>{
-
-            // On this step, we have the latest info about finalization_proofs
-            synchronizer.set('READY_FOR_CHECKPOINT',true)
-
-        }).catch(_=>{})
-
-
-    }else {
-
-
-        //____________________ GENERATE THE FINALIZATION_PROOFS ____________________
-
-        // Now, check the requests, delete and add to responses
-        for(let keyValue of synchronizer){
-
-            if(keyValue[0]==='TIME_TO_NEW_EPOCH') continue
-
-            else if (keyValue[0].startsWith('REASSIGN:')){
-
-                let primePoolPubKey = keyValue[1]
-
-                let currentSubchainAuthority
-
-
-                // Add the reassignment
-
-                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
-
-
-                if(!reassignmentMetadata){
-
-                    // Create new handler
-
-                    reassignmentMetadata = {currentAuthority:-1}
-
-                    currentSubchainAuthority = primePoolPubKey
-
-                }else currentSubchainAuthority = currentCheckpointReassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority]
-
-
-                let nextIndex = reassignmentMetadata.currentAuthority+1
-
-                let nextReservePool = currentCheckpointReassignmentChains[primePoolPubKey][nextIndex] // array currentCheckpointReassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
-
-
-                // We need to mark wasReassigned pool that was authority for this subchain
-
-                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(currentSkipHandlersMapping.get(currentSubchainAuthority))) // {wasReassigned,extendedAggregatedCommitments,aggregatedSkipProof}
-
-                skipHandlerOfAuthority.wasReassigned = true
-
-
-                // Use atomic operation here to write reassignment data + updated skip handler
-
-                let keysToAtomicWrite = [
-
-                    'REASSIGN:'+primePoolPubKey,
-                    
-                    'SKIP_HANDLER:'+currentSubchainAuthority
-
-                ]
-
-                let valuesToAtomicWrite = [
-
-                    {currentAuthority:nextIndex},
-
-                    skipHandlerOfAuthority
-
-                ]
-
-                await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
-    
-                    // And only after successful store we can move to the next pool
-
-                    // Delete the reassignment in case skipped authority was reserve pool
-
-                    if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
-                    
-                    currentSkipHandlersMapping.get(currentSubchainAuthority).wasReassigned = true
-
-                    
-                    reassignmentMetadata.currentAuthority++
-    
-
-                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
-
-                    reassignments.set(primePoolPubKey,reassignmentMetadata)
-
-                    reassignments.set(nextReservePool,primePoolPubKey)
-
-                    // Delete the request
-                    synchronizer.delete(keyValue[0])
-
-
-                }).catch(_=>false)
-
-
-            }
-
-        }
-
-    }
-
-
-    //Repeat this procedure permanently, but in sync mode
-    setImmediate(PROOFS_SYNCHRONIZER)
-
-},
-
-
-
 
 CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
@@ -1480,7 +1323,9 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 //Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1502,23 +1347,15 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    let majority = GET_MAJORITY('QUORUM_THREAD')
-
-    let currentQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
-
-    let reverseThreshold = currentQuorum.length-majority
-
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
+    let majority = GET_MAJORITY(null,checkpoint)
 
     let currentCheckpointDB = tempObject.DATABASE
-
-    let synchronizer = tempObject.SYNCHRONIZER
 
     let skipHandlers = tempObject.SKIP_HANDLERS
 
     let reassignments = tempObject.REASSIGNMENTS
     
+
     // Get the appropriate pubkey & url to check and validate the answer
     let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
 
@@ -1646,7 +1483,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                         let dataThatShouldBeSigned = poolWithSkipHandler+':'+index+hash+checkpointFullID
                         
-                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(_=>false)
             
 
                         //If signature is ok and index is bigger than we have - update the <extendedAggregatedCommitments> in our local skip handler
@@ -1694,7 +1531,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
 
-                        afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+                        afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
                         
                     }
 
@@ -1708,7 +1545,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         }
 
 
-        if(skipHandler.aggregatedSkipProof && !synchronizer.has('REASSIGN:'+poolWithSkipHandler)){
+        if(skipHandler.aggregatedSkipProof){
     
             /*
 
@@ -1776,7 +1613,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
             //___________________Now analyze the results___________________
 
-
             for(let result of results){
 
                 if(result.type === 'OK' && typeof result.sig === 'string'){
@@ -1791,27 +1627,91 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
             }
 
+
+
+
             if(numberWhoAgreeToDoReassignment >= majority){
 
-                // Now, create the request for reassignment
 
-                let possibleNothingOrPointerToPrimePool = reassignments.get(poolWithSkipHandler)
+
+                //_____________________________________Now, create the request for reassignment_____________________________________
                 
+                // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
+                // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
 
-                if(possibleNothingOrPointerToPrimePool){
+                let primePoolPubKey = reassignments.get(poolWithSkipHandler) || poolWithSkipHandler
 
-                    // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
+                let currentSubchainAuthority
 
-                    synchronizer.set('REASSIGN:'+poolWithSkipHandler,possibleNothingOrPointerToPrimePool)                        
 
-                }else{
+                // Add the reassignment
 
-                    // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
+                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
 
-                    synchronizer.set('REASSIGN:'+poolWithSkipHandler,poolWithSkipHandler)
 
-                }
+                if(!reassignmentMetadata){
 
+                    // Create new handler
+
+                    reassignmentMetadata = {currentAuthority:-1}
+
+                    currentSubchainAuthority = primePoolPubKey
+
+                }else currentSubchainAuthority = checkpoint.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+
+
+                let nextIndex = reassignmentMetadata.currentAuthority + 1
+
+                let nextReservePool = checkpoint.reassignmentChains[primePoolPubKey][nextIndex] // array checkpoint.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
+
+
+                // We need to mark wasReassigned pool that was authority for this subchain
+
+                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(skipHandlers.get(currentSubchainAuthority))) // {wasReassigned,extendedAggregatedCommitments,aggregatedSkipProof}
+
+                skipHandlerOfAuthority.wasReassigned = true
+
+
+                // Use atomic operation here to write reassignment data + updated skip handler
+
+                let keysToAtomicWrite = [
+
+                    'REASSIGN:'+primePoolPubKey,
+                    
+                    'SKIP_HANDLER:'+currentSubchainAuthority
+
+                ]
+
+                let valuesToAtomicWrite = [
+
+                    {currentAuthority:nextIndex},
+
+                    skipHandlerOfAuthority
+
+                ]
+
+                await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
+    
+                    // And only after successful store we can move to the next pool
+
+                    // Delete the reassignment in case skipped authority was reserve pool
+
+                    if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
+                    
+                    skipHandlers.get(currentSubchainAuthority).wasReassigned = true
+
+                    
+                    reassignmentMetadata.currentAuthority++
+    
+
+                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
+
+                    reassignments.set(primePoolPubKey,reassignmentMetadata)
+
+                    reassignments.set(nextReservePool,primePoolPubKey)
+
+
+                }).catch(_=>false)
 
             }
       
@@ -2291,6 +2191,8 @@ RESTORE_STATE=async()=>{
             }
 
         }
+
+        tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+poolPubKey,true)
 
     }
 
@@ -3608,9 +3510,6 @@ RUN_SYMBIOTE=async()=>{
 
     //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
-
-    //6.Run function to work with finalization stuff and avoid async problems
-    PROOFS_SYNCHRONIZER()
 
     //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
