@@ -3511,7 +3511,7 @@ RUN_SYMBIOTE=async()=>{
     //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
 
-    //7.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
+    //6.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
 
 
