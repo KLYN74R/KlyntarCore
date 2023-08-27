@@ -631,7 +631,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let checkpointProposition = {}
 
-        let majority = GET_MAJORITY(false,qtCheckpoint)
+        let majority = GET_MAJORITY(qtCheckpoint)
 
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
@@ -945,12 +945,14 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
+RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 
 
     let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
     let blockHash = Block.genHash(block)
+
+    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
 
 
@@ -973,7 +975,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 
         quorumMembers = await GET_POOLS_URLS(true),
 
-        majority = GET_MAJORITY('QUORUM_THREAD'),
+        majority = GET_MAJORITY(checkpoint),
 
         promises=[]
 
@@ -1012,7 +1014,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate AGGREGATED_FINALIZATION_PROOF _______________________
 
 
-    if(finalizationProofsMapping.size>=majority){
+    if(finalizationProofsMapping.size >= majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the AGGREGATED_FINALIZATION_PROOF and share over the network
         // Also, increase the counter of global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
@@ -1099,7 +1101,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpointFullID,blockID) => {
 
 
 
-RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
+RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
 
     let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
@@ -1110,17 +1112,20 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
     let blockHash = Block.genHash(block)
 
+    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
 
     let optionsToSend = {method:'POST',body:JSON.stringify(block),agent:global.FETCH_HTTP_AGENT},
 
         commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
+
+        tempDatabase = global.SYMBIOTE_META.TEMP.get(checkpointFullID).DATABASE,    
         
-        majority = GET_MAJORITY('QUORUM_THREAD'),
+        majority = GET_MAJORITY(checkpoint),
 
         quorumMembers = await GET_POOLS_URLS(true),
 
-        promises=[],
+        promises = [],
 
         commitmentsForCurrentBlock
 
@@ -1227,8 +1232,12 @@ RUN_COMMITMENTS_GRABBING = async (checkpointFullID,blockID) => {
 
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
-    
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpointFullID,blockID).catch(_=>{})
+
+        //In case we get the aggregated commitments for the first block in epoch X - store it. We'll need it to paste to ASP or AEFP to know the first block in epoch
+
+        await USE_TEMPORARY_DB('put',tempDatabase,'AC_OF_MY_FIRST_BLOCK',aggregatedCommitments).catch(_=>false)
+
+        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(_=>{})
 
     }
 
@@ -1252,7 +1261,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     }
 
     
-    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
+    let checkpointFullID = qtCheckpoint.hash + "#" + qtCheckpoint.id
 
 
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
@@ -1266,12 +1275,10 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     // Descriptor has the following structure - {checkpointID,height}
     let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-    let checkpointIndex = checkpoint.id
-
     let {FINALIZATION_PROOFS,DATABASE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-    if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== checkpointIndex){
+    if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== qtCheckpoint.id){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -1282,7 +1289,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
             // Set the new handler with index 0(because each new epoch start with block index 0)
             appropriateDescriptor = {
     
-                checkpointID:checkpointIndex,
+                checkpointID:qtCheckpoint.id,
     
                 height:0
     
@@ -1296,20 +1303,20 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     }
 
 
-    let blockID = checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
+    let blockID = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
 
 
     if(FINALIZATION_PROOFS.has(blockID)){
 
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpointFullID,blockID).catch(_=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(_=>{})
 
     }else{
 
         // This option means that we already started to share block and going to find 2/3N+1 commitments
         // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
 
-        await RUN_COMMITMENTS_GRABBING(checkpointFullID,blockID).catch(_=>{})
+        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID).catch(_=>{})
 
     }
 
@@ -1347,7 +1354,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    let majority = GET_MAJORITY(null,checkpoint)
+    let majority = GET_MAJORITY(checkpoint)
 
     let currentCheckpointDB = tempObject.DATABASE
 
@@ -1770,7 +1777,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     let reassignments = tempObject.REASSIGNMENTS
     
-    let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(false,checkpoint)
+    let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(checkpoint)
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -2320,7 +2327,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtCheckpointFullID)
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY('QUORUM_THREAD')
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
 
         // And nullish the index & hash in generation thread for new epoch
@@ -2385,6 +2392,18 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     }else if(global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY) return
     
     
+    // In case it's the second block in epoch(with index = 1,coz numeration starts from 0) - add the aggregated commitments to header
+
+    if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 1){
+
+        let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_OF_MY_FIRST_BLOCK').catch(_=>false)
+
+        if(aggregatedCommitmentsForFirstBlock) extraData.aggregatedCommitmentsForFirstBlock = aggregatedCommitmentsForFirstBlock
+
+        else return // try later
+
+    }
+
     /*
 
     _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
@@ -3101,7 +3120,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY('QUORUM_THREAD')
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
     }
 
@@ -3545,7 +3564,7 @@ RUN_SYMBIOTE=async()=>{
     //Start generate blocks
     !global.CONFIG.SYMBIOTE.STOP_WORK_ON_GENERATION_THREAD && setTimeout(()=>{
                 
-        global.STOP_GEN_BLOCKS_CLEAR_HANDLER=false
+        global.STOP_GEN_BLOCKS_CLEAR_HANDLER = false
 
         BLOCKS_GENERATION_POLLING()
             

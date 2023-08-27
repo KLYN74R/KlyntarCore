@@ -530,11 +530,11 @@ CHECK_IF_CHECKPOINT_STILL_FRESH = thread => {
 
 
 
-GET_MAJORITY=(threadID,checkpoint)=>{
+GET_MAJORITY = checkpoint => {
 
-    let quorumNumber = checkpoint ? checkpoint.quorum.length : global.SYMBIOTE_META[threadID].CHECKPOINT.quorum.length,
+    let quorumNumber = checkpoint.quorum.length
 
-        majority = Math.floor(quorumNumber*(2/3))+1
+    let majority = Math.floor(quorumNumber*(2/3))+1
 
 
     //Check if majority is not bigger than number of pools. It's possible when there is a small number of pools

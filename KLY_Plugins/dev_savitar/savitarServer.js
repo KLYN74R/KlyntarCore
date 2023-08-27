@@ -431,13 +431,14 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
     let blocksSet = []
 
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
     // global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed
 
-    if(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    if(checkpoint.completed){
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
             
@@ -471,15 +472,21 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
             }
 
-            let majorityIsOk =  (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
+    
+            let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
-            let signaIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,aggregatedPub,aggregatedSignature).catch(_=>false)
-    
-            let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-    
+            let reverseThreshold = checkpoint.quorum.length - GET_MAJORITY(checkpoint)
+
+            let quorumSignaIsOk = await bls.verifyThresholdSignature(
+                
+                aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+                
+                dataThatShouldBeSigned, aggregatedSignature, reverseThreshold
+                
+            )
             
             
-            if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+            if(quorumSignaIsOk){
 
                 // Add request to sync function 
                 tempObject.SYNCHRONIZER.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})

@@ -134,7 +134,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
         let dataThatShouldBeSigned = blockID+blockHash+'FINALIZATION'+checkpointFullID
 
-        let majority = GET_MAJORITY(false,checkpoint)
+        let majority = GET_MAJORITY(checkpoint)
 
         let reverseThreshold = checkpoint.quorum.length-majority
 
@@ -404,7 +404,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
     let quorumRootPub = threadID==='QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
-    let majority = GET_MAJORITY(false,checkpoint)
+    let majority = GET_MAJORITY(checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
 

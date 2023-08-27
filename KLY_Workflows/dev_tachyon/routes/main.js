@@ -85,7 +85,7 @@ acceptBlocksAndReturnCommitment = response => {
 
     }
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
+    if(!checkpoint.completed || !tempObject){
 
         !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
 
@@ -98,7 +98,7 @@ acceptBlocksAndReturnCommitment = response => {
 
         if(total+chunk.byteLength <= global.CONFIG.MAX_PAYLOAD_SIZE){
         
-            buffer=await SAFE_ADD(buffer,chunk,response)//build full data from chunks
+            buffer = await SAFE_ADD(buffer,chunk,response)//build full data from chunks
     
             total+=chunk.byteLength
         
@@ -171,7 +171,7 @@ acceptBlocksAndReturnCommitment = response => {
                 }
 
                 
-                if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && Array.isArray(block.transactions)){
+                if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && typeof block.extraData === 'object' && Array.isArray(block.transactions)){
 
                     // Make sure that it's a chain
                     let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpoint.id+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
@@ -181,10 +181,59 @@ acceptBlocksAndReturnCommitment = response => {
                         return prevHash === block.prevHash
     
                     }).catch(_=>false)
-        
 
-                    // Verify signature    
+                    // Verify block signature
                     let allChecksPassed = checkIfItsChain && await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)                    
+
+                    
+                    // Also, if it's second block in epoch(index = 1,because numeration starts from 0) - make sure that we have aggregated commitments for the first block. We'll need it for ASP
+                    if(block.index===1){
+
+                        let proofIsOk = false
+
+                        if(typeof block.extraData.aggregatedCommitmentsForFirstBlock === 'object'){
+
+
+                            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+                            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedCommitmentsForFirstBlock
+
+                            let blockIDForFirstBlock = checkpoint.id+':'+block.creator+':'+0
+
+                            let dataThatShouldBeSigned = blockIDForFirstBlock+blockHash+checkpointFullID // blockID_FOR_FIRST_BLOCK+hash+checkpointFullID
+                
+                            let majority = GET_MAJORITY(checkpoint)
+                        
+                            let reverseThreshold = checkpoint.length - majority
+                
+
+                            proofIsOk =  blockID === blockIDForFirstBlock && await bls.verifyThresholdSignature(
+                                
+                                aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold
+                                
+                            ).catch(_=>false)
+
+
+                            if(proofIsOk){
+
+                                // Store locally
+
+                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_OF_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
+
+                            }
+    
+                        }
+
+                        if(!proofIsOk){
+
+                            !response.aborted && response.end(JSON.stringify({err:'No proof for the first block'}))
+
+                            return
+
+                        }
+
+                    }
+
 
                     /*
                     
@@ -206,7 +255,7 @@ acceptBlocksAndReturnCommitment = response => {
                         
                         checkpoint.quorum,
                         
-                        GET_MAJORITY(false,checkpoint),
+                        GET_MAJORITY(checkpoint),
                         
                         global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
 
@@ -402,9 +451,9 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
     let aggregatedCommitments = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && checkpoint.completed){
 
         let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
@@ -454,7 +503,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
             let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
-            let majority = GET_MAJORITY(false,checkpoint)
+            let majority = GET_MAJORITY(checkpoint)
         
             let reverseThreshold = checkpoint.length - majority
 
@@ -911,7 +960,9 @@ anotherPoolHealthChecker = async(response,request) => {
 */
 getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -925,9 +976,9 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let mySkipHandlers = tempObject.SKIP_HANDLERS
 
-    let majority = GET_MAJORITY('QUORUM_THREAD')
+    let majority = GET_MAJORITY(checkpoint)
 
-    let reverseThreshold = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-majority
+    let reverseThreshold = checkpoint.quorum.length-majority
 
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
@@ -1097,9 +1148,11 @@ getDataForTempReassignments = async response => {
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
 
-        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-        let quorumThreadCheckpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+        let quorumThreadCheckpointIndex = checkpoint.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
 
@@ -1112,7 +1165,7 @@ getDataForTempReassignments = async response => {
 
         // Get the current authorities for subchains from REASSIGNMENTS
 
-        let currentPrimePools = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains) // [primePool0, primePool1, ...]
+        let currentPrimePools = Object.keys(checkpoint.reassignmentChains) // [primePool0, primePool1, ...]
 
         let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
@@ -1126,11 +1179,11 @@ getDataForTempReassignments = async response => {
 
                 let currentAuthorityIndex = reassignmentHandler.currentAuthority
 
-                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[primePool][currentAuthorityIndex]
+                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : checkpoint.reassignmentChains[primePool][currentAuthorityIndex]
 
                 // Now get the first block & SFP for it
 
-                let indexOfLatestBlockInPreviousEpoch = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata[currentSubchainAuthority]?.index
+                let indexOfLatestBlockInPreviousEpoch = checkpoint.poolsMetadata[currentSubchainAuthority]?.index
 
                 if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
 
@@ -1245,7 +1298,7 @@ VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoi
 
     let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
 
-    let majority = GET_MAJORITY(false,checkpoint)
+    let majority = GET_MAJORITY(checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
 
@@ -1730,10 +1783,12 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     let systemSyncOperationWithAgreementProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !checkpoint.completed){
 
         !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
@@ -1770,14 +1825,17 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = systemSyncOperationWithAgreementProof.aggreementProof
 
-    let signaIsOk = await bls.singleVerify(hashOfCheckpointFullIDAndOperation,aggregatedPub,aggregatedSignature).catch(_=>false)
+    let reverseThreshold = checkpoint.quorum.length - GET_MAJORITY(checkpoint)
 
-    let majorityIsOk = (global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.length-afkVoters.length) >= GET_MAJORITY('QUORUM_THREAD')
-    
-    let rootPubIsEqualToReal = bls.aggregatePublicKeys([aggregatedPub,...afkVoters]) === global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let quorumSignaIsOk = await bls.verifyThresholdSignature(
+        
+        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+        
+        hashOfCheckpointFullIDAndOperation, aggregatedSignature, reverseThreshold
+        
+    )
 
-
-    if(signaIsOk && majorityIsOk && rootPubIsEqualToReal){
+    if(quorumSignaIsOk){
 
         // Add to mempool
         
@@ -1788,7 +1846,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     }else{
 
-        !response.aborted && response.end(JSON.stringify({err:`Verification failed => {signaIsOk:${signaIsOk},majorityIsOk:${majorityIsOk},rootPubIsEqualToReal:${rootPubIsEqualToReal}}`}))
+        !response.aborted && response.end(JSON.stringify({err:`Verification failed`}))
 
     }
 
