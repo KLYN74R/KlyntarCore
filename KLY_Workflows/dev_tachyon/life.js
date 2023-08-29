@@ -2357,34 +2357,48 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
 
             // Get all previous pools - from zero to <my_position>
-            let allPreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain)
+            let pubKeysOfAllThePreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain).reverse()
 
 
             //_____________________ Fill the extraData.reassignments _____________________
 
             extraData.reassignments = {}
 
-            // If we can't find all the ASPs (from primePool to you) - skip this iteration to try again later
+            /*
 
-            // 0.Add the ASP for prime pool
+                If we can't find all the required ASPs (from <your position> to <position where ASP not starts from index 0>) - skip this iteration to try again later
 
-            if(tempObject.SKIP_HANDLERS.has(myPrimePool)){
+                Here we need to fill the object with aggregated skip proofs(ASPs) for all the previous pools till the pool which wasn't reassigned from index 0
+            
+            */
 
-                extraData.reassignments[myPrimePool] = tempObject.SKIP_HANDLERS.get(myPrimePool).aggregatedSkipProof
+            // Add the ASP for the previous pool in reassignment chain
+
+            let pubKeyOfPrevious = reassignmentArrayOfMyPrimePool[myIndexInReassignmentChain-1] || myPrimePool
+
+            let aspForPrevious = tempObject.SKIP_HANDLERS.get(pubKeyOfPrevious)?.aggregatedSkipProof
+
+            if(aspForPrevious){
+
+                extraData.reassignments[pubKeyOfPrevious] = aspForPrevious
+
+                for(let reservePoolPubKey of pubKeysOfAllThePreviousPools){
+
+                    if(reservePoolPubKey === pubKeyOfPrevious) continue
+
+                    let aspForThisPool = tempObject.SKIP_HANDLERS.get(reservePoolPubKey)?.aggregatedSkipProof
+    
+                    if(aspForThisPool){
+    
+                        if(aspForThisPool.index >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
+    
+                        else extraData.reassignments[reservePoolPubKey] = aspForThisPool
+    
+                    } else return
+    
+                }    
 
             }else return
-
-            // 1.And for all the previous reserve pools from position 0 to (<YOUR_POSITION>-1)
-
-            for(let reservePool of allPreviousPools){
-
-                if(tempObject.SKIP_HANDLERS.has(reservePool)){
-
-                    extraData.reassignments[reservePool] = tempObject.SKIP_HANDLERS.get(reservePool).aggregatedSkipProof
-
-                }else return
-
-            }
 
         }
 
@@ -3372,7 +3386,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 // Verify all the ASPs in block header
     
-                                let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(
+                                let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(
                                 
                                     primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                 
@@ -3411,47 +3425,54 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                
                                     let limitPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
                                
-
+                                    // Starts the reverse enumeration from proposed current authority index to our local pointer
 
                                     for(let position = currentAuthorityIndex-1 ; position >= limitPointer ; position--){
     
                                         let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
 
-                                        if(!arrayOfPoolsWithZeroProgress.includes(poolWithThisPosition)){
+                                        // No sense to ask first block(index 0) for pool which was reassigned on index -1(no generated blocks in epoch)
+                                        
+                                        if(filteredReassignments[poolWithThisPosition].index !== -1){
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
-                                            // Here ask the first block by this pool in this epoch, verify the SFP and continue
-    
                                             let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,0)
 
-                                            // In this block we should have ASP for all the previous reservePools + primePool
+                                            // Compare hashes to make sure it's really the first block by pool X in epoch Y
+
+                                            if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === filteredReassignments[poolWithThisPosition].firstBlockHash){
                                 
-                                            let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{},arrayOfPoolsWithZeroProgress:[]} : await CHECK_IF_ALL_ASP_PRESENT(
+                                                let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_IF_ALL_ASP_PRESENT(
                                                         
-                                                primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, false, true
+                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                                         
-                                            )
+                                                )
                                 
-                                            if(resultForCurrentPool.isOK){
+                                                if(resultForCurrentPool.isOK){
     
-                                                // If ok - fill the <potentialReassignments>
+                                                    // If ok - fill the <potentialReassignments>
+        
+                                                    potentialReassignments.push(resultForCurrentPool.filteredReassignments)
     
-                                                if(resultForCurrentPool.arrayOfPoolsWithZeroProgress.length) arrayOfPoolsWithZeroProgress = arrayOfPoolsWithZeroProgress.concat(resultForCurrentPool.arrayOfPoolsWithZeroProgress)
+                                                }else{
     
-                                                potentialReassignments.push(resultForCurrentPool.filteredReassignments)
-    
+                                                    shouldChangeThisSubchain = false
+
+                                                    break
+
+                                                }
+
                                             }else{
-    
+
                                                 shouldChangeThisSubchain = false
 
                                                 break
-    
-                                            }
-                                            
 
-                                        } else continue
-    
+                                            }                                        
+
+                                        }
+
                                     }
     
                                     if(shouldChangeThisSubchain){

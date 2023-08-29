@@ -380,11 +380,29 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
     
     {
 
-        index,
+        tmbProof:{
+            
+            index,hash,signa:BLS(index+hash+checkpointFullID,prvKeyOfPool)
 
-        hash,
+        },
+
+
+        firstBlockProof:{
+
+            hash, aggregatedCommitments:{
+
+                aggregatedPub,
+                aggregatedSignature:BLS(blockID+blockHash+checkpointFullID), blockID = epochID:pubKeyOfPool:0 (zero - because numeration of blocks in epoch starts from 0 and the first block has index 0)
+                afkVoters
+            }
+
+        }
 
         skipProof:{
+
+            index,
+
+            hash,
 
             aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
 
@@ -396,11 +414,17 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
     }
 
+        [*] Check the skip proof
+        [*] Check the first block proof(need it to know the hash of the first block in epoch to build the temporary reassignment chains)
+
     */
 
-    let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.index}:${asp.hash}:${checkpointFullID}`
+    
+    // Check the skipProof
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = asp.skipProof
+
+    let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.index}:${asp.hash}:${checkpointFullID}`
 
     let quorumRootPub = threadID==='QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
@@ -422,73 +446,78 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
 CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID,dontCheckSignature) => {
 
-    // Take all the reservePools from beginning of reassignment chain up to the <position>
-
-    let allAspThatShouldBePresent = [primePoolPubKey]
-
-    allAspThatShouldBePresent = allAspThatShouldBePresent.concat(reassignmentArray.slice(0,position))
-
-
-    // firstBlockInThisEpochByPool.extraData.reassignments is {primePool:ASP,reservePool0:ASP,...}
-
-    let aspForPrimePool = firstBlockInThisEpochByPool.extraData?.reassignments?.[primePoolPubKey]
-
-    let allAspPresentAndValidated = true
-
+    /*
     
+        Here we need to check the integrity of reassignment chain to make sure that we can get the obvious variant of a valid chain to verify
+
+        We need to check if <firstBlockInThisEpochByPool.extraData.reassignments> contains all the ASPs(aggregated skip proofs)
+        
+            for pools from <position>(index of current pool in <reassignmentArray>) to the first pool with not-null ASPs
+
+        
+        So, we simply start the reverse enumeration in <reassignmentArray> from <position> to the beginning of <reassignment array> and extract the ASPs
+
+        Once we met the ASP with index not equal to -1 (>=0) - we can stop enumeration and return true
+    
+    */
+
+
+    let reassignmentsRef = firstBlockInThisEpochByPool.extraData?.reassignments
+
     let filteredReassignments = {}
 
-    let arrayOfPoolsWithZeroProgress = []
 
-    let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)
+    if(typeof reassignmentsRef === 'object'){
 
-    if(typeof aspForPrimePool === 'object' && signaIsOk){
 
-        
-        let reassignmentsRef = firstBlockInThisEpochByPool.extraData.reassignments
-        
+        let arrayForIteration = reassignmentArray.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-null ASP 
 
-        for(let poolPubKey of allAspThatShouldBePresent){
+        let arrayIndexer = 0
 
-            let aspForThisReservePool = reassignmentsRef[poolPubKey]
 
-            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisReservePool,checkpointFullID,oldCheckpoint,threadID)
+        for(let poolPubKey of arrayForIteration){
 
-            if(aspForThisReservePool && signaIsOk){
+            let aspForThisPool = reassignmentsRef[poolPubKey]
+    
+            if(typeof aspForThisPool === 'object'){
 
-                if(aspForThisReservePool.index === -1){
+                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,checkpointFullID,oldCheckpoint,threadID)
 
-                    // If this reserve pool has no progress since previous checkpoint and was skipped on the same height - it's invalid
+                if(signaIsOk){
 
-                    arrayOfPoolsWithZeroProgress.push(poolPubKey)
+                    filteredReassignments[poolPubKey] = {index:aspForThisPool.index,hash:aspForThisPool.hash}
 
-                }
+                    arrayIndexer++
 
-                filteredReassignments[poolPubKey] = {index:aspForThisReservePool.index,hash:aspForThisReservePool.hash}
-                
-                
-            }else{
+                    if(aspForThisPool.index>=0) break
 
-                allAspPresentAndValidated = false
+                }else return {isOK:false}
 
-                break
-
-            }
-
+            } else return {isOK:false}
+    
         }
 
-        return allAspPresentAndValidated ? {isOK:true,filteredReassignments,arrayOfPoolsWithZeroProgress} : {isOK:false} 
+        if(arrayIndexer === position){
+
+            // In case we've iterated over the whole range - check the ASP for prime pool
+
+            let aspForPrimePool = reassignmentsRef[primePoolPubKey]
+
+            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)
+
+            if(signaIsOk){
+
+                filteredReassignments[primePoolPubKey] = {index:aspForPrimePool.index,hash:aspForPrimePool.hash}
+
+            }else return {isOK:false}
+
+        }
+    
 
     } else return {isOK:false}
 
-},
 
-
-
-
-MAKE_SURE_ITS_THE_FIRST_APPROVED_BLOCK = async (poolID,block,checkpointFullID) => {
-
-    // Here we need to ask the quorum if some block X is really the first block in epoch
+    return {isOK:true,filteredReassignments}
 
 },
 
@@ -607,11 +636,8 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
     */
 
-
-        let filtratratedReassignment = new Map() // poolID => {skippedPrimePool:ASP,skippedReservePool0:ASP,...skippedReservePoolX:ASP}
+        let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
         
-        let arrayOfPoolsThatShouldBeSkipped = []
-
         // Start the iteration over prime pools in REASSIGNMENT_CHAINS
 
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(oldCheckpoint.reassignmentChains)){
@@ -624,10 +650,6 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                 let currentAuthorityPubKey = reassignmentArray[position]
 
-
-                if(arrayOfPoolsThatShouldBeSkipped.includes(currentAuthorityPubKey)) continue
-
-
                 // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
 
                 if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > -1){
@@ -638,13 +660,12 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
 
                     // In this block we should have ASP for all the previous reservePool + primePool
 
-                    let {isOK,filteredReassignments,arrayOfPoolsWithZeroProgress} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
+                    let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
 
                     if(isOK){
 
                         filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
 
-                        if(arrayOfPoolsWithZeroProgress.length) arrayOfPoolsThatShouldBeSkipped = arrayOfPoolsThatShouldBeSkipped.concat(arrayOfPoolsWithZeroProgress)
 
                     }
 

@@ -283,7 +283,7 @@ acceptBlocksAndReturnCommitment = response => {
                         
                         'QUORUM_THREAD'
                         
-                    )
+                    ).then(value=>value.isOK).catch(_=>false)
     
 
 
