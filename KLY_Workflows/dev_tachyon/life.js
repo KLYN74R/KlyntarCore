@@ -1528,11 +1528,11 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 skipHandler.aggregatedSkipProof = {
 
-                    index:skipHandler.extendedAggregatedCommitments.index,
-
-                    hash:skipHandler.extendedAggregatedCommitments.hash,
-
                     skipProof:{
+
+                        index:skipHandler.extendedAggregatedCommitments.index,
+
+                        hash:skipHandler.extendedAggregatedCommitments.hash,
 
                         aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
 
@@ -2390,7 +2390,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
                     if(aspForThisPool){
     
-                        if(aspForThisPool.index >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
+                        if(aspForThisPool.skipProof.index >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
     
                         else extraData.reassignments[reservePoolPubKey] = aspForThisPool
     

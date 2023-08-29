@@ -382,7 +382,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
         tmbProof:{
             
-            index,hash,signa:BLS(index+hash+checkpointFullID,prvKeyOfPool)
+            index,hash,signa:BLS(TMB+index+hash+checkpointFullID,prvKeyOfPool)
 
         },
 
@@ -416,28 +416,46 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,asp,checkpointFu
 
         [*] Check the skip proof
         [*] Check the first block proof(need it to know the hash of the first block in epoch to build the temporary reassignment chains)
+        [*] Check TMB validity (if exists)
 
     */
 
     
-    // Check the skipProof
+    if(typeof asp.tmbProof === 'object' && typeof asp.firstBlockProof === 'object' && typeof asp.skipProof === 'object'){
 
-    let {aggregatedPub,aggregatedSignature,afkVoters} = asp.skipProof
+        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
-    let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.index}:${asp.hash}:${checkpointFullID}`
+        let majority = GET_MAJORITY(checkpoint)
+    
+        let reverseThreshold = checkpoint.quorum.length-majority
+    
+        // Check the skipProof
+    
+        let {aggregatedPub,aggregatedSignature,afkVoters} = asp.skipProof
+    
+        let dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${asp.skipProof.index}:${asp.skipProof.hash}:${checkpointFullID}`
+    
+        let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+    
+    
+        // Check the firstBlockProof
+    
+        let firstBlockID = `${checkpoint.id}:${skippedPoolPubKey}:0`
+    
+        let dataThatShouldBeSigned2 = firstBlockID+asp.firstBlockProof.hash+checkpointFullID
+            
+        let firstBlockProofIsOk = await bls.verifyThresholdSignature(asp.firstBlockProof.aggregatedPub,asp.firstBlockProof.afkVoters,quorumRootPub,dataThatShouldBeSigned2,asp.firstBlockProof.aggregatedSignature,reverseThreshold).catch(_=>false)
+    
+        // Check the TMB proof
 
-    let quorumRootPub = threadID==='QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
+        let dataThatShouldBeSigned3 = 'TMB'+asp.tmbProof.index+asp.tmbProof.hash+checkpointFullID
 
-    let majority = GET_MAJORITY(checkpoint)
+        let tmbProofIsOk = asp.tmbProof === null || typeof asp.tmbProof === 'object' && await bls.singleVerify(dataThatShouldBeSigned3,skippedPoolPubKey,asp.tmbProof.signa)
+    
 
-    let reverseThreshold = checkpoint.quorum.length-majority
+        return aspIsOk && firstBlockProofIsOk && tmbProofIsOk
 
-    let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
-
-
-    return aspIsOk
-
-
+    }
 
 },
 
@@ -485,11 +503,19 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
                 if(signaIsOk){
 
-                    filteredReassignments[poolPubKey] = {index:aspForThisPool.index,hash:aspForThisPool.hash}
+                    filteredReassignments[poolPubKey] = {
+                        
+                        index:aspForThisPool.skipProof.index,
+                        
+                        hash:aspForThisPool.skipProof.hash,
+                        
+                        firstBlockHash:aspForThisPool.firstBlockProof.hash
+                    
+                    }
 
                     arrayIndexer++
 
-                    if(aspForThisPool.index>=0) break
+                    if(aspForThisPool.skipProof.index>=0) break
 
                 }else return {isOK:false}
 
@@ -507,7 +533,15 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             if(signaIsOk){
 
-                filteredReassignments[primePoolPubKey] = {index:aspForPrimePool.index,hash:aspForPrimePool.hash}
+                filteredReassignments[primePoolPubKey] = {
+                    
+                    index:aspForPrimePool.skipProof.index,
+                    
+                    hash:aspForPrimePool.skipProof.hash,
+                    
+                    firstBlockHash:aspForPrimePool.firstBlockProof.hash
+                
+                }
 
             }else return {isOK:false}
 
