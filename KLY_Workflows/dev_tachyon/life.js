@@ -387,77 +387,110 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
 
         1. Check if new epoch must be started(new day by default)
-    
-        2. Find first X blocks in epoch per each subchain(1 block by default). This value is defined in global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SYSTEM_SYNC_OPERATIONS_LIMIT_PER_BLOCK
 
-            To do it, follow the steps bellow:
-                
-                1) Check the await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)    
-                
-                start the naive mode(cyclic) and perform a GET /first_block_assumptions requests to the quorum members
+        2. Try to find AEFPs(Aggregated Epoch Finalization Proofs) for each of subchains by calling GET /aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID
 
-                We'll receive the object like this:
-
+            Reminder - the structure of AEFP must be:
 
                 {
 
+                    subchain:primePoolPubKey,
+
+                    lastAuthority,
+                    
+                    lastIndex,
+                    
+                    lastHash,
+
+                    proof:{
+
+                        aggregatedPub,
+                    
+                        aggregatedSignature,
+                        
+                        afkVoters
+            
+                    }
+                
                 }
+
+                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+checkpointFullID
+
+        3. Once we find the AEFPs for ALL the subchains - it's a signal to start to find the first X blocks in current epoch for each subchain
+
+            We'll use 1 option for this:
+
+                [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS - 1 by default. Don't change it
                 
-                
-                get blocks & AFPs for it. In case of reassignments we still can easily get the first X blocks thanks to proofs in ASPs(aggregated skip proofs)
+                    This value shows how many first blocks we need to get to extract system sync operations to execute
+ 
+            
+        4. Now, call the GET /first_block_assumptions (to quorum members) and get object like this:
 
-                Because it contains {index,hash} we can extract required number of blocks and finish grabbing
+            {
+                subchainPubKey:{
+
+                    blockID,
+                    blockHash,
+                    aggregatedPub,
+                    aggregatedSignature,
+                    afkVoters:[]
+
+                }
+            }
+
+            Each key is subchainID(pubkey of prime pool) and value is AFP for some block. This is a clear proof that block is 100% accepted by network
+
+            Also, before the call we can try to find our own assumption locally in global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
 
 
-        3. Extract SYSTEM_SYNC_OPERATIONS from block headers and run it in a sync mode
+        5. Using these proofs, check the blockID field. If it contain prime pool pubkey and index 0 - it's the first block on subchain. 100%
 
-        4. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
+            Otherwise we'll get the index 0 and pubkey which will be the pubkey of pool which is in reassignment chain
+
+                global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[<primePoolPubKey>]
+
+
+            Run a reverse cycle to find block 0 of this pool and extract the ASP for previous pool in reassignment chain
+
+            ASP 100% contains the field <firstBlockHash>
+
+            Then repeat it to find the block 0 of prime pool or one of the first pools in reassignment chains    
+
+        6. Once we find all of them - extract SYSTEM_SYNC_OPERATIONS from block headers and run it in a sync mode
+
+        7. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
     
-        5. Prepare new object in TEMP(checkpointFullID) and set new version of checkpoint on QT
+        8. Prepare new object in TEMP(checkpointFullID) and set new version of checkpoint on QT
     
     
     */
     
-    let possibleCheckpoint = false
 
+    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
-    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+        let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
-
-    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-
-    if(!temporaryObject){
-
-        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,3000)
-
-        return
-
-    }
+        let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
     
-
-    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
-
-
-    if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
-
-        // Stop to generate commitments/finalization proofs
-        temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
-
-
-        // Check the safety
-        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
-
-            setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
-
+        let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    
+    
+        if(!temporaryObject){
+    
+            setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,3000)
+    
             return
-
+    
         }
+
+        let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
+
+        
     
     }
 
-    
+
 
     if(possibleCheckpoint){
 

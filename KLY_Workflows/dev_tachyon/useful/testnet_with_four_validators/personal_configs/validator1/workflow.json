@@ -56,7 +56,6 @@
                 "QUORUM_SIZE":127,
                 "SUBCHAIN_AFK_LIMIT":120000,
                 "TXS_LIMIT_PER_BLOCK":30000,
-                "CHECKPOINT_SPEC_OPS_LIMIT":1000,
                 "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
             
             },
