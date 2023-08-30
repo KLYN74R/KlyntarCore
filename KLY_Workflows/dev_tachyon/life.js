@@ -1235,7 +1235,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
         //In case we get the aggregated commitments for the first block in epoch X - store it. We'll need it to paste to ASP or AEFP to know the first block in epoch
 
-        await USE_TEMPORARY_DB('put',tempDatabase,'AC_OF_MY_FIRST_BLOCK',aggregatedCommitments).catch(_=>false)
+        await USE_TEMPORARY_DB('put',tempDatabase,'AC_FOR_MY_FIRST_BLOCK',aggregatedCommitments).catch(_=>false)
 
         await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(_=>{})
 
@@ -1376,7 +1376,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         if(!skipHandler.aggregatedSkipProof){
 
 
-            // Otherwise, send <extendedAggregatedCommitments> in SKIP_HANDLER to => POST /get_skip_proof
+            // Otherwise, send <extendedAggregatedCommitments> and <firstBlockProofs> in SKIP_HANDLER to => POST /get_skip_proof
 
             let responsePromises = []
 
@@ -1387,6 +1387,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 body:JSON.stringify({
 
                     poolPubKey:poolWithSkipHandler,
+
+                    firstBlockProofs:await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false),
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
 
@@ -1528,19 +1530,15 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 skipHandler.aggregatedSkipProof = {
 
-                    skipProof:{
+                    skipIndex:skipHandler.extendedAggregatedCommitments.index,
 
-                        index:skipHandler.extendedAggregatedCommitments.index,
+                    skipHash:skipHandler.extendedAggregatedCommitments.hash,
 
-                        hash:skipHandler.extendedAggregatedCommitments.hash,
+                    aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
 
-                        aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+                    aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
 
-                        aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
-
-                        afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
-                        
-                    }
+                    afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
 
                 }
 
@@ -2390,7 +2388,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
                     if(aspForThisPool){
     
-                        if(aspForThisPool.skipProof.index >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
+                        if(aspForThisPool.skipIndex >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
     
                         else extraData.reassignments[reservePoolPubKey] = aspForThisPool
     
@@ -2410,7 +2408,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 1){
 
-        let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_OF_MY_FIRST_BLOCK').catch(_=>false)
+        let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_MY_FIRST_BLOCK').catch(_=>false)
 
         if(aggregatedCommitmentsForFirstBlock) extraData.aggregatedCommitmentsForFirstBlock = aggregatedCommitmentsForFirstBlock
 

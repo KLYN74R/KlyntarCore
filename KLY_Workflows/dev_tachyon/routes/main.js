@@ -218,7 +218,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                                 // Store locally
 
-                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_OF_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
+                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
 
                             }
     
@@ -534,6 +534,22 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
                     index=+index
                 
                     let fpSignature = await BLS_SIGN_DATA(blockID+blockHash+'FINALIZATION'+checkpointFullID)
+
+                    // If it's commitments for the first block in epoch - store it locally
+                    if(index === 0){
+
+                        let storeStatusIsOk = await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolPubKey,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).then(()=>true).catch(_=>false)
+
+                        if(!storeStatusIsOk){
+
+                            !response.aborted && response.end(JSON.stringify({err:`Can't store the AC for first block in epoch`}))
+
+                            return
+
+                        }
+
+                    }
+                    
 
                     // Now, try to update the checkpoint manager
 
@@ -911,6 +927,16 @@ anotherPoolHealthChecker = async(response,request) => {
 
         poolPubKey,
 
+        firstBlockProofs:{
+
+            blockID,    => epochID:poolPubKey:0
+            blockHash,
+            aggregatedPub,
+            aggregatedSigna, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
+            afkVoters
+
+        }
+
         extendedAggregatedCommitments:{
             
             index,
@@ -937,7 +963,7 @@ anotherPoolHealthChecker = async(response,request) => {
         
         {
             type:'OK',
-            sig: BLS_SIG('SKIP:<poolPubKey>:<index>:<hash>:<checkpointFullID>')
+            sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
         }
 
 
@@ -955,6 +981,9 @@ anotherPoolHealthChecker = async(response,request) => {
         }
                         
     }
+
+
+    + check the aggregated commitments (AC) in section <firstBlockProofs>. Generate skip proofs only in case this one is valid
 
 
 */
