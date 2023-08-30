@@ -1376,9 +1376,27 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         if(!skipHandler.aggregatedSkipProof){
 
 
-            // Otherwise, send <extendedAggregatedCommitments> and <firstBlockProofs> in SKIP_HANDLER to => POST /get_skip_proof
+            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedCommitmentsForFirstBlock> in SKIP_HANDLER to => POST /get_skip_proof
 
             let responsePromises = []
+
+            let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false)
+
+            let firstBlockHash
+
+
+            if(!aggregatedCommitmentsForFirstBlock){
+
+                if(skipHandler.extendedAggregatedCommitments.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+                else if (skipHandler.extendedAggregatedCommitments.index === 0) firstBlockHash = skipHandler.extendedAggregatedCommitments.hash
+
+            } else firstBlockHash = aggregatedCommitmentsForFirstBlock.blockHash
+
+            // If we don't have AC(aggregated commitments) for first block(with id=0) and skipped index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
+
+            if(!firstBlockHash) continue
+
 
             let sendOptions = {
                 
@@ -1388,7 +1406,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     poolPubKey:poolWithSkipHandler,
 
-                    firstBlockProofs:await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false),
+                    aggregatedCommitmentsForFirstBlock,
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
 
@@ -1417,7 +1435,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
    
 
             /*
-            1
+            
             ___________________________ Now analyze the responses ___________________________
 
             [1] In case quroum member also has this pool in SKIP_HANDLER - this is the signal that it also stopped creating finalization proofs for a given pool
@@ -1427,7 +1445,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: BLS_SIG('SKIP:<poolPubKey>:<index>:<hash>:<checkpointFullID>')
+                        sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
@@ -1460,8 +1478,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let {index,hash} = skipHandler.extendedAggregatedCommitments
 
-
-            let dataThatShouldBeSigned = `SKIP:${poolWithSkipHandler}:${index}:${hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolWithSkipHandler}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -1490,7 +1507,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
             
-                        let dataThatShouldBeSigned = poolWithSkipHandler+':'+index+hash+checkpointFullID
+                        let dataThatShouldBeSigned = (checkpoint.id+':'+poolWithSkipHandler+':'+index)+hash+checkpointFullID
                         
                         let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(_=>false)
             
@@ -1529,6 +1546,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             if(pubkeysWhoAgreeToSkip.length >= majority){
 
                 skipHandler.aggregatedSkipProof = {
+
+                    firstBlockHash,
 
                     skipIndex:skipHandler.extendedAggregatedCommitments.index,
 
@@ -2021,7 +2040,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedFinalizationProof
 
-                        let data = checkpoint.id+":"+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
+                        let data = checkpoint.id+':'+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
     
                         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     

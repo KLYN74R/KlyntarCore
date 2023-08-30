@@ -201,7 +201,7 @@ let RETURN_BLOCK = async(blockID,connection) => {
 
         let promises = []
 
-        let [_epochIndex,blockCreator,initIndex] = blockID.split(':')
+        let [epochIndex,blockCreator,initIndex] = blockID.split(':')
 
         let limit
 
@@ -222,7 +222,7 @@ let RETURN_BLOCK = async(blockID,connection) => {
 
         // Return the blocks from <initIndex> to <limit>
 
-        for(let final = initIndex;final<limit;final++) promises.push(global.SYMBIOTE_META.BLOCKS.get(blockCreator+':'+final).catch(_=>false))
+        for(let final = initIndex;final<limit;final++) promises.push(global.SYMBIOTE_META.BLOCKS.get(epochIndex+':'+blockCreator+':'+final).catch(_=>false))
 
 
         let blocks = (await Promise.all(promises)).filter(Boolean)

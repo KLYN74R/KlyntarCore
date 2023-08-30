@@ -927,7 +927,7 @@ anotherPoolHealthChecker = async(response,request) => {
 
         poolPubKey,
 
-        firstBlockProofs:{
+        aggregatedCommitmentsForFirstBlock:{
 
             blockID,    => epochID:poolPubKey:0
             blockHash,
@@ -983,7 +983,7 @@ anotherPoolHealthChecker = async(response,request) => {
     }
 
 
-    + check the aggregated commitments (AC) in section <firstBlockProofs>. Generate skip proofs only in case this one is valid
+    + check the aggregated commitments (AC) in section <aggregatedCommitmentsForFirstBlock>. Generate skip proofs only in case this one is valid
 
 
 */
@@ -1015,7 +1015,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
 
-    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments){
+    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
 
         
         
@@ -1045,25 +1045,66 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
             
-            let dataThatShouldBeSigned = requestForSkipProof.poolPubKey+':'+index+hash+checkpointFullID
+            let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
             
             let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-            // If signature is ok - generate skip proof
+            
+            let dataToSignForSkipProof, firstBlockProofIsOk = false
 
-            if(aggregatedCommitmentsIsOk){
+            if(index === -1){
+
+                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
+                
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(index === 0){
+
+                // If skipIndex is 0 then sign the hash of block 0
+
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(typeof requestForSkipProof.aggregatedCommitmentsForFirstBlock === 'object'){
+
+                // Verify the aggregatedCommitmentsForFirstBlock in case skipIndex > 0
+
+                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
+
+                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedCommitmentsForFirstBlock
+
+                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+checkpointFullID
+            
+                let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+
+                if(aggregatedCommitmentsIsOk){
+
+                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
+
+                    firstBlockProofIsOk = true                    
+
+                }
+
+            }
+            
+            // If signatures are ok - generate skip proof
+
+            if(aggregatedCommitmentsIsOk && firstBlockProofIsOk){
 
                 let skipMessage = {
                     
                     type:'OK',
 
-                    sig:await BLS_SIGN_DATA(`SKIP:${requestForSkipProof.poolPubKey}:${index}:${hash}:${checkpointFullID}`)
+                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
                 }
 
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
                 
-            }else !response.aborted && response.end(JSON.stringify({err:'Wrong signature'}))
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
 
              
         }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
