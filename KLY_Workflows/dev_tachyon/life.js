@@ -421,6 +421,44 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     let possibleCheckpoint = false
 
 
+    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+
+    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+
+    if(!temporaryObject){
+
+        setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,3000)
+
+        return
+
+    }
+    
+
+    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
+
+
+    if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+
+        // Stop to generate commitments/finalization proofs
+        temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
+
+
+        // Check the safety
+        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
+
+            setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
+
+            return
+
+        }
+    
+    }
+
+    
+
     if(possibleCheckpoint){
 
         // We need it for changes
@@ -593,8 +631,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
 
-    let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
-
     let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
@@ -605,12 +641,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         return
 
     }
-
-
-    let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
     
-        iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
+    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
     if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
@@ -633,6 +666,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let majority = GET_MAJORITY(qtCheckpoint)
 
+        let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+
+        let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+
+        
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
 
@@ -2995,7 +3033,7 @@ PREPARE_SYMBIOTE=async()=>{
         //'KLY_EVM' Contains state of EVM
 
         //'KLY_EVM_METADATA' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
-
+        
 
     ].forEach(
         
