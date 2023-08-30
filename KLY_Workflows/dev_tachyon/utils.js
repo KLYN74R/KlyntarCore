@@ -308,7 +308,7 @@ BLOCKLOG=(msg,hash,block)=>{
 
         console.log('\n')
         
-        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,block.creator+":"+block.index,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,block.creator+':'+block.index,COLORS.C)
 
         console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.C)
 

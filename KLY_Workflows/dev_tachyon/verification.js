@@ -41,11 +41,11 @@ export let
 
 GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
-    let blockID = epochIndex+":"+blockCreator+":"+index
+    let blockID = epochIndex+':'+blockCreator+':'+index
     
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>
 
-        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+":"+index,{agent:global.FETCH_HTTP_AGENT})
+        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+':'+index,{agent:global.FETCH_HTTP_AGENT})
     
         .then(r=>r.json()).then(block=>{
                 
@@ -59,7 +59,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
         }).catch(async error=>{
     
-            LOG(`No block \x1b[36;1m${blockCreator+":"+index}\u001b[38;5;3m ———> ${error}`,'W')
+            LOG(`No block \x1b[36;1m${blockCreator+':'+index}\u001b[38;5;3m ———> ${error}`,'W')
     
             LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
@@ -1533,7 +1533,7 @@ verifyBlock=async(block,subchainContext)=>{
 
         let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
-        let currentBlockID = currentCheckpointIndex+":"+block.creator+":"+block.index
+        let currentBlockID = currentCheckpointIndex+':'+block.creator+':'+block.index
 
 
         global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM

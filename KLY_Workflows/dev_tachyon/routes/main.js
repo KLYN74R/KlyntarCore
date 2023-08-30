@@ -157,7 +157,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                 let hash = Block.genHash(block)
 
-                let blockID = checkpoint.id+":"+block.creator+":"+block.index
+                let blockID = checkpoint.id+':'+block.creator+':'+block.index
 
                 let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
 
@@ -174,7 +174,7 @@ acceptBlocksAndReturnCommitment = response => {
                 if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && typeof block.extraData === 'object' && Array.isArray(block.transactions)){
 
                     // Make sure that it's a chain
-                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpoint.id+":"+block.creator+":"+(block.index-1)).then(prevBlock=>{
+                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpoint.id+':'+block.creator+':'+(block.index-1)).then(prevBlock=>{
     
                         let prevHash = Block.genHash(prevBlock)
     
@@ -1197,7 +1197,7 @@ ___________________________________________________________
 
 [1] firstBlockByCurrentAuthority - default block structure
 
-[2] afpForFirstBlockByCurrentAuthority - default SFP structure -> 
+[2] afpForFirstBlockByCurrentAuthority - default AFP structure -> 
 
 
     {
@@ -1251,19 +1251,19 @@ getDataForTempReassignments = async response => {
 
                 let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : checkpoint.reassignmentChains[primePool][currentAuthorityIndex]
 
-                // Now get the first block & SFP for it
+                // Now get the first block & AFP for it
 
                 let indexOfLatestBlockInPreviousEpoch = checkpoint.poolsMetadata[currentSubchainAuthority]?.index
 
                 if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
 
-                    let blockID = quorumThreadCheckpointIndex+":"+currentSubchainAuthority+":"+(indexOfLatestBlockInPreviousEpoch+1)
+                    let blockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':'+(indexOfLatestBlockInPreviousEpoch+1)
 
                     let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
                     if(firstBlockByCurrentAuthority){
 
-                        // Finally, find the SFP for this block
+                        // Finally, find the AFP for this block
 
                         let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
 

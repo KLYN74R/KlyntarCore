@@ -23,7 +23,7 @@
  * 
  * 
  * 
- * This is the server side for Savitar. We need it for instant SFP grabbing
+ * This is the server side for Savitar. We need it for instant AFP grabbing
  * 
  * The process has the following sequence
  * 
@@ -346,7 +346,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
     // for(let block of blocksArray){
 
-    //     let blockID = block.creator+":"+block.index
+    //     let blockID = block.creator+':'+block.index
 
     //     // let poolHasLackOfTotalPowerForCurrentCheckpoint = tempObject.SKIP_PROCEDURE_STAGE_1.has(block.creator) || qtPoolsMetadata[block.creator]?.IS_STOPPED
     
@@ -367,7 +367,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
     //     }
 
         
-    //     let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+":"+(block.index-1)).then(prevBlock=>{
+    //     let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(block.creator+':'+(block.index-1)).then(prevBlock=>{
 
     //         //Compare hashes to make sure it's a chain
 
