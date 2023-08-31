@@ -486,7 +486,15 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
+        let reassignmentChains = qtCheckpoint.reassignmentChains
         
+        for(let [primePoolPubKey,arrayOfPools] of Object.entries(reassignmentChains)){
+
+            // Ask the quorum for AEFP for subchain
+
+
+
+        }
     
     }
 
@@ -1304,10 +1312,6 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
 
-        //In case we get the aggregated commitments for the first block in epoch X - store it. We'll need it to paste to ASP or AEFP to know the first block in epoch
-
-        await USE_TEMPORARY_DB('put',tempDatabase,'AC_FOR_MY_FIRST_BLOCK',aggregatedCommitments).catch(_=>false)
-
         await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(_=>{})
 
     }
@@ -1447,22 +1451,22 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         if(!skipHandler.aggregatedSkipProof){
 
 
-            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedCommitmentsForFirstBlock> in SKIP_HANDLER to => POST /get_skip_proof
+            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedFinalizationProofForFirstBlock> in SKIP_HANDLER to => POST /get_skip_proof
 
             let responsePromises = []
 
-            let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false)
+            let aggregatedFinalizationProofForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false)
 
             let firstBlockHash
 
 
-            if(!aggregatedCommitmentsForFirstBlock){
+            if(!aggregatedFinalizationProofForFirstBlock){
 
                 if(skipHandler.extendedAggregatedCommitments.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
                 else if (skipHandler.extendedAggregatedCommitments.index === 0) firstBlockHash = skipHandler.extendedAggregatedCommitments.hash
 
-            } else firstBlockHash = aggregatedCommitmentsForFirstBlock.blockHash
+            } else firstBlockHash = aggregatedFinalizationProofForFirstBlock.blockHash
 
             // If we don't have AC(aggregated commitments) for first block(with id=0) and skipped index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
 
@@ -1477,7 +1481,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     poolPubKey:poolWithSkipHandler,
 
-                    aggregatedCommitmentsForFirstBlock,
+                    aggregatedFinalizationProofForFirstBlock,
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
 
@@ -1949,35 +1953,17 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         {
 
             pubKey,
-
-            afpForFirstBlock:{
-
-                blockID,
+        
+            index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
             
-                blockHash,
+            hash:<>,
 
-                aggregatedPub:bls.aggregatePublicKeys(signers),
+            aggregatedFinalizationProof:{
             
-                aggregatedSignature:bls.aggregateSignatures(signatures),
-            
+                aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                aggregatedPub:<>,
                 afkVoters
-
-            }
         
-            currentHealth:{
-
-                index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
-            
-                hash:<>,
-
-                aggregatedFinalizationProof:{
-            
-                    aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-                    aggregatedPub:<>,
-                    afkVoters
-        
-                }
-      
             }
 
         }
@@ -1989,16 +1975,16 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     for(let answer of healthCheckPingbacks){
 
 
-        if(typeof answer !== 'object' || typeof answer.afpForFirstBlock !== 'object' || typeof answer.currentHealth !== 'object' || typeof answer.currentHealth.aggregatedFinalizationProof !== 'object'){
+        if(typeof answer !== 'object' || typeof answer.aggregatedFinalizationProof !== 'object'){
 
             candidatesForAnotherCheck.push(answer.pubKey)
 
             continue
         }
 
-        let {aggregatedPub,aggregatedSignature,afkVoters} = answer.currentHealth.aggregatedFinalizationProof
+        let {aggregatedPub,aggregatedSignature,afkVoters} = answer.aggregatedFinalizationProof
 
-        let {index,hash} = answer.currentHealth
+        let {index,hash} = answer
 
         let pubKey = answer.pubKey
 
@@ -2010,9 +1996,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             localHealthHandler = {
 
-                afpForFirstBlock:{},
+                index:-1,
 
-                currentHealth:{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
             }
 
@@ -2024,55 +2010,22 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         //__________________________________Verify the AFP proof_________________________________________________
 
         
-        let data = checkpoint.id+':'+pubKey+':'+index+hash+'FINALIZATION'+checkpointFullID
+        let data = (checkpoint.id+':'+pubKey+':'+index)+hash+'FINALIZATION'+checkpointFullID
 
         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
 
-        //_____Verify the AFP for the first block in case we still don't have assumptions for subchain_____
-
-        let afpForFirstBlockSignatureIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(answer.afpForFirstBlock,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
-
-        let subchainID = checkpoint.poolsMetadata[pubKey].isReserve ? reassignments.get(pubKey) : pubKey
-
-        let assumptionForFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
-
-        let afpForFirstBlockIsOk = assumptionForFirstBlockExists || afpForFirstBlockSignatureIsOk
-
-
         // If signature is ok and index is bigger than we have - update the <lastSeen> time and set new height/hash/aggregatedFinalizationProof
 
-        if(aggregatedFinalizationProofIsOk && afpForFirstBlockIsOk && (localHealthHandler.index < index || localHealthHandler.index === -1)){
+        if(aggregatedFinalizationProofIsOk && (localHealthHandler.index < index || localHealthHandler.index === -1)){
 
-            localHealthHandler.currentHealth.lastSeen = GET_GMT_TIMESTAMP()
+            localHealthHandler.lastSeen = GET_GMT_TIMESTAMP()
 
-            localHealthHandler.currentHealth.index = index
+            localHealthHandler.index = index
 
-            localHealthHandler.currentHealth.hash = hash
+            localHealthHandler.hash = hash
 
-            localHealthHandler.currentHealth.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
-
-
-            if(!assumptionForFirstBlockExists && afpForFirstBlockSignatureIsOk){
-
-                // This branch in case when we haven't had assumption, so store it
-
-                let pureObj = {
-                    
-                    blockID:answer.afpForFirstBlock.blockID,
-                    blockHash:answer.afpForFirstBlock.blockHash,
-                    aggregatedPub:answer.afpForFirstBlock.aggregatedPub,
-                    aggregatedSignature:answer.afpForFirstBlock.aggregatedSignature,
-                    afkVoters:answer.afpForFirstBlock.afkVoters
-                
-                }
-
-                await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)
-
-                localHealthHandler.afpForFirstBlock = pureObj
-
-            }else candidatesForAnotherCheck.push(pubKey)
-
+            localHealthHandler.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
 
         }else candidatesForAnotherCheck.push(pubKey)
         
@@ -2089,9 +2042,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let candidate of candidatesForAnotherCheck){
 
-        let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate) // {currentHealth:{lastSeen,index,hash,aggregatedFinalizationProof},afpForFirstBlock}
+        let localHealthHandler = tempObject.HEALTH_MONITORING.get(candidate) // {lastSeen,index,hash,aggregatedFinalizationProof}
 
-        if(currentTime-localHealthHandler.currentHealth.lastSeen >= afkLimit){
+        if(currentTime-localHealthHandler.lastSeen >= afkLimit){
 
             let updateWasFound = false
             
@@ -2101,72 +2054,32 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
 
-                if(typeof answer.afpOfPoolXFromAnotherQuorumMember === 'object' && typeof answer.currentHealth === 'object' && typeof answer.afpForFirstBlock){
+                if(typeof answer === 'object'){
 
                     // Verify and if ok - break the cycle
 
-                    let {index,hash,aggregatedFinalizationProof} = answer.currentHealth
+                    let {index,hash,aggregatedFinalizationProof} = answer
 
-                    if(aggregatedFinalizationProof){
+                    if(typeof aggregatedFinalizationProof === 'object'){
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedFinalizationProof
 
-                        let data = checkpoint.id+':'+candidate+':'+index+hash+'FINALIZATION'+checkpointFullID
+                        let data = (checkpoint.id+':'+candidate+':'+index)+hash+'FINALIZATION'+checkpointFullID
     
                         let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
-                        
-                        //_____Verify the AFP for the first block in case we still don't have assumptions for subchain_____
-
-                        let afpForFirstBlockSignatureIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(answer.afpForFirstBlock,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
-
-                        let subchainID = checkpoint.poolsMetadata[pubKey].isReserve ? reassignments.get(pubKey) : pubKey
-                
-                        let assumptionForFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
-                
-                        let afpForFirstBlockIsOk = assumptionForFirstBlockExists || afpForFirstBlockSignatureIsOk
-
                         //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new aggregatedFinalizationProof
     
-                        if(aggregatedFinalizationProofIsOk && afpForFirstBlockIsOk && (localHealthHandler.currentHealth.index < index || localHealthHandler.currentHealth.index === -1)){
+                        if(aggregatedFinalizationProofIsOk && (localHealthHandler.index < index || localHealthHandler.index === -1)){
     
-                            localHealthHandler.currentHealth.lastSeen = currentTime
+                            localHealthHandler.lastSeen = currentTime
 
-                            localHealthHandler.currentHealth.index = index
+                            localHealthHandler.index = index
 
-                            localHealthHandler.currentHealth.hash = hash
+                            localHealthHandler.hash = hash
     
-                            localHealthHandler.currentHealth.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
-    
-
-                            if(!assumptionForFirstBlockExists && afpForFirstBlockSignatureIsOk){
-
-                                // This branch in case when we haven't had assumption, so store it
-                
-                                let pureObj = {
-                                    
-                                    blockID:answer.afpForFirstBlock.blockID,
-                                    blockHash:answer.afpForFirstBlock.blockHash,
-                                    aggregatedPub:answer.afpForFirstBlock.aggregatedPub,
-                                    aggregatedSignature:answer.afpForFirstBlock.aggregatedSignature,
-                                    afkVoters:answer.afpForFirstBlock.afkVoters
-                                
-                                }
-                
-                                await global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID,pureObj).catch(_=>false)
-                
-                                localHealthHandler.afpForFirstBlock = pureObj
-                
-
-                                // No more sense to find updates
-
-
-                                updateWasFound = true
-
-                                break
-    
-                            }
-                
+                            localHealthHandler.aggregatedFinalizationProof = {aggregatedPub,aggregatedSignature,afkVoters}
+                    
                         }
                     
                     }
@@ -2498,9 +2411,11 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 1){
 
-        let aggregatedCommitmentsForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AC_FOR_MY_FIRST_BLOCK').catch(_=>false)
+        let myFirstBlockInEpoch = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':0'
 
-        if(aggregatedCommitmentsForFirstBlock) extraData.aggregatedCommitmentsForFirstBlock = aggregatedCommitmentsForFirstBlock
+        let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+myFirstBlockInEpoch).catch(_=>false)
+
+        if(aggregatedFinalizationProofForFirstBlock) extraData.aggregatedFinalizationProofForFirstBlock = aggregatedFinalizationProofForFirstBlock
 
         else return // try later
 

@@ -186,21 +186,22 @@ acceptBlocksAndReturnCommitment = response => {
                     let allChecksPassed = checkIfItsChain && await BLS_VERIFY(hash,block.sig,block.creator).catch(_=>false)                    
 
                     
-                    // Also, if it's second block in epoch(index = 1,because numeration starts from 0) - make sure that we have aggregated commitments for the first block. We'll need it for ASP
+                    // Also, if it's second block in epoch(index = 1,because numeration starts from 0) - make sure that we have AFP(aggregated finalization proofs) for the first block
+                    // We'll need it for ASP
                     if(block.index===1){
 
                         let proofIsOk = false
 
-                        if(typeof block.extraData.aggregatedCommitmentsForFirstBlock === 'object'){
+                        if(typeof block.extraData.aggregatedFinalizationProofForFirstBlock === 'object'){
 
 
                             let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
-                            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedCommitmentsForFirstBlock
+                            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedFinalizationProofForFirstBlock
 
                             let blockIDForFirstBlock = checkpoint.id+':'+block.creator+':'+0
 
-                            let dataThatShouldBeSigned = blockIDForFirstBlock+blockHash+checkpointFullID // blockID_FOR_FIRST_BLOCK+hash+checkpointFullID
+                            let dataThatShouldBeSigned = blockIDForFirstBlock+blockHash+'FINALIZATION'+checkpointFullID // blockID_FOR_FIRST_BLOCK+hash+'FINALIZATION'+checkpointFullID
                 
                             let majority = GET_MAJORITY(checkpoint)
                         
@@ -218,7 +219,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                                 // Store locally
 
-                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
+                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AFP_FOR_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
 
                             }
     
@@ -749,37 +750,17 @@ Returns:
 
     {
 
-        afpForFirstBlock:{
+        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+        hash:<>,
 
-            blockID,
+        aggregatedFinalizationProof:{
             
-            blockHash,
-
-            aggregatedPub:bls.aggregatePublicKeys(signers),
-            
-            aggregatedSignature:bls.aggregateSignatures(signatures),
-            
+            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+            aggregatedPub:<>,
             afkVoters
-
-        },
-
-
-        currentHealth:{
-
-            index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
-            hash:<>,
-
-            aggregatedFinalizationProof:{
-            
-                aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-                aggregatedPub:<>,
-                afkVoters
-        
-            }
-
-        }
-            
+        }    
     
     }
 
@@ -792,28 +773,9 @@ healthChecker = async response => {
 
         // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
 
-        let currentHealth = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('HEALTH')
+        let healthProof = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('HEALTH')
 
-        // Now, try to get the AFP for the first block in epoch
-
-        let afpForFirstBlock = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('AFP_FOR_MY_FIRST_BLOCK_IN_EPOCH')
-
-        if(!afpForFirstBlock){
-
-            // Find the AFP proof for the first block in current epoch
-            let firstBlockInEpochID = `${global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id}:${global.CONFIG.SYMBIOTE.PUB}:0`
-
-            let afpForMyBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockInEpochID).catch(_=>false)
-
-            // Add to cache
-            global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('AFP_FOR_MY_FIRST_BLOCK_IN_EPOCH',afpForMyBlock)
-
-        }
-
-
-        if(currentHealth && afpForFirstBlock){
-
-            let healthProof = {afpForFirstBlock,currentHealth}
+        if(healthProof){
 
             !response.aborted && response.end(JSON.stringify(healthProof))
 
@@ -842,37 +804,19 @@ To return the stats about the health about another pool
 
     {
 
-        afpForFirstBlock:{
+        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+        hash:<>,
 
-            blockID,
-            
-            blockHash,
+        aggregatedFinalizationProof:{
 
-            aggregatedPub:bls.aggregatePublicKeys(signers),
-            
-            aggregatedSignature:bls.aggregateSignatures(signatures),
-            
+            aggregatedPub,
+            aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
             afkVoters
-
-        },
-
-
-        currentHealth:{
-
-            index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
         
-            hash:<>,
-
-            aggregatedFinalizationProof:{
-
-                aggregatedPub,
-                aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
-                afkVoters
-        
-            }
-
         }
-    
+
+        
     }
 
 
@@ -927,7 +871,7 @@ anotherPoolHealthChecker = async(response,request) => {
 
         poolPubKey,
 
-        aggregatedCommitmentsForFirstBlock:{
+        aggregatedFinalizationProofForFirstBlock:{
 
             blockID,    => epochID:poolPubKey:0
             blockHash,
@@ -983,7 +927,7 @@ anotherPoolHealthChecker = async(response,request) => {
     }
 
 
-    + check the aggregated commitments (AC) in section <aggregatedCommitmentsForFirstBlock>. Generate skip proofs only in case this one is valid
+    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate skip proofs only in case this one is valid
 
 
 */
@@ -1068,19 +1012,19 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
                 firstBlockProofIsOk = true
 
-            }else if(typeof requestForSkipProof.aggregatedCommitmentsForFirstBlock === 'object'){
+            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
 
-                // Verify the aggregatedCommitmentsForFirstBlock in case skipIndex > 0
+                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
                 let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
 
-                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedCommitmentsForFirstBlock
+                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
 
-                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+checkpointFullID
+                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
             
-                let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-                if(aggregatedCommitmentsIsOk){
+                if(aggregatedFinalizationProofIsOk){
 
                     dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
 

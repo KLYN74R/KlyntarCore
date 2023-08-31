@@ -244,10 +244,12 @@ let RETURN_BLOCK = async(blockID,connection) => {
 let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,connection)=>{
 
     // connection.sendUTF(message.utf8Data);
-    
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
-    let checkpointIndex = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    
+    let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+
+    let checkpointIndex = qtCheckpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -261,7 +263,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
     
     }
 
-    if(!global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed || !tempObject){
+    if(!qtCheckpoint.completed || !tempObject){
 
         connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
 
