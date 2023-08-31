@@ -194,32 +194,19 @@ acceptBlocksAndReturnCommitment = response => {
 
                         if(typeof block.extraData.aggregatedFinalizationProofForFirstBlock === 'object'){
 
-
                             let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
                             let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedFinalizationProofForFirstBlock
 
                             let blockIDForFirstBlock = checkpoint.id+':'+block.creator+':'+0
-
-                            let dataThatShouldBeSigned = blockIDForFirstBlock+blockHash+'FINALIZATION'+checkpointFullID // blockID_FOR_FIRST_BLOCK+hash+'FINALIZATION'+checkpointFullID
-                
-                            let majority = GET_MAJORITY(checkpoint)
-                        
-                            let reverseThreshold = checkpoint.length - majority
-                
-
-                            proofIsOk =  blockID === blockIDForFirstBlock && await bls.verifyThresholdSignature(
-                                
-                                aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold
-                                
-                            ).catch(_=>false)
-
+            
+                            proofIsOk = blockID === blockIDForFirstBlock && await VERIFY_AGGREGATED_FINALIZATION_PROOF(block.extraData.aggregatedFinalizationProofForFirstBlock,checkpoint,rootPub)
 
                             if(proofIsOk){
 
                                 // Store locally
-
-                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AFP_FOR_FIRST_BLOCK:'+block.creator,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
+                                
+                                await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>false)
 
                             }
     
@@ -816,7 +803,7 @@ To return the stats about the health about another pool
         
         }
 
-        
+
     }
 
 
@@ -826,7 +813,6 @@ anotherPoolHealthChecker = async(response,request) => {
     response.onAborted(()=>response.aborted=true)
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
-
         
         let requestedPoolPubKey = request.getParameter(0)
 

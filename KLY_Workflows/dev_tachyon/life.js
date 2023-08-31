@@ -425,23 +425,13 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     This value shows how many first blocks we need to get to extract system sync operations to execute
  
             
-        4. Now, call the GET /first_block_assumptions (to quorum members) and get object like this:
+        4. Now try to find our own assumption about the first block in epoch locally
 
-            {
-                subchainPubKey:{
+            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(_=>false)
 
-                    blockID,
-                    blockHash,
-                    aggregatedPub,
-                    aggregatedSignature,
-                    afkVoters:[]
-
-                }
-            }
-
-            Each key is subchainID(pubkey of prime pool) and value is AFP for some block. This is a clear proof that block is 100% accepted by network
-
-            Also, before the call we can try to find our own assumption locally in global.SYMBIOTE_META.EPOCH_DATA.put('FIRST_BLOCK_ASSUMPTION:'+subchainID).catch(_=>false)
+            If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
+        
+            This is a clear proof that block is 100% accepted by network 
 
 
         5. Using these proofs, check the blockID field. If it contain prime pool pubkey and index 0 - it's the first block on subchain. 100%
@@ -475,6 +465,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
         let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
     
+        let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
     
         if(!temporaryObject){
     
@@ -484,17 +475,141 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
         }
 
+
         let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
         let reassignmentChains = qtCheckpoint.reassignmentChains
+
+        let allKnownPeers = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+
+
+        /*
         
-        for(let [primePoolPubKey,arrayOfPools] of Object.entries(reassignmentChains)){
+            ███████╗██╗███╗   ██╗██████╗      █████╗ ███████╗███████╗██████╗ ███████╗
+            ██╔════╝██║████╗  ██║██╔══██╗    ██╔══██╗██╔════╝██╔════╝██╔══██╗██╔════╝
+            █████╗  ██║██╔██╗ ██║██║  ██║    ███████║█████╗  █████╗  ██████╔╝███████╗
+            ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══██║██╔══╝  ██╔══╝  ██╔═══╝ ╚════██║
+            ██║     ██║██║ ╚████║██████╔╝    ██║  ██║███████╗██║     ██║     ███████║
+            ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝     ╚══════╝
 
-            // Ask the quorum for AEFP for subchain
+        */
 
 
+
+        /*
+        
+            ███████╗██╗███╗   ██╗██████╗     ███████╗██╗██████╗ ███████╗████████╗    ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗███████╗
+            ██╔════╝██║████╗  ██║██╔══██╗    ██╔════╝██║██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
+            █████╗  ██║██╔██╗ ██║██║  ██║    █████╗  ██║██████╔╝███████╗   ██║       ██████╔╝██║     ██║   ██║██║     █████╔╝ ███████╗
+            ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══╝  ██║██╔══██╗╚════██║   ██║       ██╔══██╗██║     ██║   ██║██║     ██╔═██╗ ╚════██║
+            ██║     ██║██║ ╚████║██████╔╝    ██║     ██║██║  ██║███████║   ██║       ██████╔╝███████╗╚██████╔╝╚██████╗██║  ██╗███████║
+            ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+        
+        */
+
+
+        let firstBlocksAssumptions = {} // {subchainID:{blockID,blockHash}}
+
+
+        //____________________Ask the quorum for AEFP for subchain___________________
+        
+        for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(reassignmentChains)){
+
+            // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
+
+            let firstBlockOfPrimePool = qtCheckpoint.id+':'+primePoolPubKey+':0'
+
+            let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(_=>false)
+
+            if(afpForFirstBlockOfPrimePool){
+
+                firstBlocksAssumptions[primePoolPubKey] = {
+                    
+                    blockID:afpForFirstBlockOfPrimePool.blockID,
+                    
+                    blockHash:afpForFirstBlockOfPrimePool.blockHash,
+
+                    position:-1 // position in reassignment chain. Always -1 for prime pool
+                
+                }
+
+            }else{
+
+                // Ask quorum for AFP for first block of prime pool
+
+                // Descriptor is {url,pubKey}
+
+                for(let peerURL of allKnownPeers){
+            
+                    let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+            
+                    if(itsProbablyAggregatedFinalizationProof){
+            
+                        let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,qtRootPub)
+            
+                        if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){
+
+                            firstBlocksAssumptions[primePoolPubKey] = {
+                                
+                                blockID:itsProbablyAggregatedFinalizationProof.blockID,
+                                
+                                blockHash:itsProbablyAggregatedFinalizationProof.blockHash,
+
+                                position:-1
+                            
+                            }                            
+
+                        }
+            
+                    }
+            
+                }
+            
+            }
+
+
+
+            //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
+
+            
+            
+            if(!firstBlocksAssumptions[primePoolPubKey]){
+
+                // Find AFPs for reserve pools
+                
+                for(let position = 0, length = arrayOfReservePools.length ; position<length ; position++){
+
+                    let reservePoolPubKey = arrayOfReservePools[position]
+
+                    let firstBlockOfPool = qtCheckpoint.id+':'+reservePoolPubKey+':0'
+
+                    let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(_=>false)
+
+                    if(afp){
+
+                        firstBlocksAssumptions[primePoolPubKey] = {
+                            
+                            blockID:afp.blockID,
+                            
+                            blockHash:afp.blockHash,
+                        
+                            position
+                        
+                        }
+
+                        break
+
+                    }
+
+                }
+
+            }
 
         }
+
+
+        //_____________________________ Here we should have understanding of first block for each subchain __________________________
+
     
     }
 
@@ -1280,7 +1395,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
         {
         
-            blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+            blockID:"79:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
 
             blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
         
@@ -1455,7 +1570,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let responsePromises = []
 
-            let aggregatedFinalizationProofForFirstBlock = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'AFP_FOR_FIRST_BLOCK:'+poolWithSkipHandler).catch(_=>false)
+            let firstBlockID = checkpoint.id+':'+poolWithSkipHandler+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
+
+            let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(_=>false)
 
             let firstBlockHash
 
@@ -3385,7 +3502,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
 
 
-                            if(afpIsOk.verify){
+                            if(afpIsOk){
     
                                 // Verify all the ASPs in block header
     

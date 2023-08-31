@@ -140,7 +140,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
         let signaIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
 
-        if(signaIsOk) return {verify:true}
+        return signaIsOk
 
     }
 
@@ -214,8 +214,6 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
     
     let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
-
-
     for(let memberURL of quorumMembersURLs){
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
@@ -224,7 +222,7 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
             let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPub)
 
-            if(isOK.verify && itsProbablyAggregatedFinalizationProof.blockID === blockID && itsProbablyAggregatedFinalizationProof.blockHash === blockHash) return isOK 
+            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === blockID && itsProbablyAggregatedFinalizationProof.blockHash === blockHash) return isOK 
 
         }
 
