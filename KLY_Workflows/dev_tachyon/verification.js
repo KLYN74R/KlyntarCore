@@ -57,15 +57,15 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
             }
     
-        }).catch(async error=>{
+        }).catch(async _error=>{
     
-            LOG(`No block \x1b[36;1m${blockCreator+':'+index}\u001b[38;5;3m ———> ${error}`,'W')
+            // LOG(`No block \x1b[36;1m${blockCreator+':'+index}\u001b[38;5;3m ———> ${error}`,'W')
     
-            LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
+            // LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
     
 
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes=await GET_POOLS_URLS()
+            let allVisibleNodes = await GET_POOLS_URLS()
 
     
             for(let url of allVisibleNodes){

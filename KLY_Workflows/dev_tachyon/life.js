@@ -490,7 +490,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let checkpointCache = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'CHECKPOINT_CACHE').catch(_=>false) || {} // {subchainID:{firstBlockID,firstBlockHash,position,aefp}}
+        let checkpointCache = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'CHECKPOINT_CACHE').catch(_=>false) || {} // {subchainID:{firstBlockID,firstBlockHash,position,aefp,realFirstBlockFound}}
 
 
         //____________________Ask the quorum for AEFP for subchain___________________
@@ -499,7 +499,17 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
             totalNumberOfSubchains++
         
-            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {}
+            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {realFirstBlockFound:false}
+
+            if(checkpointCache[primePoolPubKey].aefp && checkpointCache[primePoolPubKey].realFirstBlockFound){
+
+                totalNumberOfReadySubchains++
+
+                // No more sense to find AEFPs or first block for this subchain. Just continue
+
+                continue
+
+            }
 
             /*
         
@@ -509,6 +519,24 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══██║██╔══╝  ██╔══╝  ██╔═══╝ ╚════██║
                 ██║     ██║██║ ╚████║██████╔╝    ██║  ██║███████╗██║     ██║     ███████║
                 ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝     ╚══════╝
+
+                
+                Reminder: AEFP structure is
+
+                    {
+                        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
+                        lastIndex:<index of his block in previous epoch>,
+                        lastHash:<hash of this block>,
+
+                        proof:{
+
+                            aggregatedPub:<BLS aggregated pubkey of signers>,
+                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                            afkVoters:[] - array of BLS pubkeys who haven't voted
+
+                        }
+    
+                    }
 
             */
 
@@ -561,73 +589,150 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
             */
 
-            // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
+            if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
 
-            let firstBlockOfPrimePool = qtCheckpoint.id+':'+primePoolPubKey+':0'
+                // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
 
-            let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(_=>false)
+                let firstBlockOfPrimePool = qtCheckpoint.id+':'+primePoolPubKey+':0'
 
-            if(afpForFirstBlockOfPrimePool){
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(_=>false)
 
-                checkpointCache[primePoolPubKey].firstBlockID = afpForFirstBlockOfPrimePool.blockID
+                if(afpForFirstBlockOfPrimePool){
 
-                checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+                    checkpointCache[primePoolPubKey].firstBlockID = afpForFirstBlockOfPrimePool.blockID
 
-                checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
+                    checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
 
-            }else{
+                    checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
-                // Ask quorum for AFP for first block of prime pool
+                    checkpointCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
-                // Descriptor is {url,pubKey}
+                }else{
 
-                for(let peerURL of allKnownPeers){
+                    // Ask quorum for AFP for first block of prime pool
+
+                    // Descriptor is {url,pubKey}
+
+                    for(let peerURL of allKnownPeers){
             
-                    let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
             
-                    if(itsProbablyAggregatedFinalizationProof){
+                        if(itsProbablyAggregatedFinalizationProof){
             
-                        let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,qtRootPub)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,qtRootPub)
             
-                        if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
+                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
                             
-                            checkpointCache[primePoolPubKey].firstBlockID = itsProbablyAggregatedFinalizationProof.blockID
+                                checkpointCache[primePoolPubKey].firstBlockID = itsProbablyAggregatedFinalizationProof.blockID
 
-                            checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
+                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
             
-                            checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
+                                checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
+                                checkpointCache[primePoolPubKey].realFirstBlockFound = true
+
+                            }
+            
                         }
             
                     }
             
                 }
-            
-            }
 
-            //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
+                //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
-            if(!checkpointCache[primePoolPubKey].firstBlockHash){
+                if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
 
-                // Find AFPs for reserve pools
+                    // Find AFPs for reserve pools
                 
-                for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
+                    for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
 
-                    let reservePoolPubKey = arrayOfReservePools[position]
+                        let reservePoolPubKey = arrayOfReservePools[position]
 
-                    let firstBlockOfPool = qtCheckpoint.id+':'+reservePoolPubKey+':0'
+                        let firstBlockOfPool = qtCheckpoint.id+':'+reservePoolPubKey+':0'
 
-                    let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(_=>false)
+                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(_=>false)
 
-                    if(afp){
+                        if(afp){
 
-                        checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
+                            //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
 
-                        checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
+                            let potentialFirstBlock = await GET_BLOCK(qtCheckpoint.id,reservePoolPubKey,0,true)
+
+                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
+
+                                /*
+                            
+                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.reassignments
+                            
+                                    We should get the ASP for previous pool in reassignment chain
+                                
+                                        1) If previous pool was skipped on height -1 (asp.skipIndex === -1) then try next pool
+
+                                */
+
+                                
+                                let notNullAsp
+
+                                let currentPosition = position
+
+                                while(!notNullAsp) {
+
+                                    let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
+
+                                    let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
+
+                                    if(aspForPreviousPool.skipIndex !== -1){
+
+                                        // Get the first block of pool which was skipped on not-null height
+
+
+                                        notNullAsp = aspForPreviousPool
+
+                                        break
+                                    
+                                    } else if(previousPoolPubKey === primePoolPubKey) break
+
+                                }
+
+                                // In case we break because of chain end <notNullAsp> wasn't found - then our current potentialFirstBlock is the first block. 100%
+
+                                if(!notNullAsp){
+
+                                    checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
+
+                                    checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
+            
+                                    checkpointCache[primePoolPubKey].position = position
+
+                                    checkpointCache[primePoolPubKey].realFirstBlockFound = true
+
+                                }
+
+                            }
+
+
+                            let indexOfPreviousPool = position - 1
+
+                            if(indexOfPreviousPool === -1){
+
+                                // If previous pool w/ index -1 - it's a signal that we get AFP for first block of the first reserve pool(position=0 in reassignment chain)
+                                // So, check the ASP for prime pool in block header. If  
+
+                            }
+
+
+
+                            checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
+
+                            checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
         
-                        checkpointCache[primePoolPubKey].position = position
+                            checkpointCache[primePoolPubKey].position = position
 
-                        break
+
+                            break
+
+                        }
 
                     }
 
@@ -635,13 +740,10 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             }
 
-
-            //
-
-
+            
             //_____________________________ Here we should have understanding of first block for each subchain __________________________
 
-            if(checkpointCache[primePoolPubKey].firstBlockHash && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+            if(checkpointCache[primePoolPubKey].realFirstBlockFound && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
     
         }
 
