@@ -478,42 +478,88 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
+        let totalNumberOfSubchains = 0
+
+        let totalNumberOfReadySubchains = 0
+
         let reassignmentChains = qtCheckpoint.reassignmentChains
 
-        let allKnownPeers = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+        let majority = GET_MAJORITY(qtCheckpoint)
 
+        let allKnownPeers = [...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
-        /*
-        
-            ███████╗██╗███╗   ██╗██████╗      █████╗ ███████╗███████╗██████╗ ███████╗
-            ██╔════╝██║████╗  ██║██╔══██╗    ██╔══██╗██╔════╝██╔════╝██╔══██╗██╔════╝
-            █████╗  ██║██╔██╗ ██║██║  ██║    ███████║█████╗  █████╗  ██████╔╝███████╗
-            ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══██║██╔══╝  ██╔══╝  ██╔═══╝ ╚════██║
-            ██║     ██║██║ ╚████║██████╔╝    ██║  ██║███████╗██║     ██║     ███████║
-            ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝     ╚══════╝
+        // Get the special object from DB not to repeat requests
 
-        */
-
-
-
-        /*
-        
-            ███████╗██╗███╗   ██╗██████╗     ███████╗██╗██████╗ ███████╗████████╗    ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗███████╗
-            ██╔════╝██║████╗  ██║██╔══██╗    ██╔════╝██║██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
-            █████╗  ██║██╔██╗ ██║██║  ██║    █████╗  ██║██████╔╝███████╗   ██║       ██████╔╝██║     ██║   ██║██║     █████╔╝ ███████╗
-            ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══╝  ██║██╔══██╗╚════██║   ██║       ██╔══██╗██║     ██║   ██║██║     ██╔═██╗ ╚════██║
-            ██║     ██║██║ ╚████║██████╔╝    ██║     ██║██║  ██║███████║   ██║       ██████╔╝███████╗╚██████╔╝╚██████╗██║  ██╗███████║
-            ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
-        
-        */
-
-
-        let firstBlocksAssumptions = {} // {subchainID:{blockID,blockHash}}
+        let checkpointCache = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'CHECKPOINT_CACHE').catch(_=>false) || {} // {subchainID:{firstBlockID,firstBlockHash,position,aefp}}
 
 
         //____________________Ask the quorum for AEFP for subchain___________________
         
         for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(reassignmentChains)){
+        
+            totalNumberOfSubchains++
+        
+            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {}
+
+            /*
+        
+                ███████╗██╗███╗   ██╗██████╗      █████╗ ███████╗███████╗██████╗ ███████╗
+                ██╔════╝██║████╗  ██║██╔══██╗    ██╔══██╗██╔════╝██╔════╝██╔══██╗██╔════╝
+                █████╗  ██║██╔██╗ ██║██║  ██║    ███████║█████╗  █████╗  ██████╔╝███████╗
+                ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══██║██╔══╝  ██╔══╝  ██╔═══╝ ╚════██║
+                ██║     ██║██║ ╚████║██████╔╝    ██║  ██║███████╗██║     ██║     ███████║
+                ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝     ╚══════╝
+
+            */
+
+            
+            if(!checkpointCache[primePoolPubKey].aefp){
+
+                // Try to find locally
+
+                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`).catch(_=>false)
+
+                if(aefp){
+
+                    checkpointCache[primePoolPubKey].aefp = aefp
+
+
+                }else{
+
+                    // Ask quorum for AEFP
+                    for(let peerURL of allKnownPeers){
+            
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                
+                        if(itsProbablyAggregatedEpochFinalizationProof){
+                
+                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,qtRootPub,majority,checkpointFullID)
+    
+                            if(aefpPureObject){
+    
+                                checkpointCache[primePoolPubKey].aefp = aefpPureObject
+    
+                            }
+                                        
+                        }
+                
+                    }    
+
+                }
+
+            }
+            
+
+            /*
+        
+                ███████╗██╗███╗   ██╗██████╗     ███████╗██╗██████╗ ███████╗████████╗    ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗███████╗
+                ██╔════╝██║████╗  ██║██╔══██╗    ██╔════╝██║██╔══██╗██╔════╝╚══██╔══╝    ██╔══██╗██║     ██╔═══██╗██╔════╝██║ ██╔╝██╔════╝
+                █████╗  ██║██╔██╗ ██║██║  ██║    █████╗  ██║██████╔╝███████╗   ██║       ██████╔╝██║     ██║   ██║██║     █████╔╝ ███████╗
+                ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══╝  ██║██╔══██╗╚════██║   ██║       ██╔══██╗██║     ██║   ██║██║     ██╔═██╗ ╚════██║
+                ██║     ██║██║ ╚████║██████╔╝    ██║     ██║██║  ██║███████║   ██║       ██████╔╝███████╗╚██████╔╝╚██████╗██║  ██╗███████║
+                ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
+        
+            */
 
             // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
 
@@ -523,15 +569,11 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             if(afpForFirstBlockOfPrimePool){
 
-                firstBlocksAssumptions[primePoolPubKey] = {
-                    
-                    blockID:afpForFirstBlockOfPrimePool.blockID,
-                    
-                    blockHash:afpForFirstBlockOfPrimePool.blockHash,
+                checkpointCache[primePoolPubKey].firstBlockID = afpForFirstBlockOfPrimePool.blockID
 
-                    position:-1 // position in reassignment chain. Always -1 for prime pool
-                
-                }
+                checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+
+                checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
             }else{
 
@@ -547,17 +589,13 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
                         let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,qtRootPub)
             
-                        if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){
-
-                            firstBlocksAssumptions[primePoolPubKey] = {
-                                
-                                blockID:itsProbablyAggregatedFinalizationProof.blockID,
-                                
-                                blockHash:itsProbablyAggregatedFinalizationProof.blockHash,
-
-                                position:-1
+                        if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
                             
-                            }                            
+                            checkpointCache[primePoolPubKey].firstBlockID = itsProbablyAggregatedFinalizationProof.blockID
+
+                            checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
+            
+                            checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
                         }
             
@@ -567,17 +605,13 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
             }
 
-
-
             //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
-
             
-            
-            if(!firstBlocksAssumptions[primePoolPubKey]){
+            if(!checkpointCache[primePoolPubKey].firstBlockHash){
 
                 // Find AFPs for reserve pools
                 
-                for(let position = 0, length = arrayOfReservePools.length ; position<length ; position++){
+                for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
 
                     let reservePoolPubKey = arrayOfReservePools[position]
 
@@ -587,15 +621,11 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     if(afp){
 
-                        firstBlocksAssumptions[primePoolPubKey] = {
-                            
-                            blockID:afp.blockID,
-                            
-                            blockHash:afp.blockHash,
-                        
-                            position
-                        
-                        }
+                        checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
+
+                        checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
+        
+                        checkpointCache[primePoolPubKey].position = position
 
                         break
 
@@ -605,12 +635,16 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             }
 
+
+            //
+
+
+            //_____________________________ Here we should have understanding of first block for each subchain __________________________
+
+            if(checkpointCache[primePoolPubKey].firstBlockHash && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+    
         }
 
-
-        //_____________________________ Here we should have understanding of first block for each subchain __________________________
-
-    
     }
 
 
