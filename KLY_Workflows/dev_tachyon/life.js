@@ -671,66 +671,79 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                 */
 
-                                
-                                let notNullAsp
-
                                 let currentPosition = position
 
-                                while(!notNullAsp) {
+                                let aspData = {}
+                                
+                                while(true){
 
-                                    let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
+                                    let shouldBreakInfiniteWhile = false
 
-                                    let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
-
-                                    if(aspForPreviousPool.skipIndex !== -1){
-
-                                        // Get the first block of pool which was skipped on not-null height
-
-
-                                        notNullAsp = aspForPreviousPool
-
-                                        break
-                                    
-                                    } else if(previousPoolPubKey === primePoolPubKey) break
-
-                                }
-
-                                // In case we break because of chain end <notNullAsp> wasn't found - then our current potentialFirstBlock is the first block. 100%
-
-                                if(!notNullAsp){
-
-                                    checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
-
-                                    checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
-            
-                                    checkpointCache[primePoolPubKey].position = position
-
-                                    checkpointCache[primePoolPubKey].realFirstBlockFound = true
-
-                                }
-
-                            }
+                                    while(true) {
+    
+                                        let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
+    
+                                        let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
 
 
-                            let indexOfPreviousPool = position - 1
+                                        if(previousPoolPubKey === primePoolPubKey){
 
-                            if(indexOfPreviousPool === -1){
+                                            // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
 
-                                // If previous pool w/ index -1 - it's a signal that we get AFP for first block of the first reserve pool(position=0 in reassignment chain)
-                                // So, check the ASP for prime pool in block header. If  
+                                            checkpointCache[primePoolPubKey].firstBlockID = aspData.blockID
 
-                            }
-
-
-
-                            checkpointCache[primePoolPubKey].firstBlockID = afp.blockID
-
-                            checkpointCache[primePoolPubKey].firstBlockHash = afp.blockHash
+                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.blockHash
+                    
+                                            checkpointCache[primePoolPubKey].position = aspData.position
         
-                            checkpointCache[primePoolPubKey].position = position
+                                            checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                    
+                                            shouldBreakInfiniteWhile = true
 
+                                            break
 
-                            break
+                                        }else if(aspForPreviousPool.skipIndex !== -1){
+    
+                                            // Get the first block of pool which was skipped on not-null height
+                                            let potentialNextBlock = await GET_BLOCK(qtCheckpoint.id,previousPoolPubKey,0)
+
+                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
+
+                                                potentialFirstBlock = potentialNextBlock
+
+                                                aspData.blockID = qtCheckpoint.id+':'+previousPoolPubKey+':'+0
+
+                                                aspData.blockHash = aspForPreviousPool.firstBlockHash
+
+                                                aspData.position = currentPosition-1
+
+                                                currentPosition--
+
+                                                break // break the first(inner) while
+
+                                            }else{
+
+                                                // If we can't find required block - break the while & while cycles
+
+                                                shouldBreakInfiniteWhile = true
+
+                                                break
+
+                                            }
+                                        
+                                        }
+
+                                        // Continue iteration in current block
+
+                                        currentPosition--
+    
+                                    }
+
+                                    if(shouldBreakInfiniteWhile) break
+    
+                                }
+
+                            }
 
                         }
 
@@ -746,6 +759,17 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             if(checkpointCache[primePoolPubKey].realFirstBlockFound && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
     
         }
+
+
+        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract system sync operations and set the epoch____
+
+
+        if(totalNumberOfSubchains === totalNumberOfReadySubchains){
+
+            
+
+        }
+
 
     }
 
