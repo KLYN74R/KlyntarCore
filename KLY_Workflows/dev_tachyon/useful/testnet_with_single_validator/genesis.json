@@ -11,7 +11,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "storedMetadata": {},
             "isReserve":false,
             "stakers":{
                 "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{

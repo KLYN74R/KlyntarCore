@@ -58,7 +58,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "storedMetadata": {},
             "isReserve":false,
             "stakers":{
                 "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
@@ -79,7 +78,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "storedMetadata": {},
             "isReserve":false,
             "stakers":{
                 "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
@@ -100,7 +98,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "storedMetadata": {},
             "isReserve":false,
             "stakers":{
                 "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
@@ -122,7 +119,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "storedMetadata": {},
             "isReserve":true,
             "reserveFor":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
             "stakers":{

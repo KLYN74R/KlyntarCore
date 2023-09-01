@@ -258,7 +258,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuoru
 
 
 
-EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint) => {
+EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint,systemSyncOperations) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
@@ -272,7 +272,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOf
     
 
     //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-    for(let operation of fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.operations){
+    for(let operation of systemSyncOperations){
      
         if(operation.type==='SLASH_UNSTAKE') await SYSTEM_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
     
@@ -280,7 +280,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOf
 
     //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
 
-    for(let operation of fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.operations){
+    for(let operation of systemSyncOperations){
         
         if(operation.type==='SLASH_UNSTAKE') continue
           /*
@@ -461,11 +461,11 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-        let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+        let oldCheckpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
     
-        let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+        let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldCheckpointFullID)
     
-        let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+        let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+oldCheckpointFullID)
     
         if(!temporaryObject){
     
@@ -490,12 +490,13 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let checkpointCache = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'CHECKPOINT_CACHE').catch(_=>false) || {} // {subchainID:{firstBlockID,firstBlockHash,position,aefp,realFirstBlockFound}}
+        let checkpointCache = await USE_TEMPORARY_DB('get',temporaryObject.DATABASE,'CHECKPOINT_CACHE').catch(_=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,realFirstBlockFound}}
 
+        let entries = Object.entries(reassignmentChains)
 
         //____________________Ask the quorum for AEFP for subchain___________________
         
-        for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(reassignmentChains)){
+        for(let [primePoolPubKey,arrayOfReservePools] of entries){
         
             totalNumberOfSubchains++
         
@@ -561,7 +562,7 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,qtRootPub,majority,checkpointFullID)
+                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,qtRootPub,majority,oldCheckpointFullID)
     
                             if(aefpPureObject){
     
@@ -599,11 +600,9 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 if(afpForFirstBlockOfPrimePool){
 
-                    checkpointCache[primePoolPubKey].firstBlockID = afpForFirstBlockOfPrimePool.blockID
+                    checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
                     checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
-
-                    checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
                     checkpointCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
@@ -623,11 +622,9 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
                             
-                                checkpointCache[primePoolPubKey].firstBlockID = itsProbablyAggregatedFinalizationProof.blockID
+                                checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
                                 checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
-            
-                                checkpointCache[primePoolPubKey].position = -1 // always -1 for prime pools
 
                                 checkpointCache[primePoolPubKey].realFirstBlockFound = true
 
@@ -690,11 +687,9 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                             // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
 
-                                            checkpointCache[primePoolPubKey].firstBlockID = aspData.blockID
+                                            checkpointCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
 
-                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.blockHash
-                    
-                                            checkpointCache[primePoolPubKey].position = aspData.position
+                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
         
                                             checkpointCache[primePoolPubKey].realFirstBlockFound = true
                                     
@@ -711,11 +706,9 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                                 potentialFirstBlock = potentialNextBlock
 
-                                                aspData.blockID = qtCheckpoint.id+':'+previousPoolPubKey+':'+0
+                                                aspData.firstBlockCreator = previousPoolPubKey
 
-                                                aspData.blockHash = aspForPreviousPool.firstBlockHash
-
-                                                aspData.position = currentPosition-1
+                                                aspData.firstBlockHash = aspForPreviousPool.firstBlockHash
 
                                                 currentPosition--
 
@@ -761,15 +754,47 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
 
-        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract system sync operations and set the epoch____
+        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract system sync operations and set the new epoch____
 
 
         if(totalNumberOfSubchains === totalNumberOfReadySubchains){
 
-            
+            let systemSyncOperations = []
+
+            let cycleWasBreak = false
+
+            for(let [primePoolPubKey] of entries){
+
+                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlock,0)
+
+                if(firstBlockOnThisSubchain){
+
+                    systemSyncOperations.push(...firstBlockOnThisSubchain.systemSyncOperations)
+
+                }else{
+
+                    cycleWasBreak = true
+
+                    break
+
+                }
+
+            }
+
+            if(!cycleWasBreak){
+
+                // We need it for changes
+                let fullCopyOfQuorumThreadWithNewCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))                
+
+                // All operations must be atomic
+                let atomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+
+                // Execute system sync operations from new checkpoint using our copy of QT and atomic handler
+                await EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT(atomicBatch,fullCopyOfQuorumThreadWithNewCheckpoint)
+
+            }
 
         }
-
 
     }
 
@@ -777,8 +802,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
     if(possibleCheckpoint){
 
-        // We need it for changes
-        let fullCopyOfQuorumThreadWithNewCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
 
         // Set the new checkpoint
         fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT = possibleCheckpoint
@@ -2863,23 +2886,15 @@ LOAD_GENESIS=async()=>{
 
     let primePools = new Set(Object.keys(global.GENESIS.POOLS))
 
+    global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY = {} // poolPubKey => {index,hash,isReserve}
+
+    let poolsRegistryForCheckpoint = {}
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(global.GENESIS.POOLS)){
 
         let {isReserve} = poolContractStorage
 
         startPool = poolPubKey
-
-        //Add metadata related to this pool
-        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]={
-            
-            index:-1,
-            
-            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-            isReserve
-        
-        }
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
@@ -2896,11 +2911,40 @@ LOAD_GENESIS=async()=>{
         
         let idToAdd = poolPubKey+':'+poolPubKey
 
+        let templateForQt = {
+
+            totalPower:poolContractStorage.totalPower,
+            lackOfTotalPower:false,
+            stopCheckpointID:-1,
+            isReserve
+        
+        }
+
+        // Put the pointer to know the subchain which store the pool's data(metadata+storages)
+        // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
         if(isReserve){
+
+            atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
 
             idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
 
+            templateForQt.reserveFor = poolContractStorage.reserveFor
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY.reservePools.push(poolPubKey)
+
+        }else {
+
+            atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY.primePools.push(poolPubKey)
+
         }
+        
+
+        quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+
 
         //Put metadata
         atomicBatch.put(idToAdd+'(POOL)',contractMetadataTemplate)
@@ -2908,14 +2952,6 @@ LOAD_GENESIS=async()=>{
         //Put storage
         //NOTE: We just need a simple storage with ID="POOL"
         atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
-
-
-        // Put the pointer to know the subchain which store the pool's data(metadata+storages)
-        // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
-        if(isReserve) atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
-        
-        else atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
-
 
         // Add the account for fees for each authority
         primePools.forEach(anotherValidatorPubKey=>{
@@ -2935,25 +2971,6 @@ LOAD_GENESIS=async()=>{
             }
 
         })
-
-
-        let templateForQt = {
-
-            totalPower:poolContractStorage.totalPower,
-            lackOfTotalPower:false,
-            stopCheckpointID:-1,
-            storedMetadata:{},
-            isReserve
-        
-        }
-
-        
-        if(isReserve) templateForQt.reserveFor = poolContractStorage.reserveFor
-
-        else global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
-
-
-        quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
 
         //________________________ Fill the state of KLY-EVM ________________________
 
@@ -3115,17 +3132,13 @@ LOAD_GENESIS=async()=>{
         id:-1,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-        poolsMetadata:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
         
         timestamp:checkpointTimestamp,
-
-        operations:[],
 
         completed:true
     
     }
-
+    
 
     //Make template, but anyway - we'll find checkpoints on hostchains
     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
@@ -3134,11 +3147,9 @@ LOAD_GENESIS=async()=>{
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-        poolsMetadata:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
+        poolsRegistry:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY)),
 
         timestamp:checkpointTimestamp,
-        
-        operations:[],
 
         completed:true
     

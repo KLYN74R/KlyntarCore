@@ -195,7 +195,7 @@ export default {
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
 
-                fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolStorage.isReserve}
+                fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[pool] = {isReserve:poolStorage.isReserve}
 
 
                 // Make it "null" again

@@ -251,18 +251,13 @@ WAIT_SOME_TIME = async() =>
 
 DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
-    
     //Try to get storage "POOL" of appropriate pool
 
     let poolStorage = await GET_FROM_STATE(poolHashID)
 
-
     poolStorage.lackOfTotalPower=true
 
     poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
-
-    poolStorage.storedMetadata=global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
-
 
     delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 

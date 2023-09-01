@@ -77,8 +77,6 @@ export let CONTRACT = {
                 lackOfTotalPower:false,
                     
                 stopCheckpointID:-1,
-                    
-                storedMetadata:{},
 
                 totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 

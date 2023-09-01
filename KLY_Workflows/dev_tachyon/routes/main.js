@@ -1183,32 +1183,26 @@ getDataForTempReassignments = async response => {
 
                 // Now get the first block & AFP for it
 
-                let indexOfLatestBlockInPreviousEpoch = checkpoint.poolsMetadata[currentSubchainAuthority]?.index
+                let firstBlockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':0'
 
-                if(typeof indexOfLatestBlockInPreviousEpoch === 'number'){
+                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(_=>false)
 
-                    let blockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':'+(indexOfLatestBlockInPreviousEpoch+1)
+                if(firstBlockByCurrentAuthority){
 
-                    let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+                    // Finally, find the AFP for this block
 
-                    if(firstBlockByCurrentAuthority){
+                    let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(_=>false)
 
-                        // Finally, find the AFP for this block
+                    // Put to response
 
-                        let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(_=>false)
+                    templateForResponse[primePool]={
 
-                        // Put to response
-
-                        templateForResponse[primePool]={
-
-                            currentAuthorityIndex,
-                            
-                            firstBlockByCurrentAuthority,
-                            
-                            afpForFirstBlockByCurrentAuthority
-                            
-                        }
-
+                        currentAuthorityIndex,
+                        
+                        firstBlockByCurrentAuthority,
+                        
+                        afpForFirstBlockByCurrentAuthority
+                        
                     }
 
                 }
