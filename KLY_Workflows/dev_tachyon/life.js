@@ -6,7 +6,7 @@ import {
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD, GET_FROM_STATE
 
 } from './utils.js'
 
@@ -96,7 +96,84 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
+export let SET_REASSIGNMENT_CHAINS = async (checkpoint,threadID,epochSeed) => {
 
+
+    checkpoint.reassignmentChains={}
+
+
+    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+
+
+    let reservePoolsRelatedToSubchain = new Map() // subchainID => [] - array of reserve pools
+
+    let primePoolsPubKeys = new Set(checkpoint.poolsRegistry.primePools)
+
+
+    for(let reservePoolPubKey of checkpoint.poolsRegistry.reservePools){
+
+        // Otherwise - it's reserve pool
+                    
+        let poolStorage = threadID === 'QT' ? await GET_FROM_STATE_FOR_QUORUM_THREAD(reservePoolPubKey+`(POOL)_STORAGE_POOL`) : await GET_FROM_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+
+        if(poolStorage){
+
+            let {reserveFor} = poolStorage
+
+            if(!reservePoolsRelatedToSubchain.has(reserveFor)) reservePoolsRelatedToSubchain.set(reserveFor,[])
+
+            reservePoolsRelatedToSubchain.get(reserveFor).push(reservePoolPubKey)
+                    
+        }
+
+    }
+
+
+    /*
+    
+        After this cycle we have:
+
+        [0] primePoolsIDs - Set(primePool0,primePool1,...)
+        [1] reservePoolsRelatedToSubchainAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
+
+    
+    */
+
+    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.poolsRegistry)+epochSeed)
+
+    
+    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
+    
+    for(let primePoolID of primePoolsPubKeys){
+
+
+        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchain.get(primePoolID)
+
+        let mapping = new Map()
+
+        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
+
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+
+
+        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
+
+        let reassignmentChain = []
+
+        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
+
+        
+        checkpoint.reassignmentChains[primePoolID] = reassignmentChain
+        
+    }
+    
+}
 
 
 
@@ -104,8 +181,16 @@ process.on('SIGHUP',GRACEFUL_STOP)
 //________________________________________________________________INTERNAL_______________________________________________________________________
 
 
+
+
+let 
+
+
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-let GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+
+GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+
+
 
 
 GET_SYSTEM_SYNC_OPERATIONS = checkpointFullID => {
@@ -140,103 +225,6 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
 
 
-SET_REASSIGNMENT_CHAINS = async checkpoint => {
-
-
-    checkpoint.reassignmentChains={}
-
-
-    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
-
-
-    let reservePoolsRelatedToSubchainAndStillNotUsed = new Map() // subchainID => [] - array of reserve pools
-
-    let primePoolsPubKeys = new Set()
-
-
-    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.poolsMetadata)){
-
-        if(!poolMetadata.isReserve){
-
-            // Find prime(not reserve) pools
-            
-            primePoolsPubKeys.add(poolPubKey)
-
-            // Create the empty array for prime pool
-
-            reservePoolsRelatedToSubchainAndStillNotUsed.set(poolPubKey,[])
-
-        }
-        else{
-
-            // Otherwise - it's reserve pool
-                    
-            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+`(POOL)_STORAGE_POOL`)
-
-            if(poolStorage){
-
-                let {reserveFor} = poolStorage
-
-                if(!reservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) reservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
-
-                reservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
-                    
-            }
-
-        }
-
-    }
-
-
-    /*
-    
-        After this cycle we have:
-
-        [0] primePoolsIDs - Set(primePool0,primePool1,...)
-        [1] reservePoolsRelatedToSubchainAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
-
-    
-    */
-
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.poolsMetadata))
-
-    
-    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
-    
-    for(let primePoolID of primePoolsPubKeys){
-
-
-        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchainAndStillNotUsed.get(primePoolID)
-
-        let mapping = new Map()
-
-        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
-
-            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
-
-            mapping.set(challenge,validatorPubKey)
-
-            return challenge
-
-        })
-
-
-        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
-
-        let reassignmentChain = []
-
-        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
-
-        
-        checkpoint.reassignmentChains[primePoolID] = reassignmentChain
-        
-    }
-    
-},
-
-
-
-
 DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThreadWithNewCheckpoint) => {
 
     //Try to get storage "POOL" of appropriate pool
@@ -248,10 +236,15 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuoru
 
     poolStorage.stopCheckpointID = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.id
 
-
+    
     //Remove from POOLS array(to prevent be elected to quorum) and metadata
 
-    delete fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsMetadata[validatorPubKey]
+    let arrayToDeleteFrom = fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsRegistry[ poolStorage.isReserve ? reservePools : primePools ]
+
+    let indexToDelete = arrayToDeleteFrom.indexOf(validatorPubKey)
+
+    arrayToDeleteFrom.splice(indexToDelete,1)
+
 
 },
 
@@ -372,13 +365,13 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS_IN_NEW_CHECKPOINT = async (atomicBatch,fullCopyOf
     })
 
 
-}
+},
 
 
 
 
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
-let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
+START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
     //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE SYNC SYSTEM OPERATIONS INSTANTLY_____________________________
@@ -913,8 +906,6 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
-        let poolsMetadata = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata
-
 
         if(CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
 
@@ -924,19 +915,27 @@ let START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             let currentCheckpointSyncHelper = nextTemporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER
 
-            Object.keys(poolsMetadata).forEach(
-            
-                poolPubKey => {
 
-                    let nullishTemplate = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:poolsMetadata[poolPubKey].isReserve}
+            global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>{
 
-                    currentCheckpointManager.set(poolPubKey,nullishTemplate)
+                let nullishTemplate = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:false}
 
-                    currentCheckpointSyncHelper.set(poolPubKey,nullishTemplate)
+                currentCheckpointManager.set(poolPubKey,nullishTemplate)
 
-                }
+                currentCheckpointSyncHelper.set(poolPubKey,nullishTemplate)
 
-            )
+            })
+
+            global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>{
+
+                let nullishTemplate = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:true}
+
+                currentCheckpointManager.set(poolPubKey,nullishTemplate)
+
+                currentCheckpointSyncHelper.set(poolPubKey,nullishTemplate)
+
+            })
+
 
         }
 
@@ -1622,20 +1621,17 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
+    
+    let checkpointFullID = qtCheckpoint.hash + "#" + qtCheckpoint.id
 
     // If we don't generate the blocks - skip this function
-    if(!qtCheckpoint.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]){
+    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+checkpointFullID)){
 
         setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
 
         return
 
     }
-
-    
-    let checkpointFullID = qtCheckpoint.hash + "#" + qtCheckpoint.id
-
 
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
@@ -2177,8 +2173,8 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     for(let handler of poolsURLsAndPubKeys){
         
-        let metadataOfCurrentPool = checkpoint.poolsMetadata[handler.pubKey]
-
+        let metadataOfCurrentPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(handler.pubKey+'(POOL)_STORAGE_POOL')
+        
         /*
         
         We should monitor the health only for:
@@ -2447,8 +2443,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 RESTORE_STATE=async()=>{
 
-    
-    let poolsMetadata = Object.keys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata)
+    let poolsRegistry = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry
+
+    let allThePools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
@@ -2456,12 +2453,12 @@ RESTORE_STATE=async()=>{
     
 
 
-    for(let poolPubKey of poolsMetadata){
+    for(let poolPubKey of allThePools){
 
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {index,hash,(?)aggregatedCommitments}
 
-        let {index,hash,aggregatedCommitments} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata[poolPubKey]
+        let {index,hash,aggregatedCommitments} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
         
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,aggregatedCommitments})
@@ -2481,7 +2478,7 @@ RESTORE_STATE=async()=>{
 
         // *only for prime pools
         
-        if(!poolsMetadata.isReserve){
+        if(poolsRegistry.primePools.includes(poolPubKey)){
 
             let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
 
@@ -2579,11 +2576,20 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 export let GENERATE_BLOCKS_PORTION = async() => {
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-    //Safe "if" branch to prevent unnecessary blocks generation
-    if(!checkpoint.poolsMetadata[global.CONFIG.SYMBIOTE.PUB]) return
     
     let qtCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID)){
+
+        let poolPresent = checkpoint.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
+
+        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID,poolPresent)
+
+    }
+
+    //Safe "if" branch to prevent unnecessary blocks generation
+    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID)) return
+
 
     let checkpointIndex = checkpoint.id
 
@@ -2874,7 +2880,9 @@ LOAD_GENESIS=async()=>{
     
         checkpointTimestamp,
 
-        startPool = ''
+        startPool = '',
+
+        poolsRegistryForCheckpoint = {primePools:[],reservePools:[]}
 
 
 
@@ -2886,15 +2894,19 @@ LOAD_GENESIS=async()=>{
 
     let primePools = new Set(Object.keys(global.GENESIS.POOLS))
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY = {} // poolPubKey => {index,hash,isReserve}
+    global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA = {} // poolPubKey => {index,hash,isReserve}
 
-    let poolsRegistryForCheckpoint = {}
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(global.GENESIS.POOLS)){
 
         let {isReserve} = poolContractStorage
 
         startPool = poolPubKey
+
+        // Create the value in VT
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve}
+
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
         
@@ -2930,7 +2942,7 @@ LOAD_GENESIS=async()=>{
 
             templateForQt.reserveFor = poolContractStorage.reserveFor
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY.reservePools.push(poolPubKey)
+            poolsRegistryForCheckpoint.reservePools.push(poolPubKey)
 
         }else {
 
@@ -2938,7 +2950,7 @@ LOAD_GENESIS=async()=>{
 
             global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY.primePools.push(poolPubKey)
+            poolsRegistryForCheckpoint.primePools.push(poolPubKey)
 
         }
         
@@ -3132,6 +3144,8 @@ LOAD_GENESIS=async()=>{
         id:-1,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+
+        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForCheckpoint)),
         
         timestamp:checkpointTimestamp,
 
@@ -3147,7 +3161,7 @@ LOAD_GENESIS=async()=>{
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-        poolsRegistry:JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_REGISTRY)),
+        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForCheckpoint)),
 
         timestamp:checkpointTimestamp,
 
@@ -3164,17 +3178,17 @@ LOAD_GENESIS=async()=>{
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of POOLS_METADATA state
-    global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+    global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.poolsRegistry,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS,'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
 
     //...However, quorum for QUORUM_THREAD might be retrieved from POOLS_METADATA of checkpoints. It's because both threads are async
-    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsMetadata,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS)
+    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS,'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
 
 
     //Finally, build the reassignment chains for current checkpoint in QT and VT
 
-    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
+    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT,'QT','0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
 
-    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
+    await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'VT','0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
 
 },
 

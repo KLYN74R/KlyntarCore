@@ -117,15 +117,15 @@ acceptBlocksAndReturnCommitment = response => {
 
                 }
 
-                let poolsMetadataOnQuorumThread = checkpoint.poolsMetadata
+                let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
 
-                let poolIsReal = poolsMetadataOnQuorumThread[block.creator]
+                let poolIsReal = poolsRegistryOnQuorumThread.primePools.includes(block.creator) || poolsRegistryOnQuorumThread.reservePools.includes(block.creator)
 
                 let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow, itsPrimePool
 
                 if(poolIsReal){
 
-                    if(!poolsMetadataOnQuorumThread[block.creator].isReserve){
+                    if(!poolsRegistryOnQuorumThread[block.creator].isReserve){
 
                         primePoolPubKey = block.creator
 
@@ -267,7 +267,7 @@ acceptBlocksAndReturnCommitment = response => {
                         
                         checkpointFullID,
                         
-                        poolsMetadataOnQuorumThread,
+                        poolsRegistryOnQuorumThread,
                         
                         'QUORUM_THREAD'
                         
@@ -501,10 +501,9 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
                 
             ).catch(_=>false)
 
-            let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
-                        
 
-            if(aggregatedCommitmentsIsOk && primePoolOrAtLeastReassignment){
+
+            if(aggregatedCommitmentsIsOk){
 
                 let poolIsAFK2 = tempObject.SKIP_HANDLERS.has(blockCreator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+blockCreator)
 
@@ -592,7 +591,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
                 }else !response.aborted && response.end(JSON.stringify({err:'Wait'}))
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 2 must be true => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+            }else !response.aborted && response.end(JSON.stringify({err:`Something wrong => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk}`}))
 
         }
 
@@ -645,23 +644,22 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let myLocalBlock = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
 
-    let [_epochIndex,blockCreator,_] = blockID.split(':')
+    let [_epochIndex,_blockCreator,_blockIndex] = blockID.split(':')
 
 
     let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
 
     let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
-    
-    let primePoolOrAtLeastReassignment = checkpoint.poolsMetadata[blockCreator] && (tempObject.REASSIGNMENTS.has(blockCreator) && checkpoint.poolsMetadata[blockCreator].isReserve || !checkpoint.poolsMetadata[blockCreator].isReserve)
 
 
-    if(quorumSignaIsOk && hashesAreEqual && primePoolOrAtLeastReassignment){
+
+    if(quorumSignaIsOk && hashesAreEqual){
 
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(_=>{})
 
         !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
-    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 3 must be true => signa_is_ok:${quorumSignaIsOk} | hashesAreEqual:${hashesAreEqual} | primePoolOrAtLeastReassignment:${primePoolOrAtLeastReassignment}`}))
+    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 2 must be true => signa_is_ok:${quorumSignaIsOk} | hashesAreEqual:${hashesAreEqual}`}))
 
 
 }),

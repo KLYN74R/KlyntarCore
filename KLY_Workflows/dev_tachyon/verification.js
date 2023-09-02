@@ -2,17 +2,17 @@ import {
     
     GET_POOLS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE,HEAP_SORT
+    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE
 
 } from './utils.js'
+
+import {GET_VALID_CHECKPOINT,GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
-import {GET_VALID_CHECKPOINT,GRACEFUL_STOP} from './life.js'
 
 import {LOG,BLAKE3} from '../../KLY_Utils/utils.js'
 
@@ -249,7 +249,7 @@ WAIT_SOME_TIME = async() =>
 
 
 
-DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
+DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
     //Try to get storage "POOL" of appropriate pool
 
@@ -261,103 +261,6 @@ DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER = async ({poolHashID,poo
 
     delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
-},
-
-
-
-
-SET_REASSIGNMENT_CHAINS = async checkpoint => {
-
-
-    checkpoint.reassignmentChains={} // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
-
-
-    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
-
-
-    let activeReservePoolsRelatedToSubchainAndStillNotUsed = new Map() // primePoolPubKey => [] - array of active reserve pools
-
-    let primePoolsPubKeys = new Set()
-
-
-    for(let [poolPubKey,poolMetadata] of Object.entries(checkpoint.poolsMetadata)){
-
-        if(!poolMetadata.isReserve){
-
-            // Find main(not reserve) pools
-            
-            primePoolsPubKeys.add(poolPubKey)
-
-        }else{
-
-            // Otherwise - it's active reserve pool
-
-            let originWhereReservePoolStorageIsLocated = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
-
-            let reservePoolStorage = await GET_FROM_STATE(originWhereReservePoolStorageIsLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL')
-
-            
-            if(reservePoolStorage){
-
-                let {reserveFor} = reservePoolStorage
-
-                if(!activeReservePoolsRelatedToSubchainAndStillNotUsed.has(reserveFor)) activeReservePoolsRelatedToSubchainAndStillNotUsed.set(reserveFor,[])
-
-                activeReservePoolsRelatedToSubchainAndStillNotUsed.get(reserveFor).push(poolPubKey)
-                    
-            }
-
-        }
-
-    }
-
-
-    /*
-    
-        After this cycle we have:
-
-        [0] primePoolsIDs - Set(subchain1,subchain2,...)
-        [1] activeReservePoolsRelatedToSubchainAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
-
-    
-    */
-
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.poolsMetadata))
-
-    
-    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
-    
-    for(let primePoolPubKey of primePoolsPubKeys){
-
-
-        let arrayOfActiveReservePoolsRelatedToThisSubchain = activeReservePoolsRelatedToSubchainAndStillNotUsed.get(primePoolPubKey)
-
-        let mapping = new Map()
-
-        let arrayOfChallanges = arrayOfActiveReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
-
-            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
-
-            mapping.set(challenge,validatorPubKey)
-
-            return challenge
-
-        })
-
-
-        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
-
-        let reassignmentChain = []
-
-        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
-
-        // Set the reassignment chain to checkpoint.REASSIGNMENT_CHAINS[<primePool>]=reassignmentChain
-        
-        checkpoint.reassignmentChains[primePoolPubKey] = reassignmentChain
-
-        
-    }
-    
 },
 
 
@@ -849,7 +752,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         for(let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved){
 
-            deletePoolsPromises.push(DELETE_VALIDATOR_POOLS_WHICH_HAVE_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID))
+            deletePoolsPromises.push(DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID))
 
         }
 
@@ -1029,7 +932,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
         // Create the reassignment chains for each prime pool based on new data
-        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
+        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'VT','')
 
 
         // Update the array of prime pools

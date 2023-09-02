@@ -256,14 +256,14 @@ HEAP_SORT = arr => {
 
 //We get the quorum based on pools' metadata(pass via parameter)
 
-GET_QUORUM = (poolsRegistry,workflowOptions) => {
+GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
-    let pools = Object.keys(poolsRegistry)
+    let pools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
     //If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
     if(pools.length > workflowOptions.QUORUM_SIZE){
 
-        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsRegistry)),
+        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsRegistry)+newEpochSeed),
 
             mapping = new Map(),
 
