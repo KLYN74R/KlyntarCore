@@ -1087,7 +1087,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
         // Get the stats from reassignments
 
-        let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+        let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
         if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
@@ -1106,7 +1106,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
-            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
             let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
@@ -1138,40 +1138,38 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
 
-                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.poolsMetadata[poolToVerifyRightNow]
+                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtCheckpoint.poolsMetadata[poolToVerifyRightNow]
 
                 reassignmentsBasedOnCheckpointData.currentToVerify++
 
             }
 
 
-        }else if(currentCheckpointIsFresh && tempReassignments){
-
-            let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
-
-            // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-
-            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
-
-            let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-
-            let metadataOfThisPoolBasedOnTempReassignments = tempReassignments.reassignments[poolToVerifyRightNow] // {index,hash}
-
+        }else if(currentCheckpointIsFresh && tempReassignmentsForSomeSubchain){
 
             
-            if(tempReassignments.currentToVerify === tempReassignments.currentAuthority){
+            if(tempReassignmentsForSomeSubchain.currentToVerify === tempReassignmentsForSomeSubchain.currentAuthority){
 
 
+                let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+
+                // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
+    
+                let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+    
+                let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+
+                
                 // Ask the N+1 block
 
-                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
 
 
                 if(block){
 
                     let blockHash = Block.genHash(block)
 
-                    let blockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(metadataOfThisPoolLocal.index+1)
+                    let blockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
 
                     // Get the AFP for this block
 
@@ -1209,26 +1207,45 @@ START_VERIFICATION_THREAD=async()=>{
 
             }else{
 
-                // Just verify block with no AFP
-                
-                
-                // Ask the N+1 block
+                // Just verify blocks with no AFP
 
-                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+                while(true){
 
-                if(block){
+                    let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+        
+                    let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        
+                    let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+        
+                    let metadataFromTempReassignments = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash}
 
-                    await verifyBlock(block,currentSubchainToCheck)
+                    for(let blockIndex = localMetadataOfThisPool.index ; blockIndex <= metadataFromTempReassignments.index ; blockIndex++){
 
-                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+                        let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
 
-                } else global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+                        if(block){
+        
+                            await verifyBlock(block,currentSubchainToCheck)
+        
+                            LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+        
+                        }else break
+
+                    }
+                    
+                    // To move to the next one
+
+                    if(localMetadataOfThisPool.index === metadataFromTempReassignments.index) tempReassignmentsForSomeSubchain.currentToVerify++
+
+                    else break
+
+                    if(tempReassignmentsForSomeSubchain.currentToVerify === tempReassignmentsForSomeSubchain.currentAuthority) break
+
+                }
+
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
             }
-
-            // To move to the next one
-
-            if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.currentToVerify++
             
         }
 
