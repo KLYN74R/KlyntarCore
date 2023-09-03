@@ -1041,22 +1041,6 @@ START_VERIFICATION_THREAD=async()=>{
     
     if(!global.SYSTEM_SIGNAL_ACCEPTED){
 
-        //_______________________________ Check if we reach checkpoint stats to find out next one and continue work on VT _______________________________
-
-        let currentPoolsMetadataHash = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)),
-
-            poolsMetadataHashFromCheckpoint = BLAKE3(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.poolsMetadata))
-
-        
-
-        //If we reach the limits of current checkpoint - find another one. In case there are no more checkpoints - mark current checkpoint as "completed"
-        await SET_UP_NEW_CHECKPOINT(currentPoolsMetadataHash === poolsMetadataHashFromCheckpoint,global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.completed)
-
-
-        //Updated checkpoint on previous step might be old or fresh,so we should update the variable state
-
-        let updatedIsFreshCheckpoint = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
-
 
         /*
 
@@ -1085,8 +1069,10 @@ START_VERIFICATION_THREAD=async()=>{
 
         }
 
-        
 
+        let currentCheckpointIsFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
+
+        let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
 
         let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
 
@@ -1094,12 +1080,11 @@ START_VERIFICATION_THREAD=async()=>{
 
         let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
-        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+        let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
 
-        let vtCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+        let vtCheckpointIndex = vtCheckpoint.id
 
-        
-        
+                
         // Get the stats from reassignments
 
         let tempReassignments = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
@@ -1160,7 +1145,7 @@ START_VERIFICATION_THREAD=async()=>{
             }
 
 
-        }else if(updatedIsFreshCheckpoint && tempReassignments){
+        }else if(currentCheckpointIsFresh && tempReassignments){
 
             let indexOfCurrentPoolToVerify = tempReassignments.currentToVerify
 
@@ -1246,6 +1231,9 @@ START_VERIFICATION_THREAD=async()=>{
             if(metadataOfThisPoolBasedOnTempReassignments && metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnTempReassignments.index) tempReassignments.currentToVerify++
             
         }
+
+
+        // Move to next checkpoint & build reassignments metadata somewhere here
 
 
         if(global.CONFIG.SYMBIOTE.STOP_WORK_ON_VERIFICATION_THREAD) return//step over initiation of another timeout and this way-stop the Verification Thread

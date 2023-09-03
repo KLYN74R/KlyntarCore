@@ -836,6 +836,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 fullCopyOfQuorumThread.CHECKPOINT.quorum = GET_QUORUM(fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.quorum).catch(_=>false)
                 
                 // Create new temporary db for the next checkpoint
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
