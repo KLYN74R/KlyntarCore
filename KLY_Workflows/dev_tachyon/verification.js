@@ -255,9 +255,9 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
     let poolStorage = await GET_FROM_STATE(poolHashID)
 
-    poolStorage.lackOfTotalPower=true
+    poolStorage.lackOfTotalPower = true
 
-    poolStorage.stopCheckpointID=global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+    poolStorage.stopCheckpointID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
 
     delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 

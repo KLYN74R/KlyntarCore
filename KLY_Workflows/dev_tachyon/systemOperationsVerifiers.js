@@ -61,7 +61,7 @@ export default {
 
 
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
 
     /*
 
@@ -189,15 +189,15 @@ export default {
             global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
 
             
-            let workflowConfigs = fullCopyOfQuorumThreadWithNewCheckpoint.WORKFLOW_OPTIONS
+            let workflowConfigs = fullCopyOfQuorumThread.WORKFLOW_OPTIONS
 
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
 
-                if(poolStorage.isReserve) fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsRegistry.reservePools.push(pool)
+                if(poolStorage.isReserve) fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry.reservePools.push(pool)
 
-                else fullCopyOfQuorumThreadWithNewCheckpoint.CHECKPOINT.poolsRegistry.primePools.push(pool)
+                else fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry.primePools.push(pool)
                 
 
                 // Make it "null" again
@@ -356,7 +356,7 @@ export default {
     
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
 
         /*
         
@@ -412,13 +412,13 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolExists = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
-            if(poolExists){
+            if(poolStorage){
 
                 let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
 
-                slashObject[payload.pool]=true
+                slashObject[payload.pool] = {isReserve:poolStorage.isReserve}
     
             }
 
@@ -430,16 +430,18 @@ export default {
 
             let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
 
-            let poolExists = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
 
 
-            if(poolExists){
+            if(poolStorage){
 
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
 
                 payload.poolOrigin = originWherePoolStorage
+
+                payload.isReserve = poolStorage.isReserve
             
-                slashObject[payload.pool]=payload
+                slashObject[payload.pool] = payload
 
             }
 
@@ -451,7 +453,7 @@ export default {
 
 
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
         
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
@@ -565,7 +567,7 @@ export default {
 
 
     //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
-    RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
 
         /*
         
@@ -611,7 +613,7 @@ export default {
 
         }else if(usedOnQuorumThread){
     
-            if(fullCopyOfQuorumThreadWithNewCheckpoint.RUBICON < payload) fullCopyOfQuorumThreadWithNewCheckpoint.RUBICON=payload
+            if(fullCopyOfQuorumThread.RUBICON < payload) fullCopyOfQuorumThread.RUBICON=payload
 
         }else{
 
@@ -626,7 +628,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
 
         /*
         
@@ -696,7 +698,7 @@ export default {
 
 
 
-    VERSION_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThreadWithNewCheckpoint)=>{
+    VERSION_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
 
         /*
         
@@ -742,9 +744,9 @@ export default {
             return {type:'VERSION_UPDATE',payload:data}
 
         }
-        else if(usedOnQuorumThread && payload.major > fullCopyOfQuorumThreadWithNewCheckpoint.VERSION){
+        else if(usedOnQuorumThread && payload.major > fullCopyOfQuorumThread.VERSION){
 
-            fullCopyOfQuorumThreadWithNewCheckpoint.VERSION=payload.major
+            fullCopyOfQuorumThread.VERSION=payload.major
 
         }else if(payload.major > global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
 

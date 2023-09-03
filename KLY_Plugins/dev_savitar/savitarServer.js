@@ -263,9 +263,9 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
     
     }
 
-    if(!qtCheckpoint.completed || !tempObject){
+    if(!tempObject){
 
-        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
+        connection.sendUTF(JSON.stringify({type:'COMMITMENT_ACCEPT',payload:{reason:'QT checkpoint is not ready'}}))
 
         return
 
@@ -435,73 +435,66 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    // global.CONFIG.SYMBIOTE.TRIGGERS.SHARE_FINALIZATION_PROOF && global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-    if(checkpoint.completed){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
+        
+        connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
+
+        return
+    }
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+
+        connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
+        
+        return
+
+    }
+    
+    
+    for(let aggragatedCommitment of aggregatedCommitmentsArray){
+
+        let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggragatedCommitment
 
 
-        let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
+        if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
-        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-            
-            connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'QT checkpoint is incomplete'}}))
+
+            connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Wrong format of input params'}}))
 
             return
+
         }
 
-        let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-        if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+        let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
-            connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Checkpoint is not fresh'}}))
+        let reverseThreshold = checkpoint.quorum.length - GET_MAJORITY(checkpoint)
+
+        let quorumSignaIsOk = await bls.verifyThresholdSignature(
             
-            return
-    
-        }
+            aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+            
+            dataThatShouldBeSigned, aggregatedSignature, reverseThreshold
+            
+        )
         
         
-        for(let aggragatedCommitment of aggregatedCommitmentsArray){
+        if(quorumSignaIsOk){
 
-            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggragatedCommitment
-    
+            // Add request to sync function 
+            tempObject.SYNCHRONIZER.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
 
-            if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
-
-
-                connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Wrong format of input params'}}))
-
-                return
-
-            }
-
-    
-            let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
-
-            let reverseThreshold = checkpoint.quorum.length - GET_MAJORITY(checkpoint)
-
-            let quorumSignaIsOk = await bls.verifyThresholdSignature(
-                
-                aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
-                
-                dataThatShouldBeSigned, aggregatedSignature, reverseThreshold
-                
-            )
-            
-            
-            if(quorumSignaIsOk){
-
-                // Add request to sync function 
-                tempObject.SYNCHRONIZER.set(blockID,{hash:blockHash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})
-    
-                blocksSet.push(blockID)
-
-            }
+            blocksSet.push(blockID)
 
         }
 
-        FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection)
+    }
 
-    }else connection.sendUTF(JSON.stringify({type:'FINALIZATION_PROOF_ACCEPT',payload:{reason:'Route is off or checkpoint is incomplete'}}))
+    FINALIZATION_PROOF_POLLING(tempObject,blocksSet,connection)
 
 
 }

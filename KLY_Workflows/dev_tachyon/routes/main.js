@@ -85,9 +85,9 @@ acceptBlocksAndReturnCommitment = response => {
 
     }
 
-    if(!checkpoint.completed || !tempObject){
+    if(!tempObject){
 
-        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
+        !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
         return
 
@@ -441,13 +441,13 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF && checkpoint.completed){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF){
 
         let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
         if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is incomplete'}))
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
             return
         }
@@ -1678,7 +1678,7 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.completed){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
@@ -1780,7 +1780,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
     let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID) || !checkpoint.completed){
+    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
         !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
 
