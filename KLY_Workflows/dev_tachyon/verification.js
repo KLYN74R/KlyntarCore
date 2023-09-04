@@ -308,7 +308,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
     if(typeof aggregatedSkipProof === 'object'){
 
 
-        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
+        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
         let majority = GET_MAJORITY(checkpoint)
     
@@ -581,7 +581,6 @@ BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpo
                     if(isOK){
 
                         filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
-
 
                     }
 
@@ -1035,6 +1034,310 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
 
+TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
+
+    /* 
+            
+        Start to build the global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
+            
+        For this we need 5 things:
+
+            1) System sync operations for current epoch - we take it from await global.SYMBIOTE_META.EPOCH_DATA.put(`SSO:${oldEpochFullID}`).catch(_=>false)
+
+                This is the array that we need to execute later in sync mode
+
+            2) Next epoch hash - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`).catch(_=>false)
+
+            3) Next epoch quorum - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`).catch(_=>false)
+
+            4) Reassignment chains for new epoch - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`).catch(_=>false)
+
+            5) AEFPs for all the subchains from the first blocks of next epoch(X+1) to know where current epoch finished
+
+                For this, we use the [3](next epoch quorum) and ask them for first blocks in epoch. After we get it & AFPs for them, we
+
+                try to resolve the real first block in epoch X+1. Get the AEFP from it and start reverse cycle to build the reassignment metadata
+                    
+                to know how each of subchain done in epoch X(current one)
+
+
+
+    */
+
+    let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
+
+    let vtCheckpointIndex = vtCheckpoint.id
+
+
+
+    let nextEpochIndex = vtCheckpointIndex+1
+
+    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${vtCheckpointFullID}`).catch(_=>false)
+
+    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${vtCheckpointFullID}`).catch(_=>false)
+
+    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${vtCheckpointFullID}`).catch(_=>false)
+
+
+
+    if(nextEpochHash && nextEpochQuorum && nextEpochReassignmentChains){
+
+        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`).catch(_=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
+
+        let nextEpochFullID = nextEpochHash+"#"+nextEpochIndex // Need it to verify AFPs for first blocks of the next epoch
+
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+nextEpochFullID)
+
+        let allKnownPeers = [...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+
+        let totalNumberOfSubchains = 0
+
+        let totalNumberOfReadySubchains = 0
+
+
+        // Find the first blocks for epoch X+1 and AFPs for these blocks
+        // Once get it - get the real first block
+        for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochReassignmentChains)){
+
+            // First of all - try to find block <checkpoint id+1>:<prime pool pubkey>:0 - first block by prime pool
+
+            totalNumberOfSubchains++
+
+            if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+
+                // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
+
+                let firstBlockOfPrimePoolForNextEpoch = nextEpochIndex+':'+primePoolPubKey+':0'
+
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePoolForNextEpoch).catch(_=>false)
+
+                if(afpForFirstBlockOfPrimePool){
+
+                    checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+
+                    checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+
+                    checkpointCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
+
+                }else{
+
+                    // Ask quorum for AFP for first block of prime pool
+
+                    // Descriptor is {url,pubKey}
+
+                    for(let peerURL of allKnownPeers){
+            
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+            
+                        if(itsProbablyAggregatedFinalizationProof){
+            
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPubKey)
+            
+                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePoolForNextEpoch){                            
+                            
+                                checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+
+                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
+
+                                checkpointCache[primePoolPubKey].realFirstBlockFound = true
+
+                            }
+            
+                        }
+            
+                    }
+            
+                }
+
+                //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
+            
+                if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+
+                    // Find AFPs for reserve pools
+                
+                    for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
+
+                        let reservePoolPubKey = arrayOfReservePools[position]
+
+                        let firstBlockOfPool = nextEpochIndex+':'+reservePoolPubKey+':0'
+
+                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(_=>false)
+
+                        if(afp){
+
+                            //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
+
+                            let potentialFirstBlock = await GET_BLOCK(nextEpochIndex,reservePoolPubKey,0,true)
+
+                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
+
+                                /*
+                            
+                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.reassignments
+                            
+                                    We should get the ASP for previous pool in reassignment chain
+                                
+                                        1) If previous pool was skipped on height -1 (asp.skipIndex === -1) then try next pool
+
+                                */
+
+                                let currentPosition = position
+
+                                let aspData = {}
+                                
+                                while(true){
+
+                                    let shouldBreakInfiniteWhile = false
+
+                                    while(true) {
+    
+                                        let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
+    
+                                        let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
+
+
+                                        if(previousPoolPubKey === primePoolPubKey){
+
+                                            // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
+
+                                            checkpointCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
+
+                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
+        
+                                            checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                    
+                                            shouldBreakInfiniteWhile = true
+
+                                            break
+
+                                        }else if(aspForPreviousPool.skipIndex !== -1){
+    
+                                            // Get the first block of pool which was skipped on not-null height
+                                            let potentialNextBlock = await GET_BLOCK(nextEpochIndex,previousPoolPubKey,0)
+
+                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
+
+                                                potentialFirstBlock = potentialNextBlock
+
+                                                aspData.firstBlockCreator = previousPoolPubKey
+
+                                                aspData.firstBlockHash = aspForPreviousPool.firstBlockHash
+
+                                                currentPosition--
+
+                                                break // break the first(inner) while
+
+                                            }else{
+
+                                                // If we can't find required block - break the while & while cycles
+
+                                                shouldBreakInfiniteWhile = true
+
+                                                break
+
+                                            }
+                                        
+                                        }
+
+                                        // Continue iteration in current block
+
+                                        currentPosition--
+    
+                                    }
+
+                                    if(shouldBreakInfiniteWhile) break
+    
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+            if(checkpointCache[primePoolPubKey].realFirstBlockFound) totalNumberOfReadySubchains++
+
+        }
+
+
+        await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`,checkpointCache).catch(_=>false)
+
+
+        //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
+
+        // Start the next cycle over subchains
+
+        let cycleWasBreak = false
+
+        for(let [primePoolPubKey] of Object.entries(nextEpochReassignmentChains)){
+
+            // Try to get block
+
+            let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,checkpointCache[primePoolPubKey].firstBlockCreator,0)
+
+            if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
+
+                checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof
+
+                /*
+                
+                    Reminder - the structure of AEFP must be:
+
+                    {
+
+                        subchain:primePoolPubKey,
+
+                        lastAuthority,
+                    
+                        lastIndex,
+                    
+                        lastHash,
+
+                        proof:{
+
+                            aggregatedPub,
+                            
+                            aggregatedSignature,
+                        
+                            afkVoters
+                            
+                        }
+                
+                    }
+
+                    Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash) build reassignment metadata to finish epoch for this subchain
+
+                
+                */
+
+                
+                await BUILD_REASSIGNMENT_METADATA()
+
+
+
+            }else{
+
+                cycleWasBreak = true
+
+                break
+
+            }
+
+        }
+
+
+
+    }
+
+},
+
+
+
+
 START_VERIFICATION_THREAD=async()=>{
 
     //This option will stop verification for symbiote
@@ -1088,6 +1391,7 @@ START_VERIFICATION_THREAD=async()=>{
         // Get the stats from reassignments
 
         let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+
 
 
         if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
@@ -1257,6 +1561,15 @@ START_VERIFICATION_THREAD=async()=>{
 
             }
             
+        }
+
+
+        if(!currentCheckpointIsFresh){
+
+
+            await TRY_TO_CHANGE_EPOCH(vtCheckpoint)
+            
+
         }
 
 

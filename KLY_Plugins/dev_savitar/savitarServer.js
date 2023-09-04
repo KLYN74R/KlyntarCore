@@ -476,7 +476,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
         let quorumSignaIsOk = await bls.verifyThresholdSignature(
             
-            aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+            aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),
             
             dataThatShouldBeSigned, aggregatedSignature, reverseThreshold
             

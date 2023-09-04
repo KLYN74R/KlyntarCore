@@ -194,7 +194,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                         if(typeof block.extraData.aggregatedFinalizationProofForFirstBlock === 'object'){
 
-                            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+                            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
                             let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedFinalizationProofForFirstBlock
 
@@ -245,7 +245,7 @@ acceptBlocksAndReturnCommitment = response => {
                         
                         GET_MAJORITY(checkpoint),
                         
-                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),
 
                         checkpointFullID
                         
@@ -487,7 +487,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
             }
 
 
-            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
             let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
@@ -649,7 +649,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
 
-    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
+    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID))
 
 
 
@@ -937,7 +937,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let reverseThreshold = checkpoint.quorum.length-majority
 
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
     
     let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
@@ -1286,7 +1286,7 @@ VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoi
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
 
-    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
     let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
 
@@ -1615,43 +1615,6 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
 
 
-getFirstBlockAssumptions=async(response,request)=>{
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
-
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
-
-        if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-            !response.aborted && response.end('QT checkpoint is not ready')
-        
-            return
-
-        }
-
-
-        let epochIndex = request.getParameter(0)
-
-        let subchainID = request.getParameter(1)
-
-        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${subchainID}`).catch(_=>false)
-
-
-        if(aggregatedEpochFinalizationProofForSubchain){
-
-            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))
-
-        }else !response.aborted && response.end(JSON.stringify({err:'No EFP'}))
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-
 /*
 
 Body is
@@ -1821,7 +1784,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     let quorumSignaIsOk = await bls.verifyThresholdSignature(
         
-        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),
         
         hashOfCheckpointFullIDAndOperation, aggregatedSignature, reverseThreshold
         
@@ -1947,8 +1910,6 @@ UWS_SERVER
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 .post('/checkpoint_proposition',acceptCheckpointProposition)
-
-.get('/first_block_assumptions',getFirstBlockAssumptions)
 
 
 //________________________________ Health monitoring __________________________________

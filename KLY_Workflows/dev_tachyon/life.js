@@ -464,7 +464,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
         let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldEpochFullID)
     
-        let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+oldEpochFullID)
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+oldEpochFullID)
     
         if(!temporaryObject){
     
@@ -561,7 +561,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,qtRootPub,majority,oldEpochFullID)
+                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,rootPubKey,majority,oldEpochFullID)
     
                             if(aefpPureObject){
     
@@ -617,7 +617,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,qtRootPub)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,rootPubKey)
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
                             
@@ -773,7 +773,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Try to get the system sync operations from the first blocks
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlock,0)
+                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
@@ -822,6 +822,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // After execution - create the reassignment chains
                 await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.CHECKPOINT,'QT',nextEpochHash)
+
+
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(_=>false)
 
 
                 LOG(`\u001b[38;5;154mSystem sync operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
@@ -876,9 +879,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
                 // Get the new ROOTPUB and delete the old one
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextEpochFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('ROOTPUB'+nextEpochFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
     
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+oldEpochFullID)
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('ROOTPUB'+oldEpochFullID)
 
 
                 //_______________________Check the version required for the next checkpoint________________________
@@ -995,7 +998,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
-        let quorumRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
         
     
@@ -1094,7 +1097,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 ____________________________________________After we get responses____________________________________________
 
-                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.aggregatedEpochFinalizationProof)
+                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.previousAggregatedEpochFinalizationProof)
 
                 6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
 
@@ -1121,7 +1124,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 8) Prime pool and other reserve pools on each subchain can query network for this proofs to set to
                 
-                    block.extraData.aggregatedEpochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
+                    block.extraData.previousAggregatedEpochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
                 
 
             */
@@ -1224,7 +1227,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                             
                                 let reverseThreshold = qtCheckpoint.quorum.length - majority
                             
-                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
                             
                             
                                 if(isOk){
@@ -1867,7 +1870,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                         let dataThatShouldBeSigned = (checkpoint.id+':'+poolWithSkipHandler+':'+index)+hash+checkpointFullID
                         
-                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(_=>false)
+                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(_=>false)
             
 
                         //If signature is ok and index is bigger than we have - update the <extendedAggregatedCommitments> in our local skip handler
@@ -2154,7 +2157,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(checkpoint)
 
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+    let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
 
     
@@ -2295,7 +2298,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         
         let data = (checkpoint.id+':'+pubKey+':'+index)+hash+'FINALIZATION'+checkpointFullID
 
-        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(_=>false)
 
 
         // If signature is ok and index is bigger than we have - update the <lastSeen> time and set new height/hash/aggregatedFinalizationProof
@@ -2349,7 +2352,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         let data = (checkpoint.id+':'+candidate+':'+index)+hash+'FINALIZATION'+checkpointFullID
     
-                        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+                        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(_=>false)
     
                         //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new aggregatedFinalizationProof
     
@@ -2617,7 +2620,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = checkpoint.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtCheckpointFullID)
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+qtCheckpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
@@ -3269,7 +3272,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         'STATE', // Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
-        'EPOCH_DATA', // Contains epoch data - AEFPs, FBIEPs, AFPs, etc.
+        'EPOCH_DATA', // Contains epoch data - AEFPs, AFPs, etc.
 
         'QUORUM_THREAD_METADATA', // QUORUM_THREAD itself and other stuff
 
@@ -3425,14 +3428,14 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
 
-    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
+    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
 
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId === checkpointFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
