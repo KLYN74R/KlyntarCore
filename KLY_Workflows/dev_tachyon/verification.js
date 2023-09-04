@@ -1151,59 +1151,69 @@ START_VERIFICATION_THREAD=async()=>{
             if(tempReassignmentsForSomeSubchain.currentToVerify === tempReassignmentsForSomeSubchain.currentAuthority){
 
 
-                let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+                while(true){
 
-                // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
+                    let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+
+                    // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
+        
+                    let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        
+                    let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
     
-                let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+                    
+                    // Ask the N+1 block
     
-                let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+                    let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
+    
 
-                
-                // Ask the N+1 block
+                    if(block){
 
-                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
+                        let blockHash = Block.genHash(block)
+    
+                        let blockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
+    
+                        // Get the AFP for this block
+    
+                        let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
+    
+    
+                        if(shouldDelete){
+            
+                            // Probably - hash mismatch 
+            
+                            await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
+    
+            
+                        }else if(verify){
+    
+                            await verifyBlock(block,currentSubchainToCheck)
+    
+                            LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+    
+                        }else{
+    
+                            // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+    
+                            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
-
-                if(block){
-
-                    let blockHash = Block.genHash(block)
-
-                    let blockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
-
-                    // Get the AFP for this block
-
-                    let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(_=>({verify:false}))
-
-
-                    if(shouldDelete){
-        
-                        // Probably - hash mismatch 
-        
-                        await global.SYMBIOTE_META.BLOCKS.del(blockID).catch(_=>{})
-
-        
-                    }else if(verify){
-
-                        await verifyBlock(block,currentSubchainToCheck)
-
-                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-
+                            break
+    
+                        }
+    
                     }else{
-
+    
                         // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-
+    
                         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
+                        break
+    
                     }
 
-                }else{
-
-                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
                 }
+
 
             }else{
 

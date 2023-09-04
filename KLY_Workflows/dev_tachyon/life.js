@@ -854,7 +854,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     FINALIZATION_PROOFS:new Map(),
 
                     CHECKPOINT_MANAGER:new Map(),
-                    CHECKPOINT_MANAGER_SYNC_HELPER:new Map(),
 
                     SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
  
@@ -920,28 +919,17 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     let currentCheckpointManager = nextTemporaryObject.CHECKPOINT_MANAGER
 
-                    let currentCheckpointSyncHelper = nextTemporaryObject.CHECKPOINT_MANAGER_SYNC_HELPER
+                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>
 
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:false})
 
-                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>{
+                    )
 
-                        let nullishTemplate = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:false}
+                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,nullishTemplate)
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:true})
 
-                        currentCheckpointSyncHelper.set(poolPubKey,nullishTemplate)
-
-                    })
-
-                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>{
-
-                        let nullishTemplate = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:true}
-
-                        currentCheckpointManager.set(poolPubKey,nullishTemplate)
-
-                        currentCheckpointSyncHelper.set(poolPubKey,nullishTemplate)
-
-                    })
+                    )
 
 
                 }
@@ -2461,8 +2449,6 @@ RESTORE_STATE=async()=>{
 
         
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,aggregatedCommitments})
-        
-        tempObject.CHECKPOINT_MANAGER_SYNC_HELPER.set(poolPubKey,{index,hash,aggregatedCommitments})
 
 
         //______________________________ Try to find SKIP_HANDLER for pool ______________________________
@@ -3465,8 +3451,6 @@ PREPARE_SYMBIOTE=async()=>{
     
         CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
-        CHECKPOINT_MANAGER_SYNC_HELPER:new Map(), // map(poolPubKey=>Set({index,hash,aggregatedCommitments})) here will be added propositions to update the aggregated commitments for pool which will be checked in sync mode
-
         SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
         
         SYNCHRONIZER:new Map(),
