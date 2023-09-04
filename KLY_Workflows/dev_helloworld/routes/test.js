@@ -31,7 +31,7 @@ Server implementation here https://github.com/uNetworking/uWebSockets.js
 
 */
 
-UWS_SERVER
+global.UWS_SERVER
 
 .get('/hello',MAIN.world)
 

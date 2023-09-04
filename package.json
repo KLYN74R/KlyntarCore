@@ -53,6 +53,7 @@
   "devDependencies": {
     "@ethereumjs/tx": "^4.0.2",
     "@solana/web3.js": "^1.62.0",
+    "eslint": "^8.48.0",
     "ethereumjs-common": "^1.5.2",
     "ethereumjs-tx": "^2.1.2",
     "random-bytes": "^1.0.0"

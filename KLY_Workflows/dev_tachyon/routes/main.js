@@ -1886,7 +1886,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 
 
-UWS_SERVER
+global.UWS_SERVER
 
 
 //_______________________________ Consensus related routes _______________________________

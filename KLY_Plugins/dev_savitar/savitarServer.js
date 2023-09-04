@@ -44,7 +44,7 @@
 
 
 //https://github.com/theturtle32/WebSocket-Node
-
+import {GET_MAJORITY} from '../../KLY_Workflows/dev_tachyon/utils.js'
 import {BLAKE3,PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 import {LOG} from '../utils.js'
@@ -54,7 +54,6 @@ import fs from 'fs'
 
 
 
-import {GET_MAJORITY,USE_TEMPORARY_DB} from '../../KLY_Workflows/dev_tachyon/utils.js'
 
 
 
@@ -126,7 +125,7 @@ let WEBSOCKET_SERVER = new WebSocketServer({
 })
 
 
-let IS_ORIGIN_ALLOWED=origin=>{
+let IS_ORIGIN_ALLOWED=()=>{
 
   // put logic here to detect whether the specified origin is allowed.
   return true
@@ -502,7 +501,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(aggregatedCommitmentsArray,connect
 
 
 
-let ACCEPT_AGGREGATED_FINALIZATION_PROOF=(aggregatedFinalizationProof,_connection)=>{
+let ACCEPT_AGGREGATED_FINALIZATION_PROOF=(aggregatedFinalizationProof)=>{
 
     global.NEW_VERIFIED_HEIGHT = +(aggregatedFinalizationProof.blockID.split(':')[2])
 
@@ -566,7 +565,7 @@ WEBSOCKET_SERVER.on('request',request=>{
     
     })
     
-    connection.on('close',(reasonCode,description)=>
+    connection.on('close',(_reasonCode,_description)=>
 
         LOG({data:`Savitar client ${connection.remoteAddress} disconnected`},'CD')
     

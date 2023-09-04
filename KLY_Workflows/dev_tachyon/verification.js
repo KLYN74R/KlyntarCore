@@ -439,8 +439,74 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
 
 
+BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (primePoolPubKey,aefp,oldReassignmentChains) => {
 
-BUILD_REASSIGNMENT_METADATA = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
+    let emptyTemplate = {}
+
+
+    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
+
+
+    let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
+        
+    // Start the iteration over prime pools in REASSIGNMENT_CHAINS
+
+    for(let [primePoolPubKey,reassignmentArray] of Object.entries(oldReassignmentChains)){
+
+        // Prepare the empty array
+        verificationThread.REASSIGNMENT_METADATA[primePoolPubKey] = {}
+
+        // Start the cycle in reverse order
+        for(let position = reassignmentArray.length - 1; position >= 0; position--){
+
+            let currentAuthorityPubKey = reassignmentArray[position]
+
+            // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
+
+            if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > -1){
+
+                // Get the first block of this epoch from POOLS_METADATA
+
+                let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,0)
+
+                // In this block we should have ASP for all the previous reservePool + primePool
+
+                let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
+
+                if(isOK){
+
+                    filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
+
+                }
+
+            }
+
+        }
+
+        // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
+
+        for(let reservePool of reassignmentArray){
+
+            if(filtratratedReassignment.has(reservePool)){
+
+                let metadataForReassignment = filtratratedReassignment.get(reservePool)
+
+                for(let [skippedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
+
+                    if(!verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey]) verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey] = asp
+
+                }
+
+            }
+
+        }
+
+    }
+
+},
+
+
+BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN_X = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
 
     verificationThread.REASSIGNMENT_METADATA={}
 
@@ -1001,7 +1067,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify
             
-            await BUILD_REASSIGNMENT_METADATA(global.SYMBIOTE_META.VERIFICATION_THREAD,oldCheckpoint,nextCheckpoint,oldCheckpointFullID)
+            await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(global.SYMBIOTE_META.VERIFICATION_THREAD,oldCheckpoint,nextCheckpoint,oldCheckpointFullID)
             
             
             // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
@@ -1090,18 +1156,12 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
         let allKnownPeers = [...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
 
-        let totalNumberOfSubchains = 0
-
-        let totalNumberOfReadySubchains = 0
-
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
         // Once get it - get the real first block
         for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochReassignmentChains)){
 
             // First of all - try to find block <checkpoint id+1>:<prime pool pubkey>:0 - first block by prime pool
-
-            totalNumberOfSubchains++
 
             if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
 
@@ -1189,7 +1249,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                                     let shouldBreakInfiniteWhile = false
 
-                                    while(true) {
+                                    while(true){
     
                                         let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
     
@@ -1257,79 +1317,62 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                 }
 
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`,checkpointCache).catch(_=>false)
+
             }
 
-            if(checkpointCache[primePoolPubKey].realFirstBlockFound) totalNumberOfReadySubchains++
+            
+            if(checkpointCache[primePoolPubKey].realFirstBlockFound){
 
-        }
+                //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
+                // Try to get block
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`,checkpointCache).catch(_=>false)
+                let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,checkpointCache[primePoolPubKey].firstBlockCreator,0)
 
+                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
-        //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
+                    checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof
 
-        // Start the next cycle over subchains
-
-        let cycleWasBreak = false
-
-        for(let [primePoolPubKey] of Object.entries(nextEpochReassignmentChains)){
-
-            // Try to get block
-
-            let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,checkpointCache[primePoolPubKey].firstBlockCreator,0)
-
-            if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
-
-                checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof
-
-                /*
+                    /*
                 
-                    Reminder - the structure of AEFP must be:
+                        Reminder - the structure of AEFP must be:
 
-                    {
+                        {
 
-                        subchain:primePoolPubKey,
+                            subchain:primePoolPubKey,
 
-                        lastAuthority,
-                    
-                        lastIndex,
-                    
-                        lastHash,
-
-                        proof:{
-
-                            aggregatedPub,
-                            
-                            aggregatedSignature,
+                            lastAuthority,
                         
-                            afkVoters
+                            lastIndex,
+                    
+                            lastHash,
+
+                            proof:{
+
+                                aggregatedPub,
                             
+                                aggregatedSignature,
+                            
+                                afkVoters
+                            
+                            }
+                
                         }
-                
-                    }
 
-                    Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash) build reassignment metadata to finish epoch for this subchain
-
-                
-                */
+                        
+                        Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash) build reassignment metadata to finish epoch for this subchain
 
                 
-                await BUILD_REASSIGNMENT_METADATA()
+                    */
+                
+                    await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(primePoolPubKey,firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof)
 
-
-
-            }else{
-
-                cycleWasBreak = true
-
-                break
+                }
 
             }
 
         }
-
-
 
     }
 

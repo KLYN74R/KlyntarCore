@@ -608,7 +608,7 @@ stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbo
 
 
 
-UWS_SERVER
+global.UWS_SERVER
 
 // Get data about checkpoint
 
