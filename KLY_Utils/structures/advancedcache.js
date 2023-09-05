@@ -15,16 +15,16 @@ export default class{
         
         //Get account if account is NOT in debounce zone or in stoplist
         //Even if address in buffer zone to be commited to db-anyway we have separate set "debounce" which prevents spam
-        let value = this.cache.get(key) || await this.db.get(key).catch(_=>false)
+        let value = this.cache.get(key) || await this.db.get(key).catch(()=>false)
 
 
         if(!value){
 
-            let stuff = await fetch(global.CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${key}`).then(r=>r.json()).catch(_=>false)
+            let stuff = await fetch(global.CONFIG.SYMBIOTE.GET_STUFF_URL+`/stuff/${key}`).then(r=>r.json()).catch(()=>false)
 
             if(stuff){
     
-                this.db.put(key,stuff).catch(_=>{})
+                this.db.put(key,stuff).catch(()=>{})
 
                 value=stuff
         

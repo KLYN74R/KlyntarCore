@@ -221,7 +221,7 @@ let RETURN_BLOCK = async(blockID,connection) => {
 
         // Return the blocks from <initIndex> to <limit>
 
-        for(let final = initIndex;final<limit;final++) promises.push(global.SYMBIOTE_META.BLOCKS.get(epochIndex+':'+blockCreator+':'+final).catch(_=>false))
+        for(let final = initIndex;final<limit;final++) promises.push(global.SYMBIOTE_META.BLOCKS.get(epochIndex+':'+blockCreator+':'+final).catch(()=>false))
 
 
         let blocks = (await Promise.all(promises)).filter(Boolean)
@@ -232,7 +232,7 @@ let RETURN_BLOCK = async(blockID,connection) => {
 
 
             
-        // ).catch(_=>connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'No block'}})))
+        // ).catch(()=>connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'No block'}})))
 
 
     }else connection.sendUTF(JSON.stringify({type:'BLOCKS_ACCEPT',payload:{reason:'Route is off'}}))
@@ -299,7 +299,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
         
         if(firstBlockOfRange.index !== 0){
     
-            let localPreFirstBlock = await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+':'+firstBlockOfRange.creator+':'+(firstBlockOfRange.index-1)).catch(_=>false)
+            let localPreFirstBlock = await global.SYMBIOTE_META.BLOCKS.get(checkpointIndex+':'+firstBlockOfRange.creator+':'+(firstBlockOfRange.index-1)).catch(()=>false)
     
             if(GEN_BLOCK_HASH(localPreFirstBlock) !== firstBlockOfRange.prevHash) return
     
@@ -313,7 +313,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
         for(let block of blocksArray){
     
-            promises.push(global.SYMBIOTE_META.BLOCKS.put(checkpointIndex+':'+block.creator+':'+block.index,block).catch(_=>false))
+            promises.push(global.SYMBIOTE_META.BLOCKS.put(checkpointIndex+':'+block.creator+':'+block.index,block).catch(()=>false))
                 
             let nextPosition = startPosition + 1
     
@@ -356,7 +356,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
         
     //     let hash = GEN_BLOCK_HASH(block)
 
-    //     let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(_=>false)
+    //     let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(()=>false)
  
 
     //     if(myCommitment){
@@ -376,7 +376,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
     //         return prevHash === block.prevHash
 
-    //     }).catch(_=>false)
+    //     }).catch(()=>false)
 
 
     //     //Otherwise - check if we can accept this block
@@ -385,7 +385,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
     
     //         typeof block.transactions==='object' && typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string'//make general lightweight overview
     //         &&
-    //         await bls.singleVerify(hash,block.sig,block.creator).catch(_=>false)//and finally-the most CPU intensive task
+    //         await bls.singleVerify(hash,block.sig,block.creator).catch(()=>false)//and finally-the most CPU intensive task
     //         &&
     //         checkIfItsChain
         
@@ -399,7 +399,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
                     
     //             _ => global.SYMBIOTE_META.BLOCKS.put(blockID,block)
                     
-    //         ).catch(_=>{})
+    //         ).catch(()=>{})
             
             
     //         let commitment = await bls.singleSig(blockID+hash+checkpointFullID,global.PRIVATE_KEY)
@@ -410,7 +410,7 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(blocksArray,c
 
     //             commitmentsMap[blockID]=commitment
 
-    //         ).catch(_=>{})
+    //         ).catch(()=>{})
 
 
     //     }

@@ -46,7 +46,7 @@ let VERIFY_WRAP=async (tx,originSubchain)=>{
 
     let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator)
 
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originSubchain).catch(_=>false)
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originSubchain).catch(()=>false)
 
     
     if(result){

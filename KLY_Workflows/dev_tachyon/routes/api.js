@@ -41,7 +41,7 @@ getFromState=async(response,request)=>{
 
         let fullID = subchainContext === 'X' ? cellID : subchainContext+':'+cellID
 
-        let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(_=>'')
+        let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(()=>'')
 
 
 
@@ -132,7 +132,7 @@ getBlockById=(response,request)=>{
 
             !response.aborted && response.end(JSON.stringify(block))
             
-        ).catch(_=>response.end(JSON.stringify({err:'No block'})))
+        ).catch(()=>response.end(JSON.stringify({err:'No block'})))
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
@@ -185,7 +185,7 @@ getLatestNBlocks=async(response,request)=>{
 
                 })
                 
-            ).catch(_=>false)
+            ).catch(()=>false)
     
             promises.push(blockPromise)
 
@@ -228,7 +228,7 @@ getBlockBySID=(response,request)=>{
             
             )
 
-        ).catch(_=>response.end(JSON.stringify({err:'No block receipt'})))
+        ).catch(()=>response.end(JSON.stringify({err:'No block receipt'})))
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
@@ -353,7 +353,7 @@ getBlockByGRID=(response,request)=>{
                 !response.aborted && response.end(JSON.stringify(block))
             )    
             
-        ).catch(_=>!response.aborted && response.end(JSON.stringify({err:'No block'})))
+        ).catch(()=>!response.aborted && response.end(JSON.stringify({err:'No block'})))
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
@@ -388,7 +388,7 @@ getSearchResult=async(response,request)=>{
 
             return receipt
 
-        }).catch(_=>false)
+        }).catch(()=>false)
 
 
         if(possibleTxReceipt){
@@ -410,7 +410,7 @@ getSearchResult=async(response,request)=>{
 
             return block
 
-        }).catch(_=>false)
+        }).catch(()=>false)
 
 
         if(blockByGRID){
@@ -428,7 +428,7 @@ getSearchResult=async(response,request)=>{
 
             return block
 
-        }).catch(_=>false)
+        }).catch(()=>false)
 
 
         if(possibleBlock){
@@ -446,7 +446,7 @@ getSearchResult=async(response,request)=>{
 
             return stateCell
 
-        }).catch(_=>false)
+        }).catch(()=>false)
 
 
         
@@ -478,7 +478,7 @@ getSearchResult=async(response,request)=>{
 
                 return aggregatedFinalizationProof
 
-            }).catch(_=>false)
+            }).catch(()=>false)
     
 
             if(possibleAggregatedFinalizationProof){
@@ -517,7 +517,7 @@ getTransactionReceipt=(response,request)=>{
             
             txReceipt => !response.aborted && response.end(JSON.stringify(txReceipt))
             
-        ).catch(_=>!response.aborted && response.end(JSON.stringify({err:'No tx with such id'})))
+        ).catch(()=>!response.aborted && response.end(JSON.stringify({err:'No tx with such id'})))
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
@@ -587,7 +587,7 @@ stuff=async(response,request)=>{
         
             return obj
         
-        }).catch(_=>false)
+        }).catch(()=>false)
 
         !response.aborted && response.end(JSON.stringify(stuff))
 

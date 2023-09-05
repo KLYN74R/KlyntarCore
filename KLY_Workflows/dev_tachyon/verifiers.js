@@ -134,7 +134,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
         }
         
-        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t).catch(_=>false)      
+        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t).catch(()=>false)      
 
     }else return false
 
@@ -174,7 +174,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (originSubchain,tx,rewardBox,_)=>{
+    TX:async (originSubchain,tx,rewardBox)=>{
 
         let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator),
         
@@ -428,7 +428,7 @@ export let VERIFIERS = {
     EVM_CALL:async(originSubchain,tx,rewardBox,atomicBatch)=>{
 
 
-        let evmResult = await KLY_EVM.callEVM(originSubchain,tx.payload).catch(_=>false)
+        let evmResult = await KLY_EVM.callEVM(originSubchain,tx.payload).catch(()=>false)
 
 
         if(evmResult && !evmResult.execResult.exceptionError){            

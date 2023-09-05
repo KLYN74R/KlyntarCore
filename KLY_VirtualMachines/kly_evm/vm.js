@@ -192,7 +192,7 @@ class KLY_EVM_CLASS {
           
         }
         
-        let status = await this.vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(_=>({status:false}))
+        let status = await this.vm.stateManager.putAccount(Address.fromString(address),Account.fromAccountData(accountData)).then(()=>({status:true})).catch(()=>({status:false}))
 
 
         return status

@@ -63,7 +63,7 @@ ED25519_VERIFY=(data,signature,pubKey)=>new Promise((resolve,reject)=>
 
     )
 
-).catch(_=>false),
+).catch(()=>false),
 
 
 
@@ -98,7 +98,7 @@ ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
     )
 
-).catch(_=>false),
+).catch(()=>false),
 
 
 
@@ -131,7 +131,7 @@ PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
  */
 SAFE_ADD=(buffer,chunk,a)=>new Promise(r=>r( Buffer.concat([ buffer, Buffer.from(chunk) ]) ))
     
-    .catch(_=>{
+    .catch(()=>{
         
         a.end('Local buffer overflow')
         

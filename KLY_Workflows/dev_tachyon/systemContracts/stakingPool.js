@@ -44,7 +44,7 @@ export let CONTRACT = {
         
             [blsPubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+blsPubKey+'(POOL)').catch(_=>false)
+            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+blsPubKey+'(POOL)').catch(()=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){

@@ -212,11 +212,11 @@ BLOCKS_GENERATION_POLLING=async()=>{
 
         await GENERATE_BLOCKS_PORTION()    
 
-        STOP_GEN_BLOCKS_CLEAR_HANDLER = setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
+        global.STOP_GEN_BLOCKS_CLEAR_HANDLER = setTimeout(BLOCKS_GENERATION_POLLING,global.CONFIG.SYMBIOTE.BLOCK_TIME)
         
         global.CONFIG.SYMBIOTE.STOP_WORK_ON_GENERATION_THREAD
         &&
-        clearTimeout(STOP_GEN_BLOCKS_CLEAR_HANDLER)
+        clearTimeout(global.STOP_GEN_BLOCKS_CLEAR_HANDLER)
 
     }else LOG(`Block generation was stopped`,'I')
     
@@ -401,6 +401,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     
                     lastHash,
 
+                    firstBlockHash,
+
                     proof:{
 
                         aggregatedPub,
@@ -413,7 +415,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                 }
 
-                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+checkpointFullID
+                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+firstBlockHash+checkpointFullID
 
         3. Once we find the AEFPs for ALL the subchains - it's a signal to start to find the first X blocks in current epoch for each subchain
 
@@ -426,7 +428,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         4. Now try to find our own assumption about the first block in epoch locally
 
-            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(_=>false)
+            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
 
             If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
         
@@ -475,7 +477,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         }
 
 
-        let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
+        // let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
         let totalNumberOfSubchains = 0
 
@@ -489,7 +491,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`CHECKPOINT_CACHE:${oldEpochFullID}`).catch(_=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,realFirstBlockFound}}
+        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`CHECKPOINT_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,realFirstBlockFound}}
 
         let entries = Object.entries(reassignmentChains)
 
@@ -527,11 +529,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                         lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
-
+                        firstBlockHash,
+                        
                         proof:{
 
                             aggregatedPub:<BLS aggregated pubkey of signers>,
-                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
                             afkVoters:[] - array of BLS pubkeys who haven't voted
 
                         }
@@ -545,7 +548,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Try to find locally
 
-                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`).catch(_=>false)
+                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`).catch(()=>false)
 
                 if(aefp){
 
@@ -557,7 +560,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
@@ -595,7 +598,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 let firstBlockOfPrimePool = qtCheckpoint.id+':'+primePoolPubKey+':0'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(_=>false)
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(()=>false)
 
                 if(afpForFirstBlockOfPrimePool){
 
@@ -613,7 +616,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
             
                         if(itsProbablyAggregatedFinalizationProof){
             
@@ -647,7 +650,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                         let firstBlockOfPool = qtCheckpoint.id+':'+reservePoolPubKey+':0'
 
-                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(_=>false)
+                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(()=>false)
 
                         if(afp){
 
@@ -755,7 +758,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Store the changes in CHECKPOINT_CACHE for persistence
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put(`CHECKPOINT_CACHE:${oldEpochFullID}`,checkpointCache).catch(_=>false)
+        await global.SYMBIOTE_META.EPOCH_DATA.put(`CHECKPOINT_CACHE:${oldEpochFullID}`,checkpointCache).catch(()=>false)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract system sync operations and set the new epoch____
@@ -795,7 +798,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Store the system sync operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`SSO:${oldEpochFullID}`,systemSyncOperations).catch(_=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`SSO:${oldEpochFullID}`,systemSyncOperations).catch(()=>false)
 
                 // We need it for changes
                 let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
@@ -817,14 +820,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(_=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>false)
 
 
                 // After execution - create the reassignment chains
                 await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.CHECKPOINT,'QT',nextEpochHash)
 
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(_=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(()=>false)
 
 
                 LOG(`\u001b[38;5;154mSystem sync operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
@@ -839,7 +842,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 fullCopyOfQuorumThread.CHECKPOINT.quorum = GET_QUORUM(fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.quorum).catch(_=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.quorum).catch(()=>false)
                 
                 // Create new temporary db for the next checkpoint
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
@@ -1109,6 +1112,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                         lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
+                        firstBlockHash,
 
                         proof:{
 
@@ -1133,10 +1137,24 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 currentAuthority:indexOfAuthority,
 
+                afpForFirstBlock:{},
+
                 finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
 
             }
 
+            // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
+
+            if(checkpointProposition[primePoolPubKey].finalizationProof.index > 0){
+
+                let blockID = qtCheckpoint.id+':'+pubKeyOfAuthority+':0'
+
+                checkpointProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>false)
+
+            }
+            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === 0) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = checkpointProposition[primePoolPubKey].finalizationProof.hash
+
+            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === -1) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = '0123456701234567012345670123456701234567012345670123456701234567'
             
         }
 
@@ -1168,7 +1186,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
@@ -1195,7 +1213,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     // Start iteration
 
-                    for(let [primePoolPubKey,metadata] of checkpointProposition){
+                    for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
 
                         let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature                        
 
@@ -1203,13 +1221,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                         if(response){
 
-                            if(response.status==='OK'){
+                            if(response.status==='OK' && typeof metadata.afpForFirstBlock.blockHash === 'string'){
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.finalizationProof.index+metadata.finalizationProof.hash+checkpointFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.finalizationProof.index+metadata.finalizationProof.hash+metadata.afpForFirstBlock.blockHash+checkpointFullID
 
-                                let isOk = await bls.singleVerify(dataThatShouldBeSigned,descriptor.pubKey,response.sig).catch(_=>false)
+                                let isOk = await bls.singleVerify(dataThatShouldBeSigned,descriptor.pubKey,response.sig).catch(()=>false)
 
                                 if(isOk) agreementsForThisSubchain.set(descriptor.pubKey,response.sig)
 
@@ -1227,18 +1245,18 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                             
                                 let reverseThreshold = qtCheckpoint.quorum.length - majority
                             
-                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
                             
                             
                                 if(isOk){
                             
                                     // Update the REASSIGNMENTS
 
-                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey) = {currentAuthority:response.currentAuthority}
+                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:response.currentAuthority})
                                     
                                     // Update CHECKPOINT_MANAGER
 
-                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority) = {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}                                    
+                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})                                    
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
@@ -1254,7 +1272,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 }
                 
-            }).catch(_=>{})
+            }).catch(()=>{})
             
             
         }
@@ -1262,7 +1280,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     
         // Iterate over upgrades and set new values for finalization proofs
 
-        for(let [primePoolPubKey,metadata] of checkpointProposition){
+        for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
 
             let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature
 
@@ -1286,6 +1304,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     
                     lastHash:metadata.finalizationProof.hash,
 
+                    firstBlockHash:metadata.afpForFirstBlock.blockHash,
+
                     proof:{
 
                         aggregatedPub:bls.aggregatePublicKeys(signers),
@@ -1298,7 +1318,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     
                 }
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(_=>{})
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             }
 
@@ -1316,7 +1336,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 
 
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
 
     let blockHash = Block.genHash(block)
 
@@ -1359,12 +1379,12 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.json()).then(async possibleFinalizationProof=>{
                 
-                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(_=>false)
+                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(()=>false)
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof.fp)
     
             
-            }).catch(_=>false)
+            }).catch(()=>false)
     
 
             // To make sharing async
@@ -1452,13 +1472,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
         BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
 
         // Store locally
-        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(_=>false)
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(()=>false)
 
 
         // Repeat procedure for the next block and store the progress
         let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
-        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(_=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
 
         appropriateDescriptor.height++
 
@@ -1472,7 +1492,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
 
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(_=>false)
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
 
     // Check for this block after a while
     if(!block) return
@@ -1532,11 +1552,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
     
             let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
 
-                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(_=>false)
+                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(()=>false)
     
                 if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment.commitment)
 
-            }).catch(_=>{})
+            }).catch(()=>{})
     
             // To make sharing async
             promises.push(promise)
@@ -1599,7 +1619,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(_=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(()=>{})
 
     }
 
@@ -1641,7 +1661,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
-        appropriateDescriptor = await USE_TEMPORARY_DB('get',DATABASE,'BLOCK_SENDER_HANDLER').catch(_=>false)
+        appropriateDescriptor = await USE_TEMPORARY_DB('get',DATABASE,'BLOCK_SENDER_HANDLER').catch(()=>false)
 
         if(!appropriateDescriptor){
 
@@ -1668,14 +1688,14 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     if(FINALIZATION_PROOFS.has(blockID)){
 
         //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(_=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
 
     }else{
 
         // This option means that we already started to share block and going to find 2/3N+1 commitments
         // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
 
-        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID).catch(_=>{})
+        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
 
     }
 
@@ -1741,7 +1761,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let firstBlockID = checkpoint.id+':'+poolWithSkipHandler+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-            let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(_=>false)
+            let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
 
             let firstBlockHash
 
@@ -1785,7 +1805,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         
                     return response
         
-                }).catch(_=>false)
+                }).catch(()=>false)
         
                 responsePromises.push(responsePromise)
         
@@ -1845,7 +1865,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 if(result.type === 'OK' && typeof result.sig === 'string'){
 
-                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
+                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
 
                     if(signatureIsOk){
 
@@ -1870,7 +1890,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                         let dataThatShouldBeSigned = (checkpoint.id+':'+poolWithSkipHandler+':'+index)+hash+checkpointFullID
                         
-                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(_=>false)
+                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(()=>false)
             
 
                         //If signature is ok and index is bigger than we have - update the <extendedAggregatedCommitments> in our local skip handler
@@ -1887,7 +1907,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                             // Store the updated version of skip handler
 
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(_=>{})
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(()=>{})
 
                             // If our local version had lower index - break the cycle and try again with updated value
 
@@ -1922,7 +1942,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 }
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(_=>{})                
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolWithSkipHandler,skipHandler).catch(()=>{})                
 
 
             }
@@ -1983,7 +2003,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         
                     return response
         
-                }).catch(_=>false)
+                }).catch(()=>false)
         
                 proofsPromises.push(responsePromise)
         
@@ -2002,7 +2022,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 if(result.type === 'OK' && typeof result.sig === 'string'){
 
-                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(_=>false)
+                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
 
                     if(signatureIsOk) numberWhoAgreeToDoReassignment++
 
@@ -2096,7 +2116,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     reassignments.set(nextReservePool,primePoolPubKey)
 
 
-                }).catch(_=>false)
+                }).catch(()=>false)
 
             }
       
@@ -2208,7 +2228,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                     synchronizer.delete('NO_FP_NOW:'+handler.pubKey)
 
 
-                }).catch(_=>false)
+                }).catch(()=>false)
 
             }else if(!createRequest){
 
@@ -2218,7 +2238,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         
                     return response
         
-                }).catch(_=>{candidatesForAnotherCheck.push(handler.pubKey)})
+                }).catch(()=>{candidatesForAnotherCheck.push(handler.pubKey)})
         
                 proofsPromises.push(responsePromise)    
 
@@ -2298,7 +2318,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
         
         let data = (checkpoint.id+':'+pubKey+':'+index)+hash+'FINALIZATION'+checkpointFullID
 
-        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(()=>false)
 
 
         // If signature is ok and index is bigger than we have - update the <lastSeen> time and set new height/hash/aggregatedFinalizationProof
@@ -2338,7 +2358,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             for(let validatorHandler of poolsURLsAndPubKeys){
 
-                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
 
                 if(typeof answer === 'object'){
 
@@ -2352,7 +2372,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                         let data = (checkpoint.id+':'+candidate+':'+index)+hash+'FINALIZATION'+checkpointFullID
     
-                        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(_=>false)
+                        let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,data,aggregatedSignature,reverseThreshold).catch(()=>false)
     
                         //If signature is ok and index is bigger than we have - update the <lastSeen> time and set new aggregatedFinalizationProof
     
@@ -2448,7 +2468,7 @@ RESTORE_STATE=async()=>{
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {index,hash,(?)aggregatedCommitments}
 
-        let {index,hash,aggregatedCommitments} = await tempObject.DATABASE.get(poolPubKey).catch(_=>false) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+        let {index,hash,aggregatedCommitments} = await tempObject.DATABASE.get(poolPubKey).catch(()=>false) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
         
         tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,aggregatedCommitments})
@@ -2457,7 +2477,7 @@ RESTORE_STATE=async()=>{
         //______________________________ Try to find SKIP_HANDLER for pool ______________________________
 
 
-        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(_=>false) // {wasReassigned:boolean,extendedAggregatedCommitments,aggregatedSkipProof}
+        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(()=>false) // {wasReassigned:boolean,extendedAggregatedCommitments,aggregatedSkipProof}
 
         if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
 
@@ -2468,7 +2488,7 @@ RESTORE_STATE=async()=>{
         
         if(poolsRegistry.primePools.includes(poolPubKey)){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(_=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
 
             if(reassignmentMetadata){
 
@@ -2492,7 +2512,7 @@ RESTORE_STATE=async()=>{
 
     // Finally, once we've started the "next checkpoint generation" process - restore it
 
-    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(_=>false)
+    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
 
     if(itsTimeForTheNextCheckpoint) {
 
@@ -2531,7 +2551,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
         let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
 
-        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
 
         let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
             
@@ -2707,7 +2727,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         let myFirstBlockInEpoch = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':0'
 
-        let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+myFirstBlockInEpoch).catch(_=>false)
+        let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+myFirstBlockInEpoch).catch(()=>false)
 
         if(aggregatedFinalizationProofForFirstBlock) extraData.aggregatedFinalizationProofForFirstBlock = aggregatedFinalizationProofForFirstBlock
 
@@ -2810,6 +2830,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
                 lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
+                firstBlockHash,
 
                 proof:{
 
@@ -2825,7 +2846,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
            For this:
 
                 0) reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length-global.SYMBIOTE_META.GENERATION_THREAD.majority
-                1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+                1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
 
         */
 
@@ -2833,17 +2854,17 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
         let reverseThreshold = quorum.length - majority
 
-        let {lastAuthority,lastIndex,lastHash} = itsProbablyAggregatedEpochFinalizationProof
+        let {lastAuthority,lastIndex,lastHash,firstBlockHash} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+checkpointFullID
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+firstBlockHash+checkpointFullID
 
-        let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(_=>false)
+        let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
 
         if(proofIsOk){
 
             return {
             
-                lastAuthority,lastIndex,lastHash,
+                lastAuthority,lastIndex,lastHash,firstBlockHash,
         
                 proof:{aggregatedPub,aggregatedSignature,afkVoters}
 
@@ -3320,7 +3341,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Load from db or return empty object
-    global.SYMBIOTE_META.QUORUM_THREAD = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(_=>({}))
+    global.SYMBIOTE_META.QUORUM_THREAD = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(()=>({}))
         
 
 
@@ -3437,7 +3458,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
 
     }
 
@@ -3589,7 +3610,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
 
-        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(_=>false)
+        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
 
         if(responseForTempReassignment){
 

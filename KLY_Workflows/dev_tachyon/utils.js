@@ -50,7 +50,7 @@ GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
         return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash)
  
     
-    }).catch(_=>false)
+    }).catch(()=>false)
  
 },
 
@@ -70,7 +70,7 @@ GET_FROM_STATE = async recordID => {
         return global.SYMBIOTE_META.STATE_CACHE.get(recordID)
  
     
-    }).catch(_=>false)
+    }).catch(()=>false)
 
 },
 
@@ -88,7 +88,7 @@ GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
         return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)
  
     
-    }).catch(_=>false)
+    }).catch(()=>false)
 
 },
 
@@ -375,7 +375,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     quorumMembers.forEach(url=>
     
-        fetch(url+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).catch(_=>{})
+        fetch(url+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).catch(()=>{})
         
     )
 
@@ -396,7 +396,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
                     agent:global.FETCH_HTTP_AGENT
                 
-                }).catch(_=>
+                }).catch(()=>
                     
                     LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
                     
@@ -413,7 +413,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     
         fetch(addr+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT})
         
-        .catch(_=>
+        .catch(()=>
             
             LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
             
@@ -439,7 +439,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
                 
                 value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
                     
-            ).catch(_=>{
+            ).catch(()=>{
                 
                 LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it`,'W')
 
@@ -474,13 +474,13 @@ GET_POOLS_URLS = async withPubkey => {
         
             stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
-        ).catch(async _=>{
+        ).catch(async ()=>{
 
-            let originSubchain = await global.SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(_=>false)
+            let originSubchain = await global.SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(()=>false)
 
             if(originSubchain){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+pubKey+'(POOL)_STORAGE_POOL').catch(_=>false)
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+pubKey+'(POOL)_STORAGE_POOL').catch(()=>false)
 
                 if(poolStorage){
 

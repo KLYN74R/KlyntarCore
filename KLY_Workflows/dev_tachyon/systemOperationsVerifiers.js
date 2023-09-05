@@ -95,14 +95,14 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await global.SYMBIOTE_META.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
 
-                let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+                let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(()=>false))
 
                 if(stillUnspent){
                     
@@ -356,7 +356,7 @@ export default {
     
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
+    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread)=>{
 
         /*
         
@@ -399,7 +399,7 @@ export default {
             &&
             await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
             &&
-            await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
 
         if(isFromRoute){
@@ -412,7 +412,7 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolStorage = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
             if(poolStorage){
 
@@ -428,9 +428,9 @@ export default {
             // On VERIFICATION_THREAD we should delete the pool from POOLS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(()=>false)
 
-            let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(_=>false)
+            let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
 
             if(poolStorage){
@@ -453,7 +453,7 @@ export default {
 
 
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
+    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread)=>{
         
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
@@ -467,11 +467,11 @@ export default {
 
             //To check payload received from route
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
 
             if(originWherePoolStorage){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(_=>false),
+                let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
@@ -482,7 +482,7 @@ export default {
 
                 if(stakingTx && isNotTooOld && isStakeTx){
 
-                    let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(_=>false))
+                    let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(()=>false))
 
                     if(stillUnspent){
 
@@ -522,7 +522,7 @@ export default {
             if(slashHelper[pool]) return
 
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(_=>false)
+            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
 
             if(originWherePoolStorage){
 
@@ -628,7 +628,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,_fullCopyOfQuorumThread)=>{
+    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread)=>{
 
         /*
         

@@ -222,7 +222,7 @@ let GET_ACCOUNT_DATA=async account=>{
 
     return fetch(`http://localhost:7332/account/${account}`)
 
-    .then(r=>r.json()).catch(_=>{
+    .then(r=>r.json()).catch(()=>{
     
         console.log(_)
 
