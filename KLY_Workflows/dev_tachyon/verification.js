@@ -439,80 +439,10 @@ CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
 
 
-BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (primePoolPubKey,aefp,oldReassignmentChains) => {
-
-    let emptyTemplate = {}
+BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,aefp) => {
 
 
-    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
-
-
-    let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
-        
-    // Start the iteration over prime pools in REASSIGNMENT_CHAINS
-
-    for(let [primePoolPubKey,reassignmentArray] of Object.entries(oldReassignmentChains)){
-
-        // Prepare the empty array
-        verificationThread.REASSIGNMENT_METADATA[primePoolPubKey] = {}
-
-        // Start the cycle in reverse order
-        for(let position = reassignmentArray.length - 1; position >= 0; position--){
-
-            let currentAuthorityPubKey = reassignmentArray[position]
-
-            // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
-
-            if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > -1){
-
-                // Get the first block of this epoch from POOLS_METADATA
-
-                let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,0)
-
-                // In this block we should have ASP for all the previous reservePool + primePool
-
-                let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
-
-                if(isOK){
-
-                    filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
-
-                }
-
-            }
-
-        }
-
-        // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
-
-        for(let reservePool of reassignmentArray){
-
-            if(filtratratedReassignment.has(reservePool)){
-
-                let metadataForReassignment = filtratratedReassignment.get(reservePool)
-
-                for(let [skippedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
-
-                    if(!verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey]) verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey] = asp
-
-                }
-
-            }
-
-        }
-
-    }
-
-},
-
-
-BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN_X = async (verificationThread,oldCheckpoint,newCheckpoint,checkpointFullID) => {
-
-    verificationThread.REASSIGNMENT_METADATA={}
-
-    // verificationThread is global.SYMBIOTE_META.VERIFICATION_THREAD
-
-    /*
+        /*
     
     VT.REASSIGNMENT_METADATA has the following structure
 
@@ -618,61 +548,105 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN_X = async (verificationThread,oldCheckp
 
     */
 
-        let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
-        
-        // Start the iteration over prime pools in REASSIGNMENT_CHAINS
+    /*
+                
+        Reminder - the structure of AEFP must be:
 
-        for(let [primePoolPubKey,reassignmentArray] of Object.entries(oldCheckpoint.reassignmentChains)){
+        {
 
-            // Prepare the empty array
-            verificationThread.REASSIGNMENT_METADATA[primePoolPubKey] = {}
+            subchain:primePoolPubKey,
 
-            // Start the cycle in reverse order
-            for(let position = reassignmentArray.length - 1; position >= 0; position--){
+            lastAuthority,
+                        
+            lastIndex,
+                    
+            lastHash,
 
-                let currentAuthorityPubKey = reassignmentArray[position]
+            firstBlockHash,
 
-                // In case no progress from the last reserve pool in a row(height on previous checkpoint equal to height on new checkpoint) - do nothing and mark pool as invalid
+            proof:{
 
-                if(newCheckpoint.poolsMetadata[currentAuthorityPubKey].index > -1){
-
-                    // Get the first block of this epoch from POOLS_METADATA
-
-                    let firstBlockInThisEpochByPool = await GET_BLOCK(oldCheckpoint.id,currentAuthorityPubKey,0)
-
-                    // In this block we should have ASP for all the previous reservePool + primePool
-
-                    let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint)
-
-                    if(isOK){
-
-                        filtratratedReassignment.set(currentAuthorityPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
-
-                    }
-
-                }
-
+                aggregatedPub,
+                
+                aggregatedSignature,
+                            
+                afkVoters
+                            
             }
+                
+        }
 
-            // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
+                        
+    */
 
-            for(let reservePool of reassignmentArray){
 
-                if(filtratratedReassignment.has(reservePool)){
+    let emptyTemplate = {}
 
-                    let metadataForReassignment = filtratratedReassignment.get(reservePool)
+    let vtCheckpointIndex = vtCheckpoint.id
 
-                    for(let [skippedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
+    let oldReassignmentChainsForSubchain = vtCheckpoint.reassignmentChains[primePoolPubKey]
 
-                        if(!verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey]) verificationThread.REASSIGNMENT_METADATA[primePoolPubKey][skippedPoolPubKey] = asp
+    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-                    }
+    let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
+        
 
-                }
+    // Start the cycle in reverse order from <aefp.lastAuthority> to prime pool
+
+    let lastAuthorityPoolPubKey = oldReassignmentChainsForSubchain[aefp.lastAuthority]
+
+    emptyTemplate[lastAuthorityPoolPubKey] = {
+        
+        index:aefp.lastIndex,
+        
+        hash:aefp.lastHash
+
+    }
+
+    for(let position = aefp.lastAuthority; position >= 0; position--){
+
+        let poolPubKey = oldReassignmentChainsForSubchain[position]
+
+        // Get the first block of this epoch from POOLS_METADATA
+
+        let firstBlockInThisEpochByPool = await GET_BLOCK(vtCheckpointIndex,poolPubKey,0)
+
+        if(!firstBlockInThisEpochByPool) return
+
+        // In this block we should have ASP for all the previous reservePool + primePool
+
+        let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(
+            
+            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainsForSubchain,position,null,null,null,true)
+
+        if(isOK){
+
+            filtratratedReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
+
+        }
+
+
+    }
+
+    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
+
+    for(let reservePool of oldReassignmentChainsForSubchain){
+
+        if(filtratratedReassignment.has(reservePool)){
+
+            let metadataForReassignment = filtratratedReassignment.get(reservePool)
+
+            for(let [skippedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
+
+                if(!emptyTemplate[skippedPoolPubKey]) emptyTemplate[skippedPoolPubKey] = asp
 
             }
 
         }
+
+    }
+
+    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
 
 
         /*
@@ -1134,8 +1108,6 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
     let vtCheckpointIndex = vtCheckpoint.id
 
-
-
     let nextEpochIndex = vtCheckpointIndex+1
 
     let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${vtCheckpointFullID}`).catch(()=>false)
@@ -1334,43 +1306,16 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                     checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof
 
-                    /*
-                
-                        Reminder - the structure of AEFP must be:
-
-                        {
-
-                            subchain:primePoolPubKey,
-
-                            lastAuthority,
-                        
-                            lastIndex,
-                    
-                            lastHash,
-
-                            firstBlockHash,
-
-                            proof:{
-
-                                aggregatedPub,
-                            
-                                aggregatedSignature,
-                            
-                                afkVoters
-                            
-                            }
-                
-                        }
-
-                        
-                        Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this subchain
-
-                
-                    */
-                
-                    await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(primePoolPubKey,firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof)
-
                 }
+
+            }
+
+
+            if(checkpointCache[primePoolPubKey].aefp && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]){
+
+                // Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this subchain
+                
+                await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtCheckpoint,primePoolPubKey,checkpointCache[primePoolPubKey].aefp)
 
             }
 
