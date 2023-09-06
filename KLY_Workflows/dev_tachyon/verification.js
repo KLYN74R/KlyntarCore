@@ -6,11 +6,12 @@ import {
 
 } from './utils.js'
 
-import {GET_VALID_CHECKPOINT,GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
+import {GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -1015,7 +1016,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
     if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)){
 
 
-        let nextCheckpoint = await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(()=>false)
+        let nextCheckpoint = false//await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(()=>false)
 
 
         if(nextCheckpoint){

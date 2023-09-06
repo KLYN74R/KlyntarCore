@@ -513,7 +513,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
                     // Add the flag for function SUBCHAINS_HEALTH_MONITORING where we need to create skip handler to avoid async problems
                     tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,false)
 
-
+                    // eslint-disable-next-line no-unused-vars
                     let [_,poolPubKey,index] = blockID.split(':')
 
                     index=+index

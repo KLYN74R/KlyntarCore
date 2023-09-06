@@ -76,7 +76,7 @@ getFromState=async(response,request)=>{
  * 
  *  
  * */
-getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE).end(INFO),
+getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE).end(global.INFO),
 
 
 
@@ -598,7 +598,7 @@ stuff=async(response,request)=>{
 
 
 
-stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async v=>{
+stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async()=>{
     
     //Unimplemented
     response.end('')
