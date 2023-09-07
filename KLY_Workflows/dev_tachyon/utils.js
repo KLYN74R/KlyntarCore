@@ -371,7 +371,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     let promises=[]
 
-    let quorumMembers = await GET_POOLS_URLS()
+    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS()
 
     quorumMembers.forEach(url=>
     
@@ -463,7 +463,7 @@ GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYM
 
 
 
-GET_POOLS_URLS = async withPubkey => {
+GET_QUORUM_URLS_AND_PUBKEYS = async withPubkey => {
 
     let promises=[]
 
@@ -474,7 +474,7 @@ GET_POOLS_URLS = async withPubkey => {
         
             stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
         
-        ).catch(async ()=>{
+        ).catch(async()=>{
 
             let originSubchain = await global.SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(()=>false)
 
@@ -518,7 +518,7 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 CHECK_IF_CHECKPOINT_STILL_FRESH = thread => {
 
-    let checkpointTime = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.timestamp
+    let checkpointTime = thread.CHECKPOINT.timestamp
 
     let currentTime = GET_GMT_TIMESTAMP()
 

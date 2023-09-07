@@ -89,6 +89,9 @@ export let CONTRACT = {
 
             if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
 
+            //Put pool pointer
+            atomicBatch.put(blsPubKey+'(POOL)_POINTER',originSubchain)
+
             
             //Put metadata
             atomicBatch.put(originSubchain+':'+blsPubKey+'(POOL)',contractMetadataTemplate)

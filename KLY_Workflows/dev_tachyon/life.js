@@ -2,7 +2,7 @@ import {CHECK_IF_ALL_ASP_PRESENT,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGR
 
 import {
     
-    GET_POOLS_URLS,GET_MAJORITY,BROADCAST,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,BROADCAST,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
@@ -96,7 +96,7 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-export let SET_REASSIGNMENT_CHAINS = async (checkpoint,threadID,epochSeed) => {
+export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
 
 
     checkpoint.reassignmentChains = {}
@@ -113,9 +113,9 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,threadID,epochSeed) => {
     for(let reservePoolPubKey of checkpoint.poolsRegistry.reservePools){
 
         // Otherwise - it's reserve pool
-                    
-        let poolStorage = threadID === 'QT' ? await GET_FROM_STATE_FOR_QUORUM_THREAD(reservePoolPubKey+`(POOL)_STORAGE_POOL`) : await GET_FROM_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
-
+        
+        let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+    
         if(poolStorage){
 
             let {reserveFor} = poolStorage
@@ -147,7 +147,7 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,threadID,epochSeed) => {
     for(let primePoolID of primePoolsPubKeys){
 
 
-        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchain.get(primePoolID)
+        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchain.get(primePoolID) || []
 
         let mapping = new Map()
 
@@ -487,7 +487,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let majority = GET_MAJORITY(qtCheckpoint)
 
-        let allKnownPeers = [...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+        let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
         // Get the special object from DB not to repeat requests
 
@@ -824,7 +824,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.CHECKPOINT,'QT',nextEpochHash)
+                await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.CHECKPOINT,nextEpochHash)
 
 
                 await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(()=>false)
@@ -1164,7 +1164,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition),agent:global.FETCH_HTTP_AGENT}
         
-        let quorumMembers = await GET_POOLS_URLS(true)
+        let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
 
         //Descriptor is {url,pubKey}
@@ -1361,7 +1361,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments),agent:global.FETCH_HTTP_AGENT},
 
-        quorumMembers = await GET_POOLS_URLS(true),
+        quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true),
 
         majority = GET_MAJORITY(checkpoint),
 
@@ -1509,7 +1509,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
         
         majority = GET_MAJORITY(checkpoint),
 
-        quorumMembers = await GET_POOLS_URLS(true),
+        quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true),
 
         promises = [],
 
@@ -1743,7 +1743,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
+    let poolsURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
 
 
@@ -2156,7 +2156,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // If you're not in quorum or checkpoint is outdated - don't start health monitoring
-    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || synchronizer.has('TIME_TO_NEW_EPOCH') || !CHECK_IF_CHECKPOINT_STILL_FRESH(checkpoint)){
+    if(!checkpoint.quorum.includes(global.CONFIG.SYMBIOTE.PUB) || synchronizer.has('TIME_TO_NEW_EPOCH') || !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
 
@@ -2167,7 +2167,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let poolsURLsAndPubKeys = await GET_POOLS_URLS(true)
+    let poolsURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
+
+    let allThePools = checkpoint.poolsRegistry.reservePools.concat(checkpoint.poolsRegistry.primePools)
 
     let proofsPromises = []
 
@@ -2181,10 +2183,9 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
 
     
-    for(let handler of poolsURLsAndPubKeys){
+    for(let poolPubKey of allThePools){
         
-        let metadataOfCurrentPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(handler.pubKey+'(POOL)_STORAGE_POOL')
-        
+
         /*
         
         We should monitor the health only for:
@@ -2194,16 +2195,18 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         */
 
-        let poolIsInReassignment = metadataOfCurrentPool.isReserve && typeof reassignments.get(handler.pubKey) === 'string'
 
-        let isItPrimePool = !metadataOfCurrentPool.isReserve
+        let itsReservePool = checkpoint.poolsRegistry.reservePools.includes(poolPubKey)
+
+        let poolIsInReassignment = itsReservePool && typeof reassignments.get(poolPubKey) === 'string'
 
 
-        if(!tempObject.SKIP_HANDLERS.has(handler.pubKey) && (isItPrimePool || poolIsInReassignment)){
+        if(!tempObject.SKIP_HANDLERS.has(poolPubKey) && (!itsReservePool || poolIsInReassignment)){
 
-            let createRequest = synchronizer.get('CREATE_SKIP_HANDLER:'+handler.pubKey)
+            let createRequest = synchronizer.get('CREATE_SKIP_HANDLER:'+poolPubKey)
 
-            if(createRequest && synchronizer.get('NO_FP_NOW:'+handler.pubKey)){
+
+            if(createRequest && synchronizer.get('NO_FP_NOW:'+poolPubKey)){
 
                 // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
 
@@ -2211,34 +2214,55 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     wasReassigned:false, // will be true after we get the 2/3N+1 approvement of having <aggregatedSkipProof> from other quorum members
 
-                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(handler.pubKey))), // {index,hash,aggregatedCommitments}
+                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,aggregatedCommitments}
 
                     aggregatedSkipProof:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
 
                 }
 
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+handler.pubKey,futureSkipHandler).then(()=>{
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).then(()=>{
 
-                    tempObject.SKIP_HANDLERS.set(handler.pubKey,futureSkipHandler)
+                    tempObject.SKIP_HANDLERS.set(poolPubKey,futureSkipHandler)
 
                     // Delete the request
-                    synchronizer.delete('CREATE_SKIP_HANDLER:'+handler.pubKey)
+                    synchronizer.delete('CREATE_SKIP_HANDLER:'+poolPubKey)
 
                     // Clear the NO_FP_NOW protection
-                    synchronizer.delete('NO_FP_NOW:'+handler.pubKey)
+                    synchronizer.delete('NO_FP_NOW:'+poolPubKey)
 
 
                 }).catch(()=>false)
 
             }else if(!createRequest){
 
-                let responsePromise = fetch(handler.url+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
+                // Received {lastSeen,index,hash,aggregatedFinalizationProof}
+                let localHealthHandler = tempObject.HEALTH_MONITORING.get(poolPubKey)
 
-                    response.pubKey = handler.pubKey
+                if(!localHealthHandler){
+
+                    localHealthHandler = {
+
+                        lastSeen:GET_GMT_TIMESTAMP(),
+
+                        index:-1,
+
+                        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+                    }
+
+                    tempObject.HEALTH_MONITORING.set(poolPubKey,localHealthHandler)            
+
+                }
+
+                let metadataOfCurrentPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+'(POOL)_STORAGE_POOL')
+
+                let responsePromise = fetch(metadataOfCurrentPool.poolURL+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
+
+                    response.pubKey = poolPubKey
         
                     return response
         
-                }).catch(()=>{candidatesForAnotherCheck.push(handler.pubKey)})
+                }).catch(()=>{candidatesForAnotherCheck.push(poolPubKey)})
         
                 proofsPromises.push(responsePromise)    
 
@@ -2250,7 +2274,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     //Run promises
     let healthCheckPingbacks = (await Promise.all(proofsPromises)).filter(Boolean)
-
 
     /*
     
@@ -2277,7 +2300,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     */
 
 
-
     for(let answer of healthCheckPingbacks){
 
 
@@ -2297,20 +2319,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
         // Received {lastSeen,index,hash,aggregatedFinalizationProof}
         let localHealthHandler = tempObject.HEALTH_MONITORING.get(pubKey)
-
-        if(!localHealthHandler){
-
-            localHealthHandler = {
-
-                index:-1,
-
-                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-            }
-
-            tempObject.HEALTH_MONITORING.set(pubKey,localHealthHandler)            
-
-        }
 
 
         //__________________________________Verify the AFP proof_________________________________________________
@@ -2542,7 +2550,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     // global.SYMBIOTE_META.GENERATION_THREAD
 
-    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
     let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
 
@@ -3205,9 +3213,10 @@ LOAD_GENESIS=async()=>{
 
 
     //Finally, build the reassignment chains for current checkpoint in QT and VT
-    await SET_REASSIGNMENT_CHAINS(vtCheckpoint,'VT',nullHash)
 
-    await SET_REASSIGNMENT_CHAINS(qtCheckpoint,'QT',nullHash)
+    await SET_REASSIGNMENT_CHAINS(qtCheckpoint,nullHash)
+
+    vtCheckpoint.reassignmentChains = JSON.parse(JSON.stringify(qtCheckpoint.reassignmentChains))
 
 },
 
@@ -3600,7 +3609,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     //________________________________ Start to find ________________________________
 
-    let quorumMembers = await GET_POOLS_URLS(true)
+    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
     
     //___________________Ask quorum members about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
@@ -3856,7 +3865,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    START_VERIFICATION_THREAD()
+    // START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()

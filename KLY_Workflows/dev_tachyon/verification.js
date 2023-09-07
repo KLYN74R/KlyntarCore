@@ -1,6 +1,6 @@
 import {
     
-    GET_POOLS_URLS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
 
     GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE
 
@@ -43,6 +43,8 @@ export let
 GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     let blockID = epochIndex+':'+blockCreator+':'+index
+
+    console.log('DEBUG: Called GET_BLOCK')
     
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>
 
@@ -66,7 +68,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
 
             //Combine all nodes we know about and try to find block there
-            let allVisibleNodes = await GET_POOLS_URLS()
+            let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
 
     
             for(let url of allVisibleNodes){
@@ -213,9 +215,11 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     //Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
-    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
     for(let memberURL of quorumMembersURLs){
+
+        console.log('DEBUG: Called GET_AFP')
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
 
@@ -825,6 +829,10 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             // Delete metadata
             atomicBatch.del(poolMetadataHashID)
 
+            // Delete pointer
+            atomicBatch.del(poolIdentifier+'(POOL)_POINTER')
+
+
             // Remove from pools tracking
             delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolIdentifier]
 
@@ -972,7 +980,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
         // Create the reassignment chains for each prime pool based on new data
-        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'VT','')
+        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'')
 
 
         // Update the array of prime pools
@@ -1127,7 +1135,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
         let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+nextEpochFullID)
 
-        let allKnownPeers = [...await GET_POOLS_URLS(),...GET_ALL_KNOWN_PEERS()]
+        let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
@@ -1161,7 +1169,10 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
                     for(let peerURL of allKnownPeers){
             
                         let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
-            
+                
+                        console.log('DEBUG: Called GET_AFP 2')
+
+
                         if(itsProbablyAggregatedFinalizationProof){
             
                             let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPubKey)
@@ -1381,7 +1392,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
         // Get the stats from reassignments
 
-        let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID][currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+        let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
 
