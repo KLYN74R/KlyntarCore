@@ -86,7 +86,7 @@ export default {
     
     */
 
-        let {txid,pool,type,amount,storageOrigin,isReserve,reserveFor}=payload
+        let {txid,pool,type,amount,storageOrigin,isReserve,reserveFor,poolURL,wssPoolURL}=payload
 
         if(txid==='QT') return
 
@@ -115,7 +115,9 @@ export default {
                             txid,pool,type,amount,storageOrigin,
 
                             isReserve:poolStorage.isReserve,
-                            reserveFor:poolStorage.reserveFor
+                            reserveFor:poolStorage.reserveFor,
+                            poolURL:poolStorage.poolURL,
+                            wssPoolURL:poolStorage.wssPoolURL
                         
                         }
                     
@@ -149,6 +151,8 @@ export default {
                     lackOfTotalPower:<boolean>
                     stopCheckpointID:<number>
                     isReserve:<boolean>
+                    poolURL:<string>
+                    wssPoolURL:<string>
                 }
             
             */
@@ -159,7 +163,9 @@ export default {
 
                     totalPower:0,       
                     lackOfTotalPower:true,
-                    stopCheckpointID:-1
+                    stopCheckpointID:-1,
+                    poolURL,
+                    wssPoolURL
                 
                 }
 

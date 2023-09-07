@@ -6,7 +6,7 @@ import {
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD, GET_FROM_STATE
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD
 
 } from './utils.js'
 
@@ -2945,7 +2945,9 @@ LOAD_GENESIS=async()=>{
             totalPower:poolContractStorage.totalPower,
             lackOfTotalPower:false,
             stopCheckpointID:-1,
-            isReserve
+            isReserve,
+            poolURL:poolContractStorage.poolURL,
+            wssPoolURL:poolContractStorage.wssPoolURL
         
         }
 

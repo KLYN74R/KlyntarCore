@@ -465,43 +465,21 @@ GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYM
 
 GET_QUORUM_URLS_AND_PUBKEYS = async withPubkey => {
 
-    let promises=[]
-
+    let toReturn = []
 
     for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum){
 
-        let promise = global.SYMBIOTE_META.STUFF_CACHE.get(pubKey).then(
+        let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_STATE_FOR_QUORUM_THREAD(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+        if(poolStorage){
+
+            toReturn.push(withPubkey ? {url:poolStorage.poolURL,pubKey} : poolStorage.poolURL)
         
-            stuffData => withPubkey ? {url:stuffData.payload.url,pubKey}: stuffData.payload.url
-        
-        ).catch(async()=>{
-
-            let originSubchain = await global.SYMBIOTE_META.STATE.get(pubKey+'(POOL)_POINTER').catch(()=>false)
-
-            if(originSubchain){
-
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+pubKey+'(POOL)_STORAGE_POOL').catch(()=>false)
-
-                if(poolStorage){
-
-                    // Set to cache first
-                    global.SYMBIOTE_META.STUFF_CACHE.set(pubKey,{payload:{url:poolStorage.poolURL}})
-
-                    return withPubkey ? {url:poolStorage.poolURL,pubKey} : poolStorage.poolURL
-
-                }
-
-            }
-
-        })
-
-        promises.push(promise)
+        }
 
     }
 
-    let poolsURLs = await Promise.all(promises.splice(0)).then(array=>array.filter(Boolean))
-
-    return poolsURLs
+    return toReturn
 
 },
 
