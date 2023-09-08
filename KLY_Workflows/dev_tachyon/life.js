@@ -1452,6 +1452,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 
         }
 
+
+        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
+
         // Store to cache
         global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('HEALTH',{
 
@@ -1476,7 +1479,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
 
 
         // Repeat procedure for the next block and store the progress
-        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
 
         await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
 
@@ -1619,7 +1621,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(()=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(error=>console.log('Error is ',error))
 
     }
 
@@ -2637,7 +2639,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // If we can't find a proof - try to do it later
         // Only in case it's initial epoch(index is -1) - no sense to push it
-        if(!extraData.previousAggregatedEpochFinalizationProof && global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !==-1) return
+        if(!extraData.previousAggregatedEpochFinalizationProof && global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !== 0) return
             
 
         // Update the index & hash of epoch
@@ -2735,9 +2737,11 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 1){
 
+
         let myFirstBlockInEpoch = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':0'
 
         let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+myFirstBlockInEpoch).catch(()=>false)
+
 
         if(aggregatedFinalizationProofForFirstBlock) extraData.aggregatedFinalizationProofForFirstBlock = aggregatedFinalizationProofForFirstBlock
 
@@ -2822,6 +2826,8 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
     let overviewIsOK =
         
+        typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
+        &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
@@ -3162,7 +3168,7 @@ LOAD_GENESIS=async()=>{
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
 
-        id:-1,
+        id:0,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
@@ -3180,7 +3186,7 @@ LOAD_GENESIS=async()=>{
     //Make template, but anyway - we'll find checkpoints on hostchains
     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
 
-        id:-1,
+        id:0,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
@@ -3197,9 +3203,9 @@ LOAD_GENESIS=async()=>{
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
     // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
-    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON = -1
+    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON = 0
     
-    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON = -1
+    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON = 0
 
 
     let nullHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
@@ -3342,7 +3348,7 @@ PREPARE_SYMBIOTE=async()=>{
             
             checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde#-1',
 
-            checkpointIndex:-1,
+            checkpointIndex:0,
             
             prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
             

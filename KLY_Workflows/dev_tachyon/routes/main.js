@@ -92,8 +92,8 @@ acceptBlocksAndReturnCommitment = response => {
         return
 
     }
-
     
+
     response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async(chunk,last)=>{
 
         if(total+chunk.byteLength <= global.CONFIG.MAX_PAYLOAD_SIZE){
@@ -230,12 +230,13 @@ acceptBlocksAndReturnCommitment = response => {
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 
+                        *Remember that in case current epoch is -1
 
                     */
 
                     //_________________________________________1_________________________________________
 
-                    allChecksPassed &&= block.index!==0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                    allChecksPassed &&= block.index!==0 || checkpoint.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
                         
                         block.extraData.previousAggregatedEpochFinalizationProof,
                         
@@ -247,7 +248,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                         checkpointFullID
                         
-                    )
+                    ).catch(()=>false)
 
                     //_________________________________________2_________________________________________
 
@@ -489,7 +490,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
             let majority = GET_MAJORITY(checkpoint)
         
-            let reverseThreshold = checkpoint.length - majority
+            let reverseThreshold = checkpoint.quorum.length - majority
 
             let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(
                 
@@ -516,23 +517,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
 
                     index=+index
                 
-                    let fpSignature = await BLS_SIGN_DATA(blockID+blockHash+'FINALIZATION'+checkpointFullID)
-
-                    // If it's commitments for the first block in epoch - store it locally
-                    if(index === 0){
-
-                        let storeStatusIsOk = await USE_TEMPORARY_DB('put',tempObject.DATABASE,'AC_FOR_FIRST_BLOCK:'+poolPubKey,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).then(()=>true).catch(()=>false)
-
-                        if(!storeStatusIsOk){
-
-                            !response.aborted && response.end(JSON.stringify({err:`Can't store the AC for first block in epoch`}))
-
-                            return
-
-                        }
-
-                    }
-                    
+                    let fpSignature = await BLS_SIGN_DATA(blockID+blockHash+'FINALIZATION'+checkpointFullID)                    
 
                     // Now, try to update the checkpoint manager
 

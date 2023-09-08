@@ -44,8 +44,6 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     let blockID = epochIndex+':'+blockCreator+':'+index
 
-    console.log('DEBUG: Called GET_BLOCK')
-    
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>
 
         fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+':'+index,{agent:global.FETCH_HTTP_AGENT})
@@ -218,8 +216,6 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
     let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
     for(let memberURL of quorumMembersURLs){
-
-        console.log('DEBUG: Called GET_AFP')
 
         let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
 
@@ -1169,9 +1165,6 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
                     for(let peerURL of allKnownPeers){
             
                         let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
-                
-                        console.log('DEBUG: Called GET_AFP 2')
-
 
                         if(itsProbablyAggregatedFinalizationProof){
             
