@@ -1725,7 +1725,7 @@ verifyBlock=async(block,subchainContext)=>{
     let blockHash = Block.genHash(block),
 
         overviewOk=
-    
+        
             block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash === block.prevHash // it should be a chain

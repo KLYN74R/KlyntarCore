@@ -1333,10 +1333,10 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID) => {
+RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
+    block ||= await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
 
     let blockHash = Block.genHash(block)
 
@@ -1621,7 +1621,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set(blockID,aggregatedCommitments)
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID).catch(error=>console.log('Error is ',error))
+        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID,block).catch(()=>{})
 
     }
 
@@ -2659,7 +2659,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // And nullish the index & hash in generation thread for new epoch
 
-        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde'
+        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
  
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex = 0
     
@@ -3346,7 +3346,7 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             
-            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde#-1',
+            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
 
             checkpointIndex:0,
             
@@ -3877,7 +3877,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    // START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()

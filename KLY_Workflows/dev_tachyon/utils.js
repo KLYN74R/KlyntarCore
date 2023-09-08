@@ -8,18 +8,20 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
-import fs from 'fs'
-
 import http from 'http'
 
-global.FETCH_HTTP_AGENT = null
+import fs from 'fs'
 
-// global.FETCH_HTTP_AGENT = new http.Agent({
 
-//     keepAlive: true,
-//     maxSockets: 100
 
-// })
+// global.FETCH_HTTP_AGENT = null
+
+global.FETCH_HTTP_AGENT = new http.Agent({
+
+    keepAlive: true,
+    maxSockets: 5
+
+})
 
 
 
