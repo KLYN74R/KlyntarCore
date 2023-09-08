@@ -2603,8 +2603,10 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     }
 
+
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID)) return
+
 
 
     let checkpointIndex = checkpoint.id
@@ -2632,10 +2634,10 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         extraData.previousAggregatedEpochFinalizationProof = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
 
-        // If we can't find a proof - try to do it later
-        
-        if(!extraData.previousAggregatedEpochFinalizationProof) return
 
+        // If we can't find a proof - try to do it later
+        // Only in case it's initial epoch(index is -1) - no sense to push it
+        if(!extraData.previousAggregatedEpochFinalizationProof && global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !==-1) return
             
 
         // Update the index & hash of epoch
@@ -2790,7 +2792,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         blockCandidate.sig = await BLS_SIGN_DATA(hash)
             
-        BLOCKLOG(`New block generated`,hash,blockCandidate)
+        BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex)
 
 
         global.SYMBIOTE_META.GENERATION_THREAD.prevHash = hash
@@ -3339,6 +3341,8 @@ PREPARE_SYMBIOTE=async()=>{
         {
             
             checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcde#-1',
+
+            checkpointIndex:-1,
             
             prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
             

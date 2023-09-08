@@ -119,19 +119,17 @@ acceptBlocksAndReturnCommitment = response => {
 
                 let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
 
-                let poolIsReal = poolsRegistryOnQuorumThread.primePools.includes(block.creator) || poolsRegistryOnQuorumThread.reservePools.includes(block.creator)
+                let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(block.creator)
 
-                let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow, itsPrimePool
+                let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(block.creator)
+
+                let poolIsReal = itsPrimePool || itsReservePool
+
+                let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow
 
                 if(poolIsReal){
 
-                    if(!poolsRegistryOnQuorumThread[block.creator].isReserve){
-
-                        primePoolPubKey = block.creator
-
-                        itsPrimePool = true
-
-                    }
+                    if(itsPrimePool) primePoolPubKey = block.creator
 
                     else if(typeof tempObject.REASSIGNMENTS.get(block.creator) === 'string'){
 

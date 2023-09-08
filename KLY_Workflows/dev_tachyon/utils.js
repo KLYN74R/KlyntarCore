@@ -1,4 +1,4 @@
-import {LOG,COLORS,BLAKE3, GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -12,13 +12,14 @@ import fs from 'fs'
 
 import http from 'http'
 
+global.FETCH_HTTP_AGENT = null
 
-global.FETCH_HTTP_AGENT = new http.Agent({
+// global.FETCH_HTTP_AGENT = new http.Agent({
 
-    keepAlive: true,
-    maxSockets: 100
+//     keepAlive: true,
+//     maxSockets: 100
 
-})
+// })
 
 
 
@@ -297,7 +298,7 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
 
 //Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,hash,block)=>{
+BLOCKLOG=(msg,hash,block,checkpointIndex)=>{
 
     if(global.CONFIG.DAEMON_LOGS){
 
@@ -307,7 +308,7 @@ BLOCKLOG=(msg,hash,block)=>{
 
         console.log('\n')
         
-        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,block.creator+':'+block.index,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,checkpointIndex+':'+block.creator+':'+block.index,COLORS.C)
 
         console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.C)
 
