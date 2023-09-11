@@ -8,20 +8,11 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
+import https from 'https'
+
 import http from 'http'
 
 import fs from 'fs'
-
-
-
-// global.FETCH_HTTP_AGENT = null
-
-global.FETCH_HTTP_AGENT = new http.Agent({
-
-    keepAlive: true,
-    maxSockets: 5
-
-})
 
 
 
@@ -328,10 +319,10 @@ BLOCKLOG=(msg,hash,block,checkpointIndex)=>{
 BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 
 
-
 BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
+GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}) : new http.Agent({keepAlive:true}),
 
 
 /**
@@ -376,9 +367,9 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
 
     let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS()
 
-    quorumMembers.forEach(url=>
+    quorumMembers.forEach(host=>
     
-        fetch(url+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).catch(()=>{})
+        fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)}).catch(()=>{})
         
     )
 
@@ -397,7 +388,7 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
                     
                     body:JSON.stringify({data,sig}),
 
-                    agent:global.FETCH_HTTP_AGENT
+                    agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.MUST_SEND[addr])
                 
                 }).catch(()=>
                     
@@ -412,13 +403,13 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     )
 
     
-    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(addr=>
+    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(host=>
     
-        fetch(addr+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT})
+        fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)})
         
         .catch(()=>
             
-            LOG(`\x1b[36;1m${addr}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
+            LOG(`\x1b[36;1m${host}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
             
         )
 
@@ -434,17 +425,17 @@ BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validato
     */
 
 
-    global.SYMBIOTE_META.PEERS.forEach((addr,index)=>
+    global.SYMBIOTE_META.PEERS.forEach((host,index)=>
         
         promises.push(
             
-            fetch(addr+route,{method:'POST',body:JSON.stringify(data),agent:global.FETCH_HTTP_AGENT}).then(v=>v.text()).then(value=>
+            fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)}).then(v=>v.text()).then(value=>
                 
                 value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
                     
             ).catch(()=>{
                 
-                LOG(`Node \x1b[36;1m${addr}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it`,'W')
+                LOG(`Node \x1b[36;1m${host}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it`,'W')
 
                 global.SYMBIOTE_META.PEERS.splice(index,1)
 

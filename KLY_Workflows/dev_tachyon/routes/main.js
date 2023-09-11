@@ -104,7 +104,15 @@ acceptBlocksAndReturnCommitment = response => {
         
             if(last){
             
-                let block = await PARSE_JSON(buffer)
+                let {block,previousBlockAggregatedCommitments} = await PARSE_JSON(buffer)
+
+                if(typeof block !== 'object' || typeof previousBlockAggregatedCommitments !== 'object'){
+
+                    !response.aborted && response.end(JSON.stringify({err:'You must provide block and aggregated commitments for previous block'}))
+        
+                    return
+
+                }
 
                 let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+block.creator)
             
@@ -116,6 +124,7 @@ acceptBlocksAndReturnCommitment = response => {
                     return
 
                 }
+
 
                 let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
 
@@ -158,8 +167,9 @@ acceptBlocksAndReturnCommitment = response => {
                 let blockID = checkpoint.id+':'+block.creator+':'+block.index
 
                 let myCommitment = await USE_TEMPORARY_DB('get',tempObject.DATABASE,blockID).catch(()=>false)
-
                 
+
+
                 if(myCommitment){
 
                     !response.aborted && response.end(JSON.stringify({commitment:myCommitment}))
@@ -179,6 +189,8 @@ acceptBlocksAndReturnCommitment = response => {
                         return prevHash === block.prevHash
     
                     }).catch(()=>false)
+
+                    console.log('DEBUG:Check if chain is ',checkIfItsChain,' for ',block)
 
                     // Verify block signature
                     let allChecksPassed = checkIfItsChain && await BLS_VERIFY(hash,block.sig,block.creator).catch(()=>false)                    

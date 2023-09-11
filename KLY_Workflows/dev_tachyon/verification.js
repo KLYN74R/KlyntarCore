@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE
+    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE, GET_HTTP_AGENT
 
 } from './utils.js'
 
@@ -26,7 +26,6 @@ import Web3 from 'web3'
 
 
 
-
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
@@ -46,7 +45,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>
 
-        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+':'+index,{agent:global.FETCH_HTTP_AGENT})
+        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockCreator+':'+index,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)})
     
         .then(r=>r.json()).then(block=>{
                 
@@ -69,11 +68,11 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
             let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
 
     
-            for(let url of allVisibleNodes){
+            for(let host of allVisibleNodes){
 
-                if(url===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+                if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock = await fetch(url+`/block/`+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>false)
                 
                 if(itsProbablyBlock){
 
@@ -217,13 +216,20 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     for(let memberURL of quorumMembersURLs){
 
-        let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+        let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+blockID,{agent:GET_HTTP_AGENT(memberURL)}).then(r=>r.json()).catch(()=>false)
 
         if(itsProbablyAggregatedFinalizationProof){
 
             let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPub)
 
-            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === blockID && itsProbablyAggregatedFinalizationProof.blockHash === blockHash) return isOK 
+            if(isOK){
+
+                if(itsProbablyAggregatedFinalizationProof.blockID === blockID && itsProbablyAggregatedFinalizationProof.blockHash === blockHash) return {verify:true}
+
+                else if(itsProbablyAggregatedFinalizationProof.blockHash !== blockHash) return {verify:false,shouldDelete:true}
+
+
+            }
 
         }
 
@@ -1162,9 +1168,9 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                     // Descriptor is {url,pubKey}
 
-                    for(let peerURL of allKnownPeers){
+                    for(let peerHostname of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:GET_HTTP_AGENT(peerHostname)}).then(r=>r.json()).catch(()=>false)
 
                         if(itsProbablyAggregatedFinalizationProof){
             
@@ -1464,7 +1470,6 @@ START_VERIFICATION_THREAD=async()=>{
                     // Ask the N+1 block
     
                     let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
-    
 
                     if(block){
 
@@ -1475,7 +1480,6 @@ START_VERIFICATION_THREAD=async()=>{
                         // Get the AFP for this block
     
                         let {verify,shouldDelete} = await GET_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash).catch(()=>({verify:false}))
-    
     
                         if(shouldDelete){
             

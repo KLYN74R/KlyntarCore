@@ -6,7 +6,7 @@ import {
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD
+    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD, GET_HTTP_AGENT
 
 } from './utils.js'
 
@@ -37,8 +37,6 @@ import Web3 from 'web3'
 import ora from 'ora'
 
 import fs from 'fs'
-
-
 
 
 
@@ -560,7 +558,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
@@ -616,7 +614,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
             
                         if(itsProbablyAggregatedFinalizationProof){
             
@@ -1162,7 +1160,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         //____________________________________ Send the checkpoint proposition ____________________________________
 
 
-        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition),agent:global.FETCH_HTTP_AGENT}
+        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition)}
         
         let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
@@ -1171,6 +1169,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         for(let descriptor of quorumMembers){
 
             // No sense to get the commitment if we already have
+
+            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
             
             await fetch(descriptor.url+'/checkpoint_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 
@@ -1359,7 +1359,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
     let aggregatedCommitments = COMMITMENTS.get(blockID) //voterValidatorPubKey => his commitment 
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments),agent:global.FETCH_HTTP_AGENT},
+    let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
 
         quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true),
 
@@ -1376,6 +1376,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
             // No sense to get the commitment if we already have
             if(finalizationProofsMapping.has(descriptor.pubKey)) continue
     
+            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.json()).then(async possibleFinalizationProof=>{
                 
@@ -1395,8 +1396,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
         await Promise.all(promises)
 
     }
-
-
 
 
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate AGGREGATED_FINALIZATION_PROOF _______________________
@@ -1505,7 +1504,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
     let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(block),agent:global.FETCH_HTTP_AGENT},
+    let optionsToSend = {method:'POST',body:JSON.stringify(block)},
 
         commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
         
@@ -1529,8 +1528,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
     }else commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
 
-
-
+    
     if(commitmentsForCurrentBlock.size<majority){
 
         //Descriptor is {url,pubKey}
@@ -1551,7 +1549,8 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
     
             */
 
-    
+            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
+            
             let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
 
                 let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(()=>false)
@@ -1793,13 +1792,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
 
-                }),
-
-                agent:global.FETCH_HTTP_AGENT
+                })
 
             }
 
             for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+
+                sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
                 let responsePromise = fetch(poolUrlWithPubkey.url+'/get_skip_proof',sendOptions).then(r=>r.json()).then(response=>{
     
@@ -1988,9 +1987,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     
                     session
                     
-                }),
-
-                agent:global.FETCH_HTTP_AGENT
+                })
 
             }
 
@@ -1998,6 +1995,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
             for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+
+                dataToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
                 let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
     
@@ -2258,7 +2257,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 let metadataOfCurrentPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+'(POOL)_STORAGE_POOL')
 
-                let responsePromise = fetch(metadataOfCurrentPool.poolURL+'/health',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).then(response=>{
+                let responsePromise = fetch(metadataOfCurrentPool.poolURL+'/health',{agent:GET_HTTP_AGENT(metadataOfCurrentPool.poolURL)}).then(r=>r.json()).then(response=>{
 
                     response.pubKey = poolPubKey
         
@@ -2368,7 +2367,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
             for(let validatorHandler of poolsURLsAndPubKeys){
 
-                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+                let answer = await fetch(validatorHandler.url+'/get_health_of_another_pool/'+candidate,{agent:GET_HTTP_AGENT(validatorHandler.url)}).then(r=>r.json()).catch(()=>false)
 
                 if(typeof answer === 'object'){
 
@@ -2561,7 +2560,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
         let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
 
-        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
 
         let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
             
@@ -3631,7 +3630,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
 
-        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:global.FETCH_HTTP_AGENT}).then(r=>r.json()).catch(()=>false)
+        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>false)
 
         if(responseForTempReassignment){
 
