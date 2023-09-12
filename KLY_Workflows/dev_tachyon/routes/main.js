@@ -32,20 +32,38 @@ let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.C
   
 [Accept]:
 
-    Blocks
-  
     {
-        creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
-        time:1666744452126,
-        transactions:[
-            tx1,
-            tx2,
-            tx3,
-        ]
-        index:1337,
-        prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
-        sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+        block:{
+
+            creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            time:1666744452126,
+            transactions:[
+                tx1,
+                tx2,
+                tx3,
+            ]
+            index:1337,
+            prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+            sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+        
+        },
+
+        previousBlockAfp:{
+        
+            blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+
+            blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+        
+            aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+
+            aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+
+            afkVoters:[...]
+
+        }
+
     }
+  
 
 
 [Response]:
@@ -104,9 +122,9 @@ acceptBlocksAndReturnCommitment = response => {
         
             if(last){
             
-                let {block,previousBlockAggregatedCommitments} = await PARSE_JSON(buffer)
+                let {block,previousBlockAfp} = await PARSE_JSON(buffer)
 
-                if(typeof block !== 'object' || typeof previousBlockAggregatedCommitments !== 'object'){
+                if(typeof block !== 'object' || typeof previousBlockAfp !== 'object'){
 
                     !response.aborted && response.end(JSON.stringify({err:'You must provide block and aggregated commitments for previous block'}))
         
@@ -182,15 +200,28 @@ acceptBlocksAndReturnCommitment = response => {
                 if(typeof block.index==='number' && typeof block.prevHash==='string' && typeof block.sig==='string' && typeof block.extraData === 'object' && Array.isArray(block.transactions)){
 
                     // Make sure that it's a chain
-                    let checkIfItsChain = block.index===0 || await global.SYMBIOTE_META.BLOCKS.get(checkpoint.id+':'+block.creator+':'+(block.index-1)).then(prevBlock=>{
-    
-                        let prevHash = Block.genHash(prevBlock)
-    
-                        return prevHash === block.prevHash
-    
-                    }).catch(()=>false)
+                    
+                    let checkIfItsChain = block.index===0 // if it's first block in epoch - no sense to check
 
-                    console.log('DEBUG:Check if chain is ',checkIfItsChain,' for ',block)
+
+                    if(!checkIfItsChain){
+
+                        // Otherwise check the previous block hash
+
+                        let prevBlock = await global.SYMBIOTE_META.BLOCKS.get(checkpoint.id+':'+block.creator+':'+(block.index-1)).catch(()=>false)
+
+                        if(!prevBlock){
+
+                            // If we don't have block locally - verify the AFP for previous block to make sure that we're going to vote for a valid subchain segment
+
+                            checkIfItsChain = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAfp,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID))
+
+
+                        }else checkIfItsChain = Block.genHash(prevBlock) === block.prevHash
+
+                    }
+
+
 
                     // Verify block signature
                     let allChecksPassed = checkIfItsChain && await BLS_VERIFY(hash,block.sig,block.creator).catch(()=>false)                    
