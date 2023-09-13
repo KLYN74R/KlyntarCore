@@ -1490,7 +1490,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
 
-RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
+RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex) => {
 
 
     let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
@@ -1503,8 +1503,13 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
     let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
+    // Try to get the AFP for previous block to send the proof of segment validity for quorum members that were absent for a while and don't have a valid copy of your blocks
 
-    let optionsToSend = {method:'POST',body:JSON.stringify(block)},
+    let previousBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + previousBlockIndex
+
+    let previousBlockAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
+
+    let optionsToSend = {method:'POST',body:JSON.stringify({block,previousBlockAfp})},
 
         commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
         
@@ -1528,7 +1533,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
     }else commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
 
-    
+
     if(commitmentsForCurrentBlock.size<majority){
 
         //Descriptor is {url,pubKey}
@@ -1629,7 +1634,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID) => {
 
 
 
-SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
+SHARE_BLOCKS_AND_GET_PROOFS = async () => {
 
     let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
     
@@ -1638,7 +1643,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
     // If we don't generate the blocks - skip this function
     if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+checkpointFullID)){
 
-        setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
+        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
 
         return
 
@@ -1646,7 +1651,7 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
 
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
 
-        setTimeout(SEND_BLOCKS_AND_GRAB_COMMITMENTS,3000)
+        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
 
         return
 
@@ -1696,11 +1701,11 @@ SEND_BLOCKS_AND_GRAB_COMMITMENTS = async () => {
         // This option means that we already started to share block and going to find 2/3N+1 commitments
         // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
 
-        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
+        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID,appropriateDescriptor.height-1).catch(()=>{})
 
     }
 
-    setImmediate(SEND_BLOCKS_AND_GRAB_COMMITMENTS)
+    setImmediate(SHARE_BLOCKS_AND_GET_PROOFS)
 
 },
 
@@ -3882,7 +3887,7 @@ RUN_SYMBIOTE=async()=>{
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
     //2.Share our blocks within quorum members and get the commitments / finalization proofs 
-    SEND_BLOCKS_AND_GRAB_COMMITMENTS()
+    SHARE_BLOCKS_AND_GET_PROOFS()
 
     //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
     CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
