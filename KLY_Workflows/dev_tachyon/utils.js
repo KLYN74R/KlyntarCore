@@ -71,7 +71,7 @@ GET_FROM_STATE = async recordID => {
 
 
 
-GET_FROM_STATE_FOR_QUORUM_THREAD = async recordID => {
+GET_FROM_QUORUM_THREAD_STATE = async recordID => {
 
     return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
     
@@ -463,7 +463,7 @@ GET_QUORUM_URLS_AND_PUBKEYS = async withPubkey => {
 
     for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum){
 
-        let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_STATE_FOR_QUORUM_THREAD(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 

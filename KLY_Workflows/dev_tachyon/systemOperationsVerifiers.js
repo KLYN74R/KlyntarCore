@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_STATE_FOR_QUORUM_THREAD} from './utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_QUORUM_THREAD_STATE} from './utils.js'
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
@@ -134,13 +134,13 @@ export default {
 
             // Basic ops on QUORUM_THREAD
 
-            let slashHelper = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+            let slashHelper = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
 
             if(slashHelper[pool]) return
 
 
 
-            let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(pool+'(POOL)_STORAGE_POOL')
 
             /* 
             
@@ -422,7 +422,7 @@ export default {
 
             if(poolStorage){
 
-                let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+                let slashObject = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
 
                 slashObject[payload.pool] = {isReserve:poolStorage.isReserve}
     
@@ -515,7 +515,7 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let slashHelper = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+            let slashHelper = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
             if(!slashHelper[pool]) global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
@@ -686,7 +686,7 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let updatedOptions = await GET_FROM_STATE_FOR_QUORUM_THREAD('WORKFLOW_OPTIONS')
+            let updatedOptions = await GET_FROM_QUORUM_THREAD_STATE('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 

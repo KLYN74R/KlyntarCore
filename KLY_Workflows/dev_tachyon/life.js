@@ -6,7 +6,7 @@ import {
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    GET_QUORUM,GET_FROM_STATE_FOR_QUORUM_THREAD,IS_MY_VERSION_OLD, GET_HTTP_AGENT
+    GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD, GET_HTTP_AGENT
 
 } from './utils.js'
 
@@ -112,7 +112,7 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
 
         // Otherwise - it's reserve pool
         
-        let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+        let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
     
         if(poolStorage){
 
@@ -227,7 +227,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuoru
 
     //Try to get storage "POOL" of appropriate pool
 
-    let poolStorage = await GET_FROM_STATE_FOR_QUORUM_THREAD(validatorPubKey+'(POOL)_STORAGE_POOL')
+    let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
 
 
     poolStorage.lackOfTotalPower = true
@@ -298,7 +298,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,syste
 
     for(let poolPubKey of allThePools){
 
-        let promise = GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+        let promise = GET_FROM_QUORUM_THREAD_STATE(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
             if(poolStorage.totalPower < fullCopyOfQuorumThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
 
@@ -327,7 +327,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,syste
     //________________________________Remove rogue pools_________________________________
 
     
-    let slashObject = await GET_FROM_STATE_FOR_QUORUM_THREAD('SLASH_OBJECT')
+    let slashObject = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
     
     let slashObjectKeys = Object.keys(slashObject)
         
@@ -1490,10 +1490,10 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
 
-RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex) => {
+RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex,block) => {
 
 
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
+    block ||= await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
 
     // Check for this block after a while
     if(!block) return
@@ -1546,11 +1546,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex) => {
 
             /*
             
-            0. Share the block via POST /block and get the commitment as the answer
+                0. Share the block via POST /block and get the commitment as the answer
        
-            1. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
+                1. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
     
-            2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /aggregated_finalization_proof to share the AGGREGATED_FINALIZATION_PROOFS over the symbiote
+                2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /aggregated_finalization_proof to share the AGGREGATED_FINALIZATION_PROOFS over the symbiote
     
             */
 
@@ -1957,6 +1957,21 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
         if(skipHandler.aggregatedSkipProof){
+
+            // Inform the next pool in reassignment chain that it's time to start to generate blocks. We need to send him AEFP for previous epoch and <aggregatedSkipProof> and A
+
+            let poolToInform = skipHandler.nextPoolInReassignmentChains
+
+            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(poolToInform+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+            if(poolStorage){
+
+                // Send request
+
+                fetch(poolStorage.poolURL+'/')
+
+            }
+
     
             /*
 
@@ -2216,7 +2231,11 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
 
+                let poolIndexInRc = itsReservePool ? reassignments.get(reassignments.get(poolPubKey)).currentAuthority : -1
+
                 let futureSkipHandler = {
+
+                    nextPoolInReassignmentChains:checkpoint.reassignmentChains[poolIndexInRc+1], // pubkey
 
                     wasReassigned:false, // will be true after we get the 2/3N+1 approvement of having <aggregatedSkipProof> from other quorum members
 
@@ -2244,11 +2263,13 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
                 // Received {lastSeen,index,hash,aggregatedFinalizationProof}
                 let localHealthHandler = tempObject.HEALTH_MONITORING.get(poolPubKey)
 
+                let currentTime = GET_GMT_TIMESTAMP()
+
                 if(!localHealthHandler){
 
                     localHealthHandler = {
 
-                        lastSeen:GET_GMT_TIMESTAMP(),
+                        lastSeen:currentTime,
 
                         index:-1,
 
@@ -2260,17 +2281,23 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                 }
 
-                let metadataOfCurrentPool = await GET_FROM_STATE_FOR_QUORUM_THREAD(poolPubKey+'(POOL)_STORAGE_POOL')
+                let afkLimit = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SUBCHAIN_AFK_LIMIT
 
-                let responsePromise = fetch(metadataOfCurrentPool.poolURL+'/health',{agent:GET_HTTP_AGENT(metadataOfCurrentPool.poolURL)}).then(r=>r.json()).then(response=>{
+                if(currentTime-localHealthHandler.lastSeen >= afkLimit){
 
-                    response.pubKey = poolPubKey
-        
-                    return response
-        
-                }).catch(()=>{candidatesForAnotherCheck.push(poolPubKey)})
-        
-                proofsPromises.push(responsePromise)    
+                    let metadataOfCurrentPool = await GET_FROM_QUORUM_THREAD_STATE(poolPubKey+'(POOL)_STORAGE_POOL')
+
+                    let responsePromise = fetch(metadataOfCurrentPool.poolURL+'/health',{agent:GET_HTTP_AGENT(metadataOfCurrentPool.poolURL)}).then(r=>r.json()).then(response=>{
+    
+                        response.pubKey = poolPubKey
+            
+                        return response
+            
+                    }).catch(()=>{candidatesForAnotherCheck.push(poolPubKey)})
+            
+                    proofsPromises.push(responsePromise)    
+
+                }
 
             }
 
