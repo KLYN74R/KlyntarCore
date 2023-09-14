@@ -1098,7 +1098,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 ____________________________________________After we get responses____________________________________________
 
-                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.previousAggregatedEpochFinalizationProof)
+                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
 
                 6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
 
@@ -1126,7 +1126,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 8) Prime pool and other reserve pools on each subchain can query network for this proofs to set to
                 
-                    block.extraData.previousAggregatedEpochFinalizationProof to know where to start VERIFICATION_THREAD in a new epoch                
+                    block.extraData.aefpForPreviousEpoch to know where to start VERIFICATION_THREAD in a new epoch                
                 
 
             */
@@ -1749,7 +1749,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
 
     // Get the appropriate pubkey & url to check and validate the answer
-    let poolsURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
+    let quorumMembersURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
 
 
@@ -1801,7 +1801,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             }
 
-            for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
 
                 sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
@@ -2014,7 +2014,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             let proofsPromises=[]
 
 
-            for(let poolUrlWithPubkey of poolsURLsAndPubKeys){
+            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
 
                 dataToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
@@ -2657,21 +2657,24 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(typeof myDataInReassignments === 'object') return
 
 
-    let extraData = {}
-
     // Check if <checkpointFullID> is the same in QT and in GT
     
     if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId !== qtCheckpointFullID){
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
-        extraData.previousAggregatedEpochFinalizationProof = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
+        if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !== 0){
+
+            let aefpForPreviousEpoch = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
+
+            // If we can't find a proof - try to do it later
+            // Only in case it's initial epoch(index is -1) - no sense to push it
+            if(!aefpForPreviousEpoch) return
+
+            global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
 
 
-        // If we can't find a proof - try to do it later
-        // Only in case it's initial epoch(index is -1) - no sense to push it
-        if(!extraData.previousAggregatedEpochFinalizationProof && global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !== 0) return
-            
+        }
 
         // Update the index & hash of epoch
 
@@ -2696,6 +2699,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     }
 
+
+    let extraData = {}
+
     
     // If we are even not in reserve - return
 
@@ -2704,6 +2710,10 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         // Do it only for the first block in epoch(with index 0)
 
         if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 0){
+
+            // Add the AEFP for previous epoch
+
+            extraData.aefpForPreviousEpoch = global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         

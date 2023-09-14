@@ -268,7 +268,7 @@ acceptBlocksAndReturnCommitment = response => {
                     
                         And finally, if it's the first block in epoch - verify that it contains:
                         
-                        1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.previousAggregatedEpochFinalizationProof
+                        1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
                         2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
@@ -281,7 +281,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                     allChecksPassed &&= block.index!==0 || checkpoint.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
                         
-                        block.extraData.previousAggregatedEpochFinalizationProof,
+                        block.extraData.aefpForPreviousEpoch,
                         
                         checkpoint.quorum,
                         

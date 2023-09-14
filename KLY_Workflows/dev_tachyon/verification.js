@@ -1315,7 +1315,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
-                    checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.previousAggregatedEpochFinalizationProof
+                    checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.aefpForPreviousEpoch
 
                 }
 
