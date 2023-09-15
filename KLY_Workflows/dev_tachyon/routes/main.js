@@ -1679,7 +1679,54 @@ getCurrentSubchainAuthorities = async response => {
 
 
 
+/*
 
+
+[Info]:
+
+    Handler to accept ASP and start the instant reassignment procedure
+
+[Accept]:
+
+    {
+        "subchainX":{
+
+            shouldBeThisAuthority:<number>
+
+            aspForPrevious:{
+
+                firstBlockHash,
+
+                skipIndex,
+
+                skipHash,
+
+                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+
+                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+
+                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+
+
+            }
+
+        }
+    }
+
+    _________________________ What to do next _________________________
+
+    1) Check the current authorities on proposed subchain => for(let primePool in checkpoint.poolsRegistry.primePools) => tempObject.REASSIGNMENTS.get(primePool)
+
+    2) In case local.currentAuthority < obj[<subchain>].shouldBeThisAuthority => verify the ASP
+
+    3) The ASP must be OK for previous pool => checkpoint.reassignmentChains[subchain][shouldBeThisAuthority-1]
+    
+    4) In case ASP is ok - create the CREATE_REASSIGNMENT request and push it to tempObject.SYNCHRONIZER to update the local info about reassignment
+
+    5) Inside function REASSIGN_PROCEDURE_MONITORING check the requests and update the local reassignment data
+
+
+*/
 acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
