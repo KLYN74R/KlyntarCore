@@ -1184,7 +1184,7 @@ getDataForTempReassignments = async response => {
 
         // Get the current authorities for subchains from REASSIGNMENTS
 
-        let currentPrimePools = Object.keys(checkpoint.reassignmentChains) // [primePool0, primePool1, ...]
+        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
 
         let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
 
@@ -1225,6 +1225,114 @@ getDataForTempReassignments = async response => {
                     }
 
                 }
+
+            }
+
+        }
+
+        // Finally, send the <templateForResponse> back
+
+        !response.aborted && response.end(JSON.stringify(templateForResponse))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+/*
+
+
+Function to return the current information about authorities on subchains
+
+
+[Params]:
+
+    Nothing
+
+[Returns]:
+
+    {
+        "subchain0":{
+
+            currentAuthorityIndex:<number>,
+
+            aspForPrevious:{
+
+                firstBlockHash,
+
+                skipIndex,
+
+                skipHash,
+
+                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+
+                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+
+                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+
+            }
+
+        }
+    }
+
+
+*/
+getCurrentSubchainAuthorities = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_CURRENT_SUBCHAINS_AUTHORITIES){
+
+        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+        // Get the current authorities for subchains from REASSIGNMENTS
+
+        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
+
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+
+        for(let primePool of currentPrimePools){
+
+            // Get the current authority
+
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
+
+            if(reassignmentHandler){
+
+                let currentAuthorityIndex = reassignmentHandler.currentAuthority
+
+                // Also, we need to send the ASP for previous pool in reassignment chain as a proof of valid move to current authority
+
+                let aspForPrevious
+
+                if(currentAuthorityIndex === 0){
+
+                    // If current authority is 0 this is a signal that previous was prime pool (index = -1)
+
+                    aspForPrevious = tempObject.SKIP_HANDLERS.get(primePool)?.aggregatedSkipProof
+
+                }else if (currentAuthorityIndex > 0){
+
+                    let previousAuthorityPubKey = checkpoint.reassignmentChains[primePool][currentAuthorityIndex-1]
+
+                    aspForPrevious = tempObject.SKIP_HANDLERS.get(previousAuthorityPubKey)?.aggregatedSkipProof
+
+                }
+
+                templateForResponse[primePool] = {currentAuthorityIndex,aspForPrevious}
 
             }
 
@@ -1942,8 +2050,6 @@ global.UWS_SERVER
 // Function to return signature of skip proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
 .post('/get_skip_proof',getSkipProof)
 
-// Function to accept ASP(aggregatedSkipProof) (2/3N+1 of signatures received from route /get_skip_proof). Once quorum member receve it - it can start ping quorum members to get 2/3N+1 approvements about reassignment
-// .post('/accept_aggregated_skip_proof',acceptAggregatedSkipProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)
@@ -1951,6 +2057,11 @@ global.UWS_SERVER
 
 // We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally)
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
+
+
+// Get current subchains' authorities based on reassignment chains of current epoch
+.get('/get_current_subchain_authorities',getCurrentSubchainAuthorities)
+
 
 
 // Handler to accept AEFP & ASPs and start to generate blocks in case it's time to
