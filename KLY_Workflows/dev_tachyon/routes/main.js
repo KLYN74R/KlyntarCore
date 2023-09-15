@@ -368,70 +368,6 @@ acceptBlocksAndReturnCommitment = response => {
 
 
 
-//Format of body : <transaction>
-//There is no <creator> field-we get it from tx
-acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let transaction = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
-    
-    //Reject all txs if route is off and other guards methods
-
-    /*
-    
-        ...and do such "lightweight" verification here to prevent db bloating
-        Anyway we can bump with some short-term desynchronization while perform operations over block
-        Verify and normalize object
-        Fetch values about fees and MC from some decentralized sources
-    
-        The second operand tells us:if buffer is full-it makes whole logical expression FALSE
-        Also check if we have normalizer for this type of event
-
-    
-    */
-
-    if(typeof transaction?.creator!=='string' || typeof transaction.nonce!=='number' || typeof transaction.sig!=='string'){
-
-        !response.aborted && response.end(JSON.stringify({err:'Event structure is wrong'}))
-
-        return
-    }
-
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
-        
-        !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-        
-        return
-        
-    }
-
-    if(!global.SYMBIOTE_META.FILTERS[transaction.type]){
-
-        !response.aborted && response.end(JSON.stringify({err:'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'}))
-        
-        return
-
-    }
-
-    
-    if(global.SYMBIOTE_META.MEMPOOL.length<global.CONFIG.SYMBIOTE.TXS_MEMPOOL_SIZE){
-
-        let filteredEvent=await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,BLS_PUBKEY_FOR_FILTER)
-
-        if(filteredEvent){
-
-            !response.aborted && response.end(JSON.stringify({status:'OK'}))
-
-            global.SYMBIOTE_META.MEMPOOL.push(filteredEvent)
-                        
-        }else !response.aborted && response.end(JSON.stringify({err:`Can't get filtered value of tx`}))
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Mempool is fullfilled'}))
-
-}),
-
-
-
-
 /*
 
 [Description]:
@@ -741,611 +677,6 @@ getAggregatedFinalizationProof=async(response,request)=>{
 
 },
 
-
-
-
-/*
-
-To return AFP(AGGREGATED_FINALIZATION_PROOF) related to the latest block we have 
-
-Only in case when we have AFP we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
-
-Params:
-
-Returns:
-
-    {
-
-        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
-        
-        hash:<>,
-
-        aggregatedFinalizationProof:{
-            
-            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-            aggregatedPub:<>,
-            afkVoters
-        
-        }    
-    
-    }
-
-*/
-healthChecker = async response => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
-
-        // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
-
-        let healthProof = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('HEALTH')
-
-        if(healthProof){
-
-            !response.aborted && response.end(JSON.stringify(healthProof))
-
-        }else !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-
-/*
-
-To return the stats about the health about another pool
-
-[Params]:
-
-    0 - poolID
-
-[Returns]:
-
-    Our local stats about the health of provided pool
-
-
-    {
-
-        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
-        
-        hash:<>,
-
-        aggregatedFinalizationProof:{
-
-            aggregatedPub,
-            aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
-            afkVoters
-        
-        }
-
-
-    }
-
-
-*/
-anotherPoolHealthChecker = async(response,request) => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
-        
-        let requestedPoolPubKey = request.getParameter(0)
-
-        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
-
-    
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
-    
-            return
-        }
-
-
-        // Get the stats from our HEALTH_CHECKER
-
-        let healthHandler = tempObject.HEALTH_MONITORING.get(requestedPoolPubKey)
-
-        if(healthHandler){
-
-            !response.aborted && response.end(JSON.stringify(healthHandler))
-
-        }else !response.aborted && response.end(JSON.stringify({err:'No health handler'}))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-// Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
-
-/*
-
-
-[Accept]:
-
-    {
-
-        poolPubKey,
-
-        aggregatedFinalizationProofForFirstBlock:{
-
-            blockID,    => epochID:poolPubKey:0
-            blockHash,
-            aggregatedPub,
-            aggregatedSigna, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
-            afkVoters
-
-        }
-
-        extendedAggregatedCommitments:{
-            
-            index,
-            
-            hash,
-
-            aggregatedCommitments:{
-
-                aggregatedPub,
-                aggregatedSignature:<>, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
-                afkVoters:[...]
-
-            }
-
-        }
-
-    }
-
-
-[Response]:
-
-
-[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response:
-        
-        {
-            type:'OK',
-            sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
-        }
-
-
-[2] In case we have bigger index in <extendedAggregatedCommitments> - response with 'UPDATE' message:
-
-    {
-        type:'UPDATE',
-                        
-        <extendedAggregatedCommitments>:{
-                            
-            index,
-            hash,
-            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
-        
-        }
-                        
-    }
-
-
-    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate skip proofs only in case this one is valid
-
-
-*/
-getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-    if(!tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
-
-        return
-    }
-
-
-    let mySkipHandlers = tempObject.SKIP_HANDLERS
-
-    let majority = GET_MAJORITY(checkpoint)
-
-    let reverseThreshold = checkpoint.quorum.length-majority
-
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
-
-    
-    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
-
-
-    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
-
-        
-        
-        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
-
-        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
-
-
-
-        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localSkipHandler.extendedAggregatedCommitments.index > index){
-
-            let responseData = {
-                
-                type:'UPDATE',
-
-                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
-
-            }
-
-            !response.aborted && response.end(JSON.stringify(responseData))
-
-
-        }else if(typeof aggregatedCommitments === 'object'){
-
-            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
-
-            let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
-            
-            let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
-            
-            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
-
-            
-            let dataToSignForSkipProof, firstBlockProofIsOk = false
-
-            if(index === -1){
-
-                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
-                
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
-
-                firstBlockProofIsOk = true
-
-            }else if(index === 0){
-
-                // If skipIndex is 0 then sign the hash of block 0
-
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
-
-                firstBlockProofIsOk = true
-
-            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
-
-                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
-
-                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
-
-                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
-
-                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
-            
-                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
-
-                if(aggregatedFinalizationProofIsOk){
-
-                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
-
-                    firstBlockProofIsOk = true                    
-
-                }
-
-            }
-            
-            // If signatures are ok - generate skip proof
-
-            if(aggregatedCommitmentsIsOk && firstBlockProofIsOk){
-
-                let skipMessage = {
-                    
-                    type:'OK',
-
-                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
-                }
-
-                !response.aborted && response.end(JSON.stringify(skipMessage))
-
-                
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
-
-             
-        }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
-
-
-}),
-
-
-
-/*
-
-[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>] and start to monitor health for this pool
-
-[Accept]:
-
-{
-    poolPubKey:<pool BLS public key>,
-    session:<32-bytes hex string>
-}
-
-
-[Response]:
-
-If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
-
-Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
-
-Otherwise => {type:'ERR'}
-
-*/
-getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-    if(!tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
-
-        return
-    }
-
-    
-    let reassignmentApprovementRequest = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
-
-    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.poolPubKey)
-
-
-    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
-
-        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.poolPubKey}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
-
-        !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
-
-    }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
-
-
-}),
-
-
-
-/*
-
-
-[Info]:
-
-    Route to ask for <aggregatedSkipProof>(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
-
-
-[Accept]:
-
-    Nothing
-
-
-[Returns]:
-
-Object like {
-
-    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
-
-}
-
-___________________________________________________________
-
-[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
-
-[1] firstBlockByCurrentAuthority - default block structure
-
-[2] afpForFirstBlockByCurrentAuthority - default AFP structure -> 
-
-
-    {
-        
-        blockID,
-        blockHash,
-        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-        aggregatedPub:<>,
-        afkVoters
-        
-    }
-
-
-*/
-getDataForTempReassignments = async response => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
-
-        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
-
-        let quorumThreadCheckpointIndex = checkpoint.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
-
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
-    
-            return
-        }
-
-        // Get the current authorities for subchains from REASSIGNMENTS
-
-        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
-
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
-
-        for(let primePool of currentPrimePools){
-
-            // Get the current authority
-
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
-
-            if(reassignmentHandler){
-
-                let currentAuthorityIndex = reassignmentHandler.currentAuthority
-
-                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : checkpoint.reassignmentChains[primePool][currentAuthorityIndex]
-
-                // Now get the first block & AFP for it
-
-                let firstBlockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':0'
-
-                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>false)
-
-                if(firstBlockByCurrentAuthority){
-
-                    // Finally, find the AFP for this block
-
-                    let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
-
-                    // Put to response
-
-                    templateForResponse[primePool]={
-
-                        currentAuthorityIndex,
-                        
-                        firstBlockByCurrentAuthority,
-                        
-                        afpForFirstBlockByCurrentAuthority
-                        
-                    }
-
-                }
-
-            }
-
-        }
-
-        // Finally, send the <templateForResponse> back
-
-        !response.aborted && response.end(JSON.stringify(templateForResponse))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-/*
-
-
-Function to return the current information about authorities on subchains
-
-
-[Params]:
-
-    Nothing
-
-[Returns]:
-
-    {
-        "subchain0":{
-
-            currentAuthorityIndex:<number>,
-
-            aspForPrevious:{
-
-                firstBlockHash,
-
-                skipIndex,
-
-                skipHash,
-
-                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
-
-                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
-
-                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
-
-            }
-
-        }
-    }
-
-
-*/
-getCurrentSubchainAuthorities = async response => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_CURRENT_SUBCHAINS_AUTHORITIES){
-
-        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
-
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
-    
-            return
-        }
-
-        // Get the current authorities for subchains from REASSIGNMENTS
-
-        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
-
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
-
-        for(let primePool of currentPrimePools){
-
-            // Get the current authority
-
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
-
-            if(reassignmentHandler){
-
-                let currentAuthorityIndex = reassignmentHandler.currentAuthority
-
-                // Also, we need to send the ASP for previous pool in reassignment chain as a proof of valid move to current authority
-
-                let aspForPrevious
-
-                if(currentAuthorityIndex === 0){
-
-                    // If current authority is 0 this is a signal that previous was prime pool (index = -1)
-
-                    aspForPrevious = tempObject.SKIP_HANDLERS.get(primePool)?.aggregatedSkipProof
-
-                }else if (currentAuthorityIndex > 0){
-
-                    let previousAuthorityPubKey = checkpoint.reassignmentChains[primePool][currentAuthorityIndex-1]
-
-                    aspForPrevious = tempObject.SKIP_HANDLERS.get(previousAuthorityPubKey)?.aggregatedSkipProof
-
-                }
-
-                templateForResponse[primePool] = {currentAuthorityIndex,aspForPrevious}
-
-            }
-
-        }
-
-        // Finally, send the <templateForResponse> back
-
-        !response.aborted && response.end(JSON.stringify(templateForResponse))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
 
 
 
@@ -1741,6 +1072,747 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
 /*
 
+To return AFP(AGGREGATED_FINALIZATION_PROOF) related to the latest block we have 
+
+Only in case when we have AFP we can verify block with the 100% garantee that it's the part of valid subchain and will be included to checkpoint 
+
+Params:
+
+Returns:
+
+    {
+
+        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+        hash:<>,
+
+        aggregatedFinalizationProof:{
+            
+            aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+            aggregatedPub:<>,
+            afkVoters
+        
+        }    
+    
+    }
+
+*/
+healthChecker = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
+
+        // Get the latest AGGREGATED_FINALIZATION_PROOF that we have
+
+        let healthProof = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('HEALTH')
+
+        if(healthProof){
+
+            !response.aborted && response.end(JSON.stringify(healthProof))
+
+        }else !response.aborted && response.end(JSON.stringify({err:`Still haven't start the procedure of grabbing finalization proofs`}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
+/*
+
+To return the stats about the health about another pool
+
+[Params]:
+
+    0 - poolID
+
+[Returns]:
+
+    Our local stats about the health of provided pool
+
+
+    {
+
+        index, // height of block that we already finalized. Also, below you can see the AGGREGATED_FINALIZATION_PROOF. We need it as a quick proof that majority have voted for this segment of subchain
+        
+        hash:<>,
+
+        aggregatedFinalizationProof:{
+
+            aggregatedPub,
+            aggregatedSignature:<>, // SIG(blockID+blockHash+'FINALIZATION'+checkpointFullID)
+            afkVoters
+        
+        }
+
+
+    }
+
+
+*/
+anotherPoolHealthChecker = async(response,request) => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.HEALTH_CHECKER){
+        
+        let requestedPoolPubKey = request.getParameter(0)
+
+        let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+    
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+
+        // Get the stats from our HEALTH_CHECKER
+
+        let healthHandler = tempObject.HEALTH_MONITORING.get(requestedPoolPubKey)
+
+        if(healthHandler){
+
+            !response.aborted && response.end(JSON.stringify(healthHandler))
+
+        }else !response.aborted && response.end(JSON.stringify({err:'No health handler'}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
+// Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+
+/*
+
+
+[Accept]:
+
+    {
+
+        poolPubKey,
+
+        aggregatedFinalizationProofForFirstBlock:{
+
+            blockID,    => epochID:poolPubKey:0
+            blockHash,
+            aggregatedPub,
+            aggregatedSigna, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
+            afkVoters
+
+        }
+
+        extendedAggregatedCommitments:{
+            
+            index,
+            
+            hash,
+
+            aggregatedCommitments:{
+
+                aggregatedPub,
+                aggregatedSignature:<>, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
+                afkVoters:[...]
+
+            }
+
+        }
+
+    }
+
+
+[Response]:
+
+
+[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response:
+        
+        {
+            type:'OK',
+            sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
+        }
+
+
+[2] In case we have bigger index in <extendedAggregatedCommitments> - response with 'UPDATE' message:
+
+    {
+        type:'UPDATE',
+                        
+        <extendedAggregatedCommitments>:{
+                            
+            index,
+            hash,
+            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+        
+        }
+                        
+    }
+
+
+    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate skip proofs only in case this one is valid
+
+
+*/
+getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+
+    let mySkipHandlers = tempObject.SKIP_HANDLERS
+
+    let majority = GET_MAJORITY(checkpoint)
+
+    let reverseThreshold = checkpoint.quorum.length-majority
+
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+
+    
+    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+
+
+    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
+
+        
+        
+        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
+
+        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
+
+
+
+        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+        if(localSkipHandler.extendedAggregatedCommitments.index > index){
+
+            let responseData = {
+                
+                type:'UPDATE',
+
+                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
+
+            }
+
+            !response.aborted && response.end(JSON.stringify(responseData))
+
+
+        }else if(typeof aggregatedCommitments === 'object'){
+
+            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
+
+            let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+            
+            let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
+            
+            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+
+            
+            let dataToSignForSkipProof, firstBlockProofIsOk = false
+
+            if(index === -1){
+
+                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
+                
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(index === 0){
+
+                // If skipIndex is 0 then sign the hash of block 0
+
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
+
+                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
+
+                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
+
+                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
+
+                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
+            
+                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+
+                if(aggregatedFinalizationProofIsOk){
+
+                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
+
+                    firstBlockProofIsOk = true                    
+
+                }
+
+            }
+            
+            // If signatures are ok - generate skip proof
+
+            if(aggregatedCommitmentsIsOk && firstBlockProofIsOk){
+
+                let skipMessage = {
+                    
+                    type:'OK',
+
+                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
+                }
+
+                !response.aborted && response.end(JSON.stringify(skipMessage))
+
+                
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
+
+             
+        }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
+
+}),
+
+
+
+
+/*
+
+[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>] and start to monitor health for this pool
+
+[Accept]:
+
+{
+    poolPubKey:<pool BLS public key>,
+    session:<32-bytes hex string>
+}
+
+
+[Response]:
+
+If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
+
+Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
+
+Otherwise => {type:'ERR'}
+
+*/
+getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+    
+    let reassignmentApprovementRequest = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+
+    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.poolPubKey)
+
+
+    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
+
+        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.poolPubKey}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
+
+        !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
+
+    }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
+
+
+}),
+
+
+
+
+/*
+
+
+[Info]:
+
+    Route to ask for <aggregatedSkipProof>(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
+
+
+[Accept]:
+
+    Nothing
+
+
+[Returns]:
+
+Object like {
+
+    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+
+}
+
+___________________________________________________________
+
+[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
+
+[1] firstBlockByCurrentAuthority - default block structure
+
+[2] afpForFirstBlockByCurrentAuthority - default AFP structure -> 
+
+
+    {
+        
+        blockID,
+        blockHash,
+        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+        aggregatedPub:<>,
+        afkVoters
+        
+    }
+
+
+*/
+getDataForTempReassignments = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
+
+        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+        let quorumThreadCheckpointIndex = checkpoint.id
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+        // Get the current authorities for subchains from REASSIGNMENTS
+
+        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
+
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+
+        for(let primePool of currentPrimePools){
+
+            // Get the current authority
+
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
+
+            if(reassignmentHandler){
+
+                let currentAuthorityIndex = reassignmentHandler.currentAuthority
+
+                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : checkpoint.reassignmentChains[primePool][currentAuthorityIndex]
+
+                // Now get the first block & AFP for it
+
+                let firstBlockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':0'
+
+                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>false)
+
+                if(firstBlockByCurrentAuthority){
+
+                    // Finally, find the AFP for this block
+
+                    let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
+
+                    // Put to response
+
+                    templateForResponse[primePool]={
+
+                        currentAuthorityIndex,
+                        
+                        firstBlockByCurrentAuthority,
+                        
+                        afpForFirstBlockByCurrentAuthority
+                        
+                    }
+
+                }
+
+            }
+
+        }
+
+        // Finally, send the <templateForResponse> back
+
+        !response.aborted && response.end(JSON.stringify(templateForResponse))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
+/*
+
+
+Function to return the current information about authorities on subchains
+
+
+[Params]:
+
+    Nothing
+
+[Returns]:
+
+    {
+        "subchain0":{
+
+            currentAuthorityIndex:<number>,
+
+            aspForPrevious:{
+
+                firstBlockHash,
+
+                skipIndex,
+
+                skipHash,
+
+                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+
+                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+
+                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+
+            }
+
+        }
+    }
+
+
+*/
+getCurrentSubchainAuthorities = async response => {
+
+    response.onAborted(()=>response.aborted=true)
+
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_CURRENT_SUBCHAINS_AUTHORITIES){
+
+        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
+
+        if(!tempObject){
+    
+            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
+    
+            return
+        }
+
+        // Get the current authorities for subchains from REASSIGNMENTS
+
+        let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
+
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+
+        for(let primePool of currentPrimePools){
+
+            // Get the current authority
+
+            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
+
+            if(reassignmentHandler){
+
+                let currentAuthorityIndex = reassignmentHandler.currentAuthority
+
+                // Also, we need to send the ASP for previous pool in reassignment chain as a proof of valid move to current authority
+
+                let aspForPrevious
+
+                if(currentAuthorityIndex === 0){
+
+                    // If current authority is 0 this is a signal that previous was prime pool (index = -1)
+
+                    aspForPrevious = tempObject.SKIP_HANDLERS.get(primePool)?.aggregatedSkipProof
+
+                }else if (currentAuthorityIndex > 0){
+
+                    let previousAuthorityPubKey = checkpoint.reassignmentChains[primePool][currentAuthorityIndex-1]
+
+                    aspForPrevious = tempObject.SKIP_HANDLERS.get(previousAuthorityPubKey)?.aggregatedSkipProof
+
+                }
+
+                templateForResponse[primePool] = {currentAuthorityIndex,aspForPrevious}
+
+            }
+
+        }
+
+        // Finally, send the <templateForResponse> back
+
+        !response.aborted && response.end(JSON.stringify(templateForResponse))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+
+},
+
+
+
+
+acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Checkpoint is not fresh'}))
+
+        return
+    }
+
+
+    let mySkipHandlers = tempObject.SKIP_HANDLERS
+
+    let majority = GET_MAJORITY(checkpoint)
+
+    let reverseThreshold = checkpoint.quorum.length-majority
+
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+
+    
+    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+
+
+    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
+
+        
+        
+        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
+
+        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
+
+
+
+        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+        if(localSkipHandler.extendedAggregatedCommitments.index > index){
+
+            let responseData = {
+                
+                type:'UPDATE',
+
+                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
+
+            }
+
+            !response.aborted && response.end(JSON.stringify(responseData))
+
+
+        }else if(typeof aggregatedCommitments === 'object'){
+
+            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
+
+            let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+            
+            let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
+            
+            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+
+            
+            let dataToSignForSkipProof, firstBlockProofIsOk = false
+
+            if(index === -1){
+
+                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
+                
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(index === 0){
+
+                // If skipIndex is 0 then sign the hash of block 0
+
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
+
+                firstBlockProofIsOk = true
+
+            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
+
+                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
+
+                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
+
+                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
+
+                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
+            
+                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+
+                if(aggregatedFinalizationProofIsOk){
+
+                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
+
+                    firstBlockProofIsOk = true                    
+
+                }
+
+            }
+            
+            // If signatures are ok - generate skip proof
+
+            if(aggregatedCommitmentsIsOk && firstBlockProofIsOk){
+
+                let skipMessage = {
+                    
+                    type:'OK',
+
+                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
+                }
+
+                !response.aborted && response.end(JSON.stringify(skipMessage))
+
+                
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
+
+             
+        }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+
+
+}),
+
+
+
+
+/*
+
 Body is
 
 
@@ -1934,6 +2006,69 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
 
 
+// Format of body : <transaction>
+acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let transaction = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    
+    //Reject all txs if route is off and other guards methods
+
+    /*
+    
+        ...and do such "lightweight" verification here to prevent db bloating
+        Anyway we can bump with some short-term desynchronization while perform operations over block
+        Verify and normalize object
+        Fetch values about fees and MC from some decentralized sources
+    
+        The second operand tells us:if buffer is full-it makes whole logical expression FALSE
+        Also check if we have normalizer for this type of event
+
+    
+    */
+
+    if(typeof transaction?.creator!=='string' || typeof transaction.nonce!=='number' || typeof transaction.sig!=='string'){
+
+        !response.aborted && response.end(JSON.stringify({err:'Event structure is wrong'}))
+
+        return
+    }
+
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
+        
+        !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+        
+        return
+        
+    }
+
+    if(!global.SYMBIOTE_META.FILTERS[transaction.type]){
+
+        !response.aborted && response.end(JSON.stringify({err:'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'}))
+        
+        return
+
+    }
+
+    
+    if(global.SYMBIOTE_META.MEMPOOL.length < global.CONFIG.SYMBIOTE.TXS_MEMPOOL_SIZE){
+
+        let filteredEvent=await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,BLS_PUBKEY_FOR_FILTER)
+
+        if(filteredEvent){
+
+            !response.aborted && response.end(JSON.stringify({status:'OK'}))
+
+            global.SYMBIOTE_META.MEMPOOL.push(filteredEvent)
+                        
+        }else !response.aborted && response.end(JSON.stringify({err:`Can't get filtered value of tx`}))
+
+    }else !response.aborted && response.end(JSON.stringify({err:'Mempool is fullfilled'}))
+
+}),
+
+
+
+
 /*
 
 To add node to local set of peers to exchange data with
@@ -2031,12 +2166,15 @@ global.UWS_SERVER
 //_______________________________ Routes for checkpoint _______________________________
 
 
+
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 .post('/checkpoint_proposition',acceptCheckpointProposition)
 
 
+
 //________________________________ Health monitoring __________________________________
+
 
 
 .get('/health',healthChecker)
@@ -2044,31 +2182,30 @@ global.UWS_SERVER
 .get('/get_health_of_another_pool/:POOL',anotherPoolHealthChecker)
 
 
+
 //______________________ Routes related to the skip procedure _________________________
+
 
 
 // Function to return signature of skip proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
 .post('/get_skip_proof',getSkipProof)
 
-
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)
-
 
 // We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally)
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
 
-
 // Get current subchains' authorities based on reassignment chains of current epoch
 .get('/get_current_subchain_authorities',getCurrentSubchainAuthorities)
 
-
-
-// Handler to accept AEFP & ASPs and start to generate blocks in case it's time to
+// Handler to accept ASPs and to start forced reassignment
+.post('/accept_reassignment',acceptReassignment)
 
 
 
 //___________________________________ Other ___________________________________________
+
 
 
 .post('/sign_system_sync_operation',systemSyncOperationsVerifier)
