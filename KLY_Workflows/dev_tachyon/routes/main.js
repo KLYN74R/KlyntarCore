@@ -1745,6 +1745,8 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
     let mySkipHandlers = tempObject.SKIP_HANDLERS
 
+    let myReassignmentHandlers = tempObject.REASSIGNMENTS
+
     let majority = GET_MAJORITY(checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
@@ -1752,16 +1754,16 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
     
-    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let possibleReassignment = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
 
-    if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
+    if(typeof possibleReassignment === 'object' && mySkipHandlers.has(possibleReassignment.poolPubKey) && typeof possibleReassignment.extendedAggregatedCommitments === 'object'){
 
         
         
-        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
+        let {index,hash,aggregatedCommitments} = possibleReassignment.extendedAggregatedCommitments
 
-        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
+        let localSkipHandler = mySkipHandlers.get(possibleReassignment.poolPubKey)
 
 
 
@@ -1785,7 +1787,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
             let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
             
-            let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
+            let dataThatShouldBeSigned = (checkpoint.id+':'+possibleReassignment.poolPubKey+':'+index)+hash+checkpointFullID
             
             let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
 
@@ -1796,7 +1798,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+                dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
 
                 firstBlockProofIsOk = true
 
@@ -1804,17 +1806,17 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                 // If skipIndex is 0 then sign the hash of block 0
 
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
+                dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
 
                 firstBlockProofIsOk = true
 
-            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
+            }else if(index > 0 && typeof possibleReassignment.aggregatedFinalizationProofForFirstBlock === 'object'){
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
-                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
+                let blockIdOfFirstBlock = checkpoint.id+':'+possibleReassignment.poolPubKey+':0'
 
-                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
+                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleReassignment.aggregatedFinalizationProofForFirstBlock
 
                 let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
             
@@ -1822,7 +1824,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                 if(aggregatedFinalizationProofIsOk){
 
-                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
+                    dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
 
                     firstBlockProofIsOk = true                    
 
@@ -2198,24 +2200,27 @@ global.UWS_SERVER
 //_______________________________ Consensus related routes _______________________________
 
 
-//1st stage - accept block and response with the commitment
+// 1st stage - accept block and response with the commitment
 .post('/block',acceptBlocksAndReturnCommitment)
 
-//2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
+// 2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
 .post('/finalization',acceptAggregatedCommitmentsAndReturnFinalizationProof)
 
-//3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
+// 3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
 .post('/aggregated_finalization_proof',acceptAggregatedFinalizationProof)
 
+// Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>)
 .get('/aggregated_finalization_proof/:BLOCK_ID',getAggregatedFinalizationProof)
 
 
 //_______________________________ Routes for checkpoint _______________________________
 
 
-
+// Simple GET handler to return AEFP for given subchain and epoch
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
+
+// Handler to acccept checkpoint propositions for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof
 .post('/checkpoint_proposition',acceptCheckpointProposition)
 
 
@@ -2223,9 +2228,10 @@ global.UWS_SERVER
 //________________________________ Health monitoring __________________________________
 
 
-
+// Handler to return the progress in AFPs grabbing + latest generated block
 .get('/health',healthChecker)
 
+// Handler to return the health info of another authority to make sure they're still active and online
 .get('/get_health_of_another_pool/:POOL',anotherPoolHealthChecker)
 
 
@@ -2254,11 +2260,14 @@ global.UWS_SERVER
 //___________________________________ Other ___________________________________________
 
 
-
+// Handler to accept system sync operation, verify it and sign if OK. The caller is SSO creator while verifiers - current quorum members
 .post('/sign_system_sync_operation',systemSyncOperationsVerifier)
 
+// Handler to accept SSO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this SSO and we can add it to block header
 .post('/system_sync_operation_to_mempool',systemSyncOperationToMempool)
 
+// Handler to accept transaction, make overview and add to mempool
 .post('/transaction',acceptTransactions)
 
+// Handler to accept peers to exchange data with
 .post('/addpeer',addPeer)

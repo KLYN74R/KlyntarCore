@@ -149,7 +149,8 @@
             "PAYLOAD_FOR_CHECKPOINT":1,
             "SYSTEM_SYNC_OPERATIONS":1,
             "NEW_NODES":1,
-            "GET_DATA_FOR_TEMP_REASSIGN":1
+            "GET_DATA_FOR_TEMP_REASSIGN":1,
+            "GET_CURRENT_SUBCHAINS_AUTHORITIES":1
 
         },
 
