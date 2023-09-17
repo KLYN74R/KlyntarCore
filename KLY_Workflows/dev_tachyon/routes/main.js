@@ -1,4 +1,4 @@
-import {CHECK_IF_ALL_ASP_PRESENT,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_IF_ALL_ASP_PRESENT,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
@@ -413,7 +413,7 @@ ___________________________Verification steps___________________________
 */
 acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let aggregatedCommitments = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let aggregatedCommitments = await BODY(bytes,global.CONFIG.EXTENDED_PAYLOAD_SIZE)
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
@@ -1288,7 +1288,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
     let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
 
     
-    let requestForSkipProof=await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let requestForSkipProof=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(typeof requestForSkipProof === 'object' && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
@@ -1689,11 +1689,13 @@ getCurrentSubchainAuthorities = async response => {
 [Accept]:
 
     {
-        "subchainX":{
+        subchain:<subchain ID - pubkey of prime pool>,
 
-            shouldBeThisAuthority:<number>
+        shouldBeThisAuthority:<number>
 
-            aspForPrevious:{
+        aspForPrevious:{
+
+            "poolPubKeyX":{
 
                 firstBlockHash,
 
@@ -1707,10 +1709,30 @@ getCurrentSubchainAuthorities = async response => {
 
                 afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
 
+            },
 
-            }
+
+            "poolPubKeY":{
+
+                firstBlockHash,
+
+                skipIndex,
+
+                skipHash,
+
+                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+
+                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+
+                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+
+            },
+
+            ... (we need to send ASPs for all the pools from index <shouldBeThisAuthority-1> until the beginning of reassignment chain. We can stop when .skipIndex of some ASP won't be -1)
+
 
         }
+
     }
 
     _________________________ What to do next _________________________
@@ -1743,113 +1765,83 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
     }
 
 
-    let mySkipHandlers = tempObject.SKIP_HANDLERS
-
-    let myReassignmentHandlers = tempObject.REASSIGNMENTS
-
-    let majority = GET_MAJORITY(checkpoint)
-
-    let reverseThreshold = checkpoint.quorum.length-majority
-
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
-
     
-    let possibleReassignment = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
+    let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.EXTENDED_PAYLOAD_SIZE)
 
 
-    if(typeof possibleReassignment === 'object' && mySkipHandlers.has(possibleReassignment.poolPubKey) && typeof possibleReassignment.extendedAggregatedCommitments === 'object'){
-
-        
-        
-        let {index,hash,aggregatedCommitments} = possibleReassignment.extendedAggregatedCommitments
-
-        let localSkipHandler = mySkipHandlers.get(possibleReassignment.poolPubKey)
+    if(typeof possibleReassignmentPropositionForSubchain === 'object'){
 
 
-
-        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localSkipHandler.extendedAggregatedCommitments.index > index){
-
-            let responseData = {
-                
-                type:'UPDATE',
-
-                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
-
-            }
-
-            !response.aborted && response.end(JSON.stringify(responseData))
+        // Parse reassignment proposition
+        let {subchain,shouldBeThisAuthority,aspForPrevious} = possibleReassignmentPropositionForSubchain
 
 
-        }else if(typeof aggregatedCommitments === 'object'){
+        if(typeof subchain !== 'string' || !checkpoint.poolsRegistry.primePools.includes(subchain) || typeof shouldBeThisAuthority !== 'number' || typeof aspForPrevious !== 'object'){
 
-            // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
+            !response.aborted && response.end(JSON.stringify({err:'Wrong format of proposition components or no such subchain'}))
 
-            let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+            return
+
+        }
+
+        let localRcHandlerForSubchain = tempObject.REASSIGNMENTS.get(subchain) || {currentAuthority:-1}
+
+        // Compare the .currentAuthority indexes to make sure that proposed authority has the bigger index 
+
+        if(localRcHandlerForSubchain.currentAuthority < shouldBeThisAuthority){
+
+            // Verify the ASP for pool with index <shouldBeThisAuthority-1> in reassignment chain
+            // If ok - create the CREATE_REASSIGNMENT:<subchain> request and push to synchronizer
+            // Due to Node.js work principles - check the indexes right before push
+
+            let pubKeyOfSkippedPool = checkpoint.reassignmentChains[subchain][shouldBeThisAuthority-1] || subchain
+
+            let aspForSkippedPool = aspForPrevious[pubKeyOfSkippedPool]
+
+            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint)
             
-            let dataThatShouldBeSigned = (checkpoint.id+':'+possibleReassignment.poolPubKey+':'+index)+hash+checkpointFullID
-            
-            let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+            if(aspIsOk) {
 
-            
-            let dataToSignForSkipProof, firstBlockProofIsOk = false
+                // Verify all the ASP until skipIndex != -1
 
-            if(index === -1){
+                let skipIndex = aspForSkippedPool.skipIndex
 
-                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
-                
-                dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+                let indexInReassignmentChain = shouldBeThisAuthority-2 // -2 because we checked -1 position
 
-                firstBlockProofIsOk = true
 
-            }else if(index === 0){
+                while(skipIndex === -1 || indexInReassignmentChain >= -1){
 
-                // If skipIndex is 0 then sign the hash of block 0
+                    let currentPoolToVerify = checkpoint.reassignmentChains[subchain][indexInReassignmentChain] || subchain
+ 
+                    let currentAspToVerify = aspForPrevious[currentPoolToVerify]
 
-                dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:${hash}:${index}:${hash}:${checkpointFullID}`
+                    let currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint)
 
-                firstBlockProofIsOk = true
+                    if(currentAspIsOk){
 
-            }else if(index > 0 && typeof possibleReassignment.aggregatedFinalizationProofForFirstBlock === 'object'){
+                        if(currentAspToVerify.skipIndex > -1) break // no sense to verify more
 
-                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
+                        indexInReassignmentChain -- // otherwise - move to previous pool in rc
 
-                let blockIdOfFirstBlock = checkpoint.id+':'+possibleReassignment.poolPubKey+':0'
+                    }else{
 
-                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleReassignment.aggregatedFinalizationProofForFirstBlock
+                        !response.aborted && response.end(JSON.stringify({err:'Wrong ASP in chain'}))
 
-                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
-            
-                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+                        return
 
-                if(aggregatedFinalizationProofIsOk){
-
-                    dataToSignForSkipProof = `SKIP:${possibleReassignment.poolPubKey}:${blockHash}:${index}:${hash}:${checkpointFullID}`
-
-                    firstBlockProofIsOk = true                    
+                    }
 
                 }
 
+                // Create the request to update the local reassignment data
+
+                tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspForPrevious})
+
+                !response.aborted && response.end(JSON.stringify({status:'OK'}))
+
             }
-            
-            // If signatures are ok - generate skip proof
 
-            if(aggregatedCommitmentsIsOk && firstBlockProofIsOk){
-
-                let skipMessage = {
-                    
-                    type:'OK',
-
-                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
-                }
-
-                !response.aborted && response.end(JSON.stringify(skipMessage))
-
-                
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
-
-             
-        }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+        } !response.aborted && response.end(JSON.stringify({err:'Local version of current subchain authority has the bigger index'}))
 
 
     }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
@@ -1873,7 +1865,7 @@ Body is
 
 }
 
-    * Payload has different structure depending on type
+    * Payload has different structure depending on type of SSO
 
 
 */
@@ -2200,6 +2192,7 @@ global.UWS_SERVER
 //_______________________________ Consensus related routes _______________________________
 
 
+
 // 1st stage - accept block and response with the commitment
 .post('/block',acceptBlocksAndReturnCommitment)
 
@@ -2213,12 +2206,13 @@ global.UWS_SERVER
 .get('/aggregated_finalization_proof/:BLOCK_ID',getAggregatedFinalizationProof)
 
 
+
 //_______________________________ Routes for checkpoint _______________________________
+
 
 
 // Simple GET handler to return AEFP for given subchain and epoch
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
-
 
 // Handler to acccept checkpoint propositions for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof
 .post('/checkpoint_proposition',acceptCheckpointProposition)
@@ -2226,6 +2220,7 @@ global.UWS_SERVER
 
 
 //________________________________ Health monitoring __________________________________
+
 
 
 // Handler to return the progress in AFPs grabbing + latest generated block
@@ -2258,6 +2253,7 @@ global.UWS_SERVER
 
 
 //___________________________________ Other ___________________________________________
+
 
 
 // Handler to accept system sync operation, verify it and sign if OK. The caller is SSO creator while verifiers - current quorum members
