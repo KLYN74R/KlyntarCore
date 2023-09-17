@@ -1693,7 +1693,7 @@ getCurrentSubchainAuthorities = async response => {
 
         shouldBeThisAuthority:<number>
 
-        aspForPrevious:{
+        aspsForPreviousPools:{
 
             "poolPubKeyX":{
 
@@ -1773,10 +1773,10 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
 
         // Parse reassignment proposition
-        let {subchain,shouldBeThisAuthority,aspForPrevious} = possibleReassignmentPropositionForSubchain
+        let {subchain,shouldBeThisAuthority,aspsForPreviousPools} = possibleReassignmentPropositionForSubchain
 
 
-        if(typeof subchain !== 'string' || !checkpoint.poolsRegistry.primePools.includes(subchain) || typeof shouldBeThisAuthority !== 'number' || typeof aspForPrevious !== 'object'){
+        if(typeof subchain !== 'string' || !checkpoint.poolsRegistry.primePools.includes(subchain) || typeof shouldBeThisAuthority !== 'number' || typeof aspsForPreviousPools !== 'object'){
 
             !response.aborted && response.end(JSON.stringify({err:'Wrong format of proposition components or no such subchain'}))
 
@@ -1796,7 +1796,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
             let pubKeyOfSkippedPool = checkpoint.reassignmentChains[subchain][shouldBeThisAuthority-1] || subchain
 
-            let aspForSkippedPool = aspForPrevious[pubKeyOfSkippedPool]
+            let aspForSkippedPool = aspsForPreviousPools[pubKeyOfSkippedPool]
 
             let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint)
             
@@ -1813,7 +1813,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                     let currentPoolToVerify = checkpoint.reassignmentChains[subchain][indexInReassignmentChain] || subchain
  
-                    let currentAspToVerify = aspForPrevious[currentPoolToVerify]
+                    let currentAspToVerify = aspsForPreviousPools[currentPoolToVerify]
 
                     let currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint)
 
@@ -1835,7 +1835,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                 // Create the request to update the local reassignment data
 
-                tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspForPrevious})
+                tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspsForPreviousPools})
 
                 !response.aborted && response.end(JSON.stringify({status:'OK'}))
 

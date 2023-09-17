@@ -1973,41 +1973,57 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         if(skipHandler.aggregatedSkipProof){
 
-            // Inform the next pool in reassignment chain that it's time to start to generate blocks. We need to send him AEFP for previous epoch and <aggregatedSkipProof> and A
+            // Inform the next pool in reassignment chain that it's time to start to generate blocks. We need to send him ASPs for previous pools
 
-            let poolIndexInRc = skipHandler.indexInReassignmentChain
+            let indexOfSkippedPoolInRc = skipHandler.indexInReassignmentChain
 
             // Find next pool
 
-            let nextPoolInRc = checkpoint.reassignmentChains[primePoolPubKey][poolIndexInRc+1]
+            let nextPoolInRc = checkpoint.reassignmentChains[primePoolPubKey][indexOfSkippedPoolInRc+1]
 
             let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+            let aspsForPreviousPools = {}
 
             if(poolStorage){
 
                 // Get all the ASPs
 
-                for(let position = poolIndexInRc-1 ; position >= -1 ; position--){
+                for(let position = indexOfSkippedPoolInRc ; position >= -1 ; position--){
 
-                    let pubKeyOfPreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
+                    let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
 
-                    let skipHandlerForPreviousPool = skipHandlers.get(pubKeyOfPreviousPool)
+                    let skipHandlerForSomePreviousPool = skipHandlers.get(pubKeyOfSomePreviousPool)
 
+                    aspsForPreviousPools[pubKeyOfSomePreviousPool] = skipHandlerForSomePreviousPool.aggregatedSkipProof
+
+                    if(skipHandlerForSomePreviousPool.aggregatedSkipProof.skipIndex > -1) break
+                
                 }
 
 
                 // Send request
+                let bodyToSend = {
 
+                    subchain:primePoolPubKey,
+
+                    shouldBeThisAuthority:indexOfSkippedPoolInRc+1,
+
+                    aspsForPreviousPools
+
+                }
 
                 let optionsToSend = {
 
                     method:'POST',
 
-                    body:{}
+                    body:JSON.stringify(bodyToSend)
 
                 }
 
-                fetch(poolStorage.poolURL+'/accept_reassignment')
+                // Send to target pool
+                fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
+
 
             }
 
