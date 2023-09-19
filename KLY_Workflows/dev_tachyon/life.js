@@ -2017,13 +2017,24 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     method:'POST',
 
-                    body:JSON.stringify(bodyToSend)
+                    body:JSON.stringify(bodyToSend),
+
+                    agent:GET_HTTP_AGENT(poolStorage.poolURL)
 
                 }
 
                 // Send to target pool
                 fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
 
+                // ... and to quorum members
+                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+
+                    optionsToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
+    
+                    fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
+                     
+                }
+    
 
             }
 

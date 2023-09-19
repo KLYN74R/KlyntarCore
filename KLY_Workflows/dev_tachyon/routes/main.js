@@ -1898,11 +1898,20 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
                 while(skipIndex === -1 || indexInReassignmentChain >= -1){
 
                     let currentPoolToVerify = checkpoint.reassignmentChains[subchain][indexInReassignmentChain] || subchain
- 
+
+                    // First of all - check if we already have ASP locally. If so, skip verification because we already have a valid & verified ASP
+
                     let currentAspToVerify = aspsForPreviousPools[currentPoolToVerify]
 
-                    let currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint)
+                    let currentAspIsOk = true
 
+
+                    if(!tempObject.SKIP_HANDLERS.get(currentPoolToVerify)?.aggregatedSkipProof){
+
+                        currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint)
+
+                    }
+ 
                     if(currentAspIsOk){
 
                         if(currentAspToVerify.skipIndex > -1) break // no sense to verify more
@@ -1919,16 +1928,30 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                 }
 
-                // Create the request to update the local reassignment data
+                /*
+                
+                    Create the request to update the local reassignment data
+                
+                    But, finally check if no other request for reassignment wasn't accepted in async mode via concurrent request to this handler
+                    
+                    Node.js will read the data from mapping, compare .shouldBeThisAuthority property and add new request in case index is bigger - and all these ops in sync mode
+                
+                */
+                
+                let concurrentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+subchain)
 
-                tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspsForPreviousPools})
+
+                if(!concurrentRequest || concurrentRequest && concurrentRequest.shouldBeThisAuthority < shouldBeThisAuthority){
+
+                    tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspsForPreviousPools})
+
+                }
 
                 !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
-            }
+            } else !response.aborted && response.end(JSON.stringify({err:'One of ASP is wrong'}))
 
-        } !response.aborted && response.end(JSON.stringify({err:'Local version of current subchain authority has the bigger index'}))
-
+        } else !response.aborted && response.end(JSON.stringify({err:'Local version of current subchain authority has the bigger index'}))
 
     }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
 
