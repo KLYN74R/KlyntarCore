@@ -1,4 +1,4 @@
-import {CHECK_IF_ALL_ASP_PRESENT,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_IF_ALL_ASP_PRESENT,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -464,7 +464,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
         let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldEpochFullID)
     
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+oldEpochFullID)
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+oldEpochFullID)
     
         if(!temporaryObject){
     
@@ -881,9 +881,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
                 // Get the new ROOTPUB and delete the old one
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('ROOTPUB'+nextEpochFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextEpochFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
     
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('ROOTPUB'+oldEpochFullID)
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+oldEpochFullID)
 
 
                 //_______________________Check the version required for the next checkpoint________________________
@@ -1000,7 +1000,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
         
     
@@ -1911,7 +1911,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                         let dataThatShouldBeSigned = (checkpoint.id+':'+primePoolPubKey+':'+index)+hash+checkpointFullID
                         
-                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(()=>false)
+                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(()=>false)
             
 
                         //If signature is ok and index is bigger than we have - update the <extendedAggregatedCommitments> in our local skip handler
@@ -1994,6 +1994,24 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
 
                     let skipHandlerForSomePreviousPool = skipHandlers.get(pubKeyOfSomePreviousPool)
+
+                    let aspThatWeAreGoingToSend = skipHandlerForSomePreviousPool.aggregatedSkipProof
+
+                    if(!aspThatWeAreGoingToSend){
+
+                        // Find ASP over the quorum
+                        for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+
+
+                            let possibleAsp = await fetch(poolUrlWithPubkey.url+`/get_asp_for_pool/${primePoolPubKey}/${position}`,{agent:GET_HTTP_AGENT(poolUrlWithPubkey.url)}).catch(()=>null)
+                            
+                            if(possibleAsp && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSomePreviousPool,possibleAsp,checkpointFullID,checkpoint,'QUORUM_THREAD'))
+
+                            
+                        }
+
+
+                    }
 
                     aspsForPreviousPools[pubKeyOfSomePreviousPool] = skipHandlerForSomePreviousPool.aggregatedSkipProof
 
@@ -2259,7 +2277,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(checkpoint)
 
-    let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+    let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
 
     
@@ -2743,7 +2761,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = checkpoint.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+qtCheckpointFullID)
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtCheckpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
@@ -3568,14 +3586,14 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
 
-    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
+    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
 
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId === checkpointFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
 

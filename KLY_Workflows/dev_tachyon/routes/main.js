@@ -214,7 +214,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                             // If we don't have block locally - verify the AFP for previous block to make sure that we're going to vote for a valid subchain segment
 
-                            checkIfItsChain = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAfp,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID))
+                            checkIfItsChain = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAfp,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
 
 
                         }else checkIfItsChain = Block.genHash(prevBlock) === block.prevHash
@@ -235,7 +235,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                         if(typeof block.extraData.aggregatedFinalizationProofForFirstBlock === 'object'){
 
-                            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+                            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
                             let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedFinalizationProofForFirstBlock
 
@@ -287,7 +287,7 @@ acceptBlocksAndReturnCommitment = response => {
                         
                         GET_MAJORITY(checkpoint),
                         
-                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
 
                         checkpointFullID
                         
@@ -463,7 +463,7 @@ acceptAggregatedCommitmentsAndReturnFinalizationProof=response=>response.writeHe
             }
 
 
-            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
             let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
@@ -607,7 +607,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
 
     let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
 
-    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID))
+    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
 
 
     if(quorumSignaIsOk && hashesAreEqual){
@@ -747,7 +747,7 @@ VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoi
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
 
-    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
     let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
 
@@ -977,7 +977,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                     // Verify the AFP for first block
 
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtCheckpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID))
+                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtCheckpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
 
                     if(afpIsOk) firstBlockHash = proposition.afpForFirstBlock.blockHash
 
@@ -1285,7 +1285,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
     let reverseThreshold = checkpoint.quorum.length-majority
 
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
     
     let requestForSkipProof=await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
@@ -1884,7 +1884,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
             let aspForSkippedPool = aspsForPreviousPools[pubKeyOfSkippedPool]
 
-            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint)
+            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint,'QUORUM_THREAD')
             
             if(aspIsOk) {
 
@@ -1908,7 +1908,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
                     if(!tempObject.SKIP_HANDLERS.get(currentPoolToVerify)?.aggregatedSkipProof){
 
-                        currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint)
+                        currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint,'QUORUM_THREAD')
 
                     }
  
@@ -2130,7 +2130,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     let quorumSignaIsOk = await bls.verifyThresholdSignature(
         
-        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID),
+        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
         
         hashOfCheckpointFullIDAndOperation, aggregatedSignature, reverseThreshold
         

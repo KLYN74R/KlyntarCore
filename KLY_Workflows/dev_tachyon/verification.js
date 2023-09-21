@@ -315,7 +315,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
     if(typeof aggregatedSkipProof === 'object'){
 
 
-        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+checkpointFullID)
+        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
 
         let majority = GET_MAJORITY(checkpoint)
     
@@ -1046,7 +1046,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             // And reassignment chains should be the same
             global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains = oldCheckpoint.reassignmentChains
 
-            //Get the rootpub
+            // Get the rootpub
             // global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
            
 
@@ -1135,7 +1135,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
         let nextEpochFullID = nextEpochHash+"#"+nextEpochIndex // Need it to verify AFPs for first blocks of the next epoch
 
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('ROOTPUB'+nextEpochFullID)
+        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+nextEpochFullID)
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
