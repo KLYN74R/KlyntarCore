@@ -1989,6 +1989,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 // Get all the ASPs
 
+                let shouldTryNextTime = false // flag in case we won't get required ASPs
+
                 for(let position = indexOfSkippedPoolInRc ; position >= -1 ; position--){
 
                     let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
@@ -2005,7 +2007,11 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                             let possibleAsp = await fetch(poolUrlWithPubkey.url+`/get_asp_for_pool/${primePoolPubKey}/${position}`,{agent:GET_HTTP_AGENT(poolUrlWithPubkey.url)}).catch(()=>null)
                             
-                            if(possibleAsp && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSomePreviousPool,possibleAsp,checkpointFullID,checkpoint,'QUORUM_THREAD'))
+                            if(possibleAsp && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSomePreviousPool,possibleAsp,checkpointFullID,checkpoint,'QUORUM_THREAD')){
+
+                                aspThatWeAreGoingToSend = possibleAsp
+
+                            }
 
                             
                         }
@@ -2013,11 +2019,22 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     }
 
-                    aspsForPreviousPools[pubKeyOfSomePreviousPool] = skipHandlerForSomePreviousPool.aggregatedSkipProof
+                    if(!aspThatWeAreGoingToSend){
+
+                        shouldTryNextTime = true
+
+                        break
+
+                    }
+
+                    aspsForPreviousPools[pubKeyOfSomePreviousPool] = aspThatWeAreGoingToSend
 
                     if(skipHandlerForSomePreviousPool.aggregatedSkipProof.skipIndex > -1) break
                 
                 }
+
+
+                if(shouldTryNextTime) continue
 
 
                 // Send request
@@ -2052,173 +2069,182 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
                      
                 }
-    
 
-            }
+                // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
-    
-            /*
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,skipHandler).catch(()=>{})
 
-            If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
 
-            We should send
 
-                {
-                    poolPubKey<pool's BLS public key>,
-                    session:<64-bytes hex string - randomly generated>
+                /*
+
+                    If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
+
+                    We should send
+
+                    {
+                        poolPubKey<pool's BLS public key>,
+                        session:<64-bytes hex string - randomly generated>
+                    }
+
+                    If requested quorum member has ASP: 
+
+                        Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
+
+                    Otherwise:
+                
+                        Response => {type:'ERR'}
+
+
+                */
+
+                let session = crypto.randomBytes(32).toString('hex')
+
+                let dataToSend = {
+
+                    method:'POST',
+                
+                    body:JSON.stringify({
+
+                        subchain:primePoolPubKey,
+
+                        indexOfNext:indexOfSkippedPoolInRc+1,
+                        
+                        session
+                    
+                    })
+
                 }
 
-            If requested quorum member has ASP: 
 
-                Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
-
-            Otherwise:
-                
-                Response => {type:'ERR'}
+                let proofsPromises=[]
 
 
-            */
+                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
 
-            let session = crypto.randomBytes(32).toString('hex')
-
-            let dataToSend = {
-
-                method:'POST',
-                
-                body:JSON.stringify({
-
-                    poolPubKey:primePoolPubKey,
-                    
-                    session
-                    
-                })
-
-            }
-
-            let proofsPromises=[]
-
-
-            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-
-                dataToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
-
-                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
+                    dataToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
     
-                    response.pubKey = poolUrlWithPubkey.pubKey
+                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
         
-                    return response
-        
-                }).catch(()=>false)
-        
-                proofsPromises.push(responsePromise)
-        
-            }
-
-            let results = (await Promise.all(proofsPromises)).filter(Boolean)
-
-            let dataThatShouldBeSigned = `REASSIGNMENT:${primePoolPubKey}:${session}:${checkpointFullID}`
-
-            let numberWhoAgreeToDoReassignment = 0
-
+                        response.pubKey = poolUrlWithPubkey.pubKey
             
-            //___________________Now analyze the results___________________
-
-            for(let result of results){
-
-                if(result.type === 'OK' && typeof result.sig === 'string'){
-
-                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
-
-                    if(signatureIsOk) numberWhoAgreeToDoReassignment++
-
-                    if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
-
+                        return response
+            
+                    }).catch(()=>false)
+            
+                    proofsPromises.push(responsePromise)
+            
                 }
-            
-            }
-
-
-
-
-            if(numberWhoAgreeToDoReassignment >= majority){
-
-
-
-                //_____________________________________Now, create the request for reassignment_____________________________________
-                
-                // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
-                // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
-
-                let primePoolPubKey = reassignments.get(primePoolPubKey) || primePoolPubKey
-
-                let currentSubchainAuthority
-
-
-                // Add the reassignment
-
-                let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
-
-
-                if(!reassignmentMetadata){
-
-                    // Create new handler
-
-                    reassignmentMetadata = {currentAuthority:-1}
-
-                    currentSubchainAuthority = primePoolPubKey
-
-                }else currentSubchainAuthority = checkpoint.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
-
-
-                let nextIndex = reassignmentMetadata.currentAuthority + 1
-
-                let nextReservePool = checkpoint.reassignmentChains[primePoolPubKey][nextIndex] // array checkpoint.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
-
-                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(skipHandlers.get(currentSubchainAuthority))) // {extendedAggregatedCommitments,aggregatedSkipProof}
-
-
-                // Use atomic operation here to write reassignment data + updated skip handler
-
-                let keysToAtomicWrite = [
-
-                    'REASSIGN:'+primePoolPubKey,
-                    
-                    'SKIP_HANDLER:'+currentSubchainAuthority
-
-                ]
-
-                let valuesToAtomicWrite = [
-
-                    {currentAuthority:nextIndex},
-
-                    skipHandlerOfAuthority
-
-                ]
-
-                await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
     
-                    // And only after successful store we can move to the next pool
-
-                    // Delete the reassignment in case skipped authority was reserve pool
-
-                    if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
                 
-                    
-                    reassignmentMetadata.currentAuthority++
+                let results = (await Promise.all(proofsPromises)).filter(Boolean)
     
+                let dataThatShouldBeSigned = `REASSIGNMENT:${primePoolPubKey}:${session}:${checkpointFullID}`
+    
+                let numberWhoAgreeToDoReassignment = 0
+    
+                
+                //___________________Now analyze the results___________________
+    
+                for(let result of results){
+    
+                    if(result.type === 'OK' && typeof result.sig === 'string'){
+    
+                        let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
+    
+                        if(signatureIsOk) numberWhoAgreeToDoReassignment++
+    
+                        if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
+    
+                    }
+                
+                }
+    
+    
+                if(numberWhoAgreeToDoReassignment >= majority){
 
-                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
 
-                    reassignments.set(primePoolPubKey,reassignmentMetadata)
+                    //_____________________________________Now, create the request for reassignment_____________________________________
+                    
+                    // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
+                    // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
+    
+                    let primePoolPubKey = reassignments.get(primePoolPubKey) || primePoolPubKey
+    
+                    let currentSubchainAuthority
+    
+    
+                    // Add the reassignment
+    
+                    let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
+    
+    
+                    if(!reassignmentMetadata){
+    
+                        // Create new handler
+    
+                        reassignmentMetadata = {currentAuthority:-1}
+    
+                        currentSubchainAuthority = primePoolPubKey
+    
+                    }else currentSubchainAuthority = checkpoint.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+    
+    
+                    let nextIndex = reassignmentMetadata.currentAuthority + 1
+    
+                    let nextReservePool = checkpoint.reassignmentChains[primePoolPubKey][nextIndex] // array checkpoint.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
+    
+                    let skipHandlerOfAuthority = JSON.parse(JSON.stringify(skipHandlers.get(currentSubchainAuthority))) // {extendedAggregatedCommitments,aggregatedSkipProof}
+    
+    
+                    // Use atomic operation here to write reassignment data + updated skip handler
+    
+                    let keysToAtomicWrite = [
+    
+                        'REASSIGN:'+primePoolPubKey,
+                        
+                        'SKIP_HANDLER:'+currentSubchainAuthority
+    
+                    ]
+    
+                    let valuesToAtomicWrite = [
+    
+                        {currentAuthority:nextIndex},
+    
+                        skipHandlerOfAuthority
+    
+                    ]
+    
+                    await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
+        
+                        // And only after successful store we can move to the next pool
+    
+                        // Delete the reassignment in case skipped authority was reserve pool
+    
+                        if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
+                    
+                        
+                        reassignmentMetadata.currentAuthority++
+        
+    
+                        // Set new values - handler for prime pool and pointer to prime pool for reserve pool
+    
+                        reassignments.set(primePoolPubKey,reassignmentMetadata)
+    
+                        reassignments.set(nextReservePool,primePoolPubKey)
+    
+    
+                    }).catch(()=>false)
+    
+                }
+              
 
-                    reassignments.set(nextReservePool,primePoolPubKey)
+            }else continue
 
-
-                }).catch(()=>false)
-
-            }
-      
+    
         }
+
 
     }
 

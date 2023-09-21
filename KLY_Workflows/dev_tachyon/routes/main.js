@@ -1401,8 +1401,11 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 [Accept]:
 
 {
-    poolPubKey:<pool BLS public key>,
+
+    subchain:primePoolPubKey,
+    indexOfNext,
     session:<32-bytes hex string>
+
 }
 
 
@@ -1417,7 +1420,9 @@ Otherwise => {type:'ERR'}
 */
 getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let qtCheckpoint  = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
@@ -1429,16 +1434,26 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
     }
 
     
-    let reassignmentApprovementRequest = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
-
-    let skipHandler = tempObject.SKIP_HANDLERS.get(reassignmentApprovementRequest?.poolPubKey)
+    let {subchain,indexOfNext,session} = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
 
 
-    if(skipHandler && skipHandler.aggregatedSkipProof && typeof reassignmentApprovementRequest.session === 'string' && reassignmentApprovementRequest.session.length === 64){
+    if(typeof subchain === 'string' && typeof indexOfNext === 'number' && typeof session === 'string' && session.length === 64 && qtCheckpoint.reassignmentChains[subchain]){
 
-        let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${reassignmentApprovementRequest.poolPubKey}:${reassignmentApprovementRequest.session}:${checkpointFullID}`)
+        let targetPoolPubKey = qtCheckpoint.reassignmentChains[subchain][indexOfNext]
 
-        !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
+        let skipHandler = tempObject.SKIP_HANDLERS.get(targetPoolPubKey)
+
+        let weHaveSentAlertToThisPool = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get(`SENT_ALERT:${subchain}:${indexOfNext}`)
+
+
+        if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
+    
+            let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${targetPoolPubKey}:${session}:${checkpointFullID}`)
+    
+            !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
+    
+        }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
+    
 
     }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
 
