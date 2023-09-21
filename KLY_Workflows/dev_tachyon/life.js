@@ -1756,7 +1756,135 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     for(let primePoolPubKey of checkpoint.poolsRegistry.primePools){
 
-        let reassignmentHandler = reassignments.get(primePoolPubKey)
+        // First of all - check for CREATE_REASSIGNMENT requests in synchronizer
+
+        let reassignmentHandler = reassignments.get(primePoolPubKey) || {currentAuthority:-1}
+
+        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {shouldBeThisAuthority,aspsForPreviousPools}
+
+
+
+        if(doReassignmentRequest && reassignmentHandler.currentAuthority < doReassignmentRequest.shouldBeThisAuthority){
+
+            /*
+            
+                Update the local information
+
+                1) Start(in reverse order) from shouldBeThisAuthority index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was skipped on .skipIndex > -1 
+
+                2) Create the skipHandler for each pool
+
+                3) Finally, update the data in tempObject.REASSIGNMENTS:
+                
+                    a) Put the pool checkpoint.reassignmentChains[primePoolPubKey][shouldBeThisAuthority] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current authority for subchain
+
+                    b) Update the reassignment handler for prime pool to point to <shouldBeThisAuthority> index => tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:shouldBeThisAuthority})
+
+            */
+
+            for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority ; positionInRc >= -1; positionInRc--){
+
+                let poolPubKey = checkpoint.reassignmentChains[primePoolPubKey][positionInRc]
+
+                let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
+
+                if(!skipHandlers.has(poolPubKey)){
+
+                    // Create the skip handler if we don't have it
+
+                    let futureSkipHandler = {
+
+                        aggregatedSkipProof: aspForThisPool
+
+                    }
+
+                    // Store to temp DB
+
+                    await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
+
+                    skipHandlers.set(poolPubKey,futureSkipHandler)
+
+                }
+
+                // No sense to continue to get more ASPs
+
+                if(aspForThisPool.skipIndex > -1) break
+
+            }
+
+            //__________________________ Inform the target pool and store the fact of it __________________________
+
+            
+            let nextPoolInRc = checkpoint.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+
+            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+
+            // Send request
+            let bodyToSend = {
+
+                subchain:primePoolPubKey,
+
+                ...doReassignmentRequest
+
+            }
+
+            let optionsToSend = {
+
+                method:'POST',
+
+                body:JSON.stringify(bodyToSend),
+
+                agent:GET_HTTP_AGENT(poolStorage.poolURL)
+
+            }
+
+            // Send to target pool
+            fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
+
+            // ... and to quorum members
+            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+
+                optionsToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
+    
+                fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
+                     
+            }
+
+            // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
+
+            await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true).then(async()=>{
+
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true)
+
+                //______________________Finally, create the urgent reassignment stats______________________
+
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
+
+                
+                    let oldAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
+
+                    let nextAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+
+
+                    reassignments.delete(oldAuthorityPubKey)
+
+                    reassignments.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
+
+                    reassignments.set(nextAuthorityPubKey,primePoolPubKey)
+
+
+                }).catch(()=>{})
+
+
+            }).catch(()=>{})
+            
+    
+
+        }
+
+
+
 
         let poolPubKeyForHunting
 
@@ -1771,6 +1899,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
         // If no skip handler for target pool - do nothing
+
         if(!skipHandler) continue
         
         if(!skipHandler.aggregatedSkipProof){
@@ -1780,7 +1909,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let responsePromises = []
 
-            let firstBlockID = checkpoint.id+':'+primePoolPubKey+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
+            let firstBlockID = checkpoint.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
             let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
 
@@ -1806,7 +1935,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 body:JSON.stringify({
 
-                    poolPubKey:primePoolPubKey,
+                    poolPubKey:poolPubKeyForHunting,
 
                     aggregatedFinalizationProofForFirstBlock,
 
@@ -1880,7 +2009,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let {index,hash} = skipHandler.extendedAggregatedCommitments
 
-            let dataThatShouldBeSigned = `SKIP:${primePoolPubKey}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -1909,7 +2038,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
             
-                        let dataThatShouldBeSigned = (checkpoint.id+':'+primePoolPubKey+':'+index)+hash+checkpointFullID
+                        let dataThatShouldBeSigned = (checkpoint.id+':'+poolPubKeyForHunting+':'+index)+hash+checkpointFullID
                         
                         let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(()=>false)
             
@@ -1928,7 +2057,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                             // Store the updated version of skip handler
 
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+primePoolPubKey,skipHandler).catch(()=>{})
+                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
 
                             // If our local version had lower index - break the cycle and try again with updated value
 
@@ -1963,7 +2092,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 }
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+primePoolPubKey,skipHandler).catch(()=>{})                
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
 
 
             }
@@ -2072,7 +2201,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,skipHandler).catch(()=>{})
+                await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true).catch(()=>{})
 
                 global.SYMBIOTE_META.STATIC_STUFF_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
 
@@ -2140,7 +2269,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                 let results = (await Promise.all(proofsPromises)).filter(Boolean)
     
-                let dataThatShouldBeSigned = `REASSIGNMENT:${primePoolPubKey}:${session}:${checkpointFullID}`
+                let dataThatShouldBeSigned = `REASSIGNMENT:${poolPubKeyForHunting}:${session}:${checkpointFullID}`
     
                 let numberWhoAgreeToDoReassignment = 0
     
@@ -2170,8 +2299,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
                     // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
     
-                    let primePoolPubKey = reassignments.get(primePoolPubKey) || primePoolPubKey
-    
                     let currentSubchainAuthority
     
     
@@ -2186,7 +2313,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                         reassignmentMetadata = {currentAuthority:-1}
     
-                        currentSubchainAuthority = primePoolPubKey
+                        currentSubchainAuthority = poolPubKeyForHunting
     
                     }else currentSubchainAuthority = checkpoint.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
     
