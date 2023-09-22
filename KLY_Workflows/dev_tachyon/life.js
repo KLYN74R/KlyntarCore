@@ -1962,6 +1962,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     poolPubKey:poolPubKeyForHunting,
 
+                    subchain:primePoolPubKey,
+
                     aggregatedFinalizationProofForFirstBlock,
 
                     extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
