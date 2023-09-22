@@ -283,6 +283,8 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
     
     {
 
+        previousAspInRcHash,
+
         firstBlockHash,
 
         (?) tmbIndex,
@@ -303,8 +305,8 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
 
         Check the skip proof:
 
-            1) If tmb proofs exists => `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-            1) If no tmb proofs => `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If tmb proofs exists => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If no tmb proofs => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
         If skipIndex === -1 - skipHash and firstBlockHash will be default - '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
@@ -325,17 +327,17 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
         // Check the proof
     
 
-        let {firstBlockHash,tmbIndex,tmbHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
+        let {previousAspInRcHash,firstBlockHash,tmbIndex,tmbHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
     
         let dataThatShouldBeSigned
 
         if(typeof tmbIndex === 'number' && typeof tmbHash === 'string'){
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }else{
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }
 
@@ -351,7 +353,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
 
 
 
-CHECK_IF_ALL_ASP_PRESENT = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID,dontCheckSignature) => {
+CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID,dontCheckSignature) => {
 
     /*
     
@@ -622,7 +624,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         // In this block we should have ASP for all the previous reservePool + primePool
 
-        let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(
+        let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
             
             primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainsForSubchain,position,null,null,null,true)
 
