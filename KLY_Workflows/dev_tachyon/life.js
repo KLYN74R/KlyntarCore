@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_IF_ALL_ASP_PRESENT,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -1713,7 +1713,7 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
 
 
 
-//Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
+// Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
@@ -1886,13 +1886,20 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
 
-        let poolPubKeyForHunting
+        let poolPubKeyForHunting, previousPoolPubKey
 
         if(reassignmentHandler){
 
             poolPubKeyForHunting = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority]
 
-        }else poolPubKeyForHunting = primePoolPubKey
+            previousPoolPubKey = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority-1] || primePoolPubKey
+
+        }else{
+
+            poolPubKeyForHunting = primePoolPubKey
+
+            previousPoolPubKey = null
+        } 
 
 
         let skipHandler = skipHandlers.get(poolPubKeyForHunting)
@@ -1915,6 +1922,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let firstBlockHash
 
+            let previousAspHash
+
 
             if(!aggregatedFinalizationProofForFirstBlock){
 
@@ -1924,9 +1933,25 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             } else firstBlockHash = aggregatedFinalizationProofForFirstBlock.blockHash
 
+
+
+            if(skipHandler.extendedAggregatedCommitments.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
+
+                let firstBlock = await GET_BLOCK(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
+
+                if(firstBlock && Block.genHash(firstBlock) === firstBlockHash && firstBlock.extraData.reassignments[previousPoolPubKey]){
+
+                    // Now get the hash of ASP for previous pool in reassignment chain
+
+                    previousAspHash = BLAKE3(JSON.stringify(firstBlock.extraData.reassignments[previousPoolPubKey]))
+
+                }
+
+            } else previousAspHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
             // If we don't have AC(aggregated commitments) for first block(with id=0) and skipped index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
 
-            if(!firstBlockHash) continue
+            if(!firstBlockHash || !previousAspHash) continue
 
 
             let sendOptions = {
@@ -1976,7 +2001,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
+                        sig: BLS_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
@@ -2009,7 +2034,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let {index,hash} = skipHandler.extendedAggregatedCommitments
 
-            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -2077,6 +2102,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             if(pubkeysWhoAgreeToSkip.length >= majority){
 
                 skipHandler.aggregatedSkipProof = {
+
+                    previousAspHash,
 
                     firstBlockHash,
 
@@ -3997,7 +4024,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 // Verify all the ASPs in block header
     
-                                let {isOK,filteredReassignments} = await CHECK_IF_ALL_ASP_PRESENT(
+                                let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
                                 
                                     primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                 
@@ -4054,7 +4081,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                             if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === filteredReassignments[poolWithThisPosition].firstBlockHash){
                                 
-                                                let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_IF_ALL_ASP_PRESENT(
+                                                let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ASP_CHAIN_VALIDITY(
                                                         
                                                     primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, false, true
                                                         

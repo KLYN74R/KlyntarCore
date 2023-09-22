@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_IF_ALL_ASP_PRESENT,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
@@ -299,7 +299,7 @@ acceptBlocksAndReturnCommitment = response => {
 
                     let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
 
-                    allChecksPassed &&= block.index!==0 || itsPrimePool || await CHECK_IF_ALL_ASP_PRESENT(
+                    allChecksPassed &&= block.index!==0 || itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
                         
                         primePoolPubKey,
                         
