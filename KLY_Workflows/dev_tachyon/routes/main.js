@@ -1900,32 +1900,26 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
             
             if(aspIsOk) {
 
-                // Verify all the ASP until skipIndex != -1
-
-                let skipIndex = aspForSkippedPool.skipIndex
-
                 let indexInReassignmentChain = shouldBeThisAuthority-2 // -2 because we checked -1 position
 
-
-                while(skipIndex === -1 || indexInReassignmentChain >= -1){
+                while(indexInReassignmentChain >= -1){
 
                     let currentPoolToVerify = checkpoint.reassignmentChains[subchain][indexInReassignmentChain] || subchain
+
+                    let nextPoolInRC = checkpoint.reassignmentChains[subchain][indexInReassignmentChain+1]
+
+                    let nextAspInChain = aspsForPreviousPools[nextPoolInRC]
 
                     // First of all - check if we already have ASP locally. If so, skip verification because we already have a valid & verified ASP
 
                     let currentAspToVerify = aspsForPreviousPools[currentPoolToVerify]
 
-                    let currentAspIsOk = true
+                    let currentAspIsOk = BLAKE3(JSON.stringify(currentAspToVerify) === nextAspInChain.previousAspHash)
 
-
-                    if(!tempObject.SKIP_HANDLERS.get(currentPoolToVerify)?.aggregatedSkipProof){
-
-                        currentAspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(currentPoolToVerify,currentAspToVerify,checkpointFullID,checkpoint,'QUORUM_THREAD')
-
-                    }
  
                     if(currentAspIsOk){
 
+                        // Verify all the ASP until skipIndex != -1
                         if(currentAspToVerify.skipIndex > -1) break // no sense to verify more
 
                         indexInReassignmentChain -- // otherwise - move to previous pool in rc
