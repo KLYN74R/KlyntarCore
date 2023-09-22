@@ -1776,87 +1776,6 @@ getCurrentSubchainAuthorities = async response => {
 
 
 
-/*
-
-Handler to return ASP for pool on some subchain by index in reassignment chain
-
-
-[Params]:
-
-    0 - Subchain
-    1 - Index in RC
-
-[Returns]:
-
-    Typical ASP structure
-
-
-    {
-
-        firstBlockHash,
-
-        (?) tmbIndex,
-
-        (?) tmbHash,
-
-        skipIndex,
-
-        skipHash,
-
-        aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
-
-        aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
-
-        afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
-
-    }
-
-
-*/
-getAspForPool = async (response,request) => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_CURRENT_SUBCHAINS_AUTHORITIES){
-
-        let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-        let quorumThreadCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadCheckpointFullID)
-
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'QT checkpoint is not ready'}))
-    
-            return
-        }
-
-
-        let subchainID = request.getParameter(0)
-
-        let indexInReassignmentChain = request.getParameter(1)
-        
-
-        if(checkpoint.reassignmentChains[subchainID]){
-
-            // Since we need to get the ASP from SKIP_HANDLERS by pool pubkey - get this pubkey from reassignment chain by index
-            let pubKeyOfWishedPool = checkpoint.reassignmentChains[subchainID][indexInReassignmentChain] || subchainID
-
-            let aspForPool = tempObject.SKIP_HANDLERS.get(pubKeyOfWishedPool)?.aggregatedSkipProof
-
-            if(aspForPool) !response.aborted && response.end(JSON.stringify(aspForPool))
-
-            else !response.aborted && response.end(JSON.stringify({err:'No such ASP'}))
-
-        }else !response.aborted && response.end(JSON.stringify({err:'No such subchain'}))
-            
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
 
 /*
 
@@ -2448,9 +2367,6 @@ global.UWS_SERVER
 
 // Get current subchains' authorities based on reassignment chains of current epoch
 .get('/get_current_subchain_authorities',getCurrentSubchainAuthorities)
-
-// Get ASPs for pools by subchain & index
-.get('/get_asp_for_pool/:SUBCHAIN/:INDEX_IN_RC',getAspForPool)
 
 // Handler to accept ASPs and to start forced reassignment
 .post('/accept_reassignment',acceptReassignment)

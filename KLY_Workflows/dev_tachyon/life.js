@@ -2149,34 +2149,41 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 let shouldTryNextTime = false // flag in case we won't get required ASPs
 
-                for(let position = indexOfSkippedPoolInRc ; position >= -1 ; position--){
+                aspsForPreviousPools[poolPubKeyForHunting] = skipHandler.aggregatedSkipProof
 
+                // Start the reverse order. If we need to send this to pool P7 in RC, then this cycle will get all the ASPs for P6(current),P5,P4...(until ASP with .skipIndex > -1)
+
+                for(let position = indexOfSkippedPoolInRc-1 ; position >= -1 ; position--){
+
+                    
                     let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
 
                     let skipHandlerForSomePreviousPool = skipHandlers.get(pubKeyOfSomePreviousPool)
 
+
+                    let pubKeyOfNext = checkpoint.reassignmentChains[primePoolPubKey][position+1]
+
+                    let aspOfNextPool = skipHandlers.get(pubKeyOfNext).aggregatedSkipProof
+
+
                     let aspThatWeAreGoingToSend = skipHandlerForSomePreviousPool.aggregatedSkipProof
 
-                    if(!aspThatWeAreGoingToSend){
 
-                        // Find ASP over the quorum
-                        for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+                    if(!aspThatWeAreGoingToSend || BLAKE3(JSON.stringify(aspThatWeAreGoingToSend)) !== aspOfNextPool.previousAspHash){
 
+                        // Find the ASP and compare hashes
+                        
+                        let firstBlock = await GET_BLOCK(checkpoint.id,pubKeyOfNext,0)
 
-                            let possibleAsp = await fetch(poolUrlWithPubkey.url+`/get_asp_for_pool/${primePoolPubKey}/${position}`,{agent:GET_HTTP_AGENT(poolUrlWithPubkey.url)}).catch(()=>null)
+                        if(firstBlock && Block.genHash(firstBlock) === aspOfNextPool.firstBlockHash){
                             
-                            if(possibleAsp && await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSomePreviousPool,possibleAsp,checkpointFullID,checkpoint,'QUORUM_THREAD')){
-
-                                aspThatWeAreGoingToSend = possibleAsp
-
-                            }
-
+                            aspThatWeAreGoingToSend = firstBlock.extraData.reassignments[pubKeyOfSomePreviousPool]
                             
                         }
 
-
                     }
 
+                    
                     if(!aspThatWeAreGoingToSend){
 
                         shouldTryNextTime = true
