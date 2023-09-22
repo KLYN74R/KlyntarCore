@@ -1922,8 +1922,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let firstBlockHash
 
-            let previousAspHash
-
 
             if(!aggregatedFinalizationProofForFirstBlock){
 
@@ -1934,24 +1932,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             } else firstBlockHash = aggregatedFinalizationProofForFirstBlock.blockHash
 
 
-
-            if(skipHandler.extendedAggregatedCommitments.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
-
-                let firstBlock = await GET_BLOCK(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
-
-                if(firstBlock && Block.genHash(firstBlock) === firstBlockHash && firstBlock.extraData.reassignments[previousPoolPubKey]){
-
-                    // Now get the hash of ASP for previous pool in reassignment chain
-
-                    previousAspHash = BLAKE3(JSON.stringify(firstBlock.extraData.reassignments[previousPoolPubKey]))
-
-                }
-
-            } else previousAspHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
             // If we don't have AC(aggregated commitments) for first block(with id=0) and skipped index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
 
-            if(!firstBlockHash || !previousAspHash) continue
+            if(!firstBlockHash) continue
 
 
             let sendOptions = {
@@ -2001,7 +1984,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: BLS_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
+                        sig: BLS_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
@@ -2034,7 +2017,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let {index,hash} = skipHandler.extendedAggregatedCommitments
 
-            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
 
             for(let result of results){
 
@@ -2102,8 +2085,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             if(pubkeysWhoAgreeToSkip.length >= majority){
 
                 skipHandler.aggregatedSkipProof = {
-
-                    previousAspHash,
 
                     firstBlockHash,
 

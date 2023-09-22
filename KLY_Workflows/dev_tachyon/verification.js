@@ -283,8 +283,6 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
     
     {
 
-        previousAspInRcHash,
-
         firstBlockHash,
 
         (?) tmbIndex,
@@ -305,8 +303,8 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
 
         Check the skip proof:
 
-            1) If tmb proofs exists => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-            1) If no tmb proofs => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If tmb proofs exists => `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If no tmb proofs => `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
         If skipIndex === -1 - skipHash and firstBlockHash will be default - '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
@@ -327,17 +325,17 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
         // Check the proof
     
 
-        let {previousAspInRcHash,firstBlockHash,tmbIndex,tmbHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
+        let {firstBlockHash,tmbIndex,tmbHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
     
         let dataThatShouldBeSigned
 
         if(typeof tmbIndex === 'number' && typeof tmbHash === 'string'){
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }else{
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }
 
