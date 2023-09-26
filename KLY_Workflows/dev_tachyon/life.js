@@ -664,7 +664,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                             
                                     We should get the ASP for previous pool in reassignment chain
                                 
-                                        1) If previous pool was skipped on height -1 (asp.skipIndex === -1) then try next pool
+                                        1) If previous pool was reassigned on height -1 (asp.skipIndex === -1) then try next pool
 
                                 */
 
@@ -699,7 +699,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
-                                            // Get the first block of pool which was skipped on not-null height
+                                            // Get the first block of pool which was reassigned on not-null height
                                             let potentialNextBlock = await GET_BLOCK(qtCheckpoint.id,previousPoolPubKey,0)
 
                                             if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
@@ -1770,7 +1770,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                 Update the local information
 
-                1) Start(in reverse order) from shouldBeThisAuthority index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was skipped on .skipIndex > -1 
+                1) Start(in reverse order) from shouldBeThisAuthority index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
 
                 2) Create the skipHandler for each pool
 
@@ -1912,7 +1912,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         if(!skipHandler.aggregatedSkipProof){
 
 
-            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedFinalizationProofForFirstBlock> in SKIP_HANDLER to => POST /get_skip_proof
+            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedFinalizationProofForFirstBlock> in SKIP_HANDLER to => POST /get_reassignment_proof
 
             let responsePromises = []
 
@@ -1949,7 +1949,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             } else previousAspHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-            // If we don't have AC(aggregated commitments) for first block(with id=0) and skipped index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
+            // If we don't have AC(aggregated commitments) for first block(with id=0) and reassigned index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
 
             if(!firstBlockHash || !previousAspHash) continue
 
@@ -1976,7 +1976,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
-                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_skip_proof',sendOptions).then(r=>r.json()).then(response=>{
+                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
     
                     response.pubKey = poolUrlWithPubkey.pubKey
         
@@ -2383,7 +2383,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         
                         // And only after successful store we can move to the next pool
     
-                        // Delete the reassignment in case skipped authority was reserve pool
+                        // Delete the reassignment in case reassigned authority was reserve pool
     
                         if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
                     
@@ -2505,7 +2505,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,aggregatedCommitments}
 
-                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 skip proofs from POST /get_skip_proof - aggregate and use to insert in blocks of reserve pool and so on
+                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
 
                 }
 
@@ -3000,7 +3000,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
                 If we can't find all the required ASPs (from <your position> to <position where ASP not starts from index 0>) - skip this iteration to try again later
 
-                Here we need to fill the object with aggregated skip proofs(ASPs) for all the previous pools till the pool which wasn't reassigned from index 0
+                Here we need to fill the object with aggregated reassignment proofs(ASPs) for all the previous pools till the pool which wasn't reassigned from index 0
             
             */
 
@@ -4134,9 +4134,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                             // potentialReassignments[i] = {primePool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
 
-                                            for(let [skippedPool,descriptor] of Object.entries(reassignStats)){
+                                            for(let [reassignedPool,descriptor] of Object.entries(reassignStats)){
 
-                                                if(!tempReassignmentChain[skippedPool]) tempReassignmentChain[skippedPool] = descriptor
+                                                if(!tempReassignmentChain[reassignedPool]) tempReassignmentChain[reassignedPool] = descriptor
                         
                                             }
 

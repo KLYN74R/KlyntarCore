@@ -1192,7 +1192,7 @@ anotherPoolHealthChecker = async(response,request) => {
 
 
 
-// Function to return signature of skip proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
 
 /*
 
@@ -1276,11 +1276,11 @@ anotherPoolHealthChecker = async(response,request) => {
     }
 
 
-    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate skip proofs only in case this one is valid
+    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate reassignment proofs only in case this one is valid
 
 
 */
-getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
@@ -1318,7 +1318,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
 
 
-        // We can't sign the skip proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+        // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
         if(localSkipHandler.extendedAggregatedCommitments.index > index){
 
             let responseData = {
@@ -1344,7 +1344,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
                 if(typeof aggregatedCommitments === 'object'){
 
-                    // Otherwise we can generate skip proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
+                    // Otherwise we can generate reassignment proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
 
                     let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
                     
@@ -1444,7 +1444,7 @@ getSkipProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').o
 
             }
             
-            // If proof is ok - generate skip proof
+            // If proof is ok - generate reassignment proof
 
             if(firstBlockProofIsOk){
 
@@ -2346,12 +2346,12 @@ global.UWS_SERVER
 
 
 
-//______________________ Routes related to the skip procedure _________________________
+//______________________ Routes related to the reassignment procedure _________________________
 
 
 
-// Function to return signature of skip proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
-.post('/get_skip_proof',getSkipProof)
+// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
+.post('/get_reassignment_proof',getReassignmentProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)

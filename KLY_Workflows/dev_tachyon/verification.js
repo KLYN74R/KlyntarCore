@@ -57,7 +57,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
             }
     
-        }).catch(async _error=>{
+        }).catch(async()=>{
     
             // LOG(`No block \x1b[36;1m${blockCreator+':'+index}\u001b[38;5;3m ———> ${error}`,'W')
     
@@ -273,7 +273,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipProof,checkpointFullID,checkpoint,threadID) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,checkpointFullID,checkpoint,threadID) => {
 
     /*
 
@@ -303,10 +303,10 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
 
     }
 
-        Check the skip proof:
+        Check the reassignment proof:
 
-            1) If tmb proofs exists => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-            1) If no tmb proofs => `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If tmb proofs exists => `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            1) If no tmb proofs => `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
         If skipIndex === -1 - skipHash and firstBlockHash will be default - '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
@@ -333,11 +333,11 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (skippedPoolPubKey,aggregatedSkipPr
 
         if(typeof tmbIndex === 'number' && typeof tmbHash === 'string'){
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }else{
 
-            dataThatShouldBeSigned = `SKIP:${skippedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+            dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         }
 
@@ -359,7 +359,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     
         Here we need to check the integrity of reassignment chain to make sure that we can get the obvious variant of a valid chain to verify
 
-        We need to check if <firstBlockInThisEpochByPool.extraData.reassignments> contains all the ASPs(aggregated skip proofs)
+        We need to check if <firstBlockInThisEpochByPool.extraData.reassignments> contains all the ASPs(aggregated reassignment proofs)
         
             for pools from <position>(index of current pool in <reassignmentArray>) to the first pool with not-null ASPs
 
@@ -478,7 +478,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <aggregatedSkipProof> for all the previous reserve pools
 
-        2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was skipped on the first block of this epoch
+        2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was reassigned on the first block of this epoch
 
         3) Using this values - we can build the reasssignment metadata to finish verification process on checkpoint and move to a new one
 
@@ -539,7 +539,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
                 In this case we'll find that reserve pools 0,2,4 is OK because have ASPs for ALL the previous pools(including prime pool)
 
-            (2) Then, we should check if all of them weren't skipped on their first block in epoch:
+            (2) Then, we should check if all of them weren't reassigned on their first block in epoch:
                 
                     For this, if we've found that pools 0,2,4 are valid, check if:
 
@@ -548,7 +548,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
                     
                     After this final filtration, take the first ASP in valid pools and based on this - finish the verification to checkpoint's range.
 
-                    In our case, imagine that Pool2 was skipped on block 1000 and we have a ASP proof in header of block 1567(first block by ReservePool4 in this epoch)
+                    In our case, imagine that Pool2 was reassigned on block 1000 and we have a ASP proof in header of block 1567(first block by ReservePool4 in this epoch)
 
                     That's why, take ASP for primePool from ReservePool0 and ASPs for reserve pools 0,1,2,3 from pool4
 
@@ -597,7 +597,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-    let filtratratedReassignment = new Map() // poolID => {skippedPool:ASP,skippedPool0:ASP,...skippedPoolX:ASP}
+    let filtratratedReassignment = new Map() // poolID => {reassignedPool:ASP,reassignedPool0:ASP,...reassignedPoolX:ASP}
         
 
     // Start the cycle in reverse order from <aefp.lastAuthority> to prime pool
@@ -630,7 +630,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         if(isOK){
 
-            filtratratedReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {skippedPrimePool:{index,hash},skippedReservePool0:{index,hash},...skippedReservePoolX:{index,hash}}
+            filtratratedReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
 
         }
 
@@ -645,9 +645,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
             let metadataForReassignment = filtratratedReassignment.get(reservePool)
 
-            for(let [skippedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
+            for(let [reassignedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
 
-                if(!emptyTemplate[skippedPoolPubKey]) emptyTemplate[skippedPoolPubKey] = asp
+                if(!emptyTemplate[reassignedPoolPubKey]) emptyTemplate[reassignedPoolPubKey] = asp
 
             }
 
@@ -1222,7 +1222,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
                             
                                     We should get the ASP for previous pool in reassignment chain
                                 
-                                        1) If previous pool was skipped on height -1 (asp.skipIndex === -1) then try next pool
+                                        1) If previous pool was reassigned on height -1 (asp.skipIndex === -1) then try next pool
 
                                 */
 
@@ -1257,7 +1257,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
-                                            // Get the first block of pool which was skipped on not-null height
+                                            // Get the first block of pool which was reassigned on not-null height
                                             let potentialNextBlock = await GET_BLOCK(nextEpochIndex,previousPoolPubKey,0)
 
                                             if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
