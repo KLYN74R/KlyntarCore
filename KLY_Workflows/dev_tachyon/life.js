@@ -1,4 +1,4 @@
-import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -654,7 +654,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                             //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
 
-                            let potentialFirstBlock = await GET_BLOCK(qtCheckpoint.id,reservePoolPubKey,0,true)
+                            let potentialFirstBlock = await GET_MANY_BLOCKS(qtCheckpoint.id,reservePoolPubKey,0,true)
 
                             if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
 
@@ -700,7 +700,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
                                             // Get the first block of pool which was reassigned on not-null height
-                                            let potentialNextBlock = await GET_BLOCK(qtCheckpoint.id,previousPoolPubKey,0)
+                                            let potentialNextBlock = await GET_MANY_BLOCKS(qtCheckpoint.id,previousPoolPubKey,0)
 
                                             if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
 
@@ -774,7 +774,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Try to get the system sync operations from the first blocks
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisSubchain = await GET_MANY_BLOCKS(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
@@ -1937,7 +1937,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             if(skipHandler.extendedAggregatedCommitments.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
 
-                let firstBlock = await GET_BLOCK(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
+                let firstBlock = await GET_MANY_BLOCKS(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
 
                 if(firstBlock && Block.genHash(firstBlock) === firstBlockHash && firstBlock.extraData.reassignments[previousPoolPubKey]){
 
@@ -2173,7 +2173,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         // Find the ASP and compare hashes
                         
-                        let firstBlock = await GET_BLOCK(checkpoint.id,pubKeyOfNext,0)
+                        let firstBlock = await GET_MANY_BLOCKS(checkpoint.id,pubKeyOfNext,0)
 
                         if(firstBlock && Block.genHash(firstBlock) === aspOfNextPool.firstBlockHash){
                             
@@ -4085,7 +4085,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,0)
+                                            let firstBlockInThisEpochByPool = await GET_MANY_BLOCKS(quorumThreadCheckpointIndex,poolWithThisPosition,0)
 
                                             // Compare hashes to make sure it's really the first block by pool X in epoch Y
 

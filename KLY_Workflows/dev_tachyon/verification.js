@@ -110,6 +110,43 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
 
 
+GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
+
+    let urlPostfix = `/many_blocks/${epochIndex}/${blockCreator}/${startIndex}/${endIndex}`
+
+    let manyBlocks = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+urlPostfix,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)})
+    
+                    .then(r=>r.json())
+ 
+                    .catch(_=>null)
+
+
+    if(manyBlocks) return manyBlocks
+
+    else {
+
+
+        //Combine all nodes we know about and try to find block there
+        let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
+
+    
+        for(let host of allVisibleNodes){
+
+            if(host === global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+            
+            let itsProbablySetOfBlocks = await fetch(host+urlPostfix,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(_=>null)
+            
+            if(itsProbablySetOfBlocks) return itsProbablySetOfBlocks
+
+        }
+
+    }
+
+},
+
+
+
+
 VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,checkpoint,rootPub) => {
 
     // Make the initial overview
@@ -1407,7 +1444,9 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(typeof indexOfCurrentPoolToVerify !== 'number'){
 
-                reassignmentsBasedOnCheckpointData.currentToVerify = indexOfCurrentPoolToVerify = -1
+                indexOfCurrentPoolToVerify = -1
+
+                reassignmentsBasedOnCheckpointData.currentToVerify = -1
 
             }
 
@@ -1457,6 +1496,9 @@ START_VERIFICATION_THREAD=async()=>{
             
             if(tempReassignmentsForSomeSubchain.currentToVerify === tempReassignmentsForSomeSubchain.currentAuthority){
 
+                // Ask the Savitar about block range
+
+                let savitarURL = 
 
                 while(true){
 

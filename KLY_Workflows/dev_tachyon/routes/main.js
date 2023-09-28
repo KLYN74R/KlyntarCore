@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
@@ -1402,7 +1402,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 // If skipIndex is 0 then sign the hash of block 0
 
-                let block = await GET_BLOCK(checkpoint.id,requestForSkipProof.poolPubKey,0)
+                let block = await GET_MANY_BLOCKS(checkpoint.id,requestForSkipProof.poolPubKey,0)
 
                 if(block && Block.genHash(block) === hash){
 
@@ -1428,7 +1428,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 if(aggregatedFinalizationProofIsOk){
 
-                    let block = await GET_BLOCK(checkpoint.id,requestForSkipProof.poolPubKey,0)
+                    let block = await GET_MANY_BLOCKS(checkpoint.id,requestForSkipProof.poolPubKey,0)
 
                     if(block && Block.genHash(block) === blockHash){
 
