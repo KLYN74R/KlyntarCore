@@ -1472,7 +1472,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
         // Share here
-        BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
+        //BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
+
+        console.log('Get AFP for => ',blockID)
 
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(()=>false)
@@ -1689,24 +1691,27 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     }
 
 
-    let blockID = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
+    while(true){
+
+        let blockID = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
 
 
-    if(FINALIZATION_PROOFS.has(blockID)){
-
-        //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
-
-    }else{
-
-        // This option means that we already started to share block and going to find 2/3N+1 commitments
-        // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
-
-        await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID,appropriateDescriptor.height-1).catch(()=>{})
-
+        if(FINALIZATION_PROOFS.has(blockID)){
+    
+            //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
+            await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
+    
+        }else{
+    
+            // This option means that we already started to share block and going to find 2/3N+1 commitments
+            // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
+    
+            await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID,appropriateDescriptor.height-1).catch(()=>{})
+    
+        }
+    
     }
 
-    setImmediate(SHARE_BLOCKS_AND_GET_PROOFS)
 
 },
 
@@ -4182,7 +4187,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()

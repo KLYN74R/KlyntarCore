@@ -1498,7 +1498,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 // Ask the Savitar about block range
 
-                let savitarURL = 
+                let savitarURL = ''
 
                 while(true){
 
