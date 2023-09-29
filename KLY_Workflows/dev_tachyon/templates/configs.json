@@ -19,7 +19,6 @@
     "GENERATION_THREAD_INIT_DELAY":3000,
     "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
 
-    "BLOCK_TIME":3000,
     "EXTRA_DATA_TO_BLOCK":{
         "hello":"world"
     },
