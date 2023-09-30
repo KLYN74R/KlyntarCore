@@ -860,6 +860,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     CHECKPOINT_MANAGER:new Map(),
 
+                    TEMP_CACHE:new Map(),
+
                     SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
  
                     SKIP_HANDLERS:new Map(), // {extendedAggregatedCommitments,aggregatedSkipProof}
@@ -942,7 +944,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 // Set next temporary object by ID
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
-                //Continue to find checkpoints
+                // Continue to find checkpoints
                 setImmediate(START_QUORUM_THREAD_CHECKPOINT_TRACKER)
 
 
@@ -1027,13 +1029,13 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             
             
             // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)))
-            let checkpointAgreements = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID)
+            let checkpointAgreements = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION')
 
             if(!checkpointAgreements){
 
                 checkpointAgreements = new Map()
 
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('CHECKPOINT_PROPOSITION' + checkpointFullID,checkpointAgreements)
+                temporaryObject.TEMP_CACHE.set('CHECKPOINT_PROPOSITION',checkpointAgreements)
             
             }
 
@@ -1216,7 +1218,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
 
-                        let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature                        
+                        let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature                        
 
                         let response = possibleAgreements[primePoolPubKey]
 
@@ -1283,7 +1285,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
 
-            let agreementsForThisSubchain = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CHECKPOINT_PROPOSITION' + checkpointFullID).get(primePoolPubKey) // signer => signature
+            let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature
 
             if(agreementsForThisSubchain.size >= majority){
 
@@ -1348,7 +1350,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return
 
 
-    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
@@ -1405,7 +1407,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
     if(finalizationProofsMapping.size >= majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the AGGREGATED_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
+        // Also, increase the counter of tempObject.TEMP_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
@@ -1453,28 +1455,12 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
         }
 
 
-        let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
-
-        // Store to cache
-        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('HEALTH',{
-
-            index:appropriateDescriptor.height,
-            
-            hash:blockHash,
-            
-            aggregatedFinalizationProof:{
-                
-                aggregatedPub,aggregatedSignature,afkVoters
-            
-            }
-        
-        })
+        let appropriateDescriptor = TEMP_CACHE.get('BLOCK_SENDER_HANDLER')
 
 
         // Share here
         //BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
 
-        console.log('Get AFP for => ',blockID)
 
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(()=>false)
@@ -1493,14 +1479,23 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
 
-RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex,block) => {
+RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,indexOfLastBlockInPreviousRange) => {
 
 
-    block ||= await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
 
     // Check for this block after a while
     if(!block) return
 
+    // Get the blocks in range <firstBlockInRange> - <lastBlockInRange> to get the AFP for latest block in range instead of ask AFP for each block
+
+    let rangeOfBlocks = []
+
+    for(let blockIndex = firstBlockInRange ; blockIndex < lastBlockInRange ; blockIndex++){
+
+
+
+    }
 
     let blockHash = Block.genHash(block)
 
@@ -1508,7 +1503,7 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,blockID,previousBlockIndex,block) =
 
     // Try to get the AFP for previous block to send the proof of segment validity for quorum members that were absent for a while and don't have a valid copy of your blocks
 
-    let previousBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + previousBlockIndex
+    let previousBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + indexOfLastBlockInPreviousRange
 
     let previousBlockAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
 
@@ -1643,8 +1638,21 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     
     let checkpointFullID = qtCheckpoint.hash + "#" + qtCheckpoint.id
 
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+
+
+    if(!tempObject){
+
+        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
+
+        return
+
+    }
+
+
     // If we don't generate the blocks - skip this function
-    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+checkpointFullID)){
+    if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
 
         setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
 
@@ -1652,18 +1660,10 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
 
     }
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)){
-
-        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
-
-        return
-
-    }
+    let {FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = tempObject
 
     // Descriptor has the following structure - {checkpointID,height}
-    let appropriateDescriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('BLOCK_SENDER_HANDLER')
-
-    let {FINALIZATION_PROOFS,DATABASE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let appropriateDescriptor = TEMP_CACHE.get('BLOCK_SENDER_HANDLER')
 
 
     if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== qtCheckpoint.id){
@@ -1679,34 +1679,40 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     
                 checkpointID:qtCheckpoint.id,
     
-                height:0
+                rangeStart:0,
+
+                rangeFinish:global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
     
             }
     
         }
         
         // And store new descriptor(till it will be old)
-        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
+
+        TEMP_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
     }
 
 
     while(true){
 
-        let blockID = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.height
+        let firstBlockInRange = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.rangeStart
 
+        let lastBlockInRange = qtCheckpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+appropriateDescriptor.rangeFinish
 
-        if(FINALIZATION_PROOFS.has(blockID)){
+        let rangeID = firstBlockInRange+'#'+lastBlockInRange
+
+        if(FINALIZATION_PROOFS.has(rangeID)){
     
             //This option means that we already started to share aggregated 2/3N+1 commitments and grab 2/3+1 FINALIZATION_PROOFS
-            await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,blockID).catch(()=>{})
+            await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,appropriateDescriptor.rangeStart,appropriateDescriptor.rangeFinish).catch(()=>{})
     
         }else{
     
             // This option means that we already started to share block and going to find 2/3N+1 commitments
             // Once we get it - aggregate it and start finalization proofs grabbing(previous option)
     
-            await RUN_COMMITMENTS_GRABBING(qtCheckpoint,blockID,appropriateDescriptor.height-1).catch(()=>{})
+            await RUN_COMMITMENTS_GRABBING(qtCheckpoint,appropriateDescriptor.rangeStart,appropriateDescriptor.rangeFinish,appropriateDescriptor.rangeStart-1).catch(()=>{})
     
         }
     
@@ -1860,7 +1866,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true).then(async()=>{
 
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true)
+
+                tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true)
 
                 //______________________Finally, create the urgent reassignment stats______________________
 
@@ -2244,7 +2251,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true).catch(()=>{})
 
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
+                tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
 
 
                 /*
@@ -2897,27 +2904,25 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     let qtCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID)){
-
-        let poolPresent = checkpoint.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
-
-        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID,poolPresent)
-
-    }
-
-
-    //Safe "if" branch to prevent unnecessary blocks generation
-    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('CAN_PRODUCE_BLOCKS:'+qtCheckpointFullID)) return
-
-
-
     let checkpointIndex = checkpoint.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(qtCheckpointFullID)
 
 
-
     if(!tempObject) return
+
+
+    if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
+
+        let poolPresent = checkpoint.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
+
+        tempObject.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
+
+    }
+
+
+    //Safe "if" branch to prevent unnecessary blocks generation
+    if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
 
     let myDataInReassignments = tempObject.REASSIGNMENTS.get(global.CONFIG.SYMBIOTE.PUB)
@@ -3083,16 +3088,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     extraData.rest = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
 
 
-
-
-    //DEBUG
-    numberOfBlocksToGenerate++
-
-    //If nothing to generate-then no sense to generate block,so return
-    if(numberOfBlocksToGenerate===0) return 
-
-
-    LOG(`Number of blocks to generate \x1b[32;1m${numberOfBlocksToGenerate}`,'I')
+    if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
 
     let atomicBatch = global.SYMBIOTE_META.BLOCKS.batch()
 
@@ -3803,6 +3799,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
+        TEMP_CACHE:new Map(),
     
         CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     

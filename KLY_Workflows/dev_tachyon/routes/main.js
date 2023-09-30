@@ -1399,7 +1399,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
         let skipHandler = tempObject.SKIP_HANDLERS.get(targetPoolPubKey)
 
-        let weHaveSentAlertToThisPool = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get(`SENT_ALERT:${subchain}:${indexOfNext}`) || await USE_TEMPORARY_DB('get',tempObject.DATABASE,`SENT_ALERT:${subchain}:${indexOfNext}`).catch(()=>false)
+        let weHaveSentAlertToThisPool = tempObject.TEMP_CACHE.get(`SENT_ALERT:${subchain}:${indexOfNext}`) || await USE_TEMPORARY_DB('get',tempObject.DATABASE,`SENT_ALERT:${subchain}:${indexOfNext}`).catch(()=>false)
 
 
         if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
