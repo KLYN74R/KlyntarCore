@@ -118,7 +118,7 @@ GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
     
                     .then(r=>r.json())
  
-                    .catch(_=>null)
+                    .catch(()=>null)
 
 
     if(manyBlocks) return manyBlocks
@@ -134,7 +134,7 @@ GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
 
             if(host === global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
             
-            let itsProbablySetOfBlocks = await fetch(host+urlPostfix,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(_=>null)
+            let itsProbablySetOfBlocks = await fetch(host+urlPostfix,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>null)
             
             if(itsProbablySetOfBlocks) return itsProbablySetOfBlocks
 

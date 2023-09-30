@@ -1336,30 +1336,33 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
-
-
-    block ||= await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
-
-    let blockHash = Block.genHash(block)
+RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,lastBlock) => {
 
     let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
+    if(!tempObject) return
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return
+    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = tempObject
 
+    let lastBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange
 
-    let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    lastBlock ||=  TEMP_CACHE.get(lastBlockID) || await global.SYMBIOTE_META.BLOCKS.get(lastBlockID).catch(()=>false)
+
+    let lastBlockHash = Block.genHash(lastBlock)
+
 
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
+
+    let rangeID = (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + firstBlockInRange) + '#' + (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange)
     
-    FINALIZATION_PROOFS.set(blockID,new Map())
+    FINALIZATION_PROOFS.set(lastBlockID,new Map())
 
-    let finalizationProofsMapping = FINALIZATION_PROOFS.get(blockID)
+    let finalizationProofsMapping = FINALIZATION_PROOFS.get(lastBlockID)
 
-    let aggregatedCommitments = COMMITMENTS.get(blockID) //voterValidatorPubKey => his commitment 
+    let aggregatedCommitments = COMMITMENTS.get(rangeID)
 
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
@@ -1383,7 +1386,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
     
             let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.json()).then(async possibleFinalizationProof=>{
                 
-                let finalProofIsOk = await bls.singleVerify(blockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(()=>false)
+                let finalProofIsOk = await bls.singleVerify(lastBlockID+lastBlockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(()=>false)
     
                 if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof.fp)
     
@@ -1442,9 +1445,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
         
         let aggregatedFinalizationProof = {
 
-            blockID,
+            blockID:lastBlockID,
             
-            blockHash,
+            blockHash:lastBlockHash,
             
             aggregatedPub,
             
@@ -1459,11 +1462,11 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 
         // Share here
-        //BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
+        // BROADCAST('/aggregated_finalization_proof',aggregatedFinalizationProof)
 
 
         // Store locally
-        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,aggregatedFinalizationProof).catch(()=>false)
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+lastBlockID,aggregatedFinalizationProof).catch(()=>false)
 
 
         // Repeat procedure for the next block and store the progress
@@ -1471,6 +1474,10 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
         await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
 
         appropriateDescriptor.height++
+
+        appropriateDescriptor.rangeStart = appropriateDescriptor.rangeFinish+1
+
+        appropriateDescriptor.rangeFinish = global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
 
     }
 
@@ -1481,25 +1488,46 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,blockID,block) => {
 
 RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,indexOfLastBlockInPreviousRange) => {
 
-
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
-
-    // Check for this block after a while
-    if(!block) return
-
     // Get the blocks in range <firstBlockInRange> - <lastBlockInRange> to get the AFP for latest block in range instead of ask AFP for each block
+
+    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+
+    if(!tempObject) return
+
 
     let rangeOfBlocks = []
 
-    for(let blockIndex = firstBlockInRange ; blockIndex < lastBlockInRange ; blockIndex++){
+    // As we ask the AFP for the latest block in range(to make approve as many blocks as possible) - store the blockID & blockHash of latest block
 
+    let lastBlock, lastBlockID, lastBlockHash
 
+    for(let blockIndex = firstBlockInRange ; blockIndex <= lastBlockInRange ; blockIndex++){
+
+        let blockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + blockIndex
+
+        let block = tempObject.TEMP_CACHE.get(blockID) || await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>null)
+
+        // Check for this block after a while
+        
+        if(block){
+
+            rangeOfBlocks.push(block)
+
+            if(blockIndex === lastBlockInRange) {
+
+                lastBlock = block
+
+                lastBlockID = blockID
+
+                lastBlockHash = Block.genHash(block)
+
+            }
+
+        } else return
 
     }
-
-    let blockHash = Block.genHash(block)
-
-    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
     // Try to get the AFP for previous block to send the proof of segment validity for quorum members that were absent for a while and don't have a valid copy of your blocks
 
@@ -1507,9 +1535,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
     let previousBlockAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
 
-    let optionsToSend = {method:'POST',body:JSON.stringify({block,previousBlockAfp})},
 
-        commitmentsMapping = global.SYMBIOTE_META.TEMP.get(checkpointFullID).COMMITMENTS,
+
+    let optionsToSend = {method:'POST',body:JSON.stringify({rangeOfBlocks,previousBlockAfp})},
+
+        commitmentsMapping = tempObject.COMMITMENTS,
         
         majority = GET_MAJORITY(checkpoint),
 
@@ -1517,38 +1547,39 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
         promises = [],
 
-        commitmentsForCurrentBlock
+        commitmentsForCurrentRange
 
     
     
-    if(!commitmentsMapping) return
-
-    else if(!commitmentsMapping.has(blockID)){
-
-        commitmentsMapping.set(blockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
-
-        commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
-
-    }else commitmentsForCurrentBlock = commitmentsMapping.get(blockID)
+    let rangeID = (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + firstBlockInRange) + '#' + (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange)
 
 
-    if(commitmentsForCurrentBlock.size<majority){
+    if(!commitmentsMapping.has(rangeID)){
+
+        commitmentsMapping.set(rangeID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
+
+        commitmentsForCurrentRange = commitmentsMapping.get(rangeID)
+
+    }else commitmentsForCurrentRange = commitmentsMapping.get(rangeID)
+
+
+    if(commitmentsForCurrentRange.size < majority){
 
         //Descriptor is {url,pubKey}
         for(let descriptor of quorumMembers){
 
             // No sense to get the commitment if we already have
     
-            if(commitmentsForCurrentBlock.has(descriptor.pubKey)) continue
+            if(commitmentsForCurrentRange.has(descriptor.pubKey)) continue
     
 
             /*
             
-                0. Share the block via POST /block and get the commitment as the answer
+                0. Share the blocks via POST /block and get the commitment as the answer
        
                 1. After getting 2/3N+1 commitments, aggregate it and call POST /finalization to send the aggregated commitment to the quorum members and get the 
     
-                2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /aggregated_finalization_proof to share the AGGREGATED_FINALIZATION_PROOFS over the symbiote
+                2. Get the 2/3N+1 FINALIZATION_PROOFs, aggregate and call POST /aggregated_finalization_proof to share the AGGREGATED_FINALIZATION_PROOFS over the network
     
             */
 
@@ -1556,9 +1587,9 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
             
             let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
 
-                let commitmentIsOk = await bls.singleVerify(blockID+blockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(()=>false)
+                let commitmentIsOk = await bls.singleVerify(lastBlockID+lastBlockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(()=>false)
     
-                if(commitmentIsOk) commitmentsForCurrentBlock.set(descriptor.pubKey,possibleCommitment.commitment)
+                if(commitmentIsOk) commitmentsForCurrentRange.set(descriptor.pubKey,possibleCommitment.commitment)
 
             }).catch(()=>{})
     
@@ -1576,11 +1607,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
     // On this step we should go through the quorum members and share FINALIZATION_PROOF to get the AGGREGATED_FINALIZATION_PROOFS(and this way - finalize the block)
     
-    if(commitmentsForCurrentBlock.size>=majority){
+    if(commitmentsForCurrentRange.size>=majority){
 
-        let signers = [...commitmentsForCurrentBlock.keys()]
+        let signers = [...commitmentsForCurrentRange.keys()]
 
-        let signatures = [...commitmentsForCurrentBlock.values()]
+        let signatures = [...commitmentsForCurrentRange.values()]
 
         let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.filter(pubKey=>!signers.includes(pubKey))
 
@@ -1608,9 +1639,9 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
         let aggregatedCommitments = {
 
-            blockID,
+            blockID:lastBlockID,
             
-            blockHash,
+            blockHash:lastBlockHash,
             
             aggregatedPub:bls.aggregatePublicKeys(signers),
             
@@ -1621,9 +1652,9 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
         }
 
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
-        commitmentsMapping.set(blockID,aggregatedCommitments)
+        commitmentsMapping.set(rangeID,aggregatedCommitments)
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,blockID,block).catch(()=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,firstBlockInRange,lastBlockInRange,lastBlock).catch(()=>{})
 
     }
 
@@ -1714,6 +1745,14 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     
             await RUN_COMMITMENTS_GRABBING(qtCheckpoint,appropriateDescriptor.rangeStart,appropriateDescriptor.rangeFinish,appropriateDescriptor.rangeStart-1).catch(()=>{})
     
+        }
+
+        if(appropriateDescriptor.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
+
+            setImmediate(SHARE_BLOCKS_AND_GET_PROOFS)
+
+            break
+
         }
     
     }
