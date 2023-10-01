@@ -1471,7 +1471,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlock
 
         // Repeat procedure for the next block and store the progress
 
-        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>{})
 
         appropriateDescriptor.height++
 
@@ -1533,11 +1533,11 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
     let previousBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + indexOfLastBlockInPreviousRange
 
-    let previousBlockAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
+    let previousRangeAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
 
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify({rangeOfBlocks,previousBlockAfp})},
+    let optionsToSend = {method:'POST',body:JSON.stringify({rangeOfBlocks,previousRangeAfp})},
 
         commitmentsMapping = tempObject.COMMITMENTS,
         
@@ -1719,6 +1719,8 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
         }
         
         // And store new descriptor(till it will be old)
+
+        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
 
         TEMP_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
