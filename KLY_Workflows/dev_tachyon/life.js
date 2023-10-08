@@ -30,13 +30,13 @@ import fetch from 'node-fetch'
 
 import crypto from 'crypto'
 
+import WS from 'websocket'
+
 import level from 'level'
 
 import Web3 from 'web3'
 
 import ora from 'ora'
-
-import net from 'net'
 
 import fs from 'fs'
 
@@ -1666,74 +1666,89 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
 OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
 
-    // Now we can open required TCP connections with quorums majority
-
-    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true,checkpoint)
+    // Now we can open required WebSocket connections with quorums majority
 
     let {COMMITMENTS,FINALIZATION_PROOFS,TEMP_CACHE} = tempObject
 
-    for(let handler of quorumMembers){
+    for(let pubKey of checkpoint.quorum){
+
+        // Check if we already have an open connection stored in cache
+
+        if(!TEMP_CACHE.has('WS:'+pubKey)){
+
+            let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+            if(poolStorage){
+
+                let WebSocketClient = WS.client
     
-        let [host,tcpPort] = handler.url.split(':')
-    
-        tcpPort = (+tcpPort)+1
-    
-        // Open connection
-    
-        const client = new net.Socket()
-    
-        client.connect(tcpPort,host,()=>{})
-            
-            
-        client.on('data',async data=>{
-    
-            let parsedData = JSON.parse(data)
-    
-            let currentRangeMetadata = TEMP_CACHE.set('BLOCK_SENDER_HANDLER')
-    
-            if(parsedData.commitment && currentRangeMetadata.lastBlockHash && COMMITMENTS.has()){
-    
-            // Verify the commitment
-    
-            let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+checkpointFullID
-    
-            let commitmentIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.commitment).catch(()=>false)
-        
-            if(commitmentIsOk && COMMITMENTS.has(currentRangeMetadata.lastBlockID)){
-    
-                COMMITMENTS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.commitment)
-    
-            }
-    
-    
-                }else if (parsedData.fp && currentRangeMetadata.lastBlockHash){
-    
-                    // Verify the finalization proof
-    
-                    let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+'FINALIZATION'+checkpointFullID
-    
-                    let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.fp).catch(()=>false)
-        
-                    if(finalizationProofIsOk && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
-    
-                        FINALIZATION_PROOFS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.fp)
-    
-                    }
-    
-                }
+                let client = new WebSocketClient({})
                 
-            });
+                
+                // Connect to remote WSS server
+                client.connect(poolStorage.wssPoolURL,'echo-protocol')
+                
+                client.on('connect',connection=>{
+
+                    connection.on('message',async message=>{
+
+                        if(message.type === 'utf8'){
+
+                            let parsedData = JSON.parse(message.utf8Data)
+                        
+                            let currentRangeMetadata = TEMP_CACHE.set('BLOCK_SENDER_HANDLER')
             
+                            if(parsedData.commitment && currentRangeMetadata.lastBlockHash && COMMITMENTS.has()){
+                    
+                                // Verify the commitment
+                    
+                                let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+checkpointFullID
+                    
+                                let commitmentIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.commitment).catch(()=>false)
+                        
+                                if(commitmentIsOk && COMMITMENTS.has(currentRangeMetadata.lastBlockID)){
+                    
+                                    COMMITMENTS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.commitment)
+                    
+                                }
+                    
+                    
+                            }else if (parsedData.fp && currentRangeMetadata.lastBlockHash){
+                    
+                                // Verify the finalization proof
+                    
+                                let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+'FINALIZATION'+checkpointFullID
+                    
+                                let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.fp).catch(()=>false)
+                        
+                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
+                    
+                                    FINALIZATION_PROOFS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.fp)
+                    
+                                }
+                    
+                            }        
+                        
+                        }        
+
+                    })
+
+                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
             
-            client.on('close',()=>TEMP_CACHE.delete('TCP:'+handler.pubKey))
-    
-            client.on('error',()=>TEMP_CACHE.delete('TCP:'+handler.pubKey))
-    
-            TEMP_CACHE.set('TCP:'+handler.pubKey,client)
-        
-    
+                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
+
+                })
+
+                    
+            
+                TEMP_CACHE.set('WS:'+pubKey,client)
+                
+
+            }
+                 
         }
-        
+
+    }
 
 },
 
