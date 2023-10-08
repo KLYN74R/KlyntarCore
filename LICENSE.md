@@ -1,6 +1,6 @@
 # The Apache 2.0 license
 
-Copyright &copy; 2022, [Vlad Chernenko@KLYNTAR](https://klyntar.org)
+Copyright &copy; 2023, [Vlad Chernenko@KLYNTAR](https://klyntar.org)
 
                               Apache License
                            Version 2.0, January 2004

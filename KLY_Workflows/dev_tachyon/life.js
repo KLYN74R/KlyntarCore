@@ -2,11 +2,11 @@ import {CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,START_VERIFICATION_THREAD,VERIF
 
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,BROADCAST,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
 
     DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
-    GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD, GET_HTTP_AGENT
+    GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT
 
 } from './utils.js'
 
@@ -35,6 +35,8 @@ import level from 'level'
 import Web3 from 'web3'
 
 import ora from 'ora'
+
+import net from 'net'
 
 import fs from 'fs'
 
@@ -1356,13 +1358,11 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlock
 
     //Create the mapping to get the FINALIZATION_PROOFs from the quorum members. Inner mapping contains voterValidatorPubKey => his FINALIZATION_PROOF   
 
-    let rangeID = (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + firstBlockInRange) + '#' + (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange)
-    
     FINALIZATION_PROOFS.set(lastBlockID,new Map())
 
     let finalizationProofsMapping = FINALIZATION_PROOFS.get(lastBlockID)
 
-    let aggregatedCommitments = COMMITMENTS.get(rangeID)
+    let aggregatedCommitments = COMMITMENTS.get('AC:'+lastBlockID)
 
 
     let optionsToSend = {method:'POST',body:JSON.stringify(aggregatedCommitments)},
@@ -1469,11 +1469,15 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlock
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+lastBlockID,aggregatedFinalizationProof).catch(()=>false)
 
 
-        // Repeat procedure for the next block and store the progress
+        //Delete AC that we don't more need
+        COMMITMENTS.delete('AC:'+lastBlockID)
 
+        //Delete finalization proofs that we don't more need
+        FINALIZATION_PROOFS.delete(lastBlockID)
+
+        // Repeat procedure for the next block and store the progress
         await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>{})
 
-        appropriateDescriptor.height++
 
         appropriateDescriptor.rangeStart = appropriateDescriptor.rangeFinish+1
 
@@ -1523,21 +1527,26 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
                 lastBlockHash = Block.genHash(block)
 
+
+                // Update the data in descriptor
+
+
+
             }
 
         } else return
 
     }
 
-    // Try to get the AFP for previous block to send the proof of segment validity for quorum members that were absent for a while and don't have a valid copy of your blocks
+    // Try to get the AFP for the last block in previous range to send the proof of segment validity for quorum members that were absent for a while and don't have a valid copy of your blocks
 
     let previousBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + indexOfLastBlockInPreviousRange
 
-    let previousRangeAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null)
+    let previousRangeAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+previousBlockID).catch(()=>null) || {}
 
 
 
-    let optionsToSend = {method:'POST',body:JSON.stringify({rangeOfBlocks,previousRangeAfp})},
+    let dataToSend = JSON.stringify({route:'/blocks',payload:{rangeOfBlocks,previousRangeAfp}}),
 
         commitmentsMapping = tempObject.COMMITMENTS,
         
@@ -1545,22 +1554,17 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
 
         quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true),
 
-        promises = [],
-
         commitmentsForCurrentRange
 
     
-    
-    let rangeID = (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + firstBlockInRange) + '#' + (checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange)
 
+    if(!commitmentsMapping.has(lastBlockID)){
 
-    if(!commitmentsMapping.has(rangeID)){
+        commitmentsMapping.set(lastBlockID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
 
-        commitmentsMapping.set(rangeID,new Map()) // inner mapping contains voterValidatorPubKey => his commitment 
+        commitmentsForCurrentRange = commitmentsMapping.get(lastBlockID)
 
-        commitmentsForCurrentRange = commitmentsMapping.get(rangeID)
-
-    }else commitmentsForCurrentRange = commitmentsMapping.get(rangeID)
+    }else commitmentsForCurrentRange = commitmentsMapping.get(lastBlockID)
 
 
     if(commitmentsForCurrentRange.size < majority){
@@ -1583,23 +1587,20 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
     
             */
 
-            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
-            
-            let promise = fetch(descriptor.url+'/block',optionsToSend).then(r=>r.json()).then(async possibleCommitment=>{
+            let tcpConnection = tempObject.TEMP_CACHE.get('TCP:'+descriptor.pubKey)
 
-                let commitmentIsOk = await bls.singleVerify(lastBlockID+lastBlockHash+checkpointFullID,descriptor.pubKey,possibleCommitment.commitment).catch(()=>false)
-    
-                if(commitmentIsOk) commitmentsForCurrentRange.set(descriptor.pubKey,possibleCommitment.commitment)
+            if(!tcpConnection){
 
-            }).catch(()=>{})
-    
-            // To make sharing async
-            promises.push(promise)
-    
+                // Open connection
+
+            }
+
+            // Send request via the same TCP socket
+
+            tcpConnection.write(dataToSend)
+
         }
     
-        await Promise.all(promises)
-
     }
 
 
@@ -1652,11 +1653,87 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
         }
 
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
-        commitmentsMapping.set(rangeID,aggregatedCommitments)
+        commitmentsMapping.set('AC:'+lastBlockID,aggregatedCommitments)
 
         await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,firstBlockInRange,lastBlockInRange,lastBlock).catch(()=>{})
 
     }
+
+},
+
+
+
+
+OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
+
+    // Now we can open required TCP connections with quorums majority
+
+    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true,checkpoint)
+
+    let {COMMITMENTS,FINALIZATION_PROOFS,TEMP_CACHE} = tempObject
+
+    for(let handler of quorumMembers){
+    
+        let [host,tcpPort] = handler.url.split(':')
+    
+        tcpPort = (+tcpPort)+1
+    
+        // Open connection
+    
+        const client = new net.Socket()
+    
+        client.connect(tcpPort,host,()=>{})
+            
+            
+        client.on('data',async data=>{
+    
+            let parsedData = JSON.parse(data)
+    
+            let currentRangeMetadata = TEMP_CACHE.set('BLOCK_SENDER_HANDLER')
+    
+            if(parsedData.commitment && currentRangeMetadata.lastBlockHash && COMMITMENTS.has()){
+    
+            // Verify the commitment
+    
+            let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+checkpointFullID
+    
+            let commitmentIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.commitment).catch(()=>false)
+        
+            if(commitmentIsOk && COMMITMENTS.has(currentRangeMetadata.lastBlockID)){
+    
+                COMMITMENTS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.commitment)
+    
+            }
+    
+    
+                }else if (parsedData.fp && currentRangeMetadata.lastBlockHash){
+    
+                    // Verify the finalization proof
+    
+                    let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+'FINALIZATION'+checkpointFullID
+    
+                    let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.fp).catch(()=>false)
+        
+                    if(finalizationProofIsOk && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
+    
+                        FINALIZATION_PROOFS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.fp)
+    
+                    }
+    
+                }
+                
+            });
+            
+            
+            client.on('close',()=>TEMP_CACHE.delete('TCP:'+handler.pubKey))
+    
+            client.on('error',()=>TEMP_CACHE.delete('TCP:'+handler.pubKey))
+    
+            TEMP_CACHE.set('TCP:'+handler.pubKey,client)
+        
+    
+        }
+        
 
 },
 
@@ -1685,7 +1762,7 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     // If we don't generate the blocks - skip this function
     if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
 
-        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,3000)
+        setTimeout(SHARE_BLOCKS_AND_GET_PROOFS,2000)
 
         return
 
@@ -1697,7 +1774,7 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
     let appropriateDescriptor = TEMP_CACHE.get('BLOCK_SENDER_HANDLER')
 
 
-    if(!appropriateDescriptor || appropriateDescriptor.checkpointID !== qtCheckpoint.id){
+    if(!appropriateDescriptor || appropriateDescriptor.checkpointFullID !== checkpointFullID){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -1708,11 +1785,11 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
             // Set the new handler with index 0(because each new epoch start with block index 0)
             appropriateDescriptor = {
     
-                checkpointID:qtCheckpoint.id,
+                checkpointFullID,
     
-                rangeStart:0,
+                rangeStartIndex:0,
 
-                rangeFinish:global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
+                rangeFinishIndex:0                
     
             }
     
@@ -1725,6 +1802,9 @@ SHARE_BLOCKS_AND_GET_PROOFS = async () => {
         TEMP_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
 
     }
+
+
+    await OPEN_CONNECTIONS_WITH_QUORUM(qtCheckpoint,tempObject)
 
 
     while(true){

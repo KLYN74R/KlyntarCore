@@ -457,11 +457,13 @@ GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYM
 
 
 
-GET_QUORUM_URLS_AND_PUBKEYS = async withPubkey => {
+GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,checkpoint) => {
 
     let toReturn = []
 
-    for(let pubKey of global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum){
+    checkpoint ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+
+    for(let pubKey of checkpoint.quorum){
 
         let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
