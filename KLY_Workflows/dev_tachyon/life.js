@@ -1348,6 +1348,14 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlock
 
     let {COMMITMENTS,FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = tempObject
 
+    // To prevent spam
+
+    if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
+
+    
+    TEMP_CACHE.set('FP_SPAM_FLAG',true)
+
+
     let lastBlockID = checkpoint.id + ':' + global.CONFIG.SYMBIOTE.PUB + ':' + lastBlockInRange
 
     lastBlock ||=  TEMP_CACHE.get(lastBlockID) || await global.SYMBIOTE_META.BLOCKS.get(lastBlockID).catch(()=>false)
@@ -1478,10 +1486,15 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,firstBlockInRange,lastBlock
         // Repeat procedure for the next block and store the progress
         await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>{})
 
+        TEMP_CACHE.delete('FP_SPAM_FLAG')
 
         appropriateDescriptor.rangeStart = appropriateDescriptor.rangeFinish+1
 
         appropriateDescriptor.rangeFinish = global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
+
+    }else{
+
+        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),3000)
 
     }
 
@@ -1499,6 +1512,14 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
     if(!tempObject) return
+
+
+    // Check if it's too early to ask again
+
+    if(tempObject.TEMP_CACHE.has('COMMITMENTS_SPAM_FLAG')) return
+
+
+    tempObject.TEMP_CACHE.set('COMMITMENTS_SPAM_FLAG',true)
 
 
     let rangeOfBlocks = []
@@ -1655,7 +1676,13 @@ RUN_COMMITMENTS_GRABBING = async (checkpoint,firstBlockInRange,lastBlockInRange,
         //Set the aggregated version of commitments to start to grab FINALIZATION_PROOFS
         commitmentsMapping.set('AC:'+lastBlockID,aggregatedCommitments)
 
+        tempObject.TEMP_CACHE.delete('COMMITMENTS_SPAM_FLAG')
+
         await RUN_FINALIZATION_PROOFS_GRABBING(checkpoint,firstBlockInRange,lastBlockInRange,lastBlock).catch(()=>{})
+
+    }else{
+
+        setTimeout(()=>tempObject.TEMP_CACHE.delete('COMMITMENTS_SPAM_FLAG'),3000)
 
     }
 
@@ -1669,6 +1696,8 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
     // Now we can open required WebSocket connections with quorums majority
 
     let {COMMITMENTS,FINALIZATION_PROOFS,TEMP_CACHE} = tempObject
+
+    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
     for(let pubKey of checkpoint.quorum){
 
@@ -1698,7 +1727,7 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                         
                             let currentRangeMetadata = TEMP_CACHE.set('BLOCK_SENDER_HANDLER')
             
-                            if(parsedData.commitment && currentRangeMetadata.lastBlockHash && COMMITMENTS.has()){
+                            if(parsedData.commitment && currentRangeMetadata.lastBlockHash === parsedData.votedForHash && COMMITMENTS.has(currentRangeMetadata.lastBlockID)){
                     
                                 // Verify the commitment
                     
@@ -1713,7 +1742,7 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                                 }
                     
                     
-                            }else if (parsedData.fp && currentRangeMetadata.lastBlockHash){
+                            }else if (parsedData.fp && currentRangeMetadata.lastBlockHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
                     
                                 // Verify the finalization proof
                     
