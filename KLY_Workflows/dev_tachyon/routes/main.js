@@ -23,34 +23,6 @@ import http from 'http'
 
 
 
-let WebSocketServer = WS.server
-
-let server = http.createServer({},(_,response)=>{
-
-    response.writeHead(404);
-    response.end();
-
-})
-
-
-server.listen(global.CONFIG.WEBSOCKET_PORT,global.CONFIG.WEBSOCKET_INTERFACE,()=>LOG({data:`Websocket server was activated on port \u001b[38;5;168m${global.CONFIG.WEBSOCKET_PORT}`},'CD'))
-
-
-let WEBSOCKET_SERVER = new WebSocketServer({
-    
-    httpServer: server,
-
-    // You should not use autoAcceptConnections for production
-    // applications, as it defeats all standard cross-origin protection
-    // facilities built into the protocol and the browser.  You should
-    // *always* verify the connection's origin and decide whether or not
-    // to accept it.
-    autoAcceptConnections: false
-
-})
-
-
-
 let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(parsedData,connection)=>{
 
         
@@ -206,18 +178,17 @@ let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(parsedData,co
     })
 
     // Make sure that we work in a sync mode + verify the signature for the latest block
-    if(tempObject.SYNCHRONIZER.has('COM:'+firstBlockInRange.creator)){
+    
+    if(!tempObject.SYNCHRONIZER.has('COM:'+firstBlockInRange.creator)){
 
         let signaIsOk = await BLS_VERIFY(Block.genHash(lastBlockInRange),lastBlockInRange.sig,firstBlockInRange.creator).catch(()=>false)
 
         if(!signaIsOk) connection.close()
 
-        return
-
-    }else{
-
         // Add the flag for sync work
-
+        
+        if(tempObject.SYNCHRONIZER.has('COM:'+firstBlockInRange.creator)) return
+        
         tempObject.SYNCHRONIZER.set('COM:'+firstBlockInRange.creator,true)
 
         // In case we haven't vote for previous range - check the AFP for previous one
@@ -463,7 +434,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
-    //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+    // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
     if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH') || !tempObject){
 
@@ -663,6 +634,33 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
 
 
+let WebSocketServer = WS.server
+
+let server = http.createServer({},(_,response)=>{
+
+    response.writeHead(404);
+    response.end();
+
+})
+
+
+server.listen(global.CONFIG.WEBSOCKET_PORT,global.CONFIG.WEBSOCKET_INTERFACE,()=>LOG({data:`Websocket server was activated on port \u001b[38;5;168m${global.CONFIG.WEBSOCKET_PORT}`},'CD'))
+
+
+let WEBSOCKET_SERVER = new WebSocketServer({
+    
+    httpServer: server,
+
+    // You should not use autoAcceptConnections for production
+    // applications, as it defeats all standard cross-origin protection
+    // facilities built into the protocol and the browser.  You should
+    // *always* verify the connection's origin and decide whether or not
+    // to accept it.
+    autoAcceptConnections: false
+
+})
+
+
 
 
 WEBSOCKET_SERVER.on('request',request=>{
@@ -675,11 +673,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             let data = JSON.parse(message.utf8Data)
 
-            if(data.route==='get_commitment_for_block_range'){
-
-                ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK(data.payload,connection)
-
-            }else if(data.route==='get_finalization_proof_for_range'){
+            if(data.route==='get_finalization_proof_for_range'){
 
                 RETURN_FINALIZATION_PROOF_FOR_RANGE(data.payload,connection)
 
