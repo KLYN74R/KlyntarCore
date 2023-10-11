@@ -23,409 +23,70 @@ import http from 'http'
 
 
 
-let ACCEPT_BLOCKS_RANGE_AND_RETURN_COMMITMENT_FOR_LAST_BLOCK=async(parsedData,connection)=>{
-
-        
-    //_________________________________________________ Getting commitments _________________________________________________
-
-
-        /*
-
-            [Description]:
-
-                Accept ranges of blocks and return commitment for the last block in range
-
-            [Accept]:
-
-                {
-                
-                    rangeOfBlocks:[
-                    
-                        {
+/**
+ * 
+ * # Info
+ * 
+ * The main handler that is used for consensus. Here you:
+ * 
+ *  + Accept the blocks & AFP for previous block
+ *  + Verify that it's the part of a valid segment(by comparing a hashes & verifying AFP)
+ *  + Store the new block locally
+ *  + Generate the finalization proof(FP) for a proposed block => BLS_SIGNA(blockID+blockHash+checkpointFullID)
+ *  + Store the fact that we have voted for a block with a specific hash for proposed slot to prevent double voting(and slashing as result) 
+ * 
+ * 
+ * 
+ * # Accept
+ * 
+ *
+ * ```js
+ * 
+ * // Object like this
+ * 
+ * 
+ * {
+ *  
+ *      block: {
                         
-                            creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
-                            time:1666744452126,
-                            transactions:[
-                                tx1,
-                                tx2,
-                                tx3,
-                            ]
-                            index:1337,
-                            prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
-                            sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
+            creator:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            time:1666744452126,
+            transactions:[
+                tx1,
+                tx2,
+                tx3,
+            ]
+            index:1337,
+            prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+            sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
                         
-                        }, ...
-                    
-                    ],
-                
-                    previousRangeAfp:{
-                    
-                        blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
-                    
-                        blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
-                    
-                        aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
-                    
-                        aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
-                    
-                        afkVoters:[...]
-                    
-                    }
-                
-                }
+        },
+
+
+        previousBlockAFP:{
+
+            blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1336",
             
+            blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+
+            aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
             
+            aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+                    
+            afkVoters:[...]
             
-            [Response]:
-            
-                {
-                    voter:<your BLS pubkey>,
-                
-                    commitment:SIG(blockID+hash+checkpointFullID) => jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S
-                }
-            
-                <OR>
-
-                nothing
-
-        */
-
-
-
-    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
-
-    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
-
-    //Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
-        
-    if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH') || !tempObject){
-
-        connection.close()
-    
-        return
-    
-    }
-
-    let {rangeOfBlocks,previousRangeAfp} = parsedData
-
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCK || typeof previousRangeAfp !== 'object' || !Array.isArray(rangeOfBlocks)){
-
-        connection.close()
-
-        return
-
-    }
-
-    let firstBlockInRange = rangeOfBlocks[0]
-
-    let poolIsAFK = tempObject.SKIP_HANDLERS.has(firstBlockInRange.creator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+firstBlockInRange.creator)
-
-
-    if(poolIsAFK){
-
-        connection.close()
-
-        return
-
-    }
-
-
-    let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
-
-    let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(firstBlockInRange.creator)
-
-    let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(firstBlockInRange.creator)
-
-    let poolIsReal = itsPrimePool || itsReservePool
-
-    let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow
-
-    if(poolIsReal){
-
-        if(itsPrimePool) primePoolPubKey = firstBlockInRange.creator
-
-        else if(typeof tempObject.REASSIGNMENTS.get(firstBlockInRange.creator) === 'string'){
-
-            primePoolPubKey = tempObject.REASSIGNMENTS.get(firstBlockInRange.creator)
-
-            itIsReservePoolWhichIsAuthorityNow = true
-
         }
-
-    }
-
-    let thisAuthorityCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsAuthorityNow || itsPrimePool )
-
-    if(!thisAuthorityCanGenerateBlocksNow){
-
-        connection.close()
-
-        return
-
-    }
-    
-
-    let lastBlockInRange = rangeOfBlocks[rangeOfBlocks.length - 1]
-
-    // Try to check if we still haven't vote for this range
-
-    let latestVotedHeightHandler = await USE_TEMPORARY_DB('get',tempObject.DATABASE,'LATEST_VOTED_HEIGHT:'+firstBlockInRange.creator).catch(()=>{
-
-        return {latestHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',latestIndex:-1}
-
-    })
-
-    // Make sure that we work in a sync mode + verify the signature for the latest block
-    
-    if(!tempObject.SYNCHRONIZER.has('COM:'+firstBlockInRange.creator)){
-
-        let signaIsOk = await BLS_VERIFY(Block.genHash(lastBlockInRange),lastBlockInRange.sig,firstBlockInRange.creator).catch(()=>false)
-
-        if(!signaIsOk) connection.close()
-
-        // Add the flag for sync work
-        
-        if(tempObject.SYNCHRONIZER.has('COM:'+firstBlockInRange.creator)) return
-        
-        tempObject.SYNCHRONIZER.set('COM:'+firstBlockInRange.creator,true)
-
-        // In case we haven't vote for previous range - check the AFP for previous one
-
-        if(latestVotedHeightHandler.latestIndex+1 < firstBlockInRange.index){
-
-            let previousRangeAfpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousRangeAfp,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
-
-            // On this step, in case request asks us to vote for a range [A;B], we checked the AFP for block A-1
-
-            let firstBlockInNewRangeIsNextToLatestInPreviousRange = checkpoint.id+':'+firstBlockInRange.creator+':'+(firstBlockInRange.index-1) === previousRangeAfp.blockID
-
-            if(previousRangeAfpIsOk && firstBlockInNewRangeIsNextToLatestInPreviousRange){
-
-                latestVotedHeightHandler.latestHash = previousRangeAfp.blockHash
-
-                latestVotedHeightHandler.latestIndex = previousRangeAfp.index-1
-
-            }
-
-        }
-
-
-        // New range for voting is [A;B]. The condition to continue the work and generate a valid signature for new proposed range is A === latestVotedHeight+1 && B > latestVotedHeight && B >= A
-
-        if(firstBlockInRange.index === latestVotedHeightHandler.latestIndex+1 && firstBlockInRange.index <= lastBlockInRange.index && lastBlockInRange.index >= latestVotedHeightHandler.latestIndex){
-
-            // First of all - check that the whole proposed segment is valid(e.g. each block contains the hash of previous one)
-            // Also, check the structure of block
-
-            let rangeCycleWasBreaked = false
-
-            let prevIndexToCheck = latestVotedHeightHandler.latestIndex
-
-            let prevHashToCheck = latestVotedHeightHandler.latestHash
-
-            let atomicBatch = global.SYMBIOTE_META.BLOCKS.batch()
-            
-
-            for(let block of rangeOfBlocks){
-
-                if(typeof block.index==='number' && typeof block.prevHash==='string' && block.creator === firstBlockInRange.creator && typeof block.sig==='string' && typeof block.extraData === 'object' && Array.isArray(block.transactions)){
-
-                    let hash = Block.genHash(block)
-
-                    let blockID = checkpoint.id+':'+firstBlockInRange.creator+':'+block.index
-
-                    if(hash === prevHashToCheck && block.index-1 === prevIndexToCheck) {
-
-                        // Update the values to check the whole range
-
-                        prevHashToCheck = hash
-
-                        prevIndexToCheck = block.index
-
-
-                        /*
-
-                            Here we also should check the validity of blocks 0 and 1
-
-                            Block 0 must contain the AEFP for previous epoch to finish it
-                            Block 1 must contain the AFP for the first block(with index 0) in epoch created by this pool
-                        
-                        */
-
-
-                        // Also, if it's second block in epoch(index = 1,because numeration starts from 0) - make sure that we have AFP(aggregated finalization proofs) for the first block
-                        // We'll need it for ASP
-                        if(block.index===1){
-
-                            let proofIsOk = false
-
-                            if(typeof block.extraData.aggregatedFinalizationProofForFirstBlock === 'object'){
-
-                                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-                                let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = block.extraData.aggregatedFinalizationProofForFirstBlock
-
-                                let blockIDForFirstBlock = checkpoint.id+':'+block.creator+':'+0
-
-                                proofIsOk = blockID === blockIDForFirstBlock && await VERIFY_AGGREGATED_FINALIZATION_PROOF(block.extraData.aggregatedFinalizationProofForFirstBlock,checkpoint,rootPub)
-
-                                if(proofIsOk){
-
-                                    // Store locally
-                    
-                                    await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(()=>false)
-
-                                }else{
-
-                                    connection.close()
-
-                                    return
-
-                                } 
-
-
-                            }
-
-                        
-                        }else if (block.index === 0 && checkpoint.id !== 0){
-
-
-                            /*
-        
-                                And finally, if it's the first block in epoch - verify that it contains:
-            
-                                1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                                2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
-
-                                Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
-
-                            */
-
-
-                            //_________________________________________1_________________________________________
-
-
-                            let aefpIsOk = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
-            
-                                block.extraData.aefpForPreviousEpoch,
-                                
-                                checkpoint.quorum,
-                                
-                                GET_MAJORITY(checkpoint),
-                                
-                                global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
-            
-                                checkpointFullID
-                                
-                            ).catch(()=>false)
-
-
-                            
-                            //_________________________________________2_________________________________________
-
-                            let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
-
-                            let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
-
-                            let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
-            
-                                primePoolPubKey,
-            
-                                block,
-            
-                                positionOfBlockCreatorInReassignmentChain,
-            
-                                checkpointFullID,
-            
-                                poolsRegistryOnQuorumThread,
-            
-                                'QUORUM_THREAD'
-            
-                            ).then(value=>value.isOK).catch(()=>false)
-
-
-                            if(!aefpIsOk || !aspChainIsOk){
-
-                                connection.close()
-
-                                return
-   
-                            }
-
-                        }
-
-
-                        atomicBatch.put(blockID,block)
-
-
-                    }else{
-
-                        connection.close()
-
-                        return
-
-                    }
-
-                }else{
-
-                    connection.close()
-
-                    return
-
-                }                 
-
-            }
-
-
-            if(!rangeCycleWasBreaked){
-
-                // Store the blocks & generate the signature for the last block in range
-
-                await atomicBatch.write().then(async()=>{
-
-                    // Now we can safely generate commitment for the last block in range without problems
-                    
-                    let lastBlockID = checkpoint.id+':'+lastBlockInRange.creator+':'+lastBlockInRange.index
-
-                    let lastBlockHash = Block.genHash(lastBlockInRange)
-
-                    let commitment = await BLS_SIGN_DATA(lastBlockID+lastBlockHash+checkpointFullID)
-
-                    latestVotedHeightHandler.latestIndex = lastBlockInRange.index
-
-                    latestVotedHeightHandler.latestHash = lastBlockHash
-
-                    // Put to local storage to prevent double voting
-                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,'LATEST_VOTED_HEIGHT:'+firstBlockInRange.creator,latestVotedHeightHandler).then(()=>{
-
-                        // Now we can remove the sync lock
-                        tempObject.SYNCHRONIZER.delete('COM:'+firstBlockInRange.creator)
-
-                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,commitment}))
-
-                    }).catch(()=>
-
-                        connection.close()
-
-                    )
-
-                }).catch(()=>{})
-
-            }
-
-        }
-
-    }
-
-    
-
-}
-
-
-
-
+ * 
+ * } 
+ * 
+ * 
+ *  P.S: In case it's the first block in epoch by current pool - we don't need to verify the AFP 
+ * 
+ * 
+ * ```
+ *  
+ *  
+ */
 let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
@@ -445,186 +106,191 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     }
 
 
-    //______________________________________________ Getting finalization proofs ______________________________________________
 
-    // 2nd stage - accept aggregated commitments and response with the FINALIZATION_PROOF
-
-            /*
-
-            [Description]:
-
-                Accept aggregated commitments which proofs us that 2/3N+1 has the same block and generate FINALIZATION_PROOF => SIG(blockID+hash+'FINALIZATION'+checkpointFullID)
-
-            [Accept]:
-
-                Aggregated version of commitments. This is the proof that 2/3N+1 has received the blockX with hash H and created the commitment(SIG(blockID+hash+checkpointFullID))
+    let {block,previousBlockAFP} = parsedData
 
 
-                {
-
-                    blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
-            
-                    blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
-
-                    aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
-            
-                    aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
-                    
-                    afkVoters:[...]
-            
-                }
-        
-        
-            ___________________________Verification steps___________________________
-        
-        
-            [+] Verify the signa
-        
-            [+] Make sure that at least 2/3N+1 is inside aggregated key/signa. Use afkVoters array for this and QUORUM_THREAD.QUORUM
-        
-            [+] RootPub is equal to QUORUM_THREAD rootpub
-        
-        
-        
-            [Response]:
-        
-                If everything is OK - response with signa SIG(blockID+hash+'FINALIZATION'+checkpointFullID)
-        
-
-    */
-
-    let aggregatedCommitments = parsedData
-
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SHARE_FINALIZATION_PROOF){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || typeof block !== 'object' || typeof previousBlockAFP !== 'object'){
     
         connection.close()
                    
         return
     
     }else{
-    
-        let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
-    
-        if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
-            
-            connection.close()
-    
-            return
-    
-        }
-    
-        let blockCreator = blockID.split(':')[1]
-            
-        let poolIsAFK = tempObject.SKIP_HANDLERS.has(blockCreator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+blockCreator)
-                
+
+        let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+block.creator)        
+
+
         if(poolIsAFK){
-            
+
             connection.close()
-                        
+    
             return
-    
+
         }
+
+
+        let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
+
+        let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(block.creator)
     
-        let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-                    
-        let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
+        let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(block.creator)
     
-        let majority = GET_MAJORITY(checkpoint)
-            
-        let reverseThreshold = checkpoint.quorum.length - majority
+        let poolIsReal = itsPrimePool || itsReservePool
     
-        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(
-                    
-            aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold
-                    
-        ).catch(()=>false)
+        let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow
     
+        if(poolIsReal){
     
-        
-        
-        if(aggregatedCommitmentsIsOk){
+            if(itsPrimePool) primePoolPubKey = block.creator
     
-            let poolIsAFK2 = tempObject.SKIP_HANDLERS.has(blockCreator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+blockCreator)
-            
-            if(!tempObject.SYNCHRONIZER.has('FP:'+blockID) && !poolIsAFK2){
+            else if(typeof tempObject.REASSIGNMENTS.get(block.creator) === 'string'){
     
-                // Sync flag
-                tempObject.SYNCHRONIZER.set('FP:'+blockID,true)
+                primePoolPubKey = tempObject.REASSIGNMENTS.get(block.creator)
     
-                // Add the flag for function SUBCHAINS_HEALTH_MONITORING where we need to create skip handler to avoid async problems
-                tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,false)
-    
-                // eslint-disable-next-line no-unused-vars
-                let [_,poolPubKey,index] = blockID.split(':')
-    
-                index=+index
-                    
-                let fpSignature = await BLS_SIGN_DATA(blockID+blockHash+'FINALIZATION'+checkpointFullID)                    
-    
-                // Now, try to update the checkpoint manager
-    
-                let currentDataInCheckpointManager = tempObject.CHECKPOINT_MANAGER.get(poolPubKey) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
-    
-                if(currentDataInCheckpointManager.index < index){
-    
-                    // Update the local checkpoint manager
-    
-                    let updatedHandler = {
-                                
-                        index,
-                                
-                        hash:blockHash,
-    
-                        aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
-                            
-                    }
-    
-                    // Now push to persistent DB first
-    
-                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,poolPubKey,updatedHandler).then(()=>{
-    
-                        // And only after db - update the finalization height for CHECKPOINT_MANAGER
-                        tempObject.CHECKPOINT_MANAGER.set(poolPubKey,updatedHandler)
-    
-                        // Delete from sync mode
-                        tempObject.SYNCHRONIZER.delete('FP:'+blockID)
-    
-                        // Make it possible to create skip handler in function SUBCHAINS_HEALTH_MONITORING
-                        tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,true)
-    
-                        // And finally - send response
-                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,fp:fpSignature}))
-    
-    
-                    }).catch(()=>
-    
-                        connection.close()
-    
-                    )
-    
-    
-                }else{
-    
-                    // Delete from sync mode
-                    tempObject.SYNCHRONIZER.delete('FP:'+blockID)
-    
-                    // Make it possible to create skip handler in function SUBCHAINS_HEALTH_MONITORING
-                    tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+blockCreator,true)
-    
-                    // And finally - send response
-                    connection.sendUTF(JSON.stringify({fp:fpSignature}))
-    
-                }
+                itIsReservePoolWhichIsAuthorityNow = true
     
             }
     
+        }
     
-        } else {
+        let thisAuthorityCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsAuthorityNow || itsPrimePool )
+    
+        if(!thisAuthorityCanGenerateBlocksNow){
     
             connection.close()
-       
-            return                
     
+            return
+    
+        }
+    
+
+        // Make sure that we work in a sync mode + verify the signature for the latest block
+    
+        if(!tempObject.SYNCHRONIZER.has('COM:'+block.creator)){
+
+            let proposedBlockHash = Block.genHash(block)
+
+            let proposedBlockID = checkpoint.id+':'+block.creator+':'+block.index
+
+            let signaIsOk = await BLS_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)
+
+            if(!signaIsOk) connection.close()
+
+            if(tempObject.SYNCHRONIZER.has('COM:'+block.creator)||tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')) return
+        
+            tempObject.SYNCHRONIZER.set('COM:'+block.creator,true)
+
+            // Check that a new proposed block is a part of a valid segment
+            
+            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = previousBlockAFP
+    
+            let itsAfpForPreviousBlock = blockID === (checkpoint.id+':'+block.creator+':'+(block.index-1))
+
+
+            if(!itsAfpForPreviousBlock || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
+                
+                connection.close()
+        
+                return
+        
+            }
+
+            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+            
+            let canGenerateFinalizationProof = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub)
+
+
+            if(canGenerateFinalizationProof){
+
+
+                // Here we also should check the validity of block 0
+                // Block 0 must contain the AEFP for previous epoch to finish it                        
+                
+
+                if(block.index === 0){
+
+
+                    /*
+    
+                        And finally, if it's the first block in epoch - verify that it contains:
+        
+                            1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
+                            2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
+
+                        Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
+
+                    */
+
+
+                    //_________________________________________1_________________________________________
+                    
+
+                    let aefpIsOk = checkpoint.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+        
+                        block.extraData.aefpForPreviousEpoch,
+                            
+                        checkpoint.quorum,
+                            
+                        GET_MAJORITY(checkpoint),
+                            
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+        
+                        checkpointFullID
+                            
+                    ).catch(()=>false)
+
+
+                        
+                    //_________________________________________2_________________________________________
+
+                    let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
+
+                    let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+
+                    let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
+        
+                        primePoolPubKey,
+        
+                        block,
+        
+                        positionOfBlockCreatorInReassignmentChain,
+        
+                        checkpointFullID,
+        
+                        poolsRegistryOnQuorumThread,
+        
+                        'QUORUM_THREAD'
+        
+                    ).then(value=>value.isOK).catch(()=>false)
+
+
+                    if(!aefpIsOk || !aspChainIsOk){
+
+                        connection.close()
+
+                        return
+
+                    }
+
+                }
+
+
+                // Store the block
+
+                global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
+
+                    let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
+
+                    tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
+
+                    connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof}))
+
+
+                })            
+
+            }
+
         }
     
     }

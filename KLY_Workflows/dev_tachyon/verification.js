@@ -169,7 +169,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
         let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedFinalizationProof
 
-        let dataThatShouldBeSigned = blockID+blockHash+'FINALIZATION'+checkpointFullID
+        let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
 
         let majority = GET_MAJORITY(checkpoint)
 
