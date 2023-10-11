@@ -57,7 +57,7 @@ import http from 'http'
                 tx3,
             ]
             index:1337,
-            prevHash:'0123456701234567012345670123456701234567012345670123456701234567',
+            prevHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
             sig:'jXO7fLynU9nvN6Hok8r9lVXdFmjF5eye09t+aQsu+C/wyTWtqwHhPwHq/Nl0AgXDDbqDfhVmeJRKV85oSEDrMjVJFWxXVIQbNBhA7AZjQNn7UmTI75WAYNeQiyv4+R4S'
                         
         },
@@ -65,11 +65,11 @@ import http from 'http'
 
         previousBlockAFP:{
 
-            prevBlockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+            prevBlockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
             blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1336",
             
-            blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+            blockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
             aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
             
@@ -169,15 +169,19 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        let checkpointManagerMetadataForThisPool = tempObject.CHECKPOINT_MANAGER.get(block.creator) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+        let checkpointManagerMetadataForThisPool = tempObject.CHECKPOINT_MANAGER.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
         let proposedBlockHash = Block.genHash(block)
+
+        // Check that a new proposed block is a part of a valid segment
 
         let sameSegment = checkpointManagerMetadataForThisPool.index < block.index || checkpointManagerMetadataForThisPool.index === block.index && proposedBlockHash === checkpointManagerMetadataForThisPool.hash
 
         if(!tempObject.SYNCHRONIZER.has('COM:'+block.creator) && sameSegment){
 
             let proposedBlockID = checkpoint.id+':'+block.creator+':'+block.index
+
+            let updatedMetadata
 
             let signaIsOk = await BLS_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)
 
@@ -187,27 +191,27 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
             tempObject.SYNCHRONIZER.set('COM:'+block.creator,true)
 
-            // Check that a new proposed block is a part of a valid segment
-            
-            let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = previousBlockAFP
-    
-            let itsAfpForPreviousBlock = blockID === (checkpoint.id+':'+block.creator+':'+(block.index-1))
 
+            if(checkpointManagerMetadataForThisPool.index === block.index){
 
-            if(!itsAfpForPreviousBlock || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
-                
-                connection.close()
-        
-                return
-        
+                updatedMetadata = checkpointManagerMetadataForThisPool
+
+            }else{
+
+                updatedMetadata = {
+
+                    index:block.index-1,
+                    
+                    hash:previousBlockAFP.blockHash,
+
+                    afp:previousBlockAFP
+
+                }
+
             }
+                        
 
-            
-            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-               
-                
             if(block.index === 0){
-
 
                 /*
     
@@ -271,19 +275,38 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                 }
 
-            }else if(!(await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub))) return
+            }else{
+
+                let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = previousBlockAFP
+    
+                let itsAfpForPreviousBlock = blockID === (checkpoint.id+':'+block.creator+':'+(block.index-1))
+    
+                if(!itsAfpForPreviousBlock || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
+                    
+                    connection.close()
+            
+                    return
+            
+                }
+    
+                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+                   
+                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub)
+
+                if(!isOK) return
+
+            }
 
 
-
-            USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,{index:block.index,hash:proposedBlockHash,afpForPrevious:previousBlockAFP}).then(()=>{
+            USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,updatedMetadata).then(()=>{
 
                 // Store the block
 
                 global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
 
-                    tempObject.CHECKPOINT_MANAGER.set(block.creator,{index:block.index,hash:proposedBlockHash,afpForPrevious:previousBlockAFP})
+                    tempObject.CHECKPOINT_MANAGER.set(block.creator,updatedMetadata)
 
-                    let dataToSign = (previousBlockAFP.blockHash || '0123456701234567012345670123456701234567012345670123456701234567')+proposedBlockID+proposedBlockHash+checkpointFullID
+                    let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+checkpointFullID
 
                     let finalizationProof = await BLS_SIGN_DATA(dataToSign)
 
@@ -346,7 +369,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             if(data.route==='get_finalization_proof'){
 
-                RETURN_FINALIZATION_PROOF_FOR_RANGE(data.payload,connection)
+                RETURN_FINALIZATION_PROOF_FOR_RANGE(data,connection)
 
             }else if(data.route==='tmb'){
 
@@ -783,7 +806,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
-                let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+                let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
                 // Verify the AFP for first block
@@ -801,7 +824,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 }else if(proposition.finalizationProof.index === 0) firstBlockHash = proposition.finalizationProof.hash
 
-                else if(proposition.finalizationProof.index === -1) firstBlockHash = '0123456701234567012345670123456701234567012345670123456701234567'
+                else if(proposition.finalizationProof.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
 
                 if(!firstBlockHash) continue

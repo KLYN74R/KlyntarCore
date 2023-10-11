@@ -920,13 +920,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:false})
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'})
 
                     )
 
                     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve:true})
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'})
 
                     )
 
@@ -1132,7 +1132,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 afpForFirstBlock:{},
 
-                finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
+                finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
             }
 
@@ -1147,7 +1147,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             else if(checkpointProposition[primePoolPubKey].finalizationProof.index === 0) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = checkpointProposition[primePoolPubKey].finalizationProof.hash
 
-            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === -1) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = '0123456701234567012345670123456701234567012345670123456701234567'
+            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === -1) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
             
         }
 
@@ -1251,7 +1251,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                                     
                                     // Update CHECKPOINT_MANAGER
 
-                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}})                                    
+                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{aggregatedPub,aggregatedSignature,afkVoters}})                                    
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
@@ -1346,7 +1346,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
     let finalizationProofsMapping
 
 
-    if(FINALIZATION_PROOFS.has(blockIDForHunting)) finalizationProofsMapping = FINALIZATION_PROOFS.has(blockIDForHunting)
+    if(FINALIZATION_PROOFS.has(blockIDForHunting)) finalizationProofsMapping = FINALIZATION_PROOFS.get(blockIDForHunting)
 
     else{
 
@@ -1358,10 +1358,14 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
     let majority = GET_MAJORITY(checkpoint)
 
-    let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await global.SYMBIOTE_META.BLOCKS.get(blockIDForHunting).catch(()=>false)
+    let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await global.SYMBIOTE_META.BLOCKS.get(blockIDForHunting).catch(()=>null)
 
-    let blockHash = proofsGrabber.huntingForHash || Block.genHash(blockToSend)
 
+    if(!blockToSend) return
+
+
+    let blockHash = Block.genHash(blockToSend)
+    
 
     TEMP_CACHE.set(blockIDForHunting,blockToSend)
 
@@ -1390,6 +1394,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
             
         })
 
+
         for(let pubKeyOfQuorumMember of checkpoint.quorum){
 
             // No sense to get the commitment if we already have
@@ -1398,7 +1403,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
             let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
-            connection.sendUTF(dataToSend)
+            if(connection) connection.sendUTF(dataToSend)
 
         }
 
@@ -1426,11 +1431,11 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         Aggregated version of FINALIZATION_PROOFs (it's AGGREGATED_FINALIZATION_PROOF)
         
         {
-            prevBlockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+            prevBlockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         
             blockID:"93:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
 
-            blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+            blockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         
             aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
 
@@ -1463,15 +1468,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         }
 
 
-        let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
-
-
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
         // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
 
+        console.log('Received AFP => ',aggregatedFinalizationProof)
 
         // Repeat procedure for the next block and store the progress
         await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
@@ -1492,7 +1495,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
     }else{
 
-        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),3000)
+        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),1000)
 
     }
 
@@ -1535,8 +1538,8 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
 
                             let parsedData = JSON.parse(message.utf8Data)
                         
-                            let proofsGrabber = TEMP_CACHE.set('PROOFS_GRABBER')
-            
+                            let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
+ 
                             if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
                                 // Verify the finalization proof
@@ -1558,16 +1561,13 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                     })
 
                     connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
-            
+                      
                     connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
 
+                    TEMP_CACHE.set('WS:'+pubKey,connection)
+
                 })
-
-                    
-            
-                TEMP_CACHE.set('WS:'+pubKey,client)
                 
-
             }
                  
         }
@@ -1613,7 +1613,7 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!proofsGrabber || proofsGrabber.checkpointFullID !== checkpointFullID){
+    if(!proofsGrabber || proofsGrabber.checkpointID !== qtCheckpoint.id){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -1624,7 +1624,7 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
             // Set the new handler with index 0(because each new epoch start with block index 0)
             proofsGrabber = {
     
-                checkpointFullID,
+                checkpointID:qtCheckpoint.id,
 
                 acceptedIndex:-1,
 
@@ -1648,19 +1648,23 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     await OPEN_CONNECTIONS_WITH_QUORUM(qtCheckpoint,tempObject)
 
 
-    while(true){
+    await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(()=>{})
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(()=>{})
+    setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
 
-        if(proofsGrabber.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
+    // while(true){
 
-            setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
+    //     await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(err=>console.log('Error is ',err))
 
-            break
+    //     if(proofsGrabber.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
 
-        }
+    //         setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
+
+    //         break
+
+    //     }
     
-    }
+    // }
 
 
 },
@@ -2459,7 +2463,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     indexInReassignmentChain:poolIndexInRc,
 
-                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,aggregatedCommitments}
+                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,afp}
 
                     aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
 
@@ -2701,11 +2705,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
     }
 
-    console.log('DEBUG: Health monitoring is ', tempObject.HEALTH_MONITORING)
-
-
     setTimeout(SUBCHAINS_HEALTH_MONITORING,global.CONFIG.SYMBIOTE.TACHYON_HEALTH_MONITORING_TIMEOUT)
-
 
 },
 
@@ -2729,10 +2729,10 @@ RESTORE_STATE=async()=>{
         // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {index,hash,(?)aggregatedCommitments}
 
-        let {index,hash,aggregatedCommitments} = await tempObject.DATABASE.get(poolPubKey).catch(()=>false) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+        let {index,hash,afp} = await tempObject.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
         
-        tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,aggregatedCommitments})
+        tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,afp})
 
 
         //______________________________ Try to find SKIP_HANDLER for pool ______________________________
@@ -4123,7 +4123,7 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
     //4.Start checking the health of all the subchains
-    SUBCHAINS_HEALTH_MONITORING()
+    //SUBCHAINS_HEALTH_MONITORING()
 
     //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
