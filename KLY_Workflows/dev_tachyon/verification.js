@@ -152,6 +152,8 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
                                     &&
+                                    typeof itsProbablyAggregatedFinalizationProof.prevBlockHash === 'string'
+                                    &&
                                     typeof itsProbablyAggregatedFinalizationProof.aggregatedPub === 'string'
                                     &&
                                     typeof itsProbablyAggregatedFinalizationProof.aggregatedSignature === 'string'
@@ -167,9 +169,9 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
         let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-        let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedFinalizationProof
+        let {prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedFinalizationProof
 
-        let dataThatShouldBeSigned = blockID+blockHash+checkpointFullID
+        let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+checkpointFullID
 
         let majority = GET_MAJORITY(checkpoint)
 
@@ -192,6 +194,8 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
 Structure => {
     
+    prevBlockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+
     blockID:"521:7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0",
 
     blockHash:"0123456701234567012345670123456701234567012345670123456701234567",

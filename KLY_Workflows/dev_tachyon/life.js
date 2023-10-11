@@ -1426,6 +1426,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         Aggregated version of FINALIZATION_PROOFs (it's AGGREGATED_FINALIZATION_PROOF)
         
         {
+            prevBlockHash:"0123456701234567012345670123456701234567012345670123456701234567",
         
             blockID:"93:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
 
@@ -1446,6 +1447,8 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         let aggregatedPub = bls.aggregatePublicKeys(signers), aggregatedSignature = bls.aggregateSignatures(signatures)
         
         let aggregatedFinalizationProof = {
+
+            prevBlockHash:proofsGrabber.acceptedHash,
 
             blockID:blockIDForHunting,
             
@@ -1538,13 +1541,13 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                     
                                 // Verify the finalization proof
                     
-                                let dataThatShouldBeSigned = proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
+                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
                     
                                 let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.finalizationProof).catch(()=>false)
                         
                                 if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
-                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.fp)
+                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
                     
                                 }
                     
@@ -2989,22 +2992,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     }else if(global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY) return
     
-    
-    // In case it's the second block in epoch(with index = 1,coz numeration starts from 0) - add the aggregated commitments to header
-
-    if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 1){
-
-
-        let myFirstBlockInEpoch = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':0'
-
-        let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+myFirstBlockInEpoch).catch(()=>false)
-
-
-        if(aggregatedFinalizationProofForFirstBlock) extraData.aggregatedFinalizationProofForFirstBlock = aggregatedFinalizationProofForFirstBlock
-
-        else return // try later
-
-    }
 
     /*
 

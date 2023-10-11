@@ -31,6 +31,7 @@ specifiers:
   uWebSockets.js: github:uNetworking/uWebSockets.js#v20.3.0
   wasm-metering: ^0.2.1
   web3: ^1.8.0
+  websocket: ^1.0.34
 
 dependencies:
   '@assemblyscript/loader': 0.20.13
@@ -57,6 +58,7 @@ dependencies:
   uWebSockets.js: github.com/uNetworking/uWebSockets.js/e5d6241a7bbfb0d9258780dbf6175ae34d6f18e9
   wasm-metering: 0.2.1
   web3: 1.8.0
+  websocket: 1.0.34
 
 devDependencies:
   '@ethereumjs/tx': 4.0.2

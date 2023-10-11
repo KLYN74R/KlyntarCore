@@ -65,6 +65,8 @@ import http from 'http'
 
         previousBlockAFP:{
 
+            prevBlockHash:"0123456701234567012345670123456701234567012345670123456701234567",
+
             blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1336",
             
             blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
@@ -281,7 +283,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     tempObject.CHECKPOINT_MANAGER.set(block.creator,{index:block.index,hash:proposedBlockHash,afpForPrevious:previousBlockAFP})
 
-                    let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
+                    let dataToSign = (previousBlockAFP.blockHash || '0123456701234567012345670123456701234567012345670123456701234567')+proposedBlockID+proposedBlockHash+checkpointFullID
+
+                    let finalizationProof = await BLS_SIGN_DATA(dataToSign)
 
                     tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
 
@@ -311,7 +315,7 @@ let server = http.createServer({},(_,response)=>{
 })
 
 
-server.listen(global.CONFIG.WEBSOCKET_PORT,global.CONFIG.WEBSOCKET_INTERFACE,()=>LOG({data:`Websocket server was activated on port \u001b[38;5;168m${global.CONFIG.WEBSOCKET_PORT}`},'CD'))
+server.listen(global.CONFIG.WEBSOCKET_PORT,global.CONFIG.WEBSOCKET_INTERFACE,()=>LOG(`Websocket server was activated on port \u001b[38;5;168m${global.CONFIG.WEBSOCKET_PORT}`,'CD'))
 
 
 let WEBSOCKET_SERVER = new WebSocketServer({
@@ -351,7 +355,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             }else if(data.route==='accept_afp'){
 
-                //ACCEPT_AGGREGATED_FINALIZATION_PROOF(data.payload,connection)
+                // ACCEPT_AGGREGATED_FINALIZATION_PROOF(data.payload,connection)
 
             }
             else{
@@ -408,9 +412,9 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
    
     let possibleAggregatedFinalizationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
+    let {prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
     
-    if(typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
+    if(typeof prevBlockHash !== 'string' || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
 
         !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
 
@@ -419,20 +423,16 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
     }
 
 
-    let myLocalBlock = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>false)
-
-    let hashesAreEqual = myLocalBlock ? Block.genHash(myLocalBlock) === blockHash : false
-
     let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
 
 
-    if(quorumSignaIsOk && hashesAreEqual){
+    if(quorumSignaIsOk){
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(()=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(()=>{})
 
         !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
-    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong because all of 2 must be true => signa_is_ok:${quorumSignaIsOk} | hashesAreEqual:${hashesAreEqual}`}))
+    }else !response.aborted && response.end(JSON.stringify({err:`Something wrong => signa_is_ok:${quorumSignaIsOk}`}))
 
 
 }),
@@ -453,9 +453,10 @@ Params:
 Returns:
 
     {
+        prevBlockHash,
         blockID,
         blockHash,
-        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+        aggregatedSignature:<>, // blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
         aggregatedPub:<>,
         afkVoters
         
@@ -648,11 +649,12 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 currentAuth:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
                 
-                afpForFirstBlock:{
+                afpForSecondBlock:{
 
+                    prevBlockHash,
                     blockID,
                     blockHash,
-                    aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                    aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
                     aggregatedPub:<>,
                     afkVoters
 
@@ -1112,11 +1114,11 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
-                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':0'
+                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':1'
 
                 let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
 
-                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+'FINALIZATION'+checkpointFullID
+                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+checkpointFullID
             
                 let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
 
@@ -1269,7 +1271,7 @@ ___________________________________________________________
         
         blockID,
         blockHash,
-        aggregatedSignature:<>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+        aggregatedSignature:<>, // blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
         aggregatedPub:<>,
         afkVoters
         
