@@ -167,9 +167,13 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        if(!tempObject.SYNCHRONIZER.has('COM:'+block.creator)){
+        let checkpointManagerMetadataForThisPool = tempObject.CHECKPOINT_MANAGER.get(block.creator) || {index:-1,hash:'0123456701234567012345670123456701234567012345670123456701234567'}
 
-            let proposedBlockHash = Block.genHash(block)
+        let proposedBlockHash = Block.genHash(block)
+
+        let sameSegment = checkpointManagerMetadataForThisPool.index < block.index || checkpointManagerMetadataForThisPool.index === block.index && proposedBlockHash === checkpointManagerMetadataForThisPool.hash
+
+        if(!tempObject.SYNCHRONIZER.has('COM:'+block.creator) && sameSegment){
 
             let proposedBlockID = checkpoint.id+':'+block.creator+':'+block.index
 
@@ -268,17 +272,24 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
             }else if(!(await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub))) return
 
 
-            // Store the block
 
-            global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
+            USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,{index:block.index,hash:proposedBlockHash,afpForPrevious:previousBlockAFP}).then(()=>{
 
-                let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
+                // Store the block
 
-                tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
+                global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
 
-                connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof}))
+                    tempObject.CHECKPOINT_MANAGER.set(block.creator,{index:block.index,hash:proposedBlockHash,afpForPrevious:previousBlockAFP})
 
-            })
+                    let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
+
+                    tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
+
+                    connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+
+                })
+
+            })            
 
         }
     
@@ -293,8 +304,9 @@ let WebSocketServer = WS.server
 
 let server = http.createServer({},(_,response)=>{
 
-    response.writeHead(404);
-    response.end();
+    response.writeHead(404)
+
+    response.end()
 
 })
 
@@ -328,7 +340,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             let data = JSON.parse(message.utf8Data)
 
-            if(data.route==='get_finalization_proof_for_range'){
+            if(data.route==='get_finalization_proof'){
 
                 RETURN_FINALIZATION_PROOF_FOR_RANGE(data.payload,connection)
 
@@ -1366,10 +1378,6 @@ Function to return the current information about authorities on subchains
             aspForPrevious:{
 
                 firstBlockHash,
-
-                (?) tmbIndex,
-
-                (?) tmbHash,
 
                 skipIndex,
 

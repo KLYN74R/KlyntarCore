@@ -324,10 +324,6 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
         firstBlockHash,
 
-        (?) tmbIndex,
-
-        (?) tmbHash,
-
         skipIndex,
 
         skipHash,
@@ -340,12 +336,11 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
     }
 
-        Check the reassignment proof:
+        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
-            1) If tmb proofs exists => `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-            1) If no tmb proofs => `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
+
         If skipIndex === -1 - skipHash and firstBlockHash will be default - '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
     */
@@ -364,20 +359,9 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
         // Check the proof
     
 
-        let {previousAspInRcHash,firstBlockHash,tmbIndex,tmbHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
+        let {previousAspInRcHash,firstBlockHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
     
-        let dataThatShouldBeSigned
-
-        if(typeof tmbIndex === 'number' && typeof tmbHash === 'string'){
-
-            dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${tmbIndex}:${tmbHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-
-        }else{
-
-            dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
-
-        }
-
+        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
     
         let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
     

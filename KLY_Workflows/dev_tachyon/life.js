@@ -1328,7 +1328,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
+RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
     let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
 
@@ -1341,7 +1341,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
 
     // Get the block index & hash that we're currently hunting for
 
-    let blockIDForHunting = checkpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+(appropriateDescriptor.acceptedIndex+1)
+    let blockIDForHunting = checkpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+(proofsGrabber.acceptedIndex+1)
 
     let finalizationProofsMapping
 
@@ -1360,10 +1360,15 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
 
     let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await global.SYMBIOTE_META.BLOCKS.get(blockIDForHunting).catch(()=>false)
 
-    let blockHash = Block.genHash(blockToSend)
+    let blockHash = proofsGrabber.huntingForHash || Block.genHash(blockToSend)
 
 
     TEMP_CACHE.set(blockIDForHunting,blockToSend)
+
+
+    proofsGrabber.huntingForBlockID = blockIDForHunting
+
+    proofsGrabber.huntingForHash = blockHash
 
 
     if(finalizationProofsMapping.size<majority){
@@ -1374,31 +1379,29 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
     
         TEMP_CACHE.set('FP_SPAM_FLAG',true)
 
+        let dataToSend = JSON.stringify({
 
-        //Descriptor is {url,pubKey}
-        for(let descriptor of quorumMembers){
+            route:'get_finalization_proof',
+        
+            block:blockToSend,
+            
+            previousBlockAFP:proofsGrabber.afpForPrevious
+
+            
+        })
+
+        for(let pubKeyOfQuorumMember of checkpoint.quorum){
 
             // No sense to get the commitment if we already have
-            if(finalizationProofsMapping.has(descriptor.pubKey)) continue
-    
-            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
-    
-            let promise = fetch(descriptor.url+'/finalization',optionsToSend).then(r=>r.json()).then(async possibleFinalizationProof=>{
-                
-                let finalProofIsOk = await bls.singleVerify(lastBlockID+blockHash+'FINALIZATION'+checkpointFullID,descriptor.pubKey,possibleFinalizationProof.fp).catch(()=>false)
-    
-                if(finalProofIsOk) finalizationProofsMapping.set(descriptor.pubKey,possibleFinalizationProof.fp)
-    
-            
-            }).catch(()=>false)
-    
 
-            // To make sharing async
-            promises.push(promise)
-    
+            if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
+
+            let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+
+            connection.sendUTF(dataToSend)
+
         }
-    
-        await Promise.all(promises)
+
 
     }
 
@@ -1409,7 +1412,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
     if(finalizationProofsMapping.size >= majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the AGGREGATED_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of tempObject.TEMP_CACHE.get('BLOCK_SENDER_HANDLER') to move to the next block and udpate the hash
+        // Also, increase the counter of tempObject.TEMP_CACHE.get('PROOFS_GRABBER') to move to the next block and udpate the hash
     
         let signers = [...finalizationProofsMapping.keys()]
 
@@ -1457,24 +1460,32 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,appropriateDescriptor) => {
         }
 
 
-        let appropriateDescriptor = TEMP_CACHE.get('BLOCK_SENDER_HANDLER')
+        let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-
-        //Delete finalization proofs that we don't more need
+        // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
 
-        // Repeat procedure for the next block and store the progress
-        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>{})
 
+        // Repeat procedure for the next block and store the progress
+        await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
+
+            proofsGrabber.afpForPrevious = aggregatedFinalizationProof
+
+            proofsGrabber.acceptedIndex++
+    
+            proofsGrabber.acceptedHash = proofsGrabber.huntingForHash
+
+        }).catch(()=>{})
+
+        
         TEMP_CACHE.delete('FP_SPAM_FLAG')
 
-        appropriateDescriptor.rangeStart = appropriateDescriptor.rangeFinish+1
+        TEMP_CACHE.delete(blockIDForHunting)
 
-        appropriateDescriptor.rangeFinish = global.SYMBIOTE_META.GENERATION_THREAD.nextIndex-1
 
     }else{
 
@@ -1521,19 +1532,19 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
 
                             let parsedData = JSON.parse(message.utf8Data)
                         
-                            let currentRangeMetadata = TEMP_CACHE.set('BLOCK_SENDER_HANDLER')
+                            let proofsGrabber = TEMP_CACHE.set('PROOFS_GRABBER')
             
-                            if (parsedData.finalizationProof && currentRangeMetadata.lastBlockHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
+                            if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
                                 // Verify the finalization proof
                     
-                                let dataThatShouldBeSigned = currentRangeMetadata.lastBlockID+currentRangeMetadata.lastBlockHash+checkpointFullID
+                                let dataThatShouldBeSigned = proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
                     
                                 let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.finalizationProof).catch(()=>false)
                         
-                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(currentRangeMetadata.lastBlockID)){
+                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
-                                    FINALIZATION_PROOFS.get(currentRangeMetadata.lastBlockID).set(parsedData.voter,parsedData.fp)
+                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.fp)
                     
                                 }
                     
@@ -1596,25 +1607,27 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     let {DATABASE,TEMP_CACHE} = tempObject
 
     // Descriptor has the following structure - {checkpointID,height}
-    let appropriateDescriptor = TEMP_CACHE.get('BLOCK_SENDER_HANDLER')
+    let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!appropriateDescriptor || appropriateDescriptor.checkpointFullID !== checkpointFullID){
+    if(!proofsGrabber || proofsGrabber.checkpointFullID !== checkpointFullID){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
-        appropriateDescriptor = await USE_TEMPORARY_DB('get',DATABASE,'BLOCK_SENDER_HANDLER').catch(()=>false)
+        proofsGrabber = await USE_TEMPORARY_DB('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
 
-        if(!appropriateDescriptor){
+        if(!proofsGrabber){
 
             // Set the new handler with index 0(because each new epoch start with block index 0)
-            appropriateDescriptor = {
+            proofsGrabber = {
     
                 checkpointFullID,
 
                 acceptedIndex:-1,
 
-                acceptedHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                acceptedHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+
+                afpForPrevious:{}
     
             }
     
@@ -1622,9 +1635,9 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
         
         // And store new descriptor
 
-        await USE_TEMPORARY_DB('put',DATABASE,'BLOCK_SENDER_HANDLER',appropriateDescriptor).catch(()=>false)
+        await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>false)
 
-        TEMP_CACHE.set('BLOCK_SENDER_HANDLER',appropriateDescriptor)
+        TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
     }
 
@@ -1634,9 +1647,9 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     while(true){
 
-        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,appropriateDescriptor).catch(()=>{})
+        await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(()=>{})
 
-        if(appropriateDescriptor.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
+        if(proofsGrabber.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
 
             setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
 
@@ -2927,6 +2940,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
 
             // Get all previous pools - from zero to <my_position>
+
             let pubKeysOfAllThePreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain).reverse()
 
 
@@ -3507,9 +3521,9 @@ PREPARE_SYMBIOTE=async()=>{
 
         STATIC_STUFF_CACHE:new Map(),
 
-        //____________________ CONSENSUS RELATED MAPPINGS ____________________
+        //________________ CONSENSUS RELATED MAPPINGS(per epoch) _____________
 
-        TEMP:new Map() // checkpointID => {COMMITMENTS,FINALIZATION_PROOFS,CHECKPOINT_MANAGER,SYNC_HELPER,PROOFS,HEALTH_MONITORING,SKIP,DATABASE}
+        TEMP:new Map()
 
     
     }
@@ -3722,8 +3736,6 @@ PREPARE_SYMBIOTE=async()=>{
     let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${checkpointFullID}`,{valueEncoding:'json'})
 
     global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
-
-        COMMITMENTS:new Map(), // blockID => BLS_SIG(blockID+hash).     The first level of "proofs". Commitments is just signatures by some validator from current quorum that "validator accept some block X by ValidatorY with hash H"
 
         FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
