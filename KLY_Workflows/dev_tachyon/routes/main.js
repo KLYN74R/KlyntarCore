@@ -196,100 +196,89 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
             }
 
-            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
             
-            let canGenerateFinalizationProof = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub)
-
-
-            if(canGenerateFinalizationProof){
-
-
-                // Here we also should check the validity of block 0
-                // Block 0 must contain the AEFP for previous epoch to finish it                        
+            let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
+               
                 
+            if(block.index === 0){
 
-                if(block.index === 0){
 
-
-                    /*
+                /*
     
-                        And finally, if it's the first block in epoch - verify that it contains:
+                    And finally, if it's the first block in epoch - verify that it contains:
         
-                            1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                            2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
+                        1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
+                        2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
-                        Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
+                    Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 
-                    */
+                */
 
 
-                    //_________________________________________1_________________________________________
+                //_________________________________________1_________________________________________
                     
 
-                    let aefpIsOk = checkpoint.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                let aefpIsOk = checkpoint.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
         
-                        block.extraData.aefpForPreviousEpoch,
+                    block.extraData.aefpForPreviousEpoch,
                             
-                        checkpoint.quorum,
+                    checkpoint.quorum,
                             
-                        GET_MAJORITY(checkpoint),
+                    GET_MAJORITY(checkpoint),
                             
-                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
+                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
         
-                        checkpointFullID
+                    checkpointFullID
                             
-                    ).catch(()=>false)
+                ).catch(()=>false)
 
 
                         
-                    //_________________________________________2_________________________________________
+                //_________________________________________2_________________________________________
 
-                    let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
+                let reassignmentArray = checkpoint.reassignmentChains[primePoolPubKey]
 
-                    let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+                let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
 
-                    let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
+                let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
         
-                        primePoolPubKey,
+                    primePoolPubKey,
         
-                        block,
+                    block,
         
-                        positionOfBlockCreatorInReassignmentChain,
+                    positionOfBlockCreatorInReassignmentChain,
         
-                        checkpointFullID,
+                    checkpointFullID,
         
-                        poolsRegistryOnQuorumThread,
+                    poolsRegistryOnQuorumThread,
         
-                        'QUORUM_THREAD'
+                    'QUORUM_THREAD'
         
-                    ).then(value=>value.isOK).catch(()=>false)
+                ).then(value=>value.isOK).catch(()=>false)
 
 
-                    if(!aefpIsOk || !aspChainIsOk){
+                if(!aefpIsOk || !aspChainIsOk){
 
-                        connection.close()
+                    connection.close()
 
-                        return
-
-                    }
+                    return
 
                 }
 
-
-                // Store the block
-
-                global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
-
-                    let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
-
-                    tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
-
-                    connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof}))
+            }else if(!(await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub))) return
 
 
-                })            
+            // Store the block
 
-            }
+            global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
+
+                let finalizationProof = await BLS_SIGN_DATA(proposedBlockID+proposedBlockHash+checkpointFullID)
+
+                tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
+
+                connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof}))
+
+            })
 
         }
     

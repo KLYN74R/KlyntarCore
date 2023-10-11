@@ -72,9 +72,6 @@
     
         },
     
-        "STOP_WORK_ON_GENERATION_THREAD":false,
-        "STOP_WORK_ON_VERIFICATION_THREAD":false,
-    
     
         "TRUSTED_POOLS":{
             "VERSION_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
@@ -84,7 +81,6 @@
         },
     
         "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
-        "GENERATION_THREAD_INIT_DELAY":3000,
     
         "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
 
