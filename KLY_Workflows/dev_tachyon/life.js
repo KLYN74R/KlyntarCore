@@ -4,13 +4,13 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
 
-    DECRYPT_KEYS,BLOCKLOG,HEAP_SORT,GET_ALL_KNOWN_PEERS,
+    GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT,
 
-    GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT
+    DECRYPT_KEYS,BLOCKLOG,HEAP_SORT,GET_ALL_KNOWN_PEERS
 
 } from './utils.js'
 
-import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP, ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
+import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import SYSTEM_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
@@ -1418,13 +1418,6 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
         // In this case , aggregate FINALIZATION_PROOFs to get the AGGREGATED_FINALIZATION_PROOF and share over the network
         // Also, increase the counter of tempObject.TEMP_CACHE.get('PROOFS_GRABBER') to move to the next block and udpate the hash
-    
-        let signers = [...finalizationProofsMapping.keys()]
-
-        let signatures = [...finalizationProofsMapping.values()]
-
-        let afkVoters = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.filter(pubKey=>!signers.includes(pubKey))
-
 
         /*
         
@@ -1437,19 +1430,18 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
             blockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         
-            aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+            proofs:{
 
-            aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+                voterPubKey0:hisEd25519Signa,
+                ...
+                voterPubKeyN:hisEd25519Signa
 
-            afkVoters:[]
+            }
 
         }
     
 
         */
-
-
-        let aggregatedPub = bls.aggregatePublicKeys(signers), aggregatedSignature = bls.aggregateSignatures(signatures)
         
         let aggregatedFinalizationProof = {
 
@@ -1458,13 +1450,9 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
             blockID:blockIDForHunting,
             
             blockHash,
-            
-            aggregatedPub,
-            
-            aggregatedSignature,
-            
-            afkVoters
 
+            proofs:Object.fromEntries(finalizationProofsMapping)
+            
         }
 
 
@@ -1543,12 +1531,10 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                             if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
                                 // Verify the finalization proof
-
-                                console.log('Received data => ',parsedData)
                     
                                 let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
                     
-                                let finalizationProofIsOk = await bls.singleVerify(dataThatShouldBeSigned,parsedData.voter,parsedData.finalizationProof).catch(()=>false)
+                                let finalizationProofIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
                         
                                 if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
@@ -1649,25 +1635,10 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     await OPEN_CONNECTIONS_WITH_QUORUM(qtCheckpoint,tempObject)
 
-
     await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(()=>{})
 
+
     setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
-
-    // while(true){
-
-    //     await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(err=>console.log('Error is ',err))
-
-    //     if(proofsGrabber.checkpointID !== global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id) {
-
-    //         setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
-
-    //         break
-
-    //     }
-    
-    // }
-
 
 },
 
@@ -2822,8 +2793,6 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
             global.SYMBIOTE_META.GENERATION_THREAD.quorum,
 
-            global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub,
-
             global.SYMBIOTE_META.GENERATION_THREAD.majority,        
 
             global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
@@ -2905,8 +2874,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         // Recount new values
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = checkpoint.quorum
-
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+qtCheckpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
 
@@ -3059,7 +3026,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
 
-VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,rootPub,majority,checkpointFullID) => {
+VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,checkpointFullID) => {
 
     let overviewIsOK =
         
@@ -3700,21 +3667,10 @@ PREPARE_SYMBIOTE=async()=>{
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
-    let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
-
-
-    //Because if we don't have quorum, we'll get it later after discovering checkpoints
-
-    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
-
-    global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+checkpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
-
 
     if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId === checkpointFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
 
         global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
-
-        global.SYMBIOTE_META.GENERATION_THREAD.quorumAggregatedPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
         global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
 
