@@ -4,13 +4,13 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
 
-    DECRYPT_KEYS,BLOCKLOG,BLS_SIGN_DATA,HEAP_SORT,GET_ALL_KNOWN_PEERS,
+    DECRYPT_KEYS,BLOCKLOG,HEAP_SORT,GET_ALL_KNOWN_PEERS,
 
     GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT
 
 } from './utils.js'
 
-import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP, ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
 
 import SYSTEM_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
@@ -1365,7 +1365,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
 
     let blockHash = Block.genHash(blockToSend)
-    
+
 
     TEMP_CACHE.set(blockIDForHunting,blockToSend)
 
@@ -1543,6 +1543,8 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                             if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
                                 // Verify the finalization proof
+
+                                console.log('Received data => ',parsedData)
                     
                                 let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
                     
@@ -3029,7 +3031,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         let hash = Block.genHash(blockCandidate)
 
 
-        blockCandidate.sig = await BLS_SIGN_DATA(hash)
+        blockCandidate.sig = await ED25519_SIGN_DATA(hash,global.PRIVATE_KEY)
             
         BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex)
 
@@ -3038,7 +3040,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
  
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
-        // BlockID has the following format => epochID(checkpointIndex):BLS_Pubkey:IndexOfBlockInCurrentEpoch
+        // BlockID has the following format => epochID(checkpointIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
         let blockID = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally

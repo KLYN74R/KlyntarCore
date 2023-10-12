@@ -1,14 +1,14 @@
 import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
-import {BLS_VERIFY,BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
+import{BODY,BLAKE3,LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
+
+import {BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
 import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
-
-import{BODY,BLAKE3,LOG} from '../../../KLY_Utils/utils.js'
 
 import Block from '../essences/block.js'
 
@@ -71,11 +71,13 @@ import http from 'http'
             
             blockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
-            aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
-            
-            aggregatedSigna:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
-                    
-            afkVoters:[...]
+            proofs:{
+
+                validatorEd25519PubKey0:hisEd25519Signa,
+                ...
+                validatorEd25519PubKeyN:hisEd25519Signa
+
+            }
             
         }
  * 
@@ -183,7 +185,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
             let updatedMetadata
 
-            let signaIsOk = await BLS_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)
+            let signaIsOk = await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)
 
             if(!signaIsOk) connection.close()
 
@@ -277,21 +279,19 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
             }else{
 
-                let {blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = previousBlockAFP
+                let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
     
                 let itsAfpForPreviousBlock = blockID === (checkpoint.id+':'+block.creator+':'+(block.index-1))
     
-                if(!itsAfpForPreviousBlock || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
+                if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
                     
                     connection.close()
             
                     return
             
                 }
-    
-                let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
                    
-                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint,rootPub)
+                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,checkpoint)
 
                 if(!isOK) return
 
@@ -308,7 +308,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+checkpointFullID
 
-                    let finalizationProof = await BLS_SIGN_DATA(dataToSign)
+                    let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
 
                     tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
 

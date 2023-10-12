@@ -1,4 +1,4 @@
-import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -380,7 +380,7 @@ GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}
         promises.push(
             
             //First of all-sig data and pass signature through the next promise
-            BLS_SIGN_DATA(JSON.stringify(data)).then(sig=>
+            ED25519_SIGN_DATA(JSON.stringify(data),global.CONFIG.SYMBIOTE.PRV).then(sig=>
 
                 fetch(global.CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
                 

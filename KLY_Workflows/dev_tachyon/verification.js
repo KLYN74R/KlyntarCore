@@ -2,20 +2,20 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE, GET_HTTP_AGENT
+    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE,GET_HTTP_AGENT
 
 } from './utils.js'
 
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
 
+import {LOG,BLAKE3,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
 
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
-import {LOG,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import Block from './essences/block.js'
 
@@ -154,32 +154,39 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
                                     &&
                                     typeof itsProbablyAggregatedFinalizationProof.prevBlockHash === 'string'
                                     &&
-                                    typeof itsProbablyAggregatedFinalizationProof.aggregatedPub === 'string'
-                                    &&
-                                    typeof itsProbablyAggregatedFinalizationProof.aggregatedSignature === 'string'
-                                    &&
                                     typeof itsProbablyAggregatedFinalizationProof.blockID === 'string'
                                     &&
                                     typeof itsProbablyAggregatedFinalizationProof.blockHash === 'string'
                                     &&
-                                    Array.isArray(itsProbablyAggregatedFinalizationProof.afkVoters)
+                                    typeof itsProbablyAggregatedFinalizationProof.proofs === 'object'
 
 
     if(generalAndTypeCheck){
 
         let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
 
-        let {prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedFinalizationProof
+        let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
 
         let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+checkpointFullID
 
         let majority = GET_MAJORITY(checkpoint)
 
-        let reverseThreshold = checkpoint.quorum.length-majority
 
-        let signaIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+        let promises = []
 
-        return signaIsOk
+        let okSignatures = 0
+
+
+        for(let [signerPubKey,signa] of Object.entries(proofs)){
+
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+
+        }
+
+        await Promise.all(promises)
+
+        return okSignatures>=majority
+
 
     }
 
