@@ -147,7 +147,7 @@ GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
 
 
 
-VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,checkpoint,rootPub) => {
+VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,checkpoint) => {
 
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
@@ -339,11 +339,13 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
         skipHash,
 
-        aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
+        proofs:{
 
-        aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
+            quorumMemberPubKey0:hisEd25519Signa,
+            ...
+            quorumMemberPubKeyN:hisEd25519Signa
 
-        afkVoters:currentQuorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.has(pubKey))
+        }
 
     }
 

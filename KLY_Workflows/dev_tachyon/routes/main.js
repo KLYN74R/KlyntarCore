@@ -4,11 +4,9 @@ import{BODY,BLAKE3,LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Util
 
 import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
 
-import {BLS_SIGN_DATA,GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
-
 import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
 
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
+import {GET_MAJORITY,USE_TEMPORARY_DB} from '../utils.js'
 
 import Block from '../essences/block.js'
 
@@ -32,7 +30,7 @@ import http from 'http'
  *  + Accept the blocks & AFP for previous block
  *  + Verify that it's the part of a valid segment(by comparing a hashes & verifying AFP)
  *  + Store the new block locally
- *  + Generate the finalization proof(FP) for a proposed block => BLS_SIGNA(blockID+blockHash+checkpointFullID)
+ *  + Generate the finalization proof(FP) for a proposed block => ED25519_SIGNA(prevBlockHash+blockID+blockHash+checkpointFullID)
  *  + Store the fact that we have voted for a block with a specific hash for proposed slot to prevent double voting(and slashing as result) 
  * 
  * 
@@ -237,8 +235,6 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                     checkpoint.quorum,
                             
                     GET_MAJORITY(checkpoint),
-                            
-                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
         
                     checkpointFullID
                             
@@ -400,7 +396,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
 
 
-let BLS_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB,
+let ED25519_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB,
 
 
 
@@ -446,7 +442,7 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
     }
 
 
-    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
+    let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint)
 
 
     if(quorumSignaIsOk){
@@ -471,7 +467,7 @@ Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with
 
 Params:
 
-    [0] - blockID in format EpochID:BlockCreatorBLSPubKey:IndexOfBlockInEpoch. Example 733:75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG:99
+    [0] - blockID in format EpochID:BlockCreatorEd25519PubKey:IndexOfBlockInEpoch. Example 733:9H9iFRYHgN7SbZqPfuAkE6J6brPd4B5KzW5C6UzdGwxz:99
 
 Returns:
 
@@ -479,9 +475,12 @@ Returns:
         prevBlockHash,
         blockID,
         blockHash,
-        aggregatedSignature:<>, // blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-        aggregatedPub:<>,
-        afkVoters
+        proofs:{
+
+            signerPubKey:ed25519Signature,
+            ...
+
+        }
         
     }
 
@@ -526,20 +525,23 @@ getAggregatedFinalizationProof=async(response,request)=>{
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
-        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
+        lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
         firstBlockHash,
         
-        proof:{
+        proofs:{
 
-            aggregatedPub:<BLS aggregated pubkey of signers>,
-            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
-            afkVoters:[] - array of BLS pubkeys who haven't voted
+            quorumMemberPubKey0:Ed25519Signa0,
+            ...
+            quorumMemberPubKeyN:Ed25519SignaN
 
         }
     
     }
+
+    Signature is ED25519('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+
 
 */
 getAggregatedEpochFinalizationProof=async(response,request)=>{
@@ -1738,10 +1740,12 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
 
             // Generate signature
 
-            let signature = await BLS_SIGN_DATA(
-                
-                BLAKE3(JSON.stringify(possibleSystemSyncOperation)+checkpointFullID)
-                
+            let signature = await ED25519_SIGN_DATA(
+
+                BLAKE3(JSON.stringify(possibleSystemSyncOperation)+checkpointFullID),
+
+                global.PRIVATE_KEY
+
             )
 
             !response.aborted && response.end(JSON.stringify({
@@ -1768,15 +1772,12 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
 
 
     {
-        aggreementProof:{
 
-            aggregatedPub:<Base58 encoded BLS pubkey>,
-            aggregatedSignature:BLS_SIGNATURE(
-                
-                BLAKE3( JSON(systemSyncOperation) + checkpointFullID)
-                
-            ),
-            afkVoters:[]
+        aggreementProofs:{
+
+            quorumMemberPubKey0:ED25519_SIGN(BLAKE3( JSON(systemSyncOperation) + checkpointFullID)),
+            ...
+            quorumMemberPubKeyN:<>                
 
         }
 
@@ -1829,9 +1830,9 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
     }
 
 
-    if(typeof systemSyncOperationWithAgreementProof.systemSyncOperation !== 'object' || typeof systemSyncOperationWithAgreementProof.aggreementProof !== 'object'){
+    if(typeof systemSyncOperationWithAgreementProof.systemSyncOperation !== 'object' || typeof systemSyncOperationWithAgreementProof.aggreementProofs !== 'object'){
 
-        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <systemSyncOperation>(your operation) and <agreementProof>(aggregated version of verification proofs from quorum members majority)`}))
+        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <systemSyncOperation>(your operation) and <agreementProofs>(aggregated version of verification proofs from quorum members majority)`}))
 
         return
 
@@ -1845,32 +1846,33 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     )
 
-    let {aggregatedPub,aggregatedSignature,afkVoters} = systemSyncOperationWithAgreementProof.aggreementProof
 
-    let reverseThreshold = checkpoint.quorum.length - GET_MAJORITY(checkpoint)
+    let majority = GET_MAJORITY(checkpoint)
 
-    let quorumSignaIsOk = await bls.verifyThresholdSignature(
-        
-        aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),
-        
-        hashOfCheckpointFullIDAndOperation, aggregatedSignature, reverseThreshold
-        
-    )
+    let promises = []
 
-    if(quorumSignaIsOk){
+    let okSignatures = 0
+
+
+    for(let [signerPubKey,signa] of Object.entries(systemSyncOperationWithAgreementProof.aggreementProofs)){
+
+        promises.push(ED25519_VERIFY(hashOfCheckpointFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+
+    }
+
+    await Promise.all(promises)
+
+    
+    if(okSignatures >= majority){
 
         // Add to mempool
         
         tempObject.SYSTEM_SYNC_OPERATIONS_MEMPOOL.push(systemSyncOperationWithAgreementProof.systemSyncOperation)
 
         !response.aborted && response.end(JSON.stringify({status:`OK`}))
+        
 
-
-    }else{
-
-        !response.aborted && response.end(JSON.stringify({err:`Verification failed`}))
-
-    }
+    } else !response.aborted && response.end(JSON.stringify({err:`Verification failed`}))
 
 }),
 
@@ -1923,7 +1925,7 @@ acceptTransactions=response=>response.writeHeader('Access-Control-Allow-Origin',
     
     if(global.SYMBIOTE_META.MEMPOOL.length < global.CONFIG.SYMBIOTE.TXS_MEMPOOL_SIZE){
 
-        let filteredEvent=await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,BLS_PUBKEY_FOR_FILTER)
+        let filteredEvent=await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,ED25519_PUBKEY_FOR_FILTER)
 
         if(filteredEvent){
 

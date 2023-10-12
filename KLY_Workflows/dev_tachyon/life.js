@@ -3820,7 +3820,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     for(let memberHandler of quorumMembers){
 
-        // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForFirstBlockByCurrentAuthority}. Send the current auth + prime pool
+        // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByCurrentAuthority}. Send the current auth + prime pool
 
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>false)
 
@@ -3837,13 +3837,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 {
 
-                    primePool0:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
+                    primePool0:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
 
-                    primePool1:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority},
+                    primePool1:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
 
                     ...
 
-                    primePoolN:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+                    primePoolN:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
                 }
 
@@ -3855,17 +3855,21 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a row
 
-                [2] afpForFirstBlockByCurrentAuthority - default AFP structure -> 
+                [2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
 
 
                     {
-        
+                        prevBlockHash:<string>
                         blockID:<string>,
                         blockHash:<string>,
-                        aggregatedSignature:<string>, // blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-                        aggregatedPub:<string>,
-                        afkVoters:[<string>,...]
-        
+                        proofs:{
+
+                            quorumMemberPubKey0:ed25519Signa,
+                            ...                                             => Signa is prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                            quorumMemberPubKeyN:ed25519Signa,
+
+                        }
+                         
                     }
 
 
@@ -3879,7 +3883,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                     For this:
 
-                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForFirstBlockByCurrentAuthority>
+                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByCurrentAuthority>
 
 
                     If all the verification steps is OK - add to some cache
@@ -3894,23 +3898,18 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 if(typeof primePoolPubKey === 'string' && typeof reassignMetadata==='object'){
     
-                    let {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority} = reassignMetadata
+                    let {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority} = reassignMetadata
     
-                    if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForFirstBlockByCurrentAuthority==='object'){
+                    if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForSecondBlockByCurrentAuthority==='object'){
                                     
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
     
                         if(localPointer <= currentAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
     
                             
-                            // Verify the AFP for block
+                            // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                        
-                            let blockID = quorumThreadCheckpointIndex+':'+firstBlockByCurrentAuthority.creator+':'+firstBlockByCurrentAuthority.index
-    
-                            let blockHash = Block.genHash(firstBlockByCurrentAuthority)
-    
-                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(blockID,blockHash,afpForFirstBlockByCurrentAuthority,quorumThreadCheckpointFullID,qtCheckpoint)
+                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentAuthority,qtCheckpoint)
     
                             let shouldChangeThisSubchain = true
     
