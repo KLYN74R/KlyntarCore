@@ -240,8 +240,6 @@ GET_AGGREGATED_FINALIZATION_PROOF = async (blockID,blockHash) => {
 
     let verificationThreadCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
 
-    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+verificationThreadCheckpointFullID)
-
 
     // Need for async safety
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
@@ -321,7 +319,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,checkpointFullID,checkpoint,threadID) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,checkpointFullID,checkpoint) => {
 
     /*
 
@@ -359,26 +357,30 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
     */
 
     
-    if(typeof aggregatedSkipProof === 'object'){
+    if(typeof aggregatedSkipProof === 'object'){    
 
-
-        let quorumRootPub = threadID === 'QUORUM_THREAD' ? global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID) : global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('VT_ROOTPUB'+checkpointFullID)
+        // Check the proofs
+    
+        let {previousAspInRcHash,firstBlockHash,skipIndex,skipHash,proofs} = aggregatedSkipProof
 
         let majority = GET_MAJORITY(checkpoint)
-    
-        let reverseThreshold = checkpoint.quorum.length-majority
-    
 
-        // Check the proof
-    
-
-        let {previousAspInRcHash,firstBlockHash,skipIndex,skipHash,aggregatedPub,aggregatedSignature,afkVoters} = aggregatedSkipProof
-    
         let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+
+        let promises = []
     
-        let aspIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+        let okSignatures = 0
     
-        return aspIsOk
+    
+        for(let [signerPubKey,signa] of Object.entries(proofs)){
+    
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+    
+        }
+    
+        await Promise.all(promises)
+
+        return okSignatures >= majority
 
     }
 
@@ -387,7 +389,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
 
 
-CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,threadID,dontCheckSignature) => {
+CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,dontCheckSignature) => {
 
     /*
     
@@ -424,7 +426,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     
             if(typeof aspForThisPool === 'object'){
 
-                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,checkpointFullID,oldCheckpoint,threadID)
+                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,checkpointFullID,oldCheckpoint)
 
                 if(signaIsOk){
 
@@ -454,7 +456,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             let aspForPrimePool = reassignmentsRef[primePoolPubKey]
 
-            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint,threadID)
+            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint)
 
             if(signaIsOk){
 
@@ -479,6 +481,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     return {isOK:true,filteredReassignments}
 
 },
+
 
 
 
@@ -660,7 +663,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
             
-            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainsForSubchain,position,null,null,null,true)
+            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainsForSubchain,position,null,null,true)
 
         if(isOK){
 
@@ -1011,11 +1014,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //Create new quorum based on new POOLS_METADATA state
         global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
-        let vtCheckpointFullID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
-
-        //Get the new rootpub
-        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB'+vtCheckpointFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
-
 
         // Create the reassignment chains for each prime pool based on new data
         await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'')
@@ -1081,9 +1079,6 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             // And reassignment chains should be the same
             global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains = oldCheckpoint.reassignmentChains
-
-            // Get the rootpub
-            // global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('VT_ROOTPUB',bls.aggregatePublicKeys(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum))
            
 
             // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify
@@ -1168,10 +1163,6 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
     if(nextEpochHash && nextEpochQuorum && nextEpochReassignmentChains){
 
         let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
-
-        let nextEpochFullID = nextEpochHash+"#"+nextEpochIndex // Need it to verify AFPs for first blocks of the next epoch
-
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+nextEpochFullID)
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 

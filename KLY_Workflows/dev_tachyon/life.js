@@ -395,14 +395,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     firstBlockHash,
 
-                    proof:{
+                    proofs:{
 
-                        aggregatedPub,
-                    
-                        aggregatedSignature,
-                        
-                        afkVoters
-            
+                        ed25519PubKey0:ed25519Signa0,
+                        ...
+                        ed25519PubKeyN:ed25519SignaN
+                         
                     }
                 
                 }
@@ -420,11 +418,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
         4. Now try to find our own assumption about the first block in epoch locally
 
-            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
+            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:1').catch(()=>false)
 
             If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
         
-            This is a clear proof that block is 100% accepted by network 
+            This is a clear proof that block 0 is 100% accepted by network 
 
 
         5. Using these proofs, check the blockID field. If it contain prime pool pubkey and index 0 - it's the first block on subchain. 100%
@@ -457,8 +455,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         let oldEpochFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
     
         let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldEpochFullID)
-    
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+oldEpochFullID)
     
         if(!temporaryObject){
     
@@ -523,12 +519,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                         lastHash:<hash of this block>,
                         firstBlockHash,
                         
-                        proof:{
+                        proofs:{
 
-                            aggregatedPub:<BLS aggregated pubkey of signers>,
-                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
-                            afkVoters:[] - array of BLS pubkeys who haven't voted
-
+                            ed25519PubKey0:ed25519Signa0,
+                            ...
+                            ed25519PubKeyN:ed25519SignaN
+                         
                         }
     
                     }
@@ -556,7 +552,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,rootPubKey,majority,oldEpochFullID)
+                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,majority,oldEpochFullID)
     
                             if(aefpPureObject){
     
@@ -874,12 +870,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 LOG(`QUORUM_THREAD was updated => \x1b[34;1m${nextEpochId} ### ${nextEpochHash}`,'S')
 
 
-                // Get the new ROOTPUB and delete the old one
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('QT_ROOTPUB'+nextEpochFullID,bls.aggregatePublicKeys(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum))
-    
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('QT_ROOTPUB'+oldEpochFullID)
-
-
                 //_______________________Check the version required for the next checkpoint________________________
 
 
@@ -993,8 +983,6 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         let majority = GET_MAJORITY(qtCheckpoint)
 
         let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
-
-        let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
 
         
     
@@ -2399,9 +2387,6 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
     
     let reverseThreshold = checkpoint.quorum.length-GET_MAJORITY(checkpoint)
 
-    let rootPubKey = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
-
     
     for(let poolPubKey of allThePools){
         
@@ -3038,7 +3023,9 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.proof === 'object'
+        typeof itsProbablyAggregatedEpochFinalizationProof.firstBlockHash === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.proofs === 'object'
 
     if(overviewIsOK && itsProbablyAggregatedEpochFinalizationProof){
 
@@ -3047,53 +3034,57 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
-                lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
+                lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
                 firstBlockHash,
 
-                proof:{
+                proofs:{
 
-                    aggregatedPub:<BLS aggregated pubkey of signers>,
-                    aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
-                    afkVoters:[] - array of BLS pubkeys who haven't voted
-
+                    ed25519PubKey0:ed25519Signa0,
+                    ...
+                    ed25519PubKeyN:ed25519SignaN
+                         
                 }
+
             }
 
             We need to verify that majority have voted for such solution
 
-           For this:
-
-                0) reverseThreshold = global.SYMBIOTE_META.GENERATION_THREAD.quorum.length-global.SYMBIOTE_META.GENERATION_THREAD.majority
-                1) await bls.verifyThresholdSignature(aggregatedPub,afkVoters,quorumRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
 
         */
-
-        let {aggregatedPub,aggregatedSignature,afkVoters} = itsProbablyAggregatedEpochFinalizationProof.proof
-
-        let reverseThreshold = quorum.length - majority
 
         let {lastAuthority,lastIndex,lastHash,firstBlockHash} = itsProbablyAggregatedEpochFinalizationProof
 
         let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+firstBlockHash+checkpointFullID
 
-        let proofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+        let promises = []
 
-        if(proofIsOk){
+        let okSignatures = 0
+
+
+        for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
+
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+
+        }
+
+        await Promise.all(promises)
+
+        
+        if(okSignatures>=majority){
 
             return {
             
                 lastAuthority,lastIndex,lastHash,firstBlockHash,
         
-                proof:{aggregatedPub,aggregatedSignature,afkVoters}
+                proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
 
             }
 
         }
-
+        
     }
-
 
 },
 
@@ -3921,7 +3912,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, false, true
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, true
                                 
                                 )
     
@@ -3979,7 +3970,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                 
                                                 let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ASP_CHAIN_VALIDITY(
                                                         
-                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, false, true
+                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, true
                                                         
                                                 )
                                 

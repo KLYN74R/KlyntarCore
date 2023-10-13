@@ -19,10 +19,10 @@ export let CONTRACT = {
         constructorParams:[]
     }
 
-    Required params:[BLSPoolRootKey,Percentage,OverStake,WhiteList,PoolAddress]
+    Required params:[Ed25519PubKey,Percentage,OverStake,WhiteList,PoolAddress]
 
-        [*] blsPubKey - BLS pubkey for validator. The same as PoolID
-        [*] percentage - % of fees that will be earned by BLS pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
+        [*] ed25519PubKey - Ed25519 pubkey for validator. The same as PoolID
+        [*] percentage - % of fees that will be earned by pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
         [*] overStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
         [*] whiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
         [*] poolURL - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
@@ -42,9 +42,9 @@ export let CONTRACT = {
 
         let{constructorParams}=transaction.payload,
         
-            [blsPubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
+            [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+blsPubKey+'(POOL)').catch(()=>false)
+            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
@@ -90,15 +90,15 @@ export let CONTRACT = {
             if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
 
             //Put pool pointer
-            atomicBatch.put(blsPubKey+'(POOL)_POINTER',originSubchain)
+            atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originSubchain)
 
             
             //Put metadata
-            atomicBatch.put(originSubchain+':'+blsPubKey+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(originSubchain+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(originSubchain+':'+blsPubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+            atomicBatch.put(originSubchain+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
         }
 
@@ -111,7 +111,7 @@ export let CONTRACT = {
     Payload
 
     {
-        pool:<id of special contract - BLS validator's pubkey'>
+        pool:<id of special contract - Ed25519 validator's pubkey'>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
     }
@@ -120,7 +120,7 @@ export let CONTRACT = {
     
     stake:async(transaction,originSubchain) => {
 
-        let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => BLS_pubkey(POOL)
+        let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => Ed25519_pubkey(POOL)
 
             {amount,units} = transaction.payload.params[0],
 
@@ -175,7 +175,7 @@ export let CONTRACT = {
         Payload
 
         {
-            pool:<id of special contract - BLS validator's pubkey'>
+            pool:<id of special contract - Ed25519 validator's pubkey'>
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             type:<KLY|UNO>
         }

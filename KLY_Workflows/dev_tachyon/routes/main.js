@@ -258,10 +258,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
                     checkpointFullID,
         
-                    poolsRegistryOnQuorumThread,
-        
-                    'QUORUM_THREAD'
-        
+                    poolsRegistryOnQuorumThread
+
                 ).then(value=>value.isOK).catch(()=>false)
 
 
@@ -589,8 +587,6 @@ VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoi
 
     let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
 
-    let rootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
     let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
 
     let majority = GET_MAJORITY(checkpoint)
@@ -820,7 +816,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                     // Verify the AFP for first block
 
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtCheckpoint,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID))
+                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtCheckpoint)
 
                     if(afpIsOk) firstBlockHash = proposition.afpForFirstBlock.blockHash
 
@@ -1022,9 +1018,6 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
     let majority = GET_MAJORITY(checkpoint)
 
     let reverseThreshold = checkpoint.quorum.length-majority
-
-    let qtRootPub = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID)
-
     
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
@@ -1613,7 +1606,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
             let aspForSkippedPool = aspsForPreviousPools[pubKeyOfSkippedPool]
 
-            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint,'QUORUM_THREAD')
+            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,checkpointFullID,checkpoint)
             
             if(aspIsOk) {
 
