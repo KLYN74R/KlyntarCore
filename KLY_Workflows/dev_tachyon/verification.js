@@ -15,8 +15,6 @@ import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
 
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-
 import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
@@ -176,16 +174,28 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
         let okSignatures = 0
 
+        let unique = new Set()
+
 
         for(let [signerPubKey,signa] of Object.entries(proofs)){
 
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+
+                if(isOK && checkpoint.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                    unique.add(signerPubKey)
+
+                    okSignatures++
+
+                }
+
+            }))
 
         }
 
         await Promise.all(promises)
 
-        return okSignatures>=majority
+        return okSignatures >= majority
 
 
     }

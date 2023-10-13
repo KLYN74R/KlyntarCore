@@ -7,6 +7,9 @@ LOGS/
 .log
 
 
+# Tests
+structures
+
 #Debug
 .pnpm-debug.log
 

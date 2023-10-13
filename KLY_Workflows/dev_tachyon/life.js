@@ -1522,7 +1522,7 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                     
                                 let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
                     
-                                let finalizationProofIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                                let finalizationProofIsOk = checkpoint.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
                         
                                 if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
@@ -3062,10 +3062,22 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
         let okSignatures = 0
 
+        let unique = new Set()
+
 
         for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
 
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+
+                if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                    unique.add(signerPubKey)
+
+                    okSignatures++
+
+                }
+
+            }))
 
         }
 
@@ -4059,7 +4071,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    //START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()
@@ -4071,7 +4083,7 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
     //4.Start checking the health of all the subchains
-    //SUBCHAINS_HEALTH_MONITORING()
+    SUBCHAINS_HEALTH_MONITORING()
 
     //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()

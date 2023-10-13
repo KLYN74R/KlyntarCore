@@ -169,7 +169,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        let checkpointManagerMetadataForThisPool = tempObject.CHECKPOINT_MANAGER.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+        let checkpointManagerMetadataForThisPool = tempObject.CHECKPOINT_MANAGER.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         let proposedBlockHash = Block.genHash(block)
 
@@ -526,7 +526,7 @@ getAggregatedFinalizationProof=async(response,request)=>{
         lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
-        firstBlockHash,
+        firstBlockHash:<hash of the first block by this authority>,
         
         proofs:{
 
@@ -538,7 +538,7 @@ getAggregatedFinalizationProof=async(response,request)=>{
     
     }
 
-    Signature is ED25519('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
+    Signature is ED25519('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
 
 
 */
@@ -804,7 +804,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
-                let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+                let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
                 // Verify the AFP for first block
@@ -844,7 +844,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                                                 
                             status:'OK',
                                             
-                            sig:await BLS_SIGN_DATA(dataToSign)
+                            sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
                                             
                         }
 
@@ -909,9 +909,15 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
 
 
-// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested subchain. Return the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
-
 /*
+
+
+[Info]:
+
+    Function to return signature of reassignment proof if we have SKIP_HANDLER for requested subchain
+    
+    Returns the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+
 
 
 [Accept]:
@@ -922,13 +928,18 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
         subchain
 
-        aggregatedFinalizationProofForFirstBlock:{
+        aggregatedFinalizationProofForSecondBlock:{
 
-            blockID,    => epochID:poolPubKey:0
+            prevBlockHash
+            blockID,    => epochID:poolPubKey:1
             blockHash,
-            aggregatedPub,
-            aggregatedSigna, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
-            afkVoters
+            proofs:{
+
+                pubkey0:signa0,         => SIG(prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
+                ...
+                pubkeyN:signaN
+
+            }
 
         }
 
@@ -1188,7 +1199,14 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
 /*
 
-[Info]: Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>] and start to monitor health for this pool
+[Info]:
+
+    Once quorum member who already have ASP get the 2/3N+1 approvements
+    
+    for reassignment it can produce finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>]
+    
+    and start to monitor health for this pool
+
 
 [Accept]:
 
@@ -1205,7 +1223,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
 If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
 
-Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
+Response => {type:'OK',sig:ED25519_SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
 
 Otherwise => {type:'ERR'}
 
@@ -1240,7 +1258,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
         if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
     
-            let signatureToResponse = await BLS_SIGN_DATA(`REASSIGNMENT:${targetPoolPubKey}:${session}:${checkpointFullID}`)
+            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${targetPoolPubKey}:${session}:${checkpointFullID}`,global.PRIVATE_KEY)
     
             !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
     
@@ -1272,7 +1290,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
 }
 
@@ -1282,14 +1300,14 @@ ___________________________________________________________
 
 [1] firstBlockByCurrentAuthority - default block structure
 
-[2] afpForFirstBlockByCurrentAuthority - default AFP structure -> 
+[2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
 
 
     {
-        
+        prevBlockHash:<here will be the hash of block with index 0 - the first block in epoch by pool>
         blockID,
         blockHash,
-        aggregatedSignature:<>, // blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+        aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
         aggregatedPub:<>,
         afkVoters
         
@@ -1344,9 +1362,11 @@ getDataForTempReassignments = async response => {
 
                 if(firstBlockByCurrentAuthority){
 
-                    // Finally, find the AFP for this block
+                    // Finally, find the AFP for block with index 1 to approve that block 0 will be 100% accepted by network
 
-                    let afpForFirstBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
+                    let secondBlockID = quorumThreadCheckpointIndex+':'+currentSubchainAuthority+':1'
+
+                    let afpForSecondBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
                     // Put to response
 
@@ -1356,7 +1376,7 @@ getDataForTempReassignments = async response => {
                         
                         firstBlockByCurrentAuthority,
                         
-                        afpForFirstBlockByCurrentAuthority
+                        afpForSecondBlockByCurrentAuthority
                         
                     }
 
@@ -1849,7 +1869,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     for(let [signerPubKey,signa] of Object.entries(systemSyncOperationWithAgreementProof.aggreementProofs)){
 
-        promises.push(ED25519_VERIFY(hashOfCheckpointFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+        promises.push(ED25519_VERIFY(hashOfCheckpointFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && checkpoint.quorum.includes(signerPubKey) && okSignatures++))
 
     }
 
@@ -2017,10 +2037,10 @@ global.UWS_SERVER
 //_______________________________ Consensus related routes _______________________________
 
 
-// 3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members)
+// 3rd stage - logic with super finalization proofs. Accept AGGREGATED_FINALIZATION_PROOF(aggregated 2/3N+1 FINALIZATION_PROOFs from QUORUM members) ✅
 .post('/aggregated_finalization_proof',acceptAggregatedFinalizationProof)
 
-// Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>)
+// Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>) ✅
 .get('/aggregated_finalization_proof/:BLOCK_ID',getAggregatedFinalizationProof)
 
 
@@ -2029,7 +2049,7 @@ global.UWS_SERVER
 
 
 
-// Simple GET handler to return AEFP for given subchain and epoch
+// Simple GET handler to return AEFP for given subchain and epoch ✅
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
 // Handler to acccept checkpoint propositions for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof
@@ -2044,10 +2064,10 @@ global.UWS_SERVER
 // Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
 .post('/get_reassignment_proof',getReassignmentProof)
 
-// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool
+// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool ✅
 .post('/get_reassignment_ready_status',getReassignmentReadyStatus)
 
-// We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally)
+// We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally) ✅
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
 
 // Get current subchains' authorities based on reassignment chains of current epoch
@@ -2062,14 +2082,14 @@ global.UWS_SERVER
 
 
 
-// Handler to accept system sync operation, verify it and sign if OK. The caller is SSO creator while verifiers - current quorum members
+// Handler to accept system sync operation, verify it and sign if OK. The caller is SSO creator while verifiers - current quorum members ✅
 .post('/sign_system_sync_operation',systemSyncOperationsVerifier)
 
-// Handler to accept SSO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this SSO and we can add it to block header
+// Handler to accept SSO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this SSO and we can add it to block header ✅
 .post('/system_sync_operation_to_mempool',systemSyncOperationToMempool)
 
-// Handler to accept transaction, make overview and add to mempool
+// Handler to accept transaction, make overview and add to mempool ✅
 .post('/transaction',acceptTransactions)
 
-// Handler to accept peers to exchange data with
+// Handler to accept peers to exchange data with ✅
 .post('/addpeer',addPeer)
