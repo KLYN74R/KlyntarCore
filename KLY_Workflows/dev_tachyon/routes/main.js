@@ -570,62 +570,9 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
 
             !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))
 
-        }else !response.aborted && response.end(JSON.stringify({err:'No EFP'}))
+        }else !response.aborted && response.end(JSON.stringify({err:'No AEFP'}))
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-
-VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA = async(proposition,checkpoint,pubKeyOfCurrentAuthorityOnSubchain,reassignmentForThisSubchain,tempObject,subchainID,checkpointManagerForAuthority,responseStructure,firstBlockHash) => {
-
-    let checkpointFullID = checkpoint.hash+'#'+checkpoint.id
-
-    let {index,hash,aggregatedCommitments} = proposition.finalizationProof
-
-    let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
-
-    let dataThatShouldBeSigned = `${checkpoint.id}:${pubKeyOfCurrentAuthorityOnSubchain}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
-
-    let majority = GET_MAJORITY(checkpoint)
-
-    let reverseThreshold = checkpoint.quorum.length-majority
-
-    let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
-
-
-    if(isOk){
-
-        if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
-
-        else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
-
-
-        if(checkpointManagerForAuthority){
-
-            checkpointManagerForAuthority.index = index
-
-            checkpointManagerForAuthority.hash = hash
-
-            checkpointManagerForAuthority.aggregatedCommitments = aggregatedCommitments
-
-        }else tempObject.CHECKPOINT_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,aggregatedCommitments})
-
-        // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
-
-        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+firstBlockHash+checkpointFullID
-
-        responseStructure[subchainID] = {
-                            
-            status:'OK',
-                        
-            sig:await BLS_SIGN_DATA(dataToSign)
-                        
-        }
-
-    }
 
 },
 
@@ -675,20 +622,33 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                     prevBlockHash,
                     blockID,
                     blockHash,
-                    aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
-                    aggregatedPub:<>,
-                    afkVoters
+
+                    proofs:{
+                     
+                        pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                        ...
+                        
+                    }
 
                 },
 
-                finalizationProof:{
+                metadataForCheckpoint:{
+                    
                     index:,
                     hash:,
-                    aggregatedCommitments:{
 
-                        aggregatedPub:,
-                        aggregatedSignature:,
-                        afkVoters:[],
+                    afp:{
+
+                        prevBlockHash,
+                        blockID,
+                        blockHash,
+
+                        proofs:{
+                     
+                            pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                            ...
+                        
+                        }                        
 
                     }
                     
@@ -714,15 +674,15 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
         
             [If proposed.currentAuth >= local.currentAuth]:
 
-                1) Verify index & hash & aggregated commitments in <finalizationProof>
+                1) Verify index & hash & afp in <metadataForCheckpoint>
                 
-                2) If proposed height >= local version - generate and return signature SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
+                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
 
                 3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash
 
             [Else if proposed.currentAuth < local.currentAuth AND tempObj.CHECKPOINT_MANAGER.has(local.currentAuth)]:
 
-                1) Send status:'UPGRADE' with local version of currentAuthority, finalization proof, index and hash
+                1) Send status:'UPGRADE' with local version of currentAuthority, metadata for checkpoint(from tempObject.CHECKPOINT_MANAGER), index and hash
 
 
 
@@ -734,15 +694,20 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                                 
                 status:'UPGRADE'|'OK',
 
-                -------------------------------[In case 'OK']-------------------------------
+                -------------------------------[In case status === 'OK']-------------------------------
 
                 signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
                         
-                -----------------------------[In case 'UPGRADE']----------------------------
+                ----------------------------[In case status === 'UPGRADE']-----------------------------
 
                 currentAuthority:<index>,
-                finalizationProof:{
-                    index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                
+                metadataForCheckpoint:{
+                
+                    index,
+                    hash,
+                    afp
+                
                 }   
 
             },
@@ -775,7 +740,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
             if(responseStructure[subchainID]) continue
 
-            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.finalizationProof === 'object' && typeof proposition.finalizationProof.aggregatedCommitments === 'object'){
+            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.afpForSecondBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
 
                 // Get the local version of REASSIGNMENTS and CHECKPOINT_MANAGER
 
@@ -807,22 +772,22 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                 let checkpointManagerForAuthority = tempObject.CHECKPOINT_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
-                // Verify the AFP for first block
-                // But, in case the skip index is -1 - sign the nullHash(0123...) and in case skip index is 0 - sign the proposition.finalizationProof.hash
+                // Try to define the first block hash. For this, use the proposition.afpForSecondBlock
                         
                 let firstBlockHash
 
-                if(proposition.finalizationProof.index > 0){
+                let blockIDOfSecondBlock = qtCheckpoint.id+':'+pubKeyOfCurrentAuthorityOnSubchain+':1' // first block has index 0, second block has index 1. Numeration from 0
 
-                    // Verify the AFP for first block
+                if(blockIDOfSecondBlock === proposition.afpForSecondBlock.blockID && proposition.metadataForCheckpoint.index>=0){
 
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtCheckpoint)
+                    // Verify the AFP for second block
 
-                    if(afpIsOk) firstBlockHash = proposition.afpForFirstBlock.blockHash
+                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForSecondBlock,qtCheckpoint)
 
-                }else if(proposition.finalizationProof.index === 0) firstBlockHash = proposition.finalizationProof.hash
+                    if(afpIsOk) firstBlockHash = proposition.afpForSecondBlock.prevBlockHash
 
-                else if(proposition.finalizationProof.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+                }
 
 
                 if(!firstBlockHash) continue
@@ -832,11 +797,11 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 if(proposition.currentAuthority === localIndexOfAuthority){
 
-                    if(checkpointManagerForAuthority.index === proposition.finalizationProof.index && checkpointManagerForAuthority.hash === proposition.finalizationProof.hash){
+                    if(checkpointManagerForAuthority.index === proposition.metadataForCheckpoint.index && checkpointManagerForAuthority.hash === proposition.metadataForCheckpoint.hash){
                         
                         // Send EPOCH_FINALIZATION_PROOF signature
 
-                        let {index,hash} = proposition.finalizationProof
+                        let {index,hash} = proposition.metadataForCheckpoint
 
                         let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+firstBlockHash+checkpointFullID
     
@@ -851,33 +816,58 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                             
                     }
 
-                }else if(checkpointManagerForAuthority.index < proposition.finalizationProof.index){
+                }else if(checkpointManagerForAuthority.index < proposition.metadataForCheckpoint.index){
 
-                    // Verify AC & upgrade local version & send EPOCH_FINALIZATION_PROOF
+                    // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send EPOCH_FINALIZATION_PROOF
 
-                    await VERIFY_AGGREGATED_COMMITMENTS_AND_CHANGE_LOCAL_DATA(
+                    let {index,hash,afp} = proposition.metadataForCheckpoint
+
+                    let isOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtCheckpoint)
+
+
+                    if(isOk){
+
+                        // Check that this AFP is for appropriate pool
+
+                        let [_,pubKeyOfCreator] = afp.blockID.split(':')
+
+                        if(pubKeyOfCreator === pubKeyOfCurrentAuthorityOnSubchain){
+
+                            
+                            if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
+
+                            else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
+    
+
+                            if(checkpointManagerForAuthority){
+
+                                checkpointManagerForAuthority.index = index
+    
+                                checkpointManagerForAuthority.hash = hash
+    
+                                checkpointManagerForAuthority.afp = afp
+    
+                            }else tempObject.CHECKPOINT_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,afp})
+
+                            
+                            // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
+
+                            let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+firstBlockHash+checkpointFullID
+
+                            responseStructure[subchainID] = {
+                            
+                                status:'OK',
                         
-                        proposition,
-
-                        qtCheckpoint,
-
-                        pubKeyOfCurrentAuthorityOnSubchain,
-
-                        reassignmentForThisSubchain,
-
-                        tempObject,
-
-                        subchainID,
-
-                        checkpointManagerForAuthority,
-
-                        responseStructure,
-
-                        firstBlockHash
+                                sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
                         
-                    )
+                            }
 
-                }else if(checkpointManagerForAuthority.index > proposition.finalizationProof.index){
+                        }
+
+                    }
+
+
+                }else if(checkpointManagerForAuthority.index > proposition.metadataForCheckpoint.index){
 
                     // Send 'UPGRADE' msg
 
@@ -887,7 +877,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                             
                         currentAuthority:localIndexOfAuthority,
                 
-                        finalizationProof:checkpointManagerForAuthority
+                        metadataForCheckpoint:checkpointManagerForAuthority // {index,hash,afp}
                     
                     }
 
@@ -2052,7 +2042,7 @@ global.UWS_SERVER
 // Simple GET handler to return AEFP for given subchain and epoch ✅
 .get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
 
-// Handler to acccept checkpoint propositions for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof
+// Handler to acccept checkpoint propositions for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
 .post('/checkpoint_proposition',acceptCheckpointProposition)
 
 
