@@ -918,7 +918,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
         subchain
 
-        aggregatedFinalizationProofForSecondBlock:{
+        afpForSecondBlock:{
 
             prevBlockHash
             blockID,    => epochID:poolPubKey:1
@@ -1280,7 +1280,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
 Object like {
 
-    primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
+    primePoolPubKey(subchainID) => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
 }
 
@@ -1288,7 +1288,7 @@ ___________________________________________________________
 
 [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
 
-[1] firstBlockByCurrentAuthority - default block structure
+[1] firstBlockByCurrentAuthority - default block structure.Send exactly first block to allow client to reverse the chain and understand how to continue the work on verification thread
 
 [2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
 
@@ -1330,7 +1330,7 @@ getDataForTempReassignments = async response => {
 
         let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
 
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
         for(let primePool of currentPrimePools){
 
@@ -1407,17 +1407,21 @@ Function to return the current information about authorities on subchains
 
             aspForPrevious:{
 
+                previousAspInRcHash,
+
                 firstBlockHash,
 
                 skipIndex,
 
                 skipHash,
 
-                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+                proofs:{
 
-                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+                    quorumMemberPubKey0:hisEd25519Signa,
+                    ...                                                 => 'SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'
+                    quorumMemberPubKeyN:hisEd25519Signa
 
-                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+                }
 
             }
 
@@ -1449,7 +1453,7 @@ getCurrentSubchainAuthorities = async response => {
 
         let currentPrimePools = checkpoint.poolsRegistry.primePools // [primePool0, primePool1, ...]
 
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForFirstBlockByCurrentAuthority}
+        let templateForResponse = {} // primePool => {currentAuthorityIndex,aspForPrevious}
 
         for(let primePool of currentPrimePools){
 
@@ -2060,7 +2064,7 @@ global.UWS_SERVER
 // We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally) ✅
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
 
-// Get current subchains' authorities based on reassignment chains of current epoch
+// Get current subchains' authorities based on reassignment chains of current epoch ✅
 .get('/get_current_subchain_authorities',getCurrentSubchainAuthorities)
 
 // Handler to accept ASPs and to start forced reassignment
