@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_MANY_BLOCKS,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import{BODY,BLAKE3,LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -1048,10 +1048,6 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
     let mySkipHandlers = tempObject.SKIP_HANDLERS
 
-    let majority = GET_MAJORITY(checkpoint)
-
-    let reverseThreshold = checkpoint.quorum.length-majority
-    
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
@@ -1083,6 +1079,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
            
             //________________________________________________ Verify the proposed AFP ________________________________________________
+            
             // For speed we started to use Ed25519 instead of BLS again
             
             let afpInSkipDataIsOk = false
@@ -1114,7 +1111,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
             
 
-            let dataToSignForSkipProof, secondBlockProofIsOk = false
+            let dataToSignForSkipProof, secondBlockAfpIsOk = false
 
 
             /*
@@ -1123,15 +1120,17 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 In case index === -1 it's a signal that no block was created, so no ASPs for previous pool. Sign the nullhash(0123456789ab...)
 
-                Otherwise - find block, compare it's hash with <requestForSkipProof.aggregatedFinalizationProofForFirstBlock> or <hash>(index===0)
+                Otherwise - find block, compare it's hash with <requestForSkipProof.afpForSecondBlock.prevBlockHash>
 
-                In case hashes match - extract the ASP for pool <checkpoint.reassignmentChains[subchain][indexOfThis-1]>, get the hash and paste this hash to <dataToSignForSkipProof>
+                In case hashes match - extract the ASP for previous pool <checkpoint.reassignmentChains[subchain][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
+                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
 
             */
 
             let indexInReassignmentChainForRequestedPool = checkpoint.reassignmentChains[requestForSkipProof.subchain].indexOf(requestForSkipProof.poolPubKey)
 
+            // In case indexInReassignmentChainForRequestedPool === -1 - this means that previousPoolPubKey will be equal to prime pool pubkey(===subchainID)
             let previousPoolPubKey = checkpoint.reassignmentChains[requestForSkipProof.subchain][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.subchain
 
 
@@ -1139,49 +1138,30 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${checkpointFullID}`
 
-                secondBlockProofIsOk = true
+                secondBlockAfpIsOk = true
 
-            }else if(index === 0){
 
-                // If skipIndex is 0 then sign the hash of block 0
-
-                let block = await GET_MANY_BLOCKS(checkpoint.id,requestForSkipProof.poolPubKey,0)
-
-                if(block && Block.genHash(block) === hash){
-
-                    let aspForPreviousPool = block.extraData.reassignments[previousPoolPubKey]
-
-                    dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${hash}:${index}:${hash}:${checkpointFullID}`
-
-                    secondBlockProofIsOk = true
-    
-                }
-
-            }else if(index > 0 && typeof requestForSkipProof.aggregatedFinalizationProofForFirstBlock === 'object'){
+            }else if(index > 0 && typeof requestForSkipProof.afpForSecondBlock === 'object'){
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
-                let blockIdOfFirstBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':1'
-
-                let {blockHash,aggregatedPub,aggregatedSignature,afkVoters} = requestForSkipProof.aggregatedFinalizationProofForFirstBlock
-
-                let dataThatShouldBeSigned = blockIdOfFirstBlock+blockHash+checkpointFullID
+                let blockIdOfSecondBlock = checkpoint.id+':'+requestForSkipProof.poolPubKey+':1'
             
-                let aggregatedFinalizationProofIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForSkipProof.afpForSecondBlock,checkpoint) && requestForSkipProof.afpForSecondBlock.blockID === blockIdOfSecondBlock){
 
-                if(aggregatedFinalizationProofIsOk){
+                    let block = await GET_BLOCK(checkpoint.id,requestForSkipProof.poolPubKey,0)
 
-                    let block = await GET_MANY_BLOCKS(checkpoint.id,requestForSkipProof.poolPubKey,0)
-
-                    if(block && Block.genHash(block) === blockHash){
+                    if(block && Block.genHash(block) === requestForSkipProof.afpForSecondBlock.blockHash){
 
                         let aspForPreviousPool = block.extraData.reassignments[previousPoolPubKey]
 
-                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${blockHash}:${index}:${hash}:${checkpointFullID}`
+                        let firstBlockHash = requestForSkipProof.afpForSecondBlock.prevBlockHash
 
-                        secondBlockProofIsOk = true                    
+                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
+
+                        secondBlockAfpIsOk = true                    
     
                     }
 
@@ -1191,19 +1171,19 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             
             // If proof is ok - generate reassignment proof
 
-            if(secondBlockProofIsOk){
+            if(secondBlockAfpIsOk){
 
                 let skipMessage = {
                     
                     type:'OK',
 
-                    sig:await BLS_SIGN_DATA(dataToSignForSkipProof)
+                    sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,global.PRIVATE_KEY)
                 }
 
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${afpInSkipDataIsOk} | firstBlockProofIsOk:${secondBlockProofIsOk}`}))
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signature for secondBlockAfp`}))
 
              
         }
