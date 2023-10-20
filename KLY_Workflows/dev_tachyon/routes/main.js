@@ -630,7 +630,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                 
             "subchain0":{
 
-                currentAuth:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                currentAuthority:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
                 
                 afpForSecondBlock:{
 

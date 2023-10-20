@@ -1008,7 +1008,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             
             
-            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)))
+            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuthorityInRcIndex+lastIndex+lastHash+firstBlockHash+checkpointFullId)))
             let checkpointAgreements = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION')
 
             if(!checkpointAgreements){
@@ -1042,16 +1042,27 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 
                     "subchain0":{
 
-                        currentAuth:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                        currentAuthority:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
 
-                        finalizationProof:{
+                        metadataForCheckpoint:{
                             index:,
                             hash:,
-                            aggregatedCommitments:{
+                            
+                            afp:{
 
-                                aggregatedPub:,
-                                aggregatedSignature:,
-                                afkVoters:[],
+                                prevBlockHash:<must be the same as metadataForCheckpoint.hash>
+
+                                blockID:<must be next to metadataForCheckpoint.index>,
+
+                                blockHash,
+
+                                proofs:{
+
+                                    quorumMember0_Ed25519PubKey: ed25519Signa0,
+                                    ...
+                                    quorumMemberN_Ed25519PubKey: ed25519SignaN
+                
+                                }
 
                             }
                     
@@ -1072,7 +1083,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 }
 
 
-                2) Take the finalizationProof for currentAuth from TEMP.get(<checkpointID>).CHECKPOINT_MANAGER
+                2) Take the <metadataForCheckpoint> for <currentAuthority> from TEMP.get(<checkpointID>).CHECKPOINT_MANAGER
 
                 3) If nothing in CHECKPOINT_MANAGER - then set index to -1 and hash to default(0123...)
 
@@ -1088,22 +1099,23 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                     The structure is
 
 
-                    {
-                        
-                        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
-                        lastIndex:<index of his block in previous epoch>,
-                        lastHash:<hash of this block>,
-                        firstBlockHash,
+                       {
+                
+                            lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
+                            lastIndex:<index of his block in previous epoch>,
+                            lastHash:<hash of this block>,
+                            firstBlockHash,
 
-                        proof:{
+                            proofs:{
 
-                            aggregatedPub:<BLS aggregated pubkey of signers>,
-                            aggregatedSignature: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+checkpointFullId)
-                            afkVoters:[] - array of BLS pubkeys who haven't voted
+                                ed25519PubKey0:ed25519Signa0,
+                                ...
+                                ed25519PubKeyN:ed25519SignaN
+                         
+                            }
 
                         }
-                    
-                    }
+
 
                 7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SUBCHAIN_ID
 
@@ -1118,24 +1130,21 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                 currentAuthority:indexOfAuthority,
 
-                afpForFirstBlock:{},
+                afpForSecondBlock:{},
 
-                finalizationProof:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+                metadataForCheckpoint:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
             }
 
             // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
 
-            if(checkpointProposition[primePoolPubKey].finalizationProof.index > 0){
+            if(checkpointProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
 
-                let blockID = qtCheckpoint.id+':'+pubKeyOfAuthority+':0'
+                let secondBlockID = qtCheckpoint.id+':'+pubKeyOfAuthority+':1'
 
-                checkpointProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>false)
+                checkpointProposition[primePoolPubKey].afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
             }
-            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === 0) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = checkpointProposition[primePoolPubKey].finalizationProof.hash
-
-            else if(checkpointProposition[primePoolPubKey].finalizationProof.index === -1) checkpointProposition[primePoolPubKey].afpForFirstBlock.blockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
             
         }
 
@@ -1174,8 +1183,8 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
                                 currentAuthority:<index>,
-                                finalizationProof:{
-                                    index,hash,agregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                                metadataForCheckpoint:{
+                                    index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
                                 }
 
                             },
@@ -1204,34 +1213,32 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                         if(response){
 
-                            if(response.status==='OK' && typeof metadata.afpForFirstBlock.blockHash === 'string'){
+                            if(response.status==='OK' && typeof metadata.afpForSecondBlock.blockHash === 'string'){
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.finalizationProof.index+metadata.finalizationProof.hash+metadata.afpForFirstBlock.blockHash+checkpointFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.blockHash+checkpointFullID
 
-                                let isOk = await bls.singleVerify(dataThatShouldBeSigned,descriptor.pubKey,response.sig).catch(()=>false)
+                                let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
                                 if(isOk) agreementsForThisSubchain.set(descriptor.pubKey,response.sig)
 
+
                             }else if(response.status==='UPGRADE'){
 
-                                // Verify finalization proof and add to upgradesForNextIterations
+                                // Check the AFP and update the local data
 
-                                let {index,hash,aggregatedCommitments} = response.finalizationProof
-                            
-                                let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+                                let {index,hash,afp} = response.metadataForCheckpoint
                             
                                 let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority]
+                                
+                                let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtCheckpoint)
 
-                                let dataThatShouldBeSigned = `${qtCheckpoint.id}:${pubKeyOfProposedAuthority}:${index}`+hash+checkpointFullID // typical commitment signature blockID+hash+checkpointFullID
+                                let blockIDThatShouldBeInAfp = qtCheckpoint.id+':'+pubKeyOfProposedAuthority+':'+(index+1)
                             
-                                let reverseThreshold = qtCheckpoint.quorum.length - majority
-                            
-                                let isOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,rootPubKey,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
-                            
-                            
-                                if(isOk){
+                                if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.prevBlockHash){
+
+                                    let {prevBlockHash,blockID,blockHash,proofs} = afp
                             
                                     // Update the REASSIGNMENTS
 
@@ -1239,7 +1246,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                                     
                                     // Update CHECKPOINT_MANAGER
 
-                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{aggregatedPub,aggregatedSignature,afkVoters}})                                    
+                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
@@ -1265,39 +1272,22 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
         for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
 
-            let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature
+            let agreementsForEpochCheckpoint = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature
 
-            if(agreementsForThisSubchain.size >= majority){
+            if(agreementsForEpochCheckpoint.size >= majority){
 
-                // Now, aggregate EPOCH_FINALIZATION_PROOFs to get the AGGREGATED_EPOCH_FINALIZATION_PROOF and store locally
-
-                let signers = [...agreementsForThisSubchain.keys()]
-
-                let signatures = [...agreementsForThisSubchain.values()]
-        
-                let afkVoters = qtCheckpoint.quorum.filter(pubKey=>!signers.includes(pubKey))
         
                 let aggregatedEpochFinalizationProof = {
 
-                    subchain:primePoolPubKey,
-
                     lastAuthority:metadata.currentAuthority,
                     
-                    lastIndex:metadata.finalizationProof.index,
+                    lastIndex:metadata.metadataForCheckpoint.index,
                     
-                    lastHash:metadata.finalizationProof.hash,
+                    lastHash:metadata.metadataForCheckpoint.hash,
 
-                    firstBlockHash:metadata.afpForFirstBlock.blockHash,
+                    firstBlockHash:metadata.afpForSecondBlock.prevBlockHash,
 
-                    proof:{
-
-                        aggregatedPub:bls.aggregatePublicKeys(signers),
-                    
-                        aggregatedSignature:bls.aggregateSignatures(signatures),
-                        
-                        afkVoters
-            
-                    }
+                    proofs:Object.fromEntries(agreementsForEpochCheckpoint)
                     
                 }
 
@@ -1567,7 +1557,7 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     if(!tempObject){
 
-        setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,3000)
+        setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,2000)
 
         return
 
@@ -3854,15 +3844,15 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                 -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
+                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.reassignmentChains[<primePool>][currentAuthorityIndex]
 
-                [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a row
+                [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
 
                 [2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
 
 
                     {
-                        prevBlockHash:<string>
+                        prevBlockHash:<string>              => it should be the hash of <firstBlockByCurrentAuthority>
                         blockID:<string>,
                         blockHash:<string>,
                         proofs:{
@@ -4071,7 +4061,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()
