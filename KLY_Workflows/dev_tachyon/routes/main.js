@@ -399,16 +399,38 @@ let ED25519_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || glob
 
 
 
-/*
-
-*********************************************************************
-                                                                    *
-Accept AGGREGATED_FINALIZATION_PROOF or send if it exists locally   *
-                                                                    *
-*********************************************************************
-
-
-*/
+/**
+ * 
+ * # Info
+ * 
+ * Handler to accept AGGREGATED_FINALIZATION_PROOFs
+ * 
+ * # Input format
+ * 
+ * 
+ * ```js
+ * 
+ *      {
+ *
+ *           prevBlockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+ *
+ *           blockID:"1369:7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1336",
+ *           
+ *           blockHash:"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+ *
+ *           proofs:{
+ *
+ *               validatorEd25519PubKey0:"hisEd25519Signa",
+ *               ...
+ *               validatorEd25519PubKeyN:"hisEd25519Signa"
+ *
+ *           }
+ *           
+ *      }
+ * 
+ * ```
+ * 
+ */
 acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
@@ -429,23 +451,14 @@ acceptAggregatedFinalizationProof=response=>response.writeHeader('Access-Control
    
     let possibleAggregatedFinalizationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let {prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters} = possibleAggregatedFinalizationProof
-    
-    if(typeof prevBlockHash !== 'string' || typeof aggregatedPub !== 'string' || typeof aggregatedSignature !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || !Array.isArray(afkVoters)){
-
-        !response.aborted && response.end(JSON.stringify({err:'Wrong format of input params'}))
-
-        return
-
-    }
-
+    let {prevBlockHash,blockID,blockHash,proofs} = possibleAggregatedFinalizationProof
 
     let quorumSignaIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(possibleAggregatedFinalizationProof,checkpoint)
 
 
     if(quorumSignaIsOk){
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{prevBlockHash,blockID,blockHash,aggregatedPub,aggregatedSignature,afkVoters}).catch(()=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockID,{prevBlockHash,blockID,blockHash,proofs}).catch(()=>{})
 
         !response.aborted && response.end(JSON.stringify({status:'OK'}))
 
@@ -678,7 +691,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                 
                 2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
 
-                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash
+                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.CHECKPOINT_MANAGER)
 
             [Else if proposed.currentAuth < local.currentAuth AND tempObj.CHECKPOINT_MANAGER.has(local.currentAuth)]:
 
@@ -906,7 +919,9 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
     Function to return signature of reassignment proof if we have SKIP_HANDLER for requested subchain
     
-    Returns the signature if requested INDEX >= than our own or send UPDATE message with FINALIZATION_PROOF 
+    Returns the signature if requested height to skip >= than our own
+    
+    Otherwise - send the UPDATE message with FINALIZATION_PROOF 
 
 
 
@@ -933,17 +948,23 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
         }
 
-        extendedAggregatedCommitments:{
-            
+        skipData:{
+
             index,
-            
             hash,
 
-            aggregatedCommitments:{
+            afp:{
+                
+                prevBlockHash,
+                blockID,
+                blockHash,
 
-                aggregatedPub,
-                aggregatedSignature:<>, // SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)
-                afkVoters:[...]
+                proofs:{
+                     
+                    pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                    ...
+                        
+                }
 
             }
 
@@ -955,9 +976,9 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 [Response]:
 
 
-[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <extendedAggregatedCommitments> in skip handler has <= index than in FP from request we can response
+[1] In case we have skip handler for this pool in SKIP_HANDLERS and if <skipData> in skip handler has <= index than in <skipData> from request we can response
 
-    Also, bear in mind that we need to sign the hash of ASP for previous pool (field <previousAspInRcHash>). We need this to verify the chains of ASPs by hashes nor BLS signatures.
+    Also, bear in mind that we need to sign the hash of ASP for previous pool (field <previousAspInRcHash>). We need this to verify the chains of ASPs by hashes not signatures.
 
 
 
@@ -965,7 +986,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
     
     Inserting an ASP hash for a pool that is 1 position earlier allows us to check only 1 signature and N hashes in the ASP chain
     
-    Compare this to having to verify N aggregated signatures
+    Compare this with a case when we need to verify N signatures
     
     Obviously, the hash generation time and comparison with the <previousAspHash> field is cheaper than checking the aggregated signature (if considered within the O notation)
         
@@ -974,28 +995,39 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
     {
         type:'OK',
-        sig: BLS_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
+        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<index>:<hash>:<checkpointFullID>')
     }
 
 
-[2] In case we have bigger index in <extendedAggregatedCommitments> - response with 'UPDATE' message:
+[2] In case we have bigger index in skip handler than in proposed <skipData> - response with 'UPDATE' message:
 
     {
         type:'UPDATE',
                         
-        <extendedAggregatedCommitments>:{
-                            
+        skipData:{
+
             index,
             hash,
-            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
-        
+
+            afp:{
+                
+                prevBlockHash,
+                blockID,
+                blockHash,
+
+                proofs:{
+                     
+                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                    ...
+                        
+                }
+
+            }
+
         }
                         
     }
-
-
-    + check the aggregated commitments (AC) in section <aggregatedFinalizationProofForFirstBlock>. Generate reassignment proofs only in case this one is valid
-
+    
 
 */
 getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
@@ -1023,24 +1055,24 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(typeof requestForSkipProof === 'object' && checkpoint.reassignmentChains[requestForSkipProof.subchain] && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.extendedAggregatedCommitments === 'object'){
+    if(typeof requestForSkipProof === 'object' && checkpoint.reassignmentChains[requestForSkipProof.subchain] && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.skipData === 'object' && typeof requestForSkipProof.skipData.afp === 'object'){
 
         
         
-        let {index,hash,aggregatedCommitments} = requestForSkipProof.extendedAggregatedCommitments
+        let {index,hash,afp} = requestForSkipProof.skipData
 
         let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
 
 
 
         // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localSkipHandler.extendedAggregatedCommitments.index > index){
+        if(localSkipHandler.skipData.index > index){
 
             let responseData = {
                 
                 type:'UPDATE',
 
-                extendedAggregatedCommitments:localSkipHandler.extendedAggregatedCommitments
+                skipData:localSkipHandler.skipData // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
 
             }
 
@@ -1050,29 +1082,25 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
         }else{
 
            
-            //________________________________________________ Verify aggregated commitments ________________________________________________
-
+            //________________________________________________ Verify the proposed AFP ________________________________________________
+            // For speed we started to use Ed25519 instead of BLS again
             
-            let aggregatedCommitmentsIsOk = false
+            let afpInSkipDataIsOk = false
 
-            if(index > -1){
+            if(index > -1 && typeof afp.blockID === 'string'){
 
-                if(typeof aggregatedCommitments === 'object'){
+                let [_epochID,_blockCreator,indexOfBlockInAfp] = afp.blockID.split(':')
 
-                    // Otherwise we can generate reassignment proof(signature) and return. But, anyway - check the <aggregatedCommitments> in request
+                if(typeof afp === 'object' && afp.prevBlockHash === hash && index+1 == indexOfBlockInAfp){
 
-                    let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
-                    
-                    let dataThatShouldBeSigned = (checkpoint.id+':'+requestForSkipProof.poolPubKey+':'+index)+hash+checkpointFullID
-
-                    aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,qtRootPub,dataThatShouldBeSigned,aggregatedSignature,reverseThreshold).catch(()=>false)
+                    afpInSkipDataIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,checkpoint)
 
                 }
 
-            }else aggregatedCommitmentsIsOk = true
+            }else afpInSkipDataIsOk = true
 
             
-            if(!aggregatedCommitmentsIsOk){
+            if(!afpInSkipDataIsOk){
 
                 !response.aborted && response.end(JSON.stringify({err:'Wrong aggregated signature for skipIndex > -1'}))
 
@@ -1081,10 +1109,12 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             }
 
 
-            //____________________________________________ Verify the proof for first block ________________________________________________
+            //_____________________ Verify the AFP for second block to understand the hash of first block ______________________________
+
+            // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
             
 
-            let dataToSignForSkipProof, firstBlockProofIsOk = false
+            let dataToSignForSkipProof, secondBlockProofIsOk = false
 
 
             /*
@@ -1111,7 +1141,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
                 
                 dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${hash}:${checkpointFullID}`
 
-                firstBlockProofIsOk = true
+                secondBlockProofIsOk = true
 
             }else if(index === 0){
 
@@ -1125,7 +1155,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                     dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${hash}:${index}:${hash}:${checkpointFullID}`
 
-                    firstBlockProofIsOk = true
+                    secondBlockProofIsOk = true
     
                 }
 
@@ -1151,7 +1181,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                         dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${blockHash}:${index}:${hash}:${checkpointFullID}`
 
-                        firstBlockProofIsOk = true                    
+                        secondBlockProofIsOk = true                    
     
                     }
 
@@ -1161,7 +1191,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             
             // If proof is ok - generate reassignment proof
 
-            if(firstBlockProofIsOk){
+            if(secondBlockProofIsOk){
 
                 let skipMessage = {
                     
@@ -1173,7 +1203,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${aggregatedCommitmentsIsOk} | firstBlockProofIsOk:${firstBlockProofIsOk}`}))
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures => aggregatedCommitmentsIsOk:${afpInSkipDataIsOk} | firstBlockProofIsOk:${secondBlockProofIsOk}`}))
 
              
         }
