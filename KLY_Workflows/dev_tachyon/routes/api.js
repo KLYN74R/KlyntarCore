@@ -1,4 +1,5 @@
 import {WRAP_RESPONSE,GET_NODES} from '../utils.js'
+
 import Block from '../essences/block.js'
 
 
@@ -19,7 +20,7 @@ let
  * 
  * ### Params
  * 
- *  + 0 - subchainID - Base58 encoded 48-bytes public key which is also ID of subchain
+ *  + 0 - subchainID - Base58 encoded 32-byte Ed25519 public key which is also ID of subchain
  *  + 1 - cellID - identifier of what you want to get - contract ID, account address(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on), etc.
  * 
  * 
@@ -114,7 +115,7 @@ nodes=(response,request)=>{
 
 
 
-// 0 - blockID(in format <EpochID>:<BLS_ValidatorPubkey>:<Index of block in epoch>)
+// 0 - blockID(in format <EpochID>:<Ed25519_ValidatorPubkey>:<Index of block in epoch>)
 // Returns block
 getBlockById=(response,request)=>{
 

@@ -852,7 +852,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
  
-                    SKIP_HANDLERS:new Map(), // {extendedAggregatedCommitments,aggregatedSkipProof}
+                    SKIP_HANDLERS:new Map(), // {skipData,aggregatedSkipProof}
 
                     SYNCHRONIZER:new Map(),
             
@@ -2170,8 +2170,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     We should send
 
                     {
-                        poolPubKey<pool's BLS public key>,
-                        session:<64-bytes hex string - randomly generated>
+                        poolPubKey<pool's Ed25519 public key>,
+                        session:<32-bytes hex string - randomly generated>
                     }
 
                     If requested quorum member has ASP: 
@@ -3590,11 +3590,11 @@ PREPARE_SYMBIOTE=async()=>{
 
                 KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
  
-                KLY_EVM_METADATA:{}, // primePoolBlsPubKey => {nextBlockIndex,parentHash,timestamp}
+                KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
 
                 TEMP_REASSIGNMENTS:{}, // CheckpointID => primePool => {currentAuthority:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
 
-                SID_TRACKER:{}, // subchainID(BLS pubkey of prime pool) => index
+                SID_TRACKER:{}, // subchainID(Ed25519 pubkey of prime pool) => index
 
                 CHECKPOINT:'genesis'
 

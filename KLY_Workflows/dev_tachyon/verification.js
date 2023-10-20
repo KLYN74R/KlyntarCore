@@ -379,11 +379,23 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
         let promises = []
     
         let okSignatures = 0
+
+        let unique = new Set()
     
     
         for(let [signerPubKey,signa] of Object.entries(proofs)){
     
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => isOK && okSignatures++))
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+
+                if(isOK && checkpoint.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                    unique.add(signerPubKey)
+
+                    okSignatures++
+
+                }
+
+            }))
     
         }
     
@@ -501,7 +513,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
     
     VT.REASSIGNMENT_METADATA has the following structure
 
-        KEY = <BLS pubkey of prime pool>
+        KEY = <Ed25519 pubkey of prime pool>
     
         VALUE = {
 
@@ -639,7 +651,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     let vtCheckpointIndex = vtCheckpoint.id
 
-    let oldReassignmentChainsForSubchain = vtCheckpoint.reassignmentChains[primePoolPubKey]
+    let oldReassignmentChainForSubchain = vtCheckpoint.reassignmentChains[primePoolPubKey]
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
@@ -648,7 +660,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     // Start the cycle in reverse order from <aefp.lastAuthority> to prime pool
 
-    let lastAuthorityPoolPubKey = oldReassignmentChainsForSubchain[aefp.lastAuthority]
+    let lastAuthorityPoolPubKey = oldReassignmentChainForSubchain[aefp.lastAuthority]
 
     emptyTemplate[lastAuthorityPoolPubKey] = {
         
@@ -660,7 +672,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     for(let position = aefp.lastAuthority; position >= 0; position--){
 
-        let poolPubKey = oldReassignmentChainsForSubchain[position]
+        let poolPubKey = oldReassignmentChainForSubchain[position]
 
         // Get the first block of this epoch from POOLS_METADATA
 
@@ -672,7 +684,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
             
-            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainsForSubchain,position,null,null,true)
+            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainForSubchain,position,null,null,true)
 
         if(isOK){
 
@@ -685,7 +697,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
 
-    for(let reservePool of oldReassignmentChainsForSubchain){
+    for(let reservePool of oldReassignmentChainForSubchain){
 
         if(filtratratedReassignment.has(reservePool)){
 
@@ -1662,7 +1674,7 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
     // Transfer part of fees to account with pubkey associated with block creator
     if(mainStorageOfBlockCreator.percentage!==0){
 
-        // Get the pool percentage and send to appropriate BLS address in the <subchainContext>
+        // Get the pool percentage and send to appropriate Ed25519 address in the <subchainContext>
         let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(subchainContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,blockCreator)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
@@ -1774,9 +1786,6 @@ verifyBlock=async(block,subchainContext)=>{
             block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
             global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[block.creator].hash === block.prevHash // it should be a chain
-            //&&
-            // await BLS_VERIFY(blockHash,block.sig,block.creator)
-
 
     // if(block.i === global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
 

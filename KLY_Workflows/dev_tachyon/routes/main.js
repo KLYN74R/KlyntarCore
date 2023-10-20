@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_MANY_BLOCKS,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../verification.js'
 
 import{BODY,BLAKE3,LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -253,6 +253,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                     primePoolPubKey,
         
                     block,
+
+                    reassignmentArray,
         
                     positionOfBlockCreatorInReassignmentChain,
         
@@ -1520,6 +1522,7 @@ getCurrentSubchainAuthorities = async response => {
 
 [Accept]:
 
+
     {
         subchain:<subchain ID - pubkey of prime pool>,
 
@@ -1529,34 +1532,42 @@ getCurrentSubchainAuthorities = async response => {
 
             "poolPubKeyX":{
 
+                previousAspInRcHash,
+
                 firstBlockHash,
 
                 skipIndex,
 
                 skipHash,
 
-                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+                proofs:{
 
-                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+                    quorumMemberPubKey0:hisEd25519Signa,
+                    ...
+                    quorumMemberPubKeyN:hisEd25519Signa
 
-                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+                }
 
             },
 
 
             "poolPubKeY":{
 
+                previousAspInRcHash,
+
                 firstBlockHash,
 
                 skipIndex,
 
                 skipHash,
 
-                aggregatedPub:bls.aggregatePublicKeys(<quorum members pubkeys who signed msg>),
+                proofs:{
 
-                aggregatedSignature:bls.aggregateSignatures('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>'),
+                    quorumMemberPubKey0:hisEd25519Signa,
+                    ...
+                    quorumMemberPubKeyN:hisEd25519Signa
 
-                afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+                }
 
             },
 
@@ -1569,15 +1580,13 @@ getCurrentSubchainAuthorities = async response => {
 
     _________________________ What to do next _________________________
 
-    1) Check the current authorities on proposed subchain => for(let primePool in checkpoint.poolsRegistry.primePools) => tempObject.REASSIGNMENTS.get(primePool)
+    1) Get the local reassignment data for proposed subchain => localReassignmentData = tempObject.REASSIGNMENTS.get(subchain)
 
-    2) In case local.currentAuthority < obj[<subchain>].shouldBeThisAuthority => verify the ASP
-
-    3) The ASP must be OK for previous pool => checkpoint.reassignmentChains[subchain][shouldBeThisAuthority-1]
+    2) In case localReassignmentData.currentAuthority < obj[<subchain>].shouldBeThisAuthority => verify the ASPs
     
-    4) In case ASP is ok - create the CREATE_REASSIGNMENT request and push it to tempObject.SYNCHRONIZER to update the local info about reassignment
+    3) In case all the ASPs are ok - create the CREATE_REASSIGNMENT request and push it to tempObject.SYNCHRONIZER to update the local info about reassignment
 
-    5) Inside function REASSIGN_PROCEDURE_MONITORING check the requests and update the local reassignment data
+    4) Inside function REASSIGN_PROCEDURE_MONITORING check the requests and update the local reassignment data
 
 
 */
@@ -1598,7 +1607,7 @@ acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin',
 
 
     
-    let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.EXTENDED_PAYLOAD_SIZE)
+    let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
     if(typeof possibleReassignmentPropositionForSubchain === 'object'){
@@ -2065,7 +2074,7 @@ global.UWS_SERVER
 
 
 
-// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS 
+// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS ✅
 .post('/get_reassignment_proof',getReassignmentProof)
 
 // Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>] and start to monitor health for this pool ✅

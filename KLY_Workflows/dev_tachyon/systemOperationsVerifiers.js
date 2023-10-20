@@ -69,7 +69,7 @@ export default {
 
         {
             txid:<id in WAITING_ROOM in contract storage>,
-            pool:<BLS pubkey of pool>,
+            pool:<Ed25519 pubkey of pool>,
             type:<'-' for unstake and '+' for stake>
             amount:<integer> - staking power
             storageOrigin:<string> - origin where metadata/storage of pool
@@ -371,7 +371,7 @@ export default {
             Payload structure is
 
             {
-                pool:<BLS pubkey - id of pool to clear>
+                pool:<Ed25519 pubkey - id of pool to clear>
                 delayedIds - array of IDs of delayed operations to get it and remove "UNSTAKE" txs from state
             }
 
