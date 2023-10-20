@@ -1,4 +1,4 @@
-import {CHECK_ASP_CHAIN_VALIDITY,GET_MANY_BLOCKS,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_MANY_BLOCKS,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -1652,13 +1652,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     let majority = GET_MAJORITY(checkpoint)
 
-    let currentCheckpointDB = tempObject.DATABASE
-
-    let skipHandlers = tempObject.SKIP_HANDLERS
-
-    let reassignments = tempObject.REASSIGNMENTS
-    
-
     // Get the appropriate pubkey & url to check and validate the answer
     let quorumMembersURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
@@ -1668,9 +1661,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         // First of all - check for CREATE_REASSIGNMENT requests in synchronizer
 
-        let reassignmentHandler = reassignments.get(primePoolPubKey) || {currentAuthority:-1}
+        let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
 
-        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {shouldBeThisAuthority,aspsForPreviousPools}
+        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {indexInReassignmentChain,shouldBeThisAuthority,aspsForPreviousPools}
 
 
 
@@ -1680,7 +1673,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                 Update the local information
 
-                1) Start(in reverse order) from shouldBeThisAuthority index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
+                1) Start(in reverse order) from <shouldBeThisAuthority> index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
 
                 2) Create the skipHandler for each pool
 
@@ -1698,7 +1691,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
 
-                if(!skipHandlers.has(poolPubKey)){
+                if(!tempObject.SKIP_HANDLERS.has(poolPubKey)){
 
                     // Create the skip handler if we don't have it
 
@@ -1710,9 +1703,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     // Store to temp DB
 
-                    await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
+                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
 
-                    skipHandlers.set(poolPubKey,futureSkipHandler)
+                    tempObject.SKIP_HANDLERS.set(poolPubKey,futureSkipHandler)
 
                 }
 
@@ -1735,7 +1728,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 subchain:primePoolPubKey,
 
-                ...doReassignmentRequest
+                ...doReassignmentRequest // {shouldBeThisAuthority,aspsForPreviousPools}
 
             }
 
@@ -1763,14 +1756,14 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
-            await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true).then(async()=>{
+            await USE_TEMPORARY_DB('put',tempObject.DATABASE,`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true).then(async()=>{
 
 
                 tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true)
 
                 //______________________Finally, create the urgent reassignment stats______________________
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
 
                 
                     let oldAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
@@ -1778,11 +1771,11 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     let nextAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
 
 
-                    reassignments.delete(oldAuthorityPubKey)
+                    tempObject.REASSIGNMENTS.delete(oldAuthorityPubKey)
 
-                    reassignments.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
+                    tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
 
-                    reassignments.set(nextAuthorityPubKey,primePoolPubKey)
+                    tempObject.REASSIGNMENTS.set(nextAuthorityPubKey,primePoolPubKey)
 
 
                 }).catch(()=>{})
@@ -1813,7 +1806,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         } 
 
 
-        let skipHandler = skipHandlers.get(poolPubKeyForHunting)
+        let skipHandler = tempObject.SKIP_HANDLERS.get(poolPubKeyForHunting) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
 
         // If no skip handler for target pool - do nothing
@@ -1823,38 +1816,36 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         if(!skipHandler.aggregatedSkipProof){
 
 
-            // Otherwise, send <extendedAggregatedCommitments> and <aggregatedFinalizationProofForFirstBlock> in SKIP_HANDLER to => POST /get_reassignment_proof
+            // Otherwise, send payload to => POST /get_reassignment_proof
 
             let responsePromises = []
 
-            let firstBlockID = checkpoint.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
+            let secondBlockID = checkpoint.id+':'+poolPubKeyForHunting+':1' // epochID:PubKeyOfCreator:1 - second block in epoch
 
-            let aggregatedFinalizationProofForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
+            let afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
             let firstBlockHash
 
             let previousAspHash
 
 
-            if(!aggregatedFinalizationProofForFirstBlock){
+            // Set the hash of first block for pool that we're going to skip
+            // In case we skip on his height -1(no blocks were created) - set the null hash. Otherwise - 
+            if(!afpForSecondBlock && skipHandler.skipData.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-                if(skipHandler.extendedAggregatedCommitments.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-                else if (skipHandler.extendedAggregatedCommitments.index === 0) firstBlockHash = skipHandler.extendedAggregatedCommitments.hash
-
-            } else firstBlockHash = aggregatedFinalizationProofForFirstBlock.blockHash
+            else firstBlockHash = afpForSecondBlock.prevBlockHash
 
 
 
-            if(skipHandler.extendedAggregatedCommitments.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
+            if(skipHandler.skipData.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
 
-                let firstBlock = await GET_MANY_BLOCKS(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
+                let firstBlockByThisPool = await GET_BLOCK(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
 
-                if(firstBlock && Block.genHash(firstBlock) === firstBlockHash && firstBlock.extraData.reassignments[previousPoolPubKey]){
+                if(firstBlockByThisPool && Block.genHash(firstBlockByThisPool) === firstBlockHash && firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]){
 
                     // Now get the hash of ASP for previous pool in reassignment chain
 
-                    previousAspHash = BLAKE3(JSON.stringify(firstBlock.extraData.reassignments[previousPoolPubKey]))
+                    previousAspHash = BLAKE3(JSON.stringify(firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]))
 
                 }
 
@@ -1875,9 +1866,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     subchain:primePoolPubKey,
 
-                    aggregatedFinalizationProofForFirstBlock,
+                    afpForSecondBlock,
 
-                    extendedAggregatedCommitments:skipHandler.extendedAggregatedCommitments
+                    skipData:skipHandler.skipData
 
                 })
 
@@ -1914,16 +1905,16 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: BLS_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
+                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
                     And this quorum member update his own local version of FP to have FP with bigger index
 
 
-            [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message with EXTENDED_FINALZATION_PROOF where:
+            [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message where:
 
-                HIS_extendedAggregatedCommitments.index > OUR_LOCAL_extendedAggregatedCommitments.index
+                HIS_SKIP_HANDLER.skipData.index > OUR_LOCAL_SKIP_HANDLER.skipData.index
 
                 Again - we should verify the signature, update local version of FP in our skip handler and repeat the grabbing procedure
 
@@ -1932,70 +1923,84 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     {
                         type:'UPDATE',
                         
-                        extendedAggregatedCommitments:{
+                        skipData:{
                             
                             index,
                             hash,
-                            aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}
+                            afp:{
+
+                                prevBlockHash,      => must be the same as skipData.hash
+                                blockID,            => must be skipData.index+1 === blockID
+                                blockHash,
+                                proofs:{
+
+                                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                                    ...
+
+                                }
+
+                            }
+
                         }
                         
                     }
 
             */
 
-            let pubkeysWhoAgreeToSkip = [], signaturesToSkip = []
+    
+            let skipAgreementSignatures = {} // pubkey => signa
 
-            let {index,hash} = skipHandler.extendedAggregatedCommitments
+            let totalNumberOfSignatures = 0
 
-            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${index}:${hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${skipHandler.skipData.index}:${skipHandler.skipData.hash}:${checkpointFullID}`
+
 
             for(let result of results){
 
                 if(result.type === 'OK' && typeof result.sig === 'string'){
 
-                    let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
+                    let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
 
                     if(signatureIsOk){
 
-                        pubkeysWhoAgreeToSkip.push(result.pubKey)
+                        skipAgreementSignatures[result.pubKey] = result.sig
 
-                        signaturesToSkip.push(result.sig)
+                        totalNumberOfSignatures++
 
                     }
 
-                    if(pubkeysWhoAgreeToSkip.length >= majority) break // if we get 2/3N+1 signatures to skip - we already have ability to create <aggregatedSkipProof>
+                    // If we get 2/3N+1 signatures to skip - we already have ability to create <aggregatedSkipProof>
+
+                    if(totalNumberOfSignatures >= majority) break
 
 
-                }else if(result.type === 'UPDATE' && typeof result.extendedAggregatedCommitments === 'object'){
+                }else if(result.type === 'UPDATE' && typeof result.skipData === 'object'){
 
 
-                    let {index,hash,aggregatedCommitments} = result.extendedAggregatedCommitments
+                    let {index,hash,afp} = result.skipData
+
+                    let blockIdInAfp = (checkpoint.id+':'+poolPubKeyForHunting+':'+(index+1))
 
 
-                    if(aggregatedCommitments){
+                    if(typeof afp === 'object' && hash === afp.prevBlockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,checkpoint)){
 
-                        let {aggregatedPub,aggregatedSignature,afkVoters} = aggregatedCommitments
+                        // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
             
-                        let dataThatShouldBeSigned = (checkpoint.id+':'+poolPubKeyForHunting+':'+index)+hash+checkpointFullID
-                        
-                        let aggregatedCommitmentsIsOk = await bls.verifyThresholdSignature(aggregatedPub,afkVoters,global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('QT_ROOTPUB'+checkpointFullID),dataThatShouldBeSigned,aggregatedSignature,checkpoint.quorum.length-majority).catch(()=>false)
-            
-
-                        //If signature is ok and index is bigger than we have - update the <extendedAggregatedCommitments> in our local skip handler
-            
-                        if(aggregatedCommitmentsIsOk && skipHandler.extendedAggregatedCommitments.index < index){
-            
+                        if(skipHandler.skipData.index < index){
                             
-                            skipHandler.extendedAggregatedCommitments.index = index
+                            let {prevBlockHash,blockID,blockHash,proofs} = afp
+                            
 
-                            skipHandler.extendedAggregatedCommitments.hash = hash
+                            skipHandler.skipData.index = index
 
-                            skipHandler.extendedAggregatedCommitments.aggregatedCommitments = {aggregatedPub,aggregatedSignature,afkVoters}
+                            skipHandler.skipData.hash = hash
+
+                            skipHandler.skipData.afp = {prevBlockHash,blockID,blockHash,proofs}
             
 
                             // Store the updated version of skip handler
 
-                            await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
+                            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
 
                             // If our local version had lower index - break the cycle and try again with updated value
 
@@ -2012,7 +2017,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             //____________________If we get 2/3+1 of votes - aggregate, get the ASP(<aggregatedSkipProof>), add to local skip handler and start to grab approvements____________________
 
-            if(pubkeysWhoAgreeToSkip.length >= majority){
+            if(totalNumberOfSignatures >= majority){
 
                 skipHandler.aggregatedSkipProof = {
 
@@ -2020,19 +2025,15 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     firstBlockHash,
 
-                    skipIndex:skipHandler.extendedAggregatedCommitments.index,
+                    skipIndex:skipHandler.skipData.index,
 
-                    skipHash:skipHandler.extendedAggregatedCommitments.hash,
+                    skipHash:skipHandler.skipData.hash,
 
-                    aggregatedPub:bls.aggregatePublicKeys(pubkeysWhoAgreeToSkip),
-
-                    aggregatedSignature:bls.aggregateSignatures(signaturesToSkip),
-
-                    afkVoters:checkpoint.quorum.filter(pubKey=>!pubkeysWhoAgreeToSkip.includes(pubKey))
+                    proofs:skipAgreementSignatures
 
                 }
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
 
 
             }
@@ -2069,12 +2070,12 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                     
                     let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
 
-                    let skipHandlerForSomePreviousPool = skipHandlers.get(pubKeyOfSomePreviousPool)
+                    let skipHandlerForSomePreviousPool = tempObject.SKIP_HANDLERS.get(pubKeyOfSomePreviousPool)
 
 
                     let pubKeyOfNext = checkpoint.reassignmentChains[primePoolPubKey][position+1]
 
-                    let aspOfNextPool = skipHandlers.get(pubKeyOfNext).aggregatedSkipProof
+                    let aspOfNextPool = tempObject.SKIP_HANDLERS.get(pubKeyOfNext).aggregatedSkipProof
 
 
                     let aspThatWeAreGoingToSend = skipHandlerForSomePreviousPool.aggregatedSkipProof
@@ -2084,7 +2085,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         // Find the ASP and compare hashes
                         
-                        let firstBlock = await GET_MANY_BLOCKS(checkpoint.id,pubKeyOfNext,0)
+                        let firstBlock = await GET_BLOCK(checkpoint.id,pubKeyOfNext,0)
 
                         if(firstBlock && Block.genHash(firstBlock) === aspOfNextPool.firstBlockHash){
                             
@@ -2148,7 +2149,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
-                await USE_TEMPORARY_DB('put',currentCheckpointDB,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true).catch(()=>{})
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true).catch(()=>{})
 
                 tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
 
@@ -2227,7 +2228,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     if(result.type === 'OK' && typeof result.sig === 'string'){
     
-                        let signatureIsOk = await bls.singleVerify(dataThatShouldBeSigned,result.pubKey,result.sig).catch(()=>false)
+                        let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
     
                         if(signatureIsOk) numberWhoAgreeToDoReassignment++
     
@@ -2251,7 +2252,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     // Add the reassignment
     
-                    let reassignmentMetadata = reassignments.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
+                    let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
     
     
                     if(!reassignmentMetadata){
@@ -2269,7 +2270,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     let nextReservePool = checkpoint.reassignmentChains[primePoolPubKey][nextIndex] // array checkpoint.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
     
-                    let skipHandlerOfAuthority = JSON.parse(JSON.stringify(skipHandlers.get(currentSubchainAuthority))) // {extendedAggregatedCommitments,aggregatedSkipProof}
+                    let skipHandlerOfAuthority = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentSubchainAuthority))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
     
     
                     // Use atomic operation here to write reassignment data + updated skip handler
@@ -2290,13 +2291,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     ]
     
-                    await USE_TEMPORARY_DB('atomicPut',currentCheckpointDB,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
+                    await USE_TEMPORARY_DB('atomicPut',tempObject.DATABASE,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
         
                         // And only after successful store we can move to the next pool
     
                         // Delete the reassignment in case reassigned authority was reserve pool
     
-                        if(currentSubchainAuthority !== primePoolPubKey) reassignments.delete(currentSubchainAuthority)
+                        if(currentSubchainAuthority !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentSubchainAuthority)
                     
                         
                         reassignmentMetadata.currentAuthority++
@@ -2304,9 +2305,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                         // Set new values - handler for prime pool and pointer to prime pool for reserve pool
     
-                        reassignments.set(primePoolPubKey,reassignmentMetadata)
+                        tempObject.REASSIGNMENTS.set(primePoolPubKey,reassignmentMetadata)
     
-                        reassignments.set(nextReservePool,primePoolPubKey)
+                        tempObject.REASSIGNMENTS.set(nextReservePool,primePoolPubKey)
     
     
                     }).catch(()=>false)
@@ -4061,15 +4062,15 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //0.Start verification process - process blocks and find new checkpoints step-by-step
-    //START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
-    //2.Share our blocks within quorum members and get the commitments / finalization proofs 
+    //✅2.Share our blocks within quorum members and get the commitments / finalization proofs
     SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
-    //3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
+    //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
     CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
     //4.Start checking the health of all the subchains
@@ -4081,7 +4082,7 @@ RUN_SYMBIOTE=async()=>{
     //6.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
 
-    //7. Start to generate blocks
+    //✅7. Start to generate blocks
     BLOCKS_GENERATION()
 
 
