@@ -385,8 +385,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 {
 
-                    subchain:primePoolPubKey,
-
                     lastAuthority,
                     
                     lastIndex,
@@ -852,7 +850,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
  
-                    SKIP_HANDLERS:new Map(), // {skipData,aggregatedSkipProof}
+                    SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
                     SYNCHRONIZER:new Map(),
             
@@ -910,13 +908,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'})
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
 
                     global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'})
+                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
 
@@ -1900,7 +1898,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             [1] In case quroum member also has this pool in SKIP_HANDLER - this is the signal that it also stopped creating finalization proofs for a given pool
 
-                If its local version of <extendedAggregatedCommitments> in skip handler has lower index than in FP that we send - the response format is:
+                If its local version of <skipData> in skip handler has lower index than in FP that we send - the response format is:
 
                 
                     {
@@ -2412,7 +2410,7 @@ SUBCHAINS_HEALTH_MONITORING=async()=>{
 
                     indexInReassignmentChain:poolIndexInRc,
 
-                    extendedAggregatedCommitments:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,afp}
+                    skipData:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKey))), // {index,hash,afp}
 
                     aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
 
@@ -2687,7 +2685,7 @@ RESTORE_STATE=async()=>{
         //______________________________ Try to find SKIP_HANDLER for pool ______________________________
 
 
-        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(()=>false) // {extendedAggregatedCommitments,aggregatedSkipProof}
+        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(()=>false) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
         if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
 
@@ -3676,19 +3674,19 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
 
-        FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+hash+'FINALIZATION'+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+        FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
 
-        TEMP_CACHE:new Map(),
+        TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
-        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
-        SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
+        SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],  // default mempool for system sync operations
         
-        SYNCHRONIZER:new Map(),
+        SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
         HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. poolPubKey => {lastSeen,index,hash,aggregatedFinalizationProof:{aggregatedPub,aggregatedSig,afkVoters}}
 
-        SKIP_HANDLERS:new Map(), // {extendedAggregatedCommitments,aggregatedSkipProof}
+        SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
         REASSIGNMENTS:new Map(), // PrimePool => {currentAuthority:<number>} | ReservePool => PrimePool
 
@@ -4076,7 +4074,7 @@ RUN_SYMBIOTE=async()=>{
     //4.Start checking the health of all the subchains
     SUBCHAINS_HEALTH_MONITORING()
 
-    //5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
+    //✅5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
 
     //6.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
