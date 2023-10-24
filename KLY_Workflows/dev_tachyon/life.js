@@ -860,8 +860,6 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     SYNCHRONIZER:new Map(),
             
                     REASSIGNMENTS:new Map(),
-
-                    HEALTH_MONITORING:new Map(),
       
                     DATABASE:nextTempDB
             
@@ -3412,7 +3410,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
 
-        FINALIZATION_PROOFS:new Map(), // blockID => SIG(blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id).    Aggregated proofs which proof that some validator has 2/3N+1 commitments for block PubX:Y with hash H. Key is blockID and value is FINALIZATION_PROOF object
+        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
@@ -3421,8 +3419,6 @@ PREPARE_SYMBIOTE=async()=>{
         SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],  // default mempool for system sync operations
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
-
-        HEALTH_MONITORING:new Map(), // used to perform SKIP procedure when we need it and to track changes on subchains. poolPubKey => {lastSeen,index,hash,aggregatedFinalizationProof:{aggregatedPub,aggregatedSig,afkVoters}}
 
         SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
