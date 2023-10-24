@@ -120,16 +120,19 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     
     }else{
 
-        let poolIsAFK = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATE_SKIP_HANDLER:'+block.creator)        
+        let poolIsAfkOrWeGoingToSkipIt = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATING_SKIP_HANDLER:'+block.creator)        
 
 
-        if(poolIsAFK){
+        if(poolIsAfkOrWeGoingToSkipIt){
 
             connection.close()
     
             return
 
         }
+
+        // Add the sync flag to prevent creation proofs during the process of skip this pool
+        tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
 
         let poolsRegistryOnQuorumThread = checkpoint.poolsRegistry
