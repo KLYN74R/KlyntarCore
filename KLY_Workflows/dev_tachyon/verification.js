@@ -7,7 +7,7 @@ import {
 } from './utils.js'
 
 
-import SYSTEM_SYNC_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epochEdgeOperationsVerifiers.js'
 
 import {LOG,BLAKE3,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
@@ -801,7 +801,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
         for(let operation of operations){
         
-            if(operation.type==='SLASH_UNSTAKE') await SYSTEM_SYNC_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
+            if(operation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
         
         }
 
@@ -809,7 +809,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
         
         
-        //____________________Go through the SPEC_OPERATIONS and perform it__________________
+        //____________________Go through the EPOCH_EDGE_OPERATIONS and perform it__________________
 
         for(let operation of operations){
     
@@ -822,14 +822,14 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
             OPERATION in checkpoint has the following structure
 
             {
-                type:<TYPE> - type from './systemOperationsVerifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./systemOperationsVerifiers.js
+                type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
             }
             
 
             */
 
-            await SYSTEM_SYNC_OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
+            await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
     
         }
 
@@ -1055,7 +1055,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
 
-        LOG(`\u001b[38;5;154mSystem sync operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mEpoch edge operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash} (VT)\u001b[0m`,'S')
 
 
         //Commit the changes of state using atomic batch
@@ -1145,7 +1145,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
             
         For this we need 5 things:
 
-            1) System sync operations for current epoch - we take it from await global.SYMBIOTE_META.EPOCH_DATA.put(`SSO:${oldEpochFullID}`).catch(()=>false)
+            1) Epoch edge operations for current epoch - we take it from await global.SYMBIOTE_META.EPOCH_DATA.put(`EEO:${oldEpochFullID}`).catch(()=>false)
 
                 This is the array that we need to execute later in sync mode
 

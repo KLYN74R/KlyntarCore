@@ -2,7 +2,7 @@ import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,
 
 import{BODY,BLAKE3,LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
-import SYSTEM_SYNC_OPERATIONS_VERIFIERS from '../systemOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../epochEdgeOperationsVerifiers.js'
 
 import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../life.js'
 
@@ -1721,21 +1721,21 @@ Body is
 
 {
     
-    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../systemOperationsVerifiers.js
+    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../epochEdgeOperationsVerifiers.js
     
     payload:{}
 
 }
 
-    * Payload has different structure depending on type of SSO
+    * Payload has different structure depending on type of EEO
 
 
 */
 
-systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     
-    let systemSyncOperation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let epochEdgeOperation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
 
@@ -1748,31 +1748,31 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
     }
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SYSTEM_SYNC_OPERATIONS){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
-        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept system sync operations`}))
+        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept epoch edge operations`}))
 
         return
     }
 
     //Verify and if OK - generate signature and return
 
-    if(SYSTEM_SYNC_OPERATIONS_VERIFIERS[systemSyncOperation.type]){
+    if(EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type]){
 
-        let possibleSystemSyncOperation = await SYSTEM_SYNC_OPERATIONS_VERIFIERS[systemSyncOperation.type](systemSyncOperation.payload,true,false).catch(error=>({isError:true,error})) // it's just verify without state changes
+        let possibleEpochEdgeOperation = await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload,true,false).catch(error=>({isError:true,error})) // it's just verify without state changes
 
-        if(possibleSystemSyncOperation?.isError){
+        if(possibleEpochEdgeOperation?.isError){
             
-            !response.aborted && response.end(JSON.stringify({err:`Verification failed. Reason => ${JSON.stringify(possibleSystemSyncOperation)}`}))
+            !response.aborted && response.end(JSON.stringify({err:`Verification failed. Reason => ${JSON.stringify(possibleEpochEdgeOperation)}`}))
 
         }
-        else if(possibleSystemSyncOperation){
+        else if(possibleEpochEdgeOperation){
 
             // Generate signature
 
             let signature = await ED25519_SIGN_DATA(
 
-                BLAKE3(JSON.stringify(possibleSystemSyncOperation)+checkpointFullID),
+                BLAKE3(JSON.stringify(possibleEpochEdgeOperation)+checkpointFullID),
 
                 global.PRIVATE_KEY
 
@@ -1787,9 +1787,9 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
             }))
        
         }
-        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleSystemSyncOperation)}`)
+        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleEpochEdgeOperation)}`)
 
-    }else !response.aborted && response.end(`No verification function for this system sync operation => ${systemSyncOperation.type}`)
+    }else !response.aborted && response.end(`No verification function for this system sync operation => ${epochEdgeOperation.type}`)
 
 }),
 
@@ -1805,13 +1805,13 @@ systemSyncOperationsVerifier=response=>response.writeHeader('Access-Control-Allo
 
         aggreementProofs:{
 
-            quorumMemberPubKey0:ED25519_SIGN(BLAKE3( JSON(systemSyncOperation) + checkpointFullID)),
+            quorumMemberPubKey0:ED25519_SIGN(BLAKE3( JSON(epochEdgeOperation) + checkpointFullID)),
             ...
             quorumMemberPubKeyN:<>                
 
         }
 
-        systemSyncOperation:{<your operation here>}
+        epochEdgeOperation:{<your operation here>}
 
     }
 
@@ -1831,10 +1831,10 @@ Returns object like:
 
 
 */
-systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+epochEdgeOperationToMempool=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
 
-    let systemSyncOperationWithAgreementProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let epochEdgeOperationWithAgreementProofs = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
     let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
 
@@ -1852,17 +1852,17 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
     let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.SYSTEM_SYNC_OPERATIONS){
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
-        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept system sync operations`}))
+        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept epoch edge operations`}))
 
         return
     }
 
 
-    if(typeof systemSyncOperationWithAgreementProof.systemSyncOperation !== 'object' || typeof systemSyncOperationWithAgreementProof.aggreementProofs !== 'object'){
+    if(typeof epochEdgeOperationWithAgreementProofs.epochEdgeOperation !== 'object' || typeof epochEdgeOperationWithAgreementProofs.aggreementProofs !== 'object'){
 
-        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <systemSyncOperation>(your operation) and <agreementProofs>(aggregated version of verification proofs from quorum members majority)`}))
+        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <epochEdgeOperation>(your operation) and <agreementProofs>(aggregated version of verification proofs from quorum members majority)`}))
 
         return
 
@@ -1872,7 +1872,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
     let hashOfCheckpointFullIDAndOperation = BLAKE3(
 
-        JSON.stringify(systemSyncOperationWithAgreementProof.systemSyncOperation) + checkpointFullID
+        JSON.stringify(epochEdgeOperationWithAgreementProofs.epochEdgeOperation) + checkpointFullID
 
     )
 
@@ -1884,7 +1884,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
     let okSignatures = 0
 
 
-    for(let [signerPubKey,signa] of Object.entries(systemSyncOperationWithAgreementProof.aggreementProofs)){
+    for(let [signerPubKey,signa] of Object.entries(epochEdgeOperationWithAgreementProofs.aggreementProofs)){
 
         promises.push(ED25519_VERIFY(hashOfCheckpointFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && checkpoint.quorum.includes(signerPubKey) && okSignatures++))
 
@@ -1897,7 +1897,7 @@ systemSyncOperationToMempool=response=>response.writeHeader('Access-Control-Allo
 
         // Add to mempool
         
-        tempObject.SYSTEM_SYNC_OPERATIONS_MEMPOOL.push(systemSyncOperationWithAgreementProof.systemSyncOperation)
+        tempObject.EPOCH_EDGE_OPERATIONS_MEMPOOL.push(epochEdgeOperationWithAgreementProofs.epochEdgeOperation)
 
         !response.aborted && response.end(JSON.stringify({status:`OK`}))
         
@@ -2099,11 +2099,11 @@ global.UWS_SERVER
 
 
 
-// Handler to accept system sync operation, verify it and sign if OK. The caller is SSO creator while verifiers - current quorum members ✅
-.post('/sign_system_sync_operation',systemSyncOperationsVerifier)
+// Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
+.post('/sign_epoch_edge_operation',epochEdgeOperationsVerifier)
 
-// Handler to accept SSO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this SSO and we can add it to block header ✅
-.post('/system_sync_operation_to_mempool',systemSyncOperationToMempool)
+// Handler to accept EEO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this EEO and we can add it to block header ✅
+.post('/epoch_edge_operation_to_mempool',epochEdgeOperationToMempool)
 
 // Handler to accept transaction, make overview and add to mempool ✅
 .post('/transaction',acceptTransactions)

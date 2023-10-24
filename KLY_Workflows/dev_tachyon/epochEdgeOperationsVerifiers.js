@@ -397,7 +397,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /system_sync_operations
+            isFromRoute //method used on POST /epoch_edge_operation
             &&
             typeof data.pool === 'string' && Array.isArray(data.delayedIds)
             &&
@@ -601,7 +601,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /system_sync_operations
+            isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
             typeof data === 'number' //new value of rubicon. Some previous checkpointID
             &&
@@ -670,7 +670,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /system_sync_operations
+            isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
@@ -735,7 +735,7 @@ export default {
 
         let overviewIfFromRoute = 
 
-            isFromRoute //method used on POST /system_sync_operations
+            isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&

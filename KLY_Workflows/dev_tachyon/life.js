@@ -12,7 +12,7 @@ import {
 
 import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
-import SYSTEM_OPERATIONS_VERIFIERS from './systemOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epochEdgeOperationsVerifiers.js'
 
 import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
 
@@ -191,13 +191,13 @@ GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_M
 
 
 
-GET_SYSTEM_SYNC_OPERATIONS = checkpointFullID => {
+GET_EPOCH_EDGE_OPERATIONS = checkpointFullID => {
 
     if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
 
-    let specialOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).SYSTEM_SYNC_OPERATIONS_MEMPOOL
+    let epochEdgeOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
 
-    return specialOperationsMempool.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SYSTEM_SYNC_OPERATIONS_LIMIT_PER_BLOCK)
+    return epochEdgeOperationsMempool.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
 },
 
@@ -241,7 +241,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuoru
 
 
 
-EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,systemSyncOperations) => {
+EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
@@ -255,15 +255,15 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,syste
     
 
     // But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-    for(let operation of systemSyncOperations){
+    for(let operation of epochEdgeOperations){
      
-        if(operation.type==='SLASH_UNSTAKE') await SYSTEM_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
+        if(operation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
     
     }
 
     // Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
 
-    for(let operation of systemSyncOperations){
+    for(let operation of epochEdgeOperations){
         
         if(operation.type==='SLASH_UNSTAKE') continue
           /*
@@ -272,12 +272,12 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,syste
             
             OPERATION in checkpoint has the following structure
             {
-                type:<TYPE> - type from './systemOperationsVerifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./systemOperationsVerifiers.js
+                type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
+                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
             }
             
         */
-        await SYSTEM_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThread)
+        await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThread)
     
     }
 
@@ -370,7 +370,7 @@ EXECUTE_SYSTEM_SYNC_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,syste
 START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
-    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE SYNC SYSTEM OPERATIONS INSTANTLY_____________________________
+    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE OPERATIONS INSTANTLY_____________________________
 
     /*
     
@@ -411,9 +411,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS - 1 by default. Don't change it
                 
-                    This value shows how many first blocks we need to get to extract system sync operations to execute before move to next epoch
+                    This value shows how many first blocks we need to get to extract epoch edge operations to execute before move to next epoch
                     
-                    System sync operations used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
+                    Epoch edge operations used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
  
             
         4. Now try to find our own assumption about the first block in epoch locally
@@ -440,7 +440,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 AFP_FOR_SECOND_BLOCK.prevBlockHash
  
 
-        6. Once we find all of them - extract SYSTEM_SYNC_OPERATIONS from block headers and run it in a sync mode
+        6. Once we find all of them - extract EPOCH_EDGE_OPERATIONS from block headers and run it in a sync mode
 
         7. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
     
@@ -752,12 +752,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         await global.SYMBIOTE_META.EPOCH_DATA.put(`CHECKPOINT_CACHE:${oldEpochFullID}`,checkpointCache).catch(()=>false)
 
 
-        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract system sync operations and set the new epoch____
+        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
 
 
         if(totalNumberOfSubchains === totalNumberOfReadySubchains){
 
-            let systemSyncOperations = []
+            let epochEdgeOperations = []
 
             let firstBlocksHashes = []
 
@@ -765,13 +765,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
             for(let [primePoolPubKey] of entries){
 
-                // Try to get the system sync operations from the first blocks
+                // Try to get the epoch edge operations from the first blocks
 
                 let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
-                    systemSyncOperations.push(...firstBlockOnThisSubchain.systemSyncOperations)
+                    epochEdgeOperations.push(...firstBlockOnThisSubchain.epochEdgeOperations)
 
                     firstBlocksHashes.push(checkpointCache[primePoolPubKey].firstBlockHash)
 
@@ -789,7 +789,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Store the system sync operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`SSO:${oldEpochFullID}`,systemSyncOperations).catch(()=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
 
                 // We need it for changes
                 let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
@@ -798,8 +798,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 let atomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
 
 
-                // Execute system sync operations from new checkpoint using our copy of QT and atomic handler
-                await EXECUTE_SYSTEM_SYNC_OPERATIONS(atomicBatch,fullCopyOfQuorumThread,systemSyncOperations)
+                // Execute epoch edge operations from new checkpoint using our copy of QT and atomic handler
+                await EXECUTE_EPOCH_EDGE_OPERATIONS(atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations)
 
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
@@ -821,7 +821,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(()=>false)
 
 
-                LOG(`\u001b[38;5;154mSystem sync operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
+                LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
 
                 //_______________________ Update the values for new epoch _______________________
 
@@ -853,7 +853,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     TEMP_CACHE:new Map(),
 
-                    SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],
+                    EPOCH_EDGE_OPERATIONS_MEMPOOL:[],
  
                     SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
@@ -2685,9 +2685,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
 
-    // 0.Add the system sync operations to block extra data
+    // 0.Add the epoch edge operations to block extra data
 
-    extraData.systemSyncOperations = GET_SYSTEM_SYNC_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
 
     // 1.Add the extra data to block from configs(it might be your note, for instance)
 
@@ -3321,7 +3321,7 @@ PREPARE_SYMBIOTE=async()=>{
 
                 SID_TRACKER:{}, // subchainID(Ed25519 pubkey of prime pool) => index
 
-                CHECKPOINT:'genesis'
+                CHECKPOINT:{}
 
             }
 
@@ -3416,7 +3416,7 @@ PREPARE_SYMBIOTE=async()=>{
     
         CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
-        SYSTEM_SYNC_OPERATIONS_MEMPOOL:[],  // default mempool for system sync operations
+        EPOCH_EDGE_OPERATIONS_MEMPOOL:[],  // default mempool for epoch edge operations
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
