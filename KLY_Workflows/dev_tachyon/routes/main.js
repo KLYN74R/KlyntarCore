@@ -238,7 +238,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
                     checkpointFullID
                             
-                ).catch(()=>false)
+                ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.subchain === primePoolPubKey
 
 
                         

@@ -413,30 +413,34 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS - 1 by default. Don't change it
                 
-                    This value shows how many first blocks we need to get to extract system sync operations to execute
+                    This value shows how many first blocks we need to get to extract system sync operations to execute before move to next epoch
+                    
+                    System sync operations used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
  
             
         4. Now try to find our own assumption about the first block in epoch locally
 
-            For this, iterate over reassignment chains and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:1').catch(()=>false)
+            For this, iterate over reassignment chains:
+            
+            
+            for(subchainID of subchains){
+
+                ------Find first block for prime pool here------
+
+                Otherwise - try to find first block created by other pools on this subchain
+
+                for(pool of reassignmentChains[subchainID])
+
+            }
+                        
+            and try to find AFP_FOR_SECOND_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:1').catch(()=>false)
 
             If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
-        
-            This is a clear proof that block 0 is 100% accepted by network 
 
+            In case we have AFP for second block(with index 1) - it's a clear proof that block 0 is 100% accepted by network and we can get the hash of first block from here:
 
-        5. Using these proofs, check the blockID field. If it contain prime pool pubkey and index 0 - it's the first block on subchain. 100%
-
-            Otherwise we'll get the index 0 and pubkey which will be the pubkey of pool which is in reassignment chain
-
-                global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[<primePoolPubKey>]
-
-
-            Run a reverse cycle to find block 0 of this pool and extract the ASP for previous pool in reassignment chain
-
-            ASP 100% contains the field <firstBlockHash>
-
-            Then repeat it to find the block 0 of prime pool or one of the first pools in reassignment chains    
+                AFP_FOR_SECOND_BLOCK.prevBlockHash
+ 
 
         6. Once we find all of them - extract SYSTEM_SYNC_OPERATIONS from block headers and run it in a sync mode
 
@@ -479,7 +483,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`CHECKPOINT_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,realFirstBlockFound}}
+        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`CHECKPOINT_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnSubchainFound}}
 
         let entries = Object.entries(reassignmentChains)
 
@@ -489,9 +493,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
             totalNumberOfSubchains++
         
-            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {realFirstBlockFound:false}
+            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {firstBlockOnSubchainFound:false}
 
-            if(checkpointCache[primePoolPubKey].aefp && checkpointCache[primePoolPubKey].realFirstBlockFound){
+            if(checkpointCache[primePoolPubKey].aefp && checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
 
                 totalNumberOfReadySubchains++
 
@@ -514,10 +518,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 Reminder: AEFP structure is
 
                     {
+                        subchain:<>,
                         lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
-                        firstBlockHash,
+                        hashOfFirstBlockByLastAuthority,
                         
                         proofs:{
 
@@ -554,7 +559,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                             let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,majority,oldEpochFullID)
     
-                            if(aefpPureObject){
+                            if(aefpPureObject && aefpPureObject.subchain === primePoolPubKey){
     
                                 checkpointCache[primePoolPubKey].aefp = aefpPureObject
     
@@ -577,24 +582,24 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 ██╔══╝  ██║██║╚██╗██║██║  ██║    ██╔══╝  ██║██╔══██╗╚════██║   ██║       ██╔══██╗██║     ██║   ██║██║     ██╔═██╗ ╚════██║
                 ██║     ██║██║ ╚████║██████╔╝    ██║     ██║██║  ██║███████║   ██║       ██████╔╝███████╗╚██████╔╝╚██████╗██║  ██╗███████║
                 ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝     ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝       ╚═════╝ ╚══════╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝╚══════╝
-        
+    
             */
 
-            if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+            if(!checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
 
-                // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
+                // First of all - try to find AFP for second block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:1
 
-                let firstBlockOfPrimePool = qtCheckpoint.id+':'+primePoolPubKey+':0'
+                let secondBlockID = qtCheckpoint.id+':'+primePoolPubKey+':1'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePool).catch(()=>false)
+                let afpForSecondBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
-                if(afpForFirstBlockOfPrimePool){
+                if(afpForSecondBlockOfPrimePool){
 
                     checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                    checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+                    checkpointCache[primePoolPubKey].firstBlockHash = afpForSecondBlockOfPrimePool.prevBlockHash // since we need the hash of first block(index=0), take the field .prevBlockHash from AFP for second block(with index=1)
 
-                    checkpointCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
                 }else{
 
@@ -604,19 +609,19 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockOfPrimePool,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+secondBlockID,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
             
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint,rootPubKey)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint)
             
-                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePool){                            
+                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === secondBlockID){                            
                             
                                 checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
+                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.prevBlockHash
 
-                                checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true
 
                             }
             
@@ -628,7 +633,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
-                if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+                if(!checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
 
                     // Find AFPs for reserve pools
                 
@@ -636,17 +641,17 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                         let reservePoolPubKey = arrayOfReservePools[position]
 
-                        let firstBlockOfPool = qtCheckpoint.id+':'+reservePoolPubKey+':0'
+                        let secondBlockIDBySomePool = qtCheckpoint.id+':'+reservePoolPubKey+':1'
 
-                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(()=>false)
+                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockIDBySomePool).catch(()=>false)
 
-                        if(afp){
+                        if(afp && afp.blockID === secondBlockIDBySomePool){
 
                             //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
 
-                            let potentialFirstBlock = await GET_MANY_BLOCKS(qtCheckpoint.id,reservePoolPubKey,0,true)
+                            let potentialFirstBlock = await GET_BLOCK(qtCheckpoint.id,reservePoolPubKey,0)
 
-                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
+                            if(potentialFirstBlock && afp.prevBlockHash === Block.genHash(potentialFirstBlock)){
 
                                 /*
                             
@@ -675,13 +680,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                         if(previousPoolPubKey === primePoolPubKey){
 
-                                            // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
+                                            // In case we get the start of reassignment chain - break the cycle
 
-                                            checkpointCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
+                                            checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
                                             checkpointCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
         
-                                            checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                            checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true
                                     
                                             shouldBreakInfiniteWhile = true
 
@@ -690,11 +695,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
                                             // Get the first block of pool which was reassigned on not-null height
-                                            let potentialNextBlock = await GET_MANY_BLOCKS(qtCheckpoint.id,previousPoolPubKey,0)
+                                            let potentialFirstBlockBySomePool = await GET_BLOCK(qtCheckpoint.id,previousPoolPubKey,0)
 
-                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
+                                            if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === aspForPreviousPool.firstBlockHash){
 
-                                                potentialFirstBlock = potentialNextBlock
+                                                potentialFirstBlock = potentialFirstBlockBySomePool
 
                                                 aspData.firstBlockCreator = previousPoolPubKey
 
@@ -739,7 +744,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
             //_____________________________ Here we should have understanding of first block for each subchain __________________________
 
-            if(checkpointCache[primePoolPubKey].realFirstBlockFound && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+            if(checkpointCache[primePoolPubKey].firstBlockOnSubchainFound && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
     
         
         }
@@ -764,7 +769,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Try to get the system sync operations from the first blocks
 
-                let firstBlockOnThisSubchain = await GET_MANY_BLOCKS(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
 
@@ -2775,7 +2780,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
             global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
         
-        )
+        ) && itsProbablyAggregatedEpochFinalizationProof.subchain === subchainID
 
         if(aefpProof) return aefpProof
 
@@ -3078,7 +3083,6 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
         }
 
         await Promise.all(promises)
-
         
         if(okSignatures>=majority){
 
@@ -4069,7 +4073,7 @@ RUN_SYMBIOTE=async()=>{
     //0.Start verification process - process blocks and find new checkpoints step-by-step
     START_VERIFICATION_THREAD()
 
-    //1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
+    //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
     START_QUORUM_THREAD_CHECKPOINT_TRACKER()
 
     //✅2.Share our blocks within quorum members and get the commitments / finalization proofs
