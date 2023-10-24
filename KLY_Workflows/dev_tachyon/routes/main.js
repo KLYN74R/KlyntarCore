@@ -538,10 +538,11 @@ getAggregatedFinalizationProof=async(response,request)=>{
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
+        subchain:<ed25519 pubkey of prime pool - the creator of new subchain>
         lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
-        firstBlockHash:<hash of the first block by this authority>,
+        hashOfFirstBlockByLastAuthority:<hash of the first block by this authority>,
         
         proofs:{
 
@@ -553,7 +554,7 @@ getAggregatedFinalizationProof=async(response,request)=>{
     
     }
 
-    Signature is ED25519('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
+    Signature is ED25519('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
 
 
 */
@@ -691,7 +692,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 1) Verify index & hash & afp in <metadataForCheckpoint>
                 
-                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
+                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)
 
                 3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.CHECKPOINT_MANAGER)
 
@@ -711,7 +712,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 -------------------------------[In case status === 'OK']-------------------------------
 
-                signa: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
+                signa: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)
                         
                 ----------------------------[In case status === 'UPGRADE']-----------------------------
 
@@ -789,7 +790,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                 // Try to define the first block hash. For this, use the proposition.afpForSecondBlock
                         
-                let firstBlockHash
+                let hashOfFirstBlockByLastAuthority
 
                 let blockIDOfSecondBlock = qtCheckpoint.id+':'+pubKeyOfCurrentAuthorityOnSubchain+':1' // first block has index 0, second block has index 1. Numeration from 0
 
@@ -799,13 +800,13 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                     let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForSecondBlock,qtCheckpoint)
 
-                    if(afpIsOk) firstBlockHash = proposition.afpForSecondBlock.prevBlockHash
+                    if(afpIsOk) hashOfFirstBlockByLastAuthority = proposition.afpForSecondBlock.prevBlockHash
 
 
                 }
 
 
-                if(!firstBlockHash) continue
+                if(!hashOfFirstBlockByLastAuthority) continue
 
 
                 //_________________________________________ Now compare _________________________________________
@@ -818,7 +819,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
 
                         let {index,hash} = proposition.metadataForCheckpoint
 
-                        let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+firstBlockHash+checkpointFullID
+                        let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+checkpointFullID
     
                         responseStructure[subchainID] = {
                                                 
@@ -867,7 +868,7 @@ acceptCheckpointProposition=response=>response.writeHeader('Access-Control-Allow
                             
                             // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
 
-                            let dataToSign = 'EPOCH_DONE'+proposition.currentAuthority+index+hash+firstBlockHash+checkpointFullID
+                            let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+checkpointFullID
 
                             responseStructure[subchainID] = {
                             

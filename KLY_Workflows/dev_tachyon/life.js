@@ -385,13 +385,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 {
 
+                    subchain,
+
                     lastAuthority,
                     
                     lastIndex,
                     
                     lastHash,
 
-                    firstBlockHash,
+                    hashOfFirstBlockByLastAuthority,
 
                     proofs:{
 
@@ -403,7 +405,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 
                 }
 
-                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+firstBlockHash+checkpointFullID
+                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullID
 
         3. Once we find the AEFPs for ALL the subchains - it's a signal to start to find the first X blocks in current epoch for each subchain
 
@@ -1006,7 +1008,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             
             
-            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+lastAuthorityInRcIndex+lastIndex+lastHash+firstBlockHash+checkpointFullId)))
+            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+subchain+lastAuthorityInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)))
             let checkpointAgreements = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION')
 
             if(!checkpointAgreements){
@@ -1176,7 +1178,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                sig: SIG('EPOCH_DONE'+lastAuth+lastIndex+lastHash+firstBlockHash+checkpointFullId)
+                                sig: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
@@ -1215,7 +1217,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.blockHash+checkpointFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.prevBlockHash+checkpointFullID
 
                                 let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
@@ -1277,13 +1279,15 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         
                 let aggregatedEpochFinalizationProof = {
 
+                    subchain:primePoolPubKey,
+
                     lastAuthority:metadata.currentAuthority,
                     
                     lastIndex:metadata.metadataForCheckpoint.index,
                     
                     lastHash:metadata.metadataForCheckpoint.hash,
 
-                    firstBlockHash:metadata.afpForSecondBlock.prevBlockHash,
+                    hashOfFirstBlockByLastAuthority:metadata.afpForSecondBlock.prevBlockHash,
 
                     proofs:Object.fromEntries(agreementsForEpochCheckpoint)
                     
@@ -3006,13 +3010,15 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
         
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.subchain === 'string'
+        &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.firstBlockHash === 'string'
+        typeof itsProbablyAggregatedEpochFinalizationProof.hashOfFirstBlockByLastAuthority === 'string'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.proofs === 'object'
 
@@ -3023,10 +3029,11 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
+                subchain:<ed25519 pubkey of prime pool - creator of subchain>,
                 lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
-                firstBlockHash,
+                hashOfFirstBlockByLastAuthority,
 
                 proofs:{
 
@@ -3043,9 +3050,9 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
         */
 
-        let {lastAuthority,lastIndex,lastHash,firstBlockHash} = itsProbablyAggregatedEpochFinalizationProof
+        let {subchain,lastAuthority,lastIndex,lastHash,hashOfFirstBlockByLastAuthority} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = 'EPOCH_DONE'+lastAuthority+lastIndex+lastHash+firstBlockHash+checkpointFullID
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullID
 
         let promises = []
 
@@ -3077,7 +3084,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
             return {
             
-                lastAuthority,lastIndex,lastHash,firstBlockHash,
+                subchain,lastAuthority,lastIndex,lastHash,hashOfFirstBlockByLastAuthority,
         
                 proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
 
