@@ -518,8 +518,8 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 Reminder: AEFP structure is
 
                     {
-                        subchain:<>,
-                        lastAuthority:<index of BLS pubkey of some pool in subchain's reassignment chain>,
+                        subchain:<ed25519 pubkey of prime pool - ID of subchain>,
+                        lastAuthority:<index of ed25519 pubkey of some pool in subchain's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
                         hashOfFirstBlockByLastAuthority,
@@ -3974,7 +3974,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
-                                            let firstBlockInThisEpochByPool = await GET_MANY_BLOCKS(quorumThreadCheckpointIndex,poolWithThisPosition,0)
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,0)
 
                                             // Compare hashes to make sure it's really the first block by pool X in epoch Y
 
@@ -4088,7 +4088,7 @@ RUN_SYMBIOTE=async()=>{
     //✅5.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
 
-    //6.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
+    //✅6.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅7. Start to generate blocks
