@@ -251,7 +251,7 @@ global.CONFIG={}
 //Load all the configs
 fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
-    Object.assign(CONFIG,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
+    Object.assign(global.CONFIG,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
     
 )
 
@@ -416,13 +416,13 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
 
 
-global.UWS_SERVER=UWS[global.CONFIG.TLS.ENABLED?'SSLApp':'App'](global.CONFIG.TLS.CONFIGS).listen(global.CONFIG.INTERFACE,global.CONFIG.PORT,descriptor=>{
+global.UWS_SERVER = UWS[global.CONFIG.TLS.ENABLED?'SSLApp':'App'](global.CONFIG.TLS.CONFIGS).listen(global.CONFIG.INTERFACE,global.CONFIG.PORT,descriptor=>{
 
     if(descriptor){
 
         LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
 
-        global.UWS_DESC=descriptor
+        global.UWS_DESC = descriptor
         
     }
     else LOG('Oops,some problems with server module','F')

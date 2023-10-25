@@ -77,7 +77,7 @@ getFromState=async(response,request)=>{
  * 
  *  
  * */
-getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE).end(global.INFO),
+getKlyInfrastructureInfo=request=>WRAP_RESPONSE(request,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE).end(global.MY_KLY_INFRASTRUCTURE),
 
 
 

@@ -1829,7 +1829,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         }
 
 
-        if(timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME >= GET_GMT_TIMESTAMP()){
+        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME){
 
             // Create the skip handler in case time is out
             
@@ -1839,11 +1839,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
 
+                let checkpointDataOfThisPool = tempObject.CHECKPOINT_MANAGER.get(poolPubKeyForHunting) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
                 let futureSkipHandler = {
     
                     indexInReassignmentChain:poolIndexInRc,
     
-                    skipData:JSON.parse(JSON.stringify(tempObject.CHECKPOINT_MANAGER.get(poolPubKeyForHunting))), // {index,hash,afp}
+                    skipData:JSON.parse(JSON.stringify(checkpointDataOfThisPool)), // {index,hash,afp}
     
                     aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
     
@@ -3548,7 +3550,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByCurrentAuthority}. Send the current auth + prime pool
 
-        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>false)
+        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>null)
 
         if(responseForTempReassignment){
 

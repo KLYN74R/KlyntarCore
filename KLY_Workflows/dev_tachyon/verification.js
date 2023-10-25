@@ -1391,18 +1391,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-    while(true){
-
-        /*
-
-            ! Glossary - AGGREGATED_FINALIZATION_PROOF on high level is proof that for block Y created by validator PubX with hash H exists at least 2/3N+1 from quorum who has 2/3N+1 commitments for this block
-
-                [+] If our current checkpoint are "too old", no sense to find AGGREGATED_FINALIZATION_PROOF. Just find & process block
-        
-                [+] If latest checkpoint was created & published on hostchains(primary and other hostchains via HiveMind) we should find AGGREGATED_FINALIZATION_PROOF to proceed the block
-        
-
-        */
+    // while(true){
 
 
         let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
@@ -1515,10 +1504,10 @@ START_VERIFICATION_THREAD=async()=>{
 
                 // Ask the Savitar about block range
 
-                let savitarURL = ''
+                // let savitarURL = ''
 
 
-                while(true){
+                //while(true){
 
                     let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
 
@@ -1562,7 +1551,7 @@ START_VERIFICATION_THREAD=async()=>{
     
                             global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
-                            break
+                            //break
     
                         }
     
@@ -1572,58 +1561,16 @@ START_VERIFICATION_THREAD=async()=>{
     
                         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
-                        break
+                        //break
     
                     }
 
 
-                }
+                //}
 
 
             
             }
-
-
-        }else{
-
-            // Just verify blocks with no AFP
-
-            while(true){
-
-                let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
-        
-                let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
-        
-                let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-        
-                let metadataFromTempReassignments = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash}
-
-                for(let blockIndex = localMetadataOfThisPool.index ; blockIndex <= metadataFromTempReassignments.index ; blockIndex++){
-
-                    let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
-
-                    if(block){
-        
-                        await verifyBlock(block,currentSubchainToCheck)
-        
-                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-        
-                    }else break
-
-                }
-                    
-                // To move to the next one
-
-                if(localMetadataOfThisPool.index === metadataFromTempReassignments.index) tempReassignmentsForSomeSubchain.currentToVerify++
-
-                else break
-
-                if(tempReassignmentsForSomeSubchain.currentToVerify === tempReassignmentsForSomeSubchain.currentAuthority) break
-
-                
-            }
-
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
 
         }
@@ -1634,8 +1581,10 @@ START_VERIFICATION_THREAD=async()=>{
             await TRY_TO_CHANGE_EPOCH(vtCheckpoint)
             
         }
+
+        setImmediate(START_VERIFICATION_THREAD)
     
-    }
+    //}
 
 },
 
