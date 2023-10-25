@@ -41,11 +41,15 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     let blockID = epochIndex+':'+blockCreator+':'+index
 
-    return global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>
+    // Try to find block locally
 
-        fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)})
-    
-        .then(r=>r.json()).then(block=>{
+    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>null)
+
+    if(!block){
+
+        // First of all - try to find by pre-set URL
+
+        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)}).then(r=>r.json()).then(block=>{
                 
             if(typeof block.transactions==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
 
@@ -53,24 +57,24 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
                 return block
     
-            }
+            } 
     
-        }).catch(async()=>{
-    
-            // LOG(`No block \x1b[36;1m${blockCreator+':'+index}\u001b[38;5;3m ———> ${error}`,'W')
-    
-            // LOG(`Going to ask for blocks from the other nodes(\x1b[32;1mGET_BLOCKS_URL\x1b[36;1m node is \x1b[31;1moffline\x1b[36;1m or another error occured)`,'I')
-    
+        }).catch(()=>null)
 
-            //Combine all nodes we know about and try to find block there
+        
+        if(!block){
+
+            // Finally - request blocks from quorum members
+
+            // Combine all nodes we know about and try to find block there
+            
             let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
-
     
             for(let host of allVisibleNodes){
 
                 if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>false)
+                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>null)
                 
                 if(itsProbablyBlock){
 
@@ -98,10 +102,12 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
                 }
     
             }
-            
-        })
-    
-    )
+
+        }
+
+    }
+
+    return block
 
 },
 
@@ -1374,163 +1380,148 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
 START_VERIFICATION_THREAD=async()=>{
 
+    while(true){
 
+    let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
 
-    // while(true){
+    if(!primePoolsPubkeys){
 
-
-        let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
-
-        if(!primePoolsPubkeys){
-
-            let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
+        let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
                 
-                pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pubKey].isReserve
+            pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pubKey].isReserve
                 
-            )
+        )
 
-            global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
+        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
 
-            primePoolsPubkeys = primePools
+        primePoolsPubkeys = primePools
+
+    }
+
+    
+    let currentCheckpointIsFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
+
+    let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+
+    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
+
+    let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
+
+    let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
+
+    let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
+
+    let vtCheckpointIndex = vtCheckpoint.id
+
+        
+        
+
+    // Get the stats from reassignments
+
+    let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+
+
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
+
+
+        let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
+
+        // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
+
+        let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.currentToVerify
+
+        if(typeof indexOfCurrentPoolToVerify !== 'number'){
+
+            indexOfCurrentPoolToVerify = -1
+
+            reassignmentsBasedOnCheckpointData.currentToVerify = -1
 
         }
 
-    
-        let currentCheckpointIsFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
-        let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+        // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
-        let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
-        let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
+        let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
-        let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
-
-        let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
-
-        let vtCheckpointIndex = vtCheckpoint.id
-
-        
-        
-
-        // Get the stats from reassignments
-
-        let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
-
-
-
-        if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
-
-
-            let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
-
-            // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
-
-            let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.currentToVerify
-
-            if(typeof indexOfCurrentPoolToVerify !== 'number'){
-
-                indexOfCurrentPoolToVerify = -1
-
-                reassignmentsBasedOnCheckpointData.currentToVerify = -1
-
-            }
-
-
-            // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-
-            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
-
-            let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-
-            let metadataOfThisPoolBasedOnReassignmentsFromCheckpoint = reassignmentsBasedOnCheckpointData[poolToVerifyRightNow] // {index,hash}
+        let metadataOfThisPoolBasedOnReassignmentsFromCheckpoint = reassignmentsBasedOnCheckpointData[poolToVerifyRightNow] // {index,hash}
 
             
 
 
-            //_________________________Now check - if this pool already have the same index & hash as in checkpoint - change the pointer to the next in a row_________________________
+        //_________________________Now check - if this pool already have the same index & hash as in checkpoint - change the pointer to the next in a row_________________________
 
 
-            if(metadataOfThisPoolLocal.index < metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
+        if(metadataOfThisPoolLocal.index < metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
             
-                // Process the block
+            // Process the block
                 
-                let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
-
-                if(block){
-                
-                    await verifyBlock(block,currentSubchainToCheck)
-                
-                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-                
-                }else{
-                
-                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-                
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-                
-                }
-            
-
-            }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
-
-                global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtCheckpoint.poolsMetadata[poolToVerifyRightNow]
-
-                reassignmentsBasedOnCheckpointData.currentToVerify++
-
-            }
-
-        
-        
-        }else if(currentCheckpointIsFresh && tempReassignmentsForSomeSubchain){
-
-            let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
-
-            // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-        
-            let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
-        
-            let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-            
-
-            let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
-
+            let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
             if(block){
+                
+                await verifyBlock(block,currentSubchainToCheck)
+                
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+                
+            }else{
+                
+                // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+                
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+                
+            }
+            
 
-                let currentBlockHash = Block.genHash(block)
+        }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
 
-                // We need to take the AFP for NEXT block. Once we get it and verify, get the AFP.prevBlockHash and compare with <currentBlockHash>
-                // It's a guarantee that current block with given hash are 100% accepted by quorum
-                let nextBlockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+2)
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtCheckpoint.poolsMetadata[poolToVerifyRightNow]
 
-                // Get the AFP for next block
+            reassignmentsBasedOnCheckpointData.currentToVerify++
 
-                let {verify,shouldDelete} = await GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF(nextBlockID,currentBlockHash).catch(()=>({verify:false}))
+        }
+        
+    }else if(currentCheckpointIsFresh && tempReassignmentsForSomeSubchain){
+
+        
+        let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+
+        // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
+        
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        
+        let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+            
+
+        let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
 
 
-                if(shouldDelete){
+        if(block){
+
+            let currentBlockHash = Block.genHash(block)
+
+            // We need to take the AFP for NEXT block. Once we get it and verify, get the AFP.prevBlockHash and compare with <currentBlockHash>
+            // It's a guarantee that current block with given hash are 100% accepted by quorum
+            let nextBlockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+2)
+
+            // Get the AFP for next block
+
+            let {verify,shouldDelete} = await GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF(nextBlockID,currentBlockHash).catch(()=>({verify:false}))
+
+
+            if(shouldDelete){
     
-                    // Probably - hash mismatch 
+                // Probably - hash mismatch 
     
-                    await global.SYMBIOTE_META.BLOCKS.del(nextBlockID).catch(()=>{})
+                await global.SYMBIOTE_META.BLOCKS.del(nextBlockID).catch(()=>{})
 
     
-                }else if(verify){
+            }else if(verify){
 
-                    await verifyBlock(block,currentSubchainToCheck)
+                await verifyBlock(block,currentSubchainToCheck)
 
-                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-
-                }else{
-
-                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-
-                    //break
-
-                }
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
 
             }else{
 
@@ -1538,22 +1529,28 @@ START_VERIFICATION_THREAD=async()=>{
 
                 global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
-                //break
-
             }
 
+        }else{
+
+            // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+
         }
 
+    }
 
-        if(!currentCheckpointIsFresh){
 
-            await TRY_TO_CHANGE_EPOCH(vtCheckpoint)
+    if(!currentCheckpointIsFresh){
+
+        await TRY_TO_CHANGE_EPOCH(vtCheckpoint)
             
-        }
+    }
 
-        setImmediate(START_VERIFICATION_THREAD)
-    
-    //}
+}
+
+ //   setImmediate(START_VERIFICATION_THREAD)
 
 },
 

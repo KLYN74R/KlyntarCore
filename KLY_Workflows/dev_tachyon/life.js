@@ -1532,9 +1532,9 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
 
                     })
 
-                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
+                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey))
                       
-                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey.pubKey))
+                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey))
 
                     TEMP_CACHE.set('WS:'+pubKey,connection)
 
