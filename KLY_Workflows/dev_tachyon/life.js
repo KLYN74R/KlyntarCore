@@ -1440,10 +1440,13 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
+        LOG(`Approved height for epoch \u001b[38;5;50m${checkpoint.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \u001b[38;5;168m(${(finalizationProofsMapping.size/checkpoint.quorum.length).toFixed(3)*100}% agreements)`,'F')
+
+        console.log('\n')
+
         // Delete finalization proofs that we don't need more
         FINALIZATION_PROOFS.delete(blockIDForHunting)
 
-        console.log('Received AFP => ',aggregatedFinalizationProof)
 
         // Repeat procedure for the next block and store the progress
         await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
