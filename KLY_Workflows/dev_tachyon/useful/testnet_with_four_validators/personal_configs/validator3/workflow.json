@@ -167,7 +167,6 @@
                 "BLOCK":6000,
                 "LATEST_N_BLOCKS":5,
                 "BLOCK_BY_SID":6000,
-                "BLOCK_BY_GRID":6000,
                 "INFO":600,
                 "SYNC_STATE":2,
                 "SYMBIOTE_INFO":5,
@@ -205,7 +204,6 @@
                 
                 "BLOCK":1,
                 "BLOCK_BY_SID":1,
-                "BLOCK_BY_GRID":1,
                 "LATEST_N_BLOCKS":1,
     
                 "INFO":1,

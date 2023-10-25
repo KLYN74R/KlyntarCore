@@ -3093,9 +3093,7 @@ LOAD_GENESIS=async()=>{
         
         index:-1,
         
-        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-        grid:0
+        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
     
     }
 
@@ -3314,7 +3312,7 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                FINALIZATION_POINTER:{subchain:'',currentAuthority:'',index:-1,hash:'',grid:0}, // pointer to know where we should start to process further blocks
+                FINALIZATION_POINTER:{subchain:'',currentAuthority:'',index:-1,hash:''}, // pointer to know where we should start to process further blocks
 
                 POOLS_METADATA:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 

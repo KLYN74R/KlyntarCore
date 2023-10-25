@@ -334,36 +334,6 @@ getSymbioteInfo=response=>{
 
 
 
-// 0 - GRID(general real block index)
-getBlockByGRID=(response,request)=>{
-
-    //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK_BY_GRID){
-
-        response
-        
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_GRID}`)
-            .onAborted(()=>response.aborted=true)
-
-
-        global.SYMBIOTE_META.STATE.get('GRID:'+request.getParameter(0)).then(
-            
-            blockID => global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>
-
-                !response.aborted && response.end(JSON.stringify(block))
-            )    
-            
-        ).catch(()=>!response.aborted && response.end(JSON.stringify({err:'No block'})))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-},
-
-
-
-
 getSearchResult=async(response,request)=>{
 
     //Set triggers
@@ -627,8 +597,6 @@ global.UWS_SERVER
 // Get blocks
 
 .get('/block/:ID',getBlockById)
-
-.get('/block_by_grid/:GRID',getBlockByGRID)
 
 .get('/block_by_sid/:SUBCHAIN/:SID',getBlockBySID)
 

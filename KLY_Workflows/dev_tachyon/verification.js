@@ -1380,8 +1380,6 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
 START_VERIFICATION_THREAD=async()=>{
 
-    while(true){
-
     let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
 
     if(!primePoolsPubkeys){
@@ -1548,9 +1546,8 @@ START_VERIFICATION_THREAD=async()=>{
             
     }
 
-}
-
- //   setImmediate(START_VERIFICATION_THREAD)
+ 
+    setImmediate(START_VERIFICATION_THREAD)
 
 },
 
@@ -1876,8 +1873,6 @@ verifyBlock=async(block,subchainContext)=>{
         global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
 
 
-        let oldGRID = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.grid
-
         // Change finalization pointer
         
         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = subchainContext
@@ -1887,10 +1882,6 @@ verifyBlock=async(block,subchainContext)=>{
         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index = block.index
                 
         global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash = blockHash
-
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.grid++
-
-        atomicBatch.put(`GRID:${oldGRID}`,currentBlockID)
         
         // Change metadata per validator's thread
         
