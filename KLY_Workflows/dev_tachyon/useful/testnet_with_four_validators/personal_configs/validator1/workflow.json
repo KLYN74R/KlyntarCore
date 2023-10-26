@@ -173,8 +173,7 @@
                 "SEARCH_RESULT":5,
                 "TX_RECEIPT":100,
                 "POOLS_METADATA":5,
-                "QUORUM_THREAD_CHECKPOINT":5,
-                "STUFF":5
+                "QUORUM_THREAD_CHECKPOINT":5
             }   
         
         },
@@ -212,39 +211,16 @@
                 "SEARCH_RESULT":1,
                 "TX_RECEIPT":1,
                 "POOLS_METADATA":1,
-                "QUORUM_THREAD_CHECKPOINT":1,
-                "SHARE_STUFF":1
+                "QUORUM_THREAD_CHECKPOINT":1
             
             }
         
         },
     
-        "GET_STUFF_URL":"http://localhost:7332",
         "GET_BLOCKS_URL":"http://localhost:7332",
         "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
     
-        "STUFF_CACHE_SIZE":100000,
-        
-        "LOAD_STUFF":{
-            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
-                "payload":{
-                    "url":"http://localhost:7332"
-                },
-                "sig":""
-            },
-            "7Wnx41FLF6Pp2vEeigTtrU5194LTyQ9uVq4xe48XZScxpaRjkjSi8oPbQcUVC2LYUT":{
-                "payload":{
-                    "url":"http://localhost:7332"
-                },
-                "sig":""
-            },
-            "7fJo5sUy3pQBaFrVGHyQA2Nqz2APpd7ZBzvoXSHWTid5CJcqskQuc428fkWqunDuDu":{
-                "payload":{
-                    "url":"http://localhost:7333"
-                },
-                "sig":""
-            }
-        },
+       
     
         "WAIT_IF_CANT_FIND_CHECKPOINT":4000
     

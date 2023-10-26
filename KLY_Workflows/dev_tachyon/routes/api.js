@@ -536,45 +536,7 @@ getCurrentQuorumThreadCheckpoint=response=>{
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
-},
-
-
-
-//0 - stuffID
-//Return useful data from stuff cache. It might be array of BLS pubkeys associated with some BLS aggregated pubkey, binding URL-PUBKEY and so on
-//Also, it's a big opportunity for cool plugins e.g. dyncamically track changes in STUFF_CACHE and modify it or share to other endpoints
-
-stuff=async(response,request)=>{
-    
-    response.onAborted(()=>response.aborted=true).writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.STUFF}`)
-    
-    let stuffID=request.getParameter(0)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SHARE_STUFF){
-
-        let stuff = await global.SYMBIOTE_META.STUFF.get(stuffID).then(obj=>{
-
-            global.SYMBIOTE_META.STUFF_CACHE.set(stuffID,obj)
-        
-            return obj
-        
-        }).catch(()=>false)
-
-        !response.aborted && response.end(JSON.stringify(stuff))
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Symbiote not supported or route is off'}))
-
-},
-
-
-
-
-stuffAdd=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async()=>{
-    
-    //Unimplemented
-    response.end('')
-
-})
+}
 
 
 
@@ -588,7 +550,6 @@ global.UWS_SERVER
 .get('/pools_metadata',getPoolsMetadata)
 
 .get('/symbiote_info',getSymbioteInfo)
-
 
 .get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)
 
@@ -612,15 +573,11 @@ global.UWS_SERVER
 
 .get('/sync_state',getSyncState)
 
-.get('/stuff/:STUFF_ID',stuff)
-
 
 
 // Misc
 
 .get('/get_kly_infrastructure_info',getKlyInfrastructureInfo)
-
-.post('/stuff_add',stuffAdd)
 
 .get('/nodes/:REGION',nodes)
 

@@ -3190,36 +3190,30 @@ PREPARE_SYMBIOTE=async()=>{
 
 
     //Contains default set of properties for major part of potential use-cases on symbiote
-    global.SYMBIOTE_META={
+    global.SYMBIOTE_META = {
 
         VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
         
         MEMPOOL:[], //to hold onchain transactions here(contract calls,txs,delegations and so on)
 
-        //Сreate mapping for account and it's state to optimize processes while we check blocks-not to read/write to db many times
+   
         STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
 
         QUORUM_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
 
-
-        //________________________ AUXILIARY_MAPPINGS ________________________
         
         PEERS:[], // Peers to exchange data with
-
-        STATIC_STUFF_CACHE:new Map(),
 
         //________________ CONSENSUS RELATED MAPPINGS(per epoch) _____________
 
         TEMP:new Map()
-
     
     }
 
 
-
     !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
-    
-    
+
+
 
     //___________________________Load functionality to verify/filter/transform txs_______________________________
 
@@ -3243,8 +3237,6 @@ PREPARE_SYMBIOTE=async()=>{
     
         'BLOCKS', // For blocks. BlockID => block
     
-        'STUFF', // Some data like combinations of pools for aggregated BLS pubkey, endpoint <-> pubkey bindings and so on. Available stuff URL_PUBKEY_BIND | VALIDATORS_PUBKEY_COMBINATIONS | BLOCK_HASHES | .etc
-
         'STATE', // Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
 
         'EPOCH_DATA', // Contains epoch data - AEFPs, AFPs, etc.
@@ -3264,16 +3256,6 @@ PREPARE_SYMBIOTE=async()=>{
         
     )
     
-    
-    //____________________________________________Load stuff to db___________________________________________________
-
-
-    Object.keys(global.CONFIG.SYMBIOTE.LOAD_STUFF).forEach(
-        
-        id => global.SYMBIOTE_META.STUFF.put(id,global.CONFIG.SYMBIOTE.LOAD_STUFF[id])
-        
-    )
-
 
     global.SYMBIOTE_META.GENERATION_THREAD = await global.SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
         
@@ -3389,11 +3371,6 @@ PREPARE_SYMBIOTE=async()=>{
         GRACEFUL_STOP()
 
     }
-
-    
-    //_____________________________________Set some values to stuff cache___________________________________________
-
-    global.SYMBIOTE_META.STUFF_CACHE = new AdvancedCache(global.CONFIG.SYMBIOTE.STUFF_CACHE_SIZE,global.SYMBIOTE_META.STUFF)
 
 
     let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
@@ -3796,7 +3773,7 @@ RUN_SYMBIOTE=async()=>{
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-    //0.Start verification process - process blocks and find new checkpoints step-by-step
+    //✅0.Start verification process - process blocks and find new checkpoints step-by-step
     START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)

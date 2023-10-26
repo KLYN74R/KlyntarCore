@@ -34,9 +34,6 @@ export let
 
 
 
-//Make all advanced stuff here-check block locally or ask from "GET_BLOCKS_URL" node for new blocks
-//If no answer - try to find blocks somewhere else
-
 GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     let blockID = epochIndex+':'+blockCreator+':'+index
