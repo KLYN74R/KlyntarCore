@@ -14,8 +14,6 @@ import {LOG,PATH_RESOLVE,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA,ED25519_VERI
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epochEdgeOperationsVerifiers.js'
 
-import AdvancedCache from '../../KLY_Utils/structures/advancedcache.js'
-
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import Block from './essences/block.js'

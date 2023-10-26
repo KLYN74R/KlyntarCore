@@ -19,6 +19,8 @@ import Block from './essences/block.js'
 
 import fetch from 'node-fetch'
 
+import WS from 'websocket'
+
 import Web3 from 'web3'
 
 
@@ -230,7 +232,7 @@ Structure => {
 
 */
 
-GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBlock) => {
+GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBlock,aggregatedFinalizationProof) => {
 
 
     let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
@@ -244,7 +246,7 @@ GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBl
     if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
 
     
-    let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+nextBlockID).catch(()=>null)
+    aggregatedFinalizationProof ||= await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+nextBlockID).catch(()=>null)
 
 
     // We shouldn't verify local version of AFP, because we already did it. See the GET /aggregated_finalization_proof route handler
@@ -1375,6 +1377,152 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
 
 
+OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async poolPubKeyToOpenConnectionWith => {
+
+    /* 
+    
+        Open connection with websocket endpoint which was set by target pool
+
+        Use the following rules to define the priority
+
+            1) In case we have a URL in global.CONIG.SYMBIOTE_META.BLOCKS_TUNNELS[poolPubKeyToOpenConnectionWith] - use this URL
+
+            2) Otherwise - use endpoint from GET_FROM_STATE(poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
+
+    */
+
+
+    let endpointURL = global.CONIG.SYMBIOTE_META.BLOCKS_TUNNELS[poolPubKeyToOpenConnectionWith]
+
+    if(!endpointURL){
+
+        let poolBinding = await GET_FROM_STATE(poolPubKeyToOpenConnectionWith+'(POOL)_POINTER')
+
+        let poolStorage = await GET_FROM_STATE(poolBinding+':'+poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
+        
+
+        if(poolStorage) endpointURL = poolStorage.wssPoolURL
+    
+    }
+
+
+
+    if(endpointURL){
+
+        // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time. 
+
+        // global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
+
+        new Promise(resolve=>{
+
+            let WebSocketClient = WS.client
+    
+            let client = new WebSocketClient({})
+                
+            client.connect(endpointURL,'echo-protocol')
+
+
+
+            client.on('connect',connection=>{
+
+                connection.on('message',async message=>{
+
+                    if(message.type === 'utf8'){
+
+                        let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
+
+
+                        /*
+                        
+                            Run the cycle to verify the range:
+
+                            Start from blocks[blocks.length-1] to 0. The first block in .blocks array must be +1 than we have locally
+
+                            Make sure it's a valid chain(Block_N.prevHash=Hash(Block_N-1))
+
+                            Finally, check the AFP for latest block - this way we verify the whole segment using O(1) complexity
+                        
+                        */
+                    
+                           
+                    
+                    }        
+
+                })
+
+
+                connection.on('close',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
+                      
+                connection.on('error',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
+
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,connection,cache:new Map()})
+
+                // Start to ask for blocks time by time
+                
+                setImmediate(()=>{
+
+
+
+
+                },3000)
+
+                resolve()
+
+            })
+
+        })                
+    
+    
+        
+                
+                client.on('connect',connection=>{
+
+                    connection.on('message',async message=>{
+
+                        if(message.type === 'utf8'){
+
+                            let parsedData = JSON.parse(message.utf8Data)
+                        
+                            let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
+ 
+                            if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                    
+                                // Verify the finalization proof
+                    
+                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
+                    
+                                let finalizationProofIsOk = checkpoint.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                        
+                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
+                    
+                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
+                    
+                                }
+                    
+                            }        
+                        
+                        }        
+
+                    })
+
+                    
+
+                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey))
+                      
+                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey))
+
+                    TEMP_CACHE.set('WS:'+pubKey,connection)
+
+                })
+
+ 
+    }
+
+},
+
+
+
+
 START_VERIFICATION_THREAD=async()=>{
 
     let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
@@ -1484,55 +1632,63 @@ START_VERIFICATION_THREAD=async()=>{
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
         
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
         
         let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-            
 
-        let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
+        
+        // Try check if we have established a WSS channel to fetch blocks
 
+        if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('WS:'+poolToVerifyRightNow)){
 
-        if(block){
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow)
+        
+        }else if(global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
 
-            let currentBlockHash = Block.genHash(block)
+            // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
 
-            // We need to take the AFP for NEXT block. Once we get it and verify, get the AFP.prevBlockHash and compare with <currentBlockHash>
-            // It's a guarantee that current block with given hash are 100% accepted by quorum
-            let nextBlockID = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+2)
+            let tunnelHandler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,connection,cache:map(blockID=>block)}
 
-            // Get the AFP for next block
+            tunnelHandler.connection.close()
 
-            let {verify,shouldDelete} = await GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF(nextBlockID,currentBlockHash).catch(()=>({verify:false}))
-
-
-            if(shouldDelete){
-    
-                // Probably - hash mismatch 
-    
-                await global.SYMBIOTE_META.BLOCKS.del(nextBlockID).catch(()=>{})
-
-    
-            }else if(verify){
-
-                await verifyBlock(block,currentSubchainToCheck)
-
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-
-            }else{
-
-                // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-
-            }
-
-        }else{
-
-            // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow)                
 
         }
+
+
+        // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
+
+        let tunnelHandler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,connection,cache:map(blockID=>block)}
+
+        let cacheSize = tunnelHandler.cache.size
+
+
+        // Start the cycle to process all the blocks
+        while(cacheSize!==0){
+
+            let blockIdToGet = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
+
+            let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
+
+
+            if(block){
+
+                await verifyBlock(block,currentSubchainToCheck)
+    
+                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+    
+            }else{
+    
+                // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+    
+                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+    
+            }
+    
+            cacheSize--
+    
+        }
+
 
     }
 

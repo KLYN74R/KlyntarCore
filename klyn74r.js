@@ -357,7 +357,7 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
     //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
     //BTW make it global to dynamically change it in the onther modules
-    global.MY_KLY_INFRASTRUCTURE=JSON.stringify(global.CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE)
+    global.MY_KLY_INFRASTRUCTURE = JSON.stringify(global.CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE)
     
 
 
