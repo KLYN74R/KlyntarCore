@@ -1450,71 +1450,42 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async poolPubKeyToOpenConnectionWith => {
 
                 })
 
+                // Start to ask for blocks time by time
+                
+                setImmediate(()=>{
+
+                    let descriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+                    if(descriptor){
+
+                        let messageToSend = {
+
+                            route:'/get_blocks',
+    
+                            hasUntilHeight:descriptor.hasUntilHeight
+    
+                        } 
+    
+                        connection.sendUTF(JSON.stringify(messageToSend))
+
+                    }
+
+
+                },2000)
 
                 connection.on('close',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
                       
                 connection.on('error',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
 
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,connection,cache:new Map()})
-
-                // Start to ask for blocks time by time
-                
-                setImmediate(()=>{
+                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
 
 
-
-
-                },3000)
 
                 resolve()
 
             })
 
         })                
-    
-    
-        
-                
-                client.on('connect',connection=>{
-
-                    connection.on('message',async message=>{
-
-                        if(message.type === 'utf8'){
-
-                            let parsedData = JSON.parse(message.utf8Data)
-                        
-                            let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
- 
-                            if (parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
-                    
-                                // Verify the finalization proof
-                    
-                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
-                    
-                                let finalizationProofIsOk = checkpoint.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
-                        
-                                if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
-                    
-                                    FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
-                    
-                                }
-                    
-                            }        
-                        
-                        }        
-
-                    })
-
-                    
-
-                    connection.on('close',()=>TEMP_CACHE.delete('WS:'+pubKey))
-                      
-                    connection.on('error',()=>TEMP_CACHE.delete('WS:'+pubKey))
-
-                    TEMP_CACHE.set('WS:'+pubKey,connection)
-
-                })
-
  
     }
 
