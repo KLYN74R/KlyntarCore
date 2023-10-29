@@ -1550,9 +1550,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
     
                             let messageToSend = {
     
-                                route:'/get_blocks',
+                                route:'get_blocks',
         
-                                hasUntilHeight:handler.hasUntilHeight
+                                hasUntilHeight:handler.hasUntilHeight,
+
+                                checkpointIndex:checkpoint.id
         
                             } 
         

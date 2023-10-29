@@ -324,6 +324,44 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 }
 
 
+let RETURN_BLOCKS_RANGE = async(data,connection)=>{
+
+    // We need to send range of blocks from <heightThatUserHave+1> to <heightThatUserHave+499> or less(limit is up to 500 blocks). Also, send the AFP for latest block
+    // Also, the response structure is {blocks:[],afpForLatest}
+
+    let responseStructure = {
+
+        blocks:[],
+
+        afpForLatest:{}
+
+    }
+
+    for(let i=0;i<500;i++){
+
+        let blockIdToFind = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+(data.hasUntilHeight+i)
+
+        let block = await global.SYMBIOTE_META.BLOCKS.get(blockIdToFind).catch(()=>null)
+
+        if(block) responseStructure.blocks.push(block)
+
+        else break
+
+    }
+
+    // Now find the AFP for latest block
+
+    let latestBlock = responseStructure.blocks[responseStructure.blocks.length-1]
+
+    let blockIdOfNextToLatestBlock = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+(latestBlock.index+1)
+
+    responseStructure.afpForLatest = await global.SYMBIOTE_META.EPOCH_DATA.get(blockIdOfNextToLatestBlock).catch(()=>null)
+
+    connection.sendUTF(JSON.stringify(responseStructure))
+
+}
+
+
 
 
 let WebSocketServer = WS.server
@@ -379,7 +417,12 @@ WEBSOCKET_SERVER.on('request',request=>{
 
                 // ACCEPT_AGGREGATED_FINALIZATION_PROOF(data.payload,connection)
 
+            }else if(data.route==='get_blocks'){
+
+                RETURN_BLOCKS_RANGE(data,connection)
+
             }
+
             else{
 
                 connection.close(1337,'No available route. You can use <get_commitment_for_block_range> | <get_finalization_proof_for_range>')
