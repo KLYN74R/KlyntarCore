@@ -337,25 +337,26 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
 
     }
 
-    for(let i=0;i<500;i++){
 
-        let blockIdToFind = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+(data.hasUntilHeight+i)
+    for(let i=1;i<500;i++){
+
+        let blockIdToFind = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+(data.hasUntilHeight+i)
+
+        let blockIdToFindAfp = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+(data.hasUntilHeight+i+1)
 
         let block = await global.SYMBIOTE_META.BLOCKS.get(blockIdToFind).catch(()=>null)
 
-        if(block) responseStructure.blocks.push(block)
+        let afpForBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockIdToFindAfp).catch(()=>null)
 
-        else break
+        if(block && afpForBlock){
+
+            responseStructure.blocks.push(block)
+
+            responseStructure.afpForLatest = afpForBlock
+
+        }else break
 
     }
-
-    // Now find the AFP for latest block
-
-    let latestBlock = responseStructure.blocks[responseStructure.blocks.length-1]
-
-    let blockIdOfNextToLatestBlock = data.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+(latestBlock.index+1)
-
-    responseStructure.afpForLatest = await global.SYMBIOTE_META.EPOCH_DATA.get(blockIdOfNextToLatestBlock).catch(()=>null)
 
     connection.sendUTF(JSON.stringify(responseStructure))
 

@@ -1438,7 +1438,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-        LOG(`Approved height for epoch \u001b[38;5;50m${checkpoint.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \u001b[38;5;168m(${(finalizationProofsMapping.size/checkpoint.quorum.length).toFixed(3)*100}% agreements)`,'F')
+        LOG(`Approved height for epoch \u001b[38;5;50m${checkpoint.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/checkpoint.quorum.length).toFixed(3)*100}% agreements)`,'F')
 
         console.log('\n')
 
@@ -3199,6 +3199,8 @@ PREPARE_SYMBIOTE=async()=>{
 
         QUORUM_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
 
+        STUFF_CACHE:new Map(),
+
         
         PEERS:[], // Peers to exchange data with
 
@@ -3784,7 +3786,7 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()

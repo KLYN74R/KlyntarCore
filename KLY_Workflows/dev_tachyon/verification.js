@@ -50,7 +50,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
         block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)}).then(r=>r.json()).then(block=>{
                 
-            if(typeof itsProbablyBlock.extraData==='object' && typeof block.prevHash==='string' && typeof itsProbablyBlock.checkpoint==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
+            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.checkpoint==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
                 global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -1396,7 +1396,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
     */
 
 
-    let endpointURL = global.CONIG.SYMBIOTE_META.BLOCKS_TUNNELS[poolPubKeyToOpenConnectionWith]
+    let endpointURL = global.CONFIG.SYMBIOTE?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
 
     if(!endpointURL){
 
@@ -1415,16 +1415,15 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
         // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time. 
 
-        // global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
+        // global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
 
-        new Promise(resolve=>{
+        await new Promise(resolve=>{
 
             let WebSocketClient = WS.client
     
             let client = new WebSocketClient({})
-                
-            client.connect(endpointURL,'echo-protocol')
 
+            client.connect(endpointURL,'echo-protocol')
 
 
             client.on('connect',connection=>{
@@ -1433,11 +1432,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                     if(message.type === 'utf8'){
 
-                        if(global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
+                        if(global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
 
-                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
+                        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
                         
-                        let handler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
                         let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
 
@@ -1474,7 +1473,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                                 if(currentBlockIndexInArray>0){
 
-                                    hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) !== currentBlock.prevHash
+                                    hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
 
                                     indexesAreOk = parsedData.blocks[currentBlockIndexInArray-1].index+1 === parsedData.blocks[currentBlockIndexInArray].index
 
@@ -1532,7 +1531,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
                             
                         }
 
-                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
+                        global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
                     
                     }        
 
@@ -1542,9 +1541,9 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
                 
                 let stopHandler = setInterval(()=>{
 
-                    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
+                    if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
 
-                        let handler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
                         if(handler){
     
@@ -1568,7 +1567,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                 connection.on('close',()=>{
 
-                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+                    global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
 
                     clearInterval(stopHandler)
 
@@ -1576,17 +1575,18 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
                       
                 connection.on('error',()=>{
 
-                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+                    global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
 
                     clearInterval(stopHandler)
 
                 })
 
-                global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
+                global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
 
-                resolve()
 
             })
+
+            resolve()
 
         })                
  
@@ -1713,56 +1713,70 @@ START_VERIFICATION_THREAD=async()=>{
         
         // Try check if we have established a WSS channel to fetch blocks
 
-        if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('WS:'+poolToVerifyRightNow)){
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow)){
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow)
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtCheckpoint)
+
+            setTimeout(START_VERIFICATION_THREAD,5000)
+
+            return
         
-        }else if(global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
+        }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
 
             // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
 
-            let tunnelHandler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,connection,cache:map(blockID=>block)}
+            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
             tunnelHandler.connection.close()
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow)                
+            global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
+
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtCheckpoint)                
+
+            setTimeout(START_VERIFICATION_THREAD,5000)
+
+            return
 
         }
 
 
         // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
 
-        let tunnelHandler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,connection,cache:map(blockID=>block)}
+        let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-        let cacheSize = tunnelHandler.cache.size
+        if(tunnelHandler){
 
+            let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
-        // Start the cycle to process all the blocks
-        while(cacheSize!==0){
+            let stepsForWhile = biggestHeightInCache - localMetadataOfThisPool.index
 
-            let blockIdToGet = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
-
-            let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
-
-
-            if(block){
-
-                await verifyBlock(block,currentSubchainToCheck)
+            // Start the cycle to process all the blocks
+            while(stepsForWhile > 0){
     
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+                let blockIdToGet = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
     
-            }else{
+                let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
     
-                // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
     
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+                if(block){
     
+                    await verifyBlock(block,currentSubchainToCheck)
+        
+                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+        
+                }else{
+        
+                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
+        
+                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+        
+                }
+                
+                stepsForWhile--
+        
             }
     
-            cacheSize--
-    
         }
-
 
     }
 
