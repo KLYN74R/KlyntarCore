@@ -50,7 +50,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
         block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)}).then(r=>r.json()).then(block=>{
                 
-            if(typeof block.transactions==='object' && typeof block.prevHash==='string' && typeof block.sig==='string' && block.index===index && block.creator === blockCreator){
+            if(typeof itsProbablyBlock.extraData==='object' && typeof block.prevHash==='string' && typeof itsProbablyBlock.checkpoint==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
                 global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -78,16 +78,20 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
                 if(itsProbablyBlock){
 
                     let overviewIsOk =
-                    
-                        typeof itsProbablyBlock.transactions==='object'
+
+                        typeof itsProbablyBlock.extraData==='object'
                         &&
                         typeof itsProbablyBlock.prevHash==='string'
+                        &&
+                        typeof itsProbablyBlock.checkpoint==='string'
                         &&
                         typeof itsProbablyBlock.sig==='string'
                         &&
                         itsProbablyBlock.index===index
                         &&
                         itsProbablyBlock.creator===blockCreator
+                        &&
+                        Array.isArray(block.transactions)
                 
 
                     if(overviewIsOk){
@@ -1377,7 +1381,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
 
 
-OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async poolPubKeyToOpenConnectionWith => {
+OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,checkpoint) => {
 
     /* 
     
@@ -1429,22 +1433,106 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async poolPubKeyToOpenConnectionWith => {
 
                     if(message.type === 'utf8'){
 
+                        if(global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
+
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
+                        
+                        let handler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
                         let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
 
+                        let limit = 500 // max 500 blocks per request. Change it if you neeed
 
-                        /*
+
+                        if(typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
+
+                            // Make sure it's a chain
+
+                            let breaked = false
+
+
+
+                            /*
                         
-                            Run the cycle to verify the range:
+                                Run the cycle to verify the range:
 
-                            Start from blocks[blocks.length-1] to 0. The first block in .blocks array must be +1 than we have locally
+                                Start from blocks[blocks.length-1] to 0. The first block in .blocks array must be +1 than we have locally
 
-                            Make sure it's a valid chain(Block_N.prevHash=Hash(Block_N-1))
+                                Make sure it's a valid chain(Block_N.prevHash=Hash(Block_N-1))
 
-                            Finally, check the AFP for latest block - this way we verify the whole segment using O(1) complexity
+                                Finally, check the AFP for latest block - this way we verify the whole segment using O(1) complexity
                         
-                        */
-                    
-                           
+                            */
+
+                            for(let currentBlockIndexInArray = parsedData.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
+
+                                let currentBlock = parsedData.blocks[currentBlockIndexInArray]
+
+                                // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
+
+                                let hashesAreEqual = true, indexesAreOk = true
+
+                                if(currentBlockIndexInArray>0){
+
+                                    hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) !== currentBlock.prevHash
+
+                                    indexesAreOk = parsedData.blocks[currentBlockIndexInArray-1].index+1 === parsedData.blocks[currentBlockIndexInArray].index
+
+                                }
+
+                                // Now, check the structure of block
+
+                                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.checkpoint==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
+                                
+                                let itsTheSameCreator = currentBlock.creator === poolPubKeyToOpenConnectionWith
+
+                                let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
+
+                                // If it's the last block in array(and first in enumeration) - check the AFP for latest block
+
+                                if(overviewIsOk && currentBlockIndexInArray === parsedData.blocks.length-1){
+
+                                    let blockIDThatMustBeInAfp = checkpoint.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
+
+                                    let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
+
+                                    overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,checkpoint)
+
+                                }
+                                
+                                
+                                if(!overviewIsOk){
+
+                                    breaked = true
+
+                                    break
+
+                                }
+
+                            }
+
+                            
+                            // If we have size - add blocks here. The reserve is 5000 blocks per subchain
+
+                            if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
+
+                                // Add the blocks to mapping
+
+                                parsedData.blocks.forEach(block=>{
+
+                                    let blockID = checkpoint.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
+
+                                    handler.cache.set(blockID,block)
+
+                                })
+
+                                handler.hasUntilHeight = parsedData.blocks[parsedData.blocks.length-1].index
+                                
+                            }
+                            
+                        }
+
+                        global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
                     
                     }        
 
@@ -1452,34 +1540,47 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async poolPubKeyToOpenConnectionWith => {
 
                 // Start to ask for blocks time by time
                 
-                setImmediate(()=>{
+                let stopHandler = setInterval(()=>{
 
-                    let descriptor = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                    if(!global.SYMBIOTE_META.STATIC_STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
 
-                    if(descriptor){
+                        let handler = global.SYMBIOTE_META.STATIC_STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-                        let messageToSend = {
-
-                            route:'/get_blocks',
+                        if(handler){
     
-                            hasUntilHeight:descriptor.hasUntilHeight
+                            let messageToSend = {
     
-                        } 
+                                route:'/get_blocks',
+        
+                                hasUntilHeight:handler.hasUntilHeight
+        
+                            } 
+        
+                            connection.sendUTF(JSON.stringify(messageToSend))
     
-                        connection.sendUTF(JSON.stringify(messageToSend))
+                        }    
 
                     }
 
-
                 },2000)
 
-                connection.on('close',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
+                connection.on('close',()=>{
+
+                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+
+                    clearInterval(stopHandler)
+
+                })
                       
-                connection.on('error',()=>global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith))
+                connection.on('error',()=>{
+
+                    global.SYMBIOTE_META.STATIC_STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+
+                    clearInterval(stopHandler)
+
+                })
 
                 global.SYMBIOTE_META.STATIC_STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
-
-
 
                 resolve()
 
