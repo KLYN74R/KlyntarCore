@@ -17,6 +17,6 @@
 
     "DAEMON_LOGS":true,
 
-    "PLUGINS":["dev_savitar/server.js"]
-    
+    "PLUGINS":[]
+
 }

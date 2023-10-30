@@ -76,13 +76,13 @@ export let CONTRACT = {
 
                 lackOfTotalPower:false,
                     
-                stopCheckpointID:-1,
+                stopEpochID:-1,
 
                 totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 stakers:{}, // Pubkey => {kly,uno}
 
-                waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via SPEC_OPS in checkpoints
+                waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via epoch edge operations
 
             }
 
@@ -142,7 +142,7 @@ export let CONTRACT = {
 
                     poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                        checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id,
+                        epochID:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id,
 
                         staker:transaction.creator,
 
@@ -199,7 +199,7 @@ export let CONTRACT = {
 
             poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id,
+                epochID:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id,
 
                 staker:transaction.creator,
 

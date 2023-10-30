@@ -4,7 +4,7 @@
 
     "VERSION":0,
 
-    "CHECKPOINT_TIMESTAMP":1673825543232,
+    "EPOCH_TIMESTAMP":1673825543232,
 
     "SYMBIOTE_CREATORS_CONTACT":{
         "telegram":"@symbiote_creator",
@@ -60,7 +60,7 @@
             "whiteList":[],
             "totalPower":55000,
             "lackOfTotalPower":false,
-            "stopCheckpointID": -1,
+            "stopEpochID": -1,
             "isReserve":false,
             "stakers":{
                 "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
@@ -80,7 +80,7 @@
             "whiteList":[],
             "totalPower":55000,
             "lackOfTotalPower":false,
-            "stopCheckpointID": -1,
+            "stopEpochID": -1,
             "isReserve":false,
             "stakers":{
                 "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
@@ -100,7 +100,7 @@
             "whiteList":[],
             "totalPower":55000,
             "lackOfTotalPower":false,
-            "stopCheckpointID": -1,
+            "stopEpochID": -1,
             "isReserve":false,
             "stakers":{
                 "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
@@ -121,7 +121,7 @@
             "whiteList":[],
             "totalPower":55000,
             "lackOfTotalPower":false,
-            "stopCheckpointID": -1,
+            "stopEpochID": -1,
             "isReserve":true,
             "reserveFor":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta",
             "stakers":{

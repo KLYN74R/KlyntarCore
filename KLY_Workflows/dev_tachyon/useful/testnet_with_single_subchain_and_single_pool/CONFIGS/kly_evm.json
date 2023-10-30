@@ -1,5 +1,6 @@
 {
-    "EVM":{
+    "KLY_EVM":{
+
         "name":"KLYNTAR",
         "networkId":"0x1ca3",
         "chainId":"0x1ca3",
@@ -18,6 +19,5 @@
             "privateKey":"1a32ca908e0e6182f89bfa2fbc9401b05e3c49d1c6df29000c26e875a1666dab"
             
         }
-        
     }
 }

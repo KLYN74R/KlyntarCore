@@ -2,7 +2,7 @@ import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGR
 
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_CHECKPOINT_STILL_FRESH,USE_TEMPORARY_DB,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_EPOCH_STILL_FRESH,USE_TEMPORARY_DB,
 
     GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT,
 
@@ -92,10 +92,10 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
+export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
 
 
-    checkpoint.reassignmentChains = {}
+    epochHandler.reassignmentChains = {}
 
 
     //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
@@ -103,10 +103,10 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
 
     let reservePoolsRelatedToSubchain = new Map() // subchainID => [] - array of reserve pools
 
-    let primePoolsPubKeys = new Set(checkpoint.poolsRegistry.primePools)
+    let primePoolsPubKeys = new Set(epochHandler.poolsRegistry.primePools)
 
 
-    for(let reservePoolPubKey of checkpoint.poolsRegistry.reservePools){
+    for(let reservePoolPubKey of epochHandler.poolsRegistry.reservePools){
 
         // Otherwise - it's reserve pool
         
@@ -135,7 +135,7 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
     
     */
 
-    let hashOfMetadataFromOldCheckpoint = BLAKE3(JSON.stringify(checkpoint.poolsRegistry)+epochSeed)
+    let hashOfMetadataFromOldEpoch = BLAKE3(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
 
     
     //___________________________________________________ Now, build the reassignment chains ___________________________________________________
@@ -149,7 +149,7 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
 
         let arrayOfChallanges = arrayOfReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
 
-            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldCheckpoint),16)
+            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldEpoch),16)
 
             mapping.set(challenge,validatorPubKey)
 
@@ -165,7 +165,7 @@ export let SET_REASSIGNMENT_CHAINS = async (checkpoint,epochSeed) => {
         for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
 
         
-        checkpoint.reassignmentChains[primePoolID] = reassignmentChain
+        epochHandler.reassignmentChains[primePoolID] = reassignmentChain
         
     }
     
@@ -189,11 +189,11 @@ GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_M
 
 
 
-GET_EPOCH_EDGE_OPERATIONS = checkpointFullID => {
+GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
 
-    if(!global.SYMBIOTE_META.TEMP.has(checkpointFullID)) return []
+    if(!global.SYMBIOTE_META.TEMP.has(epochFullID)) return []
 
-    let epochEdgeOperationsMempool = global.SYMBIOTE_META.TEMP.get(checkpointFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
+    let epochEdgeOperationsMempool = global.SYMBIOTE_META.TEMP.get(epochFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
 
     return epochEdgeOperationsMempool.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
@@ -222,12 +222,12 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuoru
 
     poolStorage.lackOfTotalPower = true
 
-    poolStorage.stopCheckpointID = fullCopyOfQuorumThread.CHECKPOINT.id
+    poolStorage.stopEpochID = fullCopyOfQuorumThread.EPOCH.id
 
     
     //Remove from POOLS array(to prevent be elected to quorum) and metadata
 
-    let arrayToDeleteFrom = fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
+    let arrayToDeleteFrom = fullCopyOfQuorumThread.EPOCH.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
 
     let indexToDelete = arrayToDeleteFrom.indexOf(validatorPubKey)
 
@@ -266,9 +266,9 @@ EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochE
         if(operation.type==='SLASH_UNSTAKE') continue
           /*
             
-            Perform changes here before move to the next checkpoint
+            Perform changes here before move to the next epoch
             
-            OPERATION in checkpoint has the following structure
+            OPERATION in epoch has the following structure
             {
                 type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
                 payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
@@ -281,9 +281,9 @@ EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochE
 
     //_______________________Remove pools if lack of staking power_______________________
 
-    let checkpointRef = fullCopyOfQuorumThread.CHECKPOINT
+    let epochHandlerReference = fullCopyOfQuorumThread.EPOCH
 
-    let toRemovePools = [], promises = [], allThePools = checkpointRef.poolsRegistry.primePools.concat(checkpointRef.poolsRegistry.reservePools)
+    let toRemovePools = [], promises = [], allThePools = epochHandlerReference.poolsRegistry.primePools.concat(epochHandlerReference.poolsRegistry.reservePools)
 
 
     for(let poolPubKey of allThePools){
@@ -330,7 +330,7 @@ EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochE
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
 
         // Remove from pools
-        let arrayToDeleteFrom = fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry.reservePools[ slashObject[poolIdentifier].isReserve ? 'reservePools' : 'primePools' ]
+        let arrayToDeleteFrom = fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools[ slashObject[poolIdentifier].isReserve ? 'reservePools' : 'primePools' ]
 
         let indexToDelete = arrayToDeleteFrom.indexOf(poolIdentifier)
         
@@ -365,7 +365,7 @@ EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochE
 
 
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
-START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
+FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
 
     //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE OPERATIONS INSTANTLY_____________________________
@@ -448,17 +448,17 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     */
     
 
-    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
-        let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+        let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
-        let oldEpochFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+        let oldEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
     
         let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldEpochFullID)
     
         if(!temporaryObject){
     
-            setTimeout(START_QUORUM_THREAD_CHECKPOINT_TRACKER,3000)
+            setTimeout(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS,3000)
     
             return
     
@@ -471,15 +471,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
         let totalNumberOfReadySubchains = 0
 
-        let reassignmentChains = qtCheckpoint.reassignmentChains
+        let reassignmentChains = qtEpochHandler.reassignmentChains
 
-        let majority = GET_MAJORITY(qtCheckpoint)
+        let majority = GET_MAJORITY(qtEpochHandler)
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
         // Get the special object from DB not to repeat requests
 
-        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`CHECKPOINT_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnSubchainFound}}
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnSubchainFound}}
 
         let entries = Object.entries(reassignmentChains)
 
@@ -489,9 +489,9 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
         
             totalNumberOfSubchains++
         
-            if(!checkpointCache[primePoolPubKey]) checkpointCache[primePoolPubKey] = {firstBlockOnSubchainFound:false}
+            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey] = {firstBlockOnSubchainFound:false}
 
-            if(checkpointCache[primePoolPubKey].aefp && checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
+            if(epochCache[primePoolPubKey].aefp && epochCache[primePoolPubKey].firstBlockOnSubchainFound){
 
                 totalNumberOfReadySubchains++
 
@@ -533,15 +533,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             */
 
             
-            if(!checkpointCache[primePoolPubKey].aefp){
+            if(!epochCache[primePoolPubKey].aefp){
 
                 // Try to find locally
 
-                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`).catch(()=>false)
+                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
 
                 if(aefp){
 
-                    checkpointCache[primePoolPubKey].aefp = aefp
+                    epochCache[primePoolPubKey].aefp = aefp
 
 
                 }else{
@@ -549,15 +549,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtCheckpoint.id}/${primePoolPubKey}`,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtEpochHandler.id}/${primePoolPubKey}`,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtCheckpoint.quorum,majority,oldEpochFullID)
+                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtEpochHandler.quorum,majority,oldEpochFullID)
     
                             if(aefpPureObject && aefpPureObject.subchain === primePoolPubKey){
     
-                                checkpointCache[primePoolPubKey].aefp = aefpPureObject
+                                epochCache[primePoolPubKey].aefp = aefpPureObject
     
                             }
                                         
@@ -581,21 +581,21 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
     
             */
 
-            if(!checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
+            if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
 
                 // First of all - try to find AFP for second block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:1
 
-                let secondBlockID = qtCheckpoint.id+':'+primePoolPubKey+':1'
+                let secondBlockID = qtEpochHandler.id+':'+primePoolPubKey+':1'
 
                 let afpForSecondBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
                 if(afpForSecondBlockOfPrimePool){
 
-                    checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                    epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                    checkpointCache[primePoolPubKey].firstBlockHash = afpForSecondBlockOfPrimePool.prevBlockHash // since we need the hash of first block(index=0), take the field .prevBlockHash from AFP for second block(with index=1)
+                    epochCache[primePoolPubKey].firstBlockHash = afpForSecondBlockOfPrimePool.prevBlockHash // since we need the hash of first block(index=0), take the field .prevBlockHash from AFP for second block(with index=1)
 
-                    checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    epochCache[primePoolPubKey].firstBlockOnSubchainFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
                 }else{
 
@@ -609,15 +609,15 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtCheckpoint)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtEpochHandler)
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === secondBlockID){                            
                             
-                                checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                                epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.prevBlockHash
+                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.prevBlockHash
 
-                                checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true
+                                epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
 
                             }
             
@@ -629,7 +629,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
-                if(!checkpointCache[primePoolPubKey].firstBlockOnSubchainFound){
+                if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
 
                     // Find AFPs for reserve pools
                 
@@ -637,7 +637,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                         let reservePoolPubKey = arrayOfReservePools[position]
 
-                        let secondBlockIDBySomePool = qtCheckpoint.id+':'+reservePoolPubKey+':1'
+                        let secondBlockIDBySomePool = qtEpochHandler.id+':'+reservePoolPubKey+':1'
 
                         let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockIDBySomePool).catch(()=>false)
 
@@ -645,7 +645,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                             //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
 
-                            let potentialFirstBlock = await GET_BLOCK(qtCheckpoint.id,reservePoolPubKey,0)
+                            let potentialFirstBlock = await GET_BLOCK(qtEpochHandler.id,reservePoolPubKey,0)
 
                             if(potentialFirstBlock && afp.prevBlockHash === Block.genHash(potentialFirstBlock)){
 
@@ -678,11 +678,11 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                                             // In case we get the start of reassignment chain - break the cycle
 
-                                            checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                                            epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
+                                            epochCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
         
-                                            checkpointCache[primePoolPubKey].firstBlockOnSubchainFound = true
+                                            epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
                                     
                                             shouldBreakInfiniteWhile = true
 
@@ -691,7 +691,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
                                             // Get the first block of pool which was reassigned on not-null height
-                                            let potentialFirstBlockBySomePool = await GET_BLOCK(qtCheckpoint.id,previousPoolPubKey,0)
+                                            let potentialFirstBlockBySomePool = await GET_BLOCK(qtEpochHandler.id,previousPoolPubKey,0)
 
                                             if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === aspForPreviousPool.firstBlockHash){
 
@@ -740,14 +740,14 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
             
             //_____________________________ Here we should have understanding of first block for each subchain __________________________
 
-            if(checkpointCache[primePoolPubKey].firstBlockOnSubchainFound && checkpointCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+            if(epochCache[primePoolPubKey].firstBlockOnSubchainFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
     
         
         }
 
         // Store the changes in CHECKPOINT_CACHE for persistence
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put(`CHECKPOINT_CACHE:${oldEpochFullID}`,checkpointCache).catch(()=>false)
+        await global.SYMBIOTE_META.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
@@ -765,13 +765,13 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
                 // Try to get the epoch edge operations from the first blocks
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(qtCheckpoint.id,checkpointCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisSubchain = await GET_BLOCK(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
 
-                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
+                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === epochCache[primePoolPubKey].firstBlockHash){
 
                     epochEdgeOperations.push(...firstBlockOnThisSubchain.epochEdgeOperations)
 
-                    firstBlocksHashes.push(checkpointCache[primePoolPubKey].firstBlockHash)
+                    firstBlocksHashes.push(epochCache[primePoolPubKey].firstBlockHash)
 
                 }else{
 
@@ -802,7 +802,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
                 
-                let nextEpochId = qtCheckpoint.id + 1
+                let nextEpochId = qtEpochHandler.id + 1
 
                 let nextEpochHash = BLAKE3(JSON.stringify(firstBlocksHashes))
 
@@ -813,27 +813,27 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.CHECKPOINT,nextEpochHash)
+                await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
 
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.reassignmentChains).catch(()=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.reassignmentChains).catch(()=>false)
 
 
                 LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
 
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfQuorumThread.CHECKPOINT.timestamp = qtCheckpoint.timestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
+                fullCopyOfQuorumThread.EPOCH.timestamp = qtEpochHandler.timestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
 
-                fullCopyOfQuorumThread.CHECKPOINT.id = nextEpochId
+                fullCopyOfQuorumThread.EPOCH.id = nextEpochId
 
-                fullCopyOfQuorumThread.CHECKPOINT.hash = nextEpochHash
+                fullCopyOfQuorumThread.EPOCH.hash = nextEpochHash
 
-                fullCopyOfQuorumThread.CHECKPOINT.quorum = GET_QUORUM(fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
+                fullCopyOfQuorumThread.EPOCH.quorum = GET_QUORUM(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.CHECKPOINT.quorum).catch(()=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
                 
-                // Create new temporary db for the next checkpoint
+                // Create new temporary db for the next epoch
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
 
                 // Commit changes
@@ -842,12 +842,12 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 await atomicBatch.write()
 
 
-                // Create mappings & set for the next checkpoint
+                // Create mappings & set for the next epoch
                 let nextTemporaryObject = {
 
                     FINALIZATION_PROOFS:new Map(),
 
-                    CHECKPOINT_MANAGER:new Map(),
+                    EPOCH_MANAGER:new Map(),
 
                     TEMP_CACHE:new Map(),
 
@@ -898,24 +898,24 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
+                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
-                if(CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
+                if(CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
 
                     // Fill the checkpoints manager with the latest data
 
-                    let currentCheckpointManager = nextTemporaryObject.CHECKPOINT_MANAGER
+                    let currentEpochManager = nextTemporaryObject.EPOCH_MANAGER
 
-                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.primePools.forEach(poolPubKey=>
+                    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry.primePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
+                        currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
 
-                    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry.reservePools.forEach(poolPubKey=>
+                    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry.reservePools.forEach(poolPubKey=>
 
-                        currentCheckpointManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
+                        currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
 
@@ -926,7 +926,7 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
                 // Continue to find checkpoints
-                setImmediate(START_QUORUM_THREAD_CHECKPOINT_TRACKER)
+                setImmediate(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS)
 
 
             }
@@ -940,28 +940,28 @@ START_QUORUM_THREAD_CHECKPOINT_TRACKER=async()=>{
 
 
 
-CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
+CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
-    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
-    let checkpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+    let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 
-    let temporaryObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let temporaryObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
 
     if(!temporaryObject){
 
-        setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
+        setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
 
         return
 
     }
     
 
-    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
+    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
-    if(iAmInTheQuorum && !CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(iAmInTheQuorum && !CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
@@ -970,18 +970,18 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
         // Check the safety
         if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
 
-            setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000)
+            setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
 
             return
 
         }
     
 
-        let checkpointProposition = {}
+        let epochFinishProposition = {}
 
-        let majority = GET_MAJORITY(qtCheckpoint)
+        let majority = GET_MAJORITY(qtEpochHandler)
 
-        let reassignmentChains = qtCheckpoint.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+        let reassignmentChains = qtEpochHandler.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
         
     
@@ -1007,24 +1007,24 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
             }
             
             
-            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+subchain+lastAuthorityInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)))
-            let checkpointAgreements = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION')
+            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+subchain+lastAuthorityInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)))
+            let agreements = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
-            if(!checkpointAgreements){
+            if(!agreements){
 
-                checkpointAgreements = new Map()
+                agreements = new Map()
 
-                temporaryObject.TEMP_CACHE.set('CHECKPOINT_PROPOSITION',checkpointAgreements)
+                temporaryObject.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
             
             }
 
-            let agreementsForThisSubchain = checkpointAgreements.get(primePoolPubKey)
+            let agreementsForThisSubchain = agreements.get(primePoolPubKey)
 
             if(!agreementsForThisSubchain){
 
                 agreementsForThisSubchain = new Map()
 
-                checkpointAgreements.set(primePoolPubKey,agreementsForThisSubchain)
+                agreements.set(primePoolPubKey,agreementsForThisSubchain)
             
             }
 
@@ -1041,7 +1041,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                 
                     "subchain0":{
 
-                        currentAuthority:<int - pointer to current authority of subchain based on QT.CHECKPOINT.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                        currentAuthority:<int - pointer to current authority of subchain based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
 
                         metadataForCheckpoint:{
                             index:,
@@ -1125,33 +1125,33 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             */
          
-            checkpointProposition[primePoolPubKey] = {
+            epochFinishProposition[primePoolPubKey] = {
 
                 currentAuthority:indexOfAuthority,
 
                 afpForSecondBlock:{},
 
-                metadataForCheckpoint:temporaryObject.CHECKPOINT_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                metadataForCheckpoint:temporaryObject.EPOCH_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
             }
 
             // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
 
-            if(checkpointProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
+            if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
 
-                let secondBlockID = qtCheckpoint.id+':'+pubKeyOfAuthority+':1'
+                let secondBlockID = qtEpochHandler.id+':'+pubKeyOfAuthority+':1'
 
-                checkpointProposition[primePoolPubKey].afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
+                epochFinishProposition[primePoolPubKey].afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
             }
             
         }
 
         
-        //____________________________________ Send the checkpoint proposition ____________________________________
+        //____________________________________ Send the epoch finish proposition ____________________________________
 
 
-        let optionsToSend = {method:'POST',body:JSON.stringify(checkpointProposition)}
+        let optionsToSend = {method:'POST',body:JSON.stringify(epochFinishProposition)}
         
         let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
@@ -1163,7 +1163,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
             optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
             
-            await fetch(descriptor.url+'/checkpoint_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
+            await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 
                 /*
                 
@@ -1177,7 +1177,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                sig: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullId)
+                                sig: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
@@ -1204,9 +1204,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     // Start iteration
 
-                    for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
+                    for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
 
-                        let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature                        
+                        let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
 
                         let response = possibleAgreements[primePoolPubKey]
 
@@ -1216,7 +1216,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.prevBlockHash+checkpointFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.prevBlockHash+epochFullID
 
                                 let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
@@ -1231,9 +1231,9 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                             
                                 let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority]
                                 
-                                let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtCheckpoint)
+                                let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
-                                let blockIDThatShouldBeInAfp = qtCheckpoint.id+':'+pubKeyOfProposedAuthority+':'+(index+1)
+                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedAuthority+':'+(index+1)
                             
                                 if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.prevBlockHash){
 
@@ -1245,7 +1245,7 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
                                     
                                     // Update CHECKPOINT_MANAGER
 
-                                    temporaryObject.CHECKPOINT_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
+                                    temporaryObject.EPOCH_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
@@ -1269,11 +1269,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
     
         // Iterate over upgrades and set new values for finalization proofs
 
-        for(let [primePoolPubKey,metadata] of Object.entries(checkpointProposition)){
+        for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
 
-            let agreementsForEpochCheckpoint = temporaryObject.TEMP_CACHE.get('CHECKPOINT_PROPOSITION').get(primePoolPubKey) // signer => signature
+            let agreementsForEpochManager = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
 
-            if(agreementsForEpochCheckpoint.size >= majority){
+            if(agreementsForEpochManager.size >= majority){
 
         
                 let aggregatedEpochFinalizationProof = {
@@ -1288,11 +1288,11 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
                     hashOfFirstBlockByLastAuthority:metadata.afpForSecondBlock.prevBlockHash,
 
-                    proofs:Object.fromEntries(agreementsForEpochCheckpoint)
+                    proofs:Object.fromEntries(agreementsForEpochManager)
                     
                 }
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtCheckpoint.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             }
 
@@ -1300,18 +1300,18 @@ CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT=async()=>{
 
     }
 
-    setTimeout(CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT,3000) // each 3 seconds - do monitoring
+    setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000) // each 3 seconds - do monitoring
 
 },
 
 
 
 
-RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
+RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
-    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
+    let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
     if(!tempObject) return
 
@@ -1320,7 +1320,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
     // Get the block index & hash that we're currently hunting for
 
-    let blockIDForHunting = checkpoint.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+(proofsGrabber.acceptedIndex+1)
+    let blockIDForHunting = epochHandler.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+(proofsGrabber.acceptedIndex+1)
 
     let finalizationProofsMapping
 
@@ -1335,7 +1335,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
     }
 
-    let majority = GET_MAJORITY(checkpoint)
+    let majority = GET_MAJORITY(epochHandler)
 
     let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await global.SYMBIOTE_META.BLOCKS.get(blockIDForHunting).catch(()=>null)
 
@@ -1374,7 +1374,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         })
 
 
-        for(let pubKeyOfQuorumMember of checkpoint.quorum){
+        for(let pubKeyOfQuorumMember of epochHandler.quorum){
 
             // No sense to get the commitment if we already have
 
@@ -1438,7 +1438,7 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
         // Store locally
         await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-        LOG(`Approved height for epoch \u001b[38;5;50m${checkpoint.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/checkpoint.quorum.length).toFixed(3)*100}% agreements)`,'F')
+        LOG(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,'F')
 
         console.log('\n')
 
@@ -1474,15 +1474,15 @@ RUN_FINALIZATION_PROOFS_GRABBING = async (checkpoint,proofsGrabber) => {
 
 
 
-OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
+OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
 
     // Now we can open required WebSocket connections with quorums majority
 
     let {FINALIZATION_PROOFS,TEMP_CACHE} = tempObject
 
-    let checkpointFullID = checkpoint.hash + "#" + checkpoint.id
+    let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
-    for(let pubKey of checkpoint.quorum){
+    for(let pubKey of epochHandler.quorum){
 
         // Check if we already have an open connection stored in cache
 
@@ -1514,9 +1514,9 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
                     
                                 // Verify the finalization proof
                     
-                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+checkpointFullID
+                                let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
                     
-                                let finalizationProofIsOk = checkpoint.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                                let finalizationProofIsOk = epochHandler.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
                         
                                 if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                     
@@ -1551,11 +1551,11 @@ OPEN_CONNECTIONS_WITH_QUORUM = async (checkpoint,tempObject) => {
 
 SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
-    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
     
-    let checkpointFullID = qtCheckpoint.hash + "#" + qtCheckpoint.id
+    let epochFullID = qtEpochHandler.hash + "#" + qtEpochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
 
 
@@ -1583,7 +1583,7 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!proofsGrabber || proofsGrabber.checkpointID !== qtCheckpoint.id){
+    if(!proofsGrabber || proofsGrabber.epochID !== qtEpochHandler.id){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -1594,7 +1594,7 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
             // Set the new handler with index 0(because each new epoch start with block index 0)
             proofsGrabber = {
     
-                checkpointID:qtCheckpoint.id,
+                epochID:qtEpochHandler.id,
 
                 acceptedIndex:-1,
 
@@ -1615,9 +1615,9 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     }
 
 
-    await OPEN_CONNECTIONS_WITH_QUORUM(qtCheckpoint,tempObject)
+    await OPEN_CONNECTIONS_WITH_QUORUM(qtEpochHandler,tempObject)
 
-    await RUN_FINALIZATION_PROOFS_GRABBING(qtCheckpoint,proofsGrabber).catch(()=>{})
+    await RUN_FINALIZATION_PROOFS_GRABBING(qtEpochHandler,proofsGrabber).catch(()=>{})
 
 
     setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
@@ -1630,11 +1630,11 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 // Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
-    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
-    let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
     if(!tempObject){
 
@@ -1645,7 +1645,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
@@ -1654,14 +1654,14 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    let majority = GET_MAJORITY(checkpoint)
+    let majority = GET_MAJORITY(epochHandler)
 
     // Get the appropriate pubkey & url to check and validate the answer
     let quorumMembersURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
 
 
-    for(let primePoolPubKey of checkpoint.poolsRegistry.primePools){
+    for(let primePoolPubKey of epochHandler.poolsRegistry.primePools){
 
         // First of all - check for CREATE_REASSIGNMENT requests in synchronizer
 
@@ -1677,13 +1677,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             
                 Update the local information
 
-                1) Start(in reverse order) from <shouldBeThisAuthority> index in checkpoint.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
+                1) Start(in reverse order) from <shouldBeThisAuthority> index in epochHandler.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
 
                 2) Create the skipHandler for each pool
 
                 3) Finally, update the data in tempObject.REASSIGNMENTS:
                 
-                    a) Put the pool checkpoint.reassignmentChains[primePoolPubKey][shouldBeThisAuthority] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current authority for subchain
+                    a) Put the pool epochHandler.reassignmentChains[primePoolPubKey][shouldBeThisAuthority] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current authority for subchain
 
                     b) Update the reassignment handler for prime pool to point to <shouldBeThisAuthority> index => tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:shouldBeThisAuthority})
 
@@ -1691,7 +1691,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority ; positionInRc >= -1; positionInRc--){
 
-                let poolPubKey = checkpoint.reassignmentChains[primePoolPubKey][positionInRc]
+                let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc]
 
                 let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
 
@@ -1722,7 +1722,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             //__________________________ Inform the target pool and store the fact of it __________________________
 
             
-            let nextPoolInRc = checkpoint.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
 
             let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
 
@@ -1770,9 +1770,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
 
                 
-                    let oldAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
+                    let oldAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
 
-                    let nextAuthorityPubKey = checkpoint.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+                    let nextAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
 
 
                     tempObject.REASSIGNMENTS.delete(oldAuthorityPubKey)
@@ -1802,9 +1802,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             poolIndexInRc = reassignmentHandler.currentAuthority
 
-            poolPubKeyForHunting = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority]
+            poolPubKeyForHunting = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority]
 
-            previousPoolPubKey = checkpoint.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority-1] || primePoolPubKey
+            previousPoolPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority-1] || primePoolPubKey
 
         }else{
 
@@ -1840,13 +1840,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
 
-                let checkpointDataOfThisPool = tempObject.CHECKPOINT_MANAGER.get(poolPubKeyForHunting) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                let epochDataOfThisPool = tempObject.EPOCH_MANAGER.get(poolPubKeyForHunting) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
                 let futureSkipHandler = {
     
                     indexInReassignmentChain:poolIndexInRc,
     
-                    skipData:JSON.parse(JSON.stringify(checkpointDataOfThisPool)), // {index,hash,afp}
+                    skipData:JSON.parse(JSON.stringify(epochDataOfThisPool)), // {index,hash,afp}
     
                     aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
     
@@ -1883,7 +1883,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let responsePromises = []
 
-            let secondBlockID = checkpoint.id+':'+poolPubKeyForHunting+':1' // epochID:PubKeyOfCreator:1 - second block in epoch
+            let secondBlockID = epochHandler.id+':'+poolPubKeyForHunting+':1' // epochID:PubKeyOfCreator:1 - second block in epoch
 
             let afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
 
@@ -1902,7 +1902,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             if(skipHandler.skipData.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
 
-                let firstBlockByThisPool = await GET_BLOCK(checkpoint.id,poolPubKeyForHunting,0).catch(()=>null)
+                let firstBlockByThisPool = await GET_BLOCK(epochHandler.id,poolPubKeyForHunting,0).catch(()=>null)
 
                 if(firstBlockByThisPool && Block.genHash(firstBlockByThisPool) === firstBlockHash && firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]){
 
@@ -1968,7 +1968,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<checkpointFullID>')
+                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
@@ -1997,7 +1997,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                                 blockHash,
                                 proofs:{
 
-                                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
                                     ...
 
                                 }
@@ -2015,7 +2015,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let totalNumberOfSignatures = 0
 
-            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${skipHandler.skipData.index}:${skipHandler.skipData.hash}:${checkpointFullID}`
+            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${skipHandler.skipData.index}:${skipHandler.skipData.hash}:${epochFullID}`
 
 
             for(let result of results){
@@ -2042,10 +2042,10 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     let {index,hash,afp} = result.skipData
 
-                    let blockIdInAfp = (checkpoint.id+':'+poolPubKeyForHunting+':'+(index+1))
+                    let blockIdInAfp = (epochHandler.id+':'+poolPubKeyForHunting+':'+(index+1))
 
 
-                    if(typeof afp === 'object' && hash === afp.prevBlockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,checkpoint)){
+                    if(typeof afp === 'object' && hash === afp.prevBlockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
 
                         // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
             
@@ -2112,7 +2112,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             // Find next pool
 
-            let nextPoolInRc = checkpoint.reassignmentChains[primePoolPubKey][indexOfSkippedPoolInRc+1]
+            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][indexOfSkippedPoolInRc+1]
 
             let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
 
@@ -2131,12 +2131,12 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 for(let position = indexOfSkippedPoolInRc-1 ; position >= -1 ; position--){
 
                     
-                    let pubKeyOfSomePreviousPool = checkpoint.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
+                    let pubKeyOfSomePreviousPool = epochHandler.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
 
                     let skipHandlerForSomePreviousPool = tempObject.SKIP_HANDLERS.get(pubKeyOfSomePreviousPool)
 
 
-                    let pubKeyOfNext = checkpoint.reassignmentChains[primePoolPubKey][position+1]
+                    let pubKeyOfNext = epochHandler.reassignmentChains[primePoolPubKey][position+1]
 
                     let aspOfNextPool = tempObject.SKIP_HANDLERS.get(pubKeyOfNext).aggregatedSkipProof
 
@@ -2148,7 +2148,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                         // Find the ASP and compare hashes
                         
-                        let firstBlock = await GET_BLOCK(checkpoint.id,pubKeyOfNext,0)
+                        let firstBlock = await GET_BLOCK(epochHandler.id,pubKeyOfNext,0)
 
                         if(firstBlock && Block.genHash(firstBlock) === aspOfNextPool.firstBlockHash){
                             
@@ -2230,7 +2230,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     If requested quorum member has ASP: 
 
-                        Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<checkpointFullID>`)}
+                        Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<epochFullID>`)}
 
                     Otherwise:
                 
@@ -2280,7 +2280,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                 let results = (await Promise.all(proofsPromises)).filter(Boolean)
     
-                let dataThatShouldBeSigned = `REASSIGNMENT:${poolPubKeyForHunting}:${session}:${checkpointFullID}`
+                let dataThatShouldBeSigned = `REASSIGNMENT:${poolPubKeyForHunting}:${session}:${epochFullID}`
     
                 let numberWhoAgreeToDoReassignment = 0
     
@@ -2315,7 +2315,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     // Add the reassignment
     
-                    let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]
+                    let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
     
     
                     if(!reassignmentMetadata){
@@ -2326,12 +2326,12 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                         currentSubchainAuthority = poolPubKeyForHunting
     
-                    }else currentSubchainAuthority = checkpoint.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+                    }else currentSubchainAuthority = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
     
     
                     let nextIndex = reassignmentMetadata.currentAuthority + 1
     
-                    let nextReservePool = checkpoint.reassignmentChains[primePoolPubKey][nextIndex] // array checkpoint.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
+                    let nextReservePool = epochHandler.reassignmentChains[primePoolPubKey][nextIndex] // array epochHandler.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
     
                     let skipHandlerOfAuthority = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentSubchainAuthority))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
     
@@ -2398,25 +2398,25 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 RESTORE_STATE=async()=>{
 
-    let poolsRegistry = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.poolsRegistry
+    let poolsRegistry = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry
 
     let allThePools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
     
 
 
     for(let poolPubKey of allThePools){
 
-        // If this value is related to the current checkpoint - set to manager, otherwise - take from the POOLS_METADATA as a start point
+        // If this value is related to the current epoch - set to manager, otherwise - take from the POOLS_METADATA as a start point
         // Returned value is {index,hash,(?)aggregatedCommitments}
 
         let {index,hash,afp} = await tempObject.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
         
-        tempObject.CHECKPOINT_MANAGER.set(poolPubKey,{index,hash,afp})
+        tempObject.EPOCH_MANAGER.set(poolPubKey,{index,hash,afp})
 
 
         //______________________________ Try to find SKIP_HANDLER for pool ______________________________
@@ -2433,7 +2433,7 @@ RESTORE_STATE=async()=>{
         
         if(poolsRegistry.primePools.includes(poolPubKey)){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).CHECKPOINT.reassignmentChains[<primePool>]>}
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).EPOCH.reassignmentChains[<primePool>]>}
 
             if(reassignmentMetadata){
 
@@ -2441,7 +2441,7 @@ RESTORE_STATE=async()=>{
 
                 // Using pointer - find the appropriate reserve pool
 
-                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.reassignmentChains[poolPubKey][reassignmentMetadata.currentAuthority]
+                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.reassignmentChains[poolPubKey][reassignmentMetadata.currentAuthority]
 
                 // Key is reserve pool which points to his prime pool
                 tempObject.REASSIGNMENTS.set(reservePool,poolPubKey)                
@@ -2455,15 +2455,15 @@ RESTORE_STATE=async()=>{
     }
 
 
-    // Finally, once we've started the "next checkpoint generation" process - restore it
+    // Finally, once we've started the "next epoch" process - restore it
 
-    let itsTimeForTheNextCheckpoint = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
+    let itsTimeForTheNextEpoch = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
 
-    if(itsTimeForTheNextCheckpoint) {
+    if(itsTimeForTheNextEpoch) {
 
         tempObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
-        tempObject.SYNCHRONIZER.set('READY_FOR_CHECKPOINT',true)
+        tempObject.SYNCHRONIZER.set('READY_FOR_EPOCH',true)
 
     }
 
@@ -2494,7 +2494,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     for(let nodeEndpoint of allKnownNodes){
 
-        let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex}/${subchainID}`
+        let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${subchainID}`
 
         let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
 
@@ -2506,7 +2506,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
             global.SYMBIOTE_META.GENERATION_THREAD.majority,        
 
-            global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId
+            global.SYMBIOTE_META.GENERATION_THREAD.epochFullId
         
         ) && itsProbablyAggregatedEpochFinalizationProof.subchain === subchainID
 
@@ -2526,13 +2526,13 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
 export let GENERATE_BLOCKS_PORTION = async() => {
 
-    let checkpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
     
-    let qtCheckpointFullID = checkpoint.hash+"#"+checkpoint.id
+    let qtEpochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let checkpointIndex = checkpoint.id
+    let epochIndex = epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(qtCheckpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.get(qtEpochFullID)
 
 
     if(!tempObject) return
@@ -2540,7 +2540,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
 
-        let poolPresent = checkpoint.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
+        let poolPresent = epochHandler.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
 
         tempObject.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
 
@@ -2557,13 +2557,13 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(typeof myDataInReassignments === 'object') return
 
 
-    // Check if <checkpointFullID> is the same in QT and in GT
+    // Check if <epochFullID> is the same in QT and in GT
     
-    if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId !== qtCheckpointFullID){
+    if(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId !== qtEpochFullID){
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
-        if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex !== 0){
+        if(global.SYMBIOTE_META.GENERATION_THREAD.epochIndex !== 0){
 
             let aefpForPreviousEpoch = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
 
@@ -2578,15 +2578,15 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // Update the index & hash of epoch
 
-        global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId = qtCheckpointFullID
+        global.SYMBIOTE_META.GENERATION_THREAD.epochFullId = qtEpochFullID
 
-        global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex = checkpointIndex
+        global.SYMBIOTE_META.GENERATION_THREAD.epochIndex = epochIndex
 
         // Recount new values
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorum = checkpoint.quorum
+        global.SYMBIOTE_META.GENERATION_THREAD.quorum = epochHandler.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(checkpoint)
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(epochHandler)
 
 
         // And nullish the index & hash in generation thread for new epoch
@@ -2617,7 +2617,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         
             let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
-            let reassignmentArrayOfMyPrimePool = checkpoint.reassignmentChains[myPrimePool]
+            let reassignmentArrayOfMyPrimePool = epochHandler.reassignmentChains[myPrimePool]
     
             let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
     
@@ -2690,7 +2690,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
     // 0.Add the epoch edge operations to block extra data
 
-    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId)
 
     // 1.Add the extra data to block from configs(it might be your note, for instance)
 
@@ -2704,22 +2704,22 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId)
+        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.epochFullId)
                         
         let hash = Block.genHash(blockCandidate)
 
 
         blockCandidate.sig = await ED25519_SIGN_DATA(hash,global.PRIVATE_KEY)
             
-        BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex)
+        BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.epochIndex)
 
 
         global.SYMBIOTE_META.GENERATION_THREAD.prevHash = hash
  
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
-        // BlockID has the following format => epochID(checkpointIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.checkpointIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
+        // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
+        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)
@@ -2737,7 +2737,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
 
-VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,checkpointFullID) => {
+VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,epochFullID) => {
 
     let overviewIsOK =
         
@@ -2785,7 +2785,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
         let {subchain,lastAuthority,lastIndex,lastHash,hashOfFirstBlockByLastAuthority} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullID
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullID
 
         let promises = []
 
@@ -2838,11 +2838,11 @@ LOAD_GENESIS=async()=>{
 
         quorumThreadAtomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch(),
     
-        checkpointTimestamp,
+        epochTimestamp,
 
         startPool = '',
 
-        poolsRegistryForCheckpoint = {primePools:[],reservePools:[]}
+        poolsRegistryForEpochHandler = {primePools:[],reservePools:[]}
 
 
 
@@ -2850,7 +2850,7 @@ LOAD_GENESIS=async()=>{
     //__________________________________ Load all the configs __________________________________
 
         
-    checkpointTimestamp = global.GENESIS.CHECKPOINT_TIMESTAMP
+    epochTimestamp = global.GENESIS.EPOCH_TIMESTAMP
 
     let primePools = new Set(Object.keys(global.GENESIS.POOLS))
 
@@ -2887,7 +2887,7 @@ LOAD_GENESIS=async()=>{
 
             totalPower:poolContractStorage.totalPower,
             lackOfTotalPower:false,
-            stopCheckpointID:-1,
+            stopEpochID:-1,
             isReserve,
             poolURL:poolContractStorage.poolURL,
             wssPoolURL:poolContractStorage.wssPoolURL
@@ -2904,7 +2904,7 @@ LOAD_GENESIS=async()=>{
 
             templateForQt.reserveFor = poolContractStorage.reserveFor
 
-            poolsRegistryForCheckpoint.reservePools.push(poolPubKey)
+            poolsRegistryForEpochHandler.reservePools.push(poolPubKey)
 
         }else {
 
@@ -2912,7 +2912,7 @@ LOAD_GENESIS=async()=>{
 
             global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
 
-            poolsRegistryForCheckpoint.primePools.push(poolPubKey)
+            poolsRegistryForEpochHandler.primePools.push(poolPubKey)
 
         }
         
@@ -2987,7 +2987,7 @@ LOAD_GENESIS=async()=>{
         
                 parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
         
-                timestamp:Math.floor(checkpointTimestamp/1000)
+                timestamp:Math.floor(epochTimestamp/1000)
         
             }
 
@@ -3059,7 +3059,7 @@ LOAD_GENESIS=async()=>{
 
     */
 
-    //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE in checkpoint - update it !
+    //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE - update it !
     global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION = global.GENESIS.VERSION
 
     //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
@@ -3099,15 +3099,15 @@ LOAD_GENESIS=async()=>{
     global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT={
+    global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH = {
 
         id:0,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForCheckpoint)),
+        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
         
-        timestamp:checkpointTimestamp,
+        timestamp:epochTimestamp,
 
         quorum:[],
 
@@ -3117,15 +3117,15 @@ LOAD_GENESIS=async()=>{
     
 
     //Make template, but anyway - we'll find checkpoints on hostchains
-    global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT={
+    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH = {
 
         id:0,
 
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForCheckpoint)),
+        poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
-        timestamp:checkpointTimestamp,
+        timestamp:epochTimestamp,
 
         quorum:[],
 
@@ -3143,23 +3143,23 @@ LOAD_GENESIS=async()=>{
 
     let nullHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-    let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
-    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of POOLS_METADATA state
-    vtCheckpoint.quorum = GET_QUORUM(vtCheckpoint.poolsRegistry,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
+    vtEpochHandler.quorum = GET_QUORUM(vtEpochHandler.poolsRegistry,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
     //...However, quorum for QUORUM_THREAD might be retrieved from POOLS_METADATA of checkpoints. It's because both threads are async
-    qtCheckpoint.quorum = GET_QUORUM(qtCheckpoint.poolsRegistry,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS,nullHash)
+    qtEpochHandler.quorum = GET_QUORUM(qtEpochHandler.poolsRegistry,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
-    //Finally, build the reassignment chains for current checkpoint in QT and VT
+    //Finally, build the reassignment chains for current epoch in QT and VT
 
-    await SET_REASSIGNMENT_CHAINS(qtCheckpoint,nullHash)
+    await SET_REASSIGNMENT_CHAINS(qtEpochHandler,nullHash)
 
-    vtCheckpoint.reassignmentChains = JSON.parse(JSON.stringify(qtCheckpoint.reassignmentChains))
+    vtEpochHandler.reassignmentChains = JSON.parse(JSON.stringify(qtEpochHandler.reassignmentChains))
 
 },
 
@@ -3263,9 +3263,9 @@ PREPARE_SYMBIOTE=async()=>{
         ?
         {
             
-            checkpointFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
+            epochFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
 
-            checkpointIndex:0,
+            epochIndex:0,
             
             prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
             
@@ -3302,11 +3302,11 @@ PREPARE_SYMBIOTE=async()=>{
  
                 KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
 
-                TEMP_REASSIGNMENTS:{}, // CheckpointID => primePool => {currentAuthority:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
+                TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentAuthority:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
 
                 SID_TRACKER:{}, // subchainID(Ed25519 pubkey of prime pool) => index
 
-                CHECKPOINT:{}
+                EPOCH:{}
 
             }
 
@@ -3373,28 +3373,28 @@ PREPARE_SYMBIOTE=async()=>{
     }
 
 
-    let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
 
-    if(global.SYMBIOTE_META.GENERATION_THREAD.checkpointFullId === checkpointFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
+    if(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId === epochFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.quorum
+        global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT)
+        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.EPOCH)
 
     }
 
     //_________________________________Add the temporary data of current QT__________________________________________
     
-    let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${checkpointFullID}`,{valueEncoding:'json'})
+    let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
 
-    global.SYMBIOTE_META.TEMP.set(checkpointFullID,{
+    global.SYMBIOTE_META.TEMP.set(epochFullID,{
 
-        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
+        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     
-        CHECKPOINT_MANAGER:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
+        EPOCH_MANAGER:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
         EPOCH_EDGE_OPERATIONS_MEMPOOL:[],  // default mempool for epoch edge operations
         
@@ -3412,7 +3412,7 @@ PREPARE_SYMBIOTE=async()=>{
     })
 
 
-    // Fill the CHECKPOINT_MANAGER with the latest, locally stored data
+    // Fill the EPOCH_MANAGER with the latest, locally stored data
 
     await RESTORE_STATE()
 
@@ -3463,17 +3463,17 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
         [+] Use VT.TEMP_REASSIGNMENTS
 
 
-        Based on current checkpoint in QUORUM_THREAD - build the temporary reassignments
+        Based on current epoch in QUORUM_THREAD - build the temporary reassignments
     
     */
 
-    let qtCheckpoint = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
-    let quorumThreadCheckpointFullID = qtCheckpoint.hash+"#"+qtCheckpoint.id
+    let quorumThreadEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 
-    let quorumThreadCheckpointIndex = qtCheckpoint.id
+    let quorumThreadEpochIndex = qtEpochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)
+    let tempObject = global.SYMBIOTE_META.TEMP.has(quorumThreadEpochFullID)
 
     if(!tempObject){
 
@@ -3489,20 +3489,20 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
     let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
 
-    let vtCheckpoint = verificationThread.CHECKPOINT
+    let vtEpochHandler = verificationThread.EPOCH
 
-    let reassignmentChains = vtCheckpoint.reassignmentChains
+    let reassignmentChains = vtEpochHandler.reassignmentChains
 
 
-    if(!tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID]){
+    if(!tempReassignmentOnVerificationThread[quorumThreadEpochFullID]){
 
-        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID] = {} // create empty template
+        tempReassignmentOnVerificationThread[quorumThreadEpochFullID] = {} // create empty template
 
         // Fill with data from here. Structure: primePool => [reservePool0,reservePool1,...,reservePoolN]
 
-        for(let primePoolPubKey of vtCheckpoint.poolsRegistry.primePools){
+        for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
             
-            tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey] = {
+            tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey] = {
 
                 currentAuthority:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
@@ -3557,7 +3557,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                 -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.reassignmentChains[<primePool>][currentAuthorityIndex]
+                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][currentAuthorityIndex]
 
                 [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
 
@@ -3571,7 +3571,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         proofs:{
 
                             quorumMemberPubKey0:ed25519Signa,
-                            ...                                             => Signa is prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                            ...                                             => Signa is prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
                             quorumMemberPubKeyN:ed25519Signa,
 
                         }
@@ -3608,14 +3608,14 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                     if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForSecondBlockByCurrentAuthority==='object'){
                                     
-                        let localPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
+                        let localPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
     
                         if(localPointer <= currentAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
     
                             
                             // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentAuthority,qtCheckpoint)
+                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentAuthority,qtEpochHandler)
     
                             let shouldChangeThisSubchain = true
     
@@ -3627,7 +3627,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadCheckpointFullID, vtCheckpoint, true
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
                                 
                                 )
     
@@ -3663,7 +3663,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                     let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
                                
-                                    let limitPointer = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority
+                                    let limitPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
                                
                                     // Starts the reverse enumeration from proposed current authority index to our local pointer
 
@@ -3677,7 +3677,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadCheckpointIndex,poolWithThisPosition,0)
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadEpochIndex,poolWithThisPosition,0)
 
                                             // Compare hashes to make sure it's really the first block by pool X in epoch Y
 
@@ -3685,7 +3685,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                 
                                                 let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ASP_CHAIN_VALIDITY(
                                                         
-                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadCheckpointFullID, vtCheckpoint, true
+                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadEpochFullID, vtEpochHandler, true
                                                         
                                                 )
                                 
@@ -3719,7 +3719,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // Update the reassignment data
 
-                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
+                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
 
 
                                         for(let reassignStats of potentialReassignments.reverse()){
@@ -3736,7 +3736,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // Finally, set the <currentAuthority> to the new pointer
 
-                                        tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePoolPubKey].currentAuthority = currentAuthorityIndex
+                                        tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority = currentAuthorityIndex
 
                                     }
     
@@ -3773,20 +3773,20 @@ RUN_SYMBIOTE=async()=>{
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
-    //✅0.Start verification process - process blocks and find new checkpoints step-by-step
+    //✅0.Start verification process - process blocks and find new epoch step-by-step
     START_VERIFICATION_THREAD()
 
-    //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here. Process checkpoint-by-checkpoint to find out the latest one and join to current QUORUM(if you were choosen)
-    START_QUORUM_THREAD_CHECKPOINT_TRACKER()
+    //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
+    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
-    //✅2.Share our blocks within quorum members and get the commitments / finalization proofs
+    //✅2.Share our blocks within quorum members and get the finalization proofs
     SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
-    //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing commitments / finalization proofs and start propose checkpoints
-    CHECK_IF_ITS_TIME_TO_PROPOSE_CHECKPOINT()
+    //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
+    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    //REASSIGN_PROCEDURE_MONITORING()
+    REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()

@@ -1,6 +1,6 @@
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_CHECKPOINT_STILL_FRESH,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,CHECK_IF_EPOCH_STILL_FRESH,
 
     GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE,GET_HTTP_AGENT
 
@@ -50,7 +50,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
         block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)}).then(r=>r.json()).then(block=>{
                 
-            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.checkpoint==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
+            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
                 global.SYMBIOTE_META.BLOCKS.put(blockID,block)
     
@@ -83,7 +83,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
                         &&
                         typeof itsProbablyBlock.prevHash==='string'
                         &&
-                        typeof itsProbablyBlock.checkpoint==='string'
+                        typeof itsProbablyBlock.epoch==='string'
                         &&
                         typeof itsProbablyBlock.sig==='string'
                         &&
@@ -154,7 +154,7 @@ GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
 
 
 
-VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,checkpoint) => {
+VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
 
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
@@ -170,13 +170,13 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
     if(generalAndTypeCheck){
 
-        let checkpointFullID = checkpoint.hash+"#"+checkpoint.id
+        let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
         let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
 
-        let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+checkpointFullID
+        let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+epochFullID
 
-        let majority = GET_MAJORITY(checkpoint)
+        let majority = GET_MAJORITY(epochHandler)
 
 
         let promises = []
@@ -190,7 +190,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
             promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
 
-                if(isOK && checkpoint.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
                     unique.add(signerPubKey)
 
@@ -239,15 +239,15 @@ Structure => {
 GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBlock,aggregatedFinalizationProof) => {
 
 
-    let quorumThreadCheckpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+    let quorumThreadEpochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
-    let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
-    let verificationThreadCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
+    let verificationThreadEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
 
     // Need for async safety
-    if(verificationThreadCheckpointFullID!==quorumThreadCheckpointFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadCheckpointFullID)) return {verify:false}
+    if(verificationThreadEpochFullID!==quorumThreadEpochFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadEpochFullID)) return {verify:false}
 
     
     aggregatedFinalizationProof ||= await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+nextBlockID).catch(()=>null)
@@ -271,7 +271,7 @@ GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBl
 
         if(itsProbablyAggregatedFinalizationProof){
 
-            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint)
+            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler)
 
             if(isOK){
 
@@ -298,7 +298,7 @@ WAIT_SOME_TIME = async() =>
 
     new Promise(resolve=>
 
-        setTimeout(()=>resolve(),global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT)
+        setTimeout(()=>resolve(),global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_AEFP)
 
     )
 ,
@@ -314,7 +314,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
     poolStorage.lackOfTotalPower = true
 
-    poolStorage.stopCheckpointID = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+    poolStorage.stopEpochID = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
 
     delete global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
@@ -323,7 +323,7 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,checkpointFullID,checkpoint) => {
+CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,epochFullID,epochHandler) => {
 
     /*
 
@@ -351,7 +351,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
     }
 
-        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
 
@@ -366,9 +366,9 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
     
         let {previousAspInRcHash,firstBlockHash,skipIndex,skipHash,proofs} = aggregatedSkipProof
 
-        let majority = GET_MAJORITY(checkpoint)
+        let majority = GET_MAJORITY(epochHandler)
 
-        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${checkpointFullID}`
+        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         let promises = []
     
@@ -381,7 +381,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
     
             promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
 
-                if(isOK && checkpoint.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
                     unique.add(signerPubKey)
 
@@ -404,7 +404,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
 
 
-CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,checkpointFullID,oldCheckpoint,dontCheckSignature) => {
+CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
 
     /*
     
@@ -441,7 +441,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     
             if(typeof aspForThisPool === 'object'){
 
-                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,checkpointFullID,oldCheckpoint)
+                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,epochFullID,oldEpochHandler)
 
                 if(signaIsOk){
 
@@ -471,7 +471,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
             let aspForPrimePool = reassignmentsRef[primePoolPubKey]
 
-            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,checkpointFullID,oldCheckpoint)
+            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,epochFullID,oldEpochHandler)
 
             if(signaIsOk){
 
@@ -500,7 +500,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
 
 
-BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,aefp) => {
+BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey,aefp) => {
 
 
         /*
@@ -526,19 +526,19 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         ________________________________Let's use this algorithm________________________________
 
-        0) Once we get the new valid checkpoint, use the REASSIGNMENT_CHAINS built for this checkpoint(from global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT)
+        0) Once we get the new valid AEFP, use the REASSIGNMENT_CHAINS built for this epoch(from global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH)
 
         1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <aggregatedSkipProof> for all the previous reserve pools
 
         2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was reassigned on the first block of this epoch
 
-        3) Using this values - we can build the reasssignment metadata to finish verification process on checkpoint and move to a new one
+        3) Using this values - we can build the reasssignment metadata to finish verification process on epoch and move to a new one
 
             _________________________________For example:_________________________________
             
             Imagine that prime pool <MAIN_POOL_A> has 5 reserve pools: [Reserve0,Reserve1,Reserve2,Reserve3,Reserve4]
 
-            The pools metadata from checkpoint shows us that previous epoch finished on these heights for pools:
+            The pools metadata from epoch shows us that previous epoch finished on these heights for pools:
             
                 For prime pool => INDEX:1337 HASH:adcd...
 
@@ -643,9 +643,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
     let emptyTemplate = {}
 
-    let vtCheckpointIndex = vtCheckpoint.id
+    let vtEpochIndex = vtEpochHandler.id
 
-    let oldReassignmentChainForSubchain = vtCheckpoint.reassignmentChains[primePoolPubKey]
+    let oldReassignmentChainForSubchain = vtEpochHandler.reassignmentChains[primePoolPubKey]
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
@@ -670,7 +670,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
         // Get the first block of this epoch from POOLS_METADATA
 
-        let firstBlockInThisEpochByPool = await GET_BLOCK(vtCheckpointIndex,poolPubKey,0)
+        let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochIndex,poolPubKey,0)
 
         if(!firstBlockInThisEpochByPool) return
 
@@ -765,16 +765,16 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtCheckpoint,primePoolPubKey,a
 
 
 
-// Function to find,validate and process logic with new checkpoint
-SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
+
+SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
 
     // When we reach the limits of current checkpoint - then we need to execute the system sync operations
 
-    if(limitsReached && !checkpointIsCompleted){
+    if(limitsReached && !epochIsCompleted){
 
 
-        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.operations
+        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.operations
 
 
         //_____________________________To change it via operations___________________________
@@ -932,7 +932,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         if(!delayedTableOfIds) delayedTableOfIds=[]
 
         
-        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+        let currentEpochIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
         
         let idsToDelete = []
 
@@ -941,7 +941,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
             //Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
-            if(delayedTableOfIds[i] + global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentCheckpointIndex){
+            if(delayedTableOfIds[i] + global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
 
                 let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
 
@@ -1000,9 +1000,9 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         
         if(currentArrayOfDelayedOperations.length !== 0){
 
-            delayedTableOfIds.push(currentCheckpointIndex)
+            delayedTableOfIds.push(currentEpochIndex)
 
-            global.SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentCheckpointIndex,currentArrayOfDelayedOperations)
+            global.SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentEpochIndex,currentArrayOfDelayedOperations)
 
         }
 
@@ -1024,14 +1024,14 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
         // Mark checkpoint as completed not to repeat the operations twice
-        global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.completed = true
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.completed = true
        
         //Create new quorum based on new POOLS_METADATA state
-        global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
 
 
         // Create the reassignment chains for each prime pool based on new data
-        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT,'')
+        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH,'')
 
 
         // Update the array of prime pools
@@ -1049,7 +1049,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
 
-        LOG(`\u001b[38;5;154mEpoch edge operations were executed for checkpoint \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.hash} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,'S')
 
 
         //Commit the changes of state using atomic batch
@@ -1072,33 +1072,33 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
     //If checkpoint is not fresh - find "fresh" one on hostchain
 
-    if(!CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)){
+    if(!CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)){
 
 
-        let nextCheckpoint = false//await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(()=>false)
+        let nextEpochHandler = false//await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(()=>false)
 
 
-        if(nextCheckpoint){
+        if(nextEpochHandler){
 
-            let oldCheckpoint = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT))
+            let oldEpochHandler = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH))
 
-            let oldCheckpointFullID = oldCheckpoint.hash+"#"+oldCheckpoint.id
+            let oldEpochFullID = oldEpochHandler.hash+"#"+oldEpochHandler.id
 
 
 
             // Set the new checkpoint to know the ranges that we should get
-            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT = nextCheckpoint
+            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH = nextEpochHandler
 
             // But quorum is the same as previous
-            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.quorum = oldCheckpoint.quorum
+            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = oldEpochHandler.quorum
 
             // And reassignment chains should be the same
-            global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains = oldCheckpoint.reassignmentChains
+            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.reassignmentChains = oldEpochHandler.reassignmentChains
            
 
             // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify
             
-            await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(global.SYMBIOTE_META.VERIFICATION_THREAD,oldCheckpoint,nextCheckpoint,oldCheckpointFullID)
+            await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(global.SYMBIOTE_META.VERIFICATION_THREAD,oldEpochHandler,nextEpochHandler,oldEpochFullID)
             
             
             // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
@@ -1118,7 +1118,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
         } else {
 
-            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_CHECKPOINT/1000} seconds ...`,'I')
+            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_AEFP/1000} seconds ...`,'I')
 
             await WAIT_SOME_TIME()
 
@@ -1131,7 +1131,7 @@ SET_UP_NEW_CHECKPOINT=async(limitsReached,checkpointIsCompleted)=>{
 
 
 
-TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
+TRY_TO_CHANGE_EPOCH = async vtEpochHandler => {
 
     /* 
             
@@ -1161,23 +1161,23 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
     */
 
-    let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
+    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
-    let vtCheckpointIndex = vtCheckpoint.id
+    let vtEpochIndex = vtEpochHandler.id
 
-    let nextEpochIndex = vtCheckpointIndex+1
+    let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${vtCheckpointFullID}`).catch(()=>false)
+    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${vtCheckpointFullID}`).catch(()=>false)
+    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${vtCheckpointFullID}`).catch(()=>false)
+    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>false)
 
 
 
     if(nextEpochHash && nextEpochQuorum && nextEpochReassignmentChains){
 
-        let checkpointCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
@@ -1186,9 +1186,9 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
         // Once get it - get the real first block
         for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochReassignmentChains)){
 
-            // First of all - try to find block <checkpoint id+1>:<prime pool pubkey>:0 - first block by prime pool
+            // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
-            if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+            if(!epochCache[primePoolPubKey].realFirstBlockFound){
 
                 // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
 
@@ -1198,11 +1198,11 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                 if(afpForFirstBlockOfPrimePool){
 
-                    checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                    epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                    checkpointCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
 
-                    checkpointCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    epochCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
                 }else{
 
@@ -1216,15 +1216,15 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtCheckpoint,rootPubKey)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler,rootPubKey)
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePoolForNextEpoch){                            
                             
-                                checkpointCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                                epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                checkpointCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
+                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
 
-                                checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                epochCache[primePoolPubKey].realFirstBlockFound = true
 
                             }
             
@@ -1236,7 +1236,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
-                if(!checkpointCache[primePoolPubKey].realFirstBlockFound){
+                if(!epochCache[primePoolPubKey].realFirstBlockFound){
 
                     // Find AFPs for reserve pools
                 
@@ -1285,11 +1285,11 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                                             // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
 
-                                            checkpointCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
+                                            epochCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
 
-                                            checkpointCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
+                                            epochCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
         
-                                            checkpointCache[primePoolPubKey].realFirstBlockFound = true
+                                            epochCache[primePoolPubKey].realFirstBlockFound = true
                                     
                                             shouldBreakInfiniteWhile = true
 
@@ -1342,33 +1342,33 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
                 }
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtCheckpointIndex}`,checkpointCache).catch(()=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>false)
 
             }
 
             
-            if(checkpointCache[primePoolPubKey].realFirstBlockFound){
+            if(epochCache[primePoolPubKey].realFirstBlockFound){
 
                 //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
                 // Try to get block
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,checkpointCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
 
-                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === checkpointCache[primePoolPubKey].firstBlockHash){
+                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === epochCache[primePoolPubKey].firstBlockHash){
 
-                    checkpointCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.aefpForPreviousEpoch
+                    epochCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.aefpForPreviousEpoch
 
                 }
 
             }
 
 
-            if(checkpointCache[primePoolPubKey].aefp && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]){
+            if(epochCache[primePoolPubKey].aefp && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]){
 
                 // Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this subchain
                 
-                await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtCheckpoint,primePoolPubKey,checkpointCache[primePoolPubKey].aefp)
+                await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
 
             }
 
@@ -1381,7 +1381,7 @@ TRY_TO_CHANGE_EPOCH = async vtCheckpoint => {
 
 
 
-OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,checkpoint) => {
+OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
 
     /* 
     
@@ -1481,7 +1481,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                                 // Now, check the structure of block
 
-                                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.checkpoint==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
+                                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
                                 
                                 let itsTheSameCreator = currentBlock.creator === poolPubKeyToOpenConnectionWith
 
@@ -1491,11 +1491,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                                 if(overviewIsOk && currentBlockIndexInArray === parsedData.blocks.length-1){
 
-                                    let blockIDThatMustBeInAfp = checkpoint.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
+                                    let blockIDThatMustBeInAfp = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
 
                                     let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
 
-                                    overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,checkpoint)
+                                    overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,epochHandler)
 
                                 }
                                 
@@ -1519,7 +1519,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
 
                                 parsedData.blocks.forEach(block=>{
 
-                                    let blockID = checkpoint.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
+                                    let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
 
                                     handler.cache.set(blockID,block)
 
@@ -1553,7 +1553,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,che
         
                                 hasUntilHeight:handler.hasUntilHeight,
 
-                                checkpointIndex:checkpoint.id
+                                epochIndex:epochHandler.id
         
                             } 
         
@@ -1616,9 +1616,9 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
     
-    let currentCheckpointIsFresh = CHECK_IF_CHECKPOINT_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
+    let currentEpochIsFresh = CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
-    let vtCheckpoint = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT
+    let vtEpoch = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
     let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
 
@@ -1626,43 +1626,43 @@ START_VERIFICATION_THREAD=async()=>{
 
     let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
-    let vtCheckpointFullID = vtCheckpoint.hash+"#"+vtCheckpoint.id
+    let vtEpochFullID = vtEpoch.hash+"#"+vtEpoch.id
 
-    let vtCheckpointIndex = vtCheckpoint.id
+    let vtEpochIndex = vtEpoch.id
 
         
         
 
     // Get the stats from reassignments
 
-    let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtCheckpointFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+    let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
 
 
-        let reassignmentsBasedOnCheckpointData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
+        let reassignmentsBasedOnEpochData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
 
         // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
 
-        let indexOfCurrentPoolToVerify = reassignmentsBasedOnCheckpointData.currentToVerify
+        let indexOfCurrentPoolToVerify = reassignmentsBasedOnEpochData.currentToVerify
 
         if(typeof indexOfCurrentPoolToVerify !== 'number'){
 
             indexOfCurrentPoolToVerify = -1
 
-            reassignmentsBasedOnCheckpointData.currentToVerify = -1
+            reassignmentsBasedOnEpochData.currentToVerify = -1
 
         }
 
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtEpoch.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
         let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
-        let metadataOfThisPoolBasedOnReassignmentsFromCheckpoint = reassignmentsBasedOnCheckpointData[poolToVerifyRightNow] // {index,hash}
+        let metadataOfThisPoolBasedOnReassignmentsFromEpoch = reassignmentsBasedOnEpochData[poolToVerifyRightNow] // {index,hash}
 
             
 
@@ -1670,11 +1670,11 @@ START_VERIFICATION_THREAD=async()=>{
         //_________________________Now check - if this pool already have the same index & hash as in checkpoint - change the pointer to the next in a row_________________________
 
 
-        if(metadataOfThisPoolLocal.index < metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
+        if(metadataOfThisPoolLocal.index < metadataOfThisPoolBasedOnReassignmentsFromEpoch.index){
             
             // Process the block
                 
-            let block = await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
+            let block = await GET_BLOCK(vtEpochIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
 
             if(block){
                 
@@ -1691,22 +1691,22 @@ START_VERIFICATION_THREAD=async()=>{
             }
             
 
-        }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromCheckpoint.index){
+        }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromEpoch.index){
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtCheckpoint.poolsMetadata[poolToVerifyRightNow]
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtEpoch.poolsMetadata[poolToVerifyRightNow]
 
-            reassignmentsBasedOnCheckpointData.currentToVerify++
+            reassignmentsBasedOnEpochData.currentToVerify++
 
         }
         
-    }else if(currentCheckpointIsFresh && tempReassignmentsForSomeSubchain){
+    }else if(currentEpochIsFresh && tempReassignmentsForSomeSubchain){
 
         
         let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
         
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtCheckpoint.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtEpoch.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
         
         let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
@@ -1715,7 +1715,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow)){
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtCheckpoint)
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)
 
             setTimeout(START_VERIFICATION_THREAD,5000)
 
@@ -1731,7 +1731,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtCheckpoint)                
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)                
 
             setTimeout(START_VERIFICATION_THREAD,5000)
 
@@ -1753,7 +1753,7 @@ START_VERIFICATION_THREAD=async()=>{
             // Start the cycle to process all the blocks
             while(stepsForWhile > 0){
     
-                let blockIdToGet = vtCheckpointIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
+                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
     
                 let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
     
@@ -1781,9 +1781,9 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    if(!currentCheckpointIsFresh){
+    if(!currentEpochIsFresh){
 
-        await TRY_TO_CHANGE_EPOCH(vtCheckpoint)
+        await TRY_TO_CHANGE_EPOCH(vtEpoch)
             
     }
 
@@ -1957,9 +1957,9 @@ verifyBlock=async(block,subchainContext)=>{
         
         let rewardBox = {fees:0}
 
-        let currentCheckpointIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id
+        let currentEpochIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
 
-        let currentBlockID = currentCheckpointIndex+':'+block.creator+':'+block.index
+        let currentBlockID = currentEpochIndex+':'+block.creator+':'+block.index
 
 
         global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM

@@ -1,77 +1,32 @@
 {
     "SYMBIOTE":{
-
-        "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        
-        "INFO":{
-            "MAIL":"hello@example.com",
-            "TELEGRAM":"@youraddress"
-        },
-        
-        "STOP_WORK":false,
-        
-        "PUB":"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8",
-        "PRV":"63ebbc5522b48ae559fbaf41cf136c5665758a0ee3c3c32b7ba76385398e05fe99d6d8152698dc6be50e6787529bd907ce6b2bfc75e7d1ca4d06c8d1107cf02dcd8b1a35de57c255659482c6861bcfff",
+    
+        "PUB":"6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE",
+        "PRV":"e4a1935e868c44c8b45eccfc4098b6e537d15ce312617041721fd1614bfa9a84ee2718677239c19d762d8f035ae13c65fe96bb116016ce8d3b2297ceeac3bd434c36cac34a6a47ec7158747436db9171",
         
         "PRIME_POOL_PUBKEY":false,
-
-        "MANIFEST":{
-        
-            "CONTACT":{
-                "TELEGRAM":"@Something",
-                "MAIL":"user@email.com",
-                "SITE":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
-            },
-        
-            "HIVEMIND":[
-                "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-            ],
-                        
-            "HOSTCHAINS":{
-            
-                "ltc":{
-                    "PACK":"dev0",
-                    "MANIFEST_OPTIONS":{}
-                },
-                "bsc":{
-                    "PACK":"dev0",
-                    "MANIFEST_OPTIONS":{
-                        "CONTRACT":"0x1231c39e6096c192Db6E1375Ff32526512069dF5"
-                    }
-                    
-                }
-                        
-            },
-        
-            "WORKFLOW":"dev_tachyon",
-            "WORKFLOW_HASH":"f04cdf7ce9dc801cc1924298328cb7f549cebea97c12fc0f0fef6a35d12905ea",
-            "WORKFLOW_OPTIONS":{
     
-                "VALIDATOR_STAKE":50000,
-                "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
-                "MINIMAL_STAKE_PER_ENTITY":20,
-                "POOL_AFK_MAX_TIME":10,
-                "UNSTAKING_PERIOD":4,
-                "QUORUM_SIZE":127,
-                "SUBCHAIN_AFK_LIMIT":120000,
-                "TXS_LIMIT_PER_BLOCK":30000,
-                "DEFAULT_PAYMENT_IF_WRONG_TYPE":5
+        "MY_KLY_INFRASTRUCTURE":{
             
-            },
-            
-            "GENESIS_HASH":"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+            "redirects":{},
+            "contact":{
+                "telegram":"@youraddress"
+            }
+    
         },
+    
+        "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
+    
+        "EXTRA_DATA_TO_BLOCK":{
+            "hello":"world"
+        },
+    
+        "WAIT_IF_CANT_FIND_CHECKPOINT":4000,
     
         "POLLING_TIMEOUT_TO_FIND_CHECKPOINT_FOR_QUORUM_THREAD":10000,
-    
-        "BLOCK_TIME":2000,
-        "EXTRA_DATA_TO_BLOCK":{
-
-            "hello":"world"
-    
-        },
-    
+        "TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT":10000,
+        "TACHYON_HEALTH_MONITORING_TIMEOUT":30000,
+        
     
         "TRUSTED_POOLS":{
             "VERSION_UPDATE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"],
@@ -80,11 +35,9 @@
             "SLASH_UNSTAKE":["6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9"]
         },
     
-        "STORE_BLOCKS_IN_LOCAL_DATABASE":true,
-
-        "TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT":10000,
-
+        
         "TXS_MEMPOOL_SIZE":300000,
+        "EPOCH_EDGE_OPS_MEMPOOL_SIZE":10000,
         "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
     
         "NODES":{
@@ -145,18 +98,16 @@
         "MUST_SEND":{
     
             "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
-        
             "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
-        
             "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
         
         },
         
         "NODES_PORTION":8,
         "MAX_CONNECTIONS":15,
-        "MY_HOSTNAME":"http://somenode.com:6666",
+        "MY_HOSTNAME":"http://localhost:7333",
             
-        "TTL":{
+        "ROUTE_TTL":{
     
             "MAIN":{},
     
@@ -167,13 +118,15 @@
                 "BLOCK":6000,
                 "LATEST_N_BLOCKS":5,
                 "BLOCK_BY_SID":6000,
-                "INFO":600,
+                "BLOCK_BY_GRID":6000,
+                "MY_KLY_INFRASTRUCTURE":600,
                 "SYNC_STATE":2,
                 "SYMBIOTE_INFO":5,
                 "SEARCH_RESULT":5,
                 "TX_RECEIPT":100,
                 "POOLS_METADATA":5,
                 "QUORUM_THREAD_CHECKPOINT":5
+    
             }   
         
         },
@@ -181,19 +134,18 @@
         "ROUTE_TRIGGERS":{
     
             "MAIN":{
-    
-                "ACCEPT_BLOCK":1,
-                "ACCEPT_BLOCKS":1,
+
+                "ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS":1,
                 "ACCEPT_TXS":1,
-                "SHARE_FINALIZATION_PROOF":1,
                 "GET_AGGREGATED_FINALIZATION_PROOFS":1,
-                "HEALTH_CHECKER":1,
-                "PAYLOAD_FOR_CHECKPOINT":1,
+                "GET_AGGREGATED_EPOCH_FINALIZATION_PROOF":1,
                 "EPOCH_EDGE_OPERATIONS":1,
                 "NEW_NODES":1,
-                "GET_DATA_FOR_TEMP_REASSIGN":1
+                "GET_DATA_FOR_TEMP_REASSIGN":1,
+                "GET_CURRENT_SUBCHAINS_AUTHORITIES":1
     
             },
+    
     
     
             "API":{
@@ -203,9 +155,10 @@
                 
                 "BLOCK":1,
                 "BLOCK_BY_SID":1,
+                "BLOCK_BY_GRID":1,
                 "LATEST_N_BLOCKS":1,
     
-                "INFO":1,
+                "MY_KLY_INFRASTRUCTURE":1,
                 "SYNC_STATE":1,
                 "SYMBIOTE_INFO":1,
                 "SEARCH_RESULT":1,
@@ -219,8 +172,7 @@
     
         "GET_BLOCKS_URL":"http://localhost:7332",
         "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
-    
-        "WAIT_IF_CANT_FIND_CHECKPOINT":4000
+        "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332"
     
     }
 }

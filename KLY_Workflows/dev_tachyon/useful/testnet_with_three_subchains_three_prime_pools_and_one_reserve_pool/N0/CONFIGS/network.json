@@ -1,7 +1,10 @@
 {
 
     "INTERFACE":"::",
-    "PORT":7335,
+    "PORT":7332,
+
+    "WEBSOCKET_INTERFACE":"::",
+    "WEBSOCKET_PORT":9999,
 
     "PAYLOAD_SIZE":1000,
     "EXTENDED_PAYLOAD_SIZE":10000,

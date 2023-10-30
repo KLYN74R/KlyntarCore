@@ -11,7 +11,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     let workflowConfigs = global.SYMBIOTE_META[threadID].WORKFLOW_OPTIONS,
         
-        isNotTooOld = stakeOrUnstakeTx.checkpointID >= global.SYMBIOTE_META[threadID].RUBICON,
+        isNotTooOld = stakeOrUnstakeTx.epochID >= global.SYMBIOTE_META[threadID].RUBICON,
     
         isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
 
@@ -22,7 +22,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].CHECKPOINT.id - poolStorage.stopCheckpointID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
@@ -51,13 +51,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
 export default {
 
-    //______________________________ FUNCTIONS TO PROCESS <OPERATIONS> IN CHECKPOINTS ______________________________
-
-    /*
-    
-    We need to do this ops on/via checkpoints in order to make threads async
-    
-    */
+    //______________________________ FUNCTIONS TO PROCESS EPOCH EDGE OPERATIONS ______________________________
 
 
     //Function to move stakes between pool <=> waiting room of pool
@@ -149,7 +143,7 @@ export default {
                 {
                     totalPower:<number>
                     lackOfTotalPower:<boolean>
-                    stopCheckpointID:<number>
+                    stopEpochID:<number>
                     isReserve:<boolean>
                     poolURL:<string>
                     wssPoolURL:<string>
@@ -163,7 +157,7 @@ export default {
 
                     totalPower:0,       
                     lackOfTotalPower:true,
-                    stopCheckpointID:-1,
+                    stopEpochID:-1,
                     poolURL,
                     wssPoolURL
                 
@@ -201,16 +195,16 @@ export default {
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
 
-                if(poolStorage.isReserve) fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry.reservePools.push(pool)
+                if(poolStorage.isReserve) fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools.push(pool)
 
-                else fullCopyOfQuorumThread.CHECKPOINT.poolsRegistry.primePools.push(pool)
+                else fullCopyOfQuorumThread.EPOCH.poolsRegistry.primePools.push(pool)
                 
 
                 // Make it "null" again
 
                 poolStorage.lackOfTotalPower = false
 
-                poolStorage.stopCheckpointID = -1
+                poolStorage.stopEpochID = -1
 
             }
         
@@ -223,7 +217,7 @@ export default {
             
             Here we should move stakers from "waitingRoom" to "stakers"
 
-            Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .checkpointID property and compare to timestamp of current checkpoint on VT)
+            Also, recount the pool total power and check if record in WAITING_ROOM is still valid(check it via .epochID property and compare to timestamp of current epoch on VT)
 
             Also, check the minimal possible stake(in UNO), if pool still valid and so on
 
@@ -234,7 +228,7 @@ export default {
 
                 {
 
-                    checkpointID,
+                    epochID,
 
                     staker,
 
@@ -303,7 +297,7 @@ export default {
 
                     }
 
-                    // This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> checkpoints
+                    // This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> epoch
                     delayedOperationsArray.push(txTemplate)
 
                 }
@@ -347,7 +341,7 @@ export default {
 
                     poolStorage.lackOfTotalPower=false
 
-                    poolStorage.stopCheckpointID=-1
+                    poolStorage.stopEpochID=-1
 
                 }
                 
@@ -388,7 +382,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
 
         */
 
@@ -403,7 +397,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
             &&
             await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
@@ -481,7 +475,7 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
-                    isNotTooOld = stakingTx?.checkpointID >= global.SYMBIOTE_META.QUORUM_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.epochID >= global.SYMBIOTE_META.QUORUM_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
             
@@ -536,7 +530,7 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
-                    isNotTooOld = stakingTx?.checkpointID >= global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.epochID >= global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
 
@@ -577,7 +571,7 @@ export default {
 
         /*
         
-        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload=<ID of new checkpoint which will be rubicon>
+        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload=<ID of new epoch which will be rubicon>
         
         If received from route - then payload has the following structure
 
@@ -593,7 +587,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
+        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
         
         */
 
@@ -603,13 +597,13 @@ export default {
 
             isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
-            typeof data === 'number' //new value of rubicon. Some previous checkpointID
+            typeof data === 'number' //new value of rubicon. Some previous epochID
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
             &&
             global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -661,7 +655,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
         
         
         */
@@ -674,7 +668,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -727,7 +721,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash)        
+        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)        
         
         */
 
@@ -739,7 +733,7 @@ export default {
             &&
             global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
 
 
 

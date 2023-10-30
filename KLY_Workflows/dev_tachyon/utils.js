@@ -291,7 +291,7 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
 
 //Function just for pretty output about information on symbiote
-BLOCKLOG=(msg,hash,block,checkpointIndex)=>{
+BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
     if(global.CONFIG.DAEMON_LOGS){
 
@@ -301,7 +301,7 @@ BLOCKLOG=(msg,hash,block,checkpointIndex)=>{
 
         console.log('\n')
         
-        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,checkpointIndex+':'+block.creator+':'+block.index,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,epochIndex+':'+block.creator+':'+block.index,COLORS.C)
 
         console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.C)
 
@@ -457,13 +457,13 @@ GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYM
 
 
 
-GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,checkpoint) => {
+GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     let toReturn = []
 
-    checkpoint ||= global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT
+    epochHandler ||= global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
-    for(let pubKey of checkpoint.quorum){
+    for(let pubKey of epochHandler.quorum){
 
         let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
@@ -490,22 +490,22 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 
 
-CHECK_IF_CHECKPOINT_STILL_FRESH = thread => {
+CHECK_IF_EPOCH_STILL_FRESH = thread => {
 
-    let checkpointTime = thread.CHECKPOINT.timestamp
+    let epochTime = thread.EPOCH.timestamp
 
     let currentTime = GET_GMT_TIMESTAMP()
 
-    return checkpointTime + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
+    return epochTime + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
 
 },
 
 
 
 
-GET_MAJORITY = checkpoint => {
+GET_MAJORITY = epochHandler => {
 
-    let quorumNumber = checkpoint.quorum.length
+    let quorumNumber = epochHandler.quorum.length
 
     let majority = Math.floor(quorumNumber*(2/3))+1
 

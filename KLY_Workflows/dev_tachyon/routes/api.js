@@ -284,7 +284,7 @@ getSymbioteInfo=response=>{
             WORKFLOW:workflowID,
             HIVEMIND:hivemind,
             HOSTCHAINS:hostchains,
-            CHECKPOINT_TIMESTAMP:createTimestamp
+            EPOCH_TIMESTAMP:createTimestamp
         
         } = global.GENESIS
 
@@ -430,13 +430,13 @@ getSearchResult=async(response,request)=>{
         }
 
 
-        let checkpointFullID = global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT.id
+        let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
-        let tempObject = global.SYMBIOTE_META.TEMP.get(checkpointFullID)
+        let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
         if(!tempObject){
 
-            !response.aborted && response.end(JSON.stringify({responseType:'ERROR',data:'Wait for a next checkpoint'}))
+            !response.aborted && response.end(JSON.stringify({responseType:'ERROR',data:'Wait for a next epoch'}))
 
             return
 
@@ -520,11 +520,11 @@ getPoolsMetadata=response=>{
 
 
 
-//Returns the checkpoint of QUORUM_THREAD that is currently used by node
-getCurrentQuorumThreadCheckpoint=response=>{
+//Returns the info about epoch on QT and VT
+getDataAboutEpochOnThreads=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.QUORUM_THREAD_CHECKPOINT){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
 
         response
             
@@ -532,7 +532,13 @@ getCurrentQuorumThreadCheckpoint=response=>{
             .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.QUORUM_THREAD_CHECKPOINT}`)
             .onAborted(()=>response.aborted=true)
 
-        response.end(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD.CHECKPOINT))
+        response.end(JSON.stringify({
+
+            quorumThread:global.SYMBIOTE_META.QUORUM_THREAD.EPOCH,
+
+            verificationThread:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
+
+        }))
 
     }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
 
@@ -543,9 +549,8 @@ getCurrentQuorumThreadCheckpoint=response=>{
 
 global.UWS_SERVER
 
-// Get data about checkpoint
 
-.get('/quorum_thread_checkpoint',getCurrentQuorumThreadCheckpoint)
+.get('/epoch_on_threads',getDataAboutEpochOnThreads)
 
 .get('/pools_metadata',getPoolsMetadata)
 
@@ -587,7 +592,5 @@ global.UWS_SERVER
 TODO:
 
 GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
-
-GET /checkpoint/:type - get the current checkpoint based on type(QT - quorum thread, VT - verification thread).
 
 */

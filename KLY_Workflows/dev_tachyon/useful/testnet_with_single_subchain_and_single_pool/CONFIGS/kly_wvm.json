@@ -1,5 +1,5 @@
 {
-    "VM":{
+    "KLY_WVM":{
         
         "COMING":"SOON",
     
@@ -7,7 +7,7 @@
             
             "TYPE":"i32",
             
-            "FUNCTION_NAME":"burnGas",
+            "FUNCTION_NAME":"energyUse",
     
             "MODULE_NAME":"metering"
         
@@ -19,7 +19,7 @@
     
         "ALLOWED_MODULES":["github","btc","polygon","twitter"],
 
-        "GAS_TABLE":{
+        "ENERGY_TABLE":{
             
             "start": 0,
             
