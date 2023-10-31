@@ -108,29 +108,19 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     }
 
 
-
     let {block,previousBlockAFP} = parsedData
 
+    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !tempObject.SKIP_HANDLERS.has(block.creator) && !tempObject.SYNCHRONIZER.has('CREATING_SKIP_HANDLER:'+block.creator)
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || typeof block !== 'object' || typeof previousBlockAFP !== 'object'){
+
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
     
         connection.close()
                    
         return
     
-    }else{
-
-        let poolIsAfkOrWeGoingToSkipIt = tempObject.SKIP_HANDLERS.has(block.creator) || tempObject.SYNCHRONIZER.has('CREATING_SKIP_HANDLER:'+block.creator)        
-
-
-        if(poolIsAfkOrWeGoingToSkipIt){
-
-            connection.close()
+    }else if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
     
-            return
-
-        }
-
         // Add the sync flag to prevent creation proofs during the process of skip this pool
         tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
@@ -144,7 +134,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         let poolIsReal = itsPrimePool || itsReservePool
     
         let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow
-    
+
+
         if(poolIsReal){
     
             if(itsPrimePool) primePoolPubKey = block.creator
@@ -158,7 +149,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
             }
     
         }
-    
+
         let thisAuthorityCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsAuthorityNow || itsPrimePool )
     
         if(!thisAuthorityCanGenerateBlocksNow){
@@ -168,8 +159,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
             return
     
         }
-    
 
+        
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
         let metadataFromEpochManagerForThisPool = tempObject.EPOCH_MANAGER.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
@@ -180,145 +171,152 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
         let sameSegment = metadataFromEpochManagerForThisPool.index < block.index || metadataFromEpochManagerForThisPool.index === block.index && proposedBlockHash === metadataFromEpochManagerForThisPool.hash
 
-        if(!tempObject.SYNCHRONIZER.has('COM:'+block.creator) && sameSegment){
+
+        if(sameSegment){
 
             let proposedBlockID = epochHandler.id+':'+block.creator+':'+block.index
 
             let updatedMetadata
 
-            let signaIsOk = await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)
 
-            if(!signaIsOk) connection.close()
+            if(await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
-            if(tempObject.SYNCHRONIZER.has('COM:'+block.creator)||tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')) return
-        
-            tempObject.SYNCHRONIZER.set('COM:'+block.creator,true)
+                if(metadataFromEpochManagerForThisPool.index === block.index){
 
-
-            if(metadataFromEpochManagerForThisPool.index === block.index){
-
-                updatedMetadata = metadataFromEpochManagerForThisPool
-
-            }else{
-
-                updatedMetadata = {
-
-                    index:block.index-1,
-                    
-                    hash:previousBlockAFP.blockHash,
-
-                    afp:previousBlockAFP
-
+                    updatedMetadata = metadataFromEpochManagerForThisPool
+    
+                }else{
+    
+                    updatedMetadata = {
+    
+                        index:block.index-1,
+                        
+                        hash:previousBlockAFP.blockHash,
+    
+                        afp:previousBlockAFP
+    
+                    }
+    
                 }
 
-            }
-                        
 
-            if(block.index === 0){
 
-                /*
+
+                if(block.index === 0){
+
+                    /*
     
-                    And finally, if it's the first block in epoch - verify that it contains:
+                        And finally, if it's the first block in epoch - verify that it contains:
         
-                        1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                        2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
+                            1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
+                            2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
-                    Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
+                        Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 
-                */
+                    */
 
 
-                //_________________________________________1_________________________________________
+                    //_________________________________________1_________________________________________
                     
 
-                let aefpIsOk = epochHandler.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                    let aefpIsOk = epochHandler.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
         
-                    block.extraData.aefpForPreviousEpoch,
+                        block.extraData.aefpForPreviousEpoch,
                             
-                    epochHandler.quorum,
+                        epochHandler.quorum,
                             
-                    GET_MAJORITY(epochHandler),
+                        GET_MAJORITY(epochHandler),
         
-                    epochFullID
+                        epochFullID
                             
-                ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.subchain === primePoolPubKey
-
+                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.subchain === primePoolPubKey
 
                         
-                //_________________________________________2_________________________________________
+                    //_________________________________________2_________________________________________
 
-                let reassignmentArray = epochHandler.reassignmentChains[primePoolPubKey]
 
-                let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+                    let reassignmentArray = epochHandler.reassignmentChains[primePoolPubKey]
 
-                let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
+                    let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+
+                    let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
         
-                    primePoolPubKey,
+                        primePoolPubKey,
         
-                    block,
+                        block,
 
-                    reassignmentArray,
+                        reassignmentArray,
         
-                    positionOfBlockCreatorInReassignmentChain,
+                        positionOfBlockCreatorInReassignmentChain,
         
-                    epochFullID,
+                        epochFullID,
         
-                    poolsRegistryOnQuorumThread
+                        poolsRegistryOnQuorumThread
 
-                ).then(value=>value.isOK).catch(()=>false)
+                    ).then(value=>value.isOK).catch(()=>false)
 
 
-                if(!aefpIsOk || !aspChainIsOk){
+                    if(!aefpIsOk || !aspChainIsOk){
 
-                    connection.close()
+                        connection.close()
 
-                    return
+                        return
 
-                }
-
-            }else{
-
-                let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
-    
-                let itsAfpForPreviousBlock = blockID === (epochHandler.id+':'+block.creator+':'+(block.index-1))
-    
-                if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
+                    }
                     
-                    connection.close()
-            
-                    return
-            
+
+                }else{
+
+
+                    let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
+    
+                    let itsAfpForPreviousBlock = blockID === (epochHandler.id+':'+block.creator+':'+(block.index-1))
+        
+                    if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
+                        
+                        connection.close()
+                
+                        return
+                
+                    }
+                       
+                    let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
+    
+                    if(!isOK) return
+
+
                 }
-                   
-                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
-
-                if(!isOK) return
-
-            }
 
 
-            USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,updatedMetadata).then(()=>{
+                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,updatedMetadata).then(()=>{
 
-                // Store the block
+                    // Store the block
+    
+                    global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
+    
+                        
+                        tempObject.EPOCH_MANAGER.set(block.creator,updatedMetadata)
+    
+                        
+                        let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
+    
+                        let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
 
-                global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
 
-                    tempObject.EPOCH_MANAGER.set(block.creator,updatedMetadata)
-
-                    let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
-
-                    let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
-
-                    tempObject.SYNCHRONIZER.delete('COM:'+block.creator)
-
-                    connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
-
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+    
+                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+    
+  
+                    })
+    
                 })
 
-            })            
 
-        }
-    
+            } else connection.close()
+
+        }        
+
     }
         
 }
@@ -658,7 +656,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
         return
     }
 
-    if(!tempObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
+    if(!tempObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
         !response.aborted && response.end(JSON.stringify({err:'Not ready'}))
 
@@ -1346,7 +1344,7 @@ Object like {
 
 ___________________________________________________________
 
-[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.CHECKPOINT.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
+[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
 
 [1] firstBlockByCurrentAuthority - default block structure.Send exactly first block to allow client to reverse the chain and understand how to continue the work on verification thread
 
@@ -1357,7 +1355,7 @@ ___________________________________________________________
         prevBlockHash:<here will be the hash of block with index 0 - the first block in epoch by pool>
         blockID,
         blockHash,
-        aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+        aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
         aggregatedPub:<>,
         afkVoters
         

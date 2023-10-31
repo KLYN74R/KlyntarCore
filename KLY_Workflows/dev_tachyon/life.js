@@ -2,7 +2,7 @@ import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGR
 
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_EPOCH_STILL_FRESH,USE_TEMPORARY_DB,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_EPOCH_STILL_FRESH as EPOCH_STILL_FRESH,USE_TEMPORARY_DB,
 
     GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT,
 
@@ -448,7 +448,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     */
     
 
-    if(!CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -901,7 +901,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
-                if(CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
+                if(EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
 
                     // Fill the checkpoints manager with the latest data
 
@@ -961,14 +961,14 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
-    if(iAmInTheQuorum && !CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(iAmInTheQuorum && !EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         // Stop to generate commitments/finalization proofs
         temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
 
         // Check the safety
-        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_CHECKPOINT')){
+        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
             setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
 
@@ -1645,7 +1645,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    if(!CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
         setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
@@ -1668,7 +1668,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
 
         let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {indexInReassignmentChain,shouldBeThisAuthority,aspsForPreviousPools}
-
 
 
         if(doReassignmentRequest && reassignmentHandler.currentAuthority < doReassignmentRequest.shouldBeThisAuthority){
@@ -1793,7 +1792,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
         // Update the <reassignmentHandler> in case we had changes in previous <if> branch
-        reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
+        reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey)
 
 
         let poolPubKeyForHunting, previousPoolPubKey, poolIndexInRc
@@ -1828,6 +1827,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             timeOfStartByThisAuthority = currentTime
 
         }
+
+        console.log('DEBUG: Find reassignments for => ',poolPubKeyForHunting)
 
 
         if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME){
@@ -2450,8 +2451,6 @@ RESTORE_STATE=async()=>{
 
         }
 
-        tempObject.SYNCHRONIZER.set('NO_FP_NOW:'+poolPubKey,true)
-
     }
 
 
@@ -2463,7 +2462,7 @@ RESTORE_STATE=async()=>{
 
         tempObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
-        tempObject.SYNCHRONIZER.set('READY_FOR_EPOCH',true)
+        tempObject.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
 
     }
 
@@ -3387,7 +3386,7 @@ PREPARE_SYMBIOTE=async()=>{
     //_________________________________Add the temporary data of current QT__________________________________________
     
     let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
-
+    
     global.SYMBIOTE_META.TEMP.set(epochFullID,{
 
         FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
@@ -3777,16 +3776,16 @@ RUN_SYMBIOTE=async()=>{
     START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
-    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
+    //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
     SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
-    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()

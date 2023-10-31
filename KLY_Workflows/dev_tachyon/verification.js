@@ -1719,6 +1719,8 @@ START_VERIFICATION_THREAD=async()=>{
 
             setTimeout(START_VERIFICATION_THREAD,5000)
 
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+
             return
         
         }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
@@ -1734,6 +1736,8 @@ START_VERIFICATION_THREAD=async()=>{
             await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)                
 
             setTimeout(START_VERIFICATION_THREAD,5000)
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
             return
 
@@ -1764,12 +1768,6 @@ START_VERIFICATION_THREAD=async()=>{
         
                     LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
         
-                }else{
-        
-                    // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-        
-                    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-        
                 }
                 
                 stepsForWhile--
@@ -1777,6 +1775,8 @@ START_VERIFICATION_THREAD=async()=>{
             }
     
         }
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
     }
 
