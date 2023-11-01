@@ -1713,16 +1713,19 @@ START_VERIFICATION_THREAD=async()=>{
         
         // Try check if we have established a WSS channel to fetch blocks
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow)){
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
 
             await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)
 
-            setTimeout(START_VERIFICATION_THREAD,5000)
+            global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+            setTimeout(()=>{
 
-            return
-        
+                global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+
+            },5000)
+
+            
         }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
 
             // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
@@ -1733,13 +1736,15 @@ START_VERIFICATION_THREAD=async()=>{
 
             global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)                
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)
+            
+            global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
-            setTimeout(START_VERIFICATION_THREAD,5000)
+            setTimeout(()=>{
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+                global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
 
-            return
+            },5000)
 
         }
 
