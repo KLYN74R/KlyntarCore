@@ -1303,16 +1303,18 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
     if(typeof subchain === 'string' && typeof indexOfNext === 'number' && typeof session === 'string' && session.length === 64 && qtEpochHandler.reassignmentChains[subchain]){
 
-        let targetPoolPubKey = qtEpochHandler.reassignmentChains[subchain][indexOfNext]
+        let nextPoolPubKey = qtEpochHandler.reassignmentChains[subchain][indexOfNext]
 
-        let skipHandler = tempObject.SKIP_HANDLERS.get(targetPoolPubKey)
+        let pubKeyOfPoolThatWeAreGoingToSkip = qtEpochHandler.reassignmentChains[subchain][indexOfNext-1] || subchain
+
+        let skipHandler = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolThatWeAreGoingToSkip)
 
         let weHaveSentAlertToThisPool = tempObject.TEMP_CACHE.get(`SENT_ALERT:${subchain}:${indexOfNext}`) || await USE_TEMPORARY_DB('get',tempObject.DATABASE,`SENT_ALERT:${subchain}:${indexOfNext}`).catch(()=>false)
 
 
         if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
     
-            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${targetPoolPubKey}:${session}:${epochFullID}`,global.PRIVATE_KEY)
+            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${nextPoolPubKey}:${session}:${epochFullID}`,global.PRIVATE_KEY)
     
             !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
     

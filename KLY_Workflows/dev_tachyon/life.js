@@ -1876,7 +1876,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         let skipHandler = tempObject.SKIP_HANDLERS.get(poolPubKeyForHunting) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
-        
         // If no skip handler for target pool - do nothing
 
         if(!skipHandler) continue
@@ -2047,10 +2046,10 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     let {index,hash,afp} = result.skipData
 
-                    let blockIdInAfp = (epochHandler.id+':'+poolPubKeyForHunting+':'+(index+1))
+                    let blockIdInAfp = (epochHandler.id+':'+poolPubKeyForHunting+':'+index)
 
 
-                    if(typeof afp === 'object' && hash === afp.prevBlockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
+                    if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
 
                         // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
             
