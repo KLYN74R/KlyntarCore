@@ -1645,13 +1645,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    // if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
-        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
+    //     setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
-        return
+    //     return
 
-    }
+    // }
 
 
     let majority = GET_MAJORITY(epochHandler)
@@ -1816,6 +1816,11 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         //_______________________________________
 
+        // If no more pools in reassignment chains - no sense to reassign and change authority
+
+        if(!epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]) continue
+
+
         let timeOfStartByThisAuthority = tempObject.TEMP_CACHE.get('TIME:'+poolPubKeyForHunting)
 
         if(!timeOfStartByThisAuthority){
@@ -1828,14 +1833,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         }
 
-        console.log('DEBUG: Find reassignments for => ',poolPubKeyForHunting)
-
-
         if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME){
 
-            // Create the skip handler in case time is out
+            // Create the skip handler in case time is out    
             
             tempObject.SYNCHRONIZER.set('CREATING_SKIP_HANDLER:'+poolPubKeyForHunting,true)
+
+
 
             if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+poolPubKeyForHunting)){
 
@@ -1872,7 +1876,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         let skipHandler = tempObject.SKIP_HANDLERS.get(poolPubKeyForHunting) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
-
+        
         // If no skip handler for target pool - do nothing
 
         if(!skipHandler) continue
@@ -3785,7 +3789,7 @@ RUN_SYMBIOTE=async()=>{
     //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    //REASSIGN_PROCEDURE_MONITORING()
+    REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()

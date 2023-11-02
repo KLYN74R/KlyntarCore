@@ -176,18 +176,18 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
             let proposedBlockID = epochHandler.id+':'+block.creator+':'+block.index
 
-            let updatedMetadata
+            let futureMetadataToStore
 
 
             if(await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
                 if(metadataFromEpochManagerForThisPool.index === block.index){
 
-                    updatedMetadata = metadataFromEpochManagerForThisPool
+                    futureMetadataToStore = metadataFromEpochManagerForThisPool
     
                 }else{
     
-                    updatedMetadata = {
+                    futureMetadataToStore = {
     
                         index:block.index-1,
                         
@@ -288,14 +288,14 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                 }
 
 
-                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,updatedMetadata).then(()=>{
+                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>{
 
                     // Store the block
     
                     global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
     
                         
-                        tempObject.EPOCH_MANAGER.set(block.creator,updatedMetadata)
+                        tempObject.EPOCH_MANAGER.set(block.creator,futureMetadataToStore)
     
                         
                         let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
@@ -1136,7 +1136,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 let [_epochID,_blockCreator,indexOfBlockInAfp] = afp.blockID.split(':')
 
-                if(typeof afp === 'object' && afp.prevBlockHash === hash && index+1 == indexOfBlockInAfp){
+                if(typeof afp === 'object' && afp.blockHash === hash && index == indexOfBlockInAfp){
 
                     afpInSkipDataIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)
 
@@ -1201,13 +1201,19 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                     let block = await GET_BLOCK(epochHandler.id,requestForSkipProof.poolPubKey,0)
 
-                    if(block && Block.genHash(block) === requestForSkipProof.afpForSecondBlock.blockHash){
+                    if(block && Block.genHash(block) === requestForSkipProof.afpForSecondBlock.prevBlockHash){
 
-                        let aspForPreviousPool = block.extraData.reassignments[previousPoolPubKey]
+                        let hashOfAspForPreviousPool = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+                        if(block.extraData.reassignments){
+
+                            hashOfAspForPreviousPool = BLAKE3(JSON.stringify(block.extraData.reassignments[previousPoolPubKey]))
+
+                        }
 
                         let firstBlockHash = requestForSkipProof.afpForSecondBlock.prevBlockHash
 
-                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${BLAKE3(JSON.stringify(aspForPreviousPool))}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hashOfAspForPreviousPool}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                         secondBlockAfpIsOk = true                    
     
