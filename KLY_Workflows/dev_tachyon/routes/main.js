@@ -200,7 +200,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                 }
 
 
-
+                let previousBlockID
 
                 if(block.index === 0){
 
@@ -269,8 +269,10 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
 
                     let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
+
+                    previousBlockID = epochHandler.id+':'+block.creator+':'+(block.index-1)
     
-                    let itsAfpForPreviousBlock = blockID === (epochHandler.id+':'+block.creator+':'+(block.index-1))
+                    let itsAfpForPreviousBlock = blockID === previousBlockID
         
                     if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
                         
@@ -288,29 +290,38 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                 }
 
 
-                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>{
+                // Store the metadata for EPOCH_MANAGER
+
+                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>
 
                     // Store the block
     
-                    global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(async()=>{
-    
-                        
-                        tempObject.EPOCH_MANAGER.set(block.creator,futureMetadataToStore)
-    
-                        
-                        let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
-    
-                        let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                    global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(()=>{
 
+                        // Store the AFP for previous block
 
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                        let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
+
+                        global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
+
+                            tempObject.EPOCH_MANAGER.set(block.creator,futureMetadataToStore)
     
-                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+                            
+                            let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
+        
+                            let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
     
+    
+                            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+        
+                            connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+    
+
+                        })    
   
                     })
     
-                })
+                ).catch(()=>{})
 
 
             } else connection.close()
@@ -1414,7 +1425,7 @@ getDataForTempReassignments = async response => {
 
                 let firstBlockID = quorumThreadEpochIndex+':'+currentSubchainAuthority+':0'
 
-                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>false)
+                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>null)
 
                 if(firstBlockByCurrentAuthority){
 
@@ -1422,7 +1433,7 @@ getDataForTempReassignments = async response => {
 
                     let secondBlockID = quorumThreadEpochIndex+':'+currentSubchainAuthority+':1'
 
-                    let afpForSecondBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
+                    let afpForSecondBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>null)
 
                     // Put to response
 
