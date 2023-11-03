@@ -117,43 +117,6 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
 
 
-GET_MANY_BLOCKS = async (epochIndex,blockCreator,startIndex,endIndex) => {
-
-    let urlPostfix = `/many_blocks/${epochIndex}/${blockCreator}/${startIndex}/${endIndex}`
-
-    let manyBlocks = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+urlPostfix,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)})
-    
-                    .then(r=>r.json())
- 
-                    .catch(()=>null)
-
-
-    if(manyBlocks) return manyBlocks
-
-    else {
-
-
-        //Combine all nodes we know about and try to find block there
-        let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
-
-    
-        for(let host of allVisibleNodes){
-
-            if(host === global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
-            
-            let itsProbablySetOfBlocks = await fetch(host+urlPostfix,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>null)
-            
-            if(itsProbablySetOfBlocks) return itsProbablySetOfBlocks
-
-        }
-
-    }
-
-},
-
-
-
-
 VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
 
     // Make the initial overview
@@ -214,80 +177,37 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
 
 
-/*
+GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
 
-Structure => {
+    let localVersionOfAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
+
+    if(!localVersionOfAfp){
+
+        // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
-    prevBlockHash,
+        let setOfUrls = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler),...GET_ALL_KNOWN_PEERS()]
 
-    blockID,
+        for(let endpoint of setOfUrls){
 
-    blockHash:,
+            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID,{agent:GET_HTTP_AGENT(endpoint)}).then(r=>r.json()).catch(()=>null)
 
-    proofs:{
+            if(itsProbablyAggregatedFinalizationProof){
 
-        quorumMemberPubkey1:signa1,
-        ...
-        quorumMemberPubkeyN:signaN
+                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
 
-    }
+                if(isOK){
 
-}
+                    let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
 
-*/
+                    return {prevBlockHash,blockID,blockHash,proofs}
 
-GET_RESULT_OF_AGGREGATED_FINALIZATION_PROOF = async (nextBlockID,hashOfCurrentBlock,aggregatedFinalizationProof) => {
-
-
-    let quorumThreadEpochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
-
-    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
-
-    let verificationThreadEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
-
-
-    // Need for async safety
-    if(verificationThreadEpochFullID!==quorumThreadEpochFullID || !global.SYMBIOTE_META.TEMP.has(quorumThreadEpochFullID)) return {verify:false}
-
-    
-    aggregatedFinalizationProof ||= await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+nextBlockID).catch(()=>null)
-
-
-    // We shouldn't verify local version of AFP, because we already did it. See the GET /aggregated_finalization_proof route handler
-
-    if(aggregatedFinalizationProof){
-
-        return aggregatedFinalizationProof.prevBlockHash === hashOfCurrentBlock ? {verify:true} : {verify:false,shouldDelete:true}
-
-    }
-
-    // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
-    
-    let quorumMembersURLs = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
-
-    for(let memberURL of quorumMembersURLs){
-
-        let itsProbablyAggregatedFinalizationProof = await fetch(memberURL+'/aggregated_finalization_proof/'+nextBlockID,{agent:GET_HTTP_AGENT(memberURL)}).then(r=>r.json()).catch(()=>null)
-
-        if(itsProbablyAggregatedFinalizationProof){
-
-            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler)
-
-            if(isOK){
-
-                if(itsProbablyAggregatedFinalizationProof.prevBlockHash !== hashOfCurrentBlock) return {verify:false,shouldDelete:true}
-
-                else if(itsProbablyAggregatedFinalizationProof.blockID === nextBlockID) return {verify:true}
+                }
 
             }
 
         }
 
-    }
-
-    // If we can't find - try next time
-
-    return {verify:false}
+    }else return localVersionOfAfp
 
 },
 
@@ -1216,7 +1136,7 @@ TRY_TO_CHANGE_EPOCH = async vtEpochHandler => {
 
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler,rootPubKey)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler)
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePoolForNextEpoch){                            
                             
@@ -2152,8 +2072,8 @@ verifyBlock=async(block,subchainContext)=>{
         currentKlyEvmContextMetadata.parentHash = currentHash.toString('hex')
         
 
-        // Imagine that it's 1 block per 2 seconds
-        let nextTimestamp = currentKlyEvmContextMetadata.timestamp+2
+        // Imagine that it's 1 block per 1 second
+        let nextTimestamp = currentKlyEvmContextMetadata.timestamp+1
     
         currentKlyEvmContextMetadata.timestamp = nextTimestamp
         
