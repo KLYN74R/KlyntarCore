@@ -429,13 +429,13 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             }
                         
-            and try to find AFP_FOR_SECOND_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:1').catch(()=>false)
+            and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
 
             If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
 
-            In case we have AFP for second block(with index 1) - it's a clear proof that block 0 is 100% accepted by network and we can get the hash of first block from here:
+            In case we have AFP for the first block(with index 0) - it's a clear proof that block 0 is 100% accepted by network and we can get the hash of first block from here:
 
-                AFP_FOR_SECOND_BLOCK.prevBlockHash
+                AFP_FOR_FIRST_BLOCK.blockHash
  
 
         6. Once we find all of them - extract EPOCH_EDGE_OPERATIONS from block headers and run it in a sync mode
@@ -583,17 +583,17 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
 
-                // First of all - try to find AFP for second block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:1
+                // First of all - try to find AFP for first block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:0
 
-                let secondBlockID = qtEpochHandler.id+':'+primePoolPubKey+':1'
+                let firstBlockID = qtEpochHandler.id+':'+primePoolPubKey+':0'
 
-                let afpForSecondBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
 
-                if(afpForSecondBlockOfPrimePool){
+                if(afpForFirstBlockOfPrimePool){
 
                     epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                    epochCache[primePoolPubKey].firstBlockHash = afpForSecondBlockOfPrimePool.prevBlockHash // since we need the hash of first block(index=0), take the field .prevBlockHash from AFP for second block(with index=1)
+                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
 
                     epochCache[primePoolPubKey].firstBlockOnSubchainFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
@@ -605,17 +605,17 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+secondBlockID,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockID,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>null)
             
                         if(itsProbablyAggregatedFinalizationProof){
             
                             let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtEpochHandler)
             
-                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === secondBlockID){                            
+                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockID){                            
                             
                                 epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.prevBlockHash
+                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
 
                                 epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
 
@@ -637,17 +637,17 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                         let reservePoolPubKey = arrayOfReservePools[position]
 
-                        let secondBlockIDBySomePool = qtEpochHandler.id+':'+reservePoolPubKey+':1'
+                        let firstBlockIDBySomePool = qtEpochHandler.id+':'+reservePoolPubKey+':0'
 
-                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockIDBySomePool).catch(()=>false)
+                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockIDBySomePool).catch(()=>null)
 
-                        if(afp && afp.blockID === secondBlockIDBySomePool){
+                        if(afp && afp.blockID === firstBlockIDBySomePool){
 
                             //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
 
                             let potentialFirstBlock = await GET_BLOCK(qtEpochHandler.id,reservePoolPubKey,0)
 
-                            if(potentialFirstBlock && afp.prevBlockHash === Block.genHash(potentialFirstBlock)){
+                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
 
                                 /*
                             
@@ -1129,7 +1129,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                 currentAuthority:indexOfAuthority,
 
-                afpForSecondBlock:{},
+                afpForFirstBlock:{},
 
                 metadataForCheckpoint:temporaryObject.EPOCH_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
@@ -1139,9 +1139,9 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
 
-                let secondBlockID = qtEpochHandler.id+':'+pubKeyOfAuthority+':1'
+                let firstBlockID = qtEpochHandler.id+':'+pubKeyOfAuthority+':0'
 
-                epochFinishProposition[primePoolPubKey].afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
+                epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
 
             }
             
@@ -1212,11 +1212,11 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                         if(response){
 
-                            if(response.status==='OK' && typeof metadata.afpForSecondBlock.blockHash === 'string'){
+                            if(response.status==='OK' && typeof metadata.afpForFirstBlock.blockHash === 'string'){
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForSecondBlock.prevBlockHash+epochFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
 
                                 let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
@@ -1286,7 +1286,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                     
                     lastHash:metadata.metadataForCheckpoint.hash,
 
-                    hashOfFirstBlockByLastAuthority:metadata.afpForSecondBlock.prevBlockHash,
+                    hashOfFirstBlockByLastAuthority:metadata.afpForFirstBlock.blockHash,
 
                     proofs:Object.fromEntries(agreementsForEpochManager)
                     
@@ -1887,9 +1887,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let responsePromises = []
 
-            let secondBlockID = epochHandler.id+':'+poolPubKeyForHunting+':1' // epochID:PubKeyOfCreator:1 - second block in epoch
+            let firstBlockID = epochHandler.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-            let afpForSecondBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>false)
+            let afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
 
             let firstBlockHash
 
@@ -1898,9 +1898,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             // Set the hash of first block for pool that we're going to skip
             // In case we skip on his height -1(no blocks were created) - set the null hash. Otherwise - 
-            if(!afpForSecondBlock && skipHandler.skipData.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+            if(!afpForFirstBlock && skipHandler.skipData.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-            else firstBlockHash = afpForSecondBlock.prevBlockHash
+            else firstBlockHash = afpForFirstBlock.blockHash
 
 
 
@@ -1933,7 +1933,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     subchain:primePoolPubKey,
 
-                    afpForSecondBlock,
+                    afpForFirstBlock,
 
                     skipData:skipHandler.skipData
 

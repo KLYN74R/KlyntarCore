@@ -678,7 +678,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
                 currentAuthority:<int - pointer to current authority of subchain based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
                 
-                afpForSecondBlock:{
+                afpForFirstBlock:{
 
                     prevBlockHash,
                     blockID,
@@ -801,7 +801,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
             if(responseStructure[subchainID]) continue
 
-            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.afpForSecondBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
+            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
 
                 // Get the local version of REASSIGNMENTS and CHECKPOINT_MANAGER
 
@@ -833,19 +833,19 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
                 let epochManagerForAuthority = tempObject.EPOCH_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
-                // Try to define the first block hash. For this, use the proposition.afpForSecondBlock
+                // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
                         
                 let hashOfFirstBlockByLastAuthority
 
-                let blockIDOfSecondBlock = qtEpochHandler.id+':'+pubKeyOfCurrentAuthorityOnSubchain+':1' // first block has index 0, second block has index 1. Numeration from 0
+                let blockIdOfFirstBlock = qtEpochHandler.id+':'+pubKeyOfCurrentAuthorityOnSubchain+':0' // first block has index 0 - numeration from 0
 
-                if(blockIDOfSecondBlock === proposition.afpForSecondBlock.blockID && proposition.metadataForCheckpoint.index>=0){
+                if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.metadataForCheckpoint.index>=0){
 
-                    // Verify the AFP for second block
+                    // Verify the AFP for first block
 
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForSecondBlock,qtEpochHandler)
+                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtEpochHandler)
 
-                    if(afpIsOk) hashOfFirstBlockByLastAuthority = proposition.afpForSecondBlock.prevBlockHash
+                    if(afpIsOk) hashOfFirstBlockByLastAuthority = proposition.afpForFirstBlock.blockHash
 
 
                 }
@@ -981,10 +981,10 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
         subchain
 
-        afpForSecondBlock:{
+        afpForFirstBlock:{
 
             prevBlockHash
-            blockID,    => epochID:poolPubKey:1
+            blockID,    => epochID:poolPubKey:0
             blockHash,
             proofs:{
 
@@ -1154,12 +1154,12 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             }
 
 
-            //_____________________ Verify the AFP for second block to understand the hash of first block ______________________________
+            //_____________________ Verify the AFP for the first block to understand the hash of first block ______________________________
 
             // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
             
 
-            let dataToSignForSkipProof, secondBlockAfpIsOk = false
+            let dataToSignForSkipProof, firstBlockAfpIsOk = false
 
 
             /*
@@ -1168,7 +1168,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 In case index === -1 it's a signal that no block was created, so no ASPs for previous pool. Sign the nullhash(0123456789ab...)
 
-                Otherwise - find block, compare it's hash with <requestForSkipProof.afpForSecondBlock.prevBlockHash>
+                Otherwise - find block, compare it's hash with <requestForSkipProof.afpForFirstBlock.prevBlockHash>
 
                 In case hashes match - extract the ASP for previous pool <epochHandler.reassignmentChains[subchain][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
@@ -1188,20 +1188,22 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
                 
                 dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
-                secondBlockAfpIsOk = true
+                firstBlockAfpIsOk = true
 
 
-            }else if(index > 0 && typeof requestForSkipProof.afpForSecondBlock === 'object'){
+            }else if(index > 0 && typeof requestForSkipProof.afpForFirstBlock === 'object'){
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
-                let blockIdOfSecondBlock = epochHandler.id+':'+requestForSkipProof.poolPubKey+':1'
+                let blockIdOfFirstBlock = epochHandler.id+':'+requestForSkipProof.poolPubKey+':0'
             
-                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForSkipProof.afpForSecondBlock,epochHandler) && requestForSkipProof.afpForSecondBlock.blockID === blockIdOfSecondBlock){
+                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForSkipProof.afpForFirstBlock,epochHandler) && requestForSkipProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
 
                     let block = await GET_BLOCK(epochHandler.id,requestForSkipProof.poolPubKey,0)
 
-                    if(block && Block.genHash(block) === requestForSkipProof.afpForSecondBlock.prevBlockHash){
+                    if(block && Block.genHash(block) === requestForSkipProof.afpForFirstBlock.blockHash){
+
+                        // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
 
                         let hashOfAspForPreviousPool = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
@@ -1211,11 +1213,11 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                         }
 
-                        let firstBlockHash = requestForSkipProof.afpForSecondBlock.prevBlockHash
+                        let firstBlockHash = requestForSkipProof.afpForFirstBlock.blockHash
 
                         dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hashOfAspForPreviousPool}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
-                        secondBlockAfpIsOk = true                    
+                        firstBlockAfpIsOk = true                    
     
                     }
 
@@ -1225,7 +1227,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
             
             // If proof is ok - generate reassignment proof
 
-            if(secondBlockAfpIsOk){
+            if(firstBlockAfpIsOk){
 
                 let skipMessage = {
                     
@@ -1237,7 +1239,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
                 !response.aborted && response.end(JSON.stringify(skipMessage))
 
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signature for secondBlockAfp`}))
+            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures in <afpForFirstBlock>`}))
 
              
         }
@@ -1303,8 +1305,6 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
     if(typeof subchain === 'string' && typeof indexOfNext === 'number' && typeof session === 'string' && session.length === 64 && qtEpochHandler.reassignmentChains[subchain]){
 
-        let nextPoolPubKey = qtEpochHandler.reassignmentChains[subchain][indexOfNext]
-
         let pubKeyOfPoolThatWeAreGoingToSkip = qtEpochHandler.reassignmentChains[subchain][indexOfNext-1] || subchain
 
         let skipHandler = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolThatWeAreGoingToSkip)
@@ -1314,7 +1314,7 @@ getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-
 
         if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
     
-            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${nextPoolPubKey}:${session}:${epochFullID}`,global.PRIVATE_KEY)
+            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${pubKeyOfPoolThatWeAreGoingToSkip}:${session}:${epochFullID}`,global.PRIVATE_KEY)
     
             !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
     
