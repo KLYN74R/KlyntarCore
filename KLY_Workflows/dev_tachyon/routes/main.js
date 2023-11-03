@@ -251,7 +251,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
                         epochFullID,
         
-                        poolsRegistryOnQuorumThread
+                        epochHandler
 
                     ).then(value=>value.isOK).catch(()=>false)
 
@@ -1026,7 +1026,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
 [1] In case we have skip handler for this pool in SKIP_HANDLERS and if <skipData> in skip handler has <= index than in <skipData> from request we can response
 
-    Also, bear in mind that we need to sign the hash of ASP for previous pool (field <previousAspInRcHash>). We need this to verify the chains of ASPs by hashes not signatures.
+    Also, bear in mind that we need to sign the hash of ASP for previous pool (field <previousAspHash>). We need this to verify the chains of ASPs by hashes not signatures.
 
 
 
@@ -1043,7 +1043,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
     {
         type:'OK',
-        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
     }
 
 
@@ -1172,7 +1172,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
                 In case hashes match - extract the ASP for previous pool <epochHandler.reassignmentChains[subchain][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
-                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
 
             */
 
@@ -1473,7 +1473,7 @@ Function to return the current information about authorities on subchains
 
             aspForPrevious:{
 
-                previousAspInRcHash,
+                previousAspHash,
 
                 firstBlockHash,
 
@@ -1586,7 +1586,7 @@ getCurrentSubchainAuthorities = async response => {
 
             "poolPubKeyX":{
 
-                previousAspInRcHash,
+                previousAspHash,
 
                 firstBlockHash,
 
@@ -1607,7 +1607,7 @@ getCurrentSubchainAuthorities = async response => {
 
             "poolPubKeY":{
 
-                previousAspInRcHash,
+                previousAspHash,
 
                 firstBlockHash,
 

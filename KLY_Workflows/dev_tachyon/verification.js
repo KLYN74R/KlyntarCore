@@ -253,7 +253,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
     
     {
 
-        previousAspInRcHash,
+        previousAspHash,
 
         firstBlockHash,
 
@@ -271,7 +271,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
     }
 
-        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${previousAspHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
 
@@ -284,11 +284,11 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
         // Check the proofs
     
-        let {previousAspInRcHash,firstBlockHash,skipIndex,skipHash,proofs} = aggregatedSkipProof
+        let {previousAspHash,firstBlockHash,skipIndex,skipHash,proofs} = aggregatedSkipProof
 
         let majority = GET_MAJORITY(epochHandler)
 
-        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspInRcHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${previousAspHash}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         let promises = []
     

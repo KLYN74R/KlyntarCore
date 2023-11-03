@@ -1,4 +1,4 @@
-import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -1889,7 +1889,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let firstBlockID = epochHandler.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-            let afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
+            let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockID,epochHandler)
 
             let firstBlockHash
 
@@ -1972,7 +1972,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 
                     {
                         type:'OK',
-                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspInRcHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
+                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
                     }
 
                     We should just verify this signature and add to local list for further aggregation
