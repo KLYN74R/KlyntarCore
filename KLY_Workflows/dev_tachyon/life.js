@@ -956,16 +956,47 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         return
 
     }
-    
+
 
     let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
 
 
     if(iAmInTheQuorum && !EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
-
+        
         // Stop to generate commitments/finalization proofs
         temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
+        let canGenerateEpochFinalizationProof = true
+
+        
+        for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
+
+            let indexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey)?.currentAuthority || -1
+
+            let pubKeyOfAuthority = qtEpochHandler.reassignmentChains[primePoolPubKey][indexOfCurrentAuthorityOnSubchain]
+
+
+            if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfAuthority)){
+
+                canGenerateEpochFinalizationProof = false
+
+                break
+
+            }
+
+        }
+
+        if(canGenerateEpochFinalizationProof){
+
+            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
+
+                temporaryObject.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
+
+
+            ).catch(()=>{})
+
+        }
+        
 
         // Check the safety
         if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
@@ -1645,13 +1676,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     }
 
 
-    // if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
-    //     setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
+        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
 
-    //     return
+        return
 
-    // }
+    }
 
 
     let majority = GET_MAJORITY(epochHandler)
@@ -1688,9 +1719,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             */
 
-            for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority ; positionInRc >= -1; positionInRc--){
+            for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority-1 ; positionInRc >= -1; positionInRc--){
 
-                let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc]
+                let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc] || primePoolPubKey
 
                 let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
 
@@ -3518,6 +3549,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     }
 
+
     //________________________________ Start to find ________________________________
 
     let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
@@ -3776,25 +3808,25 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
     //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
-    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
+    //SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
-    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
-    TEMPORARY_REASSIGNMENTS_BUILDER()
+    //TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅6. Start to generate blocks
-    BLOCKS_GENERATION()
+    //BLOCKS_GENERATION()
 
 
 

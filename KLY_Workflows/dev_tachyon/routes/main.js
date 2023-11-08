@@ -306,7 +306,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                             tempObject.EPOCH_MANAGER.set(block.creator,futureMetadataToStore)
     
-                            
+
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
         
                             let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
