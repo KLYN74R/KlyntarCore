@@ -1172,7 +1172,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                 let firstBlockID = qtEpochHandler.id+':'+pubKeyOfAuthority+':0'
 
-                epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
+                epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
 
             }
             
