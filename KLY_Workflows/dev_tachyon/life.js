@@ -1025,7 +1025,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             if(handlerWithIndexOfCurrentAuthorityOnSubchain){
 
-                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority]
+                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority] || primePoolPubKey
 
                 indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority
 
@@ -1193,7 +1193,8 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             // No sense to get the commitment if we already have
 
             optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
-            
+        
+
             await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 
                 /*
@@ -1260,13 +1261,13 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 let {index,hash,afp} = response.metadataForCheckpoint
                             
-                                let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority]
+                                let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority] || primePoolPubKey
                                 
                                 let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
-                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedAuthority+':'+(index+1)
+                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedAuthority+':'+index
                             
-                                if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.prevBlockHash){
+                                if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
 
                                     let {prevBlockHash,blockID,blockHash,proofs} = afp
                             
@@ -1292,7 +1293,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                 }
                 
-            }).catch(()=>{})
+            }).catch(()=>{});
             
             
         }

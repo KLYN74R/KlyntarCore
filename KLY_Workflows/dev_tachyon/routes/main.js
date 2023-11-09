@@ -826,7 +826,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
                     localIndexOfAuthority = reassignmentForThisSubchain.currentAuthority
 
-                    pubKeyOfCurrentAuthorityOnSubchain = qtEpochHandler.reassignmentChains[subchainID][localIndexOfAuthority]
+                    pubKeyOfCurrentAuthorityOnSubchain = qtEpochHandler.reassignmentChains[subchainID][localIndexOfAuthority] || subchainID
 
                 }else{
 
@@ -886,60 +886,74 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
                         }
 
                             
-                    }
+                    }else if(epochManagerForAuthority.index < proposition.metadataForCheckpoint.index){
 
-                }else if(epochManagerForAuthority.index < proposition.metadataForCheckpoint.index){
+                        // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send EPOCH_FINALIZATION_PROOF
 
-                    // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send EPOCH_FINALIZATION_PROOF
+                        let {index,hash,afp} = proposition.metadataForCheckpoint
 
-                    let {index,hash,afp} = proposition.metadataForCheckpoint
-
-                    let isOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
+                        let isOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
 
-                    if(isOk){
+                        if(isOk){
 
-                        // Check that this AFP is for appropriate pool
+                            // Check that this AFP is for appropriate pool
 
-                        let [_,pubKeyOfCreator] = afp.blockID.split(':')
+                            let [_,pubKeyOfCreator] = afp.blockID.split(':')
 
-                        if(pubKeyOfCreator === pubKeyOfCurrentAuthorityOnSubchain){
+                            if(pubKeyOfCreator === pubKeyOfCurrentAuthorityOnSubchain){
 
                             
-                            if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
+                                if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
 
-                            else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
+                                else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
     
 
-                            if(epochManagerForAuthority){
+                                if(epochManagerForAuthority){
 
-                                epochManagerForAuthority.index = index
+                                    epochManagerForAuthority.index = index
     
-                                epochManagerForAuthority.hash = hash
+                                    epochManagerForAuthority.hash = hash
     
-                                epochManagerForAuthority.afp = afp
+                                    epochManagerForAuthority.afp = afp
     
-                            }else tempObject.EPOCH_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,afp})
+                                }else tempObject.EPOCH_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,afp})
 
                             
-                            // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
+                                // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
 
-                            let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+epochFullID
+                                let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+epochFullID
 
-                            responseStructure[subchainID] = {
+                                responseStructure[subchainID] = {
                             
-                                status:'OK',
+                                    status:'OK',
                         
-                                sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                                    sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
                         
+                                }
+
                             }
 
                         }
 
+
+                    }else if(epochManagerForAuthority.index > proposition.metadataForCheckpoint.index){
+
+                        // Send 'UPGRADE' msg
+
+                        responseStructure[subchainID] = {
+
+                            status:'UPGRADE',
+                            
+                            currentAuthority:localIndexOfAuthority,
+                
+                            metadataForCheckpoint:epochManagerForAuthority // {index,hash,afp}
+                    
+                        }
+
                     }
 
-
-                }else if(epochManagerForAuthority.index > proposition.metadataForCheckpoint.index){
+                }else if(proposition.currentAuthority < localIndexOfAuthority){
 
                     // Send 'UPGRADE' msg
 
@@ -955,9 +969,7 @@ acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allo
 
                 }
 
-
             }
-
 
         }
 
