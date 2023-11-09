@@ -587,7 +587,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 let firstBlockID = qtEpochHandler.id+':'+primePoolPubKey+':0'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>false)
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
 
                 if(afpForFirstBlockOfPrimePool){
 
@@ -618,6 +618,8 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                                 epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
 
                                 epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
+
+                                break // no more sense to find
 
                             }
             
@@ -769,7 +771,12 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === epochCache[primePoolPubKey].firstBlockHash){
 
-                    epochEdgeOperations.push(...firstBlockOnThisSubchain.epochEdgeOperations)
+                    if(Array.isArray(firstBlockOnThisSubchain.epochEdgeOperations)){
+
+                        epochEdgeOperations.push(...firstBlockOnThisSubchain.epochEdgeOperations)
+
+                    }
+                    
 
                     firstBlocksHashes.push(epochCache[primePoolPubKey].firstBlockHash)
 
@@ -866,7 +873,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 global.SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThread
 
-                LOG(`QUORUM_THREAD was updated => \x1b[34;1m${nextEpochId} ### ${nextEpochHash}`,'S')
+                LOG(`QUORUM_THREAD was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,'S')
 
 
                 //_______________________Check the version required for the next checkpoint________________________
@@ -3809,16 +3816,16 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    //START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
-    //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
+    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
     //SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
-    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     //REASSIGN_PROCEDURE_MONITORING()

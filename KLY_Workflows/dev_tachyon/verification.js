@@ -1538,7 +1538,7 @@ START_VERIFICATION_THREAD=async()=>{
     
     let currentEpochIsFresh = CHECK_IF_EPOCH_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
 
-    let vtEpoch = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
+    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
     let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
 
@@ -1546,9 +1546,9 @@ START_VERIFICATION_THREAD=async()=>{
 
     let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
-    let vtEpochFullID = vtEpoch.hash+"#"+vtEpoch.id
+    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
-    let vtEpochIndex = vtEpoch.id
+    let vtEpochIndex = vtEpochHandler.id
 
         
         
@@ -1578,7 +1578,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtEpoch.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
 
         let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
@@ -1613,7 +1613,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromEpoch.index){
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtEpoch.poolsMetadata[poolToVerifyRightNow]
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtEpochHandler.poolsMetadata[poolToVerifyRightNow]
 
             reassignmentsBasedOnEpochData.currentToVerify++
 
@@ -1626,16 +1626,18 @@ START_VERIFICATION_THREAD=async()=>{
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
         
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtEpoch.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
         
-        let localMetadataOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+        let verificationStatsOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
+
+        let metadataWherePoolWasReassigned = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash} || null
 
         
         // Try check if we have established a WSS channel to fetch blocks
 
         if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
 
             global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
@@ -1656,7 +1658,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
 
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpoch)
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
             
             global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
@@ -1677,12 +1679,22 @@ START_VERIFICATION_THREAD=async()=>{
 
             let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
-            let stepsForWhile = biggestHeightInCache - localMetadataOfThisPool.index
+            let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
 
             // Start the cycle to process all the blocks
             while(stepsForWhile > 0){
+
+                if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
+
+                    // Move to next one
+
+                    tempReassignmentsForSomeSubchain.currentToVerify++
+
+                    break
+
+                }
     
-                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(localMetadataOfThisPool.index+1)
+                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
     
                 let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
     
@@ -1708,7 +1720,7 @@ START_VERIFICATION_THREAD=async()=>{
 
     if(!currentEpochIsFresh){
 
-        await TRY_TO_CHANGE_EPOCH(vtEpoch)
+        await TRY_TO_CHANGE_EPOCH(vtEpochHandler)
             
     }
 
