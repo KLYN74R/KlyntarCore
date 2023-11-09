@@ -1051,7 +1051,7 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
 
 
-TRY_TO_CHANGE_EPOCH = async vtEpochHandler => {
+TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
     /* 
             
@@ -1517,6 +1517,48 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
 
 
+CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
+
+    if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
+
+        await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
+
+        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+
+        setTimeout(()=>{
+
+            global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+
+        },5000)
+
+        
+    }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
+
+        // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
+
+        let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+        tunnelHandler.connection.close()
+
+        global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
+
+        await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
+        
+        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+
+        setTimeout(()=>{
+
+            global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+
+        },5000)
+
+    }
+
+},
+
+
+
+
 START_VERIFICATION_THREAD=async()=>{
 
     let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
@@ -1560,64 +1602,90 @@ START_VERIFICATION_THREAD=async()=>{
 
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
 
+        
+        /*
+        
+            In case we have .REASSIGNMENT_METADATA - it's a signal that the new epoch on QT has started
+            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .REASSIGNMENT_METADATA which has the structure
 
-        let reassignmentsBasedOnEpochData = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash}}
+            {
+                subchain:{
 
-        // This means that new checkpoint is already here, so we can ignore the TEMP_REASSIGNMENTS and orientate to these pointers
+                    pool0:{index,hash},
+                    ...
+                    poolN:{index,hash}
 
-        let indexOfCurrentPoolToVerify = reassignmentsBasedOnEpochData.currentToVerify
-
-        if(typeof indexOfCurrentPoolToVerify !== 'number'){
-
-            indexOfCurrentPoolToVerify = -1
-
-            reassignmentsBasedOnEpochData.currentToVerify = -1
-
-        }
-
-
-        // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ?  currentSubchainToCheck : vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
-
-        let metadataOfThisPoolLocal = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
-
-        let metadataOfThisPoolBasedOnReassignmentsFromEpoch = reassignmentsBasedOnEpochData[poolToVerifyRightNow] // {index,hash}
-
-            
-
-
-        //_________________________Now check - if this pool already have the same index & hash as in checkpoint - change the pointer to the next in a row_________________________
-
-
-        if(metadataOfThisPoolLocal.index < metadataOfThisPoolBasedOnReassignmentsFromEpoch.index){
-            
-            // Process the block
-                
-            let block = await GET_BLOCK(vtEpochIndex,poolToVerifyRightNow,metadataOfThisPoolLocal.index+1)
-
-            if(block){
-                
-                await verifyBlock(block,currentSubchainToCheck)
-                
-                LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
-                
-            }else{
-                
-                // If we can't get the block - try to skip this subchain and verify the next subchain in the next iteration
-                
-                global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-                
+                }
             }
+
+            We just need to go through the .REASSIGNMENT_METADATA[currentSubchainToCheck] and start the cycle over vtEpochHandler.reassignmentChains[currentSubchainToCheck] and verify all the blocks
+
+        */
+
+
+
+        let metadataForSubchainFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash},...}
+
+        let indexOfPool = -1 // start from prime pool with index -1 in RC
+
+
+        
+        while(true){
+
+            let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfPool] || currentSubchainToCheck
+
+            let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
+
+            let metadataFromAefpForThisPool = metadataForSubchainFromAefp[poolPubKey]
+
+
+            if(!metadataFromAefpForThisPool) break
+
+
+            await CHECK_CONNECTION_WITH_POOL(poolPubKey,vtEpochHandler)
+
+
+            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+            if(tunnelHandler){
             
+                let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
-        }else if(metadataOfThisPoolLocal.index === metadataOfThisPoolBasedOnReassignmentsFromEpoch.index){
+                let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] = vtEpochHandler.poolsMetadata[poolToVerifyRightNow]
+                
+                // Start the cycle to process all the blocks
+                while(stepsForWhile > 0){
 
-            reassignmentsBasedOnEpochData.currentToVerify++
+                    if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index){
+
+                        indexOfPool++
+
+                        break
+
+                    }
+        
+                    let blockIdToGet = vtEpochIndex+':'+poolPubKey+':'+(localVtMetadataForPool.index+1)
+        
+                    let block = tunnelHandler.cache.get(blockIdToGet)
+        
+        
+                    if(block){
+        
+                        await verifyBlock(block,currentSubchainToCheck)
+            
+                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+            
+                    }
+                    
+                    stepsForWhile--
+            
+                }    
+
+            }
 
         }
+
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeSubchain){
 
@@ -1630,45 +1698,12 @@ START_VERIFICATION_THREAD=async()=>{
         
         let verificationStatsOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
-        let metadataWherePoolWasReassigned = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash} || null
+        let metadataWherePoolWasReassigned = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentAuthority)
 
         
         // Try check if we have established a WSS channel to fetch blocks
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
-
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
-
-            global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
-
-            setTimeout(()=>{
-
-                global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
-
-            },5000)
-
-            
-        }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
-
-            // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
-
-            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-            tunnelHandler.connection.close()
-
-            global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
-
-            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
-            
-            global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
-
-            setTimeout(()=>{
-
-                global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
-
-            },5000)
-
-        }
+        await CHECK_CONNECTION_WITH_POOL(poolToVerifyRightNow,vtEpochHandler)
 
 
         // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
@@ -1696,7 +1731,7 @@ START_VERIFICATION_THREAD=async()=>{
     
                 let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
     
-                let block = tunnelHandler.cache.get(blockIdToGet) // await GET_BLOCK(vtCheckpointIndex,poolToVerifyRightNow,localMetadataOfThisPool.index+1)
+                let block = tunnelHandler.cache.get(blockIdToGet)
     
     
                 if(block){
@@ -1713,18 +1748,15 @@ START_VERIFICATION_THREAD=async()=>{
     
         }
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
-
     }
 
 
-    if(!currentEpochIsFresh){
+    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
-        await TRY_TO_CHANGE_EPOCH(vtEpochHandler)
+
+    if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
             
-    }
 
- 
     setImmediate(START_VERIFICATION_THREAD)
 
 },
