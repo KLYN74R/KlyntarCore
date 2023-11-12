@@ -3822,19 +3822,19 @@ RUN_SYMBIOTE=async()=>{
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
-    //SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
+    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
-    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    //REASSIGN_PROCEDURE_MONITORING()
+    REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
-    //TEMPORARY_REASSIGNMENTS_BUILDER()
+    TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅6. Start to generate blocks
-    //BLOCKS_GENERATION()
+    BLOCKS_GENERATION()
 
 
 

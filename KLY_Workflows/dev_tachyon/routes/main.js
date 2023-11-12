@@ -333,6 +333,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 }
 
 
+
+
 let RETURN_BLOCKS_RANGE = async(data,connection)=>{
 
     // We need to send range of blocks from <heightThatUserHave+1> to <heightThatUserHave+499> or less(limit is up to 500 blocks). Also, send the AFP for latest block
@@ -345,7 +347,6 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
         afpForLatest:{}
 
     }
-
 
     for(let i=1;i<500;i++){
 
@@ -362,6 +363,10 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
             responseStructure.blocks.push(block)
 
             responseStructure.afpForLatest = afpForBlock
+
+        }else if(block && data.sendWithNoAfp && data.sendWithNoAfp.index === block.index){
+
+            responseStructure.blocks.push(block)
 
         }else break
 

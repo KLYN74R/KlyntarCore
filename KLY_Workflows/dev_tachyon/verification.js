@@ -1365,11 +1365,42 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                         if(typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
 
+
+                            if(global.SYMBIOTE_META.STUFF_CACHE.has('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)){
+
+                                let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+
+                                let lastBlockThatWeGet = parsedData.blocks[parsedData.blocks.length-1]
+
+                                if(lastBlockThatWeGet){
+
+                                    let blockHash = Block.genHash(lastBlockThatWeGet)
+
+                                    if(blockHash === lastBlockInfo.hash && lastBlockInfo.index === lastBlockThatWeGet.index){
+
+                                        let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+lastBlockThatWeGet.index
+
+                                        handler.cache.set(blockID,lastBlockThatWeGet)
+                                        
+                                        handler.hasUntilHeight = lastBlockThatWeGet.index
+                                        
+                                        global.SYMBIOTE_META.STUFF_CACHE.delete('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+
+                                    }
+
+                                }
+
+                                return
+
+                            }
+
+
+
+
+
                             // Make sure it's a chain
 
                             let breaked = false
-
-
 
                             /*
                         
@@ -1473,9 +1504,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
         
                                 hasUntilHeight:handler.hasUntilHeight,
 
-                                epochIndex:epochHandler.id
+                                epochIndex:epochHandler.id,
+
+                                sendWithNoAfp:global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
         
-                            } 
+                            }
         
                             connection.sendUTF(JSON.stringify(messageToSend))
     
@@ -1502,7 +1535,6 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                 })
 
                 global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
-
 
             })
 
@@ -1629,7 +1661,7 @@ START_VERIFICATION_THREAD=async()=>{
         let indexOfPool = -1 // start from prime pool with index -1 in RC
 
 
-        
+
         while(true){
 
             let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfPool] || currentSubchainToCheck
@@ -1701,6 +1733,23 @@ START_VERIFICATION_THREAD=async()=>{
         let metadataWherePoolWasReassigned = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentAuthority)
 
         
+        if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
+
+            // Move to next one
+            tempReassignmentsForSomeSubchain.currentToVerify++
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+
+
+            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+                    
+        
+            setImmediate(START_VERIFICATION_THREAD)
+
+            return
+
+        }
+        
         // Try check if we have established a WSS channel to fetch blocks
 
         await CHECK_CONNECTION_WITH_POOL(poolToVerifyRightNow,vtEpochHandler)
@@ -1710,24 +1759,20 @@ START_VERIFICATION_THREAD=async()=>{
 
         let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
+
         if(tunnelHandler){
 
             let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
             let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
 
+            // In this case we can grab the final block
+            if(metadataWherePoolWasReassigned) global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,metadataWherePoolWasReassigned)
+
             // Start the cycle to process all the blocks
+
             while(stepsForWhile > 0){
 
-                if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
-
-                    // Move to next one
-
-                    tempReassignmentsForSomeSubchain.currentToVerify++
-
-                    break
-
-                }
     
                 let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
     
