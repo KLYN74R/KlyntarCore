@@ -446,7 +446,6 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
     
     */
-    
 
     if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
@@ -574,6 +573,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             }
             
 
+
             /*
         
                 ███████╗██╗███╗   ██╗██████╗     ███████╗██╗██████╗ ███████╗████████╗    ██████╗ ██╗      ██████╗  ██████╗██╗  ██╗███████╗
@@ -633,6 +633,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             
                 }
 
+        
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
                 if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
@@ -947,13 +948,13 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 // Set next temporary object by ID
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
-                // Continue to find checkpoints
-                setImmediate(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS)
-
 
             }
 
         }
+
+        // Continue to find checkpoints
+        setImmediate(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS)
 
     }
 
@@ -1081,7 +1082,6 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             }
 
-            if(agreementsForThisSubchain.size >= majority) continue
 
             /*
             
@@ -1178,6 +1178,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             */
          
+
             epochFinishProposition[primePoolPubKey] = {
 
                 currentAuthority:indexOfAuthority,
