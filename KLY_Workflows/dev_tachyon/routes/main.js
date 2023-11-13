@@ -124,7 +124,6 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         // Add the sync flag to prevent creation proofs during the process of skip this pool
         tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
-
         let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
 
         let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(block.creator)
@@ -155,6 +154,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         if(!thisAuthorityCanGenerateBlocksNow){
     
             connection.close()
+
+            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
     
             return
     
@@ -218,16 +219,19 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     //_________________________________________1_________________________________________
                     
+                    // Since we need to verify the AEFP signed by previous quorum - take it from legacy data
 
-                    let aefpIsOk = epochHandler.id === 0 || await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                    let legacyEpochData = await global.SYMBIOTE_META.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}
+
+                    let aefpIsOk = epochHandler.id === 0 || legacyEpochData && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
         
                         block.extraData.aefpForPreviousEpoch,
                             
-                        epochHandler.quorum,
+                        legacyEpochData.quorum,
                             
-                        GET_MAJORITY(epochHandler),
+                        legacyEpochData.majority,
         
-                        epochFullID
+                        legacyEpochData.epochFullID
                             
                     ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.subchain === primePoolPubKey
 
@@ -260,6 +264,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                         connection.close()
 
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+
                         return
 
                     }
@@ -277,6 +283,8 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                     if(!itsAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockID !== 'string' || typeof blockHash !== 'string' || typeof proofs !== 'object'){
                         
                         connection.close()
+
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
                 
                         return
                 
@@ -284,7 +292,13 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                        
                     let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
     
-                    if(!isOK) return
+                    if(!isOK){
+
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+
+                        return
+
+                    }
 
 
                 }
@@ -324,7 +338,12 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                 ).catch(()=>{})
 
 
-            } else connection.close()
+            } else {
+
+                connection.close()
+
+                tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+            }
 
         }        
 
@@ -642,7 +661,7 @@ getAggregatedEpochFinalizationProof=async(response,request)=>{
 
         let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${subchainID}`).catch(()=>false)
 
-
+        
         if(aggregatedEpochFinalizationProofForSubchain){
 
             !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))

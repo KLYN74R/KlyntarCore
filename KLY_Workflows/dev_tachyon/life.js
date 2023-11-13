@@ -696,7 +696,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                         }else if(aspForPreviousPool.skipIndex !== -1){
     
-                                            // Get the first block of pool which was reassigned on not-null height
+                                            // Get the first block of pool reassigned on not-null height
                                             let potentialFirstBlockBySomePool = await GET_BLOCK(qtEpochHandler.id,previousPoolPubKey,0)
 
                                             if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === aspForPreviousPool.firstBlockHash){
@@ -799,6 +799,17 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 // Store the system sync operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
                 await global.SYMBIOTE_META.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
+
+
+                // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`LEGACY_DATA:${qtEpochHandler.id}`,{
+
+                    epochFullID:oldEpochFullID,
+                    quorum:qtEpochHandler.quorum,
+                    majority
+
+                }).catch(()=>false)
+
 
                 // We need it for changes
                 let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
@@ -2534,7 +2545,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     // Find locally
 
-    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${subchainID}`).catch(()=>null)
+    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${subchainID}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -2546,7 +2557,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
     
-            let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.subchain === subchainID && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
@@ -2556,7 +2567,7 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
     
                 global.SYMBIOTE_META.GENERATION_THREAD.epochFullId
             
-            ) && itsProbablyAggregatedEpochFinalizationProof.subchain === subchainID
+            )
     
             if(aefpProof) return aefpProof
     
@@ -2609,7 +2620,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
 
     // Check if <epochFullID> is the same in QT and in GT
-    
+
     if(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId !== qtEpochFullID){
 
         // If new epoch - add the aggregated proof of previous epoch finalization
@@ -2621,8 +2632,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             // If we can't find a proof - try to do it later
             // Only in case it's initial epoch(index is -1) - no sense to push it
             if(!aefpForPreviousEpoch) return
-
-            console.log('AEFP IS ',aefpForPreviousEpoch)
 
             global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
 
@@ -2649,10 +2658,22 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     }
 
-    console.log('GT is => ',global.SYMBIOTE_META.GENERATION_THREAD)
 
     let extraData = {}
 
+
+    //___________________ Add the AEFP to the first block of epoch ___________________
+
+    if(global.SYMBIOTE_META.GENERATION_THREAD.epochIndex > 0){
+
+        // Add the AEFP for previous epoch
+
+        extraData.aefpForPreviousEpoch = global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch
+
+        if(!extraData.aefpForPreviousEpoch) return
+
+
+    }
     
     // If we are even not in reserve - return
 
@@ -2661,12 +2682,6 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         // Do it only for the first block in epoch(with index 0)
 
         if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 0){
-
-            // Add the AEFP for previous epoch
-
-            extraData.aefpForPreviousEpoch = global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch
-
-            if(!extraData.aefpForPreviousEpoch) return
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         
@@ -3842,10 +3857,10 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    //REASSIGN_PROCEDURE_MONITORING()
+    REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
-    //TEMPORARY_REASSIGNMENTS_BUILDER()
+    TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅6. Start to generate blocks
     BLOCKS_GENERATION()
