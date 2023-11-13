@@ -2,7 +2,7 @@ import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_
 
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,CHECK_IF_EPOCH_STILL_FRESH as EPOCH_STILL_FRESH,USE_TEMPORARY_DB,
+    GET_QUORUM_URLS_AND_PUBKEYS,GET_MAJORITY,EPOCH_STILL_FRESH,USE_TEMPORARY_DB,
 
     GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT,
 
@@ -558,6 +558,10 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                             if(aefpPureObject && aefpPureObject.subchain === primePoolPubKey){
     
                                 epochCache[primePoolPubKey].aefp = aefpPureObject
+
+                                // Store locally
+
+                                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
     
                             }
                                         
@@ -978,9 +982,9 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         
         for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
 
-            let indexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey)?.currentAuthority || -1
+            let reassignmentData = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
 
-            let pubKeyOfAuthority = qtEpochHandler.reassignmentChains[primePoolPubKey][indexOfCurrentAuthorityOnSubchain]
+            let pubKeyOfAuthority = qtEpochHandler.reassignmentChains[primePoolPubKey][reassignmentData.currentAuthority] || primePoolPubKey
 
 
             if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfAuthority)){
@@ -1025,14 +1029,14 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
 
-            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>}
+            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}// {currentAuthority:<number>}
 
             let pubKeyOfAuthority, indexOfAuthority
             
             
-            if(handlerWithIndexOfCurrentAuthorityOnSubchain){
+            if(handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority !== -1){
 
-                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority] || primePoolPubKey
+                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority]
 
                 indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority
 
@@ -1711,6 +1715,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         if(doReassignmentRequest && reassignmentHandler.currentAuthority < doReassignmentRequest.shouldBeThisAuthority){
 
+
             /*
             
                 Update the local information
@@ -1729,27 +1734,26 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority-1 ; positionInRc >= -1; positionInRc--){
 
+
                 let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc] || primePoolPubKey
 
                 let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
 
-                if(!tempObject.SKIP_HANDLERS.has(poolPubKey)){
+                
+                // Create the skip handler if we don't have it
 
-                    // Create the skip handler if we don't have it
+                let futureSkipHandler = {
 
-                    let futureSkipHandler = {
-
-                        aggregatedSkipProof: aspForThisPool
-
-                    }
-
-                    // Store to temp DB
-
-                    await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
-
-                    tempObject.SKIP_HANDLERS.set(poolPubKey,futureSkipHandler)
+                    aggregatedSkipProof: aspForThisPool
 
                 }
+
+                // Store to temp DB
+
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
+
+                tempObject.SKIP_HANDLERS.set(poolPubKey,futureSkipHandler)
+
 
                 // No sense to continue to get more ASPs
 
@@ -1786,6 +1790,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             // Send to target pool
             fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
+
 
             // ... and to quorum members
             for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
@@ -1853,12 +1858,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             previousPoolPubKey = null
         } 
 
-        //_______________________________________
-
-        // If no more pools in reassignment chains - no sense to reassign and change authority
-
-        if(!epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]) continue
-
 
         let timeOfStartByThisAuthority = tempObject.TEMP_CACHE.get('TIME:'+poolPubKeyForHunting)
 
@@ -1872,7 +1871,8 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         }
 
-        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME){
+        // Move to next pool in reassignment chain
+        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME && epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]){
 
             // Create the skip handler in case time is out    
             
@@ -1917,10 +1917,10 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         // If no skip handler for target pool - do nothing
 
+
         if(!skipHandler) continue
         
         if(!skipHandler.aggregatedSkipProof){
-
 
             // Otherwise, send payload to => POST /get_reassignment_proof
 
@@ -2532,26 +2532,35 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
 
+    // Find locally
 
-    for(let nodeEndpoint of allKnownNodes){
+    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${subchainID}`).catch(()=>null)
 
-        let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${subchainID}`
+    if(aefpProof) return aefpProof
 
-        let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
+    else {
 
-        let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+        for(let nodeEndpoint of allKnownNodes){
+
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${subchainID}`
+    
+            let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
+    
+            let aefpProof = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                
+                itsProbablyAggregatedEpochFinalizationProof,
+    
+                global.SYMBIOTE_META.GENERATION_THREAD.quorum,
+    
+                global.SYMBIOTE_META.GENERATION_THREAD.majority,        
+    
+                global.SYMBIOTE_META.GENERATION_THREAD.epochFullId
             
-            itsProbablyAggregatedEpochFinalizationProof,
-
-            global.SYMBIOTE_META.GENERATION_THREAD.quorum,
-
-            global.SYMBIOTE_META.GENERATION_THREAD.majority,        
-
-            global.SYMBIOTE_META.GENERATION_THREAD.epochFullId
-        
-        ) && itsProbablyAggregatedEpochFinalizationProof.subchain === subchainID
-
-        if(aefpProof) return aefpProof
+            ) && itsProbablyAggregatedEpochFinalizationProof.subchain === subchainID
+    
+            if(aefpProof) return aefpProof
+    
+        }    
 
     }
     
@@ -2595,6 +2604,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     let myDataInReassignments = tempObject.REASSIGNMENTS.get(global.CONFIG.SYMBIOTE.PUB)
 
 
+
     if(typeof myDataInReassignments === 'object') return
 
 
@@ -2604,7 +2614,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
-        if(global.SYMBIOTE_META.GENERATION_THREAD.epochIndex !== 0){
+        if(epochIndex !== 0){
 
             let aefpForPreviousEpoch = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
 
@@ -2612,8 +2622,9 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             // Only in case it's initial epoch(index is -1) - no sense to push it
             if(!aefpForPreviousEpoch) return
 
-            global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
+            console.log('AEFP IS ',aefpForPreviousEpoch)
 
+            global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
 
         }
 
@@ -2638,6 +2649,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     
     }
 
+    console.log('GT is => ',global.SYMBIOTE_META.GENERATION_THREAD)
 
     let extraData = {}
 
@@ -2653,6 +2665,8 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             // Add the AEFP for previous epoch
 
             extraData.aefpForPreviousEpoch = global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch
+
+            if(!extraData.aefpForPreviousEpoch) return
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
         
@@ -3816,7 +3830,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
@@ -3828,10 +3842,10 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
-    TEMPORARY_REASSIGNMENTS_BUILDER()
+    //TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅6. Start to generate blocks
     BLOCKS_GENERATION()

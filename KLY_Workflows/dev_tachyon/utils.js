@@ -490,13 +490,15 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 
 
-CHECK_IF_EPOCH_STILL_FRESH = thread => {
+EPOCH_STILL_FRESH = thread => {
 
-    let epochTime = thread.EPOCH.timestamp
+    let sameDayStartTimestamp = new Date(thread.EPOCH.timestamp)
+
+    sameDayStartTimestamp.setHours(0,0,0,0)
 
     let currentTime = GET_GMT_TIMESTAMP()
 
-    return epochTime + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
+    return sameDayStartTimestamp.getTime() + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
 
 },
 

@@ -1138,7 +1138,7 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
 
         // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localSkipHandler.skipData.index > index){
+        if(localSkipHandler.skipData && localSkipHandler.skipData.index > index){
 
             let responseData = {
                 
