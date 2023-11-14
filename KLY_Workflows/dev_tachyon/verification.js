@@ -574,7 +574,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
     // Start the cycle in reverse order from <aefp.lastAuthority> to prime pool
 
-    let lastAuthorityPoolPubKey = oldReassignmentChainForSubchain[aefp.lastAuthority]
+    let lastAuthorityPoolPubKey = oldReassignmentChainForSubchain[aefp.lastAuthority] || primePoolPubKey
 
     emptyTemplate[lastAuthorityPoolPubKey] = {
         
@@ -1101,10 +1101,13 @@ TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
+        let totalNumberOfSubchains = 0, totalNumberOfSubchainsReadyForMove = 0
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
         // Once get it - get the real first block
         for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochReassignmentChains)){
+
+            totalNumberOfSubchains++
 
             // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
@@ -1286,11 +1289,20 @@ TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
             }
 
 
-            if(epochCache[primePoolPubKey].aefp && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]){
+            if(epochCache[primePoolPubKey].aefp) totalNumberOfSubchainsReadyForMove++
+
+        }
+
+        if(totalNumberOfSubchains === totalNumberOfSubchainsReadyForMove){
+
+            // Create empty template
+            if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
+
+            for(let primePoolPubKey of Object.keys(nextEpochReassignmentChains)){
 
                 // Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this subchain
                 
-                await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
+                if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
 
             }
 
@@ -1634,7 +1646,7 @@ START_VERIFICATION_THREAD=async()=>{
     let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA){
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]){
 
         
         /*
