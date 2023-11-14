@@ -1087,11 +1087,11 @@ TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>false)
 
 
 
@@ -1108,6 +1108,8 @@ TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
+            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey]={}
+
             if(!epochCache[primePoolPubKey].realFirstBlockFound){
 
                 // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
@@ -1120,7 +1122,7 @@ TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
                     epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.firstBlockHash
+                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
 
                     epochCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
 

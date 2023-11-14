@@ -3846,7 +3846,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    //START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
