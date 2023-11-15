@@ -281,7 +281,7 @@ export default {
                     poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
                     // Add KLY / UNO to the user's account
-                    let delayedOperationsArray = await GET_FROM_STATE('DELAYED_OPERATIONS')
+                    let unstakingOperationsArray = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
 
                     let txTemplate={
 
@@ -298,7 +298,8 @@ export default {
                     }
 
                     // This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> epoch
-                    delayedOperationsArray.push(txTemplate)
+                    
+                    unstakingOperationsArray.push(txTemplate)
 
                 }
 

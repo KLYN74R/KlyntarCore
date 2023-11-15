@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_QUORUM,GET_FROM_STATE,GET_HTTP_AGENT
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT
 
 } from './utils.js'
 
@@ -13,7 +13,7 @@ import {LOG,BLAKE3,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {GRACEFUL_STOP,SET_REASSIGNMENT_CHAINS} from './life.js'
+import {GRACEFUL_STOP} from './life.js'
 
 import Block from './essences/block.js'
 
@@ -686,64 +686,105 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
 
 
-SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
+SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
+ 
+
+    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
+
+    // Stuff related for next epoch
+
+    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+
+    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+
+    let nextEpochReassignmentChains = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>false)
 
 
-    // When we reach the limits of current checkpoint - then we need to execute the system sync operations
+    // Get the epoch edge operations that we need to execute
 
-    if(limitsReached && !epochIsCompleted){
+    let epochEdgeOperations = await global.SYMBIOTE_META.EPOCH_DATA.get(`EEO:${vtEpochFullID}`).catch(()=>null)
 
+    
+    if(nextEpochHash && nextEpochQuorum && nextEpochReassignmentChains && epochEdgeOperations){
 
-        let operations = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.operations
-
-
-        //_____________________________To change it via operations___________________________
+        // Copy the current workflow options(i.e. network params like epoch duration, required stake for validators,etc.)
 
         let workflowOptionsTemplate = {...global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
-        
+
+        // We add this copy to cache to make changes and update the global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
+
         global.SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
-        //___________________Create array of delayed unstaking transactions__________________
 
-        global.SYMBIOTE_META.STATE_CACHE.set('DELAYED_OPERATIONS',[])
+        // Create the array of delayed unstaking transactions
+        // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
+        // X = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
 
-        //_____________________________Create object for slashing____________________________
+        global.SYMBIOTE_META.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
+    
 
-        // Structure <pool> => <{delayedIds,pool}>
+        // Create the object to perform slashing. Structure <pool> => <{delayedIds,pool}>
+
         global.SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
 
-        //But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-        for(let operation of operations){
+
+        //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
+
+        /*
+
+            0. First of all - run slashing operations to punish the unfair players
         
-            if(operation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload) //pass isFromRoute=undefined to make changes to state
-        
+            This helps us to prevent attacks when adversary stake must be slashed but instead of this unstaking tx runs. In case of success - adversary save his stake
+
+            For example, if in <epochEdgeOperations> array we have:
+
+                epochEdgeOperations[0] = <unstaking tx by adversary to save own stake>
+
+                epochEdgeOperations[1] = <slashing operation>
+
+            If we run these operations one-by-one(in for cycle) - we bump with a serius bug
+
+            --------------------------------------------------------
+            |                                                      |
+            |   [SOLUTION]: We must run slashing operations FIRST  |
+            |                                                      |
+            --------------------------------------------------------
+
+        */
+
+        for(let epochEdgeOperation of epochEdgeOperations){
+            
+            if(epochEdgeOperation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
+
         }
 
+        // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in global.SYMBIOTE_META.STATE_CACHE['SLASH_OBJECT']
 
-        //Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
-        
-        
-        //____________________Go through the EPOCH_EDGE_OPERATIONS and perform it__________________
 
-        for(let operation of operations){
-    
-            if(operation.type==='SLASH_UNSTAKE') continue
+        //________________________________ NOW RUN THE REST OF EPOCH EDGE OPERATIONS ______________________________________
+
+        for(let epochEdgeOperation of epochEdgeOperations){
+        
+            // Skip the previously executed SLASH_UNSTAKE operations
+
+            if(epochEdgeOperation.type==='SLASH_UNSTAKE') continue
+
 
             /*
             
-            Perform changes here before move to the next checkpoint
+                Perform changes here before move to the next checkpoint
             
-            OPERATION in checkpoint has the following structure
+                Operation in checkpoint has the following structure
 
-            {
-                type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
-            }
+                {
+                    type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
+                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
+                }
             
 
             */
 
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload) //pass isFromRoute=undefined to make changes to state
+            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload) //pass isFromRoute=undefined to make changes to state
     
         }
 
@@ -755,46 +796,50 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
 
         for(let poolPubKey of poolsArray){
-
+    
             let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
-
+    
             let poolHashID = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
-
+    
             let poolStorage = await GET_FROM_STATE(poolHashID)
-
+    
             if(poolStorage.totalPower<global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
-
+    
         }
+    
+        
+        //_____Now in <toRemovePools> we have IDs of pools which should be deleted from POOLS____
 
-        //Now in toRemovePools we have IDs of pools which should be deleted from POOLS
 
         let deletePoolsPromises=[]
 
         for(let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved){
 
             deletePoolsPromises.push(DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID))
-
+    
         }
-
+    
         await Promise.all(deletePoolsPromises.splice(0))
+
 
 
         //________________________________Remove rogue pools_________________________________
 
         // These operations must be atomic
+    
         let atomicBatch = global.SYMBIOTE_META.STATE.batch()
 
         let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
         
         let slashObjectKeys = Object.keys(slashObject)
+
+
         
-
-
         for(let poolIdentifier of slashObjectKeys){
 
 
             //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
-            
+        
             let poolStorageHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)_STORAGE_POOL'
 
             let poolMetadataHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)'
@@ -821,6 +866,7 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
 
             //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
+            
             for(let id of arrayOfDelayed){
 
                 let delayedArray = await GET_FROM_STATE('DEL_OPER_'+id)
@@ -836,10 +882,9 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
                 // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
 
-                for(let txidIndex of toDeleteArray) delayedArray.splice(txidIndex,1) //remove single tx
+                for(let txidIndex of toDeleteArray) delayedArray.splice(txidIndex,1) // remove single tx
 
             }
-
 
         }
 
@@ -848,18 +893,19 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
         let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
 
-        //If it's first checkpoints - add this array
+        // If it's first checkpoints - add this array
         if(!delayedTableOfIds) delayedTableOfIds=[]
+    
 
-        
         let currentEpochIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
-        
+
         let idsToDelete = []
 
+            
 
         for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
 
-            //Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+            // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
             if(delayedTableOfIds[i] + global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
 
@@ -881,27 +927,26 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
                                 storageOrigin:<origin of where your pool created. Your unstaking will be returned there>,
 
                                 to:<staker pubkey/address>,
-                    
+                
                                 amount:<number>,
-                    
+                
                                 units:< KLY | UNO >
-                    
+                
                             }
-                        
+                    
                         */
 
                         let account = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
 
-                        //Return back staked KLY / UNO to the state of user's account
+                        // Return back staked KLY / UNO to the state of user's account
                         if(delayedTx.units==='kly') account.balance += delayedTx.amount
 
                         else account.uno += delayedTx.amount
-                        
-
+                    
                     }
 
 
-                    //Remove ID (delayedID) from delayed table of IDs because we already used it
+                    // Remove ID (delayedID) from delayed table of IDs because we already used it
                     idsToDelete.push(i)
 
                 }
@@ -910,13 +955,15 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
         }
 
-        //Remove "spent" ids
+
+        // Remove "spent" ids
+
         for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
 
 
+        // Also, add the array of delayed operations from THIS checkpoint if it's not empty
 
-        //Also, add the array of delayed operations from THIS checkpoint if it's not empty
-        let currentArrayOfDelayedOperations = await GET_FROM_STATE('DELAYED_OPERATIONS')
+        let currentArrayOfDelayedOperations = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
         
         if(currentArrayOfDelayedOperations.length !== 0){
 
@@ -926,34 +973,35 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
         }
 
+
         // Set the DELAYED_TABLE_OF_IDS to DB
+
         global.SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
 
-        //Delete the temporary from cache
-        global.SYMBIOTE_META.STATE_CACHE.delete('DELAYED_OPERATIONS')
-
+    
+    
+        // Delete the temporary from cache
+    
+        global.SYMBIOTE_META.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
+    
         global.SYMBIOTE_META.STATE_CACHE.delete('SLASH_OBJECT')
 
 
         //_______________________Commit changes after operations here________________________
 
-        //Update the WORKFLOW_OPTIONS
-        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+        // Update the WORKFLOW_OPTIONS
+        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
 
         global.SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
 
+    
+        // Update the quorum for next epoch
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
 
-        // Mark checkpoint as completed not to repeat the operations twice
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.completed = true
-       
-        //Create new quorum based on new POOLS_METADATA state
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = GET_QUORUM(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS)
+        // Change reassignment chains
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.reassignmentChains = nextEpochReassignmentChains
 
-
-        // Create the reassignment chains for each prime pool based on new data
-        await SET_REASSIGNMENT_CHAINS(global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH,'')
-
-
+        
         // Update the array of prime pools
 
         let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
@@ -962,6 +1010,7 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
             
         )
 
+        
         global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
 
 
@@ -972,78 +1021,45 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
         LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,'S')
 
 
-        //Commit the changes of state using atomic batch
+        // Finally - set the new index and hash for next epoch
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
+
+
+        // Commit the changes of state using atomic batch
         global.SYMBIOTE_META.STATE_CACHE.forEach(
             
             (value,recordID) => atomicBatch.put(recordID,value)
             
         )
 
-
         atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 
         await atomicBatch.write()
-    
-    }
 
 
-    //________________________________________ FIND NEW CHECKPOINT ________________________________________
+        // Now we can delete useless data from EPOCH_DATA db
 
+        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
 
-    //If checkpoint is not fresh - find "fresh" one on hostchain
+        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)){
+        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>{})
 
+        
+        //_______________________Check the version required for the next checkpoint________________________
 
-        let nextEpochHandler = false//await GET_VALID_CHECKPOINT('VERIFICATION_THREAD').catch(()=>false)
+        if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
 
-
-        if(nextEpochHandler){
-
-            let oldEpochHandler = JSON.parse(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH))
-
-            let oldEpochFullID = oldEpochHandler.hash+"#"+oldEpochHandler.id
-
-
-
-            // Set the new checkpoint to know the ranges that we should get
-            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH = nextEpochHandler
-
-            // But quorum is the same as previous
-            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = oldEpochHandler.quorum
-
-            // And reassignment chains should be the same
-            global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.reassignmentChains = oldEpochHandler.reassignmentChains
-           
-
-            // To finish with pools metadata to the ranges of previous checkpoint - call this function to know the blocks that you should finish to verify
-            
-            await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(global.SYMBIOTE_META.VERIFICATION_THREAD,oldEpochHandler,nextEpochHandler,oldEpochFullID)
-            
-            
-            // On this step, in global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA we have arrays with reserve pools which also should be verified in context of subchain for a final valid state
-
-
-
-            //_______________________Check the version required for the next checkpoint________________________
-
-            if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
-
-                LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
-
-                // Stop the node to update the software
-                GRACEFUL_STOP()
-
-            }
-
-        } else {
-
-            LOG(`Going to wait for next checkpoint, because current is non-fresh and no new checkpoint found. No sense to spam. Wait ${global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_AEFP/1000} seconds ...`,'I')
-
-            await WAIT_SOME_TIME()
-
+            LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
+        
+            // Stop the node to update the software
+            GRACEFUL_STOP()
+        
         }
-    
+
     }
 
 },
@@ -1051,7 +1067,7 @@ SET_UP_NEW_EPOCH=async(limitsReached,epochIsCompleted)=>{
 
 
 
-TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
+TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
     /* 
             
@@ -1755,7 +1771,7 @@ START_VERIFICATION_THREAD=async()=>{
             global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
 
-            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
                     
         
             setImmediate(START_VERIFICATION_THREAD)
@@ -1813,7 +1829,7 @@ START_VERIFICATION_THREAD=async()=>{
     global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
 
-    if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
             
 
     setImmediate(START_VERIFICATION_THREAD)

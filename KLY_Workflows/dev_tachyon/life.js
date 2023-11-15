@@ -948,6 +948,9 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 // Set next temporary object by ID
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
+                // Delete the cache that we don't need more
+                await global.SYMBIOTE_META.EPOCH_DATA.delete(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
+
 
             }
 
