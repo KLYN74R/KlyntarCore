@@ -1687,15 +1687,21 @@ START_VERIFICATION_THREAD=async()=>{
         */
 
 
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SUBCHAINS_READY_TO_NEW_CHECKPOINT')) global.SYMBIOTE_META.STUFF_CACHE.set('SUBCHAINS_READY_TO_NEW_CHECKPOINT',{readyToNewEpoch:0})
+
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentSubchainToCheck)) global.SYMBIOTE_META.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentSubchainToCheck,{indexOfCurrentPoolToVerify:-1})
+
+
+        let subchainsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SUBCHAINS_READY_TO_NEW_CHECKPOINT') // {readyToNewEpoch:int}
+        
+        let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentSubchainToCheck) // {indexOfCurrentPoolToVerify:int}
 
         let metadataForSubchainFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash},...}
-
-        let indexOfPool = -1 // start from prime pool with index -1 in RC
 
 
         while(true){
 
-            let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfPool] || currentSubchainToCheck
+            let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentSubchainToCheck
 
             let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
@@ -1706,7 +1712,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                indexOfPool++
+                handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
 
                 continue
 
@@ -1762,9 +1768,12 @@ START_VERIFICATION_THREAD=async()=>{
             } else break
 
 
-            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) indexOfPool++
+            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
 
         }
+
+
+        if(vtEpochHandler.reassignmentChains[currentSubchainToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) subchainsReadyToNewEpoch.readyToNewEpoch++
 
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeSubchain){
@@ -1848,6 +1857,15 @@ START_VERIFICATION_THREAD=async()=>{
 
 
     if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
+
+
+    if(global.SYMBIOTE_META.STUFF_CACHE.has('SUBCHAINS_READY_TO_NEW_CHECKPOINT')){
+
+        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('SUBCHAINS_READY_TO_NEW_CHECKPOINT') // {readyToNewEpoch:int}
+
+        if(handler.readyToNewEpoch === primePoolsPubkeys.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+
+    }
             
 
     setImmediate(START_VERIFICATION_THREAD)
