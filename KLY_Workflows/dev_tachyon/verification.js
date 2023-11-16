@@ -1531,6 +1531,8 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                             let messageToSend = {
     
                                 route:'get_blocks',
+
+                                pool:poolPubKeyToOpenConnectionWith,
         
                                 hasUntilHeight:handler.hasUntilHeight,
 
@@ -1691,7 +1693,6 @@ START_VERIFICATION_THREAD=async()=>{
         let indexOfPool = -1 // start from prime pool with index -1 in RC
 
 
-
         while(true){
 
             let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfPool] || currentSubchainToCheck
@@ -1703,6 +1704,14 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(!metadataFromAefpForThisPool) break
 
+            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
+
+                indexOfPool++
+
+                continue
+
+            }
+
 
             await CHECK_CONNECTION_WITH_POOL(poolPubKey,vtEpochHandler)
 
@@ -1710,23 +1719,29 @@ START_VERIFICATION_THREAD=async()=>{
             let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
             if(tunnelHandler){
+
+                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForSubchainFromAefp)
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
                 let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
 
+
+                if(stepsForWhile <= 0){
+
+                    // Break the outer <while> cycle to try to find blocks & finish this epoch on another subchain
+
+                    break
+
+                }
                 
                 // Start the cycle to process all the blocks
                 while(stepsForWhile > 0){
 
-                    if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index){
-
-                        indexOfPool++
-
-                        break
-
-                    }
+                    // Move to next one
+                    if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index) break
         
+
                     let blockIdToGet = vtEpochIndex+':'+poolPubKey+':'+(localVtMetadataForPool.index+1)
         
                     let block = tunnelHandler.cache.get(blockIdToGet)
@@ -1742,9 +1757,12 @@ START_VERIFICATION_THREAD=async()=>{
                     
                     stepsForWhile--
             
-                }    
+                }
 
-            }
+            } else break
+
+
+            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) indexOfPool++
 
         }
 
