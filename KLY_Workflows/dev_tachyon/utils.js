@@ -559,10 +559,10 @@ DECRYPT_KEYS=async spinner=>{
         spinner?.stop()
         
         // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
-        let keys=JSON.parse(fs.readFileSync(global.CONFIG.DECRYPTED_KEYS_PATH))//use full path
+        let keys = JSON.parse(fs.readFileSync(global.CONFIG.DECRYPTED_KEYS_PATH))//use full path
 
-        //Main key
-        global.PRIVATE_KEY=keys.kly
+        // Main key
+        global.PRIVATE_KEY = keys.kly
 
 
         return
@@ -576,8 +576,9 @@ DECRYPT_KEYS=async spinner=>{
     
     let rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
+    let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
 
-    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')
+    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I')
 
     LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        

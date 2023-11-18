@@ -949,7 +949,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
                 // Delete the cache that we don't need more
-                await global.SYMBIOTE_META.EPOCH_DATA.delete(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
+                await global.SYMBIOTE_META.EPOCH_DATA.del(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
 
 
             }
@@ -3155,13 +3155,17 @@ LOAD_GENESIS=async()=>{
 
 
 
-    //Node starts to verify blocks from the first validator in genesis, so sequency matter
+    // Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER={
+    global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER={
+
+        epochIndex:0,
+        
+        epochHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
         
         subchain:startPool,
 
-        currentAuthority:startPool,
+        currentAuthorityOnThisSubchain:startPool,
         
         index:-1,
         
@@ -3368,7 +3372,21 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                FINALIZATION_POINTER:{subchain:'',currentAuthority:'',index:-1,hash:''}, // pointer to know where we should start to process further blocks
+                VT_FINALIZATION_POINTER:{
+                    
+                    epochIndex:0,
+                    
+                    epochHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                    
+                    subchain:'',
+                    
+                    currentAuthorityOnThisSubchain:'',
+                    
+                    index:-1,
+                    
+                    hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                
+                }, // pointer to know where we should start to process further blocks
 
                 POOLS_METADATA:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
@@ -3861,7 +3879,7 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()

@@ -99,7 +99,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH') || !tempObject){
+    if(!tempObject || tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
         connection.close()
     

@@ -1002,16 +1002,47 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.reassignmentChains = nextEpochReassignmentChains
 
         
-        // Update the array of prime pools
+        // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
 
-        let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA).filter(
-                
-            pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pubKey].isReserve
+        let newPrimePoolsArray = []
+
+        let poolToStartVerificationThreadOn
+
+        for(let [poolPubKey,poolMetadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
+
+            if(!poolMetadata.isReserve) {
+
+                newPrimePoolsArray.push(poolPubKey)
+
+                poolToStartVerificationThreadOn = poolPubKey
+
+            }
+
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
+        }
+
+        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
+
+
+        // Reset the VT_FINALIZATION_POINTER to be ready to next epoch
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER={
+
+            epochIndex:vtEpochHandler.id+1,
             
-        )
-
+            epochHash:nextEpochHash,
+            
+            subchain:poolToStartVerificationThreadOn,
+    
+            currentAuthorityOnThisSubchain:poolToStartVerificationThreadOn, // by default - VT starts from prime pool on each subchain
+            
+            index:-1,
+            
+            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
         
-        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
+        }
+    
 
 
         // Finally - delete the reassignment metadata
@@ -1042,11 +1073,11 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         // Now we can delete useless data from EPOCH_DATA db
 
-        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
 
-        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-        await global.SYMBIOTE_META.EPOCH_DATA.delete(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>{})
+        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>{})
 
         
         //_______________________Check the version required for the next checkpoint________________________
@@ -1395,10 +1426,9 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                         if(typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
 
+                            let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
 
-                            if(global.SYMBIOTE_META.STUFF_CACHE.has('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)){
-
-                                let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                            if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index){
 
                                 let lastBlockThatWeGet = parsedData.blocks[parsedData.blocks.length-1]
 
@@ -1420,94 +1450,92 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                                 }
 
-                                return
-
-                            }
+                            }else{
 
 
+                                // Make sure it's a chain
 
+                                let breaked = false
 
-
-                            // Make sure it's a chain
-
-                            let breaked = false
-
-                            /*
+                                
+                                /*
                         
-                                Run the cycle to verify the range:
+                                    Run the cycle to verify the range:
 
-                                Start from blocks[blocks.length-1] to 0. The first block in .blocks array must be +1 than we have locally
+                                    Start from blocks[blocks.length-1] to 0. The first block in .blocks array must be +1 than we have locally
 
-                                Make sure it's a valid chain(Block_N.prevHash=Hash(Block_N-1))
+                                    Make sure it's a valid chain(Block_N.prevHash=Hash(Block_N-1))
 
-                                Finally, check the AFP for latest block - this way we verify the whole segment using O(1) complexity
+                                    Finally, check the AFP for latest block - this way we verify the whole segment using O(1) complexity
                         
-                            */
+                                */
 
-                            for(let currentBlockIndexInArray = parsedData.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
+                                for(let currentBlockIndexInArray = parsedData.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
 
-                                let currentBlock = parsedData.blocks[currentBlockIndexInArray]
+                                    let currentBlock = parsedData.blocks[currentBlockIndexInArray]
 
-                                // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
+                                    // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
 
-                                let hashesAreEqual = true, indexesAreOk = true
+                                    let hashesAreEqual = true, indexesAreOk = true
 
-                                if(currentBlockIndexInArray>0){
+                                    if(currentBlockIndexInArray>0){
 
-                                    hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
+                                        hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
 
-                                    indexesAreOk = parsedData.blocks[currentBlockIndexInArray-1].index+1 === parsedData.blocks[currentBlockIndexInArray].index
+                                        indexesAreOk = parsedData.blocks[currentBlockIndexInArray-1].index+1 === parsedData.blocks[currentBlockIndexInArray].index
+
+                                    }
+
+                                    // Now, check the structure of block
+
+                                    let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
+                                
+                                    let itsTheSameCreator = currentBlock.creator === poolPubKeyToOpenConnectionWith
+
+                                    let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
+
+                                    // If it's the last block in array(and first in enumeration) - check the AFP for latest block
+
+                                    if(overviewIsOk && currentBlockIndexInArray === parsedData.blocks.length-1){
+
+                                        let blockIDThatMustBeInAfp = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
+
+                                        let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
+
+                                        overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,epochHandler)
+
+                                    }
+                                
+                                
+                                    if(!overviewIsOk){
+
+                                        breaked = true
+
+                                        break
+
+                                    }
 
                                 }
-
-                                // Now, check the structure of block
-
-                                let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
-                                
-                                let itsTheSameCreator = currentBlock.creator === poolPubKeyToOpenConnectionWith
-
-                                let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
-
-                                // If it's the last block in array(and first in enumeration) - check the AFP for latest block
-
-                                if(overviewIsOk && currentBlockIndexInArray === parsedData.blocks.length-1){
-
-                                    let blockIDThatMustBeInAfp = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
-
-                                    let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
-
-                                    overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,epochHandler)
-
-                                }
-                                
-                                
-                                if(!overviewIsOk){
-
-                                    breaked = true
-
-                                    break
-
-                                }
-
-                            }
 
                             
-                            // If we have size - add blocks here. The reserve is 5000 blocks per subchain
+                                // If we have size - add blocks here. The reserve is 5000 blocks per subchain
 
-                            if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
+                                if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
 
-                                // Add the blocks to mapping
+                                    // Add the blocks to mapping
 
-                                parsedData.blocks.forEach(block=>{
+                                    parsedData.blocks.forEach(block=>{
 
-                                    let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
+                                        let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
 
-                                    handler.cache.set(blockID,block)
+                                        handler.cache.set(blockID,block)
 
-                                })
+                                    })
 
-                                handler.hasUntilHeight = parsedData.blocks[parsedData.blocks.length-1].index
+                                    handler.hasUntilHeight = parsedData.blocks[parsedData.blocks.length-1].index
                                 
+                                }
+
                             }
                             
                         }
@@ -1526,6 +1554,8 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                         let handler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
+                        let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+
                         if(handler){
     
                             let messageToSend = {
@@ -1538,9 +1568,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                                 epochIndex:epochHandler.id,
 
-                                sendWithNoAfp:global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                                sendWithNoAfp:{}
         
                             }
+
+                            if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index) messageToSend.sendWithNoAfp = lastBlockInfo
         
                             connection.sendUTF(JSON.stringify(messageToSend))
     
@@ -1566,7 +1598,9 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                 })
 
-                global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight:-1,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
+                let hasUntilHeight = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKeyToOpenConnectionWith].index
+
+                global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
 
             })
 
@@ -1646,7 +1680,7 @@ START_VERIFICATION_THREAD=async()=>{
 
     let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
-    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain
+    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain
 
     let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
 
@@ -1658,6 +1692,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         
         
+
 
     // Get the stats from reassignments
 
@@ -1705,16 +1740,20 @@ START_VERIFICATION_THREAD=async()=>{
 
             let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
-            let metadataFromAefpForThisPool = metadataForSubchainFromAefp[poolPubKey]
+            let metadataFromAefpForThisPool = metadataForSubchainFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
-
-            if(!metadataFromAefpForThisPool) break
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
+                if(vtEpochHandler.reassignmentChains[currentSubchainToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
 
-                continue
+                else {
+
+                    handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
+
+                    continue
+
+                }
 
             }
 
@@ -1726,7 +1765,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(tunnelHandler){
 
-                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForSubchainFromAefp)
+                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForSubchainFromAefp[poolPubKey])
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
@@ -1756,8 +1795,10 @@ START_VERIFICATION_THREAD=async()=>{
                     if(block){
         
                         await verifyBlock(block,currentSubchainToCheck)
-            
-                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+
+                        let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
+
+                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I') 
             
                     }
                     
@@ -1795,7 +1836,7 @@ START_VERIFICATION_THREAD=async()=>{
             // Move to next one
             tempReassignmentsForSomeSubchain.currentToVerify++
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+            global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
 
             if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
@@ -1839,8 +1880,10 @@ START_VERIFICATION_THREAD=async()=>{
                 if(block){
     
                     await verifyBlock(block,currentSubchainToCheck)
-        
-                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index} \u001b[38;5;168m}———{\x1b[32;1m ${global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash}\n`,'I')    
+
+                    let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
+
+                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I')
         
                 }
                 
@@ -1853,7 +1896,7 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = currentSubchainToCheck
+    global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = currentSubchainToCheck
 
 
     if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
@@ -1954,8 +1997,8 @@ SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepie
 
 
 
-//Function to distribute stakes among blockCreator/staking pools
-DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,activePoolsSet,blockCreator)=>{
+//Function to distribute stakes among blockCreator/his stakers/rest of prime pools
+DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,arrayOfPrimePools,blockCreator)=>{
 
     /*
 
@@ -1965,9 +2008,9 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,ac
 
 
 
-        1) Take all the ACTIVE pools from global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA
+        1) Take all the PRIME pools from <arrayOfPrimePools>
 
-        2) Send REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees to block creator
+        2) Send <REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees> to block creator
 
         3) Distribute the rest among all the other pools(excluding block creator)
 
@@ -1982,12 +2025,12 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,ac
 
     let payToCreatorAndHisPool = totalFees * global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(activePoolsSet.size-1)), //and share the rest among other pools
+        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(arrayOfPrimePools.length-1)), //and share the rest among other pools
     
         shareFeesPromises = []
 
           
-    if(activePoolsSet.size===1) payToEachPool = totalFees - payToCreatorAndHisPool
+    if(arrayOfPrimePools.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
 
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
@@ -1996,9 +2039,9 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,ac
 
     //_____________________________________________ THE REST ______________________________________________
 
-    activePoolsSet.forEach(feesRecepientPoolPubKey=>
+    arrayOfPrimePools.forEach(feesRecepientPrimePoolPubKey=>
 
-        feesRecepientPoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPoolPubKey,payToEachPool))
+        feesRecepientPrimePoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPrimePoolPubKey,payToEachPool))
             
     )
      
@@ -2061,21 +2104,16 @@ verifyBlock=async(block,subchainContext)=>{
 
 
             //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
-        
-        
-            let accountsToAddToCache=[]
     
-            // Push accounts for fees of subchains authorities
+            // Push accounts for fees of subchains prime pools
 
-            let activePools = new Set()
 
-            for(let [validatorPubKey,metadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
+            let primePools = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
 
-                if(!metadata.isReserve) activePools.add(validatorPubKey) 
+            let accountsToAddToCache=[]
 
-            }
 
-            activePools.forEach(
+            primePools.forEach(
             
                 pubKey => {
     
@@ -2121,7 +2159,16 @@ verifyBlock=async(block,subchainContext)=>{
 
             //__________________________________________SHARE FEES AMONG POOLS_________________________________________
         
-            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,subchainContext,activePools,block.creator)
+            /*
+            
+                Distribute fees among:
+
+                    [0] Block creator itself
+                    [1] Stakers of his pool
+                    [2] Send the rest of fees to prime pools
+
+            */
+            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,subchainContext,primePools,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    
@@ -2194,15 +2241,15 @@ verifyBlock=async(block,subchainContext)=>{
         global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
 
 
-        // Change finalization pointer
+        // Change finalization pointer. Reminder - the structure is {epochIndex,epochHash,subchain,currentAuthorityOnSubchain,index,hash}
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.subchain = subchainContext
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = subchainContext
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.currentAuthority = block.creator
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.currentAuthorityOnSubchain = block.creator
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.index = block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.index = block.index
                 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.FINALIZATION_POINTER.hash = blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.hash = blockHash
         
         // Change metadata per validator's thread
         
