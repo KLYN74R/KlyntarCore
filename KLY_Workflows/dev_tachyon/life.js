@@ -6,7 +6,7 @@ import {
 
     GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,GET_HTTP_AGENT,
 
-    DECRYPT_KEYS,BLOCKLOG,HEAP_SORT,GET_ALL_KNOWN_PEERS
+    DECRYPT_KEYS,HEAP_SORT,GET_ALL_KNOWN_PEERS,BLOCKLOG
 
 } from './utils.js'
 
@@ -889,7 +889,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 global.SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThread
 
-                LOG(`QUORUM_THREAD was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,'S')
+                LOG(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,'S')
 
 
                 //_______________________Check the version required for the next checkpoint________________________
@@ -2914,7 +2914,7 @@ LOAD_GENESIS=async()=>{
     
         epochTimestamp,
 
-        startPool = '',
+        startPool,
 
         poolsRegistryForEpochHandler = {primePools:[],reservePools:[]}
 
@@ -2935,7 +2935,7 @@ LOAD_GENESIS=async()=>{
 
         let {isReserve} = poolContractStorage
 
-        startPool = poolPubKey
+        if(!isReserve) startPool ||= poolPubKey
 
         // Create the value in VT
 
@@ -3157,22 +3157,7 @@ LOAD_GENESIS=async()=>{
 
     // Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER={
-
-        epochIndex:0,
-        
-        epochHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        
-        subchain:startPool,
-
-        currentAuthorityOnThisSubchain:startPool,
-        
-        index:-1,
-        
-        hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-    
-    }
-
+    global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = startPool
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
@@ -3372,21 +3357,9 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                VT_FINALIZATION_POINTER:{
-                    
-                    epochIndex:0,
-                    
-                    epochHash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-                    
-                    subchain:'',
-                    
-                    currentAuthorityOnThisSubchain:'',
-                    
-                    index:-1,
-                    
-                    hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-                
-                }, // pointer to know where we should start to process further blocks
+                SUBCHAIN_POINTER:'',
+
+                VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentAuthorityOnSubchain,index,hash}
 
                 POOLS_METADATA:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
@@ -3884,7 +3857,7 @@ RUN_SYMBIOTE=async()=>{
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
 
-    //✅6. Start to generate blocks
+    //✅6.Start to generate blocks
     BLOCKS_GENERATION()
 
 

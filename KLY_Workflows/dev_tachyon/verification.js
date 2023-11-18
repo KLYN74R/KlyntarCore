@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT,VT_STATS_LOG
 
 } from './utils.js'
 
@@ -1006,57 +1006,62 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         let newPrimePoolsArray = []
 
-        let poolToStartVerificationThreadOn
-
         for(let [poolPubKey,poolMetadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA)){
 
             if(!poolMetadata.isReserve) {
 
                 newPrimePoolsArray.push(poolPubKey)
 
-                poolToStartVerificationThreadOn = poolPubKey
+                global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
+
+                    currentAuthorityOnSubchain:-1,
+
+                    index:-1,
+                    
+                    hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+                }
 
             }
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey] = {
+                
+                index:-1,
+                
+                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+
+                isReserve:poolMetadata.isReserve
+            
+            }
+
+            // Close connection in case we have
+            
+            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKey)
+
+            if(tunnelHandler) tunnelHandler.connection.close()
 
         }
 
         global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
 
 
-        // Reset the VT_FINALIZATION_POINTER to be ready to next epoch
-
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER={
-
-            epochIndex:vtEpochHandler.id+1,
-            
-            epochHash:nextEpochHash,
-            
-            subchain:poolToStartVerificationThreadOn,
-    
-            currentAuthorityOnThisSubchain:poolToStartVerificationThreadOn, // by default - VT starts from prime pool on each subchain
-            
-            index:-1,
-            
-            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-        
-        }
-    
-
-
-        // Finally - delete the reassignment metadata
+        // Finally - delete the AEFP reassignment metadata
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
+
+        // Delete the useless temporary reassignments from previous epoch
+        delete global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
 
 
         LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,'S')
 
 
-        // Finally - set the new index and hash for next epoch
+        // Finally - set the new index, hash and timestamp for next epoch
 
         global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
 
         global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.timestamp += global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
 
 
         // Commit the changes of state using atomic batch
@@ -1079,7 +1084,11 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_RC:${vtEpochFullID}`).catch(()=>{})
 
+
+
+        LOG(`Epoch on verification thread was updated => \x1b[34;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash}#${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id}`,'S')
         
+
         //_______________________Check the version required for the next checkpoint________________________
 
         if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
@@ -1178,6 +1187,16 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
                 }else{
 
+                    let imitationOfEpochHandlerForNextEpoch = {
+
+                        index:nextEpochIndex,
+
+                        hash:nextEpochHash,
+
+                        quorum:nextEpochQuorum
+
+                    }
+
                     // Ask quorum for AFP for first block of prime pool
 
                     // Descriptor is {url,pubKey}
@@ -1188,7 +1207,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
                         if(itsProbablyAggregatedFinalizationProof){
             
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,vtEpochHandler)
+                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,imitationOfEpochHandlerForNextEpoch)
             
                             if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePoolForNextEpoch){                            
                             
@@ -1680,7 +1699,7 @@ START_VERIFICATION_THREAD=async()=>{
 
     let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
-    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain
+    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER
 
     let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
 
@@ -1796,10 +1815,8 @@ START_VERIFICATION_THREAD=async()=>{
         
                         await verifyBlock(block,currentSubchainToCheck)
 
-                        let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
+                        VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentSubchainToCheck)
 
-                        LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I') 
-            
                     }
                     
                     stepsForWhile--
@@ -1836,7 +1853,7 @@ START_VERIFICATION_THREAD=async()=>{
             // Move to next one
             tempReassignmentsForSomeSubchain.currentToVerify++
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = currentSubchainToCheck
+            global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = currentSubchainToCheck
 
 
             if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
@@ -1881,9 +1898,7 @@ START_VERIFICATION_THREAD=async()=>{
     
                     await verifyBlock(block,currentSubchainToCheck)
 
-                    let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
-
-                    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I')
+                    VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentSubchainToCheck)
         
                 }
                 
@@ -1896,7 +1911,7 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = currentSubchainToCheck
+    global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = currentSubchainToCheck
 
 
     if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
@@ -2240,16 +2255,16 @@ verifyBlock=async(block,subchainContext)=>{
 
         global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
 
-
-        // Change finalization pointer. Reminder - the structure is {epochIndex,epochHash,subchain,currentAuthorityOnSubchain,index,hash}
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.subchain = subchainContext
+        global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = subchainContext
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.currentAuthorityOnSubchain = block.creator
+        if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]) global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext] = {}
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.index = block.index
-                
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER.hash = blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].currentAuthorityOnSubchain = block.creator
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].index = block.index
+
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].hash = blockHash
         
         // Change metadata per validator's thread
         

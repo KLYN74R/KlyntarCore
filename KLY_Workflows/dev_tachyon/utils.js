@@ -290,6 +290,36 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
 
 
+//Function for pretty output the information about verification thread(VT)
+VT_STATS_LOG = (epochIndex,epochHash,subchainContext) => {
+
+
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]){
+
+
+        let {currentAuthorityOnSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]
+
+
+        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,'Local VERIFICATION_THREAD state is',COLORS.C)
+    
+        console.log('\n')
+            
+        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,epochIndex+' : '+epochHash,COLORS.C)
+    
+        console.log(` \u001b[38;5;168m│\x1b[33m  Subchain:\x1b[36;1m`,subchainContext,COLORS.C)
+    
+        console.log(` \u001b[38;5;168m│\x1b[33m  Current Authority:\x1b[36;1m`,currentAuthorityOnSubchain,COLORS.C)
+    
+        console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash:\x1b[36;1m`,index+' : '+hash,COLORS.C)
+    
+        console.log('\n')    
+
+    }
+
+},
+
+
+
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
@@ -576,9 +606,6 @@ DECRYPT_KEYS=async spinner=>{
     
     let rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
-    let {epochIndex,subchain,currentAuthorityOnThisSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_POINTER
-
-    LOG(`Local VERIFICATION_THREAD state is \x1b[32;1m${epochIndex} \u001b[38;5;168m#\x1b[32;1m ${subchain}(${currentAuthorityOnThisSubchain}) \u001b[38;5;168m#\x1b[32;1m ${index}(${hash})\n`,'I')
 
     LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
        
