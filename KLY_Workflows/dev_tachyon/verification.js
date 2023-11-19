@@ -91,7 +91,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
                         &&
                         itsProbablyBlock.creator===blockCreator
                         &&
-                        Array.isArray(block.transactions)
+                        Array.isArray(itsProbablyBlock.transactions)
                 
 
                     if(overviewIsOk){
@@ -1189,7 +1189,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
                     let imitationOfEpochHandlerForNextEpoch = {
 
-                        index:nextEpochIndex,
+                        id:nextEpochIndex,
 
                         hash:nextEpochHash,
 

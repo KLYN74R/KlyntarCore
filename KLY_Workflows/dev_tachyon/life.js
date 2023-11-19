@@ -3852,7 +3852,7 @@ RUN_SYMBIOTE=async()=>{
     CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    //REASSIGN_PROCEDURE_MONITORING()
+    REASSIGN_PROCEDURE_MONITORING()
 
     //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
