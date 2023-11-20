@@ -354,6 +354,8 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
         let arrayIndexer = 0
 
+        let wasBreakedEarly = false
+
 
         for(let poolPubKey of arrayForIteration){
 
@@ -377,7 +379,13 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
                     arrayIndexer++
 
-                    if(aspForThisPool.skipIndex>=0) break
+                    if(aspForThisPool.skipIndex>=0){
+
+                        wasBreakedEarly = true
+
+                        break
+
+                    }
 
                 }else return {isOK:false}
 
@@ -385,7 +393,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     
         }
 
-        if(arrayIndexer === position){
+        if(arrayIndexer === position && !wasBreakedEarly){
 
             // In case we've iterated over the whole range - check the ASP for prime pool
 

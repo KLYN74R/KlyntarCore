@@ -41,6 +41,17 @@
 
         "enc_prv":"e4a1935e868c44c8b45eccfc4098b6e5fc5d3d048fb5265890742138584ca100c0ec2aec684c442da18c9b56b53b390e96d30e613b2de2294dacfab35fc39acafebfdeeb0fcc5fe87b1fb397fb61d07f"
     
+    },
+
+    "4":{
+    
+        "mnemonic":"collect candy emotion render wage arrange you panther width gallery tape museum",
+        "bip44Path":"m/44'/7331'/0'/0'",
+        "pub": "EGU4u3Anwahbtbx8F1ZZgFQSg2u49EkrkqMERT9r3q1o",
+        "prv": "MC4CAQAwBQYDK2VwBCIEICVoiHLIICxjcuWQzq1vTLGJmaiU9fAOLEYKB9ZQR8TN",
+
+        "enc_prv":"e4a1935e868c44c8b45eccfc4098b6e5ae103e440f404891c7f4229a989046df3b6ada69ebe59091d396677592eeab8a5404ca0eb916bea100b48da56d6f8d8f71447b74e6c53a5c1f2fa92ce7105602"
+    
     }
 
 }
