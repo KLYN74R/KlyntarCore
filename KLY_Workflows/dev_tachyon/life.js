@@ -480,6 +480,8 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnSubchainFound}}
 
+        epochCache = {}
+
         let entries = Object.entries(reassignmentChains)
 
         //____________________Ask the quorum for AEFP for subchain___________________
@@ -748,6 +750,8 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             //_____________________________ Here we should have understanding of first block for each subchain __________________________
 
             if(epochCache[primePoolPubKey].firstBlockOnSubchainFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+
+            if(!epochCache[primePoolPubKey].firstBlockHash) epochCache[primePoolPubKey] = {}
     
         
         }
