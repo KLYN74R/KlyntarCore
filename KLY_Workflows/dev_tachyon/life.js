@@ -2705,7 +2705,14 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             let pubKeysOfAllThePreviousPools = reassignmentArrayOfMyPrimePool.slice(0,myIndexInReassignmentChain).reverse()
 
 
+            // Add the pubkey of prime pool because we have to add the ASP for it too
+
+            pubKeysOfAllThePreviousPools.push(myPrimePool)
+
+
+
             //_____________________ Fill the extraData.reassignments _____________________
+
 
             extraData.reassignments = {}
 
@@ -2717,33 +2724,21 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             
             */
 
-            // Add the ASP for the previous pool in reassignment chain
+            // Add the ASP for the previous pools in reassignment chain
 
-            let pubKeyOfPrevious = reassignmentArrayOfMyPrimePool[myIndexInReassignmentChain-1] || myPrimePool
+            for(let pubKeyOfSkippedPool of pubKeysOfAllThePreviousPools){
 
-            let aspForPrevious = tempObject.SKIP_HANDLERS.get(pubKeyOfPrevious)?.aggregatedSkipProof
+                let aspForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfSkippedPool)?.aggregatedSkipProof
 
-            if(aspForPrevious){
+                if(aspForThisPool){
 
-                extraData.reassignments[pubKeyOfPrevious] = aspForPrevious
+                    extraData.reassignments[pubKeyOfSkippedPool] = aspForThisPool
 
-                for(let reservePoolPubKey of pubKeysOfAllThePreviousPools){
+                    if(aspForThisPool.skipIndex >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
 
-                    if(reservePoolPubKey === pubKeyOfPrevious) continue
+                } else return
 
-                    let aspForThisPool = tempObject.SKIP_HANDLERS.get(reservePoolPubKey)?.aggregatedSkipProof
-    
-                    if(aspForThisPool){
-    
-                        if(aspForThisPool.skipIndex >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
-    
-                        else extraData.reassignments[reservePoolPubKey] = aspForThisPool
-    
-                    } else return
-    
-                }    
-
-            }else return
+            }
 
         }
 

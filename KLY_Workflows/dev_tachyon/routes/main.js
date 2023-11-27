@@ -1146,8 +1146,14 @@ getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin
 
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
+    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.reassignmentChains[requestForSkipProof.subchain] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
+    
+                       &&
+                       
+                       typeof requestForSkipProof.skipData === 'object' && (requestForSkipProof.skipData.index === -1  || typeof requestForSkipProof.skipData.afp === 'object')
 
-    if(typeof requestForSkipProof === 'object' && epochHandler.reassignmentChains[requestForSkipProof.subchain] && mySkipHandlers.has(requestForSkipProof.poolPubKey) && typeof requestForSkipProof.skipData === 'object' && typeof requestForSkipProof.skipData.afp === 'object'){
+
+    if(overviewIsOk){
 
         
         
