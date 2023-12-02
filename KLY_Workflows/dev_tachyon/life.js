@@ -1689,6 +1689,64 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
 
 
+INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys) => {
+
+    // Inform them once per 5 seconds
+
+    setTimeout(()=>{
+
+        let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+        let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+
+        if(tempObject){
+
+            // <bodyToSend> has the structure like this -> {subchain,shouldBeThisAuthority,aspsForPreviousPools}
+
+            // Check if we stll have to send this reassignment data
+
+            // Get the reassignments data for <bodyToSend.subchain> from tempObject
+
+            let reassignmentsData = tempObject.REASSIGNMENTS.get(bodyToSend.subchain)
+
+            // Now compare it to understand if we have to continue sharing our version of reassignments
+
+            if(reassignmentsData && bodyToSend.shouldBeThisAuthority > reassignmentsData.currentAuthority){
+
+                // Send to target pool
+
+                let optionsToSend = {
+
+                    method:'POST',
+
+                    body:JSON.stringify(bodyToSend)
+
+                }
+                
+                fetch(targetPoolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
+
+                
+                // ... and to quorum members
+                
+                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+    
+                    fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
+                     
+                }
+
+                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
+
+            }
+
+        }
+
+    },5000)
+
+},
+
+
+
+
 // Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
@@ -1787,8 +1845,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-
-            // Send request
             let bodyToSend = {
 
                 subchain:primePoolPubKey,
@@ -1797,28 +1853,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             }
 
-            let optionsToSend = {
 
-                method:'POST',
+            INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
 
-                body:JSON.stringify(bodyToSend),
-
-                agent:GET_HTTP_AGENT(poolStorage.poolURL)
-
-            }
-
-            // Send to target pool
-            fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
-
-
-            // ... and to quorum members
-            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-
-                optionsToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
-    
-                fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
-                     
-            }
 
             // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
@@ -2250,27 +2287,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 }
 
-                let optionsToSend = {
 
-                    method:'POST',
+                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
 
-                    body:JSON.stringify(bodyToSend),
-
-                    agent:GET_HTTP_AGENT(poolStorage.poolURL)
-
-                }
-
-                // Send to target pool
-                fetch(poolStorage.poolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
-
-                // ... and to quorum members
-                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-
-                    optionsToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
-    
-                    fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
-                     
-                }
 
                 // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
 
@@ -2440,18 +2459,14 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 }
               
 
-            }else continue
-
+            } else continue
     
         }
 
-
     }
-
 
     // Start again
     setImmediate(REASSIGN_PROCEDURE_MONITORING)
-
     
 },
 

@@ -67,9 +67,9 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
             // Combine all nodes we know about and try to find block there
             
-            let allVisibleNodes = await GET_QUORUM_URLS_AND_PUBKEYS()
+            let allKnownNodes = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
     
-            for(let host of allVisibleNodes){
+            for(let host of allKnownNodes){
 
                 if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
