@@ -1691,6 +1691,11 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
 INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys) => {
 
+
+    // console.log('DEBUG: Call')
+
+    // console.log(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
+
     // Inform them once per 5 seconds
 
     setTimeout(()=>{
@@ -1734,7 +1739,7 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
                      
                 }
 
-                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
+                //INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
 
             }
 
@@ -1772,7 +1777,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         return
 
     }
-
 
     let majority = GET_MAJORITY(epochHandler)
 
@@ -1857,36 +1861,24 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
 
 
-            // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
+            //______________________Finally, create the urgent reassignment stats______________________
 
-            await USE_TEMPORARY_DB('put',tempObject.DATABASE,`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true).then(async()=>{
-
-
-                tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${doReassignmentRequest.shouldBeThisAuthority}`,true)
-
-                //______________________Finally, create the urgent reassignment stats______________________
-
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
+            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
 
                 
-                    let oldAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
+                let oldAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
 
-                    let nextAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
-
-
-                    tempObject.REASSIGNMENTS.delete(oldAuthorityPubKey)
-
-                    tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
-
-                    tempObject.REASSIGNMENTS.set(nextAuthorityPubKey,primePoolPubKey)
+                let nextAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
 
 
-                }).catch(()=>{})
+                tempObject.REASSIGNMENTS.delete(oldAuthorityPubKey)
+
+                tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
+
+                tempObject.REASSIGNMENTS.set(nextAuthorityPubKey,primePoolPubKey)
 
 
-            }).catch(()=>{})
-            
-    
+            }).catch(()=>{})    
 
         }
 
@@ -2289,13 +2281,6 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
 
                 INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
-
-
-                // Store the fact that set of ASPs was sent to target pool(next authority in reassignment chain for this subchain)
-
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true).catch(()=>{})
-
-                tempObject.TEMP_CACHE.set(`SENT_ALERT:${primePoolPubKey}:${indexOfSkippedPoolInRc+1}`,true)
 
 
                 /*

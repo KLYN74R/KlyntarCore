@@ -8,7 +8,6 @@ let ED25519_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || glob
 
 
 
-
 let
 
 

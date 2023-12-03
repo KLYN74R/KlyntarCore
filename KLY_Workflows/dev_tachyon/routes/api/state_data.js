@@ -1,4 +1,4 @@
-import {WRAP_RESPONSE} from "../../utils.js"
+import {WRAP_RESPONSE} from '../../utils.js'
 
 /**## Returns the data directrly from state
  * 

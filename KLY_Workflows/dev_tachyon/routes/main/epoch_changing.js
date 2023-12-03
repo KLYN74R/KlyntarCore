@@ -1,6 +1,6 @@
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
+import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../verification.js'
 
-import {BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
+import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 
 /*

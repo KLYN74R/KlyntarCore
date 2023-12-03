@@ -1,8 +1,8 @@
 import{BODY,BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
-import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../epochEdgeOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../epochEdgeOperationsVerifiers.js'
 
-import {GET_MAJORITY} from '../utils.js'
+import {GET_MAJORITY} from '../../utils.js'
 
 
 

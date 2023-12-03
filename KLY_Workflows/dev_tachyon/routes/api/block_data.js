@@ -1,6 +1,7 @@
+import Block from '../../essences/block.js'
 
 
-import Block from "../../essences/block.js"
+
 
 // Returns block
 // 0 - blockID(in format <EpochID>:<Ed25519_ValidatorPubkey>:<Index of block in epoch>)

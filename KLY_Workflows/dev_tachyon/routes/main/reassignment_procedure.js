@@ -367,10 +367,8 @@ let getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Al
 
         let skipHandler = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolThatWeAreGoingToSkip)
 
-        let weHaveSentAlertToThisPool = tempObject.TEMP_CACHE.get(`SENT_ALERT:${subchain}:${indexOfNext}`) || await USE_TEMPORARY_DB('get',tempObject.DATABASE,`SENT_ALERT:${subchain}:${indexOfNext}`).catch(()=>false)
 
-
-        if(skipHandler && skipHandler.aggregatedSkipProof && weHaveSentAlertToThisPool){
+        if(skipHandler && skipHandler.aggregatedSkipProof){
     
             let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${pubKeyOfPoolThatWeAreGoingToSkip}:${session}:${epochFullID}`,global.PRIVATE_KEY)
     
@@ -719,6 +717,8 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
 
     
     let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+
+    console.log('DEBUG: Received data')
 
 
     if(typeof possibleReassignmentPropositionForSubchain === 'object'){
