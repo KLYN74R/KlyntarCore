@@ -306,7 +306,7 @@ VT_STATS_LOG = (epochIndex,epochHash,subchainContext) => {
             
         console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,epochIndex+' : '+epochHash,COLORS.C)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  Subchain:\x1b[36;1m`,subchainContext,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]-1)+' : '+subchainContext,COLORS.C)
     
         console.log(` \u001b[38;5;168m│\x1b[33m  Current Authority:\x1b[36;1m`,currentAuthorityOnSubchain,COLORS.C)
     

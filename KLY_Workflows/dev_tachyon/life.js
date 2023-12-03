@@ -24,8 +24,6 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
-import crypto from 'crypto'
-
 import WS from 'websocket'
 
 import level from 'level'
@@ -1692,10 +1690,6 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys) => {
 
 
-    // console.log('DEBUG: Call')
-
-    // console.log(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
-
     // Inform them once per 5 seconds
 
     setTimeout(()=>{
@@ -1716,7 +1710,7 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
 
             // Now compare it to understand if we have to continue sharing our version of reassignments
 
-            if(reassignmentsData && bodyToSend.shouldBeThisAuthority > reassignmentsData.currentAuthority){
+            if(reassignmentsData && bodyToSend.shouldBeThisAuthority >= reassignmentsData.currentAuthority){
 
                 // Send to target pool
 
@@ -1739,7 +1733,7 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
                      
                 }
 
-                //INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
+                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
 
             }
 
@@ -1920,7 +1914,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         }
 
         // Move to next pool in reassignment chain
-        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME && epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]){
+        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME && epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1] && !tempObject.SKIP_HANDLERS.has(poolPubKeyForHunting)){
 
             // Create the skip handler in case time is out    
             
@@ -2282,166 +2276,70 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
 
-
-                /*
-
-                    If ASP already exists - ask for 2/3N+1 => POST /get_reassignment_ready_status
-
-                    We should send
-
-                    {
-                        poolPubKey<pool's Ed25519 public key>,
-                        session:<32-bytes hex string - randomly generated>
-                    }
-
-                    If requested quorum member has ASP: 
-
-                        Response => {type:'OK',sig:SIG(`REASSIGNMENT:<poolPubKey>:<session>:<epochFullID>`)}
-
-                    Otherwise:
-                
-                        Response => {type:'ERR'}
-
-
-                */
-
-                let session = crypto.randomBytes(32).toString('hex')
-
-                let dataToSend = {
-
-                    method:'POST',
-                
-                    body:JSON.stringify({
-
-                        subchain:primePoolPubKey,
-
-                        indexOfNext:indexOfSkippedPoolInRc+1,
-                        
-                        session
                     
-                    })
-
-                }
-
-
-                let proofsPromises=[]
-
-
-                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-
-                    dataToSend.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
+                let currentSubchainAuthority
     
-                    let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_ready_status',dataToSend).then(r=>r.json()).then(response=>{
-        
-                        response.pubKey = poolUrlWithPubkey.pubKey
-            
-                        return response
-            
-                    }).catch(()=>false)
-            
-                    proofsPromises.push(responsePromise)
-            
-                }
+                // Add the reassignment
     
-                
-                let results = (await Promise.all(proofsPromises)).filter(Boolean)
-    
-                let dataThatShouldBeSigned = `REASSIGNMENT:${poolPubKeyForHunting}:${session}:${epochFullID}`
-    
-                let numberWhoAgreeToDoReassignment = 0
-    
-                
-                //___________________Now analyze the results___________________
-    
-                for(let result of results){
-    
-                    if(result.type === 'OK' && typeof result.sig === 'string'){
-    
-                        let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
-    
-                        if(signatureIsOk) numberWhoAgreeToDoReassignment++
-    
-                        if(numberWhoAgreeToDoReassignment >= majority) break // if we get 2/3N+1 approvements - no sense to continue
-    
-                    }
-                
-                }
+                let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
     
     
-                if(numberWhoAgreeToDoReassignment >= majority){
-
-
-                    //_____________________________________Now, create the request for reassignment_____________________________________
-                    
-                    // In case typeof is string - it's reserve pool which points to prime pool, so we should put appropriate request
-                    // In case currentStateInReassignments is nothing(undefined,null,etc.) - it's prime pool without any reassignments
+                if(!reassignmentMetadata){
     
-                    let currentSubchainAuthority
+                    // Create new handler
     
+                    reassignmentMetadata = {currentAuthority:-1}
     
-                    // Add the reassignment
+                    currentSubchainAuthority = poolPubKeyForHunting
     
-                    let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
+                }else currentSubchainAuthority = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
     
     
-                    if(!reassignmentMetadata){
+                let nextIndex = reassignmentMetadata.currentAuthority + 1
     
-                        // Create new handler
+                let nextReservePool = epochHandler.reassignmentChains[primePoolPubKey][nextIndex] // array epochHandler.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
     
-                        reassignmentMetadata = {currentAuthority:-1}
-    
-                        currentSubchainAuthority = poolPubKeyForHunting
-    
-                    }else currentSubchainAuthority = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentSubchainAuthority))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
     
     
-                    let nextIndex = reassignmentMetadata.currentAuthority + 1
+                // Use atomic operation here to write reassignment data + updated skip handler
     
-                    let nextReservePool = epochHandler.reassignmentChains[primePoolPubKey][nextIndex] // array epochHandler.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
+                let keysToAtomicWrite = [
     
-                    let skipHandlerOfAuthority = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentSubchainAuthority))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
-    
-    
-                    // Use atomic operation here to write reassignment data + updated skip handler
-    
-                    let keysToAtomicWrite = [
-    
-                        'REASSIGN:'+primePoolPubKey,
+                    'REASSIGN:'+primePoolPubKey,
                         
-                        'SKIP_HANDLER:'+currentSubchainAuthority
+                    'SKIP_HANDLER:'+currentSubchainAuthority
     
-                    ]
+                ]
     
-                    let valuesToAtomicWrite = [
+                let valuesToAtomicWrite = [
     
-                        {currentAuthority:nextIndex},
+                    {currentAuthority:nextIndex},
     
-                        skipHandlerOfAuthority
+                    skipHandlerOfAuthority
     
-                    ]
+                ]
     
-                    await USE_TEMPORARY_DB('atomicPut',tempObject.DATABASE,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
+                await USE_TEMPORARY_DB('atomicPut',tempObject.DATABASE,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
         
-                        // And only after successful store we can move to the next pool
+                    // And only after successful store we can move to the next pool
     
-                        // Delete the reassignment in case reassigned authority was reserve pool
+                    // Delete the reassignment in case reassigned authority was reserve pool
     
-                        if(currentSubchainAuthority !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentSubchainAuthority)
+                    if(currentSubchainAuthority !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentSubchainAuthority)
                     
                         
-                        reassignmentMetadata.currentAuthority++
+                    reassignmentMetadata.currentAuthority++
         
     
-                        // Set new values - handler for prime pool and pointer to prime pool for reserve pool
+                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
     
-                        tempObject.REASSIGNMENTS.set(primePoolPubKey,reassignmentMetadata)
+                    tempObject.REASSIGNMENTS.set(primePoolPubKey,reassignmentMetadata)
     
-                        tempObject.REASSIGNMENTS.set(nextReservePool,primePoolPubKey)
+                    tempObject.REASSIGNMENTS.set(nextReservePool,primePoolPubKey)
     
     
-                    }).catch(()=>false)
-    
-                }
+                }).catch(()=>false)
               
 
             } else continue

@@ -313,79 +313,6 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 /*
 
-[Info]:
-
-    Once quorum member who already have ASP get the 2/3N+1 approvements
-    
-    for reassignment it can produce finalization proofs for the next reserve pool in (QT/VT).EPOCH.REASSIGNMENT_CHAINS[<primePool>]
-    
-    and start to monitor health for this pool
-
-
-[Accept]:
-
-{
-
-    subchain:primePoolPubKey,
-    indexOfNext,
-    session:<32-bytes hex string>
-
-}
-
-
-[Response]:
-
-If we also have an <aggregatedSkipProof> in our local SKIP_HANDLERS[<poolPubKey>] - we can vote for reassignment:
-
-Response => {type:'OK',sig:ED25519_SIG(`REASSIGNMENT:<poolPubKey>:<session>:<epochFullID>`)}
-
-Otherwise => {type:'ERR'}
-
-*/
-let getReassignmentReadyStatus=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let qtEpochHandler  = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
-
-    let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
-
-    if(!tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'Epoch is not fresh'}))
-
-        return
-    }
-
-    
-    let {subchain,indexOfNext,session} = await BODY(bytes,global.CONFIG.PAYLOAD_SIZE)
-
-
-    if(typeof subchain === 'string' && typeof indexOfNext === 'number' && typeof session === 'string' && session.length === 64 && qtEpochHandler.reassignmentChains[subchain]){
-
-        let pubKeyOfPoolThatWeAreGoingToSkip = qtEpochHandler.reassignmentChains[subchain][indexOfNext-1] || subchain
-
-        let skipHandler = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolThatWeAreGoingToSkip)
-
-
-        if(skipHandler && skipHandler.aggregatedSkipProof){
-    
-            let signatureToResponse = await ED25519_SIGN_DATA(`REASSIGNMENT:${pubKeyOfPoolThatWeAreGoingToSkip}:${session}:${epochFullID}`,global.PRIVATE_KEY)
-    
-            !response.aborted && response.end(JSON.stringify({type:'OK',sig:signatureToResponse}))
-    
-        }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
-    
-
-    }else !response.aborted && response.end(JSON.stringify({type:'ERR'}))
-
-
-})
-
-
-
-/*
-
 
 [Info]:
 
@@ -718,7 +645,7 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
     
     let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    console.log('DEBUG: Received data')
+    console.log('DEBUG: Received data',possibleReassignmentPropositionForSubchain)
 
 
     if(typeof possibleReassignmentPropositionForSubchain === 'object'){
@@ -828,9 +755,6 @@ global.UWS_SERVER
 
 // Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS ✅
 .post('/get_reassignment_proof',getReassignmentProof)
-
-// Once quorum member who already have ASP get the 2/3N+1 approvements for reassignment it can produce commitments, finalization proofs for the next reserve pool in (QT/VT).EPOCH.reassignmentChains[<primePool>] and start to monitor health for this pool ✅
-.post('/get_reassignment_ready_status',getReassignmentReadyStatus)
 
 // We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally) ✅
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
