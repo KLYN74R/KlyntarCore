@@ -1,4 +1,4 @@
-import {CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY, CHECK_ASP_CHAIN_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -3429,42 +3429,27 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
     */
 
-    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
-
-    let quorumThreadEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
-
-    let quorumThreadEpochIndex = qtEpochHandler.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.has(quorumThreadEpochFullID)
-
-    if(!tempObject){
-
-        setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
-
-        return
-
-    }
-
 
     let verificationThread = global.SYMBIOTE_META.VERIFICATION_THREAD
 
-    
     let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
 
     let vtEpochHandler = verificationThread.EPOCH
 
-    let reassignmentChains = vtEpochHandler.reassignmentChains
+    let vtEpochFullID = vtEpochHandler.hash+'#'+vtEpochHandler.id
+
+    let vtReassignmentChains = vtEpochHandler.reassignmentChains
 
 
-    if(!tempReassignmentOnVerificationThread[quorumThreadEpochFullID]){
+    if(!tempReassignmentOnVerificationThread[vtEpochFullID]){
 
-        tempReassignmentOnVerificationThread[quorumThreadEpochFullID] = {} // create empty template
+        tempReassignmentOnVerificationThread[vtEpochFullID] = {} // create empty template
 
         // Fill with data from here. Structure: primePool => [reservePool0,reservePool1,...,reservePoolN]
 
         for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
             
-            tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey] = {
+            tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey] = {
 
                 currentAuthority:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
@@ -3485,277 +3470,69 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
     //___________________Ask quorum members about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
+    let localVersionOfCurrentAuthorities = {} // primePoolPubKey => assumptionAboutIndexOfCurrentAuthority
 
+    for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
 
-    for(let memberHandler of quorumMembers){
-
-        // Make requests to /get_asp_and_approved_first_block. Returns => {proposedAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByProposedAuthority}. Send the current auth + prime pool
-
-        let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>null)
-
-        if(responseForTempReassignment){
-
-    
-            /*
-        
-                The response from each of quorum member has the following structure:
-
-                [0] - {err:'Some error text'} - ignore, do nothing
-
-                [1] - Object with this structure
-
-                {
-
-                    primePool0:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority},
-
-                    primePool1:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority},
-
-                    ...
-
-                    primePoolN:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority}
-
-                }
-
-
-                -----------------------------------------------[Decomposition]-----------------------------------------------
-
-
-                [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
-
-                [1] firstBlockByProposedAuthority - default block structure with ASP for all the previous pools in a queue
-
-                [2] afpForSecondBlockByProposedAuthority - default AFP structure -> 
-
-
-                    {
-                        prevBlockHash:<string>              => it should be the hash of <firstBlockByProposedAuthority>
-                        blockID:<string>,
-                        blockHash:<string>,
-                        proofs:{
-
-                            quorumMemberPubKey0:ed25519Signa,
-                            ...                                             => Signa is prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
-                            quorumMemberPubKeyN:ed25519Signa,
-
-                        }
-                         
-                    }
-
-
-                -----------------------------------------------[What to do next?]-----------------------------------------------
-        
-                Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
-
-                    In case our local version has bigger index - ignore
-
-                    In case proposed version has bigger index it's a clear signal that some of reassignments occured and we need to update our local data
-
-                    For this:
-
-                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByProposedAuthority>
-
-
-                    If all the verification steps is OK - add to some cache
-
-                ---------------------------------[After the verification of all the responses?]---------------------------------
-
-                Start to build the temporary reassignment chains
-
-            */
-
-            for(let [primePoolPubKey,reassignMetadata] of Object.entries(responseForTempReassignment)){
-
-                if(typeof primePoolPubKey === 'string' && typeof reassignMetadata==='object'){
-    
-                    let {proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority} = reassignMetadata
-    
-                    if(typeof proposedAuthorityIndex === 'number' && typeof firstBlockByProposedAuthority === 'object' && typeof afpForSecondBlockByProposedAuthority==='object'){
-                                    
-                        let localPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
-    
-                        if(localPointer <= proposedAuthorityIndex && firstBlockByProposedAuthority.index === 0){
-    
-                            
-                            // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
-    
-                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByProposedAuthority,qtEpochHandler)
-    
-                            let shouldChangeThisSubchain = true
-    
-
-
-                            if(afpIsOk){
-    
-                                // Verify all the ASPs in block header
-    
-                                let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
-                                
-                                    primePoolPubKey, firstBlockByProposedAuthority, reassignmentChains[primePoolPubKey], proposedAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
-                                
-                                )
-    
-                                /*
-                                
-                                    tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool] = {
-    
-                                        currentAuthority:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
-                    
-                                        currentToVerify:<>
-
-                                        reassignments:{} // poolPubKey => {index,hash}
-    
-                                    }
-                                
-                                
-                                */
-    
-                                    
-                                if(isOK){
-    
-                                            
-                                    // Fill the tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool]
-    
-                                    // let previousAuthorityIndexInReassignmentChain = proposedAuthorityIndex-1
-    
-                                    // let previousAuthority = previousAuthorityIndexInReassignmentChain === -1 ? primePool : reassignmentChains[primePool][previousAuthorityIndexInReassignmentChain]
-    
-                                    // tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].reassignments[previousAuthority] = filteredReassignments[previousAuthority]
-    
-                                    // And do the same from proposedAuthorityIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
-    
-
-                                    let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
-
-
-                                    /*
-                                    
-                                        The logic is following:
-
-                                            1) We have information for verificaion thread up to position <tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority>
-
-                                            2) We need to fill the information from this position up to proposed index
-                                    
-                                    */
-                                    let rangeThatWeNeedToFill = {
-
-                                        fromIndex: tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority,
-
-                                        toIndex: proposedAuthorityIndex
-
-                                    }
-
-                                    // Starts the reverse enumeration from proposed current authority index to our local pointer
-
-                                    for(let position = rangeThatWeNeedToFill.toIndex-1 ; position >= rangeThatWeNeedToFill.fromIndex ; position--){
-
-                                        let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
-
-                                        if(filteredReassignments[poolWithThisPosition]?.index !== -1){
-
-                                            console.log('fd')
-
-                                        }
-
-                                    }
-
-                               
-                                    let limitPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
-                               
-                                    // Starts the reverse enumeration from proposed current authority index to our local pointer
-
-                                    for(let position = proposedAuthorityIndex-1 ; position >= limitPointer ; position--){
-    
-                                        let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
-
-                                        // No sense to ask first block(index 0) for pool which was reassigned on index -1(no generated blocks in epoch)
-                                        
-                                        if(filteredReassignments[poolWithThisPosition]?.index !== -1){
-    
-                                            // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
-    
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(quorumThreadEpochIndex,poolWithThisPosition,0)
-
-                                            // Compare hashes to make sure it's really the first block by pool X in epoch Y
-
-                                            if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === filteredReassignments[poolWithThisPosition].firstBlockHash){
-                                
-                                                let resultForCurrentPool = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ASP_CHAIN_VALIDITY(
-                                                        
-                                                    primePoolPubKey, firstBlockInThisEpochByPool, reassignmentChains[primePoolPubKey], position, quorumThreadEpochFullID, vtEpochHandler, true
-                                                        
-                                                )
-                                
-                                                if(resultForCurrentPool.isOK){
-    
-                                                    // If ok - fill the <potentialReassignments>
-        
-                                                    potentialReassignments.push(resultForCurrentPool.filteredReassignments)
-    
-                                                }else{
-    
-                                                    shouldChangeThisSubchain = false
-
-                                                    break
-
-                                                }
-
-                                            }else{
-
-                                                shouldChangeThisSubchain = false
-
-                                                break
-
-                                            }                                        
-
-                                        }
-
-                                    }
-    
-                                    if(shouldChangeThisSubchain){
-
-                                        // Update the reassignment data
-
-                                        let tempReassignmentChain = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
-
-
-                                        for(let reassignStats of potentialReassignments.reverse()){
-
-                                            // potentialReassignments[i] = {primePool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
-
-                                            for(let [reassignedPool,descriptor] of Object.entries(reassignStats)){
-
-                                                if(!tempReassignmentChain[reassignedPool]) tempReassignmentChain[reassignedPool] = descriptor
-                        
-                                            }
-
-                                        }
-
-                                        // Finally, set the <currentAuthority> to the new pointer
-
-                                        tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority = proposedAuthorityIndex
-
-                                    }
-    
-                                }
-    
-                            }
-    
-                        }
-            
-                    }    
-    
-                }
-    
-            }
-
-        }
+        localVersionOfCurrentAuthorities[primePoolPubKey] = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority
 
     }
 
 
-    
-    setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
+    // Make requests to /aggregated_skip_proofs_for_proposed_authorities. Returns => {primePoolPubKey(subchainID):<aggregatedSkipProofForProposedAuthority>}
 
+    let optionsToSend = {
+
+        method: 'POST',
+
+        body: JSON.stringify(localVersionOfCurrentAuthorities)
+
+    }
+
+    
+    for(let memberHandler of quorumMembers){
+
+        let responseForTempReassignment = await fetch(memberHandler.url+'/aggregated_skip_proofs_for_proposed_authorities',optionsToSend).then(r=>r.json()).catch(()=>null)
+
+        if(responseForTempReassignment){
+
+            // Analyze the response
+
+            for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
+
+                let potentialAspForCurrentAuthority = responseForTempReassignment[primePoolPubKey]
+
+                if(potentialAspForCurrentAuthority){
+
+                    // Verify the ASP
+
+                    let pubKeyOfCurrentAuthority = vtReassignmentChains[primePoolPubKey][localVersionOfCurrentAuthorities[primePoolPubKey]]
+
+                    let signaIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfCurrentAuthority,potentialAspForCurrentAuthority,vtEpochFullID,vtEpochHandler)
+
+                    if(signaIsOk){
+
+                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments[pubKeyOfCurrentAuthority] = {
+
+                            index:potentialAspForCurrentAuthority.skipIndex,
+                            
+                            hash:potentialAspForCurrentAuthority.skipHash,
+
+                        }
+
+                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority++
+
+                    }
+
+                }
+        
+            }
+
+        }
+    
+    }
+
+    setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
 },
 
