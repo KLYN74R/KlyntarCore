@@ -3489,7 +3489,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     for(let memberHandler of quorumMembers){
 
-        // Make requests to /get_asp_and_approved_first_block. Returns => {currentAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByCurrentAuthority}. Send the current auth + prime pool
+        // Make requests to /get_asp_and_approved_first_block. Returns => {proposedAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByCurrentAuthority}. Send the current auth + prime pool
 
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>null)
 
@@ -3506,13 +3506,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 {
 
-                    primePool0:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
+                    primePool0:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
 
-                    primePool1:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
+                    primePool1:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
 
                     ...
 
-                    primePoolN:{currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
+                    primePoolN:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
                 }
 
@@ -3520,7 +3520,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                 -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-                [0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][currentAuthorityIndex]
+                [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
 
                 [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
 
@@ -3544,7 +3544,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 -----------------------------------------------[What to do next?]-----------------------------------------------
         
-                Compare the <currentAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
+                Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
 
                     In case our local version has bigger index - ignore
 
@@ -3567,13 +3567,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 if(typeof primePoolPubKey === 'string' && typeof reassignMetadata==='object'){
     
-                    let {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority} = reassignMetadata
+                    let {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority} = reassignMetadata
     
-                    if(typeof currentAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForSecondBlockByCurrentAuthority==='object'){
+                    if(typeof proposedAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForSecondBlockByCurrentAuthority==='object'){
                                     
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
     
-                        if(localPointer <= currentAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
+                        if(localPointer <= proposedAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
     
                             
                             // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
@@ -3590,7 +3590,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], currentAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
+                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], proposedAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
                                 
                                 )
     
@@ -3615,22 +3615,41 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                                             
                                     // Fill the tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool]
     
-                                    // let previousAuthorityIndexInReassignmentChain = currentAuthorityIndex-1
+                                    // let previousAuthorityIndexInReassignmentChain = proposedAuthorityIndex-1
     
                                     // let previousAuthority = previousAuthorityIndexInReassignmentChain === -1 ? primePool : reassignmentChains[primePool][previousAuthorityIndexInReassignmentChain]
     
                                     // tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].reassignments[previousAuthority] = filteredReassignments[previousAuthority]
     
-                                    // And do the same from currentAuthorityIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
+                                    // And do the same from proposedAuthorityIndex to tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
     
 
                                     let potentialReassignments = [filteredReassignments] // each element here is object like {pool:{index,hash}}
+
+
+                                    /*
+                                    
+                                        The logic is following:
+
+                                            1) We have information for verificaion thread up to position <tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority>
+
+                                            2) We need to fill the information from this position up to proposed index
+                                    
+                                    */
+                                    let rangeThatWeNeedToFill = {
+
+                                        fromIndex: tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority,
+
+                                        toIndex: proposedAuthorityIndex
+
+                                    }
+
                                
                                     let limitPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
                                
                                     // Starts the reverse enumeration from proposed current authority index to our local pointer
 
-                                    for(let position = currentAuthorityIndex-1 ; position >= limitPointer ; position--){
+                                    for(let position = proposedAuthorityIndex-1 ; position >= limitPointer ; position--){
     
                                         let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
 
@@ -3699,7 +3718,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // Finally, set the <currentAuthority> to the new pointer
 
-                                        tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority = currentAuthorityIndex
+                                        tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority = proposedAuthorityIndex
 
                                     }
     

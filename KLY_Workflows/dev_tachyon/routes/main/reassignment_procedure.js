@@ -328,13 +328,13 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 Object like {
 
-    primePoolPubKey(subchainID) => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
+    primePoolPubKey(subchainID) => {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
 }
 
 ___________________________________________________________
 
-[0] currentAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.REASSIGNMENT_CHAINS[<primePool>][currentAuthorityIndex]
+[0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.REASSIGNMENT_CHAINS[<primePool>][proposedAuthorityIndex]
 
 [1] firstBlockByCurrentAuthority - default block structure.Send exactly first block to allow client to reverse the chain and understand how to continue the work on verification thread
 
@@ -378,7 +378,7 @@ let getDataForTempReassignments = async response => {
 
         let currentPrimePools = epochHandler.poolsRegistry.primePools // [primePool0, primePool1, ...]
 
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
+        let templateForResponse = {} // primePool => {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
 
         for(let primePool of currentPrimePools){
 
@@ -388,9 +388,9 @@ let getDataForTempReassignments = async response => {
 
             if(reassignmentHandler){
 
-                let currentAuthorityIndex = reassignmentHandler.currentAuthority
+                let proposedAuthorityIndex = reassignmentHandler.currentAuthority
 
-                let currentSubchainAuthority = currentAuthorityIndex === -1 ? primePool : epochHandler.reassignmentChains[primePool][currentAuthorityIndex]
+                let currentSubchainAuthority = proposedAuthorityIndex === -1 ? primePool : epochHandler.reassignmentChains[primePool][currentAuthorityIndex]
 
                 // Now get the first block & AFP for it
 
@@ -419,119 +419,6 @@ let getDataForTempReassignments = async response => {
                     }
 
                 }
-
-            }
-
-        }
-
-        // Finally, send the <templateForResponse> back
-
-        !response.aborted && response.end(JSON.stringify(templateForResponse))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-}
-
-
-
-
-/*
-
-
-Function to return the current information about authorities on subchains
-
-
-[Params]:
-
-    Nothing
-
-[Returns]:
-
-    {
-        "subchain0":{
-
-            currentAuthorityIndex:<number>,
-
-            aspForPrevious:{
-
-                previousAspHash,
-
-                firstBlockHash,
-
-                skipIndex,
-
-                skipHash,
-
-                proofs:{
-
-                    quorumMemberPubKey0:hisEd25519Signa,
-                    ...                                                 => 'SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>'
-                    quorumMemberPubKeyN:hisEd25519Signa
-
-                }
-
-            }
-
-        }
-    }
-
-
-*/
-let getCurrentSubchainAuthorities = async response => {
-
-    response.onAborted(()=>response.aborted=true)
-
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_CURRENT_SUBCHAINS_AUTHORITIES){
-
-        let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
-
-        let quorumThreadEpochFullID = epochHandler.hash+"#"+epochHandler.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadEpochFullID)
-
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
-    
-            return
-        }
-
-        // Get the current authorities for subchains from REASSIGNMENTS
-
-        let currentPrimePools = epochHandler.poolsRegistry.primePools // [primePool0, primePool1, ...]
-
-        let templateForResponse = {} // primePool => {currentAuthorityIndex,aspForPrevious}
-
-        for(let primePool of currentPrimePools){
-
-            // Get the current authority
-
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
-
-            if(reassignmentHandler){
-
-                let currentAuthorityIndex = reassignmentHandler.currentAuthority
-
-                // Also, we need to send the ASP for previous pool in reassignment chain as a proof of valid move to current authority
-
-                let aspForPrevious
-
-                if(currentAuthorityIndex === 0){
-
-                    // If current authority is 0 this is a signal that previous was prime pool (index = -1)
-
-                    aspForPrevious = tempObject.SKIP_HANDLERS.get(primePool)?.aggregatedSkipProof
-
-                }else if (currentAuthorityIndex > 0){
-
-                    let previousAuthorityPubKey = epochHandler.reassignmentChains[primePool][currentAuthorityIndex-1]
-
-                    aspForPrevious = tempObject.SKIP_HANDLERS.get(previousAuthorityPubKey)?.aggregatedSkipProof
-
-                }
-
-                templateForResponse[primePool] = {currentAuthorityIndex,aspForPrevious}
 
             }
 
@@ -758,9 +645,6 @@ global.UWS_SERVER
 
 // We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally) ✅
 .get('/get_data_for_temp_reassign',getDataForTempReassignments)
-
-// Get current subchains' authorities based on reassignment chains of current epoch ✅
-.get('/get_current_subchain_authorities',getCurrentSubchainAuthorities)
 
 // Handler to accept ASPs and to start forced reassignment
 .post('/accept_reassignment',acceptReassignment)
