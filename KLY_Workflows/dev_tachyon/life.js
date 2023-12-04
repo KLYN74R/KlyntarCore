@@ -3489,12 +3489,24 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     }
 
+    let responses = []
     
+
+    // TODO: Choose only several random sources instead of the whole quorum
+
     for(let memberHandler of quorumMembers){
 
-        let responseForTempReassignment = await fetch(memberHandler.url+'/aggregated_skip_proofs_for_proposed_authorities',optionsToSend).then(r=>r.json()).catch(()=>null)
+        responses.push(
 
-        if(responseForTempReassignment){
+            fetch(memberHandler.url+'/aggregated_skip_proofs_for_proposed_authorities',optionsToSend).then(r=>r.json()).catch(()=>null)
+
+        )
+
+    }
+
+    (await Promise.all(responses)).filter(Boolean).forEach(
+
+        async responseForTempReassignment => {
 
             // Analyze the response
 
@@ -3529,8 +3541,9 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
             }
 
         }
-    
-    }
+
+    )
+
 
     setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
