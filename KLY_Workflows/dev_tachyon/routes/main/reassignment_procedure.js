@@ -310,128 +310,74 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 
 
-
 /*
-
 
 [Info]:
 
-    Route to ask for <aggregatedSkipProof>(s) in function TEMPORARY_REASSIGNMENTS_BUILDER()
-
+    Accept indexes of authorities on subchains by requester version and return ASPs for them
 
 [Accept]:
 
-    Nothing
-
+    {
+        primePoolPubKey:<index of current authority on subchain by requester version>
+        ...
+    }
 
 [Returns]:
 
-Object like {
-
-    primePoolPubKey(subchainID) => {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
-
-}
-
-___________________________________________________________
-
-[0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.REASSIGNMENT_CHAINS[<primePool>][proposedAuthorityIndex]
-
-[1] firstBlockByCurrentAuthority - default block structure.Send exactly first block to allow client to reverse the chain and understand how to continue the work on verification thread
-
-[2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
-
-
     {
-        prevBlockHash:<here will be the hash of block with index 0 - the first block in epoch by pool>
-        blockID,
-        blockHash,
-        aggregatedSignature:<>, // prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
-        aggregatedPub:<>,
-        afkVoters
-        
+        primePoolPubKey(subchainID):<aggregatedSkipProofForProposedAuthority>
+        ...
+    
+    }
+
+*/
+let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+
+    if(!tempObject){
+
+        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
+
+        return
     }
 
 
-*/
-let getDataForTempReassignments = async response => {
+    let proposedIndexesOfAuthorities = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE) // format {primePoolPubKey:index}
 
-    response.onAborted(()=>response.aborted=true)
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_DATA_FOR_TEMP_REASSIGN){
+    if(typeof proposedIndexesOfAuthorities === 'object'){
 
-        let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+        let objectToReturn = {}
 
-        let quorumThreadEpochFullID = epochHandler.hash+"#"+epochHandler.id
+        // Here we should return the ASP for proposed authorities
 
-        let quorumThreadEpochIndex = epochHandler.id
+        for(let [subchainID, proposedIndexOfAuthority] of Object.entries(proposedIndexesOfAuthorities)){
 
-        let tempObject = global.SYMBIOTE_META.TEMP.get(quorumThreadEpochFullID)
+            if(epochHandler.reassignmentChains[subchainID]){
 
-        if(!tempObject){
-    
-            !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
-    
-            return
-        }
+                let pubKeyOfPoolByThisIndex = epochHandler.reassignmentChains[subchainID][proposedIndexOfAuthority] || subchainID
 
-        // Get the current authorities for subchains from REASSIGNMENTS
+                let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)
 
-        let currentPrimePools = epochHandler.poolsRegistry.primePools // [primePool0, primePool1, ...]
-
-        let templateForResponse = {} // primePool => {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
-
-        for(let primePool of currentPrimePools){
-
-            // Get the current authority
-
-            let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePool) // primePool => {currentAuthority:<number>}
-
-            if(reassignmentHandler){
-
-                let proposedAuthorityIndex = reassignmentHandler.currentAuthority
-
-                let currentSubchainAuthority = proposedAuthorityIndex === -1 ? primePool : epochHandler.reassignmentChains[primePool][currentAuthorityIndex]
-
-                // Now get the first block & AFP for it
-
-                let firstBlockID = quorumThreadEpochIndex+':'+currentSubchainAuthority+':0'
-
-                let firstBlockByCurrentAuthority = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>null)
-
-                if(firstBlockByCurrentAuthority){
-
-                    // Finally, find the AFP for block with index 1 to approve that block 0 will be 100% accepted by network
-
-                    let secondBlockID = quorumThreadEpochIndex+':'+currentSubchainAuthority+':1'
-
-                    let afpForSecondBlockByCurrentAuthority = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+secondBlockID).catch(()=>null)
-
-                    // Put to response
-
-                    templateForResponse[primePool]={
-
-                        currentAuthorityIndex,
-                        
-                        firstBlockByCurrentAuthority,
-                        
-                        afpForSecondBlockByCurrentAuthority
-                        
-                    }
-
-                }
+                objectToReturn[subchainID] = aggregatedSkipProofForThisPool
 
             }
 
+
         }
 
-        // Finally, send the <templateForResponse> back
+        !response.aborted && response.end(JSON.stringify(objectToReturn))
 
-        !response.aborted && response.end(JSON.stringify(templateForResponse))
+    } else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
 
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-}
+    
+})
 
 
 
@@ -529,10 +475,7 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
     }
 
 
-    
     let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
-
-    console.log('DEBUG: Received data',possibleReassignmentPropositionForSubchain)
 
 
     if(typeof possibleReassignmentPropositionForSubchain === 'object'){
@@ -641,10 +584,10 @@ global.UWS_SERVER
 
 
 // Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS ✅
-.post('/get_reassignment_proof',getReassignmentProof)
+.post('/reassignment_proof',getReassignmentProof)
 
-// We need this route for function TEMPORARY_REASSIGNMENTS_BUILDER() to build temporary reassignments. This function just return the ASP for some pools(if ASP exists locally) ✅
-.get('/get_data_for_temp_reassign',getDataForTempReassignments)
+// Function to return aggregated skip proofs for proposed authorities
+.post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedAuthorities)
 
 // Handler to accept ASPs and to start forced reassignment
 .post('/accept_reassignment',acceptReassignment)

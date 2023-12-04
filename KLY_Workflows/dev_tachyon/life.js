@@ -1934,7 +1934,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     skipData:JSON.parse(JSON.stringify(epochDataOfThisPool)), // {index,hash,afp}
     
-                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /get_reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
+                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
     
                 }
     
@@ -1964,7 +1964,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         
         if(!skipHandler.aggregatedSkipProof){
 
-            // Otherwise, send payload to => POST /get_reassignment_proof
+            // Otherwise, send payload to => POST /reassignment_proof
 
             let responsePromises = []
 
@@ -2026,7 +2026,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                 sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
 
-                let responsePromise = fetch(poolUrlWithPubkey.url+'/get_reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
+                let responsePromise = fetch(poolUrlWithPubkey.url+'/reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
     
                     response.pubKey = poolUrlWithPubkey.pubKey
         
@@ -3489,7 +3489,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     for(let memberHandler of quorumMembers){
 
-        // Make requests to /get_asp_and_approved_first_block. Returns => {proposedAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByCurrentAuthority}. Send the current auth + prime pool
+        // Make requests to /get_asp_and_approved_first_block. Returns => {proposedAuthorityIndex,firstBlockOfCurrentAuthority,afpForSecondBlockByProposedAuthority}. Send the current auth + prime pool
 
         let responseForTempReassignment = await fetch(memberHandler.url+'/get_data_for_temp_reassign',{agent:GET_HTTP_AGENT(memberHandler.url)}).then(r=>r.json()).catch(()=>null)
 
@@ -3506,13 +3506,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 {
 
-                    primePool0:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
+                    primePool0:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority},
 
-                    primePool1:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority},
+                    primePool1:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority},
 
                     ...
 
-                    primePoolN:{proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority}
+                    primePoolN:{proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority}
 
                 }
 
@@ -3522,13 +3522,13 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
 
-                [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
+                [1] firstBlockByProposedAuthority - default block structure with ASP for all the previous pools in a queue
 
-                [2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
+                [2] afpForSecondBlockByProposedAuthority - default AFP structure -> 
 
 
                     {
-                        prevBlockHash:<string>              => it should be the hash of <firstBlockByCurrentAuthority>
+                        prevBlockHash:<string>              => it should be the hash of <firstBlockByProposedAuthority>
                         blockID:<string>,
                         blockHash:<string>,
                         proofs:{
@@ -3552,7 +3552,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                     For this:
 
-                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByCurrentAuthority>
+                        0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByProposedAuthority>
 
 
                     If all the verification steps is OK - add to some cache
@@ -3567,18 +3567,18 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                 if(typeof primePoolPubKey === 'string' && typeof reassignMetadata==='object'){
     
-                    let {proposedAuthorityIndex,firstBlockByCurrentAuthority,afpForSecondBlockByCurrentAuthority} = reassignMetadata
+                    let {proposedAuthorityIndex,firstBlockByProposedAuthority,afpForSecondBlockByProposedAuthority} = reassignMetadata
     
-                    if(typeof proposedAuthorityIndex === 'number' && typeof firstBlockByCurrentAuthority === 'object' && typeof afpForSecondBlockByCurrentAuthority==='object'){
+                    if(typeof proposedAuthorityIndex === 'number' && typeof firstBlockByProposedAuthority === 'object' && typeof afpForSecondBlockByProposedAuthority==='object'){
                                     
                         let localPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
     
-                        if(localPointer <= proposedAuthorityIndex && firstBlockByCurrentAuthority.index === 0){
+                        if(localPointer <= proposedAuthorityIndex && firstBlockByProposedAuthority.index === 0){
     
                             
                             // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentAuthority,qtEpochHandler)
+                            let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByProposedAuthority,qtEpochHandler)
     
                             let shouldChangeThisSubchain = true
     
@@ -3590,7 +3590,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
                                 let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
                                 
-                                    primePoolPubKey, firstBlockByCurrentAuthority, reassignmentChains[primePoolPubKey], proposedAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
+                                    primePoolPubKey, firstBlockByProposedAuthority, reassignmentChains[primePoolPubKey], proposedAuthorityIndex, quorumThreadEpochFullID, vtEpochHandler, true
                                 
                                 )
     
@@ -3644,6 +3644,20 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                     }
 
+                                    // Starts the reverse enumeration from proposed current authority index to our local pointer
+
+                                    for(let position = rangeThatWeNeedToFill.toIndex-1 ; position >= rangeThatWeNeedToFill.fromIndex ; position--){
+
+                                        let poolWithThisPosition = position === -1 ? primePoolPubKey : reassignmentChains[primePoolPubKey][position]
+
+                                        if(filteredReassignments[poolWithThisPosition]?.index !== -1){
+
+                                            console.log('fd')
+
+                                        }
+
+                                    }
+
                                
                                     let limitPointer = tempReassignmentOnVerificationThread[quorumThreadEpochFullID][primePoolPubKey].currentAuthority
                                
@@ -3655,7 +3669,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
                                         // No sense to ask first block(index 0) for pool which was reassigned on index -1(no generated blocks in epoch)
                                         
-                                        if(filteredReassignments[poolWithThisPosition].index !== -1){
+                                        if(filteredReassignments[poolWithThisPosition]?.index !== -1){
     
                                             // This is a signal that pool has created at least 1 block, so we have to get it and update the reassignment stats
     
