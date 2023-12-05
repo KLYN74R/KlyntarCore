@@ -1746,6 +1746,17 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
 
 
 
+TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInReassignmentChain,leaderShipTimeframe)=>{
+
+    // Function to check if time frame for current shard leader is done and we have to move to next reserve pools in reassignment chain
+
+    return GET_GMT_TIMESTAMP() >= epochHandler.timestamp+(indexOfCurrentLeaderInReassignmentChain+2)*leaderShipTimeframe
+
+},
+
+
+
+
 // Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
@@ -1883,7 +1894,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         let poolPubKeyForHunting, previousPoolPubKey, poolIndexInRc
 
-        if(reassignmentHandler){
+        if(reassignmentHandler && reassignmentHandler.currentAuthority !== -1){
 
             poolIndexInRc = reassignmentHandler.currentAuthority
 
@@ -1900,21 +1911,10 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             previousPoolPubKey = null
         } 
 
-
-        let timeOfStartByThisAuthority = tempObject.TEMP_CACHE.get('TIME:'+poolPubKeyForHunting)
-
-        if(!timeOfStartByThisAuthority){
-
-            let currentTime = GET_GMT_TIMESTAMP()
-
-            tempObject.TEMP_CACHE.set('TIME:'+poolPubKeyForHunting,currentTime)
-
-            timeOfStartByThisAuthority = currentTime
-
-        }
+        let itsNotFinishOfReassignmentChain = epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]
 
         // Move to next pool in reassignment chain
-        if(GET_GMT_TIMESTAMP() >= timeOfStartByThisAuthority+global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.SLOTS_TIME && epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1] && !tempObject.SKIP_HANDLERS.has(poolPubKeyForHunting)){
+        if(TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,poolIndexInRc,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME) && itsNotFinishOfReassignmentChain && !tempObject.SKIP_HANDLERS.has(poolPubKeyForHunting)){
 
             // Create the skip handler in case time is out    
             
