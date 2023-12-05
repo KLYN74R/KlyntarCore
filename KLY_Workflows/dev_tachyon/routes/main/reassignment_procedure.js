@@ -363,7 +363,7 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
                 let pubKeyOfPoolByThisIndex = epochHandler.reassignmentChains[subchainID][proposedIndexOfAuthority] || subchainID
 
-                let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)
+                let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)?.aggregatedSkipProof
 
                 objectToReturn[subchainID] = aggregatedSkipProofForThisPool
 
@@ -376,7 +376,7 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
     } else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
 
-    
+
 })
 
 

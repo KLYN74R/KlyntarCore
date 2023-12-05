@@ -3504,21 +3504,29 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     }
 
-    (await Promise.all(responses)).filter(Boolean).forEach(
 
-        async responseForTempReassignment => {
+    let returnedValues = (await Promise.all(responses)).filter(Boolean)
 
-            // Analyze the response
 
-            for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
+    for(let responseForTempReassignment of returnedValues){
 
-                let potentialAspForCurrentAuthority = responseForTempReassignment[primePoolPubKey]
+        // Analyze the response
 
-                if(potentialAspForCurrentAuthority){
+        for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
+
+            let potentialAspForCurrentAuthority = responseForTempReassignment[primePoolPubKey]
+
+            let shouldUpdate = localVersionOfCurrentAuthorities[primePoolPubKey] === tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority
+
+            if(potentialAspForCurrentAuthority && typeof potentialAspForCurrentAuthority === 'object' && shouldUpdate){
+
+                let {previousAspHash,firstBlockHash,skipIndex,skipHash,proofs} = potentialAspForCurrentAuthority
+
+                if(typeof previousAspHash === 'string' && typeof firstBlockHash === 'string' && typeof skipIndex === 'number' && typeof skipHash === 'string' && typeof proofs === 'object'){
 
                     // Verify the ASP
 
-                    let pubKeyOfCurrentAuthority = vtReassignmentChains[primePoolPubKey][localVersionOfCurrentAuthorities[primePoolPubKey]]
+                    let pubKeyOfCurrentAuthority = vtReassignmentChains[primePoolPubKey][localVersionOfCurrentAuthorities[primePoolPubKey]] || primePoolPubKey
 
                     let signaIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfCurrentAuthority,potentialAspForCurrentAuthority,vtEpochFullID,vtEpochHandler)
 
@@ -3527,7 +3535,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                         tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments[pubKeyOfCurrentAuthority] = {
 
                             index:potentialAspForCurrentAuthority.skipIndex,
-                            
+                        
                             hash:potentialAspForCurrentAuthority.skipHash,
 
                         }
@@ -3537,13 +3545,12 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
                     }
 
                 }
-        
-            }
 
+            }
+    
         }
 
-    )
-
+    }
 
     setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
