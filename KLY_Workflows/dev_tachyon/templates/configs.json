@@ -122,7 +122,7 @@
             "SEARCH_RESULT":5,
             "TX_RECEIPT":100,
             "POOLS_METADATA":5,
-            "QUORUM_THREAD_CHECKPOINT":5
+            "DATA_ABOUT_EPOCH_ON_THREAD":5
 
         }   
     
@@ -157,7 +157,7 @@
             "SEARCH_RESULT":1,
             "TX_RECEIPT":1,
             "POOLS_METADATA":1,
-            "QUORUM_THREAD_CHECKPOINT":1
+            "DATA_ABOUT_EPOCH_ON_THREAD":1
         
         }
     

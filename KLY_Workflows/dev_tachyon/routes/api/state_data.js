@@ -107,29 +107,7 @@ let getSearchResult=async(response,request)=>{
             return
 
         }
-
-
-        let blockByGRID = await global.SYMBIOTE_META.STATE.get(query).then(
-            
-            blockID => global.SYMBIOTE_META.BLOCKS.get(blockID)
-
-        ).then(block=>{
-
-            responseType='BLOCK_BY_GRID'
-
-            return block
-
-        }).catch(()=>false)
-
-
-        if(blockByGRID){
-
-            !response.aborted && response.end(JSON.stringify({responseType,data:blockByGRID}))
-
-            return
-
-        }
-
+        
     
         let possibleBlock = await global.SYMBIOTE_META.BLOCKS.get(query).then(block=>{
 

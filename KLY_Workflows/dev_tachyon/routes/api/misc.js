@@ -236,7 +236,7 @@ getDataAboutEpochOnThreads=response=>{
         response
             
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.QUORUM_THREAD_CHECKPOINT}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
             .onAborted(()=>response.aborted=true)
 
         response.end(JSON.stringify({
