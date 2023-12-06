@@ -17,7 +17,7 @@ let
 
 To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index
 
-Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid subchain and will be included to epoch
+Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid shard and will be included to epoch
 
 Params:
 

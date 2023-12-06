@@ -154,16 +154,16 @@ class VmState {
 
         let addressAsStringWithout0x = address.buf.toString('hex');
 
-        let bindedSubchain = await global.GET_SUBCHAIN_ASSIGNMENT(addressAsStringWithout0x);
+        let bindedToShard = await global.GET_SHARD_ASSIGNMENT(addressAsStringWithout0x);
 
         // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
 
         let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
 
 
-        if(bindedSubchain !== evmExecutionContext){
+        if(bindedToShard !== evmExecutionContext){
 
-            throw new Error(`Account 0x${addressAsStringWithout0x} binded to subchain ${bindedSubchain}, but you try to change the state of it via tx on subchain ${evmExecutionContext}`)
+            throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
         }
 

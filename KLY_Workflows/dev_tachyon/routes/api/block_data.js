@@ -29,8 +29,8 @@ let getBlockById=(response,request)=>{
 }
 
 
-// 0 - subchainID
-// 1 - SID(format subchainID:Index)
+// 0 - shardID - ed25519 identifier of shard
+// 1 - index
 let getBlockBySID=(response,request)=>{
 
     //Set triggers
@@ -42,10 +42,10 @@ let getBlockBySID=(response,request)=>{
             .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_SID}`)
             .onAborted(()=>response.aborted=true)
 
-        let subchainContext = request.getParameter(0)
-        let sid = request.getParameter(1)
+        let shardContext = request.getParameter(0)
+        let indexOnShard = request.getParameter(1)
 
-        global.SYMBIOTE_META.STATE.get(`SID:${subchainContext}:${sid}`).then(blockID =>
+        global.SYMBIOTE_META.STATE.get(`SID:${shardContext}:${indexOnShard}`).then(blockID =>
 
             global.SYMBIOTE_META.BLOCKS.get(blockID).then(
                 
@@ -129,6 +129,6 @@ global.UWS_SERVER
 
 .get('/block/:ID',getBlockById)
 
-.get('/block_by_sid/:SUBCHAIN/:SID',getBlockBySID)
+.get('/block_by_sid/:SHARD/:SID',getBlockBySID)
 
 .get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)

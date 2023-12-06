@@ -93,13 +93,13 @@ let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,tx,goingToSpend)=>
 
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originSubchain) => {
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originShard) => {
 
     
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION === tx.v){
 
-        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, subchain(context where to execute tx), tx type, JSON'ed payload,nonce and fee
-        let signedData = global.GENESIS.SYMBIOTE_ID+tx.v+originSubchain+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
+        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        let signedData = global.GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
         if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)
@@ -174,15 +174,15 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (originSubchain,tx,rewardBox)=>{
+    TX:async (originShard,tx,rewardBox)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator),
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator),
         
-            recipientAccount=await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.payload.to),
+            recipientAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.payload.to),
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.payload.amount+tx.fee
 
-        tx = await FILTERS.TX(tx,originSubchain) //pass through the filter
+        tx = await FILTERS.TX(tx,originShard) //pass through the filter
 
         if(!tx){
 
@@ -205,7 +205,7 @@ export let VERIFIERS = {
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
     
-                global.SYMBIOTE_META.STATE_CACHE.set(originSubchain+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
+                global.SYMBIOTE_META.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
             
             }
             
@@ -248,14 +248,14 @@ export let VERIFIERS = {
 
     */
 
-    CONTRACT_DEPLOY:async (originSubchain,tx,rewardBox,atomicBatch)=>{
+    CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator)
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator)
 
         let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
-        tx = await FILTERS.CONTRACT_DEPLOY(tx,originSubchain) //pass through the filter
+        tx = await FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
 
         if(!tx){
@@ -283,7 +283,7 @@ export let VERIFIERS = {
 
             }else{
 
-                let contractID = BLAKE3(originSubchain+JSON.stringify(tx))
+                let contractID = BLAKE3(originShard+JSON.stringify(tx))
 
                 let contractTemplate = {
     
@@ -331,13 +331,13 @@ export let VERIFIERS = {
 
 
     */
-    CONTRACT_CALL:async(originSubchain,tx,rewardBox,atomicBatch)=>{
+    CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator),
+        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator),
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.gasLimit
 
-        tx = await FILTERS.CONTRACT_CALL(tx,originSubchain) //pass through the filter
+        tx = await FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
 
         
         if(!tx){
@@ -347,7 +347,7 @@ export let VERIFIERS = {
         }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
 
 
-            let contractMeta = await GET_FROM_STATE(originSubchain+':'+tx.payload.contractID)
+            let contractMeta = await GET_FROM_STATE(originShard+':'+tx.payload.contractID)
 
 
             if(contractMeta){
@@ -360,7 +360,7 @@ export let VERIFIERS = {
 
                         let contract = global.SYSTEM_CONTRACTS.get(typeofContract)
                         
-                        await contract[tx.payload.method](tx,originSubchain,atomicBatch)
+                        await contract[tx.payload.method](tx,originShard,atomicBatch)
 
 
                         senderAccount.balance-=goingToSpend
@@ -391,7 +391,7 @@ export let VERIFIERS = {
                     try{
 
                         // Get the initial data to pass as '' param
-                        // Check if contract is binded to given subchain
+                        // Check if contract is binded to given shard
 
                         result = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
 
@@ -425,10 +425,10 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originSubchain,tx,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
 
-        let evmResult = await KLY_EVM.callEVM(originSubchain,tx.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,tx.payload).catch(()=>false)
 
 
         if(evmResult && !evmResult.execResult.exceptionError){            

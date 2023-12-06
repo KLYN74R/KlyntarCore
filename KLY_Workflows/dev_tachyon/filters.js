@@ -42,11 +42,11 @@ import {GET_ACCOUNT_ON_SYMBIOTE} from './utils.js'
 
 
 
-let VERIFY_WRAP=async (tx,originSubchain)=>{
+let VERIFY_WRAP=async (tx,originShard)=>{
 
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+tx.creator)
+    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator)
 
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originSubchain).catch(()=>false)
+    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originShard).catch(()=>false)
 
     
     if(result){
@@ -87,11 +87,11 @@ export default {
     }
 
     */
-    TX:async (tx,originSubchain) =>
+    TX:async (tx,originShard) =>
 
         typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
         &&
-        await VERIFY_WRAP(tx,originSubchain)
+        await VERIFY_WRAP(tx,originShard)
     ,
 
     /*
@@ -113,11 +113,11 @@ export default {
     }
 
     */
-    CONTRACT_DEPLOY:async (tx,originSubchain) =>
+    CONTRACT_DEPLOY:async (tx,originShard) =>
     
         typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('spec/')) && Array.isArray(tx.payload.constructorParams)
         &&
-        await VERIFY_WRAP(tx,originSubchain)
+        await VERIFY_WRAP(tx,originShard)
 
     ,
 
@@ -136,11 +136,11 @@ export default {
         }
 
     */
-    CONTRACT_CALL:async (tx,originSubchain) =>
+    CONTRACT_CALL:async (tx,originShard) =>
     
         typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
         &&
-        await VERIFY_WRAP(tx,originSubchain)
+        await VERIFY_WRAP(tx,originShard)
 
 }
 

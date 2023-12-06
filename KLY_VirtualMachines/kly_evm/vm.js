@@ -44,11 +44,11 @@ const web3 = new Web3()
 //_________________________________________________________ FUNCTIONS POOL _________________________________________________________
 
 
-global.GET_SUBCHAIN_ASSIGNMENT = async addressAsString => {
+global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
-    let bindedSubchain = await GET_FROM_STATE('SUB:'+addressAsString)
+    let bindedToShard = await GET_FROM_STATE('SHARD_BIND:'+addressAsString)
 
-    if(bindedSubchain) return bindedSubchain.subchain
+    if(bindedToShard) return bindedToShard.shard
 
 }
 

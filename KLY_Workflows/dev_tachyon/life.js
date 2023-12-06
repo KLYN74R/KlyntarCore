@@ -99,7 +99,7 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
     //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
 
 
-    let reservePoolsRelatedToSubchain = new Map() // subchainID => [] - array of reserve pools
+    let reservePoolsRelatedToShard = new Map() // shardID => [] - array of reserve pools
 
     let primePoolsPubKeys = new Set(epochHandler.poolsRegistry.primePools)
 
@@ -114,9 +114,9 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
 
             let {reserveFor} = poolStorage
 
-            if(!reservePoolsRelatedToSubchain.has(reserveFor)) reservePoolsRelatedToSubchain.set(reserveFor,[])
+            if(!reservePoolsRelatedToShard.has(reserveFor)) reservePoolsRelatedToShard.set(reserveFor,[])
 
-            reservePoolsRelatedToSubchain.get(reserveFor).push(reservePoolPubKey)
+            reservePoolsRelatedToShard.get(reserveFor).push(reservePoolPubKey)
                     
         }
 
@@ -128,7 +128,7 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
         After this cycle we have:
 
         [0] primePoolsIDs - Set(primePool0,primePool1,...)
-        [1] reservePoolsRelatedToSubchainAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
+        [1] reservePoolsRelatedToShardAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
 
     
     */
@@ -141,11 +141,11 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
     for(let primePoolID of primePoolsPubKeys){
 
 
-        let arrayOfReservePoolsRelatedToThisSubchain = reservePoolsRelatedToSubchain.get(primePoolID) || []
+        let arrayOfReservePoolsRelatedToThisShard = reservePoolsRelatedToShard.get(primePoolID) || []
 
         let mapping = new Map()
 
-        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisSubchain.map(validatorPubKey=>{
+        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisShard.map(validatorPubKey=>{
 
             let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldEpoch),16)
 
@@ -373,21 +373,21 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         1. Check if new epoch must be started(new day by default)
 
-        2. Try to find AEFPs(Aggregated Epoch Finalization Proofs) for each of subchains by calling GET /aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID
+        2. Try to find AEFPs(Aggregated Epoch Finalization Proofs) for each of shards by calling GET /aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SHARD_ID
 
             Reminder - the structure of AEFP must be:
 
                 {
 
-                    subchain,
+                    shard,
 
-                    lastAuthority,
+                    lastLeader,
                     
                     lastIndex,
                     
                     lastHash,
 
-                    hashOfFirstBlockByLastAuthority,
+                    hashOfFirstBlockByLastLeader,
 
                     proofs:{
 
@@ -399,13 +399,13 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 
                 }
 
-                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+checkpointFullID
+                Data that must be signed by 2/3N+1 => 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+checkpointFullID
 
-        3. Once we find the AEFPs for ALL the subchains - it's a signal to start to find the first X blocks in current epoch for each subchain
+        3. Once we find the AEFPs for ALL the shards - it's a signal to start to find the first X blocks in current epoch for each shard
 
             We'll use 1 option for this:
 
-                [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS - 1 by default. Don't change it
+                [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
                 
                     This value shows how many first blocks we need to get to extract epoch edge operations to execute before move to next epoch
                     
@@ -417,13 +417,13 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             For this, iterate over reassignment chains:
             
             
-            for(subchainID of subchains){
+            for(shardID of shards){
 
                 ------Find first block for prime pool here------
 
-                Otherwise - try to find first block created by other pools on this subchain
+                Otherwise - try to find first block created by other pools on this shard
 
-                for(pool of reassignmentChains[subchainID])
+                for(pool of reassignmentChains[shardID])
 
             }
                         
@@ -462,11 +462,11 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         }
 
 
-        // let numberOfFirstBlocksToFetchFromEachSubchain = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SUBCHAIN_FOR_SYNC_OPS // 1. DO NOT CHANGE
+        // let numberOfFirstBlocksToFetchFromEachShard = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
-        let totalNumberOfSubchains = 0
+        let totalNumberOfShards = 0
 
-        let totalNumberOfReadySubchains = 0
+        let totalNumberOfReadyShards = 0
 
         let reassignmentChains = qtEpochHandler.reassignmentChains
 
@@ -476,25 +476,25 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnSubchainFound}}
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
 
         epochCache = {}
 
         let entries = Object.entries(reassignmentChains)
 
-        //____________________Ask the quorum for AEFP for subchain___________________
+        //____________________Ask the quorum for AEFP for shard___________________
         
         for(let [primePoolPubKey,arrayOfReservePools] of entries){
         
-            totalNumberOfSubchains++
+            totalNumberOfShards++
         
-            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey] = {firstBlockOnSubchainFound:false}
+            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey] = {firstBlockOnShardFound:false}
 
-            if(epochCache[primePoolPubKey].aefp && epochCache[primePoolPubKey].firstBlockOnSubchainFound){
+            if(epochCache[primePoolPubKey].aefp && epochCache[primePoolPubKey].firstBlockOnShardFound){
 
-                totalNumberOfReadySubchains++
+                totalNumberOfReadyShards++
 
-                // No more sense to find AEFPs or first block for this subchain. Just continue
+                // No more sense to find AEFPs or first block for this shard. Just continue
 
                 continue
 
@@ -513,11 +513,11 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 Reminder: AEFP structure is
 
                     {
-                        subchain:<ed25519 pubkey of prime pool - ID of subchain>,
-                        lastAuthority:<index of ed25519 pubkey of some pool in subchain's reassignment chain>,
+                        shard:<ed25519 pubkey of prime pool - ID of shard>,
+                        lastLeader:<index of ed25519 pubkey of some pool in shard's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
-                        hashOfFirstBlockByLastAuthority,
+                        hashOfFirstBlockByLastLeader,
                         
                         proofs:{
 
@@ -554,7 +554,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 
                             let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtEpochHandler.quorum,majority,oldEpochFullID)
     
-                            if(aefpPureObject && aefpPureObject.subchain === primePoolPubKey){
+                            if(aefpPureObject && aefpPureObject.shard === primePoolPubKey){
     
                                 epochCache[primePoolPubKey].aefp = aefpPureObject
 
@@ -585,7 +585,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
             */
 
-            if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
+            if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
                 // First of all - try to find AFP for first block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:0
 
@@ -599,7 +599,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                     epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
 
-                    epochCache[primePoolPubKey].firstBlockOnSubchainFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    epochCache[primePoolPubKey].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
                 }else{
 
@@ -621,7 +621,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                 epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
 
-                                epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
+                                epochCache[primePoolPubKey].firstBlockOnShardFound = true
 
                                 break // no more sense to find
 
@@ -636,7 +636,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
             
-                if(!epochCache[primePoolPubKey].firstBlockOnSubchainFound){
+                if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
                     // Find AFPs for reserve pools
                 
@@ -689,7 +689,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                             epochCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
         
-                                            epochCache[primePoolPubKey].firstBlockOnSubchainFound = true
+                                            epochCache[primePoolPubKey].firstBlockOnShardFound = true
                                     
                                             shouldBreakInfiniteWhile = true
 
@@ -745,9 +745,9 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             }
 
             
-            //_____________________________ Here we should have understanding of first block for each subchain __________________________
+            //_____________________________ Here we should have understanding of first block for each shard __________________________
 
-            if(epochCache[primePoolPubKey].firstBlockOnSubchainFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadySubchains++
+            if(epochCache[primePoolPubKey].firstBlockOnShardFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadyShards++
 
             if(!epochCache[primePoolPubKey].firstBlockHash) epochCache[primePoolPubKey] = {}
     
@@ -762,7 +762,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
 
 
-        if(totalNumberOfSubchains === totalNumberOfReadySubchains){
+        if(totalNumberOfShards === totalNumberOfReadyShards){
 
             let epochEdgeOperations = []
 
@@ -774,13 +774,13 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 // Try to get the epoch edge operations from the first blocks
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisShard = await GET_BLOCK(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
 
-                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === epochCache[primePoolPubKey].firstBlockHash){
+                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[primePoolPubKey].firstBlockHash){
 
-                    if(Array.isArray(firstBlockOnThisSubchain.epochEdgeOperations)){
+                    if(Array.isArray(firstBlockOnThisShard.epochEdgeOperations)){
 
-                        epochEdgeOperations.push(...firstBlockOnThisSubchain.epochEdgeOperations)
+                        epochEdgeOperations.push(...firstBlockOnThisShard.epochEdgeOperations)
 
                     }
                     
@@ -999,12 +999,12 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         
         for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
 
-            let reassignmentData = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
+            let reassignmentData = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}
 
-            let pubKeyOfAuthority = qtEpochHandler.reassignmentChains[primePoolPubKey][reassignmentData.currentAuthority] || primePoolPubKey
+            let pubKeyOfLeader = qtEpochHandler.reassignmentChains[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
 
 
-            if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfAuthority)){
+            if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
 
                 canGenerateEpochFinalizationProof = false
 
@@ -1046,27 +1046,27 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
         for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
 
-            let handlerWithIndexOfCurrentAuthorityOnSubchain = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}// {currentAuthority:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}// {currentLeader:<number>}
 
-            let pubKeyOfAuthority, indexOfAuthority
+            let pubKeyOfLeader, indexOfLeader
             
             
-            if(handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority !== -1){
+            if(handlerWithIndexOfCurrentLeaderOnShard.currentLeader !== -1){
 
-                pubKeyOfAuthority = reassignmentArray[handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority]
+                pubKeyOfLeader = reassignmentArray[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
 
-                indexOfAuthority = handlerWithIndexOfCurrentAuthorityOnSubchain.currentAuthority
+                indexOfLeader = handlerWithIndexOfCurrentLeaderOnShard.currentLeader
 
             }else{
 
-                pubKeyOfAuthority = primePoolPubKey
+                pubKeyOfLeader = primePoolPubKey
 
-                indexOfAuthority = -1
+                indexOfLeader = -1
 
             }
             
             
-            // Structure is Map(subchain=>Map(quorumMember=>SIG('EPOCH_DONE'+subchain+lastAuthorityInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)))
+            // Structure is Map(shard=>Map(quorumMember=>SIG('EPOCH_DONE'+shard+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)))
             let agreements = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
             if(!agreements){
@@ -1077,29 +1077,29 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             }
 
-            let agreementsForThisSubchain = agreements.get(primePoolPubKey)
+            let agreementsForThisShard = agreements.get(primePoolPubKey)
 
-            if(!agreementsForThisSubchain){
+            if(!agreementsForThisShard){
 
-                agreementsForThisSubchain = new Map()
+                agreementsForThisShard = new Map()
 
-                agreements.set(primePoolPubKey,agreementsForThisSubchain)
+                agreements.set(primePoolPubKey,agreementsForThisShard)
             
             }
 
 
             /*
             
-                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by subchain authority will contain all the ASPs
+                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by shard leader will contain all the ASPs
         
                 1) Start to build so called CHECKPOINT_PROPOSITION. This object has the following structure
 
 
                 {
                 
-                    "subchain0":{
+                    "shard0":{
 
-                        currentAuthority:<int - pointer to current authority of subchain based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
 
                         metadataForCheckpoint:{
                             index:,
@@ -1127,20 +1127,20 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                     },
 
-                    "subchain1":{
+                    "shard1":{
                         
                     }
 
                     ...
                     
-                    "subchainN":{
+                    "shardN":{
                         ...
                     }
                 
                 }
 
 
-                2) Take the <metadataForCheckpoint> for <currentAuthority> from TEMP.get(<checkpointID>).CHECKPOINT_MANAGER
+                2) Take the <metadataForCheckpoint> for <currentLeader> from TEMP.get(<checkpointID>).CHECKPOINT_MANAGER
 
                 3) If nothing in CHECKPOINT_MANAGER - then set index to -1 and hash to default(0123...)
 
@@ -1149,16 +1149,16 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                 ____________________________________________After we get responses____________________________________________
 
-                5) If validator agree with all the propositions - it generate signatures for all the subchain to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
+                5) If validator agree with all the propositions - it generate signatures for all the shard to paste this short proof to the fist block in the next epoch(to section block.extraData.aefpForPreviousEpoch)
 
-                6) If we get 2/3N+1 agreements for ALL the subchains - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
+                6) If we get 2/3N+1 agreements for ALL the shards - aggregate it and store locally. This called AGGREGATED_EPOCH_FINALIZATION_PROOF (AEFP)
 
                     The structure is
 
 
                        {
                 
-                            lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
+                            lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
                             lastIndex:<index of his block in previous epoch>,
                             lastHash:<hash of this block>,
                             firstBlockHash,
@@ -1174,9 +1174,9 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                         }
 
 
-                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SUBCHAIN_ID
+                7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SHARD_ID
 
-                8) Prime pool and other reserve pools on each subchain can query network for this proofs to set to
+                8) Prime pool and other reserve pools on each shard can query network for this proofs to set to
                 
                     block.extraData.aefpForPreviousEpoch to know where to start VERIFICATION_THREAD in a new epoch                
                 
@@ -1186,11 +1186,11 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             epochFinishProposition[primePoolPubKey] = {
 
-                currentAuthority:indexOfAuthority,
+                currentLeader:indexOfLeader,
 
                 afpForFirstBlock:{},
 
-                metadataForCheckpoint:temporaryObject.EPOCH_MANAGER.get(pubKeyOfAuthority) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                metadataForCheckpoint:temporaryObject.EPOCH_MANAGER.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
             }
 
@@ -1198,7 +1198,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
 
-                let firstBlockID = qtEpochHandler.id+':'+pubKeyOfAuthority+':0'
+                let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
 
                 epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
 
@@ -1231,28 +1231,28 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                     
                     
                         {
-                            subchainA:{
+                            shardA:{
                                 
                                 status:'UPGRADE'|'OK',
 
                                 -------------------------------[In case 'OK']-------------------------------
 
-                                sig: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)
+                                sig: SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
                         
                                 -----------------------------[In case 'UPGRADE']----------------------------
 
-                                currentAuthority:<index>,
+                                currentLeader:<index>,
                                 metadataForCheckpoint:{
                                     index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}
                                 }
 
                             },
 
-                            subchainB:{
+                            shardB:{
                                 ...(same)
                             },
                             ...,
-                            subchainQ:{
+                            shardQ:{
                                 ...(same)
                             }
                         }
@@ -1266,7 +1266,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                     for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
 
-                        let agreementsForThisSubchain = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
+                        let agreementsForThisShard = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
 
                         let response = possibleAgreements[primePoolPubKey]
 
@@ -1276,11 +1276,11 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentAuthority+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
 
                                 let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
-                                if(isOk) agreementsForThisSubchain.set(descriptor.pubKey,response.sig)
+                                if(isOk) agreementsForThisShard.set(descriptor.pubKey,response.sig)
 
 
                             }else if(response.status==='UPGRADE'){
@@ -1289,11 +1289,11 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 let {index,hash,afp} = response.metadataForCheckpoint
                             
-                                let pubKeyOfProposedAuthority = reassignmentChains[primePoolPubKey][response.currentAuthority] || primePoolPubKey
+                                let pubKeyOfProposedLeader = reassignmentChains[primePoolPubKey][response.currentLeader] || primePoolPubKey
                                 
                                 let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
-                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedAuthority+':'+index
+                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
                             
                                 if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
 
@@ -1301,15 +1301,15 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                             
                                     // Update the REASSIGNMENTS
 
-                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:response.currentAuthority})
+                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:response.currentLeader})
                                     
                                     // Update CHECKPOINT_MANAGER
 
-                                    temporaryObject.EPOCH_MANAGER.set(pubKeyOfProposedAuthority,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
+                                    temporaryObject.EPOCH_MANAGER.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
-                                    agreementsForThisSubchain.clear()
+                                    agreementsForThisShard.clear()
 
                                 }
 
@@ -1338,15 +1338,15 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         
                 let aggregatedEpochFinalizationProof = {
 
-                    subchain:primePoolPubKey,
+                    shard:primePoolPubKey,
 
-                    lastAuthority:metadata.currentAuthority,
+                    lastLeader:metadata.currentLeader,
                     
                     lastIndex:metadata.metadataForCheckpoint.index,
                     
                     lastHash:metadata.metadataForCheckpoint.hash,
 
-                    hashOfFirstBlockByLastAuthority:metadata.afpForFirstBlock.blockHash,
+                    hashOfFirstBlockByLastLeader:metadata.afpForFirstBlock.blockHash,
 
                     proofs:Object.fromEntries(agreementsForEpochManager)
                     
@@ -1700,17 +1700,17 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
 
         if(tempObject){
 
-            // <bodyToSend> has the structure like this -> {subchain,shouldBeThisAuthority,aspsForPreviousPools}
+            // <bodyToSend> has the structure like this -> {shard,shouldBeThisLeader,aspsForPreviousPools}
 
             // Check if we stll have to send this reassignment data
 
-            // Get the reassignments data for <bodyToSend.subchain> from tempObject
+            // Get the reassignments data for <bodyToSend.shard> from tempObject
 
-            let reassignmentsData = tempObject.REASSIGNMENTS.get(bodyToSend.subchain)
+            let reassignmentsData = tempObject.REASSIGNMENTS.get(bodyToSend.shard)
 
             // Now compare it to understand if we have to continue sharing our version of reassignments
 
-            if(reassignmentsData && bodyToSend.shouldBeThisAuthority >= reassignmentsData.currentAuthority){
+            if(reassignmentsData && bodyToSend.shouldBeThisLeader >= reassignmentsData.currentLeader){
 
                 // Send to target pool
 
@@ -1757,7 +1757,7 @@ TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInReassig
 
 
 
-// Iterate over current authorities on subchains to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
+// Iterate over current authorities on shards to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
 REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
@@ -1794,31 +1794,31 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         // First of all - check for CREATE_REASSIGNMENT requests in synchronizer
 
-        let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentAuthority:-1}
+        let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}
 
-        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {indexInReassignmentChain,shouldBeThisAuthority,aspsForPreviousPools}
+        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {indexInReassignmentChain,shouldBeThisLeader,aspsForPreviousPools}
 
 
-        if(doReassignmentRequest && reassignmentHandler.currentAuthority < doReassignmentRequest.shouldBeThisAuthority){
+        if(doReassignmentRequest && reassignmentHandler.currentLeader < doReassignmentRequest.shouldBeThisLeader){
 
 
             /*
             
                 Update the local information
 
-                1) Start(in reverse order) from <shouldBeThisAuthority> index in epochHandler.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
+                1) Start(in reverse order) from <shouldBeThisLeader> index in epochHandler.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
 
                 2) Create the skipHandler for each pool
 
                 3) Finally, update the data in tempObject.REASSIGNMENTS:
                 
-                    a) Put the pool epochHandler.reassignmentChains[primePoolPubKey][shouldBeThisAuthority] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current authority for subchain
+                    a) Put the pool epochHandler.reassignmentChains[primePoolPubKey][shouldBeThisLeader] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current leader for shard
 
-                    b) Update the reassignment handler for prime pool to point to <shouldBeThisAuthority> index => tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:shouldBeThisAuthority})
+                    b) Update the reassignment handler for prime pool to point to <shouldBeThisLeader> index => tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:shouldBeThisLeader})
 
             */
 
-            for(let positionInRc = doReassignmentRequest.shouldBeThisAuthority-1 ; positionInRc >= -1; positionInRc--){
+            for(let positionInRc = doReassignmentRequest.shouldBeThisLeader-1 ; positionInRc >= -1; positionInRc--){
 
 
                 let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc] || primePoolPubKey
@@ -1850,15 +1850,15 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
             //__________________________ Inform the target pool and store the fact of it __________________________
 
             
-            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisLeader]
 
             let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             let bodyToSend = {
 
-                subchain:primePoolPubKey,
+                shard:primePoolPubKey,
 
-                ...doReassignmentRequest // {shouldBeThisAuthority,aspsForPreviousPools}
+                ...doReassignmentRequest // {shouldBeThisLeader,aspsForPreviousPools}
 
             }
 
@@ -1868,19 +1868,19 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
             //______________________Finally, create the urgent reassignment stats______________________
 
-            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority}).then(()=>{
+            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentLeader:doReassignmentRequest.shouldBeThisLeader}).then(()=>{
 
                 
-                let oldAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority] || primePoolPubKey
+                let oldLeaderPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader] || primePoolPubKey
 
-                let nextAuthorityPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisAuthority]
+                let nextLeaderPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisLeader]
 
 
-                tempObject.REASSIGNMENTS.delete(oldAuthorityPubKey)
+                tempObject.REASSIGNMENTS.delete(oldLeaderPubKey)
 
-                tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentAuthority:doReassignmentRequest.shouldBeThisAuthority})
+                tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:doReassignmentRequest.shouldBeThisLeader})
 
-                tempObject.REASSIGNMENTS.set(nextAuthorityPubKey,primePoolPubKey)
+                tempObject.REASSIGNMENTS.set(nextLeaderPubKey,primePoolPubKey)
 
 
             }).catch(()=>{})    
@@ -1894,13 +1894,13 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
         let poolPubKeyForHunting, previousPoolPubKey, poolIndexInRc
 
-        if(reassignmentHandler && reassignmentHandler.currentAuthority !== -1){
+        if(reassignmentHandler && reassignmentHandler.currentLeader !== -1){
 
-            poolIndexInRc = reassignmentHandler.currentAuthority
+            poolIndexInRc = reassignmentHandler.currentLeader
 
-            poolPubKeyForHunting = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority]
+            poolPubKeyForHunting = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader]
 
-            previousPoolPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentAuthority-1] || primePoolPubKey
+            previousPoolPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader-1] || primePoolPubKey
 
         }else{
 
@@ -2012,7 +2012,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
                     poolPubKey:poolPubKeyForHunting,
 
-                    subchain:primePoolPubKey,
+                    shard:primePoolPubKey,
 
                     afpForFirstBlock,
 
@@ -2265,9 +2265,9 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 // Send request
                 let bodyToSend = {
 
-                    subchain:primePoolPubKey,
+                    shard:primePoolPubKey,
 
-                    shouldBeThisAuthority:indexOfSkippedPoolInRc+1,
+                    shouldBeThisLeader:indexOfSkippedPoolInRc+1,
 
                     aspsForPreviousPools
 
@@ -2277,29 +2277,29 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
                 INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
 
                     
-                let currentSubchainAuthority
+                let currentShardLeader
     
                 // Add the reassignment
     
-                let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentAuthority:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
+                let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentLeader:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
     
     
                 if(!reassignmentMetadata){
     
                     // Create new handler
     
-                    reassignmentMetadata = {currentAuthority:-1}
+                    reassignmentMetadata = {currentLeader:-1}
     
-                    currentSubchainAuthority = poolPubKeyForHunting
+                    currentShardLeader = poolPubKeyForHunting
     
-                }else currentSubchainAuthority = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentAuthority] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
+                }else currentShardLeader = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentLeader] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
     
     
-                let nextIndex = reassignmentMetadata.currentAuthority + 1
+                let nextIndex = reassignmentMetadata.currentLeader + 1
     
                 let nextReservePool = epochHandler.reassignmentChains[primePoolPubKey][nextIndex] // array epochHandler.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
     
-                let skipHandlerOfAuthority = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentSubchainAuthority))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
+                let skipHandlerOfLeader = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentShardLeader))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
     
     
                 // Use atomic operation here to write reassignment data + updated skip handler
@@ -2308,15 +2308,15 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
     
                     'REASSIGN:'+primePoolPubKey,
                         
-                    'SKIP_HANDLER:'+currentSubchainAuthority
+                    'SKIP_HANDLER:'+currentShardLeader
     
                 ]
     
                 let valuesToAtomicWrite = [
     
-                    {currentAuthority:nextIndex},
+                    {currentLeader:nextIndex},
     
-                    skipHandlerOfAuthority
+                    skipHandlerOfLeader
     
                 ]
     
@@ -2324,12 +2324,12 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
         
                     // And only after successful store we can move to the next pool
     
-                    // Delete the reassignment in case reassigned authority was reserve pool
+                    // Delete the reassignment in case reassigned leader was reserve pool
     
-                    if(currentSubchainAuthority !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentSubchainAuthority)
+                    if(currentShardLeader !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentShardLeader)
                     
                         
-                    reassignmentMetadata.currentAuthority++
+                    reassignmentMetadata.currentLeader++
         
     
                     // Set new values - handler for prime pool and pointer to prime pool for reserve pool
@@ -2393,7 +2393,7 @@ RESTORE_STATE=async()=>{
         
         if(poolsRegistry.primePools.includes(poolPubKey)){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentAuthority:<pointer to current reserve pool in (QT/VT).EPOCH.reassignmentChains[<primePool>]>}
+            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.reassignmentChains[<primePool>]>}
 
             if(reassignmentMetadata){
 
@@ -2401,7 +2401,7 @@ RESTORE_STATE=async()=>{
 
                 // Using pointer - find the appropriate reserve pool
 
-                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.reassignmentChains[poolPubKey][reassignmentMetadata.currentAuthority]
+                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.reassignmentChains[poolPubKey][reassignmentMetadata.currentLeader]
 
                 // Key is reserve pool which points to his prime pool
                 tempObject.REASSIGNMENTS.set(reservePool,poolPubKey)                
@@ -2432,7 +2432,7 @@ RESTORE_STATE=async()=>{
 
 /*
 
-Function to find the AGGREGATED_EPOCH_FINALIZATION_PROOFS for appropriate subchain
+Function to find the AGGREGATED_EPOCH_FINALIZATION_PROOFS for appropriate shard
 
 Ask the network in special order:
 
@@ -2447,11 +2447,11 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
     let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
-    let subchainID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
+    let shardID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
 
     // Find locally
 
-    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${subchainID}`).catch(()=>null)
+    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -2459,11 +2459,11 @@ GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
         for(let nodeEndpoint of allKnownNodes){
 
-            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${subchainID}`
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${shardID}`
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
     
-            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.subchain === subchainID && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
@@ -2714,15 +2714,15 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
         
         typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.subchain === 'string'
+        typeof itsProbablyAggregatedEpochFinalizationProof.shard === 'string'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.lastAuthority === 'number'
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastLeader === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
         &&
-        typeof itsProbablyAggregatedEpochFinalizationProof.hashOfFirstBlockByLastAuthority === 'string'
+        typeof itsProbablyAggregatedEpochFinalizationProof.hashOfFirstBlockByLastLeader === 'string'
         &&
         typeof itsProbablyAggregatedEpochFinalizationProof.proofs === 'object'
 
@@ -2733,11 +2733,11 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
-                subchain:<ed25519 pubkey of prime pool - creator of subchain>,
-                lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
+                shard:<ed25519 pubkey of prime pool - creator of shard>,
+                lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
-                hashOfFirstBlockByLastAuthority,
+                hashOfFirstBlockByLastLeader,
 
                 proofs:{
 
@@ -2754,9 +2754,9 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
         */
 
-        let {subchain,lastAuthority,lastIndex,lastHash,hashOfFirstBlockByLastAuthority} = itsProbablyAggregatedEpochFinalizationProof
+        let {shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
 
-        let dataThatShouldBeSigned = 'EPOCH_DONE'+subchain+lastAuthority+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullID
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullID
 
         let promises = []
 
@@ -2787,7 +2787,7 @@ VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFi
 
             return {
             
-                subchain,lastAuthority,lastIndex,lastHash,hashOfFirstBlockByLastAuthority,
+                shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
         
                 proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
 
@@ -2865,8 +2865,8 @@ LOAD_GENESIS=async()=>{
         
         }
 
-        // Put the pointer to know the subchain which store the pool's data(metadata+storages)
-        // Pools' contract metadata & storage are in own subchain. Also, reserve pools also here as you see below
+        // Put the pointer to know the shard which store the pool's data(metadata+storages)
+        // Pools' contract metadata & storage are in own shard. Also, reserve pools also here as you see below
         if(isReserve){
 
             atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
@@ -2898,7 +2898,7 @@ LOAD_GENESIS=async()=>{
         //NOTE: We just need a simple storage with ID="POOL"
         atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
 
-        // Add the account for fees for each authority
+        // Add the account for fees for each leader
         primePools.forEach(anotherValidatorPubKey=>{
 
             if(anotherValidatorPubKey!==poolPubKey){
@@ -2921,15 +2921,15 @@ LOAD_GENESIS=async()=>{
 
         if(!isReserve){
 
-            let evmStateForThisSubchain = global.GENESIS.EVM[poolPubKey]
+            let evmStateForThisShard = global.GENESIS.EVM[poolPubKey]
 
-            if(evmStateForThisSubchain){
+            if(evmStateForThisShard){
 
-                let evmKeys = Object.keys(evmStateForThisSubchain)
+                let evmKeys = Object.keys(evmStateForThisShard)
     
                 for(let evmKey of evmKeys) {
     
-                    let {isContract,balance,nonce,code,storage} = evmStateForThisSubchain[evmKey]
+                    let {isContract,balance,nonce,code,storage} = evmStateForThisShard[evmKey]
     
                     //Put KLY-EVM to KLY-EVM state db which will be used by Trie
     
@@ -2945,8 +2945,8 @@ LOAD_GENESIS=async()=>{
 
                     let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
-                    // Add assignment to subchain
-                    atomicBatch.put('SUB:'+caseIgnoreAccountAddress,{subchain:poolPubKey})
+                    // Add assignment to shard
+                    atomicBatch.put('SHARD_BIND:'+caseIgnoreAccountAddress,{shard:poolPubKey})
     
                 }
 
@@ -2969,7 +2969,7 @@ LOAD_GENESIS=async()=>{
 
     //_______________________ Now add the data to state _______________________
 
-    // * Each account / contract must have <subchain> property to assign it to appropriate shard(subchain)
+    // * Each account / contract must have <shard> property to assign it to appropriate shard
 
     Object.keys(global.GENESIS.STATE).forEach(
     
@@ -2977,7 +2977,7 @@ LOAD_GENESIS=async()=>{
 
             if(global.GENESIS.STATE[addressOrContractID].type==='contract'){
 
-                let {lang,balance,uno,storages,bytecode,subchain} = global.GENESIS.STATE[addressOrContractID]
+                let {lang,balance,uno,storages,bytecode,shard} = global.GENESIS.STATE[addressOrContractID]
 
                 let contractMeta = {
 
@@ -2991,22 +2991,22 @@ LOAD_GENESIS=async()=>{
                 } 
 
                 //Write metadata first
-                atomicBatch.put(subchain+':'+addressOrContractID,contractMeta)
+                atomicBatch.put(shard+':'+addressOrContractID,contractMeta)
 
                 //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
                 for(let storageID of global.GENESIS.STATE[addressOrContractID].storages){
 
-                    global.GENESIS.STATE[addressOrContractID][storageID].subchain = subchain
+                    global.GENESIS.STATE[addressOrContractID][storageID].shard = shard
 
-                    atomicBatch.put(subchain+':'+addressOrContractID+'_STORAGE_'+storageID,global.GENESIS.STATE[addressOrContractID][storageID])
+                    atomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,global.GENESIS.STATE[addressOrContractID][storageID])
 
                 }
 
             } else {
 
-                let subchainID = global.GENESIS.STATE[addressOrContractID].subchain
+                let shardID = global.GENESIS.STATE[addressOrContractID].shard
 
-                atomicBatch.put(subchainID+':'+addressOrContractID,global.GENESIS.STATE[addressOrContractID]) //else - it's default account
+                atomicBatch.put(shardID+':'+addressOrContractID,global.GENESIS.STATE[addressOrContractID]) //else - it's default account
 
             }
 
@@ -3054,7 +3054,7 @@ LOAD_GENESIS=async()=>{
 
     // Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = startPool
+    global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = startPool
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
@@ -3254,9 +3254,9 @@ PREPARE_SYMBIOTE=async()=>{
             //Default initial value
             return {
             
-                SUBCHAIN_POINTER:'',
+                SHARD_POINTER:'',
 
-                VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentAuthorityOnSubchain,index,hash}
+                VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentLeaderOnShard,index,hash}
 
                 POOLS_METADATA:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
@@ -3264,9 +3264,9 @@ PREPARE_SYMBIOTE=async()=>{
  
                 KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
 
-                TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentAuthority:<uint - index of current subchain authority based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
+                TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentLeader:<uint - index of current shard leader based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
 
-                SID_TRACKER:{}, // subchainID(Ed25519 pubkey of prime pool) => index
+                SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
 
                 EPOCH:{}
 
@@ -3364,7 +3364,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
-        REASSIGNMENTS:new Map(), // PrimePool => {currentAuthority:<number>} | ReservePool => PrimePool
+        REASSIGNMENTS:new Map(), // PrimePool => {currentLeader:<number>} | ReservePool => PrimePool
 
 
         //____________________Mapping which contains temporary databases for____________________
@@ -3451,7 +3451,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
             
             tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey] = {
 
-                currentAuthority:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
+                currentLeader:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
                 
                 currentToVerify:-1, // to start the verification in START_VERIFICATION_THREAD from prime pool(-1 index) and continue with reserve pools(0,1,2,...N)
 
@@ -3470,22 +3470,22 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
     
     //___________________Ask quorum members about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
-    let localVersionOfCurrentAuthorities = {} // primePoolPubKey => assumptionAboutIndexOfCurrentAuthority
+    let localVersionOfCurrentLeaders = {} // primePoolPubKey => assumptionAboutIndexOfCurrentLeader
 
     for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
 
-        localVersionOfCurrentAuthorities[primePoolPubKey] = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority
+        localVersionOfCurrentLeaders[primePoolPubKey] = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader
 
     }
 
 
-    // Make requests to /aggregated_skip_proofs_for_proposed_authorities. Returns => {primePoolPubKey(subchainID):<aggregatedSkipProofForProposedAuthority>}
+    // Make requests to /aggregated_skip_proofs_for_proposed_authorities. Returns => {primePoolPubKey(shardID):<aggregatedSkipProofForProposedLeader>}
 
     let optionsToSend = {
 
         method: 'POST',
 
-        body: JSON.stringify(localVersionOfCurrentAuthorities)
+        body: JSON.stringify(localVersionOfCurrentLeaders)
 
     }
 
@@ -3514,33 +3514,33 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
         for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
 
-            let potentialAspForCurrentAuthority = responseForTempReassignment[primePoolPubKey]
+            let potentialAspForCurrentLeader = responseForTempReassignment[primePoolPubKey]
 
-            let shouldUpdate = localVersionOfCurrentAuthorities[primePoolPubKey] === tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority
+            let shouldUpdate = localVersionOfCurrentLeaders[primePoolPubKey] === tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader
 
-            if(potentialAspForCurrentAuthority && typeof potentialAspForCurrentAuthority === 'object' && shouldUpdate){
+            if(potentialAspForCurrentLeader && typeof potentialAspForCurrentLeader === 'object' && shouldUpdate){
 
-                let {previousAspHash,firstBlockHash,skipIndex,skipHash,proofs} = potentialAspForCurrentAuthority
+                let {previousAspHash,firstBlockHash,skipIndex,skipHash,proofs} = potentialAspForCurrentLeader
 
                 if(typeof previousAspHash === 'string' && typeof firstBlockHash === 'string' && typeof skipIndex === 'number' && typeof skipHash === 'string' && typeof proofs === 'object'){
 
                     // Verify the ASP
 
-                    let pubKeyOfCurrentAuthority = vtReassignmentChains[primePoolPubKey][localVersionOfCurrentAuthorities[primePoolPubKey]] || primePoolPubKey
+                    let pubKeyOfCurrentLeader = vtReassignmentChains[primePoolPubKey][localVersionOfCurrentLeaders[primePoolPubKey]] || primePoolPubKey
 
-                    let signaIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfCurrentAuthority,potentialAspForCurrentAuthority,vtEpochFullID,vtEpochHandler)
+                    let signaIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfCurrentLeader,potentialAspForCurrentLeader,vtEpochFullID,vtEpochHandler)
 
                     if(signaIsOk){
 
-                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments[pubKeyOfCurrentAuthority] = {
+                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments[pubKeyOfCurrentLeader] = {
 
-                            index:potentialAspForCurrentAuthority.skipIndex,
+                            index:potentialAspForCurrentLeader.skipIndex,
                         
-                            hash:potentialAspForCurrentAuthority.skipHash,
+                            hash:potentialAspForCurrentLeader.skipHash,
 
                         }
 
-                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentAuthority++
+                        tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader++
 
                     }
 
@@ -3581,7 +3581,7 @@ RUN_SYMBIOTE=async()=>{
     //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
     REASSIGN_PROCEDURE_MONITORING()
 
-    //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for subchains with no matter who is the current authority for subchain - prime pool or reserve pools
+    //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for shards with no matter who is the current leader for shard - prime pool or reserve pools
     TEMPORARY_REASSIGNMENTS_BUILDER()
 
     //✅6.Start to generate blocks

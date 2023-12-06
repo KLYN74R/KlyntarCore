@@ -32,19 +32,19 @@ export let CONTRACT = {
 
         [*] isReserve - define type of pool
         
-                isReserve=false means that this pool is a prime pool and will have a separate subchain
+                isReserve=false means that this pool is a prime pool and will have a separate shard
                 isReserve=true means that you pool will be in reserve and will be used only when prime pool will be stopped
         
-        [*] reserveFor - SubchainID(pubkey of prime pool)
+        [*] reserveFor - ShardID(pubkey of prime pool)
 
     */
-    constructor:async (transaction,atomicBatch,originSubchain) => {
+    constructor:async (transaction,atomicBatch,originShard) => {
 
         let{constructorParams}=transaction.payload,
         
             [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originSubchain+':'+ed25519PubKey+'(POOL)').catch(()=>false)
+            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
@@ -90,15 +90,15 @@ export let CONTRACT = {
             if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
 
             //Put pool pointer
-            atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originSubchain)
+            atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
 
             
             //Put metadata
-            atomicBatch.put(originSubchain+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(originSubchain+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
         }
 
@@ -118,13 +118,13 @@ export let CONTRACT = {
     
     */
     
-    stake:async(transaction,originSubchain) => {
+    stake:async(transaction,originShard) => {
 
         let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => Ed25519_pubkey(POOL)
 
             {amount,units} = transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(originSubchain+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
+            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -132,7 +132,7 @@ export let CONTRACT = {
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originSubchain+':'+transaction.creator)
+            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+transaction.creator)
 
             if(stakerAccount){
             
@@ -182,13 +182,13 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (transaction,originSubchain) => {
+    unstake:async (transaction,originShard) => {
 
         let fullPoolIdWithPostfix=transaction.payload.contractID,
 
             {amount,units}=transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(originSubchain+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
+            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
 
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
 

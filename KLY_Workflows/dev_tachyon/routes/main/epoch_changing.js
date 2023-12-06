@@ -8,11 +8,11 @@ import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
-        subchain:<ed25519 pubkey of prime pool - the creator of new subchain>
-        lastAuthority:<index of Ed25519 pubkey of some pool in subchain's reassignment chain>,
+        shard:<ed25519 pubkey of prime pool - the creator of new shard>
+        lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
-        hashOfFirstBlockByLastAuthority:<hash of the first block by this authority>,
+        hashOfFirstBlockByLastLeader:<hash of the first block by this leader>,
         
         proofs:{
 
@@ -24,7 +24,7 @@ import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
     
     }
 
-    Signature is ED25519('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+firstBlockHash+epochFullId)
+    Signature is ED25519('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+firstBlockHash+epochFullId)
 
 
 */
@@ -47,14 +47,14 @@ let getAggregatedEpochFinalizationProof=async(response,request)=>{
 
         let epochIndex = request.getParameter(0)
 
-        let subchainID = request.getParameter(1)
+        let shardID = request.getParameter(1)
 
-        let aggregatedEpochFinalizationProofForSubchain = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${subchainID}`).catch(()=>false)
+        let aggregatedEpochFinalizationProofForShard = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${shardID}`).catch(()=>false)
 
         
-        if(aggregatedEpochFinalizationProofForSubchain){
+        if(aggregatedEpochFinalizationProofForShard){
 
-            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForSubchain))
+            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForShard))
 
         }else !response.aborted && response.end(JSON.stringify({err:'No AEFP'}))
 
@@ -99,9 +99,9 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
         {
                 
-            "subchain0":{
+            "shard0":{
 
-                currentAuthority:<int - pointer to current authority of subchain based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
                 
                 afpForFirstBlock:{
 
@@ -142,33 +142,33 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
             },
 
-            "subchain1":{
+            "shard1":{
                 ...            
             }
 
             ...
                     
-            "subchainN":{
+            "shardN":{
                 ...
             }
                 
         }
 
 
-        1) We need to iterate over propositions(per subchain)
-        2) Compare <currentAuth> with our local version of current authority on subchain(take it from tempObj.REASSIGNMENTS)
+        1) We need to iterate over propositions(per shard)
+        2) Compare <currentAuth> with our local version of current leader on shard(take it from tempObj.REASSIGNMENTS)
         
             [If proposed.currentAuth >= local.currentAuth]:
 
                 1) Verify index & hash & afp in <metadataForCheckpoint>
                 
-                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)
+                2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
 
                 3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.EPOCH_MANAGER)
 
             [Else if proposed.currentAuth < local.currentAuth AND tempObj.EPOCH_MANAGER.has(local.currentAuth)]:
 
-                1) Send status:'UPGRADE' with local version of currentAuthority, metadata for epoch(from tempObject.EPOCH_MANAGER), index and hash
+                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from tempObject.EPOCH_MANAGER), index and hash
 
 
 
@@ -176,17 +176,17 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
         {
             
-            subchainA:{
+            shardA:{
                                 
                 status:'UPGRADE'|'OK',
 
                 -------------------------------[In case status === 'OK']-------------------------------
 
-                signa: SIG('EPOCH_DONE'+subchain+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastAuthority+epochFullId)
+                signa: SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
                         
                 ----------------------------[In case status === 'UPGRADE']-----------------------------
 
-                currentAuthority:<index>,
+                currentLeader:<index>,
                 
                 metadataForCheckpoint:{
                 
@@ -198,11 +198,11 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
             },
 
-            subchainB:{
+            shardB:{
                 ...(same)
             },
             ...,
-            subchainQ:{
+            shardQ:{
                 ...(same)
             }
     
@@ -222,47 +222,47 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
     if(typeof possiblePropositionForNewEpoch === 'object'){
 
 
-        for(let [subchainID,proposition] of Object.entries(possiblePropositionForNewEpoch)){
+        for(let [shardID,proposition] of Object.entries(possiblePropositionForNewEpoch)){
 
-            if(responseStructure[subchainID]) continue
+            if(responseStructure[shardID]) continue
 
-            if(typeof subchainID === 'string' && typeof proposition.currentAuthority === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
+            if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
 
                 // Get the local version of REASSIGNMENTS and CHECKPOINT_MANAGER
 
-                let reassignmentForThisSubchain = tempObject.REASSIGNMENTS.get(subchainID) // {currentAuthority:<uint>}
+                let reassignmentForThisShard = tempObject.REASSIGNMENTS.get(shardID) // {currentLeader:<uint>}
 
-                let pubKeyOfCurrentAuthorityOnSubchain, localIndexOfAuthority
+                let pubKeyOfCurrentLeaderOnShard, localIndexOfLeader
                 
-                if(typeof reassignmentForThisSubchain === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that subchainID is pubkey of reserve pool what is impossible. So, continue
+                if(typeof reassignmentForThisShard === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that shardID is pubkey of reserve pool what is impossible. So, continue
 
-                else if(typeof reassignmentForThisSubchain === 'object') {
+                else if(typeof reassignmentForThisShard === 'object') {
 
-                    localIndexOfAuthority = reassignmentForThisSubchain.currentAuthority
+                    localIndexOfLeader = reassignmentForThisShard.currentLeader
 
-                    pubKeyOfCurrentAuthorityOnSubchain = qtEpochHandler.reassignmentChains[subchainID][localIndexOfAuthority] || subchainID
+                    pubKeyOfCurrentLeaderOnShard = qtEpochHandler.reassignmentChains[shardID][localIndexOfLeader] || shardID
 
                 }else{
 
-                    // Assume that there is no data about reassignments for given subchain locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === subchainID)
+                    // Assume that there is no data about reassignments for given shard locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === shardID)
 
-                    localIndexOfAuthority = -1
+                    localIndexOfLeader = -1
 
-                    pubKeyOfCurrentAuthorityOnSubchain = subchainID
+                    pubKeyOfCurrentLeaderOnShard = shardID
 
                 }
 
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
-                let epochManagerForAuthority = tempObject.EPOCH_MANAGER.get(pubKeyOfCurrentAuthorityOnSubchain) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                let epochManagerForLeader = tempObject.EPOCH_MANAGER.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
                 // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
                         
-                let hashOfFirstBlockByLastAuthority
+                let hashOfFirstBlockByLastLeaderInThisEpoch
 
-                let blockIdOfFirstBlock = qtEpochHandler.id+':'+pubKeyOfCurrentAuthorityOnSubchain+':0' // first block has index 0 - numeration from 0
+                let blockIdOfFirstBlock = qtEpochHandler.id+':'+pubKeyOfCurrentLeaderOnShard+':0' // first block has index 0 - numeration from 0
 
                 if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.metadataForCheckpoint.index>=0){
 
@@ -270,28 +270,28 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                     let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtEpochHandler)
 
-                    if(afpIsOk) hashOfFirstBlockByLastAuthority = proposition.afpForFirstBlock.blockHash
+                    if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
 
 
                 }
 
 
-                if(!hashOfFirstBlockByLastAuthority) continue
+                if(!hashOfFirstBlockByLastLeaderInThisEpoch) continue
 
 
                 //_________________________________________ Now compare _________________________________________
 
-                if(proposition.currentAuthority === localIndexOfAuthority){
+                if(proposition.currentLeader === localIndexOfLeader){
 
-                    if(epochManagerForAuthority.index === proposition.metadataForCheckpoint.index && epochManagerForAuthority.hash === proposition.metadataForCheckpoint.hash){
+                    if(epochManagerForLeader.index === proposition.metadataForCheckpoint.index && epochManagerForLeader.hash === proposition.metadataForCheckpoint.hash){
                         
                         // Send EPOCH_FINALIZATION_PROOF signature
 
                         let {index,hash} = proposition.metadataForCheckpoint
 
-                        let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+epochFullID
+                        let dataToSign = 'EPOCH_DONE'+shardID+proposition.currentLeader+index+hash+hashOfFirstBlockByLastLeaderInThisEpoch+epochFullID
     
-                        responseStructure[subchainID] = {
+                        responseStructure[shardID] = {
                                                 
                             status:'OK',
                                             
@@ -300,7 +300,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                         }
 
                             
-                    }else if(epochManagerForAuthority.index < proposition.metadataForCheckpoint.index){
+                    }else if(epochManagerForLeader.index < proposition.metadataForCheckpoint.index){
 
                         // Verify AGGREGATED_FINALIZATION_PROOF & upgrade local version & send EPOCH_FINALIZATION_PROOF
 
@@ -315,30 +315,30 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                             let [_,pubKeyOfCreator] = afp.blockID.split(':')
 
-                            if(pubKeyOfCreator === pubKeyOfCurrentAuthorityOnSubchain){
+                            if(pubKeyOfCreator === pubKeyOfCurrentLeaderOnShard){
 
                             
-                                if(reassignmentForThisSubchain) reassignmentForThisSubchain.currentAuthority = proposition.currentAuthority
+                                if(reassignmentForThisShard) reassignmentForThisShard.currentLeader = proposition.currentLeader
 
-                                else tempObject.REASSIGNMENTS.set(subchainID,{currentAuthority:proposition.currentAuthority})
+                                else tempObject.REASSIGNMENTS.set(shardID,{currentLeader:proposition.currentLeader})
     
 
-                                if(epochManagerForAuthority){
+                                if(epochManagerForLeader){
 
-                                    epochManagerForAuthority.index = index
+                                    epochManagerForLeader.index = index
     
-                                    epochManagerForAuthority.hash = hash
+                                    epochManagerForLeader.hash = hash
     
-                                    epochManagerForAuthority.afp = afp
+                                    epochManagerForLeader.afp = afp
     
-                                }else tempObject.EPOCH_MANAGER.set(pubKeyOfCurrentAuthorityOnSubchain,{index,hash,afp})
+                                }else tempObject.EPOCH_MANAGER.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
 
                             
                                 // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE
 
-                                let dataToSign = 'EPOCH_DONE'+subchainID+proposition.currentAuthority+index+hash+hashOfFirstBlockByLastAuthority+epochFullID
+                                let dataToSign = 'EPOCH_DONE'+shardID+proposition.currentLeader+index+hash+hashOfFirstBlockByLastLeaderInThisEpoch+epochFullID
 
-                                responseStructure[subchainID] = {
+                                responseStructure[shardID] = {
                             
                                     status:'OK',
                         
@@ -351,33 +351,33 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                         }
 
 
-                    }else if(epochManagerForAuthority.index > proposition.metadataForCheckpoint.index){
+                    }else if(epochManagerForLeader.index > proposition.metadataForCheckpoint.index){
 
                         // Send 'UPGRADE' msg
 
-                        responseStructure[subchainID] = {
+                        responseStructure[shardID] = {
 
                             status:'UPGRADE',
                             
-                            currentAuthority:localIndexOfAuthority,
+                            currentLeader:localIndexOfLeader,
                 
-                            metadataForCheckpoint:epochManagerForAuthority // {index,hash,afp}
+                            metadataForCheckpoint:epochManagerForLeader // {index,hash,afp}
                     
                         }
 
                     }
 
-                }else if(proposition.currentAuthority < localIndexOfAuthority){
+                }else if(proposition.currentLeader < localIndexOfLeader){
 
                     // Send 'UPGRADE' msg
 
-                    responseStructure[subchainID] = {
+                    responseStructure[shardID] = {
 
                         status:'UPGRADE',
                             
-                        currentAuthority:localIndexOfAuthority,
+                        currentLeader:localIndexOfLeader,
                 
-                        metadataForCheckpoint:epochManagerForAuthority // {index,hash,afp}
+                        metadataForCheckpoint:epochManagerForLeader // {index,hash,afp}
                     
                     }
 
@@ -401,8 +401,8 @@ global.UWS_SERVER
 
 
 
-// Simple GET handler to return AEFP for given subchain and epoch ✅
-.get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SUBCHAIN_ID',getAggregatedEpochFinalizationProof)
+// Simple GET handler to return AEFP for given shard and epoch ✅
+.get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SHARD_ID',getAggregatedEpochFinalizationProof)
 
-// Handler to acccept propositions to finish the epoch for subchains and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
+// Handler to acccept propositions to finish the epoch for shards and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
 .post('/epoch_proposition',acceptEpochFinishProposition)

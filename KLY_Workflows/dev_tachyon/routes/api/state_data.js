@@ -10,7 +10,7 @@ import {WRAP_RESPONSE} from '../../utils.js'
  * 
  * ### Params
  * 
- *  + 0 - subchainID - Base58 encoded 32-byte Ed25519 public key which is also ID of subchain
+ *  + 0 - shardID - Base58 encoded 32-byte Ed25519 public key which is also ID of shard
  *  + 1 - cellID - identifier of what you want to get - contract ID, account address(Base58 ed25519,BLS,LRS,PQC,TSIG, and so on), etc.
  * 
  * 
@@ -26,11 +26,11 @@ let getRawDataFromState=async(response,request)=>{
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.FROM_STATE){
 
-        let subchainContext = request.getParameter(0)
+        let shardContext = request.getParameter(0)
 
         let cellID = request.getParameter(1)
 
-        let fullID = subchainContext === 'X' ? cellID : subchainContext+':'+cellID
+        let fullID = shardContext === 'X' ? cellID : shardContext+':'+cellID
 
         let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(()=>'')
 
@@ -209,7 +209,7 @@ let getSearchResult=async(response,request)=>{
 
 /** 
 * 
-* returns object like {subchainID => {currentAuthority,index,hash}}
+* returns object like {shardID => {currentLeader,index,hash}}
 * 
 */
 let getSyncState=response=>{
@@ -237,7 +237,7 @@ let getSyncState=response=>{
 global.UWS_SERVER
 
 
-.get('/state/:SUBCHAIN_ID/:CELL_ID',getRawDataFromState)
+.get('/state/:SHARD_ID/:CELL_ID',getRawDataFromState)
 
 .get('/tx_receipt/:TXID',getTransactionReceipt)
 

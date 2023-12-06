@@ -130,7 +130,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     
         let poolIsReal = itsPrimePool || itsReservePool
     
-        let primePoolPubKey, itIsReservePoolWhichIsAuthorityNow
+        let primePoolPubKey, itIsReservePoolWhichIsLeaderNow
 
 
         if(poolIsReal){
@@ -141,15 +141,15 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     
                 primePoolPubKey = tempObject.REASSIGNMENTS.get(block.creator)
     
-                itIsReservePoolWhichIsAuthorityNow = true
+                itIsReservePoolWhichIsLeaderNow = true
     
             }
     
         }
 
-        let thisAuthorityCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsAuthorityNow || itsPrimePool )
+        let thisLeaderCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsLeaderNow || itsPrimePool )
     
-        if(!thisAuthorityCanGenerateBlocksNow){
+        if(!thisLeaderCanGenerateBlocksNow){
     
             connection.close()
 
@@ -231,7 +231,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
                         legacyEpochData.epochFullID
                             
-                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.subchain === primePoolPubKey
+                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === primePoolPubKey
 
                         
                     //_________________________________________2_________________________________________

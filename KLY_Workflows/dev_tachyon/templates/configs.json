@@ -137,9 +137,7 @@
             "GET_AGGREGATED_FINALIZATION_PROOFS":1,
             "GET_AGGREGATED_EPOCH_FINALIZATION_PROOF":1,
             "EPOCH_EDGE_OPERATIONS":1,
-            "NEW_NODES":1,
-            "GET_DATA_FOR_TEMP_REASSIGN":1,
-            "GET_CURRENT_SUBCHAINS_AUTHORITIES":1
+            "NEW_NODES":1
 
         },
 

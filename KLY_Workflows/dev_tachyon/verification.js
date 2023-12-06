@@ -428,7 +428,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
 
 
-BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey,aefp) => {
+BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,aefp) => {
 
 
         /*
@@ -543,9 +543,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
         {
 
-            subchain:primePoolPubKey,
+            shard:primePoolPubKey,
 
-            lastAuthority,
+            lastLeader,
                         
             lastIndex,
                     
@@ -573,18 +573,18 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
     let vtEpochIndex = vtEpochHandler.id
 
-    let oldReassignmentChainForSubchain = vtEpochHandler.reassignmentChains[primePoolPubKey]
+    let oldReassignmentChainForShard = vtEpochHandler.reassignmentChains[primePoolPubKey]
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
     let filtratratedReassignment = new Map() // poolID => {reassignedPool:ASP,reassignedPool0:ASP,...reassignedPoolX:ASP}
         
 
-    // Start the cycle in reverse order from <aefp.lastAuthority> to prime pool
+    // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
 
-    let lastAuthorityPoolPubKey = oldReassignmentChainForSubchain[aefp.lastAuthority] || primePoolPubKey
+    let lastLeaderPoolPubKey = oldReassignmentChainForShard[aefp.lastLeader] || primePoolPubKey
 
-    emptyTemplate[lastAuthorityPoolPubKey] = {
+    emptyTemplate[lastLeaderPoolPubKey] = {
         
         index:aefp.lastIndex,
         
@@ -592,9 +592,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
     }
 
-    for(let position = aefp.lastAuthority; position >= 0; position--){
+    for(let position = aefp.lastLeader; position >= 0; position--){
 
-        let poolPubKey = oldReassignmentChainForSubchain[position]
+        let poolPubKey = oldReassignmentChainForShard[position]
 
         // Get the first block of this epoch from POOLS_METADATA
 
@@ -606,7 +606,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
         let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
             
-            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainForSubchain,position,null,null,true)
+            primePoolPubKey,firstBlockInThisEpochByPool,oldReassignmentChainForShard,position,null,null,true)
 
         if(isOK){
 
@@ -619,7 +619,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN = async (vtEpochHandler,primePoolPubKey
 
     // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
 
-    for(let reservePool of oldReassignmentChainForSubchain){
+    for(let reservePool of oldReassignmentChainForShard){
 
         if(filtratratedReassignment.has(reservePool)){
 
@@ -1022,7 +1022,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
                 global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
 
-                    currentAuthorityOnSubchain:-1,
+                    currentLeaderOnShard:-1,
 
                     index:-1,
                     
@@ -1115,7 +1115,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
 
-TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
+TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
     /* 
             
@@ -1133,13 +1133,13 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
             4) Reassignment chains for new epoch - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`).catch(()=>false)
 
-            5) AEFPs for all the subchains from the first blocks of next epoch(X+1) to know where current epoch finished
+            5) AEFPs for all the shard from the first blocks of next epoch(X+1) to know where current epoch finished
 
                 For this, we use the [3](next epoch quorum) and ask them for first blocks in epoch. After we get it & AFPs for them, we
 
                 try to resolve the real first block in epoch X+1. Get the AEFP from it and start reverse cycle to build the reassignment metadata
                     
-                to know how each of subchain done in epoch X(current one)
+                to know how each of shard done in epoch X(current one)
 
 
 
@@ -1161,17 +1161,17 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochReassignmentChains){
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {subchainID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
 
         let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
-        let totalNumberOfSubchains = 0, totalNumberOfSubchainsReadyForMove = 0
+        let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
         // Once get it - get the real first block
         for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochReassignmentChains)){
 
-            totalNumberOfSubchains++
+            totalNumberOfShards++
 
             // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
@@ -1352,31 +1352,31 @@ TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN = async vtEpochHandler => {
 
                 // Try to get block
 
-                let firstBlockOnThisSubchain = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisShardInThisEpoch = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
 
-                if(firstBlockOnThisSubchain && Block.genHash(firstBlockOnThisSubchain) === epochCache[primePoolPubKey].firstBlockHash){
+                if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[primePoolPubKey].firstBlockHash){
 
-                    epochCache[primePoolPubKey].aefp = firstBlockOnThisSubchain.extraData.aefpForPreviousEpoch
+                    epochCache[primePoolPubKey].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
 
                 }
 
             }
 
 
-            if(epochCache[primePoolPubKey].aefp) totalNumberOfSubchainsReadyForMove++
+            if(epochCache[primePoolPubKey].aefp) totalNumberOfShardsReadyForMove++
 
         }
 
-        if(totalNumberOfSubchains === totalNumberOfSubchainsReadyForMove){
+        if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
 
             // Create empty template
             if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
             for(let primePoolPubKey of Object.keys(nextEpochReassignmentChains)){
 
-                // Now, using this AEFP (especially fields lastAuthority,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this subchain
+                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SUBCHAIN(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
+                if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SHARDS(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
 
             }
 
@@ -1545,7 +1545,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                                 }
 
                             
-                                // If we have size - add blocks here. The reserve is 5000 blocks per subchain
+                                // If we have size - add blocks here. The reserve is 5000 blocks per shard
 
                                 if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
 
@@ -1707,11 +1707,11 @@ START_VERIFICATION_THREAD=async()=>{
 
     let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
 
-    let previousSubchainWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER
+    let previousShardWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER
 
-    let indexOfPreviousSubchain = primePoolsPubkeys.indexOf(previousSubchainWeChecked)
+    let indexOfPreviousShard = primePoolsPubkeys.indexOf(previousShardWeChecked)
 
-    let currentSubchainToCheck = primePoolsPubkeys[indexOfPreviousSubchain+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
+    let currentShardToCheck = primePoolsPubkeys[indexOfPreviousShard+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
@@ -1723,10 +1723,10 @@ START_VERIFICATION_THREAD=async()=>{
 
     // Get the stats from reassignments
 
-    let tempReassignmentsForSomeSubchain = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentSubchainToCheck] // {currentAuthority,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+    let tempReassignmentsForSomeShard = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]){
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
 
         
         /*
@@ -1735,7 +1735,7 @@ START_VERIFICATION_THREAD=async()=>{
             In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .REASSIGNMENT_METADATA which has the structure
 
             {
-                subchain:{
+                shard:{
 
                     pool0:{index,hash},
                     ...
@@ -1744,35 +1744,35 @@ START_VERIFICATION_THREAD=async()=>{
                 }
             }
 
-            We just need to go through the .REASSIGNMENT_METADATA[currentSubchainToCheck] and start the cycle over vtEpochHandler.reassignmentChains[currentSubchainToCheck] and verify all the blocks
+            We just need to go through the .REASSIGNMENT_METADATA[currentShardToCheck] and start the cycle over vtEpochHandler.reassignmentChains[currentShardToCheck] and verify all the blocks
 
         */
 
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SUBCHAINS_READY_TO_NEW_CHECKPOINT')) global.SYMBIOTE_META.STUFF_CACHE.set('SUBCHAINS_READY_TO_NEW_CHECKPOINT',{readyToNewEpoch:0})
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) global.SYMBIOTE_META.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',{readyToNewEpoch:0})
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentSubchainToCheck)) global.SYMBIOTE_META.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentSubchainToCheck,{indexOfCurrentPoolToVerify:-1})
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) global.SYMBIOTE_META.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
 
 
-        let subchainsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SUBCHAINS_READY_TO_NEW_CHECKPOINT') // {readyToNewEpoch:int}
+        let shardsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // {readyToNewEpoch:int}
         
-        let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentSubchainToCheck) // {indexOfCurrentPoolToVerify:int}
+        let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
-        let metadataForSubchainFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentSubchainToCheck] // {pool:{index,hash},...}
+        let metadataForShardFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
 
         while(true){
 
-            let poolPubKey = vtEpochHandler.reassignmentChains[currentSubchainToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentSubchainToCheck
+            let poolPubKey = vtEpochHandler.reassignmentChains[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
 
             let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
-            let metadataFromAefpForThisPool = metadataForSubchainFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            let metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                if(vtEpochHandler.reassignmentChains[currentSubchainToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
+                if(vtEpochHandler.reassignmentChains[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
 
                 else {
 
@@ -1792,7 +1792,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(tunnelHandler){
 
-                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForSubchainFromAefp[poolPubKey])
+                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForShardFromAefp[poolPubKey])
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
@@ -1801,7 +1801,7 @@ START_VERIFICATION_THREAD=async()=>{
 
                 if(stepsForWhile <= 0){
 
-                    // Break the outer <while> cycle to try to find blocks & finish this epoch on another subchain
+                    // Break the outer <while> cycle to try to find blocks & finish this epoch on another shard
 
                     break
 
@@ -1821,9 +1821,9 @@ START_VERIFICATION_THREAD=async()=>{
         
                     if(block){
         
-                        await verifyBlock(block,currentSubchainToCheck)
+                        await verifyBlock(block,currentShardToCheck)
 
-                        VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentSubchainToCheck)
+                        VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
 
                     }
                     
@@ -1839,32 +1839,32 @@ START_VERIFICATION_THREAD=async()=>{
         }
 
 
-        if(vtEpochHandler.reassignmentChains[currentSubchainToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) subchainsReadyToNewEpoch.readyToNewEpoch++
+        if(vtEpochHandler.reassignmentChains[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) shardsReadyToNewEpoch.readyToNewEpoch++
 
         
-    }else if(currentEpochIsFresh && tempReassignmentsForSomeSubchain){
+    }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){
 
         
-        let indexOfCurrentPoolToVerify = tempReassignmentsForSomeSubchain.currentToVerify
+        let indexOfCurrentPoolToVerify = tempReassignmentsForSomeShard.currentToVerify
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
         
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentSubchainToCheck : vtEpochHandler.reassignmentChains[currentSubchainToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.reassignmentChains[currentShardToCheck][indexOfCurrentPoolToVerify]
         
         let verificationStatsOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 
-        let metadataWherePoolWasReassigned = tempReassignmentsForSomeSubchain.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentAuthority)
+        let metadataWherePoolWasReassigned = tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentLeader)
 
         
         if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
 
             // Move to next one
-            tempReassignmentsForSomeSubchain.currentToVerify++
+            tempReassignmentsForSomeShard.currentToVerify++
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = currentSubchainToCheck
+            global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
+            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SHARD(vtEpochHandler)
                     
         
             setImmediate(START_VERIFICATION_THREAD)
@@ -1904,9 +1904,9 @@ START_VERIFICATION_THREAD=async()=>{
     
                 if(block){
     
-                    await verifyBlock(block,currentSubchainToCheck)
+                    await verifyBlock(block,currentShardToCheck)
 
-                    VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentSubchainToCheck)
+                    VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
         
                 }
                 
@@ -1919,15 +1919,15 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = currentSubchainToCheck
+    global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentSubchainToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SUBCHAIN(vtEpochHandler)
+    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SHARD(vtEpochHandler)
 
 
-    if(global.SYMBIOTE_META.STUFF_CACHE.has('SUBCHAINS_READY_TO_NEW_CHECKPOINT')){
+    if(global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
 
-        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('SUBCHAINS_READY_TO_NEW_CHECKPOINT') // {readyToNewEpoch:int}
+        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // {readyToNewEpoch:int}
 
         if(handler.readyToNewEpoch === primePoolsPubkeys.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
 
@@ -1941,7 +1941,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
 
-GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>{
+GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD=async(shardContext,publicKey)=>{
 
     let emptyTemplate = {
         
@@ -1955,7 +1955,7 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>
 
     // Add to cache to write to permanent db after block verification
 
-    global.SYMBIOTE_META.STATE_CACHE.set(subchainContext+':'+publicKey,emptyTemplate)
+    global.SYMBIOTE_META.STATE_CACHE.set(shardContext+':'+publicKey,emptyTemplate)
 
     return emptyTemplate
 
@@ -1964,7 +1964,7 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN=async(subchainContext,publicKey)=>
 
 
 
-SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCreator)=>{
+SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(shardContext,feeToPay,blockCreator)=>{
 
     let blockCreatorOrigin = await GET_FROM_STATE(blockCreator+'(POOL)_POINTER')
 
@@ -1973,8 +1973,8 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
     // Transfer part of fees to account with pubkey associated with block creator
     if(mainStorageOfBlockCreator.percentage!==0){
 
-        // Get the pool percentage and send to appropriate Ed25519 address in the <subchainContext>
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(subchainContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,blockCreator)
+        // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
+        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(shardContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,blockCreator)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
         
@@ -1993,9 +1993,9 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
 
-        let stakerAccountBindedToCurrentSubchainContext = await GET_ACCOUNT_ON_SYMBIOTE(subchainContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(subchainContext,stakerPubKey)
+        let stakerAccountBindedToCurrentShardContext = await GET_ACCOUNT_ON_SYMBIOTE(shardContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,stakerPubKey)
 
-        stakerAccountBindedToCurrentSubchainContext.balance += totalStakerPowerPercent*restOfFees
+        stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent*restOfFees
 
     }
 
@@ -2004,16 +2004,16 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(subchainContext,feeToPay,blockCr
 
 
 
-SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepientPoolPubKey,feeReward) => {
+SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD = async(shardID,feeRecepientPoolPubKey,feeReward) => {
 
-    // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on subchain <subchainID>"
-    // In order to protocol, not all the fees go to the subchain authority - part of them are sent to the rest of subchains authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
+    // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on shard <shardID>"
+    // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    let accountsForFeesId = subchainID+':'+feeRecepientPoolPubKey
+    let accountsForFeesId = shardID+':'+feeRecepientPoolPubKey
 
-    let feesAccountForGivenPoolOnThisSubchain = await GET_ACCOUNT_ON_SYMBIOTE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SUBCHAIN(accountsForFeesId)
+    let feesAccountForGivenPoolOnThisShard = await GET_ACCOUNT_ON_SYMBIOTE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(accountsForFeesId)
 
-    feesAccountForGivenPoolOnThisSubchain.balance += feeReward
+    feesAccountForGivenPoolOnThisShard.balance += feeReward
 
 },
 
@@ -2021,7 +2021,7 @@ SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT = async(subchainID,feeRecepie
 
 
 //Function to distribute stakes among blockCreator/his stakers/rest of prime pools
-DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,arrayOfPrimePools,blockCreator)=>{
+DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,shardContext,arrayOfPrimePools,blockCreator)=>{
 
     /*
 
@@ -2058,13 +2058,13 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,ar
 
     //___________________________________________ BLOCK_CREATOR ___________________________________________
 
-    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR(subchainContext,payToCreatorAndHisPool,blockCreator))
+    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR(shardContext,payToCreatorAndHisPool,blockCreator))
 
     //_____________________________________________ THE REST ______________________________________________
 
     arrayOfPrimePools.forEach(feesRecepientPrimePoolPubKey=>
 
-        feesRecepientPrimePoolPubKey !== subchainContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SUBCHAIN_CONTEXT(subchainContext,feesRecepientPrimePoolPubKey,payToEachPool))
+        feesRecepientPrimePoolPubKey !== shardContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD(shardContext,feesRecepientPrimePoolPubKey,payToEachPool))
             
     )
      
@@ -2075,7 +2075,7 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,subchainContext,ar
 
 
 
-verifyBlock=async(block,subchainContext)=>{
+verifyBlock=async(block,shardContext)=>{
 
 
     let blockHash = Block.genHash(block),
@@ -2114,7 +2114,7 @@ verifyBlock=async(block,subchainContext)=>{
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let currentKlyEvmContextMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[subchainContext] // {nextBlockIndex,parentHash,timestamp}
+        let currentKlyEvmContextMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.nextBlockIndex,currentKlyEvmContextMetadata.timestamp,currentKlyEvmContextMetadata.parentHash)
@@ -2128,7 +2128,7 @@ verifyBlock=async(block,subchainContext)=>{
 
             //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
     
-            // Push accounts for fees of subchains prime pools
+            // Push accounts for fees of shards prime pools
 
 
             let primePools = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
@@ -2141,7 +2141,7 @@ verifyBlock=async(block,subchainContext)=>{
                 pubKey => {
     
                     // Avoid own pubkey to be added. On own chains we send rewards directly
-                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(subchainContext+':'+pubKey))
+                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(shardContext+':'+pubKey))
     
                 }
                 
@@ -2162,7 +2162,7 @@ verifyBlock=async(block,subchainContext)=>{
 
                     let txCopy = JSON.parse(JSON.stringify(transaction))
 
-                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](subchainContext,txCopy,rewardBox,atomicBatch).catch(()=>{})
+                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>{})
 
                     // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                     if(reason!=='EVM'){
@@ -2191,7 +2191,7 @@ verifyBlock=async(block,subchainContext)=>{
                     [2] Send the rest of fees to prime pools
 
             */
-            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,subchainContext,primePools,block.creator)
+            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,shardContext,primePools,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    
@@ -2235,15 +2235,15 @@ verifyBlock=async(block,subchainContext)=>{
 
         /*
         
-            Store the current subchain block index (SID)
+            Store the current shard block index (SID)
         
-            NOTE: Since the subchainID is pubkey of prime pool, but not only prime pool can generate blocks(reserve pools generate blocks in case prime pool is AFK)
+            NOTE: Since the shardID is pubkey of prime pool, but not only prime pool can generate blocks(reserve pools generate blocks in case prime pool is AFK)
 
-            So, we need to mark each next block in subchain with SID
+            So, we need to mark each next block in shard with SID
 
             For example
 
-            _______________[Subchain 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta]________________
+            _______________[Shard 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta]________________
 
             Block 0     ===> 7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:0   (SID:0)
             Block 1     ===> 61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8:0   (SID:1)
@@ -2252,27 +2252,27 @@ verifyBlock=async(block,subchainContext)=>{
         
             ... and so on
 
-            To clearly understand that 'block N on subchain X is ...<this>' we need SID
+            To clearly understand that 'block N on shard X is ...<this>' we need SID
         
         */
 
 
-        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]
+        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
-        atomicBatch.put(`SID:${subchainContext}:${currentSID}`,currentBlockID)
+        atomicBatch.put(`SID:${shardContext}:${currentSID}`,currentBlockID)
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]++
+        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.SUBCHAIN_POINTER = subchainContext
+        global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
-        if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]) global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext] = {}
+        if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]) global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].currentAuthorityOnSubchain = block.creator
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].currentLeaderOnShard = block.creator
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].index = block.index
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index = block.index
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext].hash = blockHash
+        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
         
         // Change metadata per validator's thread
         
@@ -2306,13 +2306,13 @@ verifyBlock=async(block,subchainContext)=>{
         // Finally, store the block
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
         
-        atomicBatch.put(`${subchainContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
+        atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
-        atomicBatch.put(`${subchainContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+        atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
 
-        atomicBatch.put(`${subchainContext}:EVM_LOGS:${blockToStore.number}`,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+        atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-        atomicBatch.put(`${subchainContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
+        atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
         
         atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
 

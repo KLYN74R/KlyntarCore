@@ -7,7 +7,7 @@ export let ENERGY_USED_BY_METHOD=methodID=>{return
 
 export let CONTRACT = {
 
-    constructor:async (payload,originSubchain,atomicBatch)=>{
+    constructor:async (payload,originShard,atomicBatch)=>{
 
         
 

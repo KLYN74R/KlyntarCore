@@ -291,13 +291,13 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
 
 //Function for pretty output the information about verification thread(VT)
-VT_STATS_LOG = (epochIndex,epochHash,subchainContext) => {
+VT_STATS_LOG = (epochIndex,epochHash,shardContext) => {
 
 
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]){
+    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]){
 
 
-        let {currentAuthorityOnSubchain,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[subchainContext]
+        let {currentLeaderOnShard,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]
 
 
         console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,'Local VERIFICATION_THREAD state is',COLORS.C)
@@ -306,9 +306,9 @@ VT_STATS_LOG = (epochIndex,epochHash,subchainContext) => {
             
         console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,epochIndex+' : '+epochHash,COLORS.C)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[subchainContext]-1)+' : '+subchainContext,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)+' : '+shardContext,COLORS.C)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  Current Authority:\x1b[36;1m`,currentAuthorityOnSubchain,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Current Leader:\x1b[36;1m`,currentLeaderOnShard,COLORS.C)
     
         console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash:\x1b[36;1m`,index+' : '+hash,COLORS.C)
     

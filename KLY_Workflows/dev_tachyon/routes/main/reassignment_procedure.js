@@ -2,8 +2,6 @@ import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,GET_BLOCK,VERIFY_AGGREGATED_FINALIZ
 
 import {BLAKE3,BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
 
-import {USE_TEMPORARY_DB} from "../../utils.js"
-
 import Block from "../../essences/block.js"
 
 
@@ -17,7 +15,7 @@ import Block from "../../essences/block.js"
 
 [Info]:
 
-    Function to return signature of reassignment proof if we have SKIP_HANDLER for requested subchain
+    Function to return signature of reassignment proof if we have SKIP_HANDLER for requested shard
     
     Returns the signature if requested height to skip >= than our own
     
@@ -31,7 +29,7 @@ import Block from "../../essences/block.js"
 
         poolPubKey,
 
-        subchain
+        shard
 
         afpForFirstBlock:{
 
@@ -150,7 +148,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.reassignmentChains[requestForSkipProof.subchain] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
+    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.reassignmentChains[requestForSkipProof.shard] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
     
                        &&
                        
@@ -228,16 +226,16 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 Otherwise - find block, compare it's hash with <requestForSkipProof.afpForFirstBlock.prevBlockHash>
 
-                In case hashes match - extract the ASP for previous pool <epochHandler.reassignmentChains[subchain][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
+                In case hashes match - extract the ASP for previous pool <epochHandler.reassignmentChains[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
                 [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
 
             */
 
-            let indexInReassignmentChainForRequestedPool = epochHandler.reassignmentChains[requestForSkipProof.subchain].indexOf(requestForSkipProof.poolPubKey)
+            let indexInReassignmentChainForRequestedPool = epochHandler.reassignmentChains[requestForSkipProof.shard].indexOf(requestForSkipProof.poolPubKey)
 
-            // In case indexInReassignmentChainForRequestedPool === -1 - this means that previousPoolPubKey will be equal to prime pool pubkey(===subchainID)
-            let previousPoolPubKey = epochHandler.reassignmentChains[requestForSkipProof.subchain][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.subchain
+            // In case indexInReassignmentChainForRequestedPool === -1 - this means that previousPoolPubKey will be equal to prime pool pubkey(===shardID)
+            let previousPoolPubKey = epochHandler.reassignmentChains[requestForSkipProof.shard][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.shard
 
 
             if(index === -1){
@@ -314,19 +312,19 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 [Info]:
 
-    Accept indexes of authorities on subchains by requester version and return ASPs for them
+    Accept indexes of authorities on shards by requester version and return ASPs for them
 
 [Accept]:
 
     {
-        primePoolPubKey:<index of current authority on subchain by requester version>
+        primePoolPubKey:<index of current leader on shard by requester version>
         ...
     }
 
 [Returns]:
 
     {
-        primePoolPubKey(subchainID):<aggregatedSkipProofForProposedAuthority>
+        primePoolPubKey(shardID):<aggregatedSkipProofForProposedLeader>
         ...
     
     }
@@ -357,15 +355,15 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
         // Here we should return the ASP for proposed authorities
 
-        for(let [subchainID, proposedIndexOfAuthority] of Object.entries(proposedIndexesOfAuthorities)){
+        for(let [shardID, proposedIndexOfLeader] of Object.entries(proposedIndexesOfAuthorities)){
 
-            if(epochHandler.reassignmentChains[subchainID]){
+            if(epochHandler.reassignmentChains[shardID]){
 
-                let pubKeyOfPoolByThisIndex = epochHandler.reassignmentChains[subchainID][proposedIndexOfAuthority] || subchainID
+                let pubKeyOfPoolByThisIndex = epochHandler.reassignmentChains[shardID][proposedIndexOfLeader] || shardID
 
                 let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)?.aggregatedSkipProof
 
-                objectToReturn[subchainID] = aggregatedSkipProofForThisPool
+                objectToReturn[shardID] = aggregatedSkipProofForThisPool
 
             }
 
@@ -393,9 +391,9 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
 
     {
-        subchain:<subchain ID - pubkey of prime pool>,
+        shard:<shard ID - pubkey of prime pool>,
 
-        shouldBeThisAuthority:<number>
+        shouldBeThisLeader:<number>
 
         aspsForPreviousPools:{
 
@@ -440,7 +438,7 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
             },
 
-            ... (we need to send ASPs for all the pools from index <shouldBeThisAuthority-1> until the beginning of reassignment chain. We can stop when .skipIndex of some ASP won't be -1)
+            ... (we need to send ASPs for all the pools from index <shouldBeThisLeader-1> until the beginning of reassignment chain. We can stop when .skipIndex of some ASP won't be -1)
 
 
         }
@@ -449,9 +447,9 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
     _________________________ What to do next _________________________
 
-    1) Get the local reassignment data for proposed subchain => localReassignmentData = tempObject.REASSIGNMENTS.get(subchain)
+    1) Get the local reassignment data for proposed shard => localReassignmentData = tempObject.REASSIGNMENTS.get(shard)
 
-    2) In case localReassignmentData.currentAuthority < obj[<subchain>].shouldBeThisAuthority => verify the ASPs
+    2) In case localReassignmentData.currentLeader < obj[<shard>].shouldBeThisLeader => verify the ASPs
     
     3) In case all the ASPs are ok - create the CREATE_REASSIGNMENT request and push it to tempObject.SYNCHRONIZER to update the local info about reassignment
 
@@ -475,35 +473,35 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
     }
 
 
-    let possibleReassignmentPropositionForSubchain = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let possibleReassignmentPropositionForShard = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
 
-    if(typeof possibleReassignmentPropositionForSubchain === 'object'){
+    if(typeof possibleReassignmentPropositionForShard === 'object'){
 
 
         // Parse reassignment proposition
-        let {subchain,shouldBeThisAuthority,aspsForPreviousPools} = possibleReassignmentPropositionForSubchain
+        let {shard,shouldBeThisLeader,aspsForPreviousPools} = possibleReassignmentPropositionForShard
 
 
-        if(typeof subchain !== 'string' || !epochHandler.poolsRegistry.primePools.includes(subchain) || typeof shouldBeThisAuthority !== 'number' || typeof aspsForPreviousPools !== 'object'){
+        if(typeof shard !== 'string' || !epochHandler.poolsRegistry.primePools.includes(shard) || typeof shouldBeThisLeader !== 'number' || typeof aspsForPreviousPools !== 'object'){
 
-            !response.aborted && response.end(JSON.stringify({err:'Wrong format of proposition components or no such subchain'}))
+            !response.aborted && response.end(JSON.stringify({err:'Wrong format of proposition components or no such shard'}))
 
             return
 
         }
 
-        let localRcHandlerForSubchain = tempObject.REASSIGNMENTS.get(subchain) || {currentAuthority:-1}
+        let localRcHandlerForShard = tempObject.REASSIGNMENTS.get(shard) || {currentLeader:-1}
 
-        // Compare the .currentAuthority indexes to make sure that proposed authority has the bigger index 
+        // Compare the .currentLeader indexes to make sure that proposed leader has the bigger index 
 
-        if(localRcHandlerForSubchain.currentAuthority < shouldBeThisAuthority){
+        if(localRcHandlerForShard.currentLeader < shouldBeThisLeader){
 
-            // Verify the ASP for pool with index <shouldBeThisAuthority-1> in reassignment chain
-            // If ok - create the CREATE_REASSIGNMENT:<subchain> request and push to synchronizer
+            // Verify the ASP for pool with index <shouldBeThisLeader-1> in reassignment chain
+            // If ok - create the CREATE_REASSIGNMENT:<shard> request and push to synchronizer
             // Due to Node.js work principles - check the indexes right before push
 
-            let pubKeyOfSkippedPool = epochHandler.reassignmentChains[subchain][shouldBeThisAuthority-1] || subchain
+            let pubKeyOfSkippedPool = epochHandler.reassignmentChains[shard][shouldBeThisLeader-1] || shard
 
             let aspForSkippedPool = aspsForPreviousPools[pubKeyOfSkippedPool]
 
@@ -511,13 +509,13 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
             
             if(aspIsOk) {
 
-                let indexInReassignmentChain = shouldBeThisAuthority-2 // -2 because we checked -1 position
+                let indexInReassignmentChain = shouldBeThisLeader-2 // -2 because we checked -1 position
 
                 while(indexInReassignmentChain >= -1){
 
-                    let currentPoolToVerify = epochHandler.reassignmentChains[subchain][indexInReassignmentChain] || subchain
+                    let currentPoolToVerify = epochHandler.reassignmentChains[shard][indexInReassignmentChain] || shard
 
-                    let nextPoolInRC = epochHandler.reassignmentChains[subchain][indexInReassignmentChain+1]
+                    let nextPoolInRC = epochHandler.reassignmentChains[shard][indexInReassignmentChain+1]
 
                     let nextAspInChain = aspsForPreviousPools[nextPoolInRC]
 
@@ -551,16 +549,16 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
                 
                     But, finally check if no other request for reassignment wasn't accepted in async mode via concurrent request to this handler
                     
-                    Node.js will read the data from mapping, compare .shouldBeThisAuthority property and add new request in case index is bigger - and all these ops in sync mode
+                    Node.js will read the data from mapping, compare .shouldBeThisLeader property and add new request in case index is bigger - and all these ops in sync mode
                 
                 */
                 
-                let concurrentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+subchain)
+                let concurrentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+shard)
 
 
-                if(!concurrentRequest || concurrentRequest && concurrentRequest.shouldBeThisAuthority < shouldBeThisAuthority){
+                if(!concurrentRequest || concurrentRequest && concurrentRequest.shouldBeThisLeader < shouldBeThisLeader){
 
-                    tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+subchain,{shouldBeThisAuthority,aspsForPreviousPools})
+                    tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+shard,{shouldBeThisLeader:shouldBeThisLeader,aspsForPreviousPools})
 
                 }
 
@@ -568,7 +566,7 @@ let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Orig
 
             } else !response.aborted && response.end(JSON.stringify({err:'One of ASP is wrong'}))
 
-        } else !response.aborted && response.end(JSON.stringify({err:'Local version of current subchain authority has the bigger index'}))
+        } else !response.aborted && response.end(JSON.stringify({err:'Local index of current shard leader is bigger'}))
 
     }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
 
