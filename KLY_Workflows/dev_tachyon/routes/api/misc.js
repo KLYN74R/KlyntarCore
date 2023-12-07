@@ -206,19 +206,19 @@ getSymbioteInfo=response=>{
 
 
 //Returns current pools data
-getPoolsMetadata=response=>{
+getVerificationStatsPerPool=response=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.POOLS_METADATA){
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
 
         response
         
             .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.POOLS_METADATA}`)
+            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
             .onAborted(()=>response.aborted=true)
 
 
-        response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA))
+        response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL))
 
     }else !response.aborted && response.end(JSON.stringify({err:'Symbiote not supported'}))
 
@@ -400,7 +400,7 @@ global.UWS_SERVER
 
 .get('/epoch_on_threads',getDataAboutEpochOnThreads)
 
-.get('/pools_metadata',getPoolsMetadata)
+.get('/verification_stats_per_pool',getVerificationStatsPerPool)
 
 .get('/symbiote_info',getSymbioteInfo)
 

@@ -121,7 +121,7 @@
             "SYMBIOTE_INFO":5,
             "SEARCH_RESULT":5,
             "TX_RECEIPT":100,
-            "POOLS_METADATA":5,
+            "VERIFICATION_STATS_PER_POOL":5,
             "DATA_ABOUT_EPOCH_ON_THREAD":5
 
         }   
@@ -156,7 +156,7 @@
             "SYMBIOTE_INFO":1,
             "SEARCH_RESULT":1,
             "TX_RECEIPT":1,
-            "POOLS_METADATA":1,
+            "VERIFICATION_STATS_PER_POOL":1,
             "DATA_ABOUT_EPOCH_ON_THREAD":1
         
         }

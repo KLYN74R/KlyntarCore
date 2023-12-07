@@ -164,11 +164,11 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                 
                 2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
 
-                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.EPOCH_MANAGER)
+                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.FINALIZATION_STATS)
 
-            [Else if proposed.currentAuth < local.currentAuth AND tempObj.EPOCH_MANAGER.has(local.currentAuth)]:
+            [Else if proposed.currentAuth < local.currentAuth AND tempObj.FINALIZATION_STATS.has(local.currentAuth)]:
 
-                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from tempObject.EPOCH_MANAGER), index and hash
+                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from tempObject.FINALIZATION_STATS), index and hash
 
 
 
@@ -228,7 +228,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
             if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
 
-                // Get the local version of SHARDS_LEADERS_HANDLERS and CHECKPOINT_MANAGER
+                // Get the local version of SHARDS_LEADERS_HANDLERS and FINALIZATION_STATS
 
                 let reassignmentForThisShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
 
@@ -255,7 +255,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
-                let epochManagerForLeader = tempObject.EPOCH_MANAGER.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                let epochManagerForLeader = tempObject.FINALIZATION_STATS.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
                 // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
@@ -331,7 +331,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
     
                                     epochManagerForLeader.afp = afp
     
-                                }else tempObject.EPOCH_MANAGER.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
+                                }else tempObject.FINALIZATION_STATS.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
 
                             
                                 // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE

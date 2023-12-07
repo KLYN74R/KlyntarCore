@@ -316,10 +316,10 @@ export default {
 
                 if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                    // Do it only if pool is not in current POOLS_METADATA
-                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]){
+                    // Do it only if pool is not in current VERIFICATION_STATS_PER_POOL
+                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]){
 
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[pool]={   
+                        global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]={   
                                 
                             index:-1,
                         
@@ -426,7 +426,7 @@ export default {
         }
         else{
 
-            // On VERIFICATION_THREAD we should delete the pool from POOLS_METADATA, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
+            // On VERIFICATION_THREAD we should delete the pool from VERIFICATION_STATS_PER_POOL, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
             let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(()=>false)

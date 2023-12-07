@@ -1,6 +1,6 @@
 import {GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
 
-import {BLAKE3,BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
+import {BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
 
 import Block from "../../essences/block.js"
 
@@ -93,7 +93,7 @@ import Block from "../../essences/block.js"
 
     {
         type:'OK',
-        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+        sig: ED25519_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
     }
 
 
@@ -228,21 +228,15 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 In case hashes match - extract the ASP for previous pool <epochHandler.leadersSequence[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
-                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
 
             */
-
-            let indexInReassignmentChainForRequestedPool = epochHandler.leadersSequence[requestForSkipProof.shard].indexOf(requestForSkipProof.poolPubKey)
-
-            // In case indexInReassignmentChainForRequestedPool === -1 - this means that previousPoolPubKey will be equal to prime pool pubkey(===shardID)
-            let previousPoolPubKey = epochHandler.leadersSequence[requestForSkipProof.shard][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.shard
-
 
             if(index === -1){
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
                 firstBlockAfpIsOk = true
 
@@ -261,17 +255,9 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                         // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
 
-                        let hashOfAspForPreviousPool = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-                        if(block.extraData.reassignments){
-
-                            hashOfAspForPreviousPool = BLAKE3(JSON.stringify(block.extraData.reassignments[previousPoolPubKey]))
-
-                        }
-
                         let firstBlockHash = requestForSkipProof.afpForFirstBlock.blockHash
 
-                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${hashOfAspForPreviousPool}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                         firstBlockAfpIsOk = true                    
     
@@ -330,7 +316,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
     }
 
 */
-let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+let aggregatedSkipProofsForProposedLeaders=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -387,4 +373,4 @@ global.UWS_SERVER
 .post('/reassignment_proof',getReassignmentProof)
 
 // Function to return aggregated skip proofs for proposed authorities
-.post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedAuthorities)
+.post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedLeaders)

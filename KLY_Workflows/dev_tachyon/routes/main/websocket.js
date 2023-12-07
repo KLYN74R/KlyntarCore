@@ -162,13 +162,13 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        let metadataFromEpochManagerForThisPool = tempObject.EPOCH_MANAGER.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let finalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         let proposedBlockHash = Block.genHash(block)
 
         // Check that a new proposed block is a part of a valid segment
 
-        let sameSegment = metadataFromEpochManagerForThisPool.index < block.index || metadataFromEpochManagerForThisPool.index === block.index && proposedBlockHash === metadataFromEpochManagerForThisPool.hash
+        let sameSegment = finalizationStatsForThisPool.index < block.index || finalizationStatsForThisPool.index === block.index && proposedBlockHash === finalizationStatsForThisPool.hash
 
 
         if(sameSegment){
@@ -180,9 +180,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
             if(await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
-                if(metadataFromEpochManagerForThisPool.index === block.index){
+                if(finalizationStatsForThisPool.index === block.index){
 
-                    futureMetadataToStore = metadataFromEpochManagerForThisPool
+                    futureMetadataToStore = finalizationStatsForThisPool
     
                 }else{
     
@@ -267,6 +267,31 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                         return
 
                     }
+
+                    if(aspChainIsOk){
+
+                        // Store all the ASPs from previous leader up to pool which was reassigned on non-zero height in current epoch
+
+                        for(let position = positionOfBlockCreatorInLeadersSequence; position >= -1 ; position--){
+
+                            let pubKeyOfLeaderOnCertainPosition = leadersSequence[position] || primePoolPubKey
+
+                            if(!tempObject.ASP_HANDLERS.has(pubKeyOfLeaderOnCertainPosition)){
+
+                                // Store to temp db first - then push to ASP_HANDLERS
+
+                                let aspForThisLeader = block.extraData.reassignments[pubKeyOfLeaderOnCertainPosition]
+
+                                let aspHandler = 
+
+                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'ASP_HANDLER:'+block.creator,aspForThisLeader).then(()=>)
+
+                            }
+
+                        }
+
+
+                    }
                     
 
                 }else{
@@ -302,7 +327,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                 }
 
 
-                // Store the metadata for EPOCH_MANAGER
+                // Store the metadata for FINALIZATION_STATS
 
                 USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>
 
@@ -316,7 +341,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                         global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
 
-                            tempObject.EPOCH_MANAGER.set(block.creator,futureMetadataToStore)
+                            tempObject.FINALIZATION_STATS.set(block.creator,futureMetadataToStore)
     
 
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
