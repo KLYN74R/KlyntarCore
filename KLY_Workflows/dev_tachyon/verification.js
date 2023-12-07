@@ -573,7 +573,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     let vtEpochIndex = vtEpochHandler.id
 
-    let oldReassignmentChainForShard = vtEpochHandler.reassignmentChains[primePoolPubKey]
+    let oldReassignmentChainForShard = vtEpochHandler.leadersSequence[primePoolPubKey]
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
@@ -643,7 +643,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
         
         After execution of this function we have:
 
-        [0] global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.reassignmentChains with structure:
+        [0] global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.leadersSequence with structure:
         
         {
             primePoolA:[ReservePool0A,ReservePool1A,....,ReservePoolNA],
@@ -1007,7 +1007,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
 
         // Change reassignment chains
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.reassignmentChains = nextEpochReassignmentChains
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochReassignmentChains
 
         
         // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
@@ -1744,7 +1744,7 @@ START_VERIFICATION_THREAD=async()=>{
                 }
             }
 
-            We just need to go through the .REASSIGNMENT_METADATA[currentShardToCheck] and start the cycle over vtEpochHandler.reassignmentChains[currentShardToCheck] and verify all the blocks
+            We just need to go through the .REASSIGNMENT_METADATA[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
 
         */
 
@@ -1763,7 +1763,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         while(true){
 
-            let poolPubKey = vtEpochHandler.reassignmentChains[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
+            let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
 
             let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolPubKey]
 
@@ -1772,7 +1772,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                if(vtEpochHandler.reassignmentChains[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
+                if(vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
 
                 else {
 
@@ -1839,7 +1839,7 @@ START_VERIFICATION_THREAD=async()=>{
         }
 
 
-        if(vtEpochHandler.reassignmentChains[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) shardsReadyToNewEpoch.readyToNewEpoch++
+        if(vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) shardsReadyToNewEpoch.readyToNewEpoch++
 
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){
@@ -1849,7 +1849,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
         
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.reassignmentChains[currentShardToCheck][indexOfCurrentPoolToVerify]
+        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.leadersSequence[currentShardToCheck][indexOfCurrentPoolToVerify]
         
         let verificationStatsOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.POOLS_METADATA[poolToVerifyRightNow] // {index,hash,isReserve}
 

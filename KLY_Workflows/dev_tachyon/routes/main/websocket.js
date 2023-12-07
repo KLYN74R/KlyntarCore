@@ -108,7 +108,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
     let {block,previousBlockAFP} = parsedData
 
-    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !tempObject.SKIP_HANDLERS.has(block.creator) && !tempObject.SYNCHRONIZER.has('CREATING_SKIP_HANDLER:'+block.creator)
+    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !tempObject.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
 
 
     if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
@@ -137,9 +137,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
     
             if(itsPrimePool) primePoolPubKey = block.creator
     
-            else if(typeof tempObject.REASSIGNMENTS.get(block.creator) === 'string'){
+            else if(typeof tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
     
-                primePoolPubKey = tempObject.REASSIGNMENTS.get(block.creator)
+                primePoolPubKey = tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator)
     
                 itIsReservePoolWhichIsLeaderNow = true
     
@@ -208,7 +208,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                         And finally, if it's the first block in epoch - verify that it contains:
         
                             1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                            2) All the ASPs for previous pools in reassignment chains in section block.extraData.reassignments(in case the block creator is not a prime pool)
+                            2) All the ASPs for previous pools in leaders sequence in section block.extraData.reassignments(in case the block creator is not a prime pool)
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 
@@ -237,9 +237,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                     //_________________________________________2_________________________________________
 
 
-                    let reassignmentArray = epochHandler.reassignmentChains[primePoolPubKey]
+                    let leadersSequence = epochHandler.leadersSequence[primePoolPubKey]
 
-                    let positionOfBlockCreatorInReassignmentChain = reassignmentArray.indexOf(block.creator)
+                    let positionOfBlockCreatorInLeadersSequence = leadersSequence.indexOf(block.creator)
 
                     let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
         
@@ -247,9 +247,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
         
                         block,
 
-                        reassignmentArray,
+                        leadersSequence,
         
-                        positionOfBlockCreatorInReassignmentChain,
+                        positionOfBlockCreatorInLeadersSequence,
         
                         epochFullID,
         

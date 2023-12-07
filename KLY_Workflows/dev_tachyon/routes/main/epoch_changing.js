@@ -101,7 +101,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                 
             "shard0":{
 
-                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[primePool]. In case -1 - it's prime pool>
                 
                 afpForFirstBlock:{
 
@@ -156,7 +156,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
 
         1) We need to iterate over propositions(per shard)
-        2) Compare <currentAuth> with our local version of current leader on shard(take it from tempObj.REASSIGNMENTS)
+        2) Compare <currentAuth> with our local version of current leader on shard(take it from tempObj.SHARDS_LEADERS_HANDLERS)
         
             [If proposed.currentAuth >= local.currentAuth]:
 
@@ -228,9 +228,9 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
             if(typeof shardID === 'string' && typeof proposition.currentLeader === 'number' && typeof proposition.afpForFirstBlock === 'object' && typeof proposition.metadataForCheckpoint === 'object' && typeof proposition.metadataForCheckpoint.afp === 'object'){
 
-                // Get the local version of REASSIGNMENTS and CHECKPOINT_MANAGER
+                // Get the local version of SHARDS_LEADERS_HANDLERS and CHECKPOINT_MANAGER
 
-                let reassignmentForThisShard = tempObject.REASSIGNMENTS.get(shardID) // {currentLeader:<uint>}
+                let reassignmentForThisShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
 
                 let pubKeyOfCurrentLeaderOnShard, localIndexOfLeader
                 
@@ -240,7 +240,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                     localIndexOfLeader = reassignmentForThisShard.currentLeader
 
-                    pubKeyOfCurrentLeaderOnShard = qtEpochHandler.reassignmentChains[shardID][localIndexOfLeader] || shardID
+                    pubKeyOfCurrentLeaderOnShard = qtEpochHandler.leadersSequence[shardID][localIndexOfLeader] || shardID
 
                 }else{
 
@@ -320,7 +320,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                             
                                 if(reassignmentForThisShard) reassignmentForThisShard.currentLeader = proposition.currentLeader
 
-                                else tempObject.REASSIGNMENTS.set(shardID,{currentLeader:proposition.currentLeader})
+                                else tempObject.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:proposition.currentLeader})
     
 
                                 if(epochManagerForLeader){

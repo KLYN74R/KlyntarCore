@@ -90,13 +90,10 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
+export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 
 
-    epochHandler.reassignmentChains = {}
-
-
-    //__________________Based on POOLS_METADATA get the reassignments to instantly get the commitments / finalization proofs__________________
+    epochHandler.leadersSequence = {}
 
 
     let reservePoolsRelatedToShard = new Map() // shardID => [] - array of reserve pools
@@ -136,7 +133,7 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
     let hashOfMetadataFromOldEpoch = BLAKE3(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
 
     
-    //___________________________________________________ Now, build the reassignment chains ___________________________________________________
+    //___________________________________________________ Now, build the leaders sequence ___________________________________________________
     
     for(let primePoolID of primePoolsPubKeys){
 
@@ -158,12 +155,12 @@ export let SET_REASSIGNMENT_CHAINS = async (epochHandler,epochSeed) => {
 
         let sortedChallenges = HEAP_SORT(arrayOfChallanges)
 
-        let reassignmentChain = []
+        let leadersSequence = []
 
-        for(let challenge of sortedChallenges) reassignmentChain.push(mapping.get(challenge))
+        for(let challenge of sortedChallenges) leadersSequence.push(mapping.get(challenge))
 
         
-        epochHandler.reassignmentChains[primePoolID] = reassignmentChain
+        epochHandler.leadersSequence[primePoolID] = leadersSequence
         
     }
     
@@ -423,7 +420,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 Otherwise - try to find first block created by other pools on this shard
 
-                for(pool of reassignmentChains[shardID])
+                for(pool of leadersSequence[shardID])
 
             }
                         
@@ -468,7 +465,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let totalNumberOfReadyShards = 0
 
-        let reassignmentChains = qtEpochHandler.reassignmentChains
+        let leadersSequence = qtEpochHandler.leadersSequence
 
         let majority = GET_MAJORITY(qtEpochHandler)
 
@@ -480,7 +477,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         epochCache = {}
 
-        let entries = Object.entries(reassignmentChains)
+        let entries = Object.entries(leadersSequence)
 
         //____________________Ask the quorum for AEFP for shard___________________
         
@@ -838,10 +835,10 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await SET_REASSIGNMENT_CHAINS(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
+                await SET_LEADERS_SEQUENCE_FOR_SHARDS(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
 
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.reassignmentChains).catch(()=>false)
+                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_RC:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
 
 
                 LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
@@ -877,12 +874,10 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                     TEMP_CACHE:new Map(),
 
                     EPOCH_EDGE_OPERATIONS_MEMPOOL:[],
- 
-                    SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
 
                     SYNCHRONIZER:new Map(),
             
-                    REASSIGNMENTS:new Map(),
+                    SHARDS_LEADERS_HANDLERS:new Map(),
       
                     DATABASE:nextTempDB
             
@@ -999,9 +994,9 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         
         for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
 
-            let reassignmentData = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}
+            let reassignmentData = temporaryObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
 
-            let pubKeyOfLeader = qtEpochHandler.reassignmentChains[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
+            let pubKeyOfLeader = qtEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
 
 
             if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -1040,13 +1035,13 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let majority = GET_MAJORITY(qtEpochHandler)
 
-        let reassignmentChains = qtEpochHandler.reassignmentChains // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+        let leadersSequence = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
         
     
-        for(let [primePoolPubKey,reassignmentArray] of Object.entries(reassignmentChains)){
+        for(let [primePoolPubKey,reassignmentArray] of Object.entries(leadersSequence)){
 
-            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}// {currentLeader:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}// {currentLeader:<number>}
 
             let pubKeyOfLeader, indexOfLeader
             
@@ -1099,7 +1094,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                 
                     "shard0":{
 
-                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.reassignmentChains[primePool]. In case -1 - it's prime pool>
+                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[primePool]. In case -1 - it's prime pool>
 
                         metadataForCheckpoint:{
                             index:,
@@ -1289,7 +1284,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 let {index,hash,afp} = response.metadataForCheckpoint
                             
-                                let pubKeyOfProposedLeader = reassignmentChains[primePoolPubKey][response.currentLeader] || primePoolPubKey
+                                let pubKeyOfProposedLeader = leadersSequence[primePoolPubKey][response.currentLeader] || primePoolPubKey
                                 
                                 let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
@@ -1299,9 +1294,9 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                     let {prevBlockHash,blockID,blockHash,proofs} = afp
                             
-                                    // Update the REASSIGNMENTS
+                                    // Update the SHARDS_LEADERS_HANDLERS
 
-                                    temporaryObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:response.currentLeader})
+                                    temporaryObject.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,{currentLeader:response.currentLeader})
                                     
                                     // Update CHECKPOINT_MANAGER
 
@@ -1706,7 +1701,7 @@ INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend
 
             // Get the reassignments data for <bodyToSend.shard> from tempObject
 
-            let reassignmentsData = tempObject.REASSIGNMENTS.get(bodyToSend.shard)
+            let reassignmentsData = tempObject.SHARDS_LEADERS_HANDLERS.get(bodyToSend.shard)
 
             // Now compare it to understand if we have to continue sharing our version of reassignments
 
@@ -1756,9 +1751,239 @@ TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInReassig
 
 
 
+GET_AGGREGATED_SKIP_PROOF=async()=>{
 
-// Iterate over current authorities on shards to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-REASSIGN_PROCEDURE_MONITORING=async()=>{
+
+ // Otherwise, send payload to => POST /reassignment_proof
+
+ let responsePromises = []
+
+ let firstBlockID = epochHandler.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
+
+ let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockID,epochHandler)
+
+ let firstBlockHash
+
+ let previousAspHash
+
+
+ // Set the hash of first block for pool that we're going to skip
+ // In case we skip on his height -1(no blocks were created) - set the null hash. Otherwise - 
+ if(!afpForFirstBlock && skipHandler.skipData.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+ else firstBlockHash = afpForFirstBlock.blockHash
+
+
+
+ if(skipHandler.skipData.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
+
+     let firstBlockByThisPool = await GET_BLOCK(epochHandler.id,poolPubKeyForHunting,0).catch(()=>null)
+
+     if(firstBlockByThisPool && Block.genHash(firstBlockByThisPool) === firstBlockHash && firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]){
+
+         // Now get the hash of ASP for previous pool in reassignment chain
+
+         previousAspHash = BLAKE3(JSON.stringify(firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]))
+
+     }
+
+ } else previousAspHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+ // If we don't have AC(aggregated commitments) for first block(with id=0) and reassigned index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
+
+ if(!firstBlockHash || !previousAspHash) continue
+
+
+ let sendOptions = {
+     
+     method:'POST',
+
+     body:JSON.stringify({
+
+         poolPubKey:poolPubKeyForHunting,
+
+         shard:primePoolPubKey,
+
+         afpForFirstBlock,
+
+         skipData:skipHandler.skipData
+
+     })
+
+ }
+
+ for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
+
+     sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
+
+     let responsePromise = fetch(poolUrlWithPubkey.url+'/reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
+
+         response.pubKey = poolUrlWithPubkey.pubKey
+
+         return response
+
+     }).catch(()=>false)
+
+     responsePromises.push(responsePromise)
+
+ }
+
+
+ let results = (await Promise.all(responsePromises)).filter(Boolean)
+
+
+ /*
+ 
+ ___________________________ Now analyze the responses ___________________________
+
+ [1] In case quroum member also has this pool in SKIP_HANDLER - this is the signal that it also stopped creating finalization proofs for a given pool
+
+     If its local version of <skipData> in skip handler has lower index than in FP that we send - the response format is:
+
+     
+         {
+             type:'OK',
+             sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
+         }
+
+         We should just verify this signature and add to local list for further aggregation
+         And this quorum member update his own local version of FP to have FP with bigger index
+
+
+ [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message where:
+
+     HIS_SKIP_HANDLER.skipData.index > OUR_LOCAL_SKIP_HANDLER.skipData.index
+
+     Again - we should verify the signature, update local version of FP in our skip handler and repeat the grabbing procedure
+
+     The response format in this case is:
+
+         {
+             type:'UPDATE',
+             
+             skipData:{
+                 
+                 index,
+                 hash,
+                 afp:{
+
+                     prevBlockHash,      => must be the same as skipData.hash
+                     blockID,            => must be skipData.index+1 === blockID
+                     blockHash,
+                     proofs:{
+
+                         pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
+                         ...
+
+                     }
+
+                 }
+
+             }
+             
+         }
+
+ */
+
+
+ let skipAgreementSignatures = {} // pubkey => signa
+
+ let totalNumberOfSignatures = 0
+
+ let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${skipHandler.skipData.index}:${skipHandler.skipData.hash}:${epochFullID}`
+
+
+ for(let result of results){
+
+     if(result.type === 'OK' && typeof result.sig === 'string'){
+
+         let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
+
+         if(signatureIsOk){
+
+             skipAgreementSignatures[result.pubKey] = result.sig
+
+             totalNumberOfSignatures++
+
+         }
+
+         // If we get 2/3N+1 signatures to skip - we already have ability to create <aggregatedSkipProof>
+
+         if(totalNumberOfSignatures >= majority) break
+
+
+     }else if(result.type === 'UPDATE' && typeof result.skipData === 'object'){
+
+
+         let {index,hash,afp} = result.skipData
+
+         let blockIdInAfp = (epochHandler.id+':'+poolPubKeyForHunting+':'+index)
+
+
+         if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
+
+             // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
+ 
+             if(skipHandler.skipData.index < index){
+                 
+                 let {prevBlockHash,blockID,blockHash,proofs} = afp
+                 
+
+                 skipHandler.skipData.index = index
+
+                 skipHandler.skipData.hash = hash
+
+                 skipHandler.skipData.afp = {prevBlockHash,blockID,blockHash,proofs}
+ 
+
+                 // Store the updated version of skip handler
+
+                 await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
+
+                 // If our local version had lower index - break the cycle and try again with updated value
+
+                 break
+
+             }
+
+         }
+     
+     }
+
+ }
+
+
+ //____________________If we get 2/3+1 of votes - aggregate, get the ASP(<aggregatedSkipProof>), add to local skip handler and start to grab approvements____________________
+
+ if(totalNumberOfSignatures >= majority){
+
+     skipHandler.aggregatedSkipProof = {
+
+         previousAspHash,
+
+         firstBlockHash,
+
+         skipIndex:skipHandler.skipData.index,
+
+         skipHash:skipHandler.skipData.hash,
+
+         proofs:skipAgreementSignatures
+
+     }
+
+     await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
+
+
+ }
+
+
+
+},
+
+
+
+// Iterate over shards and change the leader if it's appropriate timeframe
+SHARDS_LEADERS_MONITORING=async()=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -1768,7 +1993,7 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     if(!tempObject){
 
-        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
+        setTimeout(SHARDS_LEADERS_MONITORING,3000)
 
         return
 
@@ -1777,579 +2002,71 @@ REASSIGN_PROCEDURE_MONITORING=async()=>{
 
     if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
 
-        setTimeout(REASSIGN_PROCEDURE_MONITORING,3000)
+        setTimeout(SHARDS_LEADERS_MONITORING,3000)
 
         return
 
     }
 
-    let majority = GET_MAJORITY(epochHandler)
-
-    // Get the appropriate pubkey & url to check and validate the answer
-    let quorumMembersURLsAndPubKeys = await GET_QUORUM_URLS_AND_PUBKEYS(true)
-
-
+    //____________________ Now iterate over shards to check if time is out for current shards leaders and we have to move to next ones ____________________
 
     for(let primePoolPubKey of epochHandler.poolsRegistry.primePools){
 
-        // First of all - check for CREATE_REASSIGNMENT requests in synchronizer
+        // Get the current handler and check the timeframe
 
-        let reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey) || {currentLeader:-1}
+        let leaderSequenceHandler = tempObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
 
-        let doReassignmentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+primePoolPubKey) // {indexInReassignmentChain,shouldBeThisLeader,aspsForPreviousPools}
+        let pubKeyOfCurrentShardLeader, indexOfCurrentLeaderInSequence
 
+        if(leaderSequenceHandler.currentLeader !== -1){
 
-        if(doReassignmentRequest && reassignmentHandler.currentLeader < doReassignmentRequest.shouldBeThisLeader){
+            indexOfCurrentLeaderInSequence = leaderSequenceHandler.currentLeader
 
-
-            /*
-            
-                Update the local information
-
-                1) Start(in reverse order) from <shouldBeThisLeader> index in epochHandler.reassignmentChains[primePoolPubKey] to the pool which was reassigned on .skipIndex > -1 
-
-                2) Create the skipHandler for each pool
-
-                3) Finally, update the data in tempObject.REASSIGNMENTS:
-                
-                    a) Put the pool epochHandler.reassignmentChains[primePoolPubKey][shouldBeThisLeader] to tempObject.REASSIGNMENTS.set(poolPubKey,primePoolPubKey) to make it current leader for shard
-
-                    b) Update the reassignment handler for prime pool to point to <shouldBeThisLeader> index => tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:shouldBeThisLeader})
-
-            */
-
-            for(let positionInRc = doReassignmentRequest.shouldBeThisLeader-1 ; positionInRc >= -1; positionInRc--){
-
-
-                let poolPubKey = epochHandler.reassignmentChains[primePoolPubKey][positionInRc] || primePoolPubKey
-
-                let aspForThisPool = doReassignmentRequest.aspsForPreviousPools[poolPubKey]
-
-                
-                // Create the skip handler if we don't have it
-
-                let futureSkipHandler = {
-
-                    aggregatedSkipProof: aspForThisPool
-
-                }
-
-                // Store to temp DB
-
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKey,futureSkipHandler).catch(()=>{})
-
-                tempObject.SKIP_HANDLERS.set(poolPubKey,futureSkipHandler)
-
-
-                // No sense to continue to get more ASPs
-
-                if(aspForThisPool.skipIndex > -1) break
-
-            }
-
-            //__________________________ Inform the target pool and store the fact of it __________________________
-
-            
-            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisLeader]
-
-            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-            let bodyToSend = {
-
-                shard:primePoolPubKey,
-
-                ...doReassignmentRequest // {shouldBeThisLeader,aspsForPreviousPools}
-
-            }
-
-
-            INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
-
-
-            //______________________Finally, create the urgent reassignment stats______________________
-
-            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'REASSIGN:'+primePoolPubKey,{currentLeader:doReassignmentRequest.shouldBeThisLeader}).then(()=>{
-
-                
-                let oldLeaderPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader] || primePoolPubKey
-
-                let nextLeaderPubKey = epochHandler.reassignmentChains[primePoolPubKey][doReassignmentRequest.shouldBeThisLeader]
-
-
-                tempObject.REASSIGNMENTS.delete(oldLeaderPubKey)
-
-                tempObject.REASSIGNMENTS.set(primePoolPubKey,{currentLeader:doReassignmentRequest.shouldBeThisLeader})
-
-                tempObject.REASSIGNMENTS.set(nextLeaderPubKey,primePoolPubKey)
-
-
-            }).catch(()=>{})    
-
-        }
-
-
-        // Update the <reassignmentHandler> in case we had changes in previous <if> branch
-        reassignmentHandler = tempObject.REASSIGNMENTS.get(primePoolPubKey)
-
-
-        let poolPubKeyForHunting, previousPoolPubKey, poolIndexInRc
-
-        if(reassignmentHandler && reassignmentHandler.currentLeader !== -1){
-
-            poolIndexInRc = reassignmentHandler.currentLeader
-
-            poolPubKeyForHunting = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader]
-
-            previousPoolPubKey = epochHandler.reassignmentChains[primePoolPubKey][reassignmentHandler.currentLeader-1] || primePoolPubKey
+            pubKeyOfCurrentShardLeader = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence]
 
         }else{
 
-            poolIndexInRc = -1
+            indexOfCurrentLeaderInSequence = -1
 
-            poolPubKeyForHunting = primePoolPubKey
+            pubKeyOfCurrentShardLeader = primePoolPubKey
 
-            previousPoolPubKey = null
         } 
 
-        let itsNotFinishOfReassignmentChain = epochHandler.reassignmentChains[primePoolPubKey][poolIndexInRc+1]
+        // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
+        let itsNotFinishOfSequence = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence+1]
 
-        // Move to next pool in reassignment chain
-        if(TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,poolIndexInRc,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME) && itsNotFinishOfReassignmentChain && !tempObject.SKIP_HANDLERS.has(poolPubKeyForHunting)){
+        if(TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME) && itsNotFinishOfSequence){
 
-            // Create the skip handler in case time is out    
-            
-            tempObject.SYNCHRONIZER.set('CREATING_SKIP_HANDLER:'+poolPubKeyForHunting,true)
+            // Inform websocket server that we shouldn't generate proofs for this leader anymore
+            tempObject.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)
 
+            // But anyway - in async env wait until server callback us here that proofs creation is stopped
+            if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfCurrentShardLeader)){
 
+                // Now, update the LEADERS_HANDLER
 
-            if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+poolPubKeyForHunting)){
-
-                // This prevents creating FINALIZATION_PROOFS for pool and initiate the reassignment procedure
-
-                let epochDataOfThisPool = tempObject.EPOCH_MANAGER.get(poolPubKeyForHunting) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
-                let futureSkipHandler = {
-    
-                    indexInReassignmentChain:poolIndexInRc,
-    
-                    skipData:JSON.parse(JSON.stringify(epochDataOfThisPool)), // {index,hash,afp}
-    
-                    aggregatedSkipProof:null // for future - when we get the 2/3N+1 reassignment proofs from POST /reassignment_proof - aggregate and use to insert in blocks of reserve pool and so on
-    
-                }
-    
+                let newLeadersHandler = {
+                    
+                    currentLeader: leaderSequenceHandler.currentLeader+1
                 
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,futureSkipHandler).then(()=>{
+                }
 
-                    tempObject.SKIP_HANDLERS.set(poolPubKeyForHunting,futureSkipHandler)
+                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
 
-                    // Delete the request
-                    tempObject.SYNCHRONIZER.delete('CREATING_SKIP_HANDLER:'+poolPubKeyForHunting)
+                    leaderSequenceHandler.currentLeader++
 
+                    tempObject.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader)
 
                 }).catch(()=>false)
-    
 
             }
 
-        }
-
-
-        let skipHandler = tempObject.SKIP_HANDLERS.get(poolPubKeyForHunting) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
-
-        // If no skip handler for target pool - do nothing
-
-
-        if(!skipHandler) continue
-        
-        if(!skipHandler.aggregatedSkipProof){
-
-            // Otherwise, send payload to => POST /reassignment_proof
-
-            let responsePromises = []
-
-            let firstBlockID = epochHandler.id+':'+poolPubKeyForHunting+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
-
-            let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockID,epochHandler)
-
-            let firstBlockHash
-
-            let previousAspHash
-
-
-            // Set the hash of first block for pool that we're going to skip
-            // In case we skip on his height -1(no blocks were created) - set the null hash. Otherwise - 
-            if(!afpForFirstBlock && skipHandler.skipData.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-            else firstBlockHash = afpForFirstBlock.blockHash
-
-
-
-            if(skipHandler.skipData.index >= 0 && poolPubKeyForHunting !== primePoolPubKey){
-
-                let firstBlockByThisPool = await GET_BLOCK(epochHandler.id,poolPubKeyForHunting,0).catch(()=>null)
-
-                if(firstBlockByThisPool && Block.genHash(firstBlockByThisPool) === firstBlockHash && firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]){
-
-                    // Now get the hash of ASP for previous pool in reassignment chain
-
-                    previousAspHash = BLAKE3(JSON.stringify(firstBlockByThisPool.extraData.reassignments[previousPoolPubKey]))
-
-                }
-
-            } else previousAspHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-            // If we don't have AC(aggregated commitments) for first block(with id=0) and reassigned index is not -1 or 0 - no sense to send requests because it will be rejected by quorum
-
-            if(!firstBlockHash || !previousAspHash) continue
-
-
-            let sendOptions = {
-                
-                method:'POST',
-
-                body:JSON.stringify({
-
-                    poolPubKey:poolPubKeyForHunting,
-
-                    shard:primePoolPubKey,
-
-                    afpForFirstBlock,
-
-                    skipData:skipHandler.skipData
-
-                })
-
-            }
-
-            for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-
-                sendOptions.agent = GET_HTTP_AGENT(poolUrlWithPubkey.url)
-
-                let responsePromise = fetch(poolUrlWithPubkey.url+'/reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
-    
-                    response.pubKey = poolUrlWithPubkey.pubKey
-        
-                    return response
-        
-                }).catch(()=>false)
-        
-                responsePromises.push(responsePromise)
-        
-            }
-
-
-            let results = (await Promise.all(responsePromises)).filter(Boolean)
-   
-
-            /*
-            
-            ___________________________ Now analyze the responses ___________________________
-
-            [1] In case quroum member also has this pool in SKIP_HANDLER - this is the signal that it also stopped creating finalization proofs for a given pool
-
-                If its local version of <skipData> in skip handler has lower index than in FP that we send - the response format is:
-
-                
-                    {
-                        type:'OK',
-                        sig: ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
-                    }
-
-                    We should just verify this signature and add to local list for further aggregation
-                    And this quorum member update his own local version of FP to have FP with bigger index
-
-
-            [2] In case quorum member has bigger index of FP in its local skip handler - it sends us 'UPDATE' message where:
-
-                HIS_SKIP_HANDLER.skipData.index > OUR_LOCAL_SKIP_HANDLER.skipData.index
-
-                Again - we should verify the signature, update local version of FP in our skip handler and repeat the grabbing procedure
-
-                The response format in this case is:
-
-                    {
-                        type:'UPDATE',
-                        
-                        skipData:{
-                            
-                            index,
-                            hash,
-                            afp:{
-
-                                prevBlockHash,      => must be the same as skipData.hash
-                                blockID,            => must be skipData.index+1 === blockID
-                                blockHash,
-                                proofs:{
-
-                                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
-                                    ...
-
-                                }
-
-                            }
-
-                        }
-                        
-                    }
-
-            */
-
-    
-            let skipAgreementSignatures = {} // pubkey => signa
-
-            let totalNumberOfSignatures = 0
-
-            let dataThatShouldBeSigned = `SKIP:${poolPubKeyForHunting}:${previousAspHash}:${firstBlockHash}:${skipHandler.skipData.index}:${skipHandler.skipData.hash}:${epochFullID}`
-
-
-            for(let result of results){
-
-                if(result.type === 'OK' && typeof result.sig === 'string'){
-
-                    let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
-
-                    if(signatureIsOk){
-
-                        skipAgreementSignatures[result.pubKey] = result.sig
-
-                        totalNumberOfSignatures++
-
-                    }
-
-                    // If we get 2/3N+1 signatures to skip - we already have ability to create <aggregatedSkipProof>
-
-                    if(totalNumberOfSignatures >= majority) break
-
-
-                }else if(result.type === 'UPDATE' && typeof result.skipData === 'object'){
-
-
-                    let {index,hash,afp} = result.skipData
-
-                    let blockIdInAfp = (epochHandler.id+':'+poolPubKeyForHunting+':'+index)
-
-
-                    if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
-
-                        // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
-            
-                        if(skipHandler.skipData.index < index){
-                            
-                            let {prevBlockHash,blockID,blockHash,proofs} = afp
-                            
-
-                            skipHandler.skipData.index = index
-
-                            skipHandler.skipData.hash = hash
-
-                            skipHandler.skipData.afp = {prevBlockHash,blockID,blockHash,proofs}
-            
-
-                            // Store the updated version of skip handler
-
-                            await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
-
-                            // If our local version had lower index - break the cycle and try again with updated value
-
-                            break
-
-                        }
-
-                    }
-                
-                }
-
-            }
-
-
-            //____________________If we get 2/3+1 of votes - aggregate, get the ASP(<aggregatedSkipProof>), add to local skip handler and start to grab approvements____________________
-
-            if(totalNumberOfSignatures >= majority){
-
-                skipHandler.aggregatedSkipProof = {
-
-                    previousAspHash,
-
-                    firstBlockHash,
-
-                    skipIndex:skipHandler.skipData.index,
-
-                    skipHash:skipHandler.skipData.hash,
-
-                    proofs:skipAgreementSignatures
-
-                }
-
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'SKIP_HANDLER:'+poolPubKeyForHunting,skipHandler).catch(()=>{})
-
-
-            }
-
-        }
-
-
-        if(skipHandler.aggregatedSkipProof){
-
-            // Inform the next pool in reassignment chain that it's time to start to generate blocks. We need to send him ASPs for previous pools
-
-            let indexOfSkippedPoolInRc = skipHandler.indexInReassignmentChain
-
-            // Find next pool
-
-            let nextPoolInRc = epochHandler.reassignmentChains[primePoolPubKey][indexOfSkippedPoolInRc+1]
-
-            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(nextPoolInRc+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-            let aspsForPreviousPools = {}
-
-            if(poolStorage){
-
-                // Get all the ASPs
-
-                let shouldTryNextTime = false // flag in case we won't get required ASPs
-
-                aspsForPreviousPools[poolPubKeyForHunting] = skipHandler.aggregatedSkipProof
-
-                // Start the reverse order. If we need to send this to pool P7 in RC, then this cycle will get all the ASPs for P6(current),P5,P4...(until ASP with .skipIndex > -1)
-
-                for(let position = indexOfSkippedPoolInRc-1 ; position >= -1 ; position--){
-
-                    
-                    let pubKeyOfSomePreviousPool = epochHandler.reassignmentChains[primePoolPubKey][position] || primePoolPubKey
-
-                    let skipHandlerForSomePreviousPool = tempObject.SKIP_HANDLERS.get(pubKeyOfSomePreviousPool)
-
-
-                    let pubKeyOfNext = epochHandler.reassignmentChains[primePoolPubKey][position+1]
-
-                    let aspOfNextPool = tempObject.SKIP_HANDLERS.get(pubKeyOfNext).aggregatedSkipProof
-
-
-                    let aspThatWeAreGoingToSend = skipHandlerForSomePreviousPool.aggregatedSkipProof
-
-
-                    if(!aspThatWeAreGoingToSend || BLAKE3(JSON.stringify(aspThatWeAreGoingToSend)) !== aspOfNextPool.previousAspHash){
-
-                        // Find the ASP and compare hashes
-                        
-                        let firstBlock = await GET_BLOCK(epochHandler.id,pubKeyOfNext,0)
-
-                        if(firstBlock && Block.genHash(firstBlock) === aspOfNextPool.firstBlockHash){
-                            
-                            aspThatWeAreGoingToSend = firstBlock.extraData.reassignments[pubKeyOfSomePreviousPool]
-                            
-                        }
-
-                    }
-
-
-                    if(!aspThatWeAreGoingToSend){
-
-                        shouldTryNextTime = true
-
-                        break
-
-                    }
-
-                    aspsForPreviousPools[pubKeyOfSomePreviousPool] = aspThatWeAreGoingToSend
-
-                    if(skipHandlerForSomePreviousPool.aggregatedSkipProof.skipIndex > -1) break
-                
-                }
-
-
-                if(shouldTryNextTime) continue
-
-
-                // Send request
-                let bodyToSend = {
-
-                    shard:primePoolPubKey,
-
-                    shouldBeThisLeader:indexOfSkippedPoolInRc+1,
-
-                    aspsForPreviousPools
-
-                }
-
-
-                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,poolStorage.poolURL,quorumMembersURLsAndPubKeys)
-
-                    
-                let currentShardLeader
-    
-                // Add the reassignment
-    
-                let reassignmentMetadata = tempObject.REASSIGNMENTS.get(primePoolPubKey) // {currentLeader:<number>} - pointer to current reserve pool in array (QT/VT).EPOCH.reassignmentChains[<primePool>]
-    
-    
-                if(!reassignmentMetadata){
-    
-                    // Create new handler
-    
-                    reassignmentMetadata = {currentLeader:-1}
-    
-                    currentShardLeader = poolPubKeyForHunting
-    
-                }else currentShardLeader = epochHandler.reassignmentChains[primePoolPubKey][reassignmentMetadata.currentLeader] // {primePool:[<reservePool1>,<reservePool2>,...,<reservePoolN>]}
-    
-    
-                let nextIndex = reassignmentMetadata.currentLeader + 1
-    
-                let nextReservePool = epochHandler.reassignmentChains[primePoolPubKey][nextIndex] // array epochHandler.reassignmentChains[primePoolID] might be empty if the prime pool doesn't have reserve pools
-    
-                let skipHandlerOfLeader = JSON.parse(JSON.stringify(tempObject.SKIP_HANDLERS.get(currentShardLeader))) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
-    
-    
-                // Use atomic operation here to write reassignment data + updated skip handler
-    
-                let keysToAtomicWrite = [
-    
-                    'REASSIGN:'+primePoolPubKey,
-                        
-                    'SKIP_HANDLER:'+currentShardLeader
-    
-                ]
-    
-                let valuesToAtomicWrite = [
-    
-                    {currentLeader:nextIndex},
-    
-                    skipHandlerOfLeader
-    
-                ]
-    
-                await USE_TEMPORARY_DB('atomicPut',tempObject.DATABASE,keysToAtomicWrite,valuesToAtomicWrite).then(()=>{
-        
-                    // And only after successful store we can move to the next pool
-    
-                    // Delete the reassignment in case reassigned leader was reserve pool
-    
-                    if(currentShardLeader !== primePoolPubKey) tempObject.REASSIGNMENTS.delete(currentShardLeader)
-                    
-                        
-                    reassignmentMetadata.currentLeader++
-        
-    
-                    // Set new values - handler for prime pool and pointer to prime pool for reserve pool
-    
-                    tempObject.REASSIGNMENTS.set(primePoolPubKey,reassignmentMetadata)
-    
-                    tempObject.REASSIGNMENTS.set(nextReservePool,primePoolPubKey)
-    
-    
-                }).catch(()=>false)
-              
-
-            } else continue
-    
         }
 
     }
 
     // Start again
-    setImmediate(REASSIGN_PROCEDURE_MONITORING)
+    setImmediate(SHARDS_LEADERS_MONITORING)
     
 },
 
@@ -2371,40 +2088,32 @@ RESTORE_STATE=async()=>{
     for(let poolPubKey of allThePools){
 
         // If this value is related to the current epoch - set to manager, otherwise - take from the POOLS_METADATA as a start point
-        // Returned value is {index,hash,(?)aggregatedCommitments}
+        // Returned value is {index,hash,(?)afp}
 
-        let {index,hash,afp} = await tempObject.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+        let {index,hash,afp} = await tempObject.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         
         tempObject.EPOCH_MANAGER.set(poolPubKey,{index,hash,afp})
 
-
-        //______________________________ Try to find SKIP_HANDLER for pool ______________________________
-
-
-        let skipHandler = await tempObject.DATABASE.get('SKIP_HANDLER:'+poolPubKey).catch(()=>false) // {indexInReassignmentChain,skipData,aggregatedSkipProof}
-
-        if(skipHandler) tempObject.SKIP_HANDLERS.set(poolPubKey,skipHandler)
-
-
-        //___________________________________ Check for reassignments _______________________________________
+        //___________________________________ Get the info about current leader _______________________________________
 
         // *only for prime pools
         
         if(poolsRegistry.primePools.includes(poolPubKey)){
 
-            let reassignmentMetadata = await tempObject.DATABASE.get('REASSIGN:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.reassignmentChains[<primePool>]>}
+            let leadersHandler = await tempObject.DATABASE.get('LEADERS_HANDLER:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.leadersSequence[<primePool>]>}
 
-            if(reassignmentMetadata){
+            if(leadersHandler){
 
-                tempObject.REASSIGNMENTS.set(poolPubKey,reassignmentMetadata)
+                tempObject.SHARDS_LEADERS_HANDLERS.set(poolPubKey,leadersHandler)
 
                 // Using pointer - find the appropriate reserve pool
 
-                let reservePool = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.reassignmentChains[poolPubKey][reassignmentMetadata.currentLeader]
+                let currentLeaderPubKey = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.leadersSequence[poolPubKey][leadersHandler.currentLeader]
 
                 // Key is reserve pool which points to his prime pool
-                tempObject.REASSIGNMENTS.set(reservePool,poolPubKey)                
+
+                tempObject.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,poolPubKey)                
 
             }
 
@@ -2518,7 +2227,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
     if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
 
-    let myDataInReassignments = tempObject.REASSIGNMENTS.get(global.CONFIG.SYMBIOTE.PUB)
+    let myDataInReassignments = tempObject.SHARDS_LEADERS_HANDLERS.get(global.CONFIG.SYMBIOTE.PUB)
 
 
 
@@ -2593,7 +2302,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
         
             let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
-            let reassignmentArrayOfMyPrimePool = epochHandler.reassignmentChains[myPrimePool]
+            let reassignmentArrayOfMyPrimePool = epochHandler.leadersSequence[myPrimePool]
     
             let myIndexInReassignmentChain = reassignmentArrayOfMyPrimePool.indexOf(global.CONFIG.SYMBIOTE.PUB)
     
@@ -3071,7 +2780,7 @@ LOAD_GENESIS=async()=>{
 
         quorum:[],
 
-        reassignmentChains:{}
+        leadersSequence:{}
     
     }
     
@@ -3089,7 +2798,7 @@ LOAD_GENESIS=async()=>{
 
         quorum:[],
 
-        reassignmentChains:{}
+        leadersSequence:{}
     
     }
 
@@ -3117,9 +2826,9 @@ LOAD_GENESIS=async()=>{
 
     //Finally, build the reassignment chains for current epoch in QT and VT
 
-    await SET_REASSIGNMENT_CHAINS(qtEpochHandler,nullHash)
+    await SET_LEADERS_SEQUENCE_FOR_SHARDS(qtEpochHandler,nullHash)
 
-    vtEpochHandler.reassignmentChains = JSON.parse(JSON.stringify(qtEpochHandler.reassignmentChains))
+    vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(qtEpochHandler.leadersSequence))
 
 },
 
@@ -3362,9 +3071,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
-        SKIP_HANDLERS:new Map(), // {indexInReassignmentChain,skipData,aggregatedSkipProof}
-
-        REASSIGNMENTS:new Map(), // PrimePool => {currentLeader:<number>} | ReservePool => PrimePool
+        SHARDS_LEADERS_HANDLERS:new Map(), // PrimePool => {currentLeader:<number>} | ReservePool => PrimePool
 
 
         //____________________Mapping which contains temporary databases for____________________
@@ -3416,7 +3123,7 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
+BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
     /*
     
@@ -3438,7 +3145,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     let vtEpochFullID = vtEpochHandler.hash+'#'+vtEpochHandler.id
 
-    let vtReassignmentChains = vtEpochHandler.reassignmentChains
+    let vtReassignmentChains = vtEpochHandler.leadersSequence
 
 
     if(!tempReassignmentOnVerificationThread[vtEpochFullID]){
@@ -3552,7 +3259,7 @@ TEMPORARY_REASSIGNMENTS_BUILDER=async()=>{
 
     }
 
-    setTimeout(TEMPORARY_REASSIGNMENTS_BUILDER,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
+    setTimeout(BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD,global.CONFIG.SYMBIOTE.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
 },
 
@@ -3569,20 +3276,20 @@ RUN_SYMBIOTE=async()=>{
     //✅0.Start verification process - process blocks and find new epoch step-by-step
     START_VERIFICATION_THREAD()
 
-    //✅1.Also, QUORUM_THREAD starts async, so we have own version of CHECKPOINT here
+    //✅1.Thread to find AEFPs and change the epoch for QT
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
     SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
-    //✅3.Track the hostchain and check if there are "NEXT-DAY" blocks so it's time to stop sharing finalization proofs and start propose checkpoints
+    //✅3.Thread to propose AEFPs to move to next epoch
     CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
-    //✅4.Iterate over SKIP_HANDLERS to get <aggregatedSkipProof>s and approvements to move to the next reserve pools
-    REASSIGN_PROCEDURE_MONITORING()
+    //✅4.Thread to track changes of leaders on shards
+    SHARDS_LEADERS_MONITORING()
 
-    //✅5.Function to build the TEMP_REASSIGNMENT_METADATA(temporary) for verifictation thread(VT) to continue verify blocks for shards with no matter who is the current leader for shard - prime pool or reserve pools
-    TEMPORARY_REASSIGNMENTS_BUILDER()
+    //✅5.Function to build the temporary sequence of blocks to verify them
+    BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
 
     //✅6.Start to generate blocks
     BLOCKS_GENERATION()

@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
+import {GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
 
 import {BLAKE3,BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
 
@@ -148,7 +148,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.reassignmentChains[requestForSkipProof.shard] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
+    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.leadersSequence[requestForSkipProof.shard] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
     
                        &&
                        
@@ -226,16 +226,16 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 Otherwise - find block, compare it's hash with <requestForSkipProof.afpForFirstBlock.prevBlockHash>
 
-                In case hashes match - extract the ASP for previous pool <epochHandler.reassignmentChains[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
+                In case hashes match - extract the ASP for previous pool <epochHandler.leadersSequence[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
                 [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<previousAspHash>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
 
             */
 
-            let indexInReassignmentChainForRequestedPool = epochHandler.reassignmentChains[requestForSkipProof.shard].indexOf(requestForSkipProof.poolPubKey)
+            let indexInReassignmentChainForRequestedPool = epochHandler.leadersSequence[requestForSkipProof.shard].indexOf(requestForSkipProof.poolPubKey)
 
             // In case indexInReassignmentChainForRequestedPool === -1 - this means that previousPoolPubKey will be equal to prime pool pubkey(===shardID)
-            let previousPoolPubKey = epochHandler.reassignmentChains[requestForSkipProof.shard][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.shard
+            let previousPoolPubKey = epochHandler.leadersSequence[requestForSkipProof.shard][indexInReassignmentChainForRequestedPool-1] || requestForSkipProof.shard
 
 
             if(index === -1){
@@ -357,9 +357,9 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
         for(let [shardID, proposedIndexOfLeader] of Object.entries(proposedIndexesOfAuthorities)){
 
-            if(epochHandler.reassignmentChains[shardID]){
+            if(epochHandler.leadersSequence[shardID]){
 
-                let pubKeyOfPoolByThisIndex = epochHandler.reassignmentChains[shardID][proposedIndexOfLeader] || shardID
+                let pubKeyOfPoolByThisIndex = epochHandler.leadersSequence[shardID][proposedIndexOfLeader] || shardID
 
                 let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)?.aggregatedSkipProof
 
@@ -380,204 +380,6 @@ let aggregatedSkipProofsForProposedAuthorities=response=>response.writeHeader('A
 
 
 
-/*
-
-
-[Info]:
-
-    Handler to accept ASP and start the instant reassignment procedure
-
-[Accept]:
-
-
-    {
-        shard:<shard ID - pubkey of prime pool>,
-
-        shouldBeThisLeader:<number>
-
-        aspsForPreviousPools:{
-
-            "poolPubKeyX":{
-
-                previousAspHash,
-
-                firstBlockHash,
-
-                skipIndex,
-
-                skipHash,
-
-                proofs:{
-
-                    quorumMemberPubKey0:hisEd25519Signa,
-                    ...
-                    quorumMemberPubKeyN:hisEd25519Signa
-
-                }
-
-            },
-
-
-            "poolPubKeY":{
-
-                previousAspHash,
-
-                firstBlockHash,
-
-                skipIndex,
-
-                skipHash,
-
-                proofs:{
-
-                    quorumMemberPubKey0:hisEd25519Signa,
-                    ...
-                    quorumMemberPubKeyN:hisEd25519Signa
-
-                }
-
-            },
-
-            ... (we need to send ASPs for all the pools from index <shouldBeThisLeader-1> until the beginning of reassignment chain. We can stop when .skipIndex of some ASP won't be -1)
-
-
-        }
-
-    }
-
-    _________________________ What to do next _________________________
-
-    1) Get the local reassignment data for proposed shard => localReassignmentData = tempObject.REASSIGNMENTS.get(shard)
-
-    2) In case localReassignmentData.currentLeader < obj[<shard>].shouldBeThisLeader => verify the ASPs
-    
-    3) In case all the ASPs are ok - create the CREATE_REASSIGNMENT request and push it to tempObject.SYNCHRONIZER to update the local info about reassignment
-
-    4) Inside function REASSIGN_PROCEDURE_MONITORING check the requests and update the local reassignment data
-
-
-*/
-let acceptReassignment=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
-
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
-
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
-
-    if(!tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
-
-        return
-    }
-
-
-    let possibleReassignmentPropositionForShard = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
-
-
-    if(typeof possibleReassignmentPropositionForShard === 'object'){
-
-
-        // Parse reassignment proposition
-        let {shard,shouldBeThisLeader,aspsForPreviousPools} = possibleReassignmentPropositionForShard
-
-
-        if(typeof shard !== 'string' || !epochHandler.poolsRegistry.primePools.includes(shard) || typeof shouldBeThisLeader !== 'number' || typeof aspsForPreviousPools !== 'object'){
-
-            !response.aborted && response.end(JSON.stringify({err:'Wrong format of proposition components or no such shard'}))
-
-            return
-
-        }
-
-        let localRcHandlerForShard = tempObject.REASSIGNMENTS.get(shard) || {currentLeader:-1}
-
-        // Compare the .currentLeader indexes to make sure that proposed leader has the bigger index 
-
-        if(localRcHandlerForShard.currentLeader < shouldBeThisLeader){
-
-            // Verify the ASP for pool with index <shouldBeThisLeader-1> in reassignment chain
-            // If ok - create the CREATE_REASSIGNMENT:<shard> request and push to synchronizer
-            // Due to Node.js work principles - check the indexes right before push
-
-            let pubKeyOfSkippedPool = epochHandler.reassignmentChains[shard][shouldBeThisLeader-1] || shard
-
-            let aspForSkippedPool = aspsForPreviousPools[pubKeyOfSkippedPool]
-
-            let aspIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfSkippedPool,aspForSkippedPool,epochFullID,epochHandler)
-            
-            if(aspIsOk) {
-
-                let indexInReassignmentChain = shouldBeThisLeader-2 // -2 because we checked -1 position
-
-                while(indexInReassignmentChain >= -1){
-
-                    let currentPoolToVerify = epochHandler.reassignmentChains[shard][indexInReassignmentChain] || shard
-
-                    let nextPoolInRC = epochHandler.reassignmentChains[shard][indexInReassignmentChain+1]
-
-                    let nextAspInChain = aspsForPreviousPools[nextPoolInRC]
-
-                    // First of all - check if we already have ASP locally. If so, skip verification because we already have a valid & verified ASP
-
-                    let currentAspToVerify = aspsForPreviousPools[currentPoolToVerify]
-
-                    let currentAspIsOk = BLAKE3(JSON.stringify(currentAspToVerify) === nextAspInChain.previousAspHash)
-
- 
-                    if(currentAspIsOk){
-
-                        // Verify all the ASP until skipIndex != -1
-                        if(currentAspToVerify.skipIndex > -1) break // no sense to verify more
-
-                        indexInReassignmentChain -- // otherwise - move to previous pool in rc
-
-                    }else{
-
-                        !response.aborted && response.end(JSON.stringify({err:'Wrong ASP in chain'}))
-
-                        return
-
-                    }
-
-                }
-
-                /*
-                
-                    Create the request to update the local reassignment data
-                
-                    But, finally check if no other request for reassignment wasn't accepted in async mode via concurrent request to this handler
-                    
-                    Node.js will read the data from mapping, compare .shouldBeThisLeader property and add new request in case index is bigger - and all these ops in sync mode
-                
-                */
-                
-                let concurrentRequest = tempObject.SYNCHRONIZER.get('CREATE_REASSIGNMENT:'+shard)
-
-
-                if(!concurrentRequest || concurrentRequest && concurrentRequest.shouldBeThisLeader < shouldBeThisLeader){
-
-                    tempObject.SYNCHRONIZER.set('CREATE_REASSIGNMENT:'+shard,{shouldBeThisLeader:shouldBeThisLeader,aspsForPreviousPools})
-
-                }
-
-                !response.aborted && response.end(JSON.stringify({status:'OK'}))
-
-            } else !response.aborted && response.end(JSON.stringify({err:'One of ASP is wrong'}))
-
-        } else !response.aborted && response.end(JSON.stringify({err:'Local index of current shard leader is bigger'}))
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
-
-
-})
-
-
-
-
-
-
 global.UWS_SERVER
 
 
@@ -586,6 +388,3 @@ global.UWS_SERVER
 
 // Function to return aggregated skip proofs for proposed authorities
 .post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedAuthorities)
-
-// Handler to accept ASPs and to start forced reassignment
-.post('/accept_reassignment',acceptReassignment)
