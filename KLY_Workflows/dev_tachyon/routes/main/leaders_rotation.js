@@ -15,7 +15,7 @@ import Block from "../../essences/block.js"
 
 [Info]:
 
-    Function to return signature of reassignment proof if we have SKIP_HANDLER for requested shard
+    Function to return signature of rotation proof if we have SKIP_HANDLER for requested shard
     
     Returns the signature if requested height to skip >= than our own
     
@@ -93,7 +93,7 @@ import Block from "../../essences/block.js"
 
     {
         type:'OK',
-        sig: ED25519_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+        sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
     }
 
 
@@ -128,7 +128,7 @@ import Block from "../../essences/block.js"
     
 
 */
-let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -228,7 +228,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 In case hashes match - extract the ASP for previous pool <epochHandler.leadersSequence[shard][indexOfThis-1]>, get the BLAKE3 hash and paste this hash to <dataToSignForSkipProof>
             
-                [REMINDER]: Signature structure is ED25519_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
+                [REMINDER]: Signature structure is ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<index>:<hash>:<epochFullID>')
 
             */
 
@@ -236,7 +236,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
                 firstBlockAfpIsOk = true
 
@@ -257,7 +257,7 @@ let getReassignmentProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                         let firstBlockHash = requestForSkipProof.afpForFirstBlock.blockHash
 
-                        dataToSignForSkipProof = `SKIP:${requestForSkipProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                        dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForSkipProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                         firstBlockAfpIsOk = true                    
     
@@ -369,8 +369,8 @@ let aggregatedSkipProofsForProposedLeaders=response=>response.writeHeader('Acces
 global.UWS_SERVER
 
 
-// Function to return signature of reassignment proof if we have SKIP_HANDLER for requested pool. Return the signature if requested INDEX >= than our own or send UPDATE message with AGGREGATED_COMMITMENTS ✅
-.post('/reassignment_proof',getReassignmentProof)
+// Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
+.post('/leader_rotation_proof',getLeaderChangeProof)
 
-// Function to return aggregated skip proofs for proposed authorities
+// Function to return aggregated skip proofs for proposed authorities✅
 .post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedLeaders)

@@ -9,7 +9,7 @@ import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
     {
         shard:<ed25519 pubkey of prime pool - the creator of new shard>
-        lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
+        lastLeader:<index of Ed25519 pubkey of some pool in shard's leaders sequence>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
         hashOfFirstBlockByLastLeader:<hash of the first block by this leader>,
@@ -230,21 +230,21 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                 // Get the local version of SHARDS_LEADERS_HANDLERS and FINALIZATION_STATS
 
-                let reassignmentForThisShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
+                let leadersHandlerForThisShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
 
                 let pubKeyOfCurrentLeaderOnShard, localIndexOfLeader
                 
-                if(typeof reassignmentForThisShard === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that shardID is pubkey of reserve pool what is impossible. So, continue
+                if(typeof leadersHandlerForThisShard === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that shardID is pubkey of reserve pool what is impossible. So, continue
 
-                else if(typeof reassignmentForThisShard === 'object') {
+                else if(typeof leadersHandlerForThisShard === 'object') {
 
-                    localIndexOfLeader = reassignmentForThisShard.currentLeader
+                    localIndexOfLeader = leadersHandlerForThisShard.currentLeader
 
                     pubKeyOfCurrentLeaderOnShard = qtEpochHandler.leadersSequence[shardID][localIndexOfLeader] || shardID
 
                 }else{
 
-                    // Assume that there is no data about reassignments for given shard locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === shardID)
+                    // Assume that there is no data about leaders for given shard locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === shardID)
 
                     localIndexOfLeader = -1
 
@@ -318,7 +318,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
                             if(pubKeyOfCreator === pubKeyOfCurrentLeaderOnShard){
 
                             
-                                if(reassignmentForThisShard) reassignmentForThisShard.currentLeader = proposition.currentLeader
+                                if(leadersHandlerForThisShard) leadersHandlerForThisShard.currentLeader = proposition.currentLeader
 
                                 else tempObject.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:proposition.currentLeader})
     

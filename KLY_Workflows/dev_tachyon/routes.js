@@ -8,7 +8,7 @@
     
     'main/epoch_changing.js',
     'main/epoch_edge_operations.js',
-    'main/reassignment_procedure.js',
+    'main/leaders_rotation.js',
     'main/websocket.js',
     
     'kly_evm_json_rpc.js'

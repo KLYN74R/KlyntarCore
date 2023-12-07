@@ -1,4 +1,4 @@
-import {CHECK_AGGREGATED_SKIP_PROOF_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
+import {CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY,GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,VERIFY_AGGREGATED_FINALIZATION_PROOF} from './verification.js'
 
 import {
     
@@ -655,17 +655,17 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                 /*
                             
-                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.reassignments
+                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.aggregatedLeadersRotationProofs
                             
-                                    We should get the ASP for previous pool in reassignment chain
+                                    We should get the ALRP for previous pool in reassignment chain
                                 
-                                        1) If previous pool was reassigned on height -1 (asp.skipIndex === -1) then try next pool
+                                        1) If previous pool was reassigned on height -1 (alrp.skipIndex === -1) then try next pool
 
                                 */
 
                                 let currentPosition = position
 
-                                let aspData = {}
+                                let alrpData = {}
                                 
                                 while(true){
 
@@ -675,7 +675,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
                                         let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
     
-                                        let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
+                                        let leaderRotationProofForPreviousPool = potentialFirstBlock.extraData.aggregatedLeadersRotationProofs[previousPoolPubKey]
 
 
                                         if(previousPoolPubKey === primePoolPubKey){
@@ -684,7 +684,7 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                             epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
-                                            epochCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
+                                            epochCache[primePoolPubKey].firstBlockHash = alrpData.firstBlockHash
         
                                             epochCache[primePoolPubKey].firstBlockOnShardFound = true
                                     
@@ -692,18 +692,18 @@ FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                             break
 
-                                        }else if(aspForPreviousPool.skipIndex !== -1){
+                                        }else if(leaderRotationProofForPreviousPool.skipIndex !== -1){
     
                                             // Get the first block of pool reassigned on not-null height
                                             let potentialFirstBlockBySomePool = await GET_BLOCK(qtEpochHandler.id,previousPoolPubKey,0)
 
-                                            if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === aspForPreviousPool.firstBlockHash){
+                                            if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === leaderRotationProofForPreviousPool.firstBlockHash){
 
                                                 potentialFirstBlock = potentialFirstBlockBySomePool
 
-                                                aspData.firstBlockCreator = previousPoolPubKey
+                                                alrpData.firstBlockCreator = previousPoolPubKey
 
-                                                aspData.firstBlockHash = aspForPreviousPool.firstBlockHash
+                                                alrpData.firstBlockHash = leaderRotationProofForPreviousPool.firstBlockHash
 
                                                 currentPosition--
 
@@ -1085,7 +1085,7 @@ CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             /*
             
-                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by shard leader will contain all the ASPs
+                Thanks to verification process of block 0 on route POST /block (see routes/main.js) we know that each block created by shard leader will contain all the ALRPs
         
                 1) Start to build so called CHECKPOINT_PROPOSITION. This object has the following structure
 
@@ -1682,65 +1682,6 @@ SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
 
 
-INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT = async(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys) => {
-
-
-    // Inform them once per 5 seconds
-
-    setTimeout(()=>{
-
-        let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-        let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
-
-        if(tempObject){
-
-            // <bodyToSend> has the structure like this -> {shard,shouldBeThisLeader,aspsForPreviousPools}
-
-            // Check if we stll have to send this reassignment data
-
-            // Get the reassignments data for <bodyToSend.shard> from tempObject
-
-            let reassignmentsData = tempObject.SHARDS_LEADERS_HANDLERS.get(bodyToSend.shard)
-
-            // Now compare it to understand if we have to continue sharing our version of reassignments
-
-            if(reassignmentsData && bodyToSend.shouldBeThisLeader >= reassignmentsData.currentLeader){
-
-                // Send to target pool
-
-                let optionsToSend = {
-
-                    method:'POST',
-
-                    body:JSON.stringify(bodyToSend)
-
-                }
-                
-                fetch(targetPoolURL+'/accept_reassignment',optionsToSend).catch(()=>{})
-
-                
-                // ... and to quorum members
-                
-                for(let poolUrlWithPubkey of quorumMembersURLsAndPubKeys){
-    
-                    fetch(poolUrlWithPubkey.url+'/accept_reassignment',optionsToSend).catch(()=>{})
-                     
-                }
-
-                INFORM_TARGET_POOL_AND_QUORUM_ABOUT_REASSIGNMENT(epochHandler,bodyToSend,targetPoolURL,quorumMembersURLsAndPubKeys)
-
-            }
-
-        }
-
-    },5000)
-
-},
-
-
-
-
 TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSequence,leaderShipTimeframe)=>{
 
     // Function to check if time frame for current shard leader is done and we have to move to next reserve pools in reassignment chain
@@ -1753,10 +1694,10 @@ TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSequenc
 
 
 /**
- * This function is used once you become shard leader and you need to get the ASPs for all the previous leaders
+ * This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
  * on this shard till the pool which was reassigned on non-zero height
  */
-GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shardID) => {
+GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shardID) => {
 
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
@@ -1769,8 +1710,8 @@ GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shar
 
     }
 
-    // Prepare the template that we're going to send to quorum to get the ASP
-    // Send payload to => POST /reassignment_proof
+    // Prepare the template that we're going to send to quorum to get the ALRP
+    // Send payload to => POST /leader_rotation_proof
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
@@ -1819,7 +1760,7 @@ GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shar
         // Descriptor is {url,pubKey}
         for(let descriptor of quorumMembers){
 
-            let responsePromise = fetch(descriptor.url+'/reassignment_proof',sendOptions).then(r=>r.json()).then(response=>{
+            let responsePromise = fetch(descriptor.url+'/leader_rotation_proof',sendOptions).then(r=>r.json()).then(response=>{
 
                 response.pubKey = descriptor.pubKey
        
@@ -1841,7 +1782,7 @@ GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shar
 
             {
                 type:'OK',
-                sig: ED25519_SIG('SKIP:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
+                sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
             }
 
             We should just verify this signature and add to local list for further aggregation
@@ -1886,7 +1827,7 @@ GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shar
 
         let totalNumberOfSignatures = 0
             
-        let dataThatShouldBeSigned = `SKIP:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${localFinalizationStatsForThisPool.index}:${localFinalizationStatsForThisPool.hash}:${epochFullID}`
+        let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${localFinalizationStatsForThisPool.index}:${localFinalizationStatsForThisPool.hash}:${epochFullID}`
         
         let majority = GET_MAJORITY(epochHandler)
         
@@ -1953,7 +1894,7 @@ GET_AGGREGATED_SKIP_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shar
         }
 
 
-        //____________________If we get 2/3+1 of votes - aggregate, get the ASP(<aggregatedSkipProof>), add to local skip handler and start to grab approvements____________________
+        //____________________If we get 2/3+1 of LRPs - aggregate and get the ALRP(<aggregated LRP>)____________________
 
         if(totalNumberOfSignatures >= majority){
 
@@ -2294,7 +2235,7 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
         if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 0){
 
-            // Build the template to insert to the extraData of block. Structure is {primePool:ASP,reservePool0:ASP,...,reservePoolN:ASP}
+            // Build the template to insert to the extraData of block. Structure is {primePool:ALRP,reservePool0:ALRP,...,reservePoolN:ALRP}
         
             let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
 
@@ -2308,36 +2249,36 @@ export let GENERATE_BLOCKS_PORTION = async() => {
             let pubKeysOfAllThePreviousPools = leadersSequenceOfMyShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
 
 
-            // Add the pubkey of prime pool because we have to add the ASP for it too
+            // Add the pubkey of prime pool because we have to add the ALRP for it too
 
             pubKeysOfAllThePreviousPools.push(myPrimePool)
 
 
 
-            //_____________________ Fill the extraData.reassignments _____________________
+            //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
 
 
-            extraData.reassignments = {}
+            extraData.aggregatedLeadersRotationProofs = {}
 
             /*
 
-                If we can't find all the required ASPs (from <your position> to <position where ASP not starts from index 0>) - skip this iteration to try again later
-
-                Here we need to fill the object with aggregated reassignment proofs(ASPs) for all the previous pools till the pool which wasn't reassigned from index 0
+                Here we need to fill the object with aggregated leader rotation proofs (ALRPs) for all the previous pools till the pool which was rotated on not-zero height
             
+                If we can't find all the required ALRPs - skip this iteration to try again later
+
             */
 
-            // Add the ASP for the previous pools in reassignment chain
+            // Add the ALRP for the previous pools in leaders sequence
 
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
-                let aspForThisPool = await GET_AGGREGATED_SKIP_PROOF(epochHandler,pubKeyOfPreviousLeader,myPrimePool).catch(()=>null)
+                let aggregatedLeaderRotationProof = await GET_AGGREGATED_LEADER_ROTATION_PROOF(epochHandler,pubKeyOfPreviousLeader,myPrimePool).catch(()=>null)
 
-                if(aspForThisPool){
+                if(aggregatedLeaderRotationProof){
 
-                    extraData.reassignments[pubKeyOfPreviousLeader] = aspForThisPool
+                    extraData.aggregatedLeadersRotationProofs[pubKeyOfPreviousLeader] = aggregatedLeaderRotationProof
 
-                    if(aspForThisPool.skipIndex >= 0) break // if we hit the ASP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ASPs for previous pools 
+                    if(aggregatedLeaderRotationProof.skipIndex >= 0) break // if we hit the ALRP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ALRPs for previous pools 
 
                 } else return
 
@@ -3067,12 +3008,12 @@ PREPARE_SYMBIOTE=async()=>{
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
-        SHARDS_LEADERS_HANDLERS:new Map(), // PrimePool => {currentLeader:<number>} | ReservePool => PrimePool
+        SHARDS_LEADERS_HANDLERS:new Map(), // primePoolPubKey => {currentLeader:<number>} | ReservePool => PrimePool
 
 
         //____________________Mapping which contains temporary databases for____________________
 
-        DATABASE:quorumTemporaryDB // DB with potential checkpoints, timetrackers, finalization proofs, skip procedure and so on    
+        DATABASE:quorumTemporaryDB // DB with temporary data that we need during epoch    
 
     })
 
@@ -3123,7 +3064,7 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
     /*
     
-        [+] In this function we should time by time ask for ASPs for pools to build the reassignment chains
+        [+] In this function we should time by time ask for ALRPs for pools to build the reassignment chains
 
         [+] Use VT.TEMP_REASSIGNMENTS
 
@@ -3217,29 +3158,29 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
         for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
 
-            let potentialAspForCurrentLeader = responseForTempReassignment[primePoolPubKey]
+            let aggregatedLeaderRotationProof = responseForTempReassignment[primePoolPubKey]
 
             let shouldUpdate = localVersionOfCurrentLeaders[primePoolPubKey] === tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader
 
-            if(potentialAspForCurrentLeader && typeof potentialAspForCurrentLeader === 'object' && shouldUpdate){
+            if(aggregatedLeaderRotationProof && typeof aggregatedLeaderRotationProof === 'object' && shouldUpdate){
 
-                let {firstBlockHash,skipIndex,skipHash,proofs} = potentialAspForCurrentLeader
+                let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedLeaderRotationProof
 
                 if(typeof firstBlockHash === 'string' && typeof skipIndex === 'number' && typeof skipHash === 'string' && typeof proofs === 'object'){
 
-                    // Verify the ASP
+                    // Verify the ALRP
 
                     let pubKeyOfCurrentLeader = vtLeadersSequences[primePoolPubKey][localVersionOfCurrentLeaders[primePoolPubKey]] || primePoolPubKey
 
-                    let signaIsOk = await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(pubKeyOfCurrentLeader,potentialAspForCurrentLeader,vtEpochFullID,vtEpochHandler)
+                    let signaIsOk = await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(pubKeyOfCurrentLeader,aggregatedLeaderRotationProof,vtEpochFullID,vtEpochHandler)
 
                     if(signaIsOk){
 
                         tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments[pubKeyOfCurrentLeader] = {
 
-                            index:potentialAspForCurrentLeader.skipIndex,
+                            index:aggregatedLeaderRotationProof.skipIndex,
                         
-                            hash:potentialAspForCurrentLeader.skipHash,
+                            hash:aggregatedLeaderRotationProof.skipHash,
 
                         }
 

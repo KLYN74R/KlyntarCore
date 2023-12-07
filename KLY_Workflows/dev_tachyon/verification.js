@@ -243,13 +243,13 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
 
 
-CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSkipProof,epochFullID,epochHandler) => {
+CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
 
     /*
 
-    Check the <aggregatedSkipProof>(ASP) signed by majority(2/3N+1) and aggregated
+    Check the <agregatedLeaderRotationProof>(ALRP) signed by majority(2/3N+1) and aggregated
     
-    ASP structure is:
+    ALRP structure is:
     
     {
 
@@ -269,7 +269,7 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
     }
 
-        Check the reassignment proof: `SKIP:${reassignedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+        Check the signed string: `LEADER_ROTATION_PROOF:${reassignedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         Also, if skipIndex === 0 - it's signal that firstBlockHash = skipHash
 
@@ -278,15 +278,15 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
     */
 
     
-    if(typeof aggregatedSkipProof === 'object'){    
+    if(typeof aggregatedLeaderRotationProof === 'object'){    
 
         // Check the proofs
     
-        let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedSkipProof
+        let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedLeaderRotationProof
 
         let majority = GET_MAJORITY(epochHandler)
 
-        let dataThatShouldBeSigned = `SKIP:${reassignedPoolPubKey}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+        let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
         let promises = []
     
@@ -322,25 +322,25 @@ CHECK_AGGREGATED_SKIP_PROOF_VALIDITY = async (reassignedPoolPubKey,aggregatedSki
 
 
 
-CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,reassignmentArray,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
+CHECK_ALRP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
 
     /*
     
-        Here we need to check the integrity of reassignment chain to make sure that we can get the obvious variant of a valid chain to verify
+        Here we need to check the integrity of chain of proofs to make sure that we can get the obvious variant of a valid chain to verify
 
-        We need to check if <firstBlockInThisEpochByPool.extraData.reassignments> contains all the ASPs(aggregated reassignment proofs)
+        We need to check if <firstBlockInThisEpochByPool.extraData.aggregatedLeadersRotationProofs> contains all the ALRPs(aggregated leader rotation proofs)
         
-            for pools from <position>(index of current pool in <reassignmentArray>) to the first pool with not-null ASPs
+            for pools from <position>(index of current pool in <leadersSequence>) to the first pool with non-zero ALRP
 
         
-        So, we simply start the reverse enumeration in <reassignmentArray> from <position> to the beginning of <reassignment array> and extract the ASPs
+        So, we simply start the reverse enumeration in <leadersSequence> from <position> to the beginning of <leadersSequence> and extract the ALRPs
 
-        Once we met the ASP with index not equal to -1 (>=0) - we can stop enumeration and return true
+        Once we met the ALRP with index not equal to -1 (>=0) - we can stop enumeration and return true
     
     */
 
 
-    let reassignmentsRef = firstBlockInThisEpochByPool.extraData?.reassignments
+    let reassignmentsRef = firstBlockInThisEpochByPool.extraData?.aggregatedLeadersRotationProofs
 
     let filteredReassignments = {}
 
@@ -348,7 +348,7 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
     if(typeof reassignmentsRef === 'object'){
 
 
-        let arrayForIteration = reassignmentArray.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-null ASP 
+        let arrayForIteration = leadersSequence.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-zero ALRP 
 
         let arrayIndexer = 0
 
@@ -357,27 +357,27 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
         for(let poolPubKey of arrayForIteration){
 
-            let aspForThisPool = reassignmentsRef[poolPubKey]
+            let alrpForThisPool = reassignmentsRef[poolPubKey]
     
-            if(typeof aspForThisPool === 'object'){
+            if(typeof alrpForThisPool === 'object'){
 
-                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(poolPubKey,aspForThisPool,epochFullID,oldEpochHandler)
+                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
 
                 if(signaIsOk){
 
                     filteredReassignments[poolPubKey] = {
                         
-                        index:aspForThisPool.skipIndex,
+                        index:alrpForThisPool.skipIndex,
                         
-                        hash:aspForThisPool.skipHash,
+                        hash:alrpForThisPool.skipHash,
                         
-                        firstBlockHash:aspForThisPool.firstBlockHash
+                        firstBlockHash:alrpForThisPool.firstBlockHash
                     
                     }
 
                     arrayIndexer++
 
-                    if(aspForThisPool.skipIndex>=0){
+                    if(alrpForThisPool.skipIndex>=0){
 
                         wasBreakedEarly = true
 
@@ -393,21 +393,21 @@ CHECK_ASP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,re
 
         if(arrayIndexer === position && !wasBreakedEarly){
 
-            // In case we've iterated over the whole range - check the ASP for prime pool
+            // In case we've iterated over the whole range - check the ALRP for prime pool
 
-            let aspForPrimePool = reassignmentsRef[primePoolPubKey]
+            let alrpForPrimePool = reassignmentsRef[primePoolPubKey]
 
-            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_SKIP_PROOF_VALIDITY(primePoolPubKey,aspForPrimePool,epochFullID,oldEpochHandler)
+            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(primePoolPubKey,alrpForPrimePool,epochFullID,oldEpochHandler)
 
             if(signaIsOk){
 
                 filteredReassignments[primePoolPubKey] = {
                     
-                    index:aspForPrimePool.skipIndex,
+                    index:alrpForPrimePool.skipIndex,
                     
-                    hash:aspForPrimePool.skipHash,
+                    hash:alrpForPrimePool.skipHash,
                     
-                    firstBlockHash:aspForPrimePool.firstBlockHash
+                    firstBlockHash:alrpForPrimePool.firstBlockHash
                 
                 }
 
@@ -454,7 +454,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
         0) Once we get the new valid AEFP, use the REASSIGNMENT_CHAINS built for this epoch(from global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH)
 
-        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <aggregatedSkipProof> for all the previous reserve pools
+        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <leaderRotationProof> for all the previous reserve pools
 
         2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was reassigned on the first block of this epoch
 
@@ -481,54 +481,54 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
                     [Reserve4]: INDEX:1566 HASH:ce77...
 
 
-            (1) We run the initial cycle in reverse order to find the <aggregatedSkipProof>
+            (1) We run the initial cycle in reverse order to find the <leaderRotationProof>
 
-                Each next pool in a row must have ASP for all the previous pools.
+                Each next pool in a row must have ALRP for all the previous pools.
 
                 For example, imagine the following situation:
                     
-                    🙂[Reserve0]: [ASP for prime pool]           <==== in header of block 1246(1245+1 - first block in new epoch)
+                    🙂[Reserve0]: [ALRP for prime pool]           <==== in header of block 1246(1245+1 - first block in new epoch)
 
-                    🙂[Reserve1]: [ASP for prime pool,ASP for reserve pool 0]       <==== in header of block 1004(1003+1 - first block in new epoch)
+                    🙂[Reserve1]: [ALRP for prime pool,ALRP for reserve pool 0]       <==== in header of block 1004(1003+1 - first block in new epoch)
                     
-                    🙂[Reserve2]: [ASP for prime pool,ASP for reserve pool 0,ASP for reserve pool 1]         <==== in header of block 1001(1000+1 - first block in new epoch)
+                    🙂[Reserve2]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1]         <==== in header of block 1001(1000+1 - first block in new epoch)
 
-                    🙂[Reserve3]: [ASP for prime pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2]      <==== in header of block 2004(2003+1 - first block in new epoch)
+                    🙂[Reserve3]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2]      <==== in header of block 2004(2003+1 - first block in new epoch)
 
-                    🙂[Reserve4]: [ASP for prime pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2,ASP for reserve pool 3]       <==== in header of block 1567(1566+1 - first block in new epoch)
+                    🙂[Reserve4]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2,ALRP for reserve pool 3]       <==== in header of block 1567(1566+1 - first block in new epoch)
 
 
                 It was situation when all the reserve pools are fair players(non malicious). However, some of reserve pools will be byzantine(offline or in ignore mode), so
 
-                we should cope with such a situation. That's why in the first iteration we should go through the pools in reverse order, get only those who have ASP for all the previous pools
+                we should cope with such a situation. That's why in the first iteration we should go through the pools in reverse order, get only those who have ALRP for all the previous pools
 
                 For example, in situation with malicious players:
                     
-                    🙂[Reserve0]: [ASP for prime pool]
+                    🙂[Reserve0]: [ALRP for prime pool]
 
                     😈[Reserve1]: []    - nothing because AFK(offline/ignore)
                     
-                    🙂[Reserve2]: [ASP for prime pool,ASP for reserve pool 0,ASP for reserve pool 1]
+                    🙂[Reserve2]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1]
 
-                    😈[Reserve3]: [ASP for prime pool,ASP for reserve pool 2]        - no ASP for ReservePool0  and ReservePool1
+                    😈[Reserve3]: [ALRP for prime pool,ALRP for reserve pool 2]        - no ALRP for ReservePool0  and ReservePool1
 
-                    🙂[Reserve4]: [ASP for prime pool,ASP for reserve pool 0,ASP for reserve pool 1,ASP for reserve pool 2,ASP for reserve pool 3]
+                    🙂[Reserve4]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2,ALRP for reserve pool 3]
                 
 
-                In this case we'll find that reserve pools 0,2,4 is OK because have ASPs for ALL the previous pools(including prime pool)
+                In this case we'll find that reserve pools 0,2,4 is OK because have ALRPs for ALL the previous pools(including prime pool)
 
             (2) Then, we should check if all of them weren't reassigned on their first block in epoch:
                 
                     For this, if we've found that pools 0,2,4 are valid, check if:
 
-                        0) Pool 4 doesn't have ASP for ReservePool2 on block 1000. If so, then ReservePool2 is also invalid and should be excluded
-                        0) Pool 2 doesn't have ASP for ReservePool0 on block 1245. If so, then ReservePool0 is also invalid and should be excluded
+                        0) Pool 4 doesn't have ALRP for ReservePool2 on block 1000. If so, then ReservePool2 is also invalid and should be excluded
+                        0) Pool 2 doesn't have ALRP for ReservePool0 on block 1245. If so, then ReservePool0 is also invalid and should be excluded
                     
-                    After this final filtration, take the first ASP in valid pools and based on this - finish the verification to checkpoint's range.
+                    After this final filtration, take the first ALRP in valid pools and based on this - finish the verification to checkpoint's range.
 
-                    In our case, imagine that Pool2 was reassigned on block 1000 and we have a ASP proof in header of block 1567(first block by ReservePool4 in this epoch)
+                    In our case, imagine that Pool2 was reassigned on block 1000 and we have a ALRP proof in header of block 1567(first block by ReservePool4 in this epoch)
 
-                    That's why, take ASP for primePool from ReservePool0 and ASPs for reserve pools 0,1,2,3 from pool4
+                    That's why, take ALRP for primePool from ReservePool0 and ALRPs for reserve pools 0,1,2,3 from pool4
 
 
             ___________________________________________This is how it works___________________________________________
@@ -575,7 +575,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-    let filtratratedReassignment = new Map() // poolID => {reassignedPool:ASP,reassignedPool0:ASP,...reassignedPoolX:ASP}
+    let filtratratedReassignment = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
 
     // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
@@ -600,9 +600,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
         if(!firstBlockInThisEpochByPool) return
 
-        // In this block we should have ASP for all the previous reservePool + primePool
+        // In this block we should have ALRPs for all the previous reservePool + primePool
 
-        let {isOK,filteredReassignments} = await CHECK_ASP_CHAIN_VALIDITY(
+        let {isOK,filteredReassignments} = await CHECK_ALRP_CHAIN_VALIDITY(
             
             primePoolPubKey,firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true)
 
@@ -615,7 +615,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     }
 
-    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ASP
+    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ALRP
 
     for(let reservePool of oldLeadersSequenceForShard){
 
@@ -623,9 +623,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
             let metadataForReassignment = filtratratedReassignment.get(reservePool)
 
-            for(let [reassignedPoolPubKey,asp] of Object.entries(metadataForReassignment)){
+            for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
 
-                if(!emptyTemplate[reassignedPoolPubKey]) emptyTemplate[reassignedPoolPubKey] = asp
+                if(!emptyTemplate[reassignedPoolPubKey]) emptyTemplate[reassignedPoolPubKey] = alrpData
 
             }
 
@@ -1255,17 +1255,17 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                                 /*
                             
-                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.reassignments
+                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.aggregatedLeadersRotationProofs
                             
-                                    We should get the ASP for previous pool in reassignment chain
+                                    We should get the ALRP for previous pool in leaders sequence
                                 
-                                        1) If previous pool was reassigned on height -1 (asp.skipIndex === -1) then try next pool
+                                        1) If previous pool was rotated on height -1 (alrp.skipIndex === -1) then try next pool
 
                                 */
 
                                 let currentPosition = position
 
-                                let aspData = {}
+                                let alrpData = {}
                                 
                                 while(true){
 
@@ -1275,16 +1275,16 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
     
                                         let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
     
-                                        let aspForPreviousPool = potentialFirstBlock.extraData.reassignments[previousPoolPubKey]
+                                        let aggregatedLeaderRotationProofForPreviousPool = potentialFirstBlock.extraData.aggregatedLeadersRotationProofs[previousPoolPubKey]
 
 
                                         if(previousPoolPubKey === primePoolPubKey){
 
                                             // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
 
-                                            epochCache[primePoolPubKey].firstBlockCreator = aspData.firstBlockCreator
+                                            epochCache[primePoolPubKey].firstBlockCreator = alrpData.firstBlockCreator
 
-                                            epochCache[primePoolPubKey].firstBlockHash = aspData.firstBlockHash
+                                            epochCache[primePoolPubKey].firstBlockHash = alrpData.firstBlockHash
         
                                             epochCache[primePoolPubKey].realFirstBlockFound = true
                                     
@@ -1292,18 +1292,18 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                                             break
 
-                                        }else if(aspForPreviousPool.skipIndex !== -1){
+                                        }else if(aggregatedLeaderRotationProofForPreviousPool.skipIndex !== -1){
     
                                             // Get the first block of pool which was reassigned on not-null height
                                             let potentialNextBlock = await GET_BLOCK(nextEpochIndex,previousPoolPubKey,0)
 
-                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aspForPreviousPool.firstBlockHash){
+                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aggregatedLeaderRotationProofForPreviousPool.firstBlockHash){
 
                                                 potentialFirstBlock = potentialNextBlock
 
-                                                aspData.firstBlockCreator = previousPoolPubKey
+                                                alrpData.firstBlockCreator = previousPoolPubKey
 
-                                                aspData.firstBlockHash = aspForPreviousPool.firstBlockHash
+                                                alrpData.firstBlockHash = aggregatedLeaderRotationProofForPreviousPool.firstBlockHash
 
                                                 currentPosition--
 

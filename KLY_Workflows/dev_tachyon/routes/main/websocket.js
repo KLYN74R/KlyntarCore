@@ -1,4 +1,4 @@
-import {CHECK_ASP_CHAIN_VALIDITY,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../verification.js'
+import {CHECK_ALRP_CHAIN_VALIDITY,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../verification.js'
 
 import{LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
@@ -208,7 +208,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                         And finally, if it's the first block in epoch - verify that it contains:
         
                             1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                            2) All the ASPs for previous pools in leaders sequence in section block.extraData.reassignments(in case the block creator is not a prime pool)
+                            2) All the ALRPs for previous pools in leaders sequence in section block.extraData.aggregatedLeadersRotationProofs(in case the block creator is not a prime pool)
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 
@@ -241,7 +241,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     let positionOfBlockCreatorInLeadersSequence = leadersSequence.indexOf(block.creator)
 
-                    let aspChainIsOk = itsPrimePool || await CHECK_ASP_CHAIN_VALIDITY(
+                    let alrpChainIsOk = itsPrimePool || await CHECK_ALRP_CHAIN_VALIDITY(
         
                         primePoolPubKey,
         
@@ -258,7 +258,7 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
                     ).then(value=>value.isOK).catch(()=>false)
 
 
-                    if(!aefpIsOk || !aspChainIsOk){
+                    if(!aefpIsOk || !alrpChainIsOk){
 
                         connection.close()
 
@@ -268,9 +268,9 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     }
 
-                    if(aspChainIsOk){
+                    if(alrpChainIsOk){
 
-                        // Store all the ASPs from previous leader up to pool which was reassigned on non-zero height in current epoch
+                        // Store all the ALRPs from previous leader up to pool which was reassigned on non-zero height in current epoch
 
                         for(let position = positionOfBlockCreatorInLeadersSequence; position >= -1 ; position--){
 
@@ -280,11 +280,11 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                                 // Store to temp db first - then push to ASP_HANDLERS
 
-                                let aspForThisLeader = block.extraData.reassignments[pubKeyOfLeaderOnCertainPosition]
+                                let alrpForThisLeader = block.extraData.aggregatedLeadersRotationProofs[pubKeyOfLeaderOnCertainPosition]
 
-                                let aspHandler = 
+                                let aspHandler 
 
-                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'ASP_HANDLER:'+block.creator,aspForThisLeader).then(()=>)
+                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'ASP_HANDLER:'+block.creator,alrpForThisLeader).then(()=>)
 
                             }
 
