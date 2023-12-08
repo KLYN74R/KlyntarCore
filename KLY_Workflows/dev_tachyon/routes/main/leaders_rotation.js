@@ -1,4 +1,4 @@
-import {GET_BLOCK,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
+import {GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
 
 import {BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
 
@@ -144,11 +144,11 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
     }
 
 
-    let mySkipHandlers = tempObject.SKIP_HANDLERS
+    let myLeaderHandlers = tempObject.SKIP_HANDLERS
 
     let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.leadersSequence[requestForSkipProof.shard] && mySkipHandlers.has(requestForSkipProof.poolPubKey)
+    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.leadersSequence[requestForSkipProof.shard] && myLeaderHandlers.has(requestForSkipProof.poolPubKey)
     
                        &&
                        
@@ -161,7 +161,7 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
         
         let {index,hash,afp} = requestForSkipProof.skipData
 
-        let localSkipHandler = mySkipHandlers.get(requestForSkipProof.poolPubKey)
+        let localSkipHandler = myLeaderHandlers.get(requestForSkipProof.poolPubKey)
 
 
 
@@ -294,11 +294,12 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 
 
+
 /*
 
 [Info]:
 
-    Accept indexes of authorities on shards by requester version and return required data to define finalization pair for previous leaders (heigth+hash)
+    Accept indexes of leaders on shards by requester version and return required data to define finalization pair for previous leaders (height+hash)
 
 [Accept]:
 
@@ -309,10 +310,16 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 [Returns]:
 
-    {
-        primePoolPubKey(shardID):<aggregatedSkipProofForProposedLeader>
+   {
+
+        primePool0:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+
+        primePool1:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+
         ...
-    
+
+        primePoolN:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
+
     }
 
 */
@@ -343,16 +350,44 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
         for(let [shardID, proposedIndexOfLeader] of Object.entries(proposedIndexesOfAuthorities)){
 
-            if(epochHandler.leadersSequence[shardID]){
+            // Try to get the current leader on shard
 
-                let pubKeyOfPoolByThisIndex = epochHandler.leadersSequence[shardID][proposedIndexOfLeader] || shardID
+            let leaderHandlerForShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID)
 
-                let aggregatedSkipProofForThisPool = tempObject.SKIP_HANDLERS.get(pubKeyOfPoolByThisIndex)?.aggregatedSkipProof
+            if(leaderHandlerForShard && epochHandler.leadersSequence[shardID]){
 
-                objectToReturn[shardID] = aggregatedSkipProofForThisPool
+                // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
+
+                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][proposedIndexOfLeader] || shardID
+
+                let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
+
+                let firstBlockByCurrentLeader = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>null)
+
+
+                if(firstBlockByCurrentLeader){
+
+                    let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
+
+                    let afpForSecondBlockByCurrentLeader = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(secondBlockID,epochHandler).catch(()=>null)
+
+                    if(afpForSecondBlockByCurrentLeader){
+
+                        objectToReturn[shardID] = {
+                            
+                            proposedIndexOfLeader:currentLeaderPubKeyByMyVersion,
+                            
+                            firstBlockByCurrentLeader,
+                            
+                            afpForSecondBlockByCurrentLeader
+                        
+                        }
+
+                    }
+
+                }
 
             }
-
 
         }
 

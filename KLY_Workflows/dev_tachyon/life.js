@@ -1,10 +1,6 @@
 import {
     
-    CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY,CHECK_ALRP_CHAIN_VALIDITY,GET_BLOCK,
-    
-    GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD,
-    
-    VERIFY_AGGREGATED_FINALIZATION_PROOF
+    GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,START_VERIFICATION_THREAD, CHECK_ALRP_CHAIN_VALIDITY,GET_BLOCK, VERIFY_AGGREGATED_FINALIZATION_PROOF
 
 } from './verification.js'
 
@@ -27,8 +23,6 @@ import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 import Block from './essences/block.js'
 
 import UWS from 'uWebSockets.js'
-
-import readline from 'readline'
 
 import fetch from 'node-fetch'
 
@@ -1977,10 +1971,11 @@ SHARDS_LEADERS_MONITORING=async()=>{
 
         } 
 
+
         // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
         let itsNotFinishOfSequence = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence+1]
 
-        if(TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME) && itsNotFinishOfSequence){
+        if(itsNotFinishOfSequence && TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
 
             // Inform websocket server that we shouldn't generate proofs for this leader anymore
             tempObject.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)
@@ -1998,7 +1993,16 @@ SHARDS_LEADERS_MONITORING=async()=>{
 
                 await USE_TEMPORARY_DB('put',tempObject.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
 
-                    leaderSequenceHandler.currentLeader++
+                    // Set new reserve pool and delete the old one
+
+                    // Delete the pointer to prime pool for old leader
+                    tempObject.SHARDS_LEADERS_HANDLERS.delete(pubKeyOfCurrentShardLeader)
+
+                    // Set new value of handler
+                    tempObject.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,newLeadersHandler)
+
+                    // Add the pointer: NewShardLeaderPubKey => ShardID 
+                    tempObject.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[primePoolPubKey][newLeadersHandler.currentLeader],primePoolPubKey)
 
                     tempObject.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader)
 
@@ -3143,13 +3147,13 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
         {
 
-            primePool0:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+            primePool0:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
 
-            primePool1:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+            primePool1:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
 
             ...
 
-            primePoolN:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
+            primePoolN:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader}
 
         }
 
@@ -3370,25 +3374,25 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //✅1.Thread to find AEFPs and change the epoch for QT
-    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
+    //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
-    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
+    //SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Thread to propose AEFPs to move to next epoch
-    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Thread to track changes of leaders on shards
     SHARDS_LEADERS_MONITORING()
 
     //✅5.Function to build the temporary sequence of blocks to verify them
-    BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
+    //BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
 
     //✅6.Start to generate blocks
-    BLOCKS_GENERATION()
+    //BLOCKS_GENERATION()
 
 
 

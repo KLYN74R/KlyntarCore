@@ -268,32 +268,6 @@ let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
 
                     }
 
-                    if(alrpChainIsOk){
-
-                        // Store all the ALRPs from previous leader up to pool which was reassigned on non-zero height in current epoch
-
-                        for(let position = positionOfBlockCreatorInLeadersSequence; position >= -1 ; position--){
-
-                            let pubKeyOfLeaderOnCertainPosition = leadersSequence[position] || primePoolPubKey
-
-                            if(!tempObject.ASP_HANDLERS.has(pubKeyOfLeaderOnCertainPosition)){
-
-                                // Store to temp db first - then push to ASP_HANDLERS
-
-                                let alrpForThisLeader = block.extraData.aggregatedLeadersRotationProofs[pubKeyOfLeaderOnCertainPosition]
-
-                                let aspHandler 
-
-                                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'ASP_HANDLER:'+block.creator,alrpForThisLeader).then(()=>)
-
-                            }
-
-                        }
-
-
-                    }
-                    
-
                 }else{
 
 
