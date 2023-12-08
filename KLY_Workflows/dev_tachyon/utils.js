@@ -51,6 +51,17 @@ GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
 
 
 
+GET_RANDOM_FROM_ARRAY = arr => {
+
+    let randomIndex = Math.floor(Math.random() * arr.length)
+  
+    return arr[randomIndex]
+
+},
+
+
+
+
 GET_FROM_STATE = async recordID => {
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS

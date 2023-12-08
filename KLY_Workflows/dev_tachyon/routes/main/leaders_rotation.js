@@ -298,7 +298,7 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
 
 [Info]:
 
-    Accept indexes of authorities on shards by requester version and return ASPs for them
+    Accept indexes of authorities on shards by requester version and return required data to define finalization pair for previous leaders (heigth+hash)
 
 [Accept]:
 
@@ -316,7 +316,7 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
     }
 
 */
-let aggregatedSkipProofsForProposedLeaders=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -373,4 +373,4 @@ global.UWS_SERVER
 .post('/leader_rotation_proof',getLeaderChangeProof)
 
 // Function to return aggregated skip proofs for proposed authorities✅
-.post('/aggregated_skip_proofs_for_proposed_authorities',aggregatedSkipProofsForProposedLeaders)
+.post('/data_to_build_temp_data_for_verification_thread',getDataToBuildTempDataForVerificationThread)
