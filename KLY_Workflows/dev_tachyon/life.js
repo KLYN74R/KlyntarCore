@@ -1717,7 +1717,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler).catch(()=>({}))
+    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler) || {}
 
     let firstBlockHash
 
@@ -3386,7 +3386,7 @@ RUN_SYMBIOTE=async()=>{
     //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
-    //SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
+    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Thread to propose AEFPs to move to next epoch
     //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()

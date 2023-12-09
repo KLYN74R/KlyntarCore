@@ -162,7 +162,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localFinalizationStats = tempObject.FINALIATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
+        let localFinalizationStats = tempObject.FINALIZATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
 
 
 
