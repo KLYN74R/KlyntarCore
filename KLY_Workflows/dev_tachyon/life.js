@@ -1695,12 +1695,12 @@ TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSequenc
 
 
 
-/**
- * This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
- * on this shard till the pool which was reassigned on non-zero height
- */
-GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,shardID) => {
+GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
 
+    /**
+    * This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
+    * on this shard till the pool which was reassigned on non-zero height
+    */
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -1717,7 +1717,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler)
+    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler).catch(()=>({}))
 
     let firstBlockHash
 
@@ -1745,6 +1745,8 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
             body:JSON.stringify({
     
                 poolPubKey:pubKeyOfOneOfPreviousLeader,
+
+                hisIndexInLeadersSequence,
     
                 shard:shardID,
     
@@ -2282,15 +2284,19 @@ export let GENERATE_BLOCKS_PORTION = async() => {
 
             // Add the ALRP for the previous pools in leaders sequence
 
+            let indexOfPreviousLeaderInSequence = myIndexInLeadersSequenceForShard-1
+
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
-                let aggregatedLeaderRotationProof = await GET_AGGREGATED_LEADER_ROTATION_PROOF(epochHandler,pubKeyOfPreviousLeader,myPrimePool).catch(()=>null)
+                let aggregatedLeaderRotationProof = await GET_AGGREGATED_LEADER_ROTATION_PROOF(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myPrimePool).catch(()=>null)
 
                 if(aggregatedLeaderRotationProof){
 
                     extraData.aggregatedLeadersRotationProofs[pubKeyOfPreviousLeader] = aggregatedLeaderRotationProof
 
                     if(aggregatedLeaderRotationProof.skipIndex >= 0) break // if we hit the ALRP with non-null index(at least index >= 0) it's a 100% that reassignment chain is not broken, so no sense to push ALRPs for previous pools 
+
+                    indexOfPreviousLeaderInSequence--
 
                 } else return
 
@@ -3392,7 +3398,7 @@ RUN_SYMBIOTE=async()=>{
     //BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
 
     //✅6.Start to generate blocks
-    //BLOCKS_GENERATION()
+    BLOCKS_GENERATION()
 
 
 

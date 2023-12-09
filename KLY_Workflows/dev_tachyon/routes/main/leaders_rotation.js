@@ -128,7 +128,7 @@ import Block from "../../essences/block.js"
     
 
 */
-let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -144,35 +144,36 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
     }
 
 
-    let myLeaderHandlers = tempObject.SKIP_HANDLERS
 
-    let requestForSkipProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let requestForLeaderRotationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
 
-    let overviewIsOk = typeof requestForSkipProof === 'object' && epochHandler.leadersSequence[requestForSkipProof.shard] && myLeaderHandlers.has(requestForSkipProof.poolPubKey)
+
+    let overviewIsOk    
+
+    overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object' && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'
     
-                       &&
-                       
-                       typeof requestForSkipProof.skipData === 'object' && (requestForSkipProof.skipData.index === -1  || typeof requestForSkipProof.skipData.afp === 'object')
+    overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
+
+    overviewIsOk &&= tempObject.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
 
 
     if(overviewIsOk){
 
         
-        
-        let {index,hash,afp} = requestForSkipProof.skipData
+        let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localSkipHandler = myLeaderHandlers.get(requestForSkipProof.poolPubKey)
+        let localFinalizationStats = tempObject.FINALIATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
 
 
 
         // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localSkipHandler.skipData && localSkipHandler.skipData.index > index){
+        if(localFinalizationStats && localFinalizationStats.index > index){
 
             let responseData = {
                 
                 type:'UPDATE',
 
-                skipData:localSkipHandler.skipData // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
+                skipData:localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
 
             }
 
@@ -184,9 +185,8 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
            
             //________________________________________________ Verify the proposed AFP ________________________________________________
             
-            // For speed we started to use Ed25519 instead of BLS again
             
-            let afpInSkipDataIsOk = false
+            let afpIsOk = false
 
             if(index > -1 && typeof afp.blockID === 'string'){
 
@@ -194,14 +194,14 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 if(typeof afp === 'object' && afp.blockHash === hash && index == indexOfBlockInAfp){
 
-                    afpInSkipDataIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)
+                    afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)
 
                 }
 
-            }else afpInSkipDataIsOk = true
+            } else afpIsOk = true
 
             
-            if(!afpInSkipDataIsOk){
+            if(!afpIsOk){
 
                 !response.aborted && response.end(JSON.stringify({err:'Wrong aggregated signature for skipIndex > -1'}))
 
@@ -236,28 +236,28 @@ let getLeaderChangeProof=response=>response.writeHeader('Access-Control-Allow-Or
 
                 // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
                 
-                dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForSkipProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
                 firstBlockAfpIsOk = true
 
 
-            }else if(index > 0 && typeof requestForSkipProof.afpForFirstBlock === 'object'){
+            }else if(index > 0 && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'){
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
-                let blockIdOfFirstBlock = epochHandler.id+':'+requestForSkipProof.poolPubKey+':0'
+                let blockIdOfFirstBlock = epochHandler.id+':'+requestForLeaderRotationProof.poolPubKey+':0'
             
-                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForSkipProof.afpForFirstBlock,epochHandler) && requestForSkipProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
+                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
 
-                    let block = await GET_BLOCK(epochHandler.id,requestForSkipProof.poolPubKey,0)
+                    let block = await GET_BLOCK(epochHandler.id,requestForLeaderRotationProof.poolPubKey,0)
 
-                    if(block && Block.genHash(block) === requestForSkipProof.afpForFirstBlock.blockHash){
+                    if(block && Block.genHash(block) === requestForLeaderRotationProof.afpForFirstBlock.blockHash){
 
                         // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
 
-                        let firstBlockHash = requestForSkipProof.afpForFirstBlock.blockHash
+                        let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
-                        dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForSkipProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+                        dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
                         firstBlockAfpIsOk = true                    
     
@@ -405,7 +405,7 @@ global.UWS_SERVER
 
 
 // Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
-.post('/leader_rotation_proof',getLeaderChangeProof)
+.post('/leader_rotation_proof',getLeaderRotationProof)
 
 // Function to return aggregated skip proofs for proposed authorities✅
 .post('/data_to_build_temp_data_for_verification_thread',getDataToBuildTempDataForVerificationThread)
