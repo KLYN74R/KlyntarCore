@@ -3222,17 +3222,17 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
         if(typeof primePoolPubKey === 'string' && typeof metadata==='object'){
 
-            let {proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader} = metadata
+            let {proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader} = metadata
     
-            if(typeof proposedLeaderIndex === 'number' && typeof firstBlockByProposedLeader === 'object' && typeof afpForSecondBlockProposedLeader==='object'){
+            if(typeof proposedIndexOfLeader === 'number' && typeof firstBlockByCurrentLeader === 'object' && typeof afpForSecondBlockByCurrentLeader==='object'){
                   
-                if(localVersionOfCurrentLeaders[primePoolPubKey] <= proposedLeaderIndex && firstBlockByProposedLeader.index === 0){
+                if(localVersionOfCurrentLeaders[primePoolPubKey] <= proposedIndexOfLeader && firstBlockByCurrentLeader.index === 0){
 
                     // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockProposedLeader,vtEpochHandler)
+                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentLeader,vtEpochHandler)
     
-                    afpIsOk &&= afpForSecondBlockProposedLeader.prevBlockHash === Block.genHash(firstBlockByProposedLeader)
+                    afpIsOk &&= afpForSecondBlockByCurrentLeader.prevBlockHash === Block.genHash(firstBlockByCurrentLeader)
 
                     if(afpIsOk){
 
@@ -3240,7 +3240,7 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
     
                         let {isOK,filteredReassignments:filteredReassignmentsInBlockOfProposedLeader} = await CHECK_ALRP_CHAIN_VALIDITY(
                                 
-                            primePoolPubKey, firstBlockByProposedLeader, vtLeadersSequences[primePoolPubKey], proposedLeaderIndex, vtEpochFullID, vtEpochHandler, true
+                            primePoolPubKey, firstBlockByCurrentLeader, vtLeadersSequences[primePoolPubKey], proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
                             
                         )
 
@@ -3252,7 +3252,7 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
                             let currentAlrpSet = {...filteredReassignmentsInBlockOfProposedLeader}
 
-                            let position = proposedLeaderIndex-1
+                            let position = proposedIndexOfLeader-1
 
 
                             /*
@@ -3274,39 +3274,49 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
                             
                             */
 
-                            while(true){
+                            if(position>=localVersionOfCurrentLeaders[primePoolPubKey]){
 
-                                for(; position >= localVersionOfCurrentLeaders[primePoolPubKey] ; position--){
+                                while(true){
 
-                                    let poolOnThisPosition = position === -1 ? primePoolPubKey : vtLeadersSequences[primePoolPubKey][position]
+                                    for(; position >= localVersionOfCurrentLeaders[primePoolPubKey] ; position--){
+
+                                        let poolOnThisPosition = position === -1 ? primePoolPubKey : vtLeadersSequences[primePoolPubKey][position]
     
-                                    let alrpForThisPoolFromCurrentSet = currentAlrpSet[poolOnThisPosition]
+                                        let alrpForThisPoolFromCurrentSet = currentAlrpSet[poolOnThisPosition]
     
-                                    if(alrpForThisPoolFromCurrentSet.index !== -1){
+                                        if(alrpForThisPoolFromCurrentSet.index !== -1){
     
-                                        // Ask the first block and extract next set of ALRPs
+                                            // Ask the first block and extract next set of ALRPs
     
-                                        let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochHandler.id,poolOnThisPosition,0)
+                                            let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochHandler.id,poolOnThisPosition,0)
     
-                                        // Compare hashes to make sure it's really the first block by pool X in epoch Y
+                                            // Compare hashes to make sure it's really the first block by pool X in epoch Y
     
-                                        if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === alrpForThisPoolFromCurrentSet.firstBlockHash){
+                                            if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === alrpForThisPoolFromCurrentSet.firstBlockHash){
                             
-                                            let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ALRP_CHAIN_VALIDITY(
+                                                let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ALRP_CHAIN_VALIDITY(
                                                     
-                                                primePoolPubKey, firstBlockInThisEpochByPool, vtLeadersSequences[primePoolPubKey], position, vtEpochFullID, vtEpochHandler, true
+                                                    primePoolPubKey, firstBlockInThisEpochByPool, vtLeadersSequences[primePoolPubKey], position, vtEpochFullID, vtEpochHandler, true
                                                     
-                                            )
+                                                )
                             
-                                            if(alrpChainValidation.isOK){
+                                                if(alrpChainValidation.isOK){
     
-                                                // If ok - fill the <potentialReassignments>
+                                                    // If ok - fill the <potentialReassignments>
     
-                                                collectionOfAlrpsFromAllThePreviousLeaders.push(alrpChainValidation.filteredReassignments)
+                                                    collectionOfAlrpsFromAllThePreviousLeaders.push(alrpChainValidation.filteredReassignments)
     
-                                                currentAlrpSet = alrpChainValidation.filteredReassignments
+                                                    currentAlrpSet = alrpChainValidation.filteredReassignments
     
-                                                break
+                                                    break
+    
+                                                }else{
+    
+                                                    shouldChangeThisShard = false
+    
+                                                    break
+    
+                                                }
     
                                             }else{
     
@@ -3316,49 +3326,43 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
     
                                             }
     
-                                        }else{
-    
-                                            shouldChangeThisShard = false
-    
-                                            break
-    
                                         }
     
                                     }
-    
+
+                                    if(!shouldChangeThisShard || position === localVersionOfCurrentLeaders[primePoolPubKey]) break
+
                                 }
 
-                                if(!shouldChangeThisShard) break
 
-                            }
+                                // Now, <collectionOfAlrpsFromAllThePreviousLeaders> is array of objects like {pool:{index,hash,firstBlockHash}}
+                                // We need to reverse it and fill the temp data for VT
 
+                                if(shouldChangeThisShard){
 
-                            // Now, <collectionOfAlrpsFromAllThePreviousLeaders> is array of objects like {pool:{index,hash,firstBlockHash}}
-                            // We need to reverse it and fill the temp data for VT
+                                    // Update the reassignment data
 
-                            if(shouldChangeThisShard){
-
-                                // Update the reassignment data
-
-                                let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
+                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
 
 
-                                for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
+                                    for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
 
-                                    // collectionOfAlrpsFromAllThePreviousLeaders[i] = {primePool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
+                                        // collectionOfAlrpsFromAllThePreviousLeaders[i] = {primePool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
 
-                                    for(let [poolPubKey,descriptor] of Object.entries(reassignStats)){
+                                        for(let [poolPubKey,descriptor] of Object.entries(reassignStats)){
 
-                                        if(!tempReassignmentChain[poolPubKey]) tempReassignmentChain[poolPubKey] = descriptor
+                                            if(!tempReassignmentChain[poolPubKey]) tempReassignmentChain[poolPubKey] = descriptor
                 
+                                        }
+
                                     }
 
+                                    // Finally, set the <currentAuthority> to the new pointer
+
+                                    tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader = proposedIndexOfLeader
+
+
                                 }
-
-                                // Finally, set the <currentAuthority> to the new pointer
-
-                                tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader = proposedLeaderIndex
-
 
                             }
 
