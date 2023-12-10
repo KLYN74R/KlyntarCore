@@ -150,7 +150,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
 
     let overviewIsOk    
 
-    overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object' && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'
+    overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
     
     overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
 
@@ -241,7 +241,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
                 firstBlockAfpIsOk = true
 
 
-            }else if(index > 0 && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'){
+            }else if(index >= 0 && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'){
 
                 // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
@@ -339,16 +339,16 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
     }
 
 
-    let proposedIndexesOfAuthorities = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE) // format {primePoolPubKey:index}
+    let proposedIndexesOfLeaders = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE) // format {primePoolPubKey:index}
 
 
-    if(typeof proposedIndexesOfAuthorities === 'object'){
+    if(typeof proposedIndexesOfLeaders === 'object'){
 
         let objectToReturn = {}
 
         // Here we should return the ASP for proposed authorities
 
-        for(let [shardID, proposedIndexOfLeader] of Object.entries(proposedIndexesOfAuthorities)){
+        for(let [shardID, _proposedIndexOfLeader] of Object.entries(proposedIndexesOfLeaders)){
 
             // Try to get the current leader on shard
 
@@ -358,7 +358,7 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
                 // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
 
-                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][proposedIndexOfLeader] || shardID
+                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][leaderHandlerForShard.currentLeader] || shardID
 
                 let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 
@@ -375,7 +375,7 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
                         objectToReturn[shardID] = {
                             
-                            proposedIndexOfLeader:currentLeaderPubKeyByMyVersion,
+                            proposedIndexOfLeader:leaderHandlerForShard.currentLeader,
                             
                             firstBlockByCurrentLeader,
                             

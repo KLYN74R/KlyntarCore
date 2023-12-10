@@ -87,7 +87,7 @@ import http from 'http'
  *  
  *  
  */
-let RETURN_FINALIZATION_PROOF_FOR_RANGE=async(parsedData,connection)=>{
+let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -438,7 +438,7 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             if(data.route==='get_finalization_proof'){
 
-                RETURN_FINALIZATION_PROOF_FOR_RANGE(data,connection)
+                RETURN_FINALIZATION_PROOF_FOR_BLOCK(data,connection)
 
             }else if(data.route==='tmb'){
 

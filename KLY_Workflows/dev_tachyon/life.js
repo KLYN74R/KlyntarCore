@@ -1717,11 +1717,20 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler) || {}
+    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler)
 
     let firstBlockHash
 
     let localFinalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(pubKeyOfOneOfPreviousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
+
+    if(localFinalizationStatsForThisPool.index === -1){
+
+        localFinalizationStatsForThisPool.hash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+
+        afpForFirstBlock = null
+
+    }
 
 
     // Set the hash of first block for pool
@@ -1971,7 +1980,7 @@ SHARDS_LEADERS_MONITORING=async()=>{
 
             pubKeyOfCurrentShardLeader = primePoolPubKey
 
-        } 
+        }
 
 
         // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
@@ -3140,7 +3149,7 @@ BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
     }
 
-    let response = await fetch(randomTarget.url+'/data_to_build_temp_data_for_verification_thread',optionsToSend).then(r=>r.json()).catch(()=>null)
+    let response = await fetch(randomTarget.url+'/data_to_build_temp_data_for_verification_thread',optionsToSend).then(r=>r.json()).catch(()=>({}))
 
 
     /*
@@ -3380,22 +3389,22 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    //START_VERIFICATION_THREAD()
+    START_VERIFICATION_THREAD()
 
     //✅1.Thread to find AEFPs and change the epoch for QT
-    //FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
+    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
     SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
 
     //✅3.Thread to propose AEFPs to move to next epoch
-    //CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
 
     //✅4.Thread to track changes of leaders on shards
     SHARDS_LEADERS_MONITORING()
 
     //✅5.Function to build the temporary sequence of blocks to verify them
-    //BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
+    BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
 
     //✅6.Start to generate blocks
     BLOCKS_GENERATION()
