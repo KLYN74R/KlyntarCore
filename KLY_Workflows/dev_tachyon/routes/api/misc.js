@@ -408,7 +408,7 @@ global.UWS_SERVER
 
 // Misc
 
-.get('/get_kly_infrastructure_info',getKlyInfrastructureInfo)
+.get('/kly_infrastructure_info',getKlyInfrastructureInfo)
 
 .get('/nodes/:REGION',nodes)
 
@@ -428,5 +428,13 @@ global.UWS_SERVER
 TODO:
 
 GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
+
+GET /epoch_info - {vtEpochHandler,gtEpochHandler}
+
+GET /current_shard_leader/:SHARD - returns info about current shard leader - returns data from tempData.SHARD_LEADERS_HANDLERS.get(SHARD)
+
+GET /finalization_stats - returns the data from local FINALIZATION_STATS object (tempObject.FINALIZATION_STATS.get(poolPubKey))
+
+GET /eeo_mempool - tempData.EPOCH_EDGE_OPERATIONS_MEMPOOL
 
 */

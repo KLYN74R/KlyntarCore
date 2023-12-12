@@ -38,7 +38,7 @@ import http from 'http'
  *
  * ```js
  * 
- * // Object like this
+ * //Object like this
  * 
  * 
  * {
