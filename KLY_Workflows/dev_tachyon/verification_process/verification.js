@@ -4,18 +4,18 @@ import {
 
     GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT,VT_STATS_LOG
 
-} from './utils.js'
+} from '../utils.js'
 
 
-import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epochEdgeOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {LOG,BLAKE3,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+import {LOG,BLAKE3,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
-import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {GRACEFUL_STOP} from './life.js'
+import {GRACEFUL_STOP} from '../life.js'
 
-import Block from './essences/block.js'
+import Block from '../essences/block.js'
 
 import fetch from 'node-fetch'
 
@@ -115,101 +115,6 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 },
 
 
-
-
-VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
-
-    // Make the initial overview
-    let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
-                                    &&
-                                    typeof itsProbablyAggregatedFinalizationProof.prevBlockHash === 'string'
-                                    &&
-                                    typeof itsProbablyAggregatedFinalizationProof.blockID === 'string'
-                                    &&
-                                    typeof itsProbablyAggregatedFinalizationProof.blockHash === 'string'
-                                    &&
-                                    typeof itsProbablyAggregatedFinalizationProof.proofs === 'object'
-
-
-    if(generalAndTypeCheck){
-
-        let epochFullID = epochHandler.hash+"#"+epochHandler.id
-
-        let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
-
-        let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+epochFullID
-
-        let majority = GET_MAJORITY(epochHandler)
-
-
-        let promises = []
-
-        let okSignatures = 0
-
-        let unique = new Set()
-
-
-        for(let [signerPubKey,signa] of Object.entries(proofs)){
-
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
-
-                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
-
-                    unique.add(signerPubKey)
-
-                    okSignatures++
-
-                }
-
-            }))
-
-        }
-
-        await Promise.all(promises)
-
-        return okSignatures >= majority
-
-
-    }
-
-},
-
-
-
-
-GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
-
-    let localVersionOfAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
-
-    if(!localVersionOfAfp){
-
-        // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
-    
-        let setOfUrls = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler),...GET_ALL_KNOWN_PEERS()]
-
-        for(let endpoint of setOfUrls){
-
-            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID,{agent:GET_HTTP_AGENT(endpoint)}).then(r=>r.json()).catch(()=>null)
-
-            if(itsProbablyAggregatedFinalizationProof){
-
-                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
-
-                if(isOK){
-
-                    let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
-
-                    return {prevBlockHash,blockID,blockHash,proofs}
-
-                }
-
-            }
-
-        }
-
-    }else return localVersionOfAfp
-
-},
 
 
 
@@ -783,8 +688,8 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
                 Operation in checkpoint has the following structure
 
                 {
-                    type:<TYPE> - type from './epochEdgeOperationsVerifiers.js' to perform this operation
-                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epochEdgeOperationsVerifiers.js
+                    type:<TYPE> - type from './epoch_edge_operations_verifiers.js' to perform this operation
+                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epoch_edge_operations_verifiers.js
                 }
             
 

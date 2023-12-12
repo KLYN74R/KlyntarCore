@@ -1,6 +1,6 @@
 import{BODY,BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
-import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../epochEdgeOperationsVerifiers.js'
+import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../epoch_edge_operations_verifiers.js'
 
 import {GET_MAJORITY} from '../../utils.js'
 
@@ -126,7 +126,7 @@ Body is
 
 {
     
-    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../epochEdgeOperationsVerifiers.js
+    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../epoch_edge_operations_verifiers.js
     
     payload:{}
 

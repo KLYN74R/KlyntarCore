@@ -1,4 +1,4 @@
-import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
+import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -46,6 +46,197 @@ GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
     
     }).catch(()=>false)
  
+},
+
+
+
+
+VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,epochFullID) => {
+
+    let overviewIsOK =
+        
+        typeof itsProbablyAggregatedEpochFinalizationProof === 'object'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.shard === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastLeader === 'number'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastIndex === 'number'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.lastHash === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.hashOfFirstBlockByLastLeader === 'string'
+        &&
+        typeof itsProbablyAggregatedEpochFinalizationProof.proofs === 'object'
+
+    if(overviewIsOK && itsProbablyAggregatedEpochFinalizationProof){
+
+        /*
+    
+            The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
+
+            {
+                shard:<ed25519 pubkey of prime pool - creator of shard>,
+                lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
+                lastIndex:<index of his block in previous epoch>,
+                lastHash:<hash of this block>,
+                hashOfFirstBlockByLastLeader,
+
+                proofs:{
+
+                    ed25519PubKey0:ed25519Signa0,
+                    ...
+                    ed25519PubKeyN:ed25519SignaN
+                         
+                }
+
+            }
+
+            We need to verify that majority have voted for such solution
+
+
+        */
+
+        let {shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader} = itsProbablyAggregatedEpochFinalizationProof
+
+        let dataThatShouldBeSigned = 'EPOCH_DONE'+shard+lastLeader+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullID
+
+        let promises = []
+
+        let okSignatures = 0
+
+        let unique = new Set()
+
+
+        for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
+
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+
+                if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                    unique.add(signerPubKey)
+
+                    okSignatures++
+
+                }
+
+            }))
+
+        }
+
+        await Promise.all(promises)
+        
+        if(okSignatures>=majority){
+
+            return {
+            
+                shard,lastLeader,lastIndex,lastHash,hashOfFirstBlockByLastLeader,
+        
+                proofs:itsProbablyAggregatedEpochFinalizationProof.proofs
+
+            }
+
+        }
+        
+    }
+
+},
+
+
+
+
+VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
+
+    // Make the initial overview
+    let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
+                                    &&
+                                    typeof itsProbablyAggregatedFinalizationProof.prevBlockHash === 'string'
+                                    &&
+                                    typeof itsProbablyAggregatedFinalizationProof.blockID === 'string'
+                                    &&
+                                    typeof itsProbablyAggregatedFinalizationProof.blockHash === 'string'
+                                    &&
+                                    typeof itsProbablyAggregatedFinalizationProof.proofs === 'object'
+
+
+    if(generalAndTypeCheck){
+
+        let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+        let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
+
+        let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+epochFullID
+
+        let majority = GET_MAJORITY(epochHandler)
+
+
+        let promises = []
+
+        let okSignatures = 0
+
+        let unique = new Set()
+
+
+        for(let [signerPubKey,signa] of Object.entries(proofs)){
+
+            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+
+                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+
+                    unique.add(signerPubKey)
+
+                    okSignatures++
+
+                }
+
+            }))
+
+        }
+
+        await Promise.all(promises)
+
+        return okSignatures >= majority
+
+
+    }
+
+},
+
+
+
+
+GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
+
+    let localVersionOfAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
+
+    if(!localVersionOfAfp){
+
+        // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
+    
+        let setOfUrls = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler),...GET_ALL_KNOWN_PEERS()]
+
+        for(let endpoint of setOfUrls){
+
+            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID,{agent:GET_HTTP_AGENT(endpoint)}).then(r=>r.json()).catch(()=>null)
+
+            if(itsProbablyAggregatedFinalizationProof){
+
+                let isOK = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
+
+                if(isOK){
+
+                    let {prevBlockHash,blockID,blockHash,proofs} = itsProbablyAggregatedFinalizationProof
+
+                    return {prevBlockHash,blockID,blockHash,proofs}
+
+                }
+
+            }
+
+        }
+
+    }else return localVersionOfAfp
+
 },
 
 
