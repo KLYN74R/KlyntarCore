@@ -1,8 +1,10 @@
-import {GET_BLOCK,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,VERIFY_AGGREGATED_FINALIZATION_PROOF} from "../../verification.js"
+import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
-import {BODY,ED25519_SIGN_DATA} from "../../../../KLY_Utils/utils.js"
+import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
-import Block from "../../essences/block.js"
+import {GET_BLOCK} from '../../verification_process/verification.js'
+
+import Block from '../../essences/block.js'
 
 
 
@@ -190,6 +192,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
 
             if(index > -1 && typeof afp.blockID === 'string'){
 
+                // eslint-disable-next-line no-unused-vars
                 let [_epochID,_blockCreator,indexOfBlockInAfp] = afp.blockID.split(':')
 
                 if(typeof afp === 'object' && afp.blockHash === hash && index == indexOfBlockInAfp){
@@ -348,6 +351,7 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
         // Here we should return the ASP for proposed authorities
 
+        // eslint-disable-next-line no-unused-vars
         for(let [shardID, _proposedIndexOfLeader] of Object.entries(proposedIndexesOfLeaders)){
 
             // Try to get the current leader on shard

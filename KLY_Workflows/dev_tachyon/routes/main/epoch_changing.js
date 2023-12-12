@@ -1,6 +1,6 @@
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../verification.js'
-
 import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
+
+import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
 
 /*
@@ -313,6 +313,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
                             // Check that this AFP is for appropriate pool
 
+                            // eslint-disable-next-line no-unused-vars
                             let [_,pubKeyOfCreator] = afp.blockID.split(':')
 
                             if(pubKeyOfCreator === pubKeyOfCurrentLeaderOnShard){

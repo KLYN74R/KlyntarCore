@@ -638,7 +638,7 @@ PREPARE_SYMBIOTE=async()=>{
     )
 
     //Might be individual for each node
-    global.SYMBIOTE_META.FILTERS=(await import(`./filters.js`)).default;
+    global.SYMBIOTE_META.FILTERS=(await import(`./verification_process/txs_filters.js`)).default;
 
 
     //______________________________________Prepare databases and storages___________________________________________

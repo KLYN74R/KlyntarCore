@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT,VT_STATS_LOG
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF
 
 } from '../utils.js'
 
@@ -1172,10 +1172,12 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                                 let alrpData = {}
                                 
+                                // eslint-disable-next-line no-constant-condition
                                 while(true){
 
                                     let shouldBreakInfiniteWhile = false
 
+                                    // eslint-disable-next-line no-constant-condition
                                     while(true){
     
                                         let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
@@ -1664,6 +1666,7 @@ START_VERIFICATION_THREAD=async()=>{
         let metadataForShardFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
 
+        // eslint-disable-next-line no-constant-condition
         while(true){
 
             let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck

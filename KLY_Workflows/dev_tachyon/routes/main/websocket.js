@@ -1,10 +1,8 @@
-import {CHECK_ALRP_CHAIN_VALIDITY,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../verification.js'
+import {USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+
+import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
 import{LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
-
-import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../../life.js'
-
-import {USE_TEMPORARY_DB} from '../../utils.js'
 
 import Block from '../../essences/block.js'
 

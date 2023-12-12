@@ -3,7 +3,7 @@ global.SYSTEM_CONTRACTS=new Map()
 // Will be available in the following releases
 // let systemContracts = ['aliases','mintUnobtanium','deployService','stakingPool','rwxContract']
 
-let systemContracts = ['stakingPool']
+let systemContracts = ['staking_pool']
 
 for(let name of systemContracts){
 

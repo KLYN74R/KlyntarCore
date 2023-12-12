@@ -10,7 +10,7 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
-import * as _ from './systemContracts/root.js'
+import * as _ from '../system_contracts/root.js'
 
 import FILTERS from './txs_filters.js'
 
@@ -35,7 +35,7 @@ let GET_SPEND_BY_SIG_TYPE = transaction => {
 
 
 //Load required modules and inject to contract
-let GET_METHODS_TO_INJECT=imports=>{
+let GET_METHODS_TO_INJECT=_imports=>{
 
     return {}
 
