@@ -1,4 +1,4 @@
-import {EPOCH_STILL_FRESH,GET_HTTP_AGENT,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
+import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -254,12 +254,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
 
         //Descriptor is {url,pubKey}
-        for(let descriptor of quorumMembers){
-
-            // No sense to get the commitment if we already have
-
-            optionsToSend.agent = GET_HTTP_AGENT(descriptor.url)
-        
+        for(let descriptor of quorumMembers){        
 
             await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
 

@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_HTTP_AGENT,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF
 
 } from '../utils.js'
 
@@ -48,7 +48,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
         // First of all - try to find by pre-set URL
 
-        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL)}).then(r=>r.json()).then(block=>{
+        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID).then(r=>r.json()).then(block=>{
                 
             if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
@@ -73,7 +73,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
                 if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
                 
-                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{agent:GET_HTTP_AGENT(host)}).then(r=>r.json()).catch(()=>null)
+                let itsProbablyBlock = await fetch(host+`/block/`+blockID).then(r=>r.json()).catch(()=>null)
                 
                 if(itsProbablyBlock){
 
@@ -1114,7 +1114,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                     for(let peerHostname of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch,{agent:GET_HTTP_AGENT(peerHostname)}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch).then(r=>r.json()).catch(()=>false)
 
                         if(itsProbablyAggregatedFinalizationProof){
             

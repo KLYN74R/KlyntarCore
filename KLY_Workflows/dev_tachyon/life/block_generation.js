@@ -1,6 +1,6 @@
 import {
     
-    BLOCKLOG, GET_ALL_KNOWN_PEERS, GET_HTTP_AGENT, GET_MAJORITY,
+    BLOCKLOG, GET_ALL_KNOWN_PEERS, GET_MAJORITY,
     
     GET_QUORUM_URLS_AND_PUBKEYS, GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
     
@@ -78,7 +78,7 @@ let GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
 
             let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${shardID}`
     
-            let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL,{agent:GET_HTTP_AGENT(finalURL)}).then(r=>r.json()).catch(()=>false)
+            let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(()=>false)
     
             let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
                 

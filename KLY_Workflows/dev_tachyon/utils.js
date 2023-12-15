@@ -8,10 +8,6 @@ import readline from 'readline'
 
 import fetch from 'node-fetch'
 
-import https from 'https'
-
-import http from 'http'
-
 import fs from 'fs'
 
 
@@ -217,7 +213,7 @@ GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHan
 
         for(let endpoint of setOfUrls){
 
-            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID,{agent:GET_HTTP_AGENT(endpoint)}).then(r=>r.json()).catch(()=>null)
+            let itsProbablyAggregatedFinalizationProof = await fetch(endpoint+'/aggregated_finalization_proof/'+blockID).then(r=>r.json()).catch(()=>null)
 
             if(itsProbablyAggregatedFinalizationProof){
 
@@ -554,9 +550,6 @@ BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
-GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}) : new http.Agent({keepAlive:true}),
-
-
 /**
  * 
  * 
@@ -601,7 +594,7 @@ GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}
 
     quorumMembers.forEach(host=>
     
-        fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)}).catch(()=>{})
+        fetch(host+route,{method:'POST',body:JSON.stringify(data)}).catch(()=>{})
         
     )
 
@@ -618,9 +611,7 @@ GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}
                 
                     method:'POST',
                     
-                    body:JSON.stringify({data,sig}),
-
-                    agent:GET_HTTP_AGENT(global.CONFIG.SYMBIOTE.MUST_SEND[addr])
+                    body:JSON.stringify({data,sig})
                 
                 }).catch(()=>
                     
@@ -637,7 +628,7 @@ GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}
     
     global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(host=>
     
-        fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)})
+        fetch(host+route,{method:'POST',body:JSON.stringify(data)})
         
         .catch(()=>
             
@@ -661,7 +652,7 @@ GET_HTTP_AGENT=host=>host.startsWith('https') ? new https.Agent({keepAlive:true}
         
         promises.push(
             
-            fetch(host+route,{method:'POST',body:JSON.stringify(data),agent:GET_HTTP_AGENT(host)}).then(v=>v.text()).then(value=>
+            fetch(host+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
                 
                 value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
                     

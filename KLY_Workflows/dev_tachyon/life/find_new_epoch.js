@@ -1,6 +1,6 @@
 import {
     
-    EPOCH_STILL_FRESH,GET_ALL_KNOWN_PEERS,GET_FROM_QUORUM_THREAD_STATE,GET_HTTP_AGENT,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
+    EPOCH_STILL_FRESH,GET_ALL_KNOWN_PEERS,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
     
     IS_MY_VERSION_OLD,
     
@@ -363,7 +363,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtEpochHandler.id}/${primePoolPubKey}`,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtEpochHandler.id}/${primePoolPubKey}`).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
@@ -424,7 +424,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockID,{agent:GET_HTTP_AGENT(peerURL)}).then(r=>r.json()).catch(()=>null)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockID).then(r=>r.json()).catch(()=>null)
             
                         if(itsProbablyAggregatedFinalizationProof){
             
