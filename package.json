@@ -37,6 +37,7 @@
     "bls-wasm": "^0.4.8",
     "chalk-animation": "^1.6.0",
     "cli-spinners": "^2.6.1",
+    "fastify": "^4.25.1",
     "level": "^7.0.0",
     "node-fetch": "^3.2.2",
     "node-seal": "^4.6.4",

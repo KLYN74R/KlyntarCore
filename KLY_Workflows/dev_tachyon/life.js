@@ -859,7 +859,7 @@ RUN_SYMBIOTE=async()=>{
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //✅1.Thread to find AEFPs and change the epoch for QT
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
@@ -877,7 +877,7 @@ RUN_SYMBIOTE=async()=>{
     BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
 
     //✅6.Start to generate blocks
-    BLOCKS_GENERATION()
+    //BLOCKS_GENERATION()
 
 
 
