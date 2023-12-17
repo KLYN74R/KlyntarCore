@@ -62,9 +62,6 @@ dependencies:
   secp256k1:
     specifier: ^4.0.2
     version: 4.0.3
-  uWebSockets.js:
-    specifier: github:uNetworking/uWebSockets.js#v20.34.0
-    version: github.com/uNetworking/uWebSockets.js/fca27c05066342b01951782248640c8013b37196
   wasm-metering:
     specifier: ^0.2.1
     version: 0.2.1
@@ -5544,10 +5541,4 @@ packages:
       - encoding
       - supports-color
       - utf-8-validate
-    dev: false
-
-  github.com/uNetworking/uWebSockets.js/fca27c05066342b01951782248640c8013b37196:
-    resolution: {tarball: https://codeload.github.com/uNetworking/uWebSockets.js/tar.gz/fca27c05066342b01951782248640c8013b37196}
-    name: uWebSockets.js
-    version: 20.34.0
     dev: false

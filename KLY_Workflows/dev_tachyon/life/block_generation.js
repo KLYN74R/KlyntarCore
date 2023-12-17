@@ -354,6 +354,15 @@ let GENERATE_BLOCKS_PORTION = async() => {
     if(!tempObject) return
 
 
+    //_________________ No sense to generate blocks more in case we haven't approved the previous ones _________________
+
+    let proofsGrabber = tempObject.TEMP_CACHE.get('PROOFS_GRABBER')
+
+    if(proofsGrabber && global.SYMBIOTE_META.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
+
+    //__________________________________________________________________________________________________________________
+
+
     if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
 
         let poolPresent = epochHandler.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 

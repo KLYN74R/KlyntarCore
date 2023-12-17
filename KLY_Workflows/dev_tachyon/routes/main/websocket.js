@@ -417,7 +417,9 @@ let WEBSOCKET_SERVER = new WebSocketServer({
     // facilities built into the protocol and the browser.  You should
     // *always* verify the connection's origin and decide whether or not
     // to accept it.
-    autoAcceptConnections: false
+    autoAcceptConnections: false,
+
+    maxReceivedMessageSize: 1024*1024*50 // 50 Mb
 
 })
 
