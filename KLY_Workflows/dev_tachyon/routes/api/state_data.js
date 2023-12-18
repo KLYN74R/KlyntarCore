@@ -1,6 +1,5 @@
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {WRAP_RESPONSE} from '../../utils.js'
 
 
 /**## Returns the data directrly from state
@@ -23,73 +22,72 @@ import {WRAP_RESPONSE} from '../../utils.js'
  * 
  *  
  * */
-let getRawDataFromState=async(response,request)=>{
-    
-    response.onAborted(()=>response.aborted=true)
+FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.FROM_STATE){
 
-        let shardContext = request.getParameter(0)
+        let shardContext = request.params.shardID
 
-        let cellID = request.getParameter(1)
+        let cellID = request.params.cellID
 
         let fullID = shardContext === 'X' ? cellID : shardContext+':'+cellID
 
-        let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(()=>'')
+        let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(()=>null)
 
 
+        response
 
-        !response.aborted && WRAP_RESPONSE(response,global.CONFIG.SYMBIOTE.ROUTE_TTL.API.FROM_STATE).end(JSON.stringify(data))
-
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.ROUTE_TTL.API.FROM_STATE)
+        
+            .send(data)
     
-    }else !response.aborted && response.end(JSON.stringify({err:'Trigger is off'}))
+    }else response.send({err:'Trigger is off'})
 
-}
-
+})
 
 
 // 0 - txid
-let getTransactionReceipt=(response,request)=>{
+FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
     //Set triggers
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.TX_RECEIPT){
 
         response
         
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.TX_RECEIPT}`)
-            .onAborted(()=>response.aborted=true)
-
-
-        global.SYMBIOTE_META.STATE.get('TX:'+request.getParameter(0)).then(
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.TX_RECEIPT}`)
             
-            txReceipt => !response.aborted && response.end(JSON.stringify(txReceipt))
+
+        global.SYMBIOTE_META.STATE.get('TX:'+request.params.txid).then(
             
-        ).catch(()=>!response.aborted && response.end(JSON.stringify({err:'No tx with such id'})))
+            txReceipt => response.send(txReceipt)
+            
+        ).catch(()=>response.send({err:'No tx with such id'}))
 
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+    }else response.send({err:'Route is off'})
 
-}
-
-
+})
 
 
-let getSearchResult=async(response,request)=>{
+
+
+FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
     //Set triggers
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SEARCH_RESULT){
 
         response
         
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SEARCH_RESULT}`)
-            .onAborted(()=>response.aborted=true)
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SEARCH_RESULT}`)
+            
 
 
         //_____________ Find possible values _____________
 
-        let query = request.getParameter(0)
+        let query = request.params.query
 
         let responseType
 
@@ -105,7 +103,7 @@ let getSearchResult=async(response,request)=>{
 
         if(possibleTxReceipt){
 
-            !response.aborted && response.end(JSON.stringify({responseType,data:possibleTxReceipt}))
+            response.send({responseType,data:possibleTxReceipt})
 
             return
 
@@ -123,7 +121,7 @@ let getSearchResult=async(response,request)=>{
 
         if(possibleBlock){
 
-            !response.aborted && response.end(JSON.stringify({responseType,data:possibleBlock}))
+            response.send({responseType,data:possibleBlock})
 
             return
 
@@ -142,7 +140,7 @@ let getSearchResult=async(response,request)=>{
         
         if(possibleFromState){
 
-            !response.aborted && response.end(JSON.stringify({responseType,data:possibleFromState}))
+            response.send({responseType,data:possibleFromState})
 
             return
 
@@ -155,7 +153,7 @@ let getSearchResult=async(response,request)=>{
 
         if(!tempObject){
 
-            !response.aborted && response.end(JSON.stringify({responseType:'ERROR',data:'Wait for a next epoch'}))
+            response.send({responseType:'ERROR',data:'Wait for a next epoch'})
 
             return
 
@@ -173,19 +171,19 @@ let getSearchResult=async(response,request)=>{
 
             if(possibleAggregatedFinalizationProof){
 
-                !response.aborted && response.end(JSON.stringify({responseType,data:possibleAggregatedFinalizationProof}))
+                response.send({responseType,data:possibleAggregatedFinalizationProof})
     
                 return
     
-            }else !response.aborted && response.end(JSON.stringify({responseType,data:`No data`}))
+            }else response.send({responseType,data:`No data`})
 
 
         }
 
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+    }else response.send(JSON.stringify({err:'Route is off'}))
 
-}
+})
 
 
 /** 
@@ -193,35 +191,20 @@ let getSearchResult=async(response,request)=>{
 * returns object like {shardID => {currentLeader,index,hash}}
 * 
 */
-let getSyncState=response=>{
 
-   //Set triggers
-   if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYNC_STATE){
+FASTIFY_SERVER.get('/sync_state',(request,response)=>{
 
-       response
-       
-           .writeHeader('Access-Control-Allow-Origin','*')
-           .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYNC_STATE}`)
-           .onAborted(()=>response.aborted=true)
-
-
-       !response.aborted && response.end(JSON.stringify(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS))
-           
-
-   }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-}
-
-
-
-
-FASTIFY_SERVER
-
-
-.get('/state/:SHARD_ID/:CELL_ID',getRawDataFromState)
-
-.get('/tx_receipt/:TXID',getTransactionReceipt)
-
-.get('/search_result/:QUERY',getSearchResult)
-
-.get('/sync_state',getSyncState)
+    //Set triggers
+    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYNC_STATE){
+ 
+        response
+        
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYNC_STATE}`)
+            
+            .send(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
+            
+ 
+    }else response.send({err:'Route is off'})
+ 
+})

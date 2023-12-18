@@ -100,16 +100,6 @@ ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
 
 
-//Advanced function which also check limits(useful in routes where we accept relatively small data chunks not to paste payload size checker in each handler)
-BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.from(bytes)))).catch(e=>false),
-
-
-
-
-//Simplified variant of "BODY" function,doesn't check limit,coz limits checks on higher level(in code where this func is used)
-PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
-
-
 
 LOG=(msg,msgColor)=>{
 

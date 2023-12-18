@@ -123,6 +123,6 @@ FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,respon
         response.send(blocksArray)
 
 
-    }else response.end({err:'Route is off'})
+    }else response.send({err:'Route is off'})
 
 })

@@ -346,21 +346,6 @@ LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.
 
 
 
-//_____________________________________________ADVANCED PREPARATIONS____________________________________________
-
-
-
-//Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
-//BTW make it global to dynamically change it in the onther modules
-global.MY_KLY_INFRASTRUCTURE = JSON.stringify(global.CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE)
-
-
-
-//____________________________________________ASK FOR FINAL AGREEMENT____________________________________________
-
-
-
-
 console.log('\n\n\n')
 
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
