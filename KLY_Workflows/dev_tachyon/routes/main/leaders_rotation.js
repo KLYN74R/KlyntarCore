@@ -4,10 +4,9 @@ import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import {GET_BLOCK} from '../../verification_process/verification.js'
 
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import Block from '../../essences/block.js'
-
-
-
 
 
 
@@ -405,8 +404,7 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
 
 
-global.UWS_SERVER
-
+FASTIFY_SERVER
 
 // Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
 .post('/leader_rotation_proof',getLeaderRotationProof)

@@ -2,6 +2,7 @@ import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 /*
             
@@ -398,7 +399,7 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
 
 
-global.UWS_SERVER
+FASTIFY_SERVER
 
 
 

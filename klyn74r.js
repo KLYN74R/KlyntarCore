@@ -37,11 +37,11 @@ import {LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
-import UWS from 'uWebSockets.js'
-
 import {isAbsolute} from 'path'
 
 import readline from 'readline'
+
+import fastify from 'fastify'
 
 import fs from 'fs'
 
@@ -285,69 +285,64 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
 
 
-(async()=>{
-
-
-
-
 //_________________________________________________BANNERS INTRO________________________________________________
 
 
 
 
-    process.stdout.write('\x1Bc')
+process.stdout.write('\x1Bc')
     
-    //Cool short animation
-    await new Promise(r=>{
-        
-        let animation=chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
+//Cool short animation
+await new Promise(r=>{
     
-        setTimeout(()=>{ animation.stop() ; r() },global.CONFIG.PRELUDE.ANIMATION_DURATION)
-    
-    })
-    
-    
-    process.stdout.write('\x1Bc')
+    let animation=chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
 
-    if(process.env.KLY_MODE==='main'){
+    setTimeout(()=>{ animation.stop() ; r() },global.CONFIG.PRELUDE.ANIMATION_DURATION)
 
-        //Read banner
-        console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
-    
-        //...and add extra colors & changes)
-        .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
-        .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
-        .replaceAll('≈','\x1b[31m≈\x1b[36m')
-        .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
-    
-    }else{
-
-        //else show the testnet banner
-
-         //Read banner
-        console.log('\u001b[37m'+fs.readFileSync(PATH_RESOLVE('images/testmode_banner.txt')).toString()
-    
-        //...and add extra colors & changes)
-        .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
-        .replace('REMEMBER:To infinity and beyond!','\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m')
-         
-        .replaceAll('≈','\x1b[31m≈\u001b[37m')
-    
-        .replaceAll('█','\u001b[38;5;202m█\u001b[37m')
-
-        .replaceAll('═','\u001b[38;5;87m═\u001b[37m')
-        .replaceAll('╝','\u001b[38;5;87m╝\u001b[37m')
-        .replaceAll('╚','\u001b[38;5;87m╚\u001b[37m')
-    
-        .replaceAll('#','\u001b[38;5;202m#\u001b[37m')+'\x1b[0m\n')
-    
+})
 
 
-    }
+process.stdout.write('\x1Bc')
 
-    
-    LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${global.CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${global.CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
-    
+if(process.env.KLY_MODE==='main'){
+
+    //Read banner
+    console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
+
+    //...and add extra colors & changes)
+    .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
+    .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
+    .replaceAll('≈','\x1b[31m≈\x1b[36m')
+    .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
+
+}else{
+
+    //else show the testnet banner
+
+     //Read banner
+    console.log('\u001b[37m'+fs.readFileSync(PATH_RESOLVE('images/testmode_banner.txt')).toString()
+
+    //...and add extra colors & changes)
+    .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
+    .replace('REMEMBER:To infinity and beyond!','\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m')
+     
+    .replaceAll('≈','\x1b[31m≈\u001b[37m')
+
+    .replaceAll('█','\u001b[38;5;202m█\u001b[37m')
+
+    .replaceAll('═','\u001b[38;5;87m═\u001b[37m')
+    .replaceAll('╝','\u001b[38;5;87m╝\u001b[37m')
+    .replaceAll('╚','\u001b[38;5;87m╚\u001b[37m')
+
+    .replaceAll('#','\u001b[38;5;202m#\u001b[37m')+'\x1b[0m\n')
+
+
+
+}
+
+
+LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`role:${global.CONFIG.ROLE}(runned as ${os.userInfo().username})`,`galaxy:${global.CONFIG.GALAXY}`].join('\x1b[36m / \x1b[31m')}`,'I')
+
 
 
 
@@ -355,10 +350,10 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
 
 
-    //Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
-    //BTW make it global to dynamically change it in the onther modules
-    global.MY_KLY_INFRASTRUCTURE = JSON.stringify(global.CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE)
-    
+//Make this shit for memoization and not to repeate .stringify() within each request.Some kind of caching
+//BTW make it global to dynamically change it in the onther modules
+global.MY_KLY_INFRASTRUCTURE = JSON.stringify(global.CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE)
+
 
 
 //____________________________________________ASK FOR FINAL AGREEMENT____________________________________________
@@ -366,74 +361,68 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
 
 
-    console.log('\n\n\n')
+console.log('\n\n\n')
+
+LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
+
+LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
+
+LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'CON')
+
+LOG(global.CONFIG.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
+
+
+!global.CONFIG.PRELUDE.OPTIMISTIC
+&&
+await new Promise(resolve=>
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
+    readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
 
-    LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.TLS.ENABLED?'enabled':'disabled'}`,'CON')
-
-    LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'CON')
-
-    LOG(global.CONFIG.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
+    .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+    
+).then(answer=>answer!=='YES'&& process.exit(103))
 
 
-    !global.CONFIG.PRELUDE.OPTIMISTIC
-    &&
-    await new Promise(resolve=>
+LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
+
+
+
+let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
+
+await RUN_SYMBIOTE()
+    
+
+
+for(let scriptPath of global.CONFIG.PLUGINS){
+
+    import(`./KLY_Plugins/${scriptPath}`).catch(
         
-        readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
-    
-        .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
         
-    ).then(answer=>answer!=='YES'&& process.exit(103))
+    )
+
+}
 
 
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
 
-
-
-    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
-
-    await RUN_SYMBIOTE()
-        
-    
-
-    for(let scriptPath of global.CONFIG.PLUGINS){
-
-        import(`./KLY_Plugins/${scriptPath}`).catch(
-            
-            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
-            
-        )
-
-    }
-    
-
-    
 
 //_______________________________________________GET SERVER ROUTES______________________________________________
 
 
 
-
-global.UWS_SERVER = UWS[global.CONFIG.TLS.ENABLED?'SSLApp':'App'](global.CONFIG.TLS.CONFIGS).listen(global.CONFIG.INTERFACE,global.CONFIG.PORT,descriptor=>{
-
-    if(descriptor){
-
-        LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
-
-        global.UWS_DESC = descriptor
-        
-    }
-    else LOG('Oops,some problems with server module','F')
-
-})
+export const FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS)
 
 
+// Import routes
 
-//Call general code to start import routes
 import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
 
 
 
-})()
+FASTIFY_SERVER.listen({port:global.CONFIG.PORT,host:global.CONFIG.INTERFACE},(err,_address)=>{
+
+    if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
+
+    else LOG('Oops,some problems with server module','F')
+
+})

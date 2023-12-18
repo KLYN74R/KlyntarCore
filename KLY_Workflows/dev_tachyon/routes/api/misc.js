@@ -1,6 +1,9 @@
 import {WRAP_RESPONSE,GET_NODES} from '../../utils.js'
 
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import {BODY} from '../../../../KLY_Utils/utils.js'
+
 
 
 let ED25519_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
@@ -392,7 +395,7 @@ addPeer=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAbor
 
 
 
-global.UWS_SERVER
+FASTIFY_SERVER
 
 // Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>) ✅
 .get('/aggregated_finalization_proof/:BLOCK_ID',getAggregatedFinalizationProof)

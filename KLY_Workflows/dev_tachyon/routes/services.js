@@ -1,15 +1,10 @@
-import {SAFE_ADD,PARSE_JSON} from '../../../KLY_Utils/utils.js'
-
-
-
-
-let SERVICE_RUNNER=await import(`../../../KLY_Runners/${global.CONFIG.RUNNER}`).then(m=>m.default).catch(error=>console.log(error)),
+let SERVICE_RUNNER=await import(`../../../KLY_Runners/${global.CONFIG.RUNNER}`).then(m=>m.default).catch(error=>console.log(error))
 
 
 
 
 //Only this one function available for ordinary users(the others can be called by node owner)
-services=response=>{
+let services=response=>{
         
         let total=0,buf=Buffer.alloc(0)
         
@@ -40,6 +35,6 @@ services=response=>{
 
 
 
-// UWS_SERVER
+// FASTIFY_SERVER
 
 // .post('/service',services)

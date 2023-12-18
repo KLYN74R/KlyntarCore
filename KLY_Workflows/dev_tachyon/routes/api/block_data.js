@@ -1,3 +1,5 @@
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import Block from '../../essences/block.js'
 
 
@@ -5,84 +7,89 @@ import Block from '../../essences/block.js'
 
 // Returns block
 // 0 - blockID(in format <EpochID>:<Ed25519_ValidatorPubkey>:<Index of block in epoch>)
-let getBlockById=(response,request)=>{
+
+FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
     //Set triggers
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK){
 
         response
         
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK}`)
-            .onAborted(()=>response.aborted=true)
+            .header('Access-Control-Allow-Origin','*')    
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK}`)
+    
 
+        global.SYMBIOTE_META.BLOCKS.get(request.params.id).then(block=>
 
-        global.SYMBIOTE_META.BLOCKS.get(request.getParameter(0)).then(block=>
-
-            !response.aborted && response.end(JSON.stringify(block))
+            response.send(block)
             
-        ).catch(()=>response.end(JSON.stringify({err:'No block'})))
+        ).catch(()=>response.send({err:'No block'}))
 
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+    }else response.send({err:'Route is off'})
 
-}
+})
+
+
 
 
 // 0 - shardID - ed25519 identifier of shard
 // 1 - index
-let getBlockBySID=(response,request)=>{
+
+FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
     //Set triggers
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
         response
         
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_SID}`)
-            .onAborted(()=>response.aborted=true)
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_SID}`)
+            
 
-        let shardContext = request.getParameter(0)
-        let indexOnShard = request.getParameter(1)
+        let shardContext = request.params.shard
+        
+        let indexOfBlockOnShard = request.params.sid
 
-        global.SYMBIOTE_META.STATE.get(`SID:${shardContext}:${indexOnShard}`).then(blockID =>
+
+        global.SYMBIOTE_META.STATE.get(`SID:${shardContext}:${indexOfBlockOnShard}`).then(blockID =>
 
             global.SYMBIOTE_META.BLOCKS.get(blockID).then(
                 
-                block => !response.aborted && response.end(JSON.stringify(block))
+                block => response.send(block)
             
             )
 
-        ).catch(()=>response.end(JSON.stringify({err:'No block receipt'})))
+        ).catch(()=>response.send({err:'No block receipt'}))
 
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+    }else response.send({err:'Route is off'})
 
-}
+})
+
 
 
 /*
 
-0 - START_GRID | GRID to ask blocks from
+0 - START to ask blocks from
 1 - N | Ask N blocks(25 by default)
 
 Returns array of blocks sorted by SID in reverse order
 
 */
 
-let getLatestNBlocks=async(response,request)=>{
+FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,response)=>{
 
     //Set triggers
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
 
         response
         
-            .writeHeader('Access-Control-Allow-Origin','*')
-            .writeHeader('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
-            .onAborted(()=>response.aborted=true)
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
+            
 
-
-        let startGRID = +request.getParameter(0)
+        let startCount = +request.params.num_of_blocks
 
         let limit =  25
 
@@ -90,15 +97,15 @@ let getLatestNBlocks=async(response,request)=>{
 
         for(let i=0;i<limit;i++){
 
-            let grid = startGRID-i
+            let sid = startCount-i
 
-            let blockPromise = global.SYMBIOTE_META.STATE.get('GRID:'+grid).then(
+            let blockPromise = global.SYMBIOTE_META.STATE.get('SID:'+sid).then(
             
                 blockID => global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>{
 
                     block.hash = Block.genHash(block)
 
-                    block.grid = grid
+                    block.sid = sid
 
                     return block
 
@@ -111,24 +118,11 @@ let getLatestNBlocks=async(response,request)=>{
         }
 
 
-        let blocks = await Promise.all(promises).then(array=>array.filter(Boolean))
+        let blocksArray = await Promise.all(promises).then(array=>array.filter(Boolean))
 
-        !response.aborted && response.end(JSON.stringify(blocks))
-
-
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
-
-}
+        response.send(blocksArray)
 
 
+    }else response.end({err:'Route is off'})
 
-
-global.UWS_SERVER
-
-// Get blocks
-
-.get('/block/:ID',getBlockById)
-
-.get('/block_by_sid/:SHARD/:SID',getBlockBySID)
-
-.get('/latest_n_blocks/:NUMBER_OF_BLOCKS/:LIMIT',getLatestNBlocks)
+})

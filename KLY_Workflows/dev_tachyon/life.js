@@ -6,7 +6,7 @@ import {LOG,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import UWS from 'uWebSockets.js'
+import {FASTIFY_SERVER} from '../../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -59,8 +59,9 @@ global.PRIVATE_KEY=null
 
 
 
-export let GRACEFUL_STOP=()=>{
-    
+
+export let GRACEFUL_STOP = async() => {
+
     global.SYSTEM_SIGNAL_ACCEPTED=true
 
     console.log('\n')
@@ -73,7 +74,7 @@ export let GRACEFUL_STOP=()=>{
 
     LOG('Closing server connections...','I')
 
-    global.UWS_DESC && UWS.us_listen_socket_close(global.UWS_DESC)
+    await FASTIFY_SERVER.close()
 
     LOG('Node was gracefully stopped','I')
         

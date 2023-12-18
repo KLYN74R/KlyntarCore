@@ -2,8 +2,6 @@ import cryptoModule from 'crypto'
 
 import {hash} from 'blake3-wasm'
 
-import fetch from 'node-fetch'
-
 import Base58 from 'base-58'
 
 
@@ -110,40 +108,6 @@ BODY=(bytes,limit)=>new Promise(r=>r(bytes.byteLength<=limit&&JSON.parse(Buffer.
 
 //Simplified variant of "BODY" function,doesn't check limit,coz limits checks on higher level(in code where this func is used)
 PARSE_JSON=buffer=>new Promise(r=>r(JSON.parse(buffer))).catch(e=>''),
-
-
-
-
-//On-flight updates soon
-
-
-
-
-/**
- *   ## Add chunk to buffer and prevent buffer overflow cases 
- *
- *   Without "a" node will continue accept chunks,the only point is that all chanks will throw error which will be handled by .catch
- *   With "a" we'll immediately close connection
- *   @param {Buffer} buffer Raw array of bytes
- *   @param {Buffer} chunk  Incoming chunk
- *   @param {UWS.HttpResponse} a UWS Response object
- * 
- */
-SAFE_ADD=(buffer,chunk,a)=>new Promise(r=>r( Buffer.concat([ buffer, Buffer.from(chunk) ]) ))
-    
-    .catch(()=>{
-        
-        a.end('Local buffer overflow')
-        
-        LOG(`Overflow while accept data from ${Buffer.from(a.getRemoteAddressAsText()).toString('utf-8')}`,'F')
-    
-    }),
-
-
-
-
-SEND=(url,payload,callback)=>fetch(url,{method:'POST',body:JSON.stringify(payload)}).then(r=>r.text()).then(callback),
-
 
 
 

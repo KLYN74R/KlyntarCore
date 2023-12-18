@@ -2,7 +2,10 @@ import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_ed
 
 import{BODY,BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import {GET_MAJORITY} from '../../utils.js'
+
 
 
 
@@ -205,7 +208,7 @@ let epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-A
 
 
 
-global.UWS_SERVER
+FASTIFY_SERVER
 
 
 // Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅

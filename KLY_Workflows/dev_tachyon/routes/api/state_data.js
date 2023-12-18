@@ -1,4 +1,7 @@
+import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+
 import {WRAP_RESPONSE} from '../../utils.js'
+
 
 /**## Returns the data directrly from state
  * 
@@ -212,7 +215,7 @@ let getSyncState=response=>{
 
 
 
-global.UWS_SERVER
+FASTIFY_SERVER
 
 
 .get('/state/:SHARD_ID/:CELL_ID',getRawDataFromState)

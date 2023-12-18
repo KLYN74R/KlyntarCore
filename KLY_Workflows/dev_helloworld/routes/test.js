@@ -1,6 +1,8 @@
 
 //__________________________________________________________DEFINE ROUTES HERE_____________________________________________________________________
 
+import {FASTIFY_SERVER} from "../../../klyn74r.js"
+
 //! Name isn't abligatory, choose anything you want. BTW you can write handlers even without this object
 let MAIN = {
     
@@ -23,15 +25,9 @@ let MAIN = {
 //__________________________________________________________SET ROUTES MAP HERE_____________________________________________________________________
 
 
-/*
 
-UWS_SERVER - is a global variable which represents the intance of server
 
-Server implementation here https://github.com/uNetworking/uWebSockets.js
-
-*/
-
-global.UWS_SERVER
+FASTIFY_SERVER
 
 .get('/hello',MAIN.world)
 
