@@ -1,8 +1,8 @@
 import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
-import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
-
 import {GET_BLOCK} from '../../verification_process/verification.js'
+
+import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -129,7 +129,10 @@ import Block from '../../essences/block.js'
     
 
 */
-let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+// Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
+
+FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -139,15 +142,14 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
 
     if(!tempObject){
 
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
+        response.send({err:'Epoch handler on QT is not ready'})
 
         return
     }
 
 
 
-    let requestForLeaderRotationProof = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
-
+    let requestForLeaderRotationProof = request.body
 
     let overviewIsOk    
 
@@ -160,6 +162,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
 
     if(overviewIsOk){
 
+        response.header('access-control-allow-origin','*')
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
@@ -178,7 +181,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
 
             }
 
-            !response.aborted && response.end(JSON.stringify(responseData))
+            response.send(responseData)
 
 
         }else{
@@ -205,7 +208,7 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
             
             if(!afpIsOk){
 
-                !response.aborted && response.end(JSON.stringify({err:'Wrong aggregated signature for skipIndex > -1'}))
+                response.send({err:'Wrong aggregated signature for skipIndex > -1'})
 
                 return
 
@@ -280,17 +283,16 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
                     sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,global.PRIVATE_KEY)
                 }
 
-                !response.aborted && response.end(JSON.stringify(skipMessage))
+                response.send(skipMessage)
 
                 
-            }else !response.aborted && response.end(JSON.stringify({err:`Wrong signatures in <afpForFirstBlock>`}))
+            }else response.send({err:`Wrong signatures in <afpForFirstBlock>`})
 
              
         }
 
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
-
+    }else response.send({err:'Wrong format'})
 
 })
 
@@ -325,7 +327,10 @@ let getLeaderRotationProof=response=>response.writeHeader('Access-Control-Allow-
     }
 
 */
-let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+// Function to return aggregated skip proofs for proposed authorities✅
+
+FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -334,14 +339,14 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
     let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
     if(!tempObject){
-
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
+        
+        response.send({err:'Epoch handler on QT is not ready'})
 
         return
     }
 
 
-    let proposedIndexesOfLeaders = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE) // format {primePoolPubKey:index}
+    let proposedIndexesOfLeaders = request.body // format {primePoolPubKey:index}
 
 
     if(typeof proposedIndexesOfLeaders === 'object'){
@@ -394,20 +399,9 @@ let getDataToBuildTempDataForVerificationThread=response=>response.writeHeader('
 
         }
 
-        !response.aborted && response.end(JSON.stringify(objectToReturn))
+        response.send(objectToReturn)
 
-    } else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+    } else response.send({err:'Wrong format'})
 
 
 })
-
-
-
-
-FASTIFY_SERVER
-
-// Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
-.post('/leader_rotation_proof',getLeaderRotationProof)
-
-// Function to return aggregated skip proofs for proposed authorities✅
-.post('/data_to_build_temp_data_for_verification_thread',getDataToBuildTempDataForVerificationThread)

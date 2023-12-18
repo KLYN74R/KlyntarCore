@@ -1,6 +1,6 @@
-import {BODY,ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
-
 import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+
+import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -29,9 +29,10 @@ import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 */
-let getAggregatedEpochFinalizationProof=async(response,request)=>{
 
-    response.onAborted(()=>response.aborted=true)
+// Simple GET handler to return AEFP for given shard and epoch ✅
+
+FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',async(request,response)=>{
 
     if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
@@ -39,34 +40,33 @@ let getAggregatedEpochFinalizationProof=async(response,request)=>{
 
         if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
-            !response.aborted && response.end('QT epoch handler is not ready')
+            response.send('QT epoch handler is not ready')
         
             return
 
         }
 
 
-        let epochIndex = request.getParameter(0)
-
-        let shardID = request.getParameter(1)
-
-        let aggregatedEpochFinalizationProofForShard = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${epochIndex}:${shardID}`).catch(()=>false)
+        let aggregatedEpochFinalizationProofForShard = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
 
         
         if(aggregatedEpochFinalizationProofForShard){
 
-            !response.aborted && response.end(JSON.stringify(aggregatedEpochFinalizationProofForShard))
+            response.send(aggregatedEpochFinalizationProofForShard)
 
-        }else !response.aborted && response.end(JSON.stringify({err:'No AEFP'}))
+        }else response.send({err:'No AEFP'})
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Route is off'}))
+    }else response.send({err:'Route is off'})
 
-}
-
-
+})
 
 
-let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+
+// Handler to acccept propositions to finish the epoch for shards and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
+
+FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
+
+    // global.CONFIG.MAX_PAYLOAD_SIZE - set the limit mb
 
     let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -77,21 +77,19 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
     if(!tempObject){
 
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not fresh'}))
+        response.send({err:'Epoch handler on QT is not fresh'})
 
         return
     }
 
     if(!tempObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
-        !response.aborted && response.end(JSON.stringify({err:'Not ready'}))
+        response.send({err:'Not ready'})
 
         return
 
     }
     
-
-
     /* 
     
         Parse the proposition
@@ -212,13 +210,11 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
     */
    
-    
 
-    let possiblePropositionForNewEpoch = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+    let possiblePropositionForNewEpoch = request.body
 
     let responseStructure = {}
-
-
+    
 
     if(typeof possiblePropositionForNewEpoch === 'object'){
 
@@ -389,22 +385,9 @@ let acceptEpochFinishProposition=response=>response.writeHeader('Access-Control-
 
         }
 
-        !response.aborted && response.end(JSON.stringify(responseStructure))
+        response.send(responseStructure)
 
-    }else !response.aborted && response.end(JSON.stringify({err:'Wrong format'}))
+    }else response.send({err:'Wrong format'})
 
 
 })
-
-
-
-
-FASTIFY_SERVER
-
-
-
-// Simple GET handler to return AEFP for given shard and epoch ✅
-.get('/aggregated_epoch_finalization_proof/:EPOCH_INDEX/:SHARD_ID',getAggregatedEpochFinalizationProof)
-
-// Handler to acccept propositions to finish the epoch for shards and return agreement to build AEFP - Aggregated Epoch Finalization Proof ✅
-.post('/epoch_proposition',acceptEpochFinishProposition)

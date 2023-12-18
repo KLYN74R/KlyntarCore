@@ -1,6 +1,6 @@
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_edge_operations_verifiers.js'
 
-import{BODY,BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
+import{BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -45,19 +45,25 @@ Returns object like:
 
 */
 
-let epochEdgeOperationToMempool=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
 
 
-    let epochEdgeOperationWithAgreementProofs = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+// Handler to accept EEO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this EEO and we can add it to block header ✅
+
+FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+
+    let epochEdgeOperationWithAgreementProofs = request.body
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
 
+    response.header('access-control-allow-origin','*')
+
+    
     if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
+        response.send({err:'Epoch handler on QT is not ready'})
 
         return
     }
@@ -68,7 +74,7 @@ let epochEdgeOperationToMempool=response=>response.writeHeader('Access-Control-A
 
     if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
-        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept epoch edge operations`}))
+        response.send({err:`Route is off. This node don't accept epoch edge operations`})
 
         return
     }
@@ -76,7 +82,7 @@ let epochEdgeOperationToMempool=response=>response.writeHeader('Access-Control-A
 
     if(typeof epochEdgeOperationWithAgreementProofs.epochEdgeOperation !== 'object' || typeof epochEdgeOperationWithAgreementProofs.aggreementProofs !== 'object'){
 
-        !response.aborted && response.end(JSON.stringify({err:`Wrong format. Input data must contain <epochEdgeOperation>(your operation) and <agreementProofs>(aggregated version of verification proofs from quorum members majority)`}))
+        response.send({err:`Wrong format. Input data must contain <epochEdgeOperation>(your operation) and <agreementProofs>(aggregated version of verification proofs from quorum members majority)`})
 
         return
 
@@ -113,12 +119,14 @@ let epochEdgeOperationToMempool=response=>response.writeHeader('Access-Control-A
         
         tempObject.EPOCH_EDGE_OPERATIONS_MEMPOOL.push(epochEdgeOperationWithAgreementProofs.epochEdgeOperation)
 
-        !response.aborted && response.end(JSON.stringify({status:`OK`}))
+        response.send({status:`OK`})
         
 
-    } else !response.aborted && response.end(JSON.stringify({err:`Verification failed`}))
+    } else response.send({err:`Verification failed`})
+
 
 })
+
 
 
 
@@ -140,17 +148,19 @@ Body is
 
 */
 
-let epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>response.aborted=true).onData(async bytes=>{
+// Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
 
-    
-    let epochEdgeOperation = await BODY(bytes,global.CONFIG.MAX_PAYLOAD_SIZE)
+FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+
+    let epochEdgeOperation = request.body
 
     let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
+    response.header('access-control-allow-origin','*')
 
     if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
-        !response.aborted && response.end(JSON.stringify({err:'Epoch handler on QT is not ready'}))
+        response.send({err:'Epoch handler on QT is not ready'})
 
         return
     }
@@ -158,7 +168,7 @@ let epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-A
 
     if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
-        !response.aborted && response.end(JSON.stringify({err:`Route is off. This node don't accept epoch edge operations`}))
+        response.send({err:`Route is off. This node don't accept epoch edge operations`})
 
         return
     }
@@ -171,7 +181,7 @@ let epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-A
 
         if(possibleEpochEdgeOperation?.isError){
             
-            !response.aborted && response.end(JSON.stringify({err:`Verification failed. Reason => ${JSON.stringify(possibleEpochEdgeOperation)}`}))
+            response.send({err:`Verification failed. Reason => ${JSON.stringify(possibleEpochEdgeOperation)}`})
 
         }
         else if(possibleEpochEdgeOperation){
@@ -186,33 +196,17 @@ let epochEdgeOperationsVerifier=response=>response.writeHeader('Access-Control-A
 
             )
 
-            !response.aborted && response.end(JSON.stringify({
+            response.send({
 
                 signer:global.CONFIG.SYMBIOTE.PUB,
                 
                 signature
 
-            }))
+            })
        
         }
-        else !response.aborted && response.end(`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleEpochEdgeOperation)}`)
+        else response.send({err:`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleEpochEdgeOperation)}`})
 
-    }else !response.aborted && response.end(`No verification function for this system sync operation => ${epochEdgeOperation.type}`)
+    }else response.send({err:`No verification function for this system sync operation => ${epochEdgeOperation.type}`})
 
 })
-
-
-
-
-
-
-
-
-FASTIFY_SERVER
-
-
-// Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
-.post('/sign_epoch_edge_operation',epochEdgeOperationsVerifier)
-
-// Handler to accept EEO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this EEO and we can add it to block header ✅
-.post('/epoch_edge_operation_to_mempool',epochEdgeOperationToMempool)

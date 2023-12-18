@@ -1,6 +1,6 @@
 //Just import all needed modules with routes
 
-[
+let modules = [
     
     'api/block_data.js',
     'api/state_data.js',
@@ -13,8 +13,7 @@
     
     'kly_evm_json_rpc.js'
 
-].forEach(
-    
-    mod => import(`./routes/${mod}`)
-    
-)
+]
+
+
+for(let modPath of modules) await import(`./routes/${modPath}`)

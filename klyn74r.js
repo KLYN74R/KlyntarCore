@@ -371,43 +371,42 @@ await new Promise(resolve=>
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
 
 
+export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
 
-let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
 
-await RUN_SYMBIOTE()
+(async()=>{
+
+    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
+
+    await RUN_SYMBIOTE()
+
+    for(let scriptPath of global.CONFIG.PLUGINS){
+
+        import(`./KLY_Plugins/${scriptPath}`).catch(
+            
+            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
+            
+        )
     
+    }
+    
+    
+    
+    
+    //_______________________________________________GET SERVER ROUTES______________________________________________    
+    
+    // Import routes
+    
+    await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
+    
+    
+    FASTIFY_SERVER.listen({port:global.CONFIG.PORT,host:global.CONFIG.INTERFACE},(err,_address)=>{
+    
+        if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
+    
+        else LOG('Oops,some problems with server module','F')
+    
+    })
 
 
-for(let scriptPath of global.CONFIG.PLUGINS){
-
-    import(`./KLY_Plugins/${scriptPath}`).catch(
-        
-        e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
-        
-    )
-
-}
-
-
-
-
-//_______________________________________________GET SERVER ROUTES______________________________________________
-
-
-
-export const FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS)
-
-
-// Import routes
-
-import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
-
-
-
-FASTIFY_SERVER.listen({port:global.CONFIG.PORT,host:global.CONFIG.INTERFACE},(err,_address)=>{
-
-    if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.INTERFACE}]:${global.CONFIG.PORT}`,'S')
-
-    else LOG('Oops,some problems with server module','F')
-
-})
+})()
