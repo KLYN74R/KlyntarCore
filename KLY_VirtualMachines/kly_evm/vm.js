@@ -35,10 +35,10 @@ const {
 
 } = global.CONFIG.KLY_EVM
 
-
-const common = Common.custom({name,networkId,chainId},hardfork)
+const common = Common.custom({name,networkId,chainId},{hardfork})
 
 const web3 = new Web3()
+
 
 
 //_________________________________________________________ FUNCTIONS POOL _________________________________________________________
@@ -107,10 +107,10 @@ class KLY_EVM_CLASS {
     callEVM=async(evmContext,serializedEVMTxWith0x)=>{
         
         let serializedEVMTxWithout0x = serializedEVMTxWith0x.slice(2) // delete 0x
-
+        
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        let evmCaller = tx.getSenderAddress()
+        let evmCaller = tx.getSenderAddress().toString()
 
         let block = this.block
 
@@ -134,21 +134,21 @@ class KLY_EVM_CLASS {
 
         // In case it's just KLY-EVM call to read from contract - then ok, otherwise(if isJustCall=false) we assume that it's attempt to add to mempool(so we need to verify signature and other stuff)
 
-        let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'))
-        
+        let tx = isJustCall ? Transaction.fromTxData(txDataOrSerializedTxInHexWith0x,{freeze:false,common}) : Transaction.fromSerializedTx(Buffer.from(txDataOrSerializedTxInHexWith0x.slice(2),'hex'),{freeze:false,common})
+
         let block = this.block
         
         // To prevent spam - limit the maximum allowed gas for free EVM calls
-
-        tx.gasLimit = global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution
         
-        
-        let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
+        let evmCaller = isJustCall ? txDataOrSerializedTxInHexWith0x.from : tx.isSigned() && tx.getSenderAddress().toString()
     
         if(evmCaller){
 
-            let vmCopy = await this.vm.copy()
+            // tx.from = evmCaller
 
+            // tx.gasLimit = BigInt(global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
+            
+            let vmCopy = await this.vm.copy()
 
             let txResult = await vmCopy.runTx({
                 
@@ -296,7 +296,7 @@ class KLY_EVM_CLASS {
         txData.gasLimit = global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
 
 
-        let tx = Transaction.fromTxData(txData)
+        let tx = Transaction.fromTxData(txData,{common})
 
         let evmCaller = Address.fromString(txData.from) || tx.isSigned() && tx.getSenderAddress()
     
@@ -368,7 +368,7 @@ class KLY_EVM_CLASS {
         */
 
 
-        let tx = Transaction.fromSerializedTx(Buffer.from(transactionInHex.slice(2),'hex'))
+        let tx = Transaction.fromSerializedTx(Buffer.from(transactionInHex.slice(2),'hex'),{common})
             
         if(tx){
         

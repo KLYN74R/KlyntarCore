@@ -3,20 +3,30 @@ import {Common} from '@ethereumjs/common'
 import Web3 from 'web3'
 
 
+
 //___________________________________ CONSTANTS POOL ___________________________________
 
 
-const web3 = new Web3('http://localhost:7332/kly_evm_rpc')
+const web3 = new Web3('http://localhost:7332/kly_evm_rpc/9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK')
 
 // KLY-EVM
-const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},'merge')
+const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'merge'})
+
 
 // EVM account
 
+
+// const evmAccount0 = {
+
+//     address:'0x4741c39e6096c192Db6E1375Ff32526512069dF5',
+//     privateKey:Buffer.from('d86dd54fd92f7c638668b1847aa3928f213db09ccda19f1a5f2badeae50cb93e','hex')
+
+// }
+
 const evmAccount0 = {
 
-    address:'0x4741c39e6096c192Db6E1375Ff32526512069dF5',
-    privateKey:Buffer.from('d86dd54fd92f7c638668b1847aa3928f213db09ccda19f1a5f2badeae50cb93e','hex')
+    address:'0x069bdf66961ce2D38eBe48DD2E095f2c8015ac82',
+    privateKey:Buffer.from('a06d4e98075df20d90972dfec819a8711c8d245423f9d3a13f809505f81fbcb8','hex')
 
 }
 
@@ -46,6 +56,9 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
+    web3.eth.getBalance(evmAccount1.address).then(balance=>console.log(`Balance of ${evmAccount1.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+
+
     web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(nonce=>console.log(`Nonce of 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is ${nonce}`)).catch(e=>console.log(e))
 
     web3.eth.getCoinbase().then(miner=>console.log('Coinbase is '+miner)).catch(e=>console.log(e))
@@ -62,15 +75,17 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-// DEFAULT_SIMPLE_QUERIES()
+DEFAULT_SIMPLE_QUERIES()
 
 
 let EVM_DEFAULT_TX=async()=>{
 
-    let nonce = await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5')
+    let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
 
     // Build a transaction
     let txObject = {
+
+        from:evmAccount0.address,
         
         nonce:web3.utils.toHex(nonce),
 
@@ -94,7 +109,7 @@ let EVM_DEFAULT_TX=async()=>{
 
     console.log(tx.toJSON())
 
-    let raw = '0x' + tx.serialize().toString('hex')
+    let raw = '0x' + Buffer.from(tx.serialize()).toString('hex')
 
 	// Broadcast the transaction
     web3.eth.sendSignedTransaction(raw,(err,txHash) => console.log(err?`Oops,some error has been occured ${err}`:`Success ———> ${txHash}`))
@@ -102,7 +117,7 @@ let EVM_DEFAULT_TX=async()=>{
 }
 
 
-EVM_DEFAULT_TX()
+// EVM_DEFAULT_TX()
 
 
 let EVM_CONTRACT_DEPLOY=async()=>{

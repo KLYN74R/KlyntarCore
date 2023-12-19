@@ -13,4 +13,4 @@ LOG(`\u001b[38;5;93mKLY-EVM JSON-RPC is available via \u001b[38;5;113mPOST /kly_
 
 FASTIFY_SERVER
 
-.post('/kly_evm_rpc/:SHARD',EVM_ROUTE_HANDLER)
+.post('/kly_evm_rpc/:shardID',EVM_ROUTE_HANDLER)

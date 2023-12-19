@@ -385,13 +385,13 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(originShard,txWithPayload,rewardBox,atomicBatch)=>{
 
 
-        let evmResult = await KLY_EVM.callEVM(originShard,tx.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
 
 
-        if(evmResult && !evmResult.execResult.exceptionError){            
+        if(evmResult && !evmResult.execResult.exceptionError){
           
             let totalSpentInWei = evmResult.amountSpent //BigInt value
 
@@ -405,7 +405,7 @@ export let VERIFIERS = {
             rewardBox.fees += totalSpentByTxInKLY
 
 
-            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(tx.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(txWithPayload.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
             atomicBatch.put('TX:'+tx.hash,{tx,receipt})
 

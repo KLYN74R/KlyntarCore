@@ -2068,7 +2068,7 @@ verifyBlock=async(block,shardContext)=>{
 
                     let txCopy = JSON.parse(JSON.stringify(transaction))
 
-                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>{})
+                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(err=>console.log('DEBUG:',err))
 
                     // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                     if(reason!=='EVM'){
