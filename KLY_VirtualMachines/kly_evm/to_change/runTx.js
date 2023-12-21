@@ -144,7 +144,7 @@ async function _runTx(opts) {
      */
     await this._emit('beforeTx', tx);
     
-    const caller = util_1.Address.fromString(opts.evmCaller); //tx.getSenderAddress();
+    const caller = opts.evmCaller; //tx.getSenderAddress(); | util_1.Address.fromString(opts.evmCaller)
 
     if (this.DEBUG) {
         debug(`New tx run hash=${opts.tx.isSigned() ? opts.tx.hash().toString('hex') : 'unsigned'} sender=${caller}`);
@@ -313,6 +313,9 @@ async function _runTx(opts) {
         value,
         data,
         versionedHashes,
+
+        isSandboxExecution:opts.isSandboxExecution,
+        evmContext:opts.evmContext
     }));
     if (this.DEBUG) {
         debug(`Update fromAccount (caller) nonce (-> ${fromAccount.nonce})`);

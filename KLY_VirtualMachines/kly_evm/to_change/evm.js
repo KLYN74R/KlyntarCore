@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EvmErrorResult = exports.CodesizeExceedsMaximumError = exports.INVALID_EOF_RESULT = exports.INVALID_BYTECODE_RESULT = exports.COOGResult = exports.OOGResult = exports.EVM = void 0;
 const common_1 = require("@ethereumjs/common");
 const util_1 = require("@ethereumjs/util");
-const AsyncEventEmitter = require("async-eventemitter");
 const debug_1 = require("debug");
 const util_2 = require("util");
 const eof_1 = require("./eof");
@@ -13,8 +12,9 @@ const message_1 = require("./message");
 const opcodes_1 = require("./opcodes");
 const precompiles_1 = require("./precompiles");
 const transientStorage_1 = require("./transientStorage");
-const debug = (0, debug_1.debug)('evm');
+const debug = (0, debug_1.debug)('evm:evm');
 const debugGas = (0, debug_1.debug)('evm:gas');
+const debugPrecompiles = (0, debug_1.debug)('evm:precompiles');
 // very ugly way to detect if we are running in a browser
 const isBrowser = new Function('try {return this===window;}catch(e){ return false;}');
 let mcl;
@@ -41,7 +41,7 @@ class EVM {
          * @hidden
          */
         this.DEBUG = false;
-        this.events = new AsyncEventEmitter();
+        this.events = new util_1.AsyncEventEmitter();
         this._optsCached = opts;
         this.eei = opts.eei;
         this._transientStorage = new transientStorage_1.TransientStorage();
@@ -55,35 +55,18 @@ class EVM {
         // Supported EIPs
         const supportedEIPs = [
             1153, 1559, 2315, 2537, 2565, 2718, 2929, 2930, 3074, 3198, 3529, 3540, 3541, 3607, 3651,
-            3670, 3855, 3860, 4399, 5133,
+            3670, 3855, 3860, 4399, 4895, 4844, 5133,
         ];
         for (const eip of this._common.eips()) {
             if (!supportedEIPs.includes(eip)) {
                 throw new Error(`EIP-${eip} is not supported by the EVM`);
             }
         }
-        const supportedHardforks = [
-            common_1.Hardfork.Chainstart,
-            common_1.Hardfork.Homestead,
-            common_1.Hardfork.Dao,
-            common_1.Hardfork.TangerineWhistle,
-            common_1.Hardfork.SpuriousDragon,
-            common_1.Hardfork.Byzantium,
-            common_1.Hardfork.Constantinople,
-            common_1.Hardfork.Petersburg,
-            common_1.Hardfork.Istanbul,
-            common_1.Hardfork.MuirGlacier,
-            common_1.Hardfork.Berlin,
-            common_1.Hardfork.London,
-            common_1.Hardfork.ArrowGlacier,
-            common_1.Hardfork.GrayGlacier,
-            common_1.Hardfork.MergeForkIdTransition,
-            common_1.Hardfork.Merge,
-        ];
-        if (!supportedHardforks.includes(this._common.hardfork())) {
+        if (!EVM.supportedHardforks.includes(this._common.hardfork())) {
             throw new Error(`Hardfork ${this._common.hardfork()} not set as supported in supportedHardforks`);
         }
         this._allowUnlimitedContractSize = opts.allowUnlimitedContractSize ?? false;
+        this._allowUnlimitedInitCodeSize = opts.allowUnlimitedInitCodeSize ?? false;
         this._customOpcodes = opts.customOpcodes;
         this._customPrecompiles = opts.customPrecompiles;
         this._common.on('hardforkChanged', () => {
@@ -101,13 +84,11 @@ class EVM {
                 this._mcl = mcl;
             }
         }
-        // Safeguard if "process" is not available (browser)
-        if (typeof process?.env.DEBUG !== 'undefined') {
-            this.DEBUG = true;
-        }
         // We cache this promisified function as it's called from the main execution loop, and
         // promisifying each time has a huge performance impact.
         this._emit = ((0, util_2.promisify)(this.events.emit.bind(this.events)));
+        // Skip DEBUG calls unless 'ethjs' included in environmental DEBUG variables
+        this.DEBUG = process?.env?.DEBUG?.includes('ethjs') ?? false;
     }
     get precompiles() {
         return this._precompiles;
@@ -155,15 +136,7 @@ class EVM {
         return data.opcodes;
     }
     async _executeCall(message) {
-
-        // Add two extra fields
-        this.eei.isSandboxExecution = message.isSandboxExecution
-
-        this.eei.evmContext = message.evmContext
-
-
         const account = await this.eei.getAccount(message.authcallOrigin ?? message.caller);
-
         let errorMessage;
         // Reduce tx value from sender
         if (!message.delegatecall) {
@@ -174,39 +147,32 @@ class EVM {
                 errorMessage = e;
             }
         }
-
         // Load `to` account
         const toAccount = await this.eei.getAccount(message.to);
-
-
-
         // Add tx value to the `to` account
         if (!message.delegatecall) {
             try {
-                await this._addToBalance(toAccount,message);
+                await this._addToBalance(toAccount, message);
             }
             catch (e) {
-                
                 errorMessage = e;
             }
         }
         // Load code
         await this._loadCode(message);
         let exit = false;
-
         if (!message.code || message.code.length === 0) {
             exit = true;
             if (this.DEBUG) {
-                debug(`Exit early on no code`);
+                debug(`Exit early on no code (CALL)`);
             }
         }
         if (errorMessage !== undefined) {
             exit = true;
             if (this.DEBUG) {
-                debug(`Exit early on value transfer overflowed`);
+                debug(`Exit early on value transfer overflowed (CALL)`);
             }
         }
-
         if (exit) {
             return {
                 execResult: {
@@ -218,12 +184,7 @@ class EVM {
             };
         }
         let result;
-
         if (message.isCompiled) {
-            if (this.DEBUG) {
-                debug(`Run precompile`);
-            }
-            
             result = await this.runPrecompile(message.code, message.data, message.gasLimit);
             result.gasRefund = message.gasRefund;
         }
@@ -231,7 +192,6 @@ class EVM {
             if (this.DEBUG) {
                 debug(`Start bytecode processing...`);
             }
-
             result = await this.runInterpreter(message);
         }
         if (message.depth === 0) {
@@ -242,20 +202,12 @@ class EVM {
         };
     }
     async _executeCreate(message) {
-
-        // Add two extra fields
-
-        this.eei.isSandboxExecution = message.isSandboxExecution
-
-        this.eei.evmContext = message.evmContext
-
-
-
         const account = await this.eei.getAccount(message.caller);
         // Reduce tx value from sender
         await this._reduceSenderBalance(account, message);
         if (this._common.isActivatedEIP(3860)) {
-            if (message.data.length > Number(this._common.param('vm', 'maxInitCodeSize'))) {
+            if (message.data.length > Number(this._common.param('vm', 'maxInitCodeSize')) &&
+                !this._allowUnlimitedInitCodeSize) {
                 return {
                     createdAddress: message.to,
                     execResult: {
@@ -311,13 +263,13 @@ class EVM {
         if (message.code === undefined || message.code.length === 0) {
             exit = true;
             if (this.DEBUG) {
-                debug(`Exit early on no code`);
+                debug(`Exit early on no code (CREATE)`);
             }
         }
         if (errorMessage !== undefined) {
             exit = true;
             if (this.DEBUG) {
-                debug(`Exit early on value transfer overflowed`);
+                debug(`Exit early on value transfer overflowed (CREATE)`);
             }
         }
         if (exit) {
@@ -426,7 +378,7 @@ class EVM {
             if (!this._common.gteHardfork(common_1.Hardfork.Homestead)) {
                 // Pre-Homestead behavior; put an empty contract.
                 // This contract would be considered "DEAD" in later hard forks.
-                // It is thus an unecessary default item, which we have to save to dik
+                // It is thus an unnecessary default item, which we have to save to dik
                 // It does change the state root, but it only wastes storage.
                 //await this._state.putContractCode(message.to, result.returnValue)
                 const account = await this.eei.getAccount(message.to);
@@ -443,7 +395,6 @@ class EVM {
      * it with the {@link EEI}.
      */
     async runInterpreter(message, opts = {}) {
-        
         const env = {
             address: message.to ?? util_1.Address.zero(),
             caller: message.caller ?? util_1.Address.zero(),
@@ -458,10 +409,9 @@ class EVM {
             contract: await this.eei.getAccount(message.to ?? util_1.Address.zero()),
             codeAddress: message.codeAddress,
             gasRefund: message.gasRefund,
-            isSandboxExecution:message.isSandboxExecution,
-            evmContext:message.evmContext
+            containerCode: message.containerCode,
+            versionedHashes: message.versionedHashes ?? [],
         };
-
         const interpreter = new interpreter_1.Interpreter(this, this.eei, env, message.gasLimit);
         if (message.selfdestruct) {
             interpreter._result.selfdestruct = message.selfdestruct;
@@ -502,6 +452,7 @@ class EVM {
      */
     async runCall(opts) {
         let message = opts.message;
+        let callerAccount;
         if (!message) {
             this._block = opts.block ?? defaultBlock();
             this._tx = {
@@ -511,14 +462,13 @@ class EVM {
             const caller = opts.caller ?? util_1.Address.zero();
             const value = opts.value ?? BigInt(0);
             if (opts.skipBalance === true) {
-                const callerAccount = await this.eei.getAccount(caller);
+                callerAccount = await this.eei.getAccount(caller);
                 if (callerAccount.balance < value) {
                     // if skipBalance and balance less than value, set caller balance to `value` to ensure sufficient funds
                     callerAccount.balance = value;
                     await this.eei.putAccount(caller, callerAccount);
                 }
             }
-
             message = new message_1.Message({
                 caller,
                 gasLimit: opts.gasLimit ?? BigInt(0xffffff),
@@ -531,25 +481,33 @@ class EVM {
                 isStatic: opts.isStatic,
                 salt: opts.salt,
                 selfdestruct: opts.selfdestruct ?? {},
-                delegatecall: opts.delegatecall
+                delegatecall: opts.delegatecall,
+                versionedHashes: opts.versionedHashes,
             });
+
+            // KLY-EVM extra data
+            this.eei.isSandboxExecution = opts.isSandboxExecution
+            this.eei.evmContext = opts.evmContext
+
         }
-
-        
-        // Add two extra fields
-
-        message.isSandboxExecution = opts.isSandboxExecution
-
-        message.evmContext = opts.evmContext
-
-
+        if (message.depth === 0) {
+            if (!callerAccount) {
+                callerAccount = await this.eei.getAccount(message.caller);
+            }
+            callerAccount.nonce++;
+            await this.eei.putAccount(message.caller, callerAccount);
+            if (this.DEBUG) {
+                debug(`Update fromAccount (caller) nonce (-> ${callerAccount.nonce}))`);
+            }
+        }
         await this._emit('beforeMessage', message);
         if (!message.to && this._common.isActivatedEIP(2929) === true) {
             message.code = message.data;
             this.eei.addWarmedAddress((await this._generateAddress(message)).buf);
         }
         await this.eei.checkpoint();
-        this._transientStorage.checkpoint();
+        if (this._common.isActivatedEIP(1153))
+            this._transientStorage.checkpoint();
         if (this.DEBUG) {
             debug('-'.repeat(100));
             debug(`message checkpoint`);
@@ -564,14 +522,12 @@ class EVM {
                 debug(`Message CALL execution (to: ${message.to})`);
             }
             result = await this._executeCall(message);
-
         }
         else {
             if (this.DEBUG) {
                 debug(`Message CREATE execution (to undefined)`);
             }
             result = await this._executeCreate(message);
-
         }
         if (this.DEBUG) {
             const { executionGasUsed, exceptionError, returnValue } = result.execResult;
@@ -580,33 +536,27 @@ class EVM {
         const err = result.execResult.exceptionError;
         // This clause captures any error which happened during execution
         // If that is the case, then all refunds are forfeited
-        if (err) {
+        // There is one exception: if the CODESTORE_OUT_OF_GAS error is thrown
+        // (this only happens the Frontier/Chainstart fork)
+        // then the error is dismissed
+        if (err && err.error !== exceptions_1.ERROR.CODESTORE_OUT_OF_GAS) {
             result.execResult.selfdestruct = {};
             result.execResult.gasRefund = BigInt(0);
         }
-        if (err) {
-            if (this._common.gteHardfork(common_1.Hardfork.Homestead) ||
-                err.error !== exceptions_1.ERROR.CODESTORE_OUT_OF_GAS) {
-                result.execResult.logs = [];
-                await this.eei.revert();
+        if (err &&
+            !(this._common.hardfork() === common_1.Hardfork.Chainstart && err.error === exceptions_1.ERROR.CODESTORE_OUT_OF_GAS)) {
+            result.execResult.logs = [];
+            await this.eei.revert();
+            if (this._common.isActivatedEIP(1153))
                 this._transientStorage.revert();
-                if (this.DEBUG) {
-                    debug(`message checkpoint reverted`);
-                }
-            }
-            else {
-                // we are in chainstart and the error was the code deposit error
-                // we do like nothing happened.
-                await this.eei.commit();
-                this._transientStorage.commit();
-                if (this.DEBUG) {
-                    debug(`message checkpoint committed`);
-                }
+            if (this.DEBUG) {
+                debug(`message checkpoint reverted`);
             }
         }
         else {
             await this.eei.commit();
-            this._transientStorage.commit();
+            if (this._common.isActivatedEIP(1153))
+                this._transientStorage.commit();
             if (this.DEBUG) {
                 debug(`message checkpoint committed`);
             }
@@ -634,6 +584,7 @@ class EVM {
             depth: opts.depth,
             selfdestruct: opts.selfdestruct ?? {},
             isStatic: opts.isStatic,
+            versionedHashes: opts.versionedHashes,
         });
         return this.runInterpreter(message, { pc: opts.pc });
     }
@@ -656,6 +607,7 @@ class EVM {
             gasLimit,
             _common: this._common,
             _EVM: this,
+            _debug: this.DEBUG ? debugPrecompiles : undefined,
         };
         return code(opts);
     }
@@ -667,8 +619,14 @@ class EVM {
                 message.isCompiled = true;
             }
             else {
-                message.code = await this.eei.getContractCode(message.codeAddress);
+                message.containerCode = await this.eei.getContractCode(message.codeAddress);
                 message.isCompiled = false;
+                if (this._common.isActivatedEIP(3540)) {
+                    message.code = (0, eof_1.getEOFCode)(message.containerCode);
+                }
+                else {
+                    message.code = message.containerCode;
+                }
             }
         }
     }
@@ -679,10 +637,7 @@ class EVM {
         }
         else {
             const acc = await this.eei.getAccount(message.caller);
-            let newNonce = acc.nonce;
-            if (message.depth > 0) {
-                newNonce--;
-            }
+            const newNonce = acc.nonce - BigInt(1);
             addr = (0, util_1.generateAddress)(message.caller.buf, (0, util_1.bigIntToBuffer)(newNonce));
         }
         return new util_1.Address(addr);
@@ -723,15 +678,38 @@ class EVM {
             this._transientStorage.clear();
     }
     copy() {
+        const common = this._common.copy();
+        common.setHardfork(this._common.hardfork());
         const opts = {
             ...this._optsCached,
-            common: this._common.copy(),
+            common,
             eei: this.eei.copy(),
         };
+        opts.eei._common = common;
         return new EVM(opts);
     }
 }
 exports.EVM = EVM;
+EVM.supportedHardforks = [
+    common_1.Hardfork.Chainstart,
+    common_1.Hardfork.Homestead,
+    common_1.Hardfork.Dao,
+    common_1.Hardfork.TangerineWhistle,
+    common_1.Hardfork.SpuriousDragon,
+    common_1.Hardfork.Byzantium,
+    common_1.Hardfork.Constantinople,
+    common_1.Hardfork.Petersburg,
+    common_1.Hardfork.Istanbul,
+    common_1.Hardfork.MuirGlacier,
+    common_1.Hardfork.Berlin,
+    common_1.Hardfork.London,
+    common_1.Hardfork.ArrowGlacier,
+    common_1.Hardfork.GrayGlacier,
+    common_1.Hardfork.MergeForkIdTransition,
+    common_1.Hardfork.Merge,
+    common_1.Hardfork.Shanghai,
+    common_1.Hardfork.ShardingForkDev,
+];
 function OOGResult(gasLimit) {
     return {
         returnValue: Buffer.alloc(0),

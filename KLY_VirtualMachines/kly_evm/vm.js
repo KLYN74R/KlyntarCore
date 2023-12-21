@@ -110,7 +110,7 @@ class KLY_EVM_CLASS {
         
         let tx = Transaction.fromSerializedTx(Buffer.from(serializedEVMTxWithout0x,'hex'))
 
-        let evmCaller = tx.getSenderAddress().toString()
+        let evmCaller = tx.getSenderAddress()
 
         let block = this.block
 
@@ -140,11 +140,9 @@ class KLY_EVM_CLASS {
         
         // To prevent spam - limit the maximum allowed gas for free EVM calls
         
-        let evmCaller = isJustCall ? txDataOrSerializedTxInHexWith0x.from : tx.isSigned() && tx.getSenderAddress().toString()
+        let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
     
         if(evmCaller){
-
-            // tx.from = evmCaller
 
             // tx.gasLimit = BigInt(global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
             
@@ -315,7 +313,7 @@ class KLY_EVM_CLASS {
         
         })
     
-        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed.toString())
+        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed.toString()) // OR txResult.totalGasSpent.toString()
         
     }
 

@@ -5,21 +5,19 @@ const common_1 = require("@ethereumjs/common");
 const precompiles_1 = require("@ethereumjs/evm/dist/precompiles");
 const util_1 = require("@ethereumjs/util");
 const debug_1 = require("debug");
+const journaling_1 = require("./journaling");
 class VmState {
     constructor({ common, stateManager }) {
         this.DEBUG = false;
         this._checkpointCount = 0;
         this._stateManager = stateManager;
         this._common = common ?? new common_1.Common({ chain: common_1.Chain.Mainnet, hardfork: common_1.Hardfork.Petersburg });
-        this._touched = new Set();
-        this._touchedStack = [];
         this._originalStorageCache = new Map();
         this._accessedStorage = [new Map()];
         this._accessedStorageReverted = [new Map()];
-        // Safeguard if "process" is not available (browser)
-        if (process !== undefined && typeof process.env.DEBUG !== 'undefined') {
-            this.DEBUG = true;
-        }
+        this.touchedJournal = new journaling_1.Journaling();
+        // Skip DEBUG calls unless 'ethjs' included in environmental DEBUG variables
+        this.DEBUG = process?.env?.DEBUG?.includes('ethjs') ?? false;
         this._debug = (0, debug_1.debug)('vm:state');
     }
     /**
@@ -30,31 +28,34 @@ class VmState {
      * Partial implementation, called from the subclass.
      */
     async checkpoint() {
-        this._touchedStack.push(new Set(Array.from(this._touched)));
-        this._accessedStorage.push(new Map());
+        if (this._common.gteHardfork(common_1.Hardfork.Berlin)) {
+            this._accessedStorage.push(new Map());
+        }
         await this._stateManager.checkpoint();
         this._checkpointCount++;
+        this.touchedJournal.checkpoint();
         if (this.DEBUG) {
             this._debug('-'.repeat(100));
-            this._debug(`message checkpoint`);
+            this._debug(`state checkpoint`);
         }
     }
     async commit() {
-        // setup cache checkpointing
-        this._touchedStack.pop();
-        // Copy the contents of the map of the current level to a map higher.
-        const storageMap = this._accessedStorage.pop();
-        if (storageMap) {
-            this._accessedStorageMerge(this._accessedStorage, storageMap);
+        if (this._common.gteHardfork(common_1.Hardfork.Berlin)) {
+            // Copy the contents of the map of the current level to a map higher.
+            const storageMap = this._accessedStorage.pop();
+            if (storageMap) {
+                this._accessedStorageMerge(this._accessedStorage, storageMap);
+            }
         }
         await this._stateManager.commit();
+        this.touchedJournal.commit();
         this._checkpointCount--;
         if (this._checkpointCount === 0) {
             await this._stateManager.flush();
             this._clearOriginalStorageCache();
         }
         if (this.DEBUG) {
-            this._debug(`message checkpoint committed`);
+            this._debug(`state checkpoint committed`);
         }
     }
     /**
@@ -64,35 +65,26 @@ class VmState {
      * Partial implementation , called from the subclass.
      */
     async revert() {
-        // setup cache checkpointing
-        const lastItem = this._accessedStorage.pop();
-        if (lastItem) {
-            this._accessedStorageReverted.push(lastItem);
+        if (this._common.gteHardfork(common_1.Hardfork.Berlin)) {
+            // setup cache checkpointing
+            const lastItem = this._accessedStorage.pop();
+            if (lastItem) {
+                this._accessedStorageReverted.push(lastItem);
+            }
         }
-        const touched = this._touchedStack.pop();
-        if (!touched) {
-            throw new Error('Reverting to invalid state checkpoint failed');
-        }
-        // Exceptional case due to consensus issue in Geth and Parity.
-        // See [EIP issue #716](https://github.com/ethereum/EIPs/issues/716) for context.
-        // The RIPEMD precompile has to remain *touched* even when the call reverts,
-        // and be considered for deletion.
-        if (this._touched.has(precompiles_1.ripemdPrecompileAddress)) {
-            touched.add(precompiles_1.ripemdPrecompileAddress);
-        }
-        this._touched = touched;
         await this._stateManager.revert();
+        this.touchedJournal.revert(precompiles_1.ripemdPrecompileAddress);
         this._checkpointCount--;
         if (this._checkpointCount === 0) {
             await this._stateManager.flush();
             this._clearOriginalStorageCache();
         }
         if (this.DEBUG) {
-            this._debug(`message checkpoint reverted`);
+            this._debug(`state checkpoint reverted`);
         }
     }
     async getAccount(address) {
-        return await this._stateManager.getAccount(address);
+        return this._stateManager.getAccount(address);
     }
     async putAccount(address, account) {
         await this._stateManager.putAccount(address, account);
@@ -110,13 +102,13 @@ class VmState {
         await this.touchAccount(address);
     }
     async getContractCode(address) {
-        return await this._stateManager.getContractCode(address);
+        return this._stateManager.getContractCode(address);
     }
     async putContractCode(address, value) {
-        return await this._stateManager.putContractCode(address, value);
+        return this._stateManager.putContractCode(address, value);
     }
     async getContractStorage(address, key) {
-        return await this._stateManager.getContractStorage(address, key);
+        return this._stateManager.getContractStorage(address, key);
     }
     async putContractStorage(address, key, value) {
         await this._stateManager.putContractStorage(address, key, value);
@@ -127,19 +119,19 @@ class VmState {
         await this.touchAccount(address);
     }
     async accountExists(address) {
-        return await this._stateManager.accountExists(address);
+        return this._stateManager.accountExists(address);
     }
     async setStateRoot(stateRoot) {
         if (this._checkpointCount !== 0) {
             throw new Error('Cannot set state root with uncommitted checkpoints');
         }
-        return await this._stateManager.setStateRoot(stateRoot);
+        return this._stateManager.setStateRoot(stateRoot);
     }
     async getStateRoot() {
-        return await this._stateManager.getStateRoot();
+        return this._stateManager.getStateRoot();
     }
     async hasStateRoot(root) {
-        return await this._stateManager.hasStateRoot(root);
+        return this._stateManager.hasStateRoot(root);
     }
     /**
      * Marks an account as touched, according to the definition
@@ -149,25 +141,68 @@ class VmState {
      * at the end of the tx.
      */
     async touchAccount(address) {
+        
+        console.log('DEBUG: Touched account is => ',address.buf.toString('hex'),`(context:${this.evmContext} | isSandbox:${this.isSandboxExecution})`)
+    
+        // let addressAsStringWithout0x = address.buf.toString('hex');
 
-        // KLY-EVM extra logic
+        // let bindedToShard = await global.GET_SHARD_ASSIGNMENT(addressAsStringWithout0x);
+
+        // // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
+
+        // let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
+
+
+        // if(bindedToShard !== evmExecutionContext){
+
+        //     throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
+
+        // }
+
+        this.touchedJournal.addJournalItem(address.buf.toString('hex'));
+
+        /*
+        
+        
+        
+                // KLY-EVM extra logic
 
         let addressAsStringWithout0x = address.buf.toString('hex');
 
         let bindedToShard = await global.GET_SHARD_ASSIGNMENT(addressAsStringWithout0x);
 
+        // In case it's new contract and we don't have binding for it - bind to current context
+
+        if(!bindedToShard){
+
+            if(opts.isSandboxExecution) bindedToShard = global.CONFIG.KLY_EVM.bindContext
+
+            else {
+
+                global.ATOMIC_BATCH.put('SHARD_BIND:'+addressAsStringWithout0x,{shard:opts.evmContext})
+
+                bindedToShard = opts.evmContext    
+
+            }
+
+        }
+
         // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
 
-        let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
+        let evmExecutionContext = opts.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : opts.evmContext
 
 
-        if(bindedToShard !== evmExecutionContext){
+        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== '0000000000000000000000000000000000000000'){
 
             throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
         }
 
         this._touched.add(addressAsStringWithout0x);
+
+        
+        */
+
 
     }
     /**
@@ -233,7 +268,7 @@ class VmState {
      */
     async cleanupTouchedAccounts() {
         if (this._common.gteHardfork(common_1.Hardfork.SpuriousDragon) === true) {
-            const touchedArray = Array.from(this._touched);
+            const touchedArray = Array.from(this.touchedJournal.journal);
             for (const addressHex of touchedArray) {
                 const address = new util_1.Address(Buffer.from(addressHex, 'hex'));
                 const empty = await this.accountIsEmpty(address);
@@ -245,7 +280,7 @@ class VmState {
                 }
             }
         }
-        this._touched.clear();
+        this.touchedJournal.clear();
     }
     /**
      * Caches the storage value associated with the provided `address` and `key`

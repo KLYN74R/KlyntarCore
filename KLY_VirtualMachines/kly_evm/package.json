@@ -12,22 +12,25 @@
   ],
   "scripts": {
 
-    "build:linux":"pnpm install --unsafe-perm ; cp ./to_change/runTx.js node_modules/@ethereumjs/vm/dist/runTx.js ; cp ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js ; cp ./to_change/evm.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/evm.js; cp ./to_change/hooking/functions.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/opcodes/functions.js ; cp ./to_change/hooking/util.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/opcodes/util.js",
+    "build:linux":"pnpm install --unsafe-perm ; cp ./to_change/runTx.js node_modules/@ethereumjs/vm/dist/runTx.js ; cp ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js ; cp ./to_change/evm.js node_modules/@ethereumjs/evm/dist/evm.js; cp ./to_change/hooking/functions.js node_modules/@ethereumjs/evm/dist/opcodes/functions.js ; cp ./to_change/hooking/util.js node_modules/@ethereumjs/evm/dist/opcodes/util.js",
 
-    "build:windows":"pnpm install ; copy ./to_change/runTx.js node_modules/@ethereumjs/vm/dist/runTx.js ; copy ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js ; copy ./to_change/evm.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/evm.js; copy ./to_change/hooking/functions.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/opcodes/functions.js ; copy ./to_change/hooking/util.js node_modules/.pnpm/@ethereumjs+evm@1.0.0/node_modules/@ethereumjs/evm/dist/opcodes/util.js"
+    "build:windows":"pnpm install ; copy ./to_change/runTx.js node_modules/@ethereumjs/vm/dist/runTx.js ; copy ./to_change/vmState.js node_modules/@ethereumjs/vm/dist/eei/vmState.js ; copy ./to_change/evm.js node_modules/@ethereumjs/evm/dist/evm.js; copy ./to_change/hooking/functions.js node_modules/@ethereumjs/evm/dist/opcodes/functions.js ; copy ./to_change/hooking/util.js node_modules/@ethereumjs/evm/dist/opcodes/util.js"
 
   },
+
   "author": "KlyntarTeam",
   "license": "Apache-2.0",
   "dependencies": {
-    "@ethereumjs/block": "4.0.0",
-    "@ethereumjs/common": "3.0.0",
+    "@ethereumjs/block": "4.2.2",
+    "@ethereumjs/blockchain": "6.2.2",
+    "@ethereumjs/common": "3.1.2",
+    "@ethereumjs/evm": "1.3.2",
     "@ethereumjs/rlp": "4.0.1",
-    "@ethereumjs/statemanager": "1.0.0",
-    "@ethereumjs/trie": "5.0.0",
-    "@ethereumjs/tx": "4.0.0",
-    "@ethereumjs/util": "8.0.0",
-    "@ethereumjs/vm": "6.0.0",
+    "@ethereumjs/statemanager": "1.0.5",
+    "@ethereumjs/trie": "5.0.5",
+    "@ethereumjs/tx": "4.1.2",
+    "@ethereumjs/vm": "6.4.2",
+    "@ethereumjs/util": "8.0.6",
     "@ethersproject/abi": "5.7.0",
     "level": "^8.0.0"
   }
