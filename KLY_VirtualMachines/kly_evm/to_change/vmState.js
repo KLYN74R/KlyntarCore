@@ -142,30 +142,7 @@ class VmState {
      */
     async touchAccount(address) {
         
-        console.log('DEBUG: Touched account is => ',address.buf.toString('hex'),`(context:${this.evmContext} | isSandbox:${this.isSandboxExecution})`)
-    
-        // let addressAsStringWithout0x = address.buf.toString('hex');
-
-        // let bindedToShard = await global.GET_SHARD_ASSIGNMENT(addressAsStringWithout0x);
-
-        // // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
-
-        // let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
-
-
-        // if(bindedToShard !== evmExecutionContext){
-
-        //     throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
-
-        // }
-
-        this.touchedJournal.addJournalItem(address.buf.toString('hex'));
-
-        /*
-        
-        
-        
-                // KLY-EVM extra logic
+        // KLY-EVM extra logic
 
         let addressAsStringWithout0x = address.buf.toString('hex');
 
@@ -175,13 +152,13 @@ class VmState {
 
         if(!bindedToShard){
 
-            if(opts.isSandboxExecution) bindedToShard = global.CONFIG.KLY_EVM.bindContext
+            if(this.isSandboxExecution) bindedToShard = global.CONFIG.KLY_EVM.bindContext
 
             else {
 
-                global.ATOMIC_BATCH.put('SHARD_BIND:'+addressAsStringWithout0x,{shard:opts.evmContext})
+                global.ATOMIC_BATCH.put('SHARD_BIND:'+addressAsStringWithout0x,{shard:this.evmContext})
 
-                bindedToShard = opts.evmContext    
+                bindedToShard = this.evmContext    
 
             }
 
@@ -189,7 +166,7 @@ class VmState {
 
         // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
 
-        let evmExecutionContext = opts.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : opts.evmContext
+        let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
 
 
         if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== '0000000000000000000000000000000000000000'){
@@ -198,11 +175,7 @@ class VmState {
 
         }
 
-        this._touched.add(addressAsStringWithout0x);
-
-        
-        */
-
+        this.touchedJournal.addJournalItem(address.buf.toString('hex'));
 
     }
     /**

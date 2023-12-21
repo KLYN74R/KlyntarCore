@@ -69,10 +69,15 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 
     web3.eth.getHashrate().then(hashRate=>console.log('Hashrate is ',hashRate)).catch(e=>console.log(e))
 
-    web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5').then(txCount=>console.log('Nonce for 0x4741c39e6096c192Db6E1375Ff32526512069dF5 is '+txCount)).catch(e=>console.log(e))
+    web3.eth.getTransactionCount(evmAccount0.address).then(txCount=>console.log(`Nonce for ${evmAccount0.address} is ${txCount}`)).catch(e=>console.log(e))
 
 
 }
+
+
+// let receipt = await web3.eth.getTransactionReceipt('0x99d4261a8b60ef9947df4f56e8c8159a1cd46dcb5e82b9c70858687f5658c10c')
+
+// console.log('Receipt is ',receipt)
 
 
 DEFAULT_SIMPLE_QUERIES()
@@ -422,7 +427,7 @@ let GET_PAST_LOGS=()=>{
 
 let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
-    let nonce = await web3.eth.getTransactionCount('0x4741c39e6096c192Db6E1375Ff32526512069dF5')
+    let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
 
     // Build a transaction
     let txObject = {
@@ -431,7 +436,7 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
         nonce:web3.utils.toHex(nonce),
 
-        to:evmAccount1.address,
+        to:evmAccount0.address,
         
         value: web3.utils.toHex(web3.utils.toWei('1.337','ether')),
         
@@ -440,7 +445,7 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
         gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
     
         //Set payload in hex
-        data: `0x${Buffer.from('💡 KLYNTAR -> 4e34d2a0b21c54a1qqqqqqqqqqqqqqqqqqqqqqqqqqqqq0a40c8d99187f8dcecebff501f9a15e09230f18ff2ac4808').toString('hex')}`
+        data: `0x${Buffer.from('💡KLYNTAR💡').toString('hex')}`
     
     }
 
@@ -449,7 +454,7 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
     console.log('Tx hash is => ','0x'+tx.hash().toString('hex'))
 
-    console.log(tx.toJSON())
+    // console.log(tx.toJSON())
 
     console.log(await web3.eth.estimateGas(txObject))
 
@@ -459,4 +464,4 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
 }
 
-// ESTIMATE_GAS_FOR_DEFAULT_TX()
+//ESTIMATE_GAS_FOR_DEFAULT_TX()

@@ -387,6 +387,7 @@ export let VERIFIERS = {
     */
     EVM_CALL:async(originShard,txWithPayload,rewardBox,atomicBatch)=>{
 
+        global.ATOMIC_BATCH = atomicBatch
 
         let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
 
@@ -404,12 +405,17 @@ export let VERIFIERS = {
 
             rewardBox.fees += totalSpentByTxInKLY
 
+            let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(txWithPayload.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-            let {tx,receipt} = KLY_EVM.getTransactionWithReceiptToStore(txWithPayload.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+            if(possibleReceipt){
 
-            atomicBatch.put('TX:'+tx.hash,{tx,receipt})
+                let {tx,receipt} = possibleReceipt
 
-            return {isOk:true,reason:'EVM'}
+                atomicBatch.put('TX:'+tx.hash,{tx,receipt})
+
+                return {isOk:true,reason:'EVM'}
+
+            }else return {isOk:false,reason:'EVM'}
 
         }
 
