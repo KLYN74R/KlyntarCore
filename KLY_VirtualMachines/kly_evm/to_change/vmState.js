@@ -169,7 +169,7 @@ class VmState {
         let evmExecutionContext = this.isSandboxExecution ? global.CONFIG.KLY_EVM.bindContext : this.evmContext
 
 
-        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== '0000000000000000000000000000000000000000'){
+        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== global.CONFIG.KLY_EVM.coinbase){
 
             throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
