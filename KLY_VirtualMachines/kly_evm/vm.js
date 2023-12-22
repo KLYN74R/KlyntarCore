@@ -313,7 +313,7 @@ class KLY_EVM_CLASS {
         
         })
     
-        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.executionGasUsed.toString()) // OR txResult.totalGasSpent.toString()
+        return txResult.execResult.exceptionError || web3.utils.toHex(txResult.totalGasSpent.toString()) // OR txResult.totalGasSpent.toString()
         
     }
 

@@ -75,7 +75,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-// let receipt = await web3.eth.getTransactionReceipt('0x99d4261a8b60ef9947df4f56e8c8159a1cd46dcb5e82b9c70858687f5658c10c')
+// let receipt = await web3.eth.getTransactionReceipt('0xef2a25a99d97904b0c416716847c03413a3e4d516aabc79ece84876ac4cc72d3')
 
 // console.log('Receipt is ',receipt)
 
@@ -200,7 +200,7 @@ let EVM_CONTRACT_CALL=async()=>{
 
             from:evmAccount0.address,
 
-            to:'0x49fb5fccd2f0cf7764b4a469669c2d400006d203', // our contract address
+            to:'0xf817fe43C607388E541765173d464050af4907C3', // our contract address
 
             nonce:web3.utils.toHex(txCount),
     
@@ -353,7 +353,7 @@ let MAKE_CHECKPOINT=async()=>{
 
 let GET_CONTRACT_RECEIPT=async()=>{
 
-    let receipt = await web3.eth.getTransactionReceipt('0x65ef4a0a737c5ff0a755b12fe6779ea549b5e2214b655c75384bb1c0856e8325')
+    let receipt = await web3.eth.getTransactionReceipt('0xef2a25a99d97904b0c416716847c03413a3e4d516aabc79ece84876ac4cc72d3')
 
     console.log('Receipt is ',receipt)
 
@@ -429,6 +429,8 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
     let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
 
+    // console.log('Nonce is ',nonce)
+
     // Build a transaction
     let txObject = {
         
@@ -464,4 +466,4 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
 }
 
-//ESTIMATE_GAS_FOR_DEFAULT_TX()
+// ESTIMATE_GAS_FOR_DEFAULT_TX()

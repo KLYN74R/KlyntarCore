@@ -26,6 +26,11 @@ function execHardfork(hardfork, preMergeHf) {
  * @ignore
  */
 async function runTx(opts) {
+
+    // KLY-EVM extra data
+    this.eei.isSandboxExecution = opts.isSandboxExecution
+    this.eei.evmContext = opts.evmContext
+
     // create a reasonable default if no block is given
     opts.block = opts.block ?? block_1.Block.fromBlockData({}, { common: this._common });
     if (opts.skipHardForkValidation !== true) {
