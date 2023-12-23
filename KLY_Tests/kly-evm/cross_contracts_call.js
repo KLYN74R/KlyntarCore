@@ -80,8 +80,6 @@ let EVM_CONTRACT_DEPLOY=async()=>{
 EVM_CONTRACT_DEPLOY()
 
 
-
-
 // let EVM_CONTRACT_CALL=async()=>{
 
 //     // Make a checkpoint by call appropriate method of previously deployed contract
