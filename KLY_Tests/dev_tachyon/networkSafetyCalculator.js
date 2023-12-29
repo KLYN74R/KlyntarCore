@@ -19,7 +19,7 @@ let getKFromN = (k,n) => {
 
 // console.log(getKFromN(21,1000))
 
-const NUMBER_OF_VALIDATORS = 1660
+const NUMBER_OF_VALIDATORS = 1700
 
 const QUORUM_SIZE = 256
 

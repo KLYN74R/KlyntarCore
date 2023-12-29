@@ -1,88 +1,132 @@
-import * as bls from '@noble/bls12-381'
-import Base58 from 'base-58'
+import bls from 'bls-eth-wasm'
 
+await bls.init(bls.BLS12_381)
 
-
-
-// ================================================ EXPORT section ======================================================
-
-import crypto from 'crypto'
 
 
 
 export default {
 
-    generatePrivateKey:async()=>new Promise((resolve,reject)=>
-        
-        crypto.randomBytes(32,(e,buf)=>
+    generatePrivateKey:()=>{
 
-            e ? reject(e) : resolve(buf.toString('hex'))
+        let privateKey = new bls.SecretKey()
 
-        )
+        privateKey.setByCSPRNG()
 
-    ),
+        return privateKey.serializeToHexStr()
 
-    derivePubKey:privateKey=>Base58.encode(bls.getPublicKey(Buffer.from(privateKey,'hex'))),
+    },
+
+    derivePubKeyFromHexPrivateKey:privateKeyAsHex=>{
+
+        let privateKey = bls.deserializeHexStrToSecretKey(privateKeyAsHex)
+
+        let publicKey = privateKey.getPublicKey()
+
+        return `0x${publicKey.serializeToHexStr()}`
+
+    },
     
     //async
-    singleSig:async(msg,privateKey)=>bls.sign(
-        
-        Buffer.from(msg,'utf-8').toString('hex'),Buffer.from(privateKey,'hex')
-        
-        
-        
-    ).then(b=>Buffer.from(b,'utf-8').toString('base64')),
+    singleSig:async(msg,privateKeyAsHexString)=>new Promise(resolve=>{
 
-    singleVerify:async(msg,pubKey,signa)=>bls.verify(Buffer.from(signa,'base64'),Buffer.from(msg,'utf-8').toString('hex'),Base58.decode(pubKey)),
+        let secretKey = bls.deserializeHexStrToSecretKey(privateKeyAsHexString)
 
-    aggregatePublicKeys:publicKeysArray=>Base58.encode(bls.aggregatePublicKeys(publicKeysArray.map(Base58.decode))),
+        resolve(secretKey.sign(msg).serializeToHexStr())
 
-    aggregateSignatures:signaturesArray=>Buffer.from(
+    }),
+    
+    //async
+    singleVerify:async(msg,pubKeyAsHexWith0x,signaAsHex)=>new Promise(resolve=>{
+
+        let publicKey = bls.deserializeHexStrToPublicKey(pubKeyAsHexWith0x.slice(2))
+
+        let signature = bls.deserializeHexStrToSignature(signaAsHex)
+
+        resolve(publicKey.verify(signature,msg))
+
+    }),
+
+    aggregatePublicKeys:publicKeysArrayAsHexWith0x=>new Promise(resolve=>{
+
+        // Create empty template
         
-        bls.aggregateSignatures(
+        let rootPub = new bls.PublicKey()
+
+        for(let hexPubKey of publicKeysArrayAsHexWith0x){
+
+            let pubKey = bls.deserializeHexStrToPublicKey(hexPubKey.slice(2))
+
+            rootPub.add(pubKey)            
             
-            signaturesArray.map(
-                
-                sig => Buffer.from(sig,'base64')
-                
-            )
-            
-        )
-        
-    ).toString('base64'),
+        }
 
+        resolve(`0x${rootPub.serializeToHexStr()}`)
+
+
+    }),
+
+    aggregateSignatures:signaturesArrayAsHex=>new Promise(resolve=>{
+
+        // Create empty template
+        
+        let aggregatedSignature = new bls.Signature()
+
+        for(let hexSigna of signaturesArrayAsHex){
+
+            let signa = bls.deserializeHexStrToSignature(hexSigna)
+
+            aggregatedSignature.add(signa)
+            
+        }
+
+        resolve(aggregatedSignature.serializeToHexStr())
+
+    }),
 
 
   /**
    * Adds an array of verification vectors together to produce the groups verification vector
-   * @param {String} aggregatedPubkeyWhoSign - an aggregated BLS pubkey of users who signed message,so can aggregate their pubkeys into a single one
+   * @param {String} aggregatedPubkeyWhoSignAsHexWith0x - an aggregated BLS pubkey of users who signed message,so can aggregate their pubkeys into a single one
    * @param {Array} afkPubkeysArray - the rest of addresses which are in general pubkey,but don't take part in this round
-   * @param {String} masterPub  - aggregated general(master) pubkey which includes all previously reminded addresses
-   * @param {String} data - message to be signed. It might be transaction,random message, Unobtanium freeze, some service logic and so on
-   * @param {String} aggregatedSignature - aggregated signature received from <pubKeysIn> signatures
+   * @param {String} rootPubKey  - aggregated general(master) pubkey which includes all previously reminded addresses
+   * @param {String} msg - message to be signed. It might be transaction,random message, Unobtanium freeze, some service logic and so on
+   * @param {String} aggregatedSignatureAsHex - aggregated signature received from <pubKeysIn> signatures
    * @param {Number} reverseThreshold - number of signers allowed to be afk
    * 
    */
-    verifyThresholdSignature:async(aggregatedPubkeyWhoSign,afkPubkeysArray,masterPub,data,aggregatedSignature,reverseThreshold)=>{
+    verifyThresholdSignature:(aggregatedPubkeyWhoSignAsHexWith0x,afkPubkeysArray,rootPubKey,msg,aggregatedSignatureAsHex,reverseThreshold)=>new Promise(resolve=>{
 
         if(afkPubkeysArray.length <= reverseThreshold){
 
-            let verifiedSignature = await bls.verify(Buffer.from(aggregatedSignature,'base64'),Buffer.from(data,'utf-8').toString('hex'),Base58.decode(aggregatedPubkeyWhoSign))
+            let aggregatedPubKeyOfActiveSigners = bls.deserializeHexStrToPublicKey(aggregatedPubkeyWhoSignAsHexWith0x.slice(2))
 
-            if(verifiedSignature){
+            let aggregatedSignature = bls.deserializeHexStrToSignature(aggregatedSignatureAsHex)
+
+            if(aggregatedPubKeyOfActiveSigners.verify(aggregatedSignature,msg)){
 
                 // If all the previos steps are OK - do the most CPU intensive task - pubkeys aggregation
 
-                let pubKeysAsRawBytes = [aggregatedPubkeyWhoSign,...afkPubkeysArray].map(Base58.decode)
+                let aggregatedPubKeyOfAfk = new bls.PublicKey()
 
-                let generalPubKey = Base58.encode(bls.aggregatePublicKeys(pubKeysAsRawBytes)) //aggregated pubkey of users who didn't sign the data(offline or deny this sign ceremony)
-    
-                return generalPubKey === masterPub
+                for(let hexPubKeyOfAfk of afkPubkeysArray){
+        
+                    let pubKey = bls.deserializeHexStrToPublicKey(hexPubKeyOfAfk.slice(2))
+        
+                    aggregatedPubKeyOfAfk.add(pubKey)            
+                    
+                }
 
-            }else return false
+                // Finally, to get the rootPub - join <aggregatedPubKeyOfActiveSigners> and <aggregatedPubKeyOfAfk> and compare with <rootPubKey>
+                
+                aggregatedPubKeyOfAfk.add(aggregatedPubKeyOfActiveSigners)
 
-        }else return false
-    
-    }
+                resolve(`0x${aggregatedPubKeyOfAfk.serializeToHexStr()}` === rootPubKey)
+
+            } else resolve(false)
+            
+        }else resolve(false)     
+
+    })
 
 }

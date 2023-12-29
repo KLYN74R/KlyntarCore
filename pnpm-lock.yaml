@@ -14,9 +14,6 @@ dependencies:
   '@klyntar/klyntarevmjsonrpc':
     specifier: github:KLYN74R/KlyntarEVMJsonRPC#v3
     version: github.com/KLYN74R/KlyntarEVMJsonRPC/9a4d15db81770d5dabc6fa2af6b206bdc0cdf841
-  '@noble/bls12-381':
-    specifier: ^1.4.0
-    version: 1.4.0
   assemblyscript:
     specifier: ^0.19.23
     version: 0.19.23
@@ -32,6 +29,9 @@ dependencies:
   blake3-wasm:
     specifier: ^2.1.5
     version: 2.1.5
+  bls-eth-wasm:
+    specifier: ^1.1.1
+    version: 1.1.1
   bls-wasm:
     specifier: ^0.4.8
     version: 0.4.8
@@ -399,11 +399,6 @@ packages:
       js-sha256: 0.9.0
       js-sha512: 0.8.0
       mocha: 8.4.0
-    dev: false
-
-  /@noble/bls12-381@1.4.0:
-    resolution: {integrity: sha512-mIYqC2jMX7Lcu1QtU/FFftMPDSXNCdlGex6BSf5nPojHjnzzBgs1klFWpB1R8YjqHmOO9xrCzF19f2c42+z3vg==}
-    deprecated: Switch to @noble/curves for security updates
     dev: false
 
   /@noble/curves@1.1.0:
@@ -890,6 +885,10 @@ packages:
 
   /blakejs@1.2.1:
     resolution: {integrity: sha512-QXUSXI3QVc/gJME0dBpXrag1kbzOqCjCX8/b54ntNyW6sjtoqxqRk3LTmXzaJoh71zMsDCjM+47jS7XiwN/+fQ==}
+
+  /bls-eth-wasm@1.1.1:
+    resolution: {integrity: sha512-yaoOHCgjICZc2qTpYCvIkJ6L4N2MXBNmdhIpTZGmKZOUc3mmU941EV95qMK02apyYRSKuCydPuCN3fK4o24C1g==}
+    dev: false
 
   /bls-wasm@0.4.8:
     resolution: {integrity: sha512-UF0cHgtK5fBr+MFek8KGNWFePcDKe7izQxyMWpJECpn0WW2iSlgr9iNJrvIczVx87ALWQWZqxoTkGImnOaJJtA==}

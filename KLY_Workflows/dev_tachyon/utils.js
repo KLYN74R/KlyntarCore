@@ -547,7 +547,7 @@ BLOCKLOG=(msg,hash,block,epochIndex)=>{
 BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 
 
-BLS_VERIFY=async(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
+BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
 /**
@@ -801,7 +801,6 @@ DECRYPT_KEYS=async spinner=>{
 
 
     LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
-       
 
 
     
