@@ -32,9 +32,6 @@ dependencies:
   bls-eth-wasm:
     specifier: ^1.1.1
     version: 1.1.1
-  bls-wasm:
-    specifier: ^0.4.8
-    version: 0.4.8
   chalk-animation:
     specifier: ^1.6.0
     version: 1.6.0
@@ -888,10 +885,6 @@ packages:
 
   /bls-eth-wasm@1.1.1:
     resolution: {integrity: sha512-yaoOHCgjICZc2qTpYCvIkJ6L4N2MXBNmdhIpTZGmKZOUc3mmU941EV95qMK02apyYRSKuCydPuCN3fK4o24C1g==}
-    dev: false
-
-  /bls-wasm@0.4.8:
-    resolution: {integrity: sha512-UF0cHgtK5fBr+MFek8KGNWFePcDKe7izQxyMWpJECpn0WW2iSlgr9iNJrvIczVx87ALWQWZqxoTkGImnOaJJtA==}
     dev: false
 
   /bluebird@3.7.2:

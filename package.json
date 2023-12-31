@@ -34,7 +34,6 @@
     "bip-schnorr": "^0.6.7",
     "blake3-wasm": "^2.1.5",
     "bls-eth-wasm": "^1.1.1",
-    "bls-wasm": "^0.4.8",
     "chalk-animation": "^1.6.0",
     "cli-spinners": "^2.9.2",
     "fastify": "^4.25.1",

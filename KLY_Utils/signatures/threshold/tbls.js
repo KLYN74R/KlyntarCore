@@ -2,9 +2,9 @@
 
 
 import * as dkg from './tbls_index.js'
-import blsA from 'bls-wasm'
+import bls from 'bls-eth-wasm'
 
-await blsA.init()
+await bls.init(bls.BLS12_381)
 
 
 export default {
@@ -13,7 +13,7 @@ export default {
 
         let signers=pubKeysArr.map(id => {
 
-            const sk = new blsA.SecretKey()
+            const sk = new bls.SecretKey()
         
             sk.setHashOf(Buffer.from([id]))
         
@@ -23,7 +23,7 @@ export default {
 
         //Вот процесс генерации для участников - они могут это делать приватно у себя
         //Generation process - signers can do it privately on theirs machines
-        const {verificationVector,secretKeyContribution} = dkg.generateContribution(blsA,signers.map(x=>x.id),threshold)
+        const {verificationVector,secretKeyContribution} = dkg.generateContribution(bls,signers.map(x=>x.id),threshold)
       
         //To transfer over network in hex
         //Verification vector можем публиковать - для каждого в группе. Только запоминать порядок индексов
@@ -73,14 +73,14 @@ export default {
     verifyShareTBLS:(hexMyId,hexSomeSignerSecretKeyContribution,hexSomeSignerVerificationVector,isCLI)=>{
         
         //Deserialize at first from hex
-        let someSignerSecretKeyContribution=blsA.deserializeHexStrToSecretKey(hexSomeSignerSecretKeyContribution)
+        let someSignerSecretKeyContribution=bls.deserializeHexStrToSecretKey(hexSomeSignerSecretKeyContribution)
         
-        let someSignerVerificationVector=hexSomeSignerVerificationVector.map(x=>blsA.deserializeHexStrToPublicKey(x))
-        let myId = blsA.deserializeHexStrToSecretKey(hexMyId)
+        let someSignerVerificationVector=hexSomeSignerVerificationVector.map(x=>bls.deserializeHexStrToPublicKey(x))
+        let myId = bls.deserializeHexStrToSecretKey(hexMyId)
     
 
         // Теперь когда нужный член групы получил этот secret sk,то он проверяет его по VSS с помощью verification vector of the sender и сохраняет его если всё ок
-        const isVerified = dkg.verifyContributionShare(blsA,myId,someSignerSecretKeyContribution,someSignerVerificationVector)
+        const isVerified = dkg.verifyContributionShare(bls,myId,someSignerSecretKeyContribution,someSignerVerificationVector)
      
         if(isCLI){
 
@@ -110,7 +110,7 @@ export default {
 
             console.log(hexVerificationVectors.map(subArr=>
 
-                subArr.map(x=>blsA.deserializeHexStrToPublicKey(x))
+                subArr.map(x=>bls.deserializeHexStrToPublicKey(x))
     
             ))    
 
@@ -118,7 +118,7 @@ export default {
 
         const groupVvec = dkg.addVerificationVectors(hexVerificationVectors.map(subArr=>
 
-            subArr.map(x=>blsA.deserializeHexStrToPublicKey(x))
+            subArr.map(x=>bls.deserializeHexStrToPublicKey(x))
 
         ))
         
@@ -169,7 +169,7 @@ export default {
             sharedPayload
 
                 .map(x=>x.secretKeyShare)//get only secretshare part
-                .map(hexValue=>blsA.deserializeHexStrToSecretKey(hexValue))
+                .map(hexValue=>bls.deserializeHexStrToSecretKey(hexValue))
 
         )
 
@@ -191,15 +191,15 @@ export default {
     buildSignature:(signaturesArray,isCLI)=>{
 
         //Now join signatures by t signers
-        const groupsSig = new blsA.Signature()
+        const groupsSig = new bls.Signature()
 
         let sigs=[],signersIds=[]
 
         signaturesArray.forEach(x=>{
 
-            sigs.push(blsA.deserializeHexStrToSignature(x.sigShare))
+            sigs.push(bls.deserializeHexStrToSignature(x.sigShare))
 
-            signersIds.push(blsA.deserializeHexStrToSecretKey(x.id))
+            signersIds.push(bls.deserializeHexStrToSecretKey(x.id))
 
         })
 
@@ -216,9 +216,9 @@ export default {
     verifyTBLS:(hexGroupPubKey,hexSignature,signedMessage)=>{
 
 
-        let groupPubKey=blsA.deserializeHexStrToPublicKey(hexGroupPubKey),
+        let groupPubKey=bls.deserializeHexStrToPublicKey(hexGroupPubKey),
 
-            verified=groupPubKey.verify(blsA.deserializeHexStrToSignature(hexSignature),signedMessage)
+            verified=groupPubKey.verify(bls.deserializeHexStrToSignature(hexSignature),signedMessage)
 
 
         return verified
