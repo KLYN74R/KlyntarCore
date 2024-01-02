@@ -459,7 +459,7 @@ let DILITHIUM_2_MULTISIG=async()=>{
 
 // DEFAULT_2_DEFAULT()
 
-console.log(Buffer.from('MmaAG6n4yz1j1hXzCgtMbsS7r4TrKA4mLa/M598FOMLlhNb63NYT49QrJ2dEOnBbArgBnh9/Ik+0v2gL9/EnCw==','base64').length)
+// console.log(Buffer.from('MmaAG6n4yz1j1hXzCgtMbsS7r4TrKA4mLa/M598FOMLlhNb63NYT49QrJ2dEOnBbArgBnh9/Ik+0v2gL9/EnCw==','base64').length)
 
 
 // MULTISIG_2_MULTISIG()
