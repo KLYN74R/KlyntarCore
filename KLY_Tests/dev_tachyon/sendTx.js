@@ -28,7 +28,7 @@ const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 const WORKFLOW_VERSION = 0
 
-const FEE = 5
+const FEE = 2
 
 const TX_TYPES = {
 
