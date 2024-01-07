@@ -20,7 +20,7 @@ echo -e "\e[42mBuilding addons process started\e[49m"
 #         Build .wasm bundle for PQC signature schemes  Dilithium & Bliss         #
 ###################################################################################
 
-go build -o main.wasm
+GOARCH=wasm GOOS=js go build -o main.wasm
 
 if [ $? -eq 0 ]; then
      cat ../success.txt
