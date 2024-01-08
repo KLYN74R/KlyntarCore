@@ -23,12 +23,22 @@ import WS from 'websocket'
 
 import Web3 from 'web3'
 
+import {memoryUsage} from 'node:process'
 
 
 
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
+function formatBytes(bytes) {
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  
+    if (bytes === 0) return '0 Byte';
+    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(k)));
+  
+    return Math.round(100 * (bytes / Math.pow(k, i))) / 100 + ' ' + sizes[i];
+  }
 
 
 export let
@@ -1334,7 +1344,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
             let WebSocketClient = WS.client
     
-            let client = new WebSocketClient({})
+            let client = new WebSocketClient({
+
+                maxReceivedMessageSize: 1024 * 1024 * 500
+
+            })
 
             client.connect(endpointURL,'echo-protocol')
 
@@ -1731,6 +1745,8 @@ START_VERIFICATION_THREAD=async()=>{
 
                         VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
 
+                        tunnelHandler.cache.delete(blockIdToGet)
+
                     }
                     
                     stepsForWhile--
@@ -1813,7 +1829,9 @@ START_VERIFICATION_THREAD=async()=>{
                     await verifyBlock(block,currentShardToCheck)
 
                     VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
-        
+
+                    tunnelHandler.cache.delete(blockIdToGet)
+
                 }
                 
                 stepsForWhile--

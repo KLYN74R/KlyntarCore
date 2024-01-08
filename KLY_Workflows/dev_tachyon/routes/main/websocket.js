@@ -363,7 +363,7 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
     }
 
     
-    for(let i=1;i<500;i++){
+    for(let i=1;i<50;i++){
 
         let blockIdToFind = data.epochIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+(data.hasUntilHeight+i)
 
