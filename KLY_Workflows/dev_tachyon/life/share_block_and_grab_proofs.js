@@ -242,7 +242,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     }else{
 
-        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),1000)
+        setTimeout(()=>TEMP_CACHE.delete('FP_SPAM_FLAG'),10000)
 
     }
 
