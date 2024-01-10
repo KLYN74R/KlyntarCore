@@ -1,4 +1,4 @@
-import {VM} from '../../../KLY_VMs/default/vm.js'
+import {VM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 import fetch from 'node-fetch'
 import fs from 'fs'
 

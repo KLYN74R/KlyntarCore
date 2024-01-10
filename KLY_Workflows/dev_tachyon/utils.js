@@ -1,4 +1,4 @@
-import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -287,46 +287,6 @@ GET_FROM_QUORUM_THREAD_STATE = async recordID => {
 
 
 
-WRAP_RESPONSE=(a,ttl)=>a.writeHeader('Access-Control-Allow-Origin','*').writeHeader('Cache-Control','max-age='+ttl),
-
-
-
-
-GET_NODES=region=>{
-
-    let nodes=global.CONFIG.SYMBIOTE.NODES[region]//define "IN SCOPE"(due to region and symbiote)
-    
-    //Default Phisher_Yeits algorithm
-    
-    if(nodes){
-            
-        let shuffled = nodes.slice(0),
-            
-            arrSize = nodes.length,
-            
-            min = arrSize - global.CONFIG.SYMBIOTE.NODES_PORTION, temp, index
-    
-    
-        while (arrSize-- > min) {
-    
-            index = Math.floor((arrSize + 1) * Math.random())
-            
-            //DestructURLsation doesn't work,so use temporary variable
-            temp = shuffled[index]
-            
-            shuffled[index] = shuffled[arrSize]
-            
-            shuffled[arrSize] = temp
-    
-        }
-        
-        return shuffled.slice(min)
-        
-    }else return []
-        
-},
-
-
 swap = (arr, firstItemIndex, lastItemIndex) => {
     
     let temp = arr[firstItemIndex]
@@ -548,131 +508,6 @@ BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 
 
 BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
-
-
-/**
- * 
- * 
- * 
- * __________________________________________________________'PEERS'_________________________________________________________
- *
- * 
- *
- * PEERS contains addresses which tracked the same symbiotes or at least one symbiote from your list of symbiotes
- * We need PEERS just to exchange with blocks(at least in current pre-alpha release)
- * Non static list which changes permanently and received each time we run node
- * 
- * Also,some auths methods will be added
- * 
- * 
- * 
- * This is static list which you set to be sure that you'll receive data
- * It might be your another node,nodes of some organizations or sites,node of some pool or your friends' nodes etc.
- * 
- * 
- * 
- *  _______________________________________________________'MUST_SEND'_______________________________________________________
- * 
- * There is no "online" property coz it's implies that big_providers like crypto exchanges,famous explorers,etc.
- * have high percentage of uptime or highload tolerant infrastructure thus available 365/24/7(best case)
- * 
- * BTW we don't need them-otherwise,it's rather optimization for PANOPTICON protocol(in future) or for quick work of explorers,API,etc. and these providers will be "grateful"
- * to receive new blocks as fast as possible.That's why they receive blocks from network and accept incoming requests on their API
- * from different devices from PANOPTICON "army" of nodes
- * 
- * It doesn't imply "centralization".Ordianry nodes also can have own API(to analyze block content and give instant response) 
- * for own demands or to provide public available data
- * 
- * It's just for better efficiency
- * 
- */
- BROADCAST=async(route,data)=>{
-
-    let promises=[]
-
-    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS()
-
-    quorumMembers.forEach(host=>
-    
-        fetch(host+route,{method:'POST',body:JSON.stringify(data)}).catch(()=>{})
-        
-    )
-
-    
-    //First of all-send to important destination points - it might be lightweight retranslators, CDNs and so on
-    Object.keys(global.CONFIG.SYMBIOTE.MUST_SEND).forEach(addr=>
-        
-        promises.push(
-            
-            //First of all-sig data and pass signature through the next promise
-            ED25519_SIGN_DATA(JSON.stringify(data),global.CONFIG.SYMBIOTE.PRV).then(sig=>
-
-                fetch(global.CONFIG.SYMBIOTE.MUST_SEND[addr]+route,{
-                
-                    method:'POST',
-                    
-                    body:JSON.stringify({data,sig})
-                
-                }).catch(()=>
-                    
-                    LOG(`Offline \x1b[36;1m${addr}\u001b[38;5;3m [From:\x1b[36;1mMUST_SEND\u001b[38;5;3m]`,'W')
-                    
-                )
-
-            )
-            
-        )
-
-    )
-
-    
-    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(host=>
-    
-        fetch(host+route,{method:'POST',body:JSON.stringify(data)})
-        
-        .catch(()=>
-            
-            LOG(`\x1b[36;1m${host}\u001b[38;5;3m is offline [From:\x1b[36;1mBOOTSTRAP_NODES\u001b[38;5;3m]`,'W')
-            
-        )
-
-    )
-
-    /*
-    
-    Finally-send resource to PEERS nodes
-    If response isn't equal 1-delete node from list,
-    coz it's signal that node does no more support this
-    symbiote(or at current time),has wrong payload size settings etc,so no sense to spend network resources on this node
-    
-    */
-
-
-    global.SYMBIOTE_META.PEERS.forEach((host,index)=>
-        
-        promises.push(
-            
-            fetch(host+route,{method:'POST',body:JSON.stringify(data)}).then(v=>v.text()).then(value=>
-                
-                value!=='OK' && global.SYMBIOTE_META.PEERS.splice(index,1)
-                    
-            ).catch(()=>{
-                
-                LOG(`Node \x1b[36;1m${host}\u001b[38;5;3m seems like offline,I'll \x1b[31;1mdelete\u001b[38;5;3m it`,'W')
-
-                global.SYMBIOTE_META.PEERS.splice(index,1)
-
-            })
-            
-        )
-
-    )
-
-    return promises
-
-},
-
-
 
 
 GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],

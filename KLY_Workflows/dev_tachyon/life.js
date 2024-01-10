@@ -885,7 +885,15 @@ RUN_SYMBIOTE=async()=>{
     //Check if bootstrap nodes is alive
     global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
                 
-        fetch(endpoint+'/addpeer',{method:'POST',body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME])})
+        fetch(endpoint+'/addpeer',{
+            
+            method:'POST',
+            
+            body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME]),
+
+            headers:{'contentType':'application/json'}
+        
+        })
             
             .then(res=>res.text())
             

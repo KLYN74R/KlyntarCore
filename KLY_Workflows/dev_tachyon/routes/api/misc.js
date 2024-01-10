@@ -1,7 +1,5 @@
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {GET_NODES} from '../../utils.js'
-
 
 
 
@@ -102,41 +100,6 @@ FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
 
 
 })
-
-
-
-
-/**## Returns the portion of KLY nodes to connect with
- *
- * 
- * ### Info
- * 
- * This route returns the nodes in CONFIG.SYMBIOTE.NODES[<region ID>]
- * Here are addresses of KLY nodes which works on the same symbiote
- * 
- * 
- * ### Params
- * 
- *  + 0 - preffered region(close to another node)
- * 
- * 
- * ### Returns
- * 
- *  + Array of urls. Example [http://somenode.io,https://dead::beaf,...]
- * 
- *  
- * */
-
-FASTIFY_SERVER.get('/nodes/:region',(request,response)=>
-
-    response
-    
-        .header('Access-Control-Allow-Origin','*')
-        .header('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.ROUTE_TTL.API.NODES)
-        
-        .send(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.NODES && GET_NODES(request.params.region))
-
-)
 
 
 
