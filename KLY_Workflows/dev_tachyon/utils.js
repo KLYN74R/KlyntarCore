@@ -561,6 +561,8 @@ EPOCH_STILL_FRESH = thread => {
 },
 
 
+// PARSE_JSON = async stringJson => JSON.parse(stringJson)
+
 
 
 GET_MAJORITY = epochHandler => {

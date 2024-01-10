@@ -211,7 +211,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
     */
    
 
-    let possiblePropositionForNewEpoch = request.body
+    let possiblePropositionForNewEpoch = JSON.parse(request.body)
 
     let responseStructure = {}
     

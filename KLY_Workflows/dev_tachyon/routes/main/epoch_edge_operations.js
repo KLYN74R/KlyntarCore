@@ -51,7 +51,7 @@ Returns object like:
 
 FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
-    let epochEdgeOperationWithAgreementProofs = request.body
+    let epochEdgeOperationWithAgreementProofs = JSON.parse(request.body)
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -152,7 +152,7 @@ Body is
 
 FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
-    let epochEdgeOperation = request.body
+    let epochEdgeOperation = JSON.parse(request.body)
 
     let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 

@@ -37,54 +37,6 @@
     "TXS_MEMPOOL_SIZE":300000,
     "EPOCH_EDGE_OPS_MEMPOOL_SIZE":10000,
     "BLOCK_TO_BLOCK_CACHE_SIZE":100000,
-
-    "NODES":{
-    
-        "AF":[
-            "https://0.mynearpub.com:7777",
-            "https://1.mynearpub.com:7777",
-            "https://2.mynearpub.com:7777",
-            "https://3.mynearpub.com:7777",
-            "https://4.mynearpub.com:7777",
-            "https://5.mynearpub.com:7777",
-            "https://6.mynearpub.com:7777",
-            "https://7.mynearpub.com:7777",
-            "https://8.mynearpub.com:7777",
-            "https://9.mynearpub.com:7777",
-            "https://10.mynearpub.com:7777",
-            "https://11.mynearpub.com:7777",
-            "https://12.mynearpub.com:7777",
-            "https://13.mynearpub.com:7777",
-            "https://14.mynearpub.com:7777",
-            "https://15.mynearpub.com:7777",
-            "https://16.mynearpub.com:7777",
-            "https://17.mynearpub.com:7777",
-            "https://18.mynearpub.com:7777"
-        ],
-            
-        "AS":[
-            "https://0.mynearpub.com:7777",
-            "https://1.mynearpub.com:7777",
-            "https://2.mynearpub.com:7777",
-            "https://3.mynearpub.com:7777",
-            "https://4.mynearpub.com:7777",
-            "https://5.mynearpub.com:7777",
-            "https://6.mynearpub.com:7777",
-            "https://7.mynearpub.com:7777",
-            "https://8.mynearpub.com:7777",
-            "https://9.mynearpub.com:7777",
-            "https://10.mynearpub.com:7777",
-            "https://11.mynearpub.com:7777",
-            "https://12.mynearpub.com:7777",
-            "https://13.mynearpub.com:7777",
-            "https://14.mynearpub.com:7777",
-            "https://15.mynearpub.com:7777",
-            "https://16.mynearpub.com:7777",
-            "https://17.mynearpub.com:7777",
-            "https://18.mynearpub.com:7777"
-        ]
-    
-    },
     
     "BOOTSTRAP_NODES":[
         "http://localhost:7332",
@@ -92,16 +44,6 @@
         "http://localhost:44444"
     ],
     
-            
-    "MUST_SEND":{
-
-        "BINANCE_EU1_API":"https://api.binancefriendone.com:7777",
-        "PANOPTICON_UA":"https://somesubdomainid.panopticon.com:7777",
-        "SOME_CDN_PROVIDER":"https://someexplorer.io:7777"
-    
-    },
-    
-    "NODES_PORTION":8,
     "MAX_CONNECTIONS":15,
     "MY_HOSTNAME":"http://somenode.com:6666",
         

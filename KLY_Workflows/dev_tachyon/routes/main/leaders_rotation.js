@@ -149,7 +149,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.MAX_PAYLOA
 
 
 
-    let requestForLeaderRotationProof = request.body
+    let requestForLeaderRotationProof = JSON.parse(request.body)
 
     let overviewIsOk    
 
@@ -346,7 +346,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
     }
 
 
-    let proposedIndexesOfLeaders = request.body // format {primePoolPubKey:index}
+    let proposedIndexesOfLeaders = JSON.parse(request.body) // format {primePoolPubKey:index}
 
 
     if(typeof proposedIndexesOfLeaders === 'object'){

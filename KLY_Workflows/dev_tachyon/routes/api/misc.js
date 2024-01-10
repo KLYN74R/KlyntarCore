@@ -234,7 +234,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},as
 
     response.header('Access-Control-Allow-Origin','*')
 
-    let transaction = request.body
+    let transaction = JSON.parse(request.body)
 
     //Reject all txs if route is off and other guards methods
 
@@ -318,7 +318,7 @@ Returns:
 
 FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.PAYLOAD_SIZE},(request,response)=>{
 
-    let acceptedData = request.body
+    let acceptedData = JSON.parse(request.body)
 
     if(!Array.isArray(acceptedData)){
 
