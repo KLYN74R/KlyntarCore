@@ -230,7 +230,7 @@ FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
 
 // Handler to accept transaction, make overview and add to mempool ✅
 
-FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     response.header('Access-Control-Allow-Origin','*')
 
@@ -316,7 +316,7 @@ Returns:
 
 */
 
-FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.PAYLOAD_SIZE},(request,response)=>{
+FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.SYMBIOTE.PAYLOAD_SIZE},(request,response)=>{
 
     let acceptedData = JSON.parse(request.body)
 

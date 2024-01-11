@@ -49,7 +49,7 @@ Returns object like:
 
 // Handler to accept EEO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this EEO and we can add it to block header ✅
 
-FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochEdgeOperationWithAgreementProofs = JSON.parse(request.body)
 
@@ -150,7 +150,7 @@ Body is
 
 // Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
 
-FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochEdgeOperation = JSON.parse(request.body)
 

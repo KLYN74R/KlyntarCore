@@ -132,7 +132,7 @@ import Block from '../../essences/block.js'
 
 // Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
 
-FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -330,7 +330,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.MAX_PAYLOA
 
 // Function to return aggregated skip proofs for proposed authorities✅
 
-FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:global.CONFIG.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 

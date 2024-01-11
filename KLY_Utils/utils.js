@@ -103,6 +103,6 @@ ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
 LOG=(msg,msgColor)=>{
 
-    global.CONFIG.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
+    global.CONFIG.SYMBIOTE.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
 
 }

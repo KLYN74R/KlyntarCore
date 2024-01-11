@@ -107,6 +107,44 @@
 
     "GET_BLOCKS_URL":"http://localhost:7331",
     "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
-    "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331"
+    "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
+
+
+    "PRELUDE":{
+
+        "DECRYPTED":false,
+        "ANIMATION_DURATION":0,
+        "NO_SPINNERS":false,
+        "OPTIMISTIC":true
+        
+    },
+
+    "DAEMON_LOGS":true,
+
+    "PLUGINS":[],
+
+    "INTERFACE":"::",
+    "PORT":6664,
+
+    "WEBSOCKET_INTERFACE":"::",
+    "WEBSOCKET_PORT":9998,
+
+    "PAYLOAD_SIZE":1000,
+    "EXTENDED_PAYLOAD_SIZE":10000,
+    "MAX_PAYLOAD_SIZE":10000000,
+
+
+    "TLS":{
+
+        "ENABLED":false,
+
+        "CONFIGS":{
+
+            "key_file_name":"security/cert.key",
+   
+            "cert_file_name":"security/cert.pem"
+
+        }
+    }
 
 }

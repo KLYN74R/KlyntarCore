@@ -66,7 +66,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
 FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
-    // global.CONFIG.MAX_PAYLOAD_SIZE - set the limit mb
+    // global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE - set the limit mb
 
     let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 

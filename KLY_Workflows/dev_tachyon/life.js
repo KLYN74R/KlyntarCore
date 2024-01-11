@@ -584,7 +584,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Loading spinner
     let initSpinner
 
-    if(!global.CONFIG.PRELUDE.NO_SPINNERS){
+    if(!global.CONFIG.SYMBIOTE.NO_SPINNERS){
 
         initSpinner = ora({
         

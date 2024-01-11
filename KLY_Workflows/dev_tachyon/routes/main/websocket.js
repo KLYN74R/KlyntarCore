@@ -405,7 +405,11 @@ let server = http.createServer({},(_,response)=>{
 })
 
 
-server.listen(global.CONFIG.WEBSOCKET_PORT,global.CONFIG.WEBSOCKET_INTERFACE,()=>LOG(`Websocket server was activated on port \u001b[38;5;168m${global.CONFIG.WEBSOCKET_PORT}`,'CD'))
+server.listen(global.CONFIG.SYMBIOTE.WEBSOCKET_PORT,global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE,()=>
+
+    LOG(`Websocket server was activated on \u001b[38;5;168m${global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE}:${global.CONFIG.SYMBIOTE.WEBSOCKET_PORT}`,'CD')
+    
+)
 
 
 let WEBSOCKET_SERVER = new WebSocketServer({

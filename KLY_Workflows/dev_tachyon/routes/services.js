@@ -10,7 +10,7 @@ let services=response=>{
         
         response.writeHeader('Access-Control-Allow-Origin','*').onAborted(()=>{}).onData(async(chunk,last)=>{
          
-            if(total+chunk.byteLength<=global.CONFIG.MAX_PAYLOAD_SIZE){
+            if(total+chunk.byteLength<=global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE){
             
                 buf=await SAFE_ADD(buf,chunk,response)//build full data from chunks
     

@@ -481,7 +481,7 @@ VT_STATS_LOG = (epochIndex,epochHash,shardContext) => {
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
-    if(global.CONFIG.DAEMON_LOGS){
+    if(global.CONFIG.SYMBIOTE.DAEMON_LOGS){
 
         let preColor = msg.includes('accepted') ? '\x1b[31m' : '\x1b[32m'
 
@@ -614,7 +614,7 @@ USE_TEMPORARY_DB=async(operationType,dbReference,keys,values)=>{
 DECRYPT_KEYS=async spinner=>{
 
     
-    if(global.CONFIG.PRELUDE.DECRYPTED){
+    if(global.CONFIG.SYMBIOTE.DECRYPTED){
 
         spinner?.stop()
         
