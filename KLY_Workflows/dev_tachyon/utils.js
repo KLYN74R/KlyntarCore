@@ -614,7 +614,7 @@ USE_TEMPORARY_DB=async(operationType,dbReference,keys,values)=>{
 DECRYPT_KEYS=async spinner=>{
 
     
-    if(global.CONFIG.SYMBIOTE.DECRYPTED){
+    if(global.CONFIG.SYMBIOTE.PRELUDE.DECRYPTED){
 
         spinner?.stop()
         

@@ -357,7 +357,7 @@ LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.SYMBIOTE.INTERFACE}]:$
 LOG(global.CONFIG.SYMBIOTE.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.SYMBIOTE.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.SYMBIOTE.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
 
 
-!global.CONFIG.SYMBIOTE.OPTIMISTIC
+!global.CONFIG.SYMBIOTE.PRELUDE.OPTIMISTIC
 &&
 await new Promise(resolve=>
     
