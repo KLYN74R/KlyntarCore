@@ -268,7 +268,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
     
                                     }
 
-                                    if(!shouldChangeThisShard || position === localVersionOfCurrentLeaders[primePoolPubKey] || position === -2) break
+                                    if(!shouldChangeThisShard || position <= localVersionOfCurrentLeaders[primePoolPubKey]) break
 
                                 }
 

@@ -880,8 +880,6 @@ RUN_SYMBIOTE=async()=>{
     //✅6.Start to generate blocks
     BLOCKS_GENERATION()
 
-
-
     //Check if bootstrap nodes is alive
     global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
                 
