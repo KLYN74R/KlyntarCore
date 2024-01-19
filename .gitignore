@@ -9,6 +9,7 @@ LOGS/
 
 # Tests
 structures
+GCP_TESTNET
 
 #Debug
 .pnpm-debug.log

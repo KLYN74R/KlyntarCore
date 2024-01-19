@@ -23,22 +23,12 @@ import WS from 'websocket'
 
 import Web3 from 'web3'
 
-import {memoryUsage} from 'node:process'
 
 
 
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
 
-function formatBytes(bytes) {
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  
-    if (bytes === 0) return '0 Byte';
-    const i = parseInt(Math.floor(Math.log(bytes) / Math.log(k)));
-  
-    return Math.round(100 * (bytes / Math.pow(k, i))) / 100 + ' ' + sizes[i];
-  }
 
 
 export let
@@ -2086,7 +2076,7 @@ verifyBlock=async(block,shardContext)=>{
 
                     let txCopy = JSON.parse(JSON.stringify(transaction))
 
-                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(err=>console.log('DEBUG:',err))
+                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
 
                     // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                     if(reason!=='EVM'){

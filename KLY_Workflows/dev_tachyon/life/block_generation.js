@@ -146,7 +146,9 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
     // Otherwise, if at least one block was created & shared among quorum - take the hash value from AFP (.blockHash field(see AFP structure))
     if(!afpForFirstBlock && localFinalizationStatsForThisPool.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-    else firstBlockHash = afpForFirstBlock.blockHash
+    else if(afpForFirstBlock) firstBlockHash = afpForFirstBlock.blockHash
+
+    else return
 
 
     // In case we haven't define hash of first block - stop searching process. Try next time

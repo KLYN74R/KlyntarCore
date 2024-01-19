@@ -217,7 +217,7 @@ GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHan
 
             if(itsProbablyAggregatedFinalizationProof){
 
-                let isOK = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
+                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
 
                 if(isOK){
 
@@ -462,13 +462,13 @@ VT_STATS_LOG = (epochIndex,epochHash,shardContext) => {
     
         console.log('\n')
             
-        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,epochIndex+' : '+epochHash,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochHash}#${epochIndex}`,COLORS.C)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)+' : '+shardContext,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.C)
     
         console.log(` \u001b[38;5;168m│\x1b[33m  Current Leader:\x1b[36;1m`,currentLeaderOnShard,COLORS.C)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash:\x1b[36;1m`,index+' : '+hash,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash in current epoch:\x1b[36;1m`,index+' : '+hash,COLORS.C)
     
         console.log('\n')    
 
