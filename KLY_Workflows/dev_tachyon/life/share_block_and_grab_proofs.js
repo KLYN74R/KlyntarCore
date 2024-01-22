@@ -53,7 +53,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
                         
                                     let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
 
-                                    if(finalizationProofIsOk){
+                                    if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                         
                                         FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
                         
@@ -73,7 +73,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
 
                                     let tmbProofIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.tmbProof,parsedData.voter)
                             
-                                    if(finalizationProofIsOk && tmbProofIsOk){
+                                    if(finalizationProofIsOk && tmbProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                         
                                         FINALIZATION_PROOFS.get(proofsGrabber.huntingForBlockID).set(parsedData.voter,parsedData.finalizationProof)
 
@@ -168,15 +168,15 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
         // To prevent spam
 
-        if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
-    
-        TEMP_CACHE.set('FP_SPAM_FLAG',true)
-
         // In case we already have enough TMB proofs - no sense to send blocks to the rest. Send just TMB proofs as proofs that "enough number of validators from quorum has a valid block"
 
-        if(tmbProofsMapping.size >= 21){
+        if(tmbProofsMapping.size >= 1){
 
             // Otherwise - send blocks to safe minority to grab TMB proofs
+
+            let templateToSend = {}
+
+            tmbProofsMapping.forEach((signa,pubKey)=>templateToSend[pubKey] = signa)
 
             let dataToSend = JSON.stringify({
 
@@ -190,7 +190,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
                 
                 previousBlockAFP:proofsGrabber.afpForPrevious,
 
-                tmbProofs: Object.entries(tmbProofsMapping),
+                tmbProofs: templateToSend,
 
                 tmbTicketID:0
     
@@ -209,7 +209,18 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
     
             }
 
+            await new Promise(resolve=>
+
+                setTimeout(()=>resolve(),200)
+        
+            )
+
+
         }else{
+
+            if(TEMP_CACHE.has('FP_SPAM_FLAG')) return
+    
+            TEMP_CACHE.set('FP_SPAM_FLAG',true)
 
             // Otherwise - send blocks to safe minority to grab TMB proofs
 

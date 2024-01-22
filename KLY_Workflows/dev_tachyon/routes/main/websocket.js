@@ -133,9 +133,23 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
         if(poolIsReal){
     
-            if(itsPrimePool) primePoolPubKey = block.creator
-    
-            else if(typeof tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
+            if(itsPrimePool){
+
+                primePoolPubKey = block.creator
+
+                // Check if it still a leader on own shard
+
+                if(tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator)){
+
+                    connection.close()
+
+                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+            
+                    return
+                    
+                }
+
+            } else if(typeof tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
     
                 primePoolPubKey = tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator)
     
@@ -462,7 +476,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
         if(sameSegment){
 
-            let proposedBlockID = epochHandler.id+':'+blockCreator+':'+blockCreator
+            let proposedBlockID = epochHandler.id+':'+blockCreator+':'+blockIndex
 
             let dataToSignToApproveProposedBlock = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
 
@@ -516,32 +530,35 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
 
                 // Now verify the aggregated skip proof
-
                 let {prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs} = previousBlockAFP
 
-                let previousBlockID = epochHandler.id+':'+blockCreator+':'+(blockIndex-1)
+                if(blockIndex !== 0 ){
 
-                let itsReallyAfpForPreviousBlock = blockIDFromAFP === previousBlockID
-
-
-                if(!itsReallyAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockIDFromAFP !== 'string' || typeof blockHashFromAFP !== 'string' || typeof proofs !== 'object'){
-                        
-                    connection.close()
-
-                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
-            
-                    return
-            
-                }
-                   
-                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
-
-                if(!isOK){
-
-                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
-
-                    return
-
+                    let previousBlockID = epochHandler.id+':'+blockCreator+':'+(blockIndex-1)
+    
+                    let itsReallyAfpForPreviousBlock = blockIDFromAFP === previousBlockID
+    
+    
+                    if(!itsReallyAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockIDFromAFP !== 'string' || typeof blockHashFromAFP !== 'string' || typeof proofs !== 'object'){
+                            
+                        connection.close()
+    
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+                
+                        return
+                
+                    }
+                       
+                    let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
+    
+                    if(!isOK){
+    
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+    
+                        return
+    
+                    }
+    
                 }
 
 
