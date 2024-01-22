@@ -360,6 +360,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     let proofsGrabber = tempObject.TEMP_CACHE.get('PROOFS_GRABBER')
 
+
     if(proofsGrabber && global.SYMBIOTE_META.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
     //__________________________________________________________________________________________________________________
@@ -426,7 +427,6 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
 
     let extraData = {}
-
 
     //___________________ Add the AEFP to the first block of epoch ___________________
 

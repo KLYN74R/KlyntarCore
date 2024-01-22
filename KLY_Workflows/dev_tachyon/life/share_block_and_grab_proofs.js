@@ -170,7 +170,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
         // In case we already have enough TMB proofs - no sense to send blocks to the rest. Send just TMB proofs as proofs that "enough number of validators from quorum has a valid block"
 
-        if(tmbProofsMapping.size >= 1){
+        if(tmbProofsMapping.size >= 21){
 
             // Otherwise - send blocks to safe minority to grab TMB proofs
 

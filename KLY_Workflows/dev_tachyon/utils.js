@@ -282,6 +282,7 @@ GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
 
 
 
+
 GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
 
     let localVersionOfAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
@@ -290,7 +291,7 @@ GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHan
 
         // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
-        let setOfUrls = [global.CONFIG.SYMBIOTE.GET_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler),...GET_ALL_KNOWN_PEERS()]
+        let setOfUrls = await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler)
 
         for(let endpoint of setOfUrls){
 
