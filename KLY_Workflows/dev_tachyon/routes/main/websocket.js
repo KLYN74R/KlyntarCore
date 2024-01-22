@@ -1,4 +1,4 @@
-import {USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
@@ -319,11 +319,17 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
         
                             let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+
+                            // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
+
+                            dataToSign += 'VALID_BLOCK_RECEIVED'
+
+                            let tmbProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
     
     
                             tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
         
-                            connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+                            connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
     
 
                         })    
@@ -338,6 +344,234 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                 connection.close()
 
                 tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+            }
+
+        }        
+
+    }
+        
+}
+
+
+
+
+/*
+
+    Accept
+    
+    {
+        blockCreator,
+
+        blockIndex,
+
+        blockHash,
+
+        previousBlockAFP,
+
+        tmbProofs:{
+
+            poolPubKey0: Ed25519Signa(previousBlockHash+proposedBlockID+proposedBlockHash+epochFullID+'VALID_BLOCK_RECEIVED'),
+            ...
+            (20 more proofs)
+        }
+
+        tmbTicketID:<int in range 0-9999>
+
+    }
+
+*/
+let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
+
+    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+
+    // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
+        
+    if(!tempObject || tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+
+        connection.close()
+    
+        return
+    
+    }
+
+
+    let {blockCreator,blockIndex,blockHash,previousBlockAFP,tmbProofs,tmbTicketID} = parsedData
+
+
+    let typeCheckOverviewIsOk = typeof blockCreator === 'string' && typeof blockHash === 'string' && typeof blockIndex === 'number' && typeof tmbTicketID === 'number'
+    
+                                && 
+                                
+                                typeof previousBlockAFP === 'object' && typeof tmbProofs === 'object'
+                                
+                                &&
+                                
+                                !tempObject.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+blockCreator)
+
+
+
+    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !typeCheckOverviewIsOk){
+    
+        connection.close()
+                   
+        return
+    
+    }else if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+blockCreator)){
+    
+        // Add the sync flag to prevent creation proofs during the process of skip this pool
+        tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
+
+        let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
+
+        let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(blockCreator)
+    
+        let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(blockCreator)
+    
+        let poolIsReal = itsPrimePool || itsReservePool
+    
+        let itIsReservePoolWhichIsLeaderNow = poolIsReal && typeof tempObject.SHARDS_LEADERS_HANDLERS.get(blockCreator) === 'string'
+
+        let thisLeaderCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsLeaderNow || itsPrimePool )
+    
+        
+        if(!thisLeaderCanGenerateBlocksNow){
+    
+            connection.close()
+
+            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+    
+            return
+    
+        }
+
+        
+        // Make sure that we work in a sync mode + verify the signature for the latest block
+    
+        let finalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(blockCreator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
+        let proposedBlockHash = blockHash
+
+        // Check that a new proposed block is a part of a valid segment
+
+        let sameSegment = finalizationStatsForThisPool.index < blockIndex || finalizationStatsForThisPool.index === blockIndex && proposedBlockHash === finalizationStatsForThisPool.hash
+
+
+        if(sameSegment){
+
+            let proposedBlockID = epochHandler.id+':'+blockCreator+':'+blockCreator
+
+            let dataToSignToApproveProposedBlock = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
+
+            let futureMetadataToStore
+
+            // Verify the TMB proofs
+
+            let subsetOfValidators = GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID(tmbTicketID,epochHandler)
+
+            let dataThatShouldBeSignedInTMB = dataToSignToApproveProposedBlock+'VALID_BLOCK_RECEIVED'
+
+            // Now, we have to get valid signatures for all the members in this array
+
+            let tmbVerificationIsOk = true
+
+
+            for(let choosenValidator of subsetOfValidators) {
+
+                let signaIsOk = await ED25519_VERIFY(dataThatShouldBeSignedInTMB,tmbProofs[choosenValidator],choosenValidator)
+
+                if(!signaIsOk) {
+
+                    tmbVerificationIsOk = false
+
+                    break
+
+                }
+
+            }
+
+
+            if(tmbVerificationIsOk){
+
+                if(finalizationStatsForThisPool.index === blockIndex){
+
+                    futureMetadataToStore = finalizationStatsForThisPool
+    
+                }else{
+    
+                    futureMetadataToStore = {
+    
+                        index:blockIndex-1,
+                        
+                        hash:previousBlockAFP.blockHash,
+    
+                        afp:previousBlockAFP
+    
+                    }
+    
+                }
+
+
+                // Now verify the aggregated skip proof
+
+                let {prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs} = previousBlockAFP
+
+                let previousBlockID = epochHandler.id+':'+blockCreator+':'+(blockIndex-1)
+
+                let itsReallyAfpForPreviousBlock = blockIDFromAFP === previousBlockID
+
+
+                if(!itsReallyAfpForPreviousBlock || typeof prevBlockHash !== 'string' || typeof blockIDFromAFP !== 'string' || typeof blockHashFromAFP !== 'string' || typeof proofs !== 'object'){
+                        
+                    connection.close()
+
+                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+            
+                    return
+            
+                }
+                   
+                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
+
+                if(!isOK){
+
+                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+
+                    return
+
+                }
+
+
+
+                // Store the metadata for FINALIZATION_STATS
+
+                USE_TEMPORARY_DB('put',tempObject.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
+
+                    // Store the AFP for previous block
+
+                    global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDFromAFP,{prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs}).then(async()=>{
+
+                        tempObject.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
+            
+                        let finalizationProof = await ED25519_SIGN_DATA(dataToSignToApproveProposedBlock,global.PRIVATE_KEY)    
+    
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+        
+                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+    
+                    })
+    
+                }).catch(()=>{})
+
+
+            } else {
+
+                connection.close()
+
+                tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
             }
 
         }        
@@ -447,11 +681,9 @@ WEBSOCKET_SERVER.on('request',request=>{
             }else if(data.route==='tmb'){
 
                 // For TMB(Trust Me Bro) requests
+
+                RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF(data,connection)
                 
-
-            }else if(data.route==='accept_afp'){
-
-                // ACCEPT_AGGREGATED_FINALIZATION_PROOF(data.payload,connection)
 
             }else if(data.route==='get_blocks'){
 

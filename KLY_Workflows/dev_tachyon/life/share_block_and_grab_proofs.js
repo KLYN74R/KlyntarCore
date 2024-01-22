@@ -147,7 +147,6 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
             
             previousBlockAFP:proofsGrabber.afpForPrevious
 
-            
         })
 
 

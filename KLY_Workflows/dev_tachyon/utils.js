@@ -201,7 +201,7 @@ VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationP
 
 
 
-GET_PSEUDO_RANDOM_SAFE_MINORITY_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
+GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
 
     /*
 
