@@ -560,7 +560,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                         tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         
-                        connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+                        connection.sendUTF(JSON.stringify({type:'tmb',voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
     
                     })
     
