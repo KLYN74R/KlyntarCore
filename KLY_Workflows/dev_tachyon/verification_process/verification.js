@@ -1066,7 +1066,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
         let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
 
-        let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
+        let allKnownPeers = await GET_QUORUM_URLS_AND_PUBKEYS()
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
@@ -1086,7 +1086,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                 let firstBlockOfPrimePoolForNextEpoch = nextEpochIndex+':'+primePoolPubKey+':0'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePoolForNextEpoch).catch(()=>false)
+                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePoolForNextEpoch).catch(()=>null)
 
                 if(afpForFirstBlockOfPrimePool){
 
@@ -1114,7 +1114,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                     for(let peerHostname of allKnownPeers){
             
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch).then(r=>r.json()).catch(()=>null)
 
                         if(itsProbablyAggregatedFinalizationProof){
             
@@ -1127,6 +1127,8 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
                                 epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
 
                                 epochCache[primePoolPubKey].realFirstBlockFound = true
+
+                                break
 
                             }
             

@@ -2,6 +2,8 @@ import {
     
     EPOCH_STILL_FRESH,GET_ALL_KNOWN_PEERS,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
     
+    GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
+    
     IS_MY_VERSION_OLD,
     
     VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF
@@ -287,7 +289,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let majority = GET_MAJORITY(qtEpochHandler)
 
-        let allKnownPeers = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
+        let allKnownPeers = await GET_QUORUM_URLS_AND_PUBKEYS()
 
         // Get the special object from DB not to repeat requests
 
@@ -461,7 +463,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                         let firstBlockIDBySomePool = qtEpochHandler.id+':'+reservePoolPubKey+':0'
 
-                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockIDBySomePool).catch(()=>null)
+                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDBySomePool,qtEpochHandler)
 
                         if(afp && afp.blockID === firstBlockIDBySomePool){
 
@@ -484,11 +486,12 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                                 let currentPosition = position
 
                                 let alrpData = {}
+
                                 
                                 // eslint-disable-next-line no-constant-condition
                                 while(true){
 
-                                    let shouldBreakInfiniteWhile = false
+                                    let shouldBreakInfiniteOuterWhile = false
 
                                     // eslint-disable-next-line no-constant-condition
                                     while(true) {
@@ -502,13 +505,13 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                             // In case we get the start of reassignment chain - break the cycle
 
-                                            epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
+                                            epochCache[primePoolPubKey].firstBlockCreator = alrpData.firstBlockCreator
 
                                             epochCache[primePoolPubKey].firstBlockHash = alrpData.firstBlockHash
         
                                             epochCache[primePoolPubKey].firstBlockOnShardFound = true
                                     
-                                            shouldBreakInfiniteWhile = true
+                                            shouldBreakInfiniteOuterWhile = true
 
                                             break
 
@@ -533,7 +536,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                                 // If we can't find required block - break the while & while cycles
 
-                                                shouldBreakInfiniteWhile = true
+                                                shouldBreakInfiniteOuterWhile = true
 
                                                 break
 
@@ -547,7 +550,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
                                     }
 
-                                    if(shouldBreakInfiniteWhile) break
+                                    if(shouldBreakInfiniteOuterWhile) break
     
                                 }
 
@@ -574,6 +577,8 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         // Store the changes in CHECKPOINT_CACHE for persistence
 
         await global.SYMBIOTE_META.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
+
+        console.log('Epoch cache is ',epochCache)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____

@@ -378,7 +378,6 @@ let GENERATE_BLOCKS_PORTION = async() => {
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
-
     let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(global.CONFIG.SYMBIOTE.PUB)
 
 
