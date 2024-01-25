@@ -9,7 +9,7 @@ let TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSeq
 
     // Function to check if time frame for current shard leader is done and we have to move to next reserve pools in reassignment chain
 
-    return GET_GMT_TIMESTAMP() >= epochHandler.timestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
+    return GET_GMT_TIMESTAMP() >= epochHandler.startTimestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
 
 }
 

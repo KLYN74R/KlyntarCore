@@ -520,7 +520,7 @@ LOAD_GENESIS=async()=>{
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
         
-        timestamp:epochTimestamp,
+        startTimestamp:epochTimestamp,
 
         quorum:[],
 
@@ -538,7 +538,7 @@ LOAD_GENESIS=async()=>{
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
-        timestamp:epochTimestamp,
+        startTimestamp:epochTimestamp,
 
         quorum:[],
 

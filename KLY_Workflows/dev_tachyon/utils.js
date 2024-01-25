@@ -630,17 +630,7 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 
 
-EPOCH_STILL_FRESH = thread => {
-
-    let sameDayStartTimestamp = new Date(thread.EPOCH.timestamp)
-
-    sameDayStartTimestamp.setHours(0,0,0,0)
-
-    let currentTime = GET_GMT_TIMESTAMP()
-
-    return sameDayStartTimestamp.getTime() + thread.WORKFLOW_OPTIONS.EPOCH_TIME > currentTime
-
-},
+EPOCH_STILL_FRESH = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > GET_GMT_TIMESTAMP(),
 
 
 // PARSE_JSON = async stringJson => JSON.parse(stringJson)

@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF, GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID
 
 } from '../utils.js'
 
@@ -972,7 +972,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.timestamp += global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
+        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.startTimestamp += global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
 
 
         // Commit the changes of state using atomic batch
@@ -1150,7 +1150,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                         let firstBlockOfPool = nextEpochIndex+':'+reservePoolPubKey+':0'
 
-                        let afp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPool).catch(()=>false)
+                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPool)
 
                         if(afp){
 
@@ -1684,7 +1684,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                if(vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) break
+                if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify) break
 
                 else {
 
@@ -1753,7 +1753,7 @@ START_VERIFICATION_THREAD=async()=>{
         }
 
 
-        if(vtEpochHandler.leadersSequence[currentShardToCheck].length === handlerWithIndexToVerify.indexOfCurrentPoolToVerify-1) shardsReadyToNewEpoch.readyToNewEpoch++
+        if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify) shardsReadyToNewEpoch.readyToNewEpoch++
 
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){

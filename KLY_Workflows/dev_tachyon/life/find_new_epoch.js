@@ -1,6 +1,6 @@
 import {
     
-    EPOCH_STILL_FRESH,GET_ALL_KNOWN_PEERS,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
+    EPOCH_STILL_FRESH,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
     
     GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
     
@@ -578,8 +578,6 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         await global.SYMBIOTE_META.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
 
-        console.log('Epoch cache is ',epochCache)
-
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
 
@@ -669,7 +667,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfQuorumThread.EPOCH.timestamp = qtEpochHandler.timestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
+                fullCopyOfQuorumThread.EPOCH.startTimestamp = qtEpochHandler.startTimestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
 
                 fullCopyOfQuorumThread.EPOCH.id = nextEpochId
 
