@@ -221,24 +221,29 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             */
          
+            let aefpExistsLocally = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
 
-            epochFinishProposition[primePoolPubKey] = {
+            if(!aefpExistsLocally){
 
-                currentLeader:indexOfLeader,
+                epochFinishProposition[primePoolPubKey] = {
 
-                afpForFirstBlock:{},
-
-                metadataForCheckpoint:temporaryObject.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-
-            }
-
-            // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
-
-            if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
-
-                let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
-
-                epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
+                    currentLeader:indexOfLeader,
+    
+                    afpForFirstBlock:{},
+    
+                    metadataForCheckpoint:temporaryObject.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+    
+                }
+    
+                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
+    
+                if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
+    
+                    let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
+    
+                    epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
+    
+                }    
 
             }
             
