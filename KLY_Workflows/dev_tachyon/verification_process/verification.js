@@ -1597,9 +1597,9 @@ CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
 
 START_VERIFICATION_THREAD=async()=>{
 
-    let primePoolsPubkeys = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
+    let shardsIdentifiers = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
 
-    if(!primePoolsPubkeys){
+    if(!shardsIdentifiers){
 
         let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL).filter(
                 
@@ -1609,7 +1609,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
 
-        primePoolsPubkeys = primePools
+        shardsIdentifiers = primePools
 
     }
 
@@ -1620,9 +1620,9 @@ START_VERIFICATION_THREAD=async()=>{
 
     let previousShardWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER
 
-    let indexOfPreviousShard = primePoolsPubkeys.indexOf(previousShardWeChecked)
+    let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
 
-    let currentShardToCheck = primePoolsPubkeys[indexOfPreviousShard+1] || primePoolsPubkeys[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
+    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
@@ -1845,7 +1845,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         let handler = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // {readyToNewEpoch:int}
 
-        if(handler.readyToNewEpoch === primePoolsPubkeys.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+        if(handler.readyToNewEpoch === shardsIdentifiers.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
 
     }
             

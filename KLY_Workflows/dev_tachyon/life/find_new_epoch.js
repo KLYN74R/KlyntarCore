@@ -565,9 +565,15 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
             }
 
             
-            //_____________________________ Here we should have understanding of first block for each shard __________________________
+            //___________________ Here we should have understanding of first block for each shard on this epoch __________________________
 
-            if(epochCache[primePoolPubKey].firstBlockOnShardFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadyShards++
+            if(epochCache[primePoolPubKey].firstBlockOnShardFound && epochCache[primePoolPubKey].aefp){
+
+                totalNumberOfReadyShards++
+
+                console.log(`DEBUG: Shard ${primePoolPubKey} is ready => `,epochCache[primePoolPubKey])
+
+            }
 
             if(!epochCache[primePoolPubKey].firstBlockHash) epochCache[primePoolPubKey] = {}
     
@@ -777,6 +783,10 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         // Continue to find checkpoints
         setImmediate(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS)
+
+    }else{
+
+        setTimeout(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS,3000)
 
     }
 
