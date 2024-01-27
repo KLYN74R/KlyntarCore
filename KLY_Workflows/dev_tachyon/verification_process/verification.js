@@ -1150,7 +1150,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                         let firstBlockOfPool = nextEpochIndex+':'+reservePoolPubKey+':0'
 
-                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPool)
+                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPool,vtEpochHandler)
 
                         if(afp){
 
@@ -1684,7 +1684,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
 
-                if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify) break
+                if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 <= handlerWithIndexToVerify.indexOfCurrentPoolToVerify) break
 
                 else {
 
@@ -1709,7 +1709,6 @@ START_VERIFICATION_THREAD=async()=>{
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
                 let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
-
 
                 if(stepsForWhile <= 0){
 
@@ -1749,6 +1748,7 @@ START_VERIFICATION_THREAD=async()=>{
 
 
             if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
+        
 
         }
 
@@ -1849,7 +1849,6 @@ START_VERIFICATION_THREAD=async()=>{
 
     }
             
-
     setImmediate(START_VERIFICATION_THREAD)
 
 },
