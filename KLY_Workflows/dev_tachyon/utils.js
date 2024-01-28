@@ -531,7 +531,7 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
 
 //Function for pretty output the information about verification thread(VT)
-VT_STATS_LOG = (epochIndex,epochHash,shardContext) => {
+VT_STATS_LOG = (epochFullID,shardContext) => {
 
 
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]){
@@ -544,7 +544,7 @@ VT_STATS_LOG = (epochIndex,epochHash,shardContext) => {
     
         console.log('\n')
             
-        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochHash}#${epochIndex}`,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochFullID}`,COLORS.C)
     
         console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.C)
     

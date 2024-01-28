@@ -180,7 +180,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
         // Check that a new proposed block is a part of a valid segment
 
-        let sameSegment = finalizationStatsForThisPool.index < block.index || finalizationStatsForThisPool.index === block.index && proposedBlockHash === finalizationStatsForThisPool.hash
+        let sameSegment = finalizationStatsForThisPool.index < block.index || finalizationStatsForThisPool.index === block.index && proposedBlockHash === finalizationStatsForThisPool.hash && block.epoch === epochFullID
 
 
         if(sameSegment){

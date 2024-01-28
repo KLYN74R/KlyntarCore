@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF, GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID
 
 } from '../utils.js'
 
@@ -925,7 +925,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
                 global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
 
-                    currentLeaderOnShard:-1,
+                    currentLeaderOnShard:poolPubKey,
 
                     index:-1,
                     
@@ -1660,31 +1660,37 @@ START_VERIFICATION_THREAD=async()=>{
         */
 
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) global.SYMBIOTE_META.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',{readyToNewEpoch:0})
+        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) global.SYMBIOTE_META.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
 
         if(!global.SYMBIOTE_META.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) global.SYMBIOTE_META.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
 
 
-        let shardsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // {readyToNewEpoch:int}
+        let shardsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
         
         let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
         let metadataForShardFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
+        let localVtMetadataForPool, metadataFromAefpForThisPool
 
         // eslint-disable-next-line no-constant-condition
         while(true){
 
             let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
 
-            let localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+            localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
-            let metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
-            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index){
+            let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
 
-                if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 <= handlerWithIndexToVerify.indexOfCurrentPoolToVerify) break
+            let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
+
+
+            if(weFinishedToVerifyPool){
+
+                if(itsTheLastPoolInSequence) break
 
                 else {
 
@@ -1734,8 +1740,6 @@ START_VERIFICATION_THREAD=async()=>{
         
                         await verifyBlock(block,currentShardToCheck)
 
-                        VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
-
                         tunnelHandler.cache.delete(blockIdToGet)
 
                     }
@@ -1745,15 +1749,23 @@ START_VERIFICATION_THREAD=async()=>{
                 }
 
             } else break
-
-
-            if(localVtMetadataForPool.index === metadataFromAefpForThisPool.index) handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
         
 
         }
 
 
-        if(vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify) shardsReadyToNewEpoch.readyToNewEpoch++
+        let allBlocksWereVerifiedInPreviousEpoch = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
+
+        let finishedToVerifyTheLastPoolInSequence = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
+
+        let thisShardWasAccounted = shardsReadyToNewEpoch.has(currentShardToCheck)
+
+
+        if(allBlocksWereVerifiedInPreviousEpoch && finishedToVerifyTheLastPoolInSequence && !thisShardWasAccounted){
+
+            shardsReadyToNewEpoch.set(currentShardToCheck,true)
+
+        }
 
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){
@@ -1820,8 +1832,6 @@ START_VERIFICATION_THREAD=async()=>{
     
                     await verifyBlock(block,currentShardToCheck)
 
-                    VT_STATS_LOG(vtEpochIndex,vtEpochHandler.hash,currentShardToCheck)
-
                     tunnelHandler.cache.delete(blockIdToGet)
 
                 }
@@ -1843,9 +1853,10 @@ START_VERIFICATION_THREAD=async()=>{
 
     if(global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
 
-        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // {readyToNewEpoch:int}
+        let mapOfShardsReadyToNextEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mappping(shardID=>boolean)
 
-        if(handler.readyToNewEpoch === shardsIdentifiers.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+        // We move to the next epoch (N+1) only in case we finish the verification on all the shards in this epoch (N)
+        if(mapOfShardsReadyToNextEpoch.size === shardsIdentifiers.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
 
     }
             
@@ -2001,15 +2012,7 @@ verifyBlock=async(block,shardContext)=>{
             &&
             global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
 
-    // if(block.i === global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT && blockHash !== global.CONFIG.SYMBIOTE.SYMBIOTE_CHECKPOINT.HEIGHT){
 
-    //     LOG(`SYMBIOTE_CHECKPOINT verification failed. Delete the CHAINDATA/BLOCKS,CHAINDATA/METADATA,CHAINDATA/STATE and SNAPSHOTS. Resync node with the right blockchain or load the true snapshot`,'F')
-
-    //     LOG('Going to stop...','W')
-
-    //     process.emit('SIGINT')
-
-    // }
 
 
     if(overviewOk){
@@ -2243,6 +2246,7 @@ verifyBlock=async(block,shardContext)=>{
 
         await atomicBatch.write()
         
+        VT_STATS_LOG(block.epoch,shardContext)
 
     }
 
