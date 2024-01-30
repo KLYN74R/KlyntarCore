@@ -192,7 +192,7 @@ FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 
         response.send(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
 
-    }else response.send(JSON.stringify({err:'Symbiote not supported'}))
+    }else response.send({err:'Symbiote not supported'})
 
 })
 
@@ -359,11 +359,11 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.SYMBIOTE.PAYLOAD_SIZE},(
             :
             nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
     
-            response.send('Your node has been added')
+            response.send({ok:'Your node has been added'})
     
-        }else response.send('Your node already in scope')
+        }else response.send({ok:'Your node already in scope'})
     
-    }else response.send('Wrong types => endpoint(domain) must be 256 chars in length or less')
+    }else response.send({err:'Wrong types => endpoint(domain) must be 256 chars in length or less'})
 
 
 

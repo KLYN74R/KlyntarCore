@@ -4,6 +4,45 @@ import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
+
+
+
+
+
+
+
+
+
+
+FASTIFY_SERVER.get('/first_block_assumption/:epoch_index/:shard',async(request,response)=>{
+
+    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+
+    if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
+
+        response.send({err:'QT epoch handler is not ready'})
+    
+        return
+
+    }
+
+    let idToFind = `FIRST_BLOCK_ASSUMPTION:${request.params.epoch_index}:${request.params.shard}`
+
+    let firstBlockAssumption = await global.SYMBIOTE_META.EPOCH_DATA.get(idToFind).catch(()=>null)
+
+    let signature = await ED25519_SIGN_DATA(idToFind+':'+firstBlockAssumption)
+
+    
+    if(firstBlockAssumption){
+
+        response.send({signature,firstBlockAssumption})
+
+    }else response.send({err:'No FIRST_BLOCK_ASSUMPTION'})
+
+})
+
+
+
 /*
             
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
@@ -40,7 +79,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
         if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
-            response.send('QT epoch handler is not ready')
+            response.send({err:'QT epoch handler is not ready'})
         
             return
 

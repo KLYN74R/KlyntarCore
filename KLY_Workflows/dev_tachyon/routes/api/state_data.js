@@ -181,7 +181,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
         }
 
 
-    }else response.send(JSON.stringify({err:'Route is off'}))
+    }else response.send({err:'Route is off'})
 
 })
 
