@@ -58,7 +58,7 @@ Ask the network in special order:
     3) Other known peers
 
 */
-let GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF = async() => {
+let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
     // global.SYMBIOTE_META.GENERATION_THREAD
 
@@ -393,7 +393,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         if(epochIndex !== 0){
 
-            let aefpForPreviousEpoch = await GET_PREVIOUS_AGGREGATED_EPOCH_FINALIZATION_PROOF()
+            let aefpForPreviousEpoch = await GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH()
 
             // If we can't find a proof - try to do it later
             // Only in case it's initial epoch(index is -1) - no sense to push it

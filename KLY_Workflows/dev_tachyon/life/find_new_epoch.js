@@ -378,6 +378,10 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                                 // Store locally
 
                                 await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
+
+                                // No sense to find more
+
+                                break
     
                             }
                                         
@@ -408,7 +412,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 let firstBlockID = qtEpochHandler.id+':'+primePoolPubKey+':0'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>null)
+                let afpForFirstBlockOfPrimePool = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockID,qtEpochHandler)
 
                 if(afpForFirstBlockOfPrimePool){
 
@@ -417,6 +421,8 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                     epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
 
                     epochCache[primePoolPubKey].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
+
+                    break
 
                 }else{
 

@@ -1066,8 +1066,6 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
         let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
 
-        let allKnownPeers = await GET_QUORUM_URLS_AND_PUBKEYS()
-
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
@@ -1086,9 +1084,9 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                 let firstBlockOfPrimePoolForNextEpoch = nextEpochIndex+':'+primePoolPubKey+':0'
 
-                let afpForFirstBlockOfPrimePool = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockOfPrimePoolForNextEpoch).catch(()=>null)
+                let afpForFirstBlockOfPrimePool = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPrimePoolForNextEpoch,vtEpochHandler)
 
-                if(afpForFirstBlockOfPrimePool){
+                if(afpForFirstBlockOfPrimePool.blockID === firstBlockOfPrimePoolForNextEpoch){
 
                     epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
 
@@ -1096,46 +1094,6 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
                     epochCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
-                }else{
-
-                    let imitationOfEpochHandlerForNextEpoch = {
-
-                        id:nextEpochIndex,
-
-                        hash:nextEpochHash,
-
-                        quorum:nextEpochQuorum
-
-                    }
-
-                    // Ask quorum for AFP for first block of prime pool
-
-                    // Descriptor is {url,pubKey}
-
-                    for(let peerHostname of allKnownPeers){
-            
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerHostname+'/aggregated_finalization_proof/'+firstBlockOfPrimePoolForNextEpoch).then(r=>r.json()).catch(()=>null)
-
-                        if(itsProbablyAggregatedFinalizationProof){
-            
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,imitationOfEpochHandlerForNextEpoch)
-            
-                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockOfPrimePoolForNextEpoch){                            
-                            
-                                epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
-
-                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
-
-                                epochCache[primePoolPubKey].realFirstBlockFound = true
-
-                                break
-
-                            }
-            
-                        }
-            
-                    }
-            
                 }
 
                 //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
