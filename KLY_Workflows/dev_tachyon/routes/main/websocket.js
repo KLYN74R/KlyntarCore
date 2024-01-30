@@ -215,6 +215,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                 if(block.index === 0){
 
+
                     /*
     
                         And finally, if it's the first block in epoch - verify that it contains:
@@ -270,7 +271,18 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                     ).then(value=>value.isOK).catch(()=>false)
 
 
-                    if(!aefpIsOk || !alrpChainIsOk){
+                    // Finally, check if we still don't have assumptions for the first block in current epoch
+
+                    let assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${primePoolPubKey}`).catch(()=>false)
+
+                    if(!assumptionAboutFirstBlockExists){
+
+                        assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${primePoolPubKey}`,proposedBlockID).then(()=>true).catch(()=>false)
+
+                    }
+
+
+                    if(!aefpIsOk || !alrpChainIsOk || !assumptionAboutFirstBlockExists){
 
                         connection.close()
 
@@ -446,8 +458,10 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
         let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(blockCreator)
     
         let poolIsReal = itsPrimePool || itsReservePool
+
+        let shardsLeadersData = tempObject.SHARDS_LEADERS_HANDLERS.get(blockCreator)
     
-        let itIsReservePoolWhichIsLeaderNow = poolIsReal && typeof tempObject.SHARDS_LEADERS_HANDLERS.get(blockCreator) === 'string'
+        let itIsReservePoolWhichIsLeaderNow = poolIsReal && typeof shardsLeadersData === 'string'
 
         let thisLeaderCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsLeaderNow || itsPrimePool )
     
@@ -559,6 +573,29 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                     }
     
+                } else {
+
+
+                    // Check if we still don't have assumptions for the first block in current epoch
+
+                    let shardID = itsPrimePool ? blockCreator : shardsLeadersData
+
+                    let assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
+
+                    if(!assumptionAboutFirstBlockExists){
+
+                        assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,proposedBlockID).then(()=>true).catch(()=>false)
+
+                    }
+
+                    if(!assumptionAboutFirstBlockExists){
+
+                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+    
+                        return
+
+                    }
+
                 }
 
 
