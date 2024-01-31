@@ -9,6 +9,8 @@ import readline from 'readline'
 import fetch from 'node-fetch'
 
 import fs from 'fs'
+import { GET_BLOCK } from './verification_process/verification.js'
+import Block from './essences/block.js'
 
 
 
@@ -314,6 +316,154 @@ GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHan
         }
 
     }else return localVersionOfAfp
+
+},
+
+
+
+
+GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID) => {
+
+    // Check if we already tried to find first block by finding pivot in cache
+
+    let pivotShardID = `${epochHandler.id}:${shardID}`
+
+    let pivotPoolData = global.SYMBIOTE_META.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
+
+    if(!pivotPoolData){
+
+        let arrayOfReservePoolsForShard = epochHandler.leadersSequence[shardID]
+        
+        for(let position = -1, length = arrayOfReservePoolsForShard.length ; position < length ; position++){
+
+            let potentialPivotPubKey = arrayOfReservePoolsForShard[position] || shardID
+
+            let firstBlockIDByThisPubKey = epochHandler.id+':'+potentialPivotPubKey+':0'
+
+            // Try to get AFP & first block to commit pivot and continue to find first block
+
+            let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisPubKey,epochHandler)
+
+            let potentialFirstBlock = await GET_BLOCK(epochHandler.id,potentialPivotPubKey,0)
+
+
+            if(afp && afp.blockID === firstBlockIDByThisPubKey && potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
+
+                // Once we find it - set as pivot for further actions
+
+                let pivotTemplate = {
+
+                    position,
+
+                    pivotPubKey:potentialPivotPubKey,
+                    
+                    firstBlockByPivot:potentialFirstBlock,
+
+                    firstBlockHash:afp.blockHash
+
+                }
+
+                global.SYMBIOTE_META.STUFF_CACHE.set(pivotShardID,pivotTemplate)
+
+                break
+
+            }
+        
+        }
+
+    }
+
+    
+    pivotPoolData = global.SYMBIOTE_META.STUFF_CACHE.get(pivotShardID)
+
+
+    if(pivotPoolData){
+
+        // In pivot we have first block created in epoch by some pool
+
+        // Try to move closer to the beginning of the epochHandler.leadersSequence[shardID] to find the real first block
+
+        // Once we 
+
+        if(pivotPoolData.position === -1){
+
+            // Imediately return - it's signal that prime pool created the first block, so no sense to find smth more
+
+            return {firstBlockCreator:shardID,firstBlockHash:pivotPoolData.firstBlockHash}
+
+
+        }else{
+
+            // Otherwise - continue to search
+
+            // Based on ALRP in pivot block - find the real first block
+
+            let blockToEnumerateAlrp = pivotPoolData.firstBlockByPivot
+
+            let arrayOfReservePoolsForShard = epochHandler.leadersSequence[shardID]
+
+            for(let position = pivotPoolData.position-1 ; position >= -1 ; position--){
+    
+                
+                let previousPoolInLeadersSequence = arrayOfReservePoolsForShard[position] || shardID
+    
+                let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
+
+
+                if(previousPoolInLeadersSequence === shardID){
+
+                    // In case we're on the beginning of the leaders sequence
+
+                    if(leaderRotationProofForPreviousPool.skipIndex === -1){
+
+                        global.SYMBIOTE_META.STUFF_CACHE.delete(pivotShardID)
+
+                        return {firstBlockCreator:pivotPoolData.pivotPubKey,firstBlockHash:pivotPoolData.firstBlockHash}
+
+                    }else{
+
+                        // Clear the cache and return the result that the first block creator 
+
+                        global.SYMBIOTE_META.STUFF_CACHE.delete(pivotShardID)
+                        
+                        return {firstBlockCreator:shardID,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
+
+                    }
+
+
+                } else if(leaderRotationProofForPreviousPool.skipIndex !== -1) {
+
+                    // This means that we've found new pivot - so update it and break the cycle to repeat procedure later
+
+                    let firstBlockByNewPivot = await GET_BLOCK(epochHandler.id,previousPoolInLeadersSequence,0)
+
+                    if(firstBlockByNewPivot && leaderRotationProofForPreviousPool.firstBlockHash === Block.genHash(firstBlockByNewPivot)){
+
+                        let newPivotTemplate = {
+
+                            position,
+    
+                            pivotPubKey:previousPoolInLeadersSequence,
+    
+                            firstBlockByPivot:firstBlockByNewPivot,
+    
+                            firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash
+    
+                        }
+
+                        global.SYMBIOTE_META.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
+
+                        return
+
+                    } else return
+
+                }
+    
+            }
+
+        }
+
+    }
 
 },
 

@@ -1,12 +1,8 @@
 import {
     
-    EPOCH_STILL_FRESH,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
+    EPOCH_STILL_FRESH,GET_FIRST_BLOCK_ON_EPOCH,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
     
-    GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
-    
-    IS_MY_VERSION_OLD,
-    
-    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF
+    IS_MY_VERSION_OLD, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF
 
 } from '../utils.js'
 
@@ -301,7 +297,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         //____________________Ask the quorum for AEFP for shard___________________
         
-        for(let [primePoolPubKey,arrayOfReservePools] of entries){
+        for(let [primePoolPubKey] of entries){
         
             totalNumberOfShards++
         
@@ -408,163 +404,15 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
-                // First of all - try to find AFP for first block created in this epoch by the first pool in any reassignment chain => epochID:PrimePoolPubKey:0
+                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(qtEpochHandler,primePoolPubKey)
 
-                let firstBlockID = qtEpochHandler.id+':'+primePoolPubKey+':0'
+                if(findResult){
 
-                let afpForFirstBlockOfPrimePool = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockID,qtEpochHandler)
+                    epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
 
-                if(afpForFirstBlockOfPrimePool){
-
-                    epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
-
-                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
+                    epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
 
                     epochCache[primePoolPubKey].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
-
-                    break
-
-                }else{
-
-                    // Ask quorum for AFP for first block of prime pool
-
-                    // Descriptor is {url,pubKey}
-
-                    for(let peerURL of allKnownPeers){
-            
-                        let itsProbablyAggregatedFinalizationProof = await fetch(peerURL+'/aggregated_finalization_proof/'+firstBlockID).then(r=>r.json()).catch(()=>null)
-            
-                        if(itsProbablyAggregatedFinalizationProof){
-            
-                            let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,qtEpochHandler)
-            
-                            if(isOK && itsProbablyAggregatedFinalizationProof.blockID === firstBlockID){                            
-                            
-                                epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
-
-                                epochCache[primePoolPubKey].firstBlockHash = itsProbablyAggregatedFinalizationProof.blockHash
-
-                                epochCache[primePoolPubKey].firstBlockOnShardFound = true
-
-                                break // no more sense to find
-
-                            }
-            
-                        }
-            
-                    }
-            
-                }
-
-        
-                //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
-            
-                if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
-
-                    // Find AFPs for reserve pools
-                
-                    for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
-
-                        let reservePoolPubKey = arrayOfReservePools[position]
-
-                        let firstBlockIDBySomePool = qtEpochHandler.id+':'+reservePoolPubKey+':0'
-
-                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDBySomePool,qtEpochHandler)
-
-                        if(afp && afp.blockID === firstBlockIDBySomePool){
-
-                            //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
-
-                            let potentialFirstBlock = await GET_BLOCK(qtEpochHandler.id,reservePoolPubKey,0)
-
-                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
-
-                                /*
-                            
-                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.aggregatedLeadersRotationProofs
-                            
-                                    We should get the ALRP for previous pool in reassignment chain
-                                
-                                        1) If previous pool was reassigned on height -1 (alrp.skipIndex === -1) then try next pool
-
-                                */
-
-                                let currentPosition = position
-
-                                let alrpData = {}
-
-                                
-                                // eslint-disable-next-line no-constant-condition
-                                while(true){
-
-                                    let shouldBreakInfiniteOuterWhile = false
-
-                                    // eslint-disable-next-line no-constant-condition
-                                    while(true) {
-    
-                                        let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
-    
-                                        let leaderRotationProofForPreviousPool = potentialFirstBlock.extraData.aggregatedLeadersRotationProofs[previousPoolPubKey]
-
-
-                                        if(previousPoolPubKey === primePoolPubKey){
-
-                                            // In case we get the start of reassignment chain - break the cycle
-
-                                            epochCache[primePoolPubKey].firstBlockCreator = alrpData.firstBlockCreator
-
-                                            epochCache[primePoolPubKey].firstBlockHash = alrpData.firstBlockHash
-        
-                                            epochCache[primePoolPubKey].firstBlockOnShardFound = true
-                                    
-                                            shouldBreakInfiniteOuterWhile = true
-
-                                            break
-
-                                        }else if(leaderRotationProofForPreviousPool.skipIndex !== -1){
-    
-                                            // Get the first block of pool reassigned on not-null height
-                                            let potentialFirstBlockBySomePool = await GET_BLOCK(qtEpochHandler.id,previousPoolPubKey,0)
-
-                                            if(potentialFirstBlockBySomePool && Block.genHash(potentialFirstBlockBySomePool) === leaderRotationProofForPreviousPool.firstBlockHash){
-
-                                                potentialFirstBlock = potentialFirstBlockBySomePool
-
-                                                alrpData.firstBlockCreator = previousPoolPubKey
-
-                                                alrpData.firstBlockHash = leaderRotationProofForPreviousPool.firstBlockHash
-
-                                                currentPosition--
-
-                                                break // break the first(inner) while
-
-                                            }else{
-
-                                                // If we can't find required block - break the while & while cycles
-
-                                                shouldBreakInfiniteOuterWhile = true
-
-                                                break
-
-                                            }
-                                        
-                                        }
-
-                                        // Continue iteration in current block
-
-                                        currentPosition--
-    
-                                    }
-
-                                    if(shouldBreakInfiniteOuterWhile) break
-    
-                                }
-
-                            }
-
-                        }
-
-                    }
 
                 }
 

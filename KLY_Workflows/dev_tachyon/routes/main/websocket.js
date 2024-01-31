@@ -271,18 +271,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                     ).then(value=>value.isOK).catch(()=>false)
 
 
-                    // Finally, check if we still don't have assumptions for the first block in current epoch
-
-                    let assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${primePoolPubKey}`).catch(()=>false)
-
-                    if(!assumptionAboutFirstBlockExists){
-
-                        assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${primePoolPubKey}`,proposedBlockID).then(()=>true).catch(()=>false)
-
-                    }
-
-
-                    if(!aefpIsOk || !alrpChainIsOk || !assumptionAboutFirstBlockExists){
+                    if(!aefpIsOk || !alrpChainIsOk){
 
                         connection.close()
 
@@ -546,7 +535,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
                 // Now verify the aggregated skip proof
                 let {prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs} = previousBlockAFP
 
-                if(blockIndex !== 0 ){
+                if(blockIndex !== 0){
 
                     let previousBlockID = epochHandler.id+':'+blockCreator+':'+(blockIndex-1)
     
@@ -573,31 +562,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                     }
     
-                } else {
-
-
-                    // Check if we still don't have assumptions for the first block in current epoch
-
-                    let shardID = itsPrimePool ? blockCreator : shardsLeadersData
-
-                    let assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.get(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`).catch(()=>false)
-
-                    if(!assumptionAboutFirstBlockExists){
-
-                        assumptionAboutFirstBlockExists = await global.SYMBIOTE_META.EPOCH_DATA.put(`FIRST_BLOCK_ASSUMPTION:${epochHandler.id}:${shardID}`,proposedBlockID).then(()=>true).catch(()=>false)
-
-                    }
-
-                    if(!assumptionAboutFirstBlockExists){
-
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
-    
-                        return
-
-                    }
-
                 }
-
 
 
                 // Store the metadata for FINALIZATION_STATS
