@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, GET_FIRST_BLOCK_ON_EPOCH
 
 } from '../utils.js'
 
@@ -1060,17 +1060,28 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
     let nextEpochLeadersSequences = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
 
+    let nextEpochHandlerTemplate = {
+
+        id:nextEpochIndex,
+        
+        hash:nextEpochHash,
+
+        quorum:nextEpochQuorum,
+
+        leadersSequence:nextEpochLeadersSequences
+
+    }
 
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,realFirstBlockFound}} 
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
         // Once get it - get the real first block
-        for(let [primePoolPubKey,arrayOfReservePools] of Object.entries(nextEpochLeadersSequences)){
+        for(let [primePoolPubKey] of Object.entries(nextEpochLeadersSequences)){
 
             totalNumberOfShards++
 
@@ -1078,131 +1089,15 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
             if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey]={}
 
-            if(!epochCache[primePoolPubKey].realFirstBlockFound){
+            if(!epochCache[primePoolPubKey].firstBlockCreator){
 
-                // First of all - try to find AFP for block epochID:PrimePoolPubKey:0
+                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(nextEpochHandlerTemplate,primePoolPubKey)
 
-                let firstBlockOfPrimePoolForNextEpoch = nextEpochIndex+':'+primePoolPubKey+':0'
+                if(findResult){
 
-                let afpForFirstBlockOfPrimePool = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPrimePoolForNextEpoch,vtEpochHandler)
+                    epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
 
-                if(afpForFirstBlockOfPrimePool.blockID === firstBlockOfPrimePoolForNextEpoch){
-
-                    epochCache[primePoolPubKey].firstBlockCreator = primePoolPubKey
-
-                    epochCache[primePoolPubKey].firstBlockHash = afpForFirstBlockOfPrimePool.blockHash
-
-                    epochCache[primePoolPubKey].realFirstBlockFound = true // if we get the block 0 by prime pool - it's 100% the first block
-
-                }
-
-                //_____________________________________ Find AFPs for first blocks of reserve pools _____________________________________
-            
-                if(!epochCache[primePoolPubKey].realFirstBlockFound){
-
-                    // Find AFPs for reserve pools
-                
-                    for(let position = 0, length = arrayOfReservePools.length ; position < length ; position++){
-
-                        let reservePoolPubKey = arrayOfReservePools[position]
-
-                        let firstBlockOfPool = nextEpochIndex+':'+reservePoolPubKey+':0'
-
-                        let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockOfPool,vtEpochHandler)
-
-                        if(afp){
-
-                            //______________Now check if block is really the first one. Otherwise, run reverse cycle from <position> to -1 get the first block in epoch______________
-
-                            let potentialFirstBlock = await GET_BLOCK(nextEpochIndex,reservePoolPubKey,0,true)
-
-                            if(potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
-
-                                /*
-                            
-                                    Now, when we have block of some pool with index 0(first block in epoch) we're interested in block.extraData.aggregatedLeadersRotationProofs
-                            
-                                    We should get the ALRP for previous pool in leaders sequence
-                                
-                                        1) If previous pool was rotated on height -1 (alrp.skipIndex === -1) then try next pool
-
-                                */
-
-                                let currentPosition = position
-
-                                let alrpData = {}
-                                
-                                // eslint-disable-next-line no-constant-condition
-                                while(true){
-
-                                    let shouldBreakInfiniteWhile = false
-
-                                    // eslint-disable-next-line no-constant-condition
-                                    while(true){
-    
-                                        let previousPoolPubKey = arrayOfReservePools[currentPosition-1] || primePoolPubKey
-    
-                                        let aggregatedLeaderRotationProofForPreviousPool = potentialFirstBlock.extraData.aggregatedLeadersRotationProofs[previousPoolPubKey]
-
-
-                                        if(previousPoolPubKey === primePoolPubKey){
-
-                                            // In case we get the start of reassignment chain - break the cycle. The <potentialFirstBlock> will be the first block in epoch
-
-                                            epochCache[primePoolPubKey].firstBlockCreator = alrpData.firstBlockCreator
-
-                                            epochCache[primePoolPubKey].firstBlockHash = alrpData.firstBlockHash
-        
-                                            epochCache[primePoolPubKey].realFirstBlockFound = true
-                                    
-                                            shouldBreakInfiniteWhile = true
-
-                                            break
-
-                                        }else if(aggregatedLeaderRotationProofForPreviousPool.skipIndex !== -1){
-    
-                                            // Get the first block of pool which was reassigned on not-null height
-                                            let potentialNextBlock = await GET_BLOCK(nextEpochIndex,previousPoolPubKey,0)
-
-                                            if(potentialNextBlock && Block.genHash(potentialNextBlock) === aggregatedLeaderRotationProofForPreviousPool.firstBlockHash){
-
-                                                potentialFirstBlock = potentialNextBlock
-
-                                                alrpData.firstBlockCreator = previousPoolPubKey
-
-                                                alrpData.firstBlockHash = aggregatedLeaderRotationProofForPreviousPool.firstBlockHash
-
-                                                currentPosition--
-
-                                                break // break the first(inner) while
-
-                                            }else{
-
-                                                // If we can't find required block - break the while & while cycles
-
-                                                shouldBreakInfiniteWhile = true
-
-                                                break
-
-                                            }
-                                        
-                                        }
-
-                                        // Continue iteration in current block
-
-                                        currentPosition--
-    
-                                    }
-
-                                    if(shouldBreakInfiniteWhile) break
-    
-                                }
-
-                            }
-
-                        }
-
-                    }
+                    epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
 
                 }
 
@@ -1210,27 +1105,20 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
             }
 
-            
-            if(epochCache[primePoolPubKey].realFirstBlockFound){
+            //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
-                //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
+            let firstBlockOnThisShardInThisEpoch = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
 
-                // Try to get block
+            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[primePoolPubKey].firstBlockHash){
 
-                let firstBlockOnThisShardInThisEpoch = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
-
-                if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[primePoolPubKey].firstBlockHash){
-
-                    epochCache[primePoolPubKey].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
-
-                }
+                epochCache[primePoolPubKey].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
 
             }
-
 
             if(epochCache[primePoolPubKey].aefp) totalNumberOfShardsReadyForMove++
 
         }
+
 
         if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
 
