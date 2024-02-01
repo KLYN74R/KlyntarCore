@@ -2,6 +2,8 @@ import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Util
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import Block from './essences/block.js'
+
 import cryptoModule from 'crypto'
 
 import readline from 'readline'
@@ -9,8 +11,6 @@ import readline from 'readline'
 import fetch from 'node-fetch'
 
 import fs from 'fs'
-import { GET_BLOCK } from './verification_process/verification.js'
-import Block from './essences/block.js'
 
 
 
@@ -322,7 +322,7 @@ GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHan
 
 
 
-GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID) => {
+GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
@@ -344,7 +344,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID) => {
 
             let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisPubKey,epochHandler)
 
-            let potentialFirstBlock = await GET_BLOCK(epochHandler.id,potentialPivotPubKey,0)
+            let potentialFirstBlock = await getBlockFunction(epochHandler.id,potentialPivotPubKey,0)
 
 
             if(afp && afp.blockID === firstBlockIDByThisPubKey && potentialFirstBlock && afp.blockHash === Block.genHash(potentialFirstBlock)){
@@ -435,7 +435,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID) => {
 
                     // This means that we've found new pivot - so update it and break the cycle to repeat procedure later
 
-                    let firstBlockByNewPivot = await GET_BLOCK(epochHandler.id,previousPoolInLeadersSequence,0)
+                    let firstBlockByNewPivot = await getBlockFunction(epochHandler.id,previousPoolInLeadersSequence,0)
 
                     if(firstBlockByNewPivot && leaderRotationProofForPreviousPool.firstBlockHash === Block.genHash(firstBlockByNewPivot)){
 

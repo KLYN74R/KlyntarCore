@@ -41,7 +41,6 @@ import {BLOCKS_GENERATION} from './life/block_generation.js'
 
 
 
-
 //______________________________________________________________VARIABLES POOL___________________________________________________________________
 
 
@@ -854,13 +853,13 @@ PREPARE_SYMBIOTE=async()=>{
 
 RUN_SYMBIOTE=async()=>{
 
-    await PREPARE_SYMBIOTE()
 
+    await PREPARE_SYMBIOTE()
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    //START_VERIFICATION_THREAD()
 
     //✅1.Thread to find AEFPs and change the epoch for QT
     FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()

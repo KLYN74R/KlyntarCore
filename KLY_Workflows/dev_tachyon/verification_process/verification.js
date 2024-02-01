@@ -2,7 +2,7 @@ import {
     
     GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, GET_FIRST_BLOCK_ON_EPOCH
+    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_FIRST_BLOCK_ON_EPOCH
 
 } from '../utils.js'
 
@@ -43,12 +43,18 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     // Try to find block locally
 
     let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>null)
+    
 
     if(!block){
 
         // First of all - try to find by pre-set URL
 
-        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID).then(r=>r.json()).then(block=>{
+        const controller = new AbortController()
+
+        setTimeout(() => controller.abort(), 2000)
+
+
+        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
                 
             if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
@@ -72,8 +78,12 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
             for(let host of allKnownNodes){
 
                 if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+
+                const controller = new AbortController()
+
+                setTimeout(() => controller.abort(), 2000)
                 
-                let itsProbablyBlock = await fetch(host+`/block/`+blockID).then(r=>r.json()).catch(()=>null)
+                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null)
                 
                 if(itsProbablyBlock){
 
@@ -1091,7 +1101,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
             if(!epochCache[primePoolPubKey].firstBlockCreator){
 
-                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(nextEpochHandlerTemplate,primePoolPubKey)
+                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(nextEpochHandlerTemplate,primePoolPubKey,GET_BLOCK)
 
                 if(findResult){
 

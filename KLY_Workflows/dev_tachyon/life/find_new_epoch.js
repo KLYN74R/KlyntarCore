@@ -289,9 +289,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
-
-        epochCache = {}
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
 
         let entries = Object.entries(leadersSequence)
 
@@ -355,7 +353,6 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                     epochCache[primePoolPubKey].aefp = aefp
 
-
                 }else{
 
                     // Ask quorum for AEFP
@@ -383,7 +380,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                                         
                         }
                 
-                    }    
+                    }
 
                 }
 
@@ -404,7 +401,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
-                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(qtEpochHandler,primePoolPubKey)
+                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(qtEpochHandler,primePoolPubKey,GET_BLOCK)
 
                 if(findResult){
 

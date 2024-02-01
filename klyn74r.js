@@ -371,7 +371,11 @@ await new Promise(resolve=>
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
 
 
+
+
 export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
+
+
 
 
 (async()=>{
