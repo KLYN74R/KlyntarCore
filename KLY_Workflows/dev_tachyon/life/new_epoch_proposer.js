@@ -78,31 +78,68 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let majority = GET_MAJORITY(qtEpochHandler)
 
-        let leadersSequence = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+        let leadersSequencePerShard = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
         
     
-        for(let [primePoolPubKey,reassignmentArray] of Object.entries(leadersSequence)){
+        for(let [shardId,arrayOfReservePools] of Object.entries(leadersSequencePerShard)){
 
-            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}// {currentLeader:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.SHARDS_LEADERS_HANDLERS.get(shardId) || {currentLeader:-1}// {currentLeader:<number>}
 
             let pubKeyOfLeader, indexOfLeader
             
             
             if(handlerWithIndexOfCurrentLeaderOnShard.currentLeader !== -1){
 
-                pubKeyOfLeader = reassignmentArray[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
+                pubKeyOfLeader = arrayOfReservePools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
 
                 indexOfLeader = handlerWithIndexOfCurrentLeaderOnShard.currentLeader
 
             }else{
 
-                pubKeyOfLeader = primePoolPubKey
+                pubKeyOfLeader = shardId
 
                 indexOfLeader = -1
 
             }
             
+
+            /*
+            
+                Now to avoid loops, check if last leader created at least 1 block
+            
+            */
+
+            let localVotingDataForLeader = temporaryObject.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
+            if(localVotingDataForLeader.index === -1){
+
+                // Change to previous leader that finish its work on height > -1
+
+                for(let position = indexOfLeader-1 ; position >= -1 ; position --){
+
+                    let previousShardLeader = arrayOfReservePools[position] || shardId
+
+                    let localVotingData = temporaryObject.FINALIZATION_STATS.get(previousShardLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+
+                    if(localVotingData.index > -1){
+
+                        pubKeyOfLeader = previousShardLeader
+
+                        indexOfLeader = position
+
+                        // Also, change the value in pointer to current leader
+
+                        temporaryObject.SHARDS_LEADERS_HANDLERS.set(shardId,{currentLeader:position})
+
+                        break
+
+                    }
+
+                }
+
+            }
+
             
             // Structure is Map(shard=>Map(quorumMember=>SIG('EPOCH_DONE'+shard+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)))
             let agreements = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION')
@@ -115,13 +152,13 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             }
 
-            let agreementsForThisShard = agreements.get(primePoolPubKey)
+            let agreementsForThisShard = agreements.get(shardId)
 
             if(!agreementsForThisShard){
 
                 agreementsForThisShard = new Map()
 
-                agreements.set(primePoolPubKey,agreementsForThisShard)
+                agreements.set(shardId,agreementsForThisShard)
             
             }
 
@@ -221,11 +258,11 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             */
          
-            let aefpExistsLocally = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
+            let aefpExistsLocally = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${shardId}`).catch(()=>false)
 
             if(!aefpExistsLocally){
 
-                epochFinishProposition[primePoolPubKey] = {
+                epochFinishProposition[shardId] = {
 
                     currentLeader:indexOfLeader,
     
@@ -237,11 +274,11 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
                 // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
     
-                if(epochFinishProposition[primePoolPubKey].metadataForCheckpoint.index >= 0){
+                if(epochFinishProposition[shardId].metadataForCheckpoint.index >= 0){
     
                     let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
     
-                    epochFinishProposition[primePoolPubKey].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
+                    epochFinishProposition[shardId].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
     
                 }    
 
@@ -327,7 +364,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 let {index,hash,afp} = response.metadataForCheckpoint
                             
-                                let pubKeyOfProposedLeader = leadersSequence[primePoolPubKey][response.currentLeader] || primePoolPubKey
+                                let pubKeyOfProposedLeader = leadersSequencePerShard[primePoolPubKey][response.currentLeader] || primePoolPubKey
                                 
                                 let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
 
@@ -343,7 +380,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                                     
                                     // Update FINALIZATION_STATS
 
-                                    temporaryObject.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})                                    
+                                    temporaryObject.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
