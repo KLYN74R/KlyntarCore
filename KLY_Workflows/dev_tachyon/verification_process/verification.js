@@ -490,7 +490,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-    let filteredReassignment = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
+    let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
 
     // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
@@ -505,28 +505,44 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     }
 
+    let infoAboutLastBlocksByPreviousPool
+
     for(let position = aefp.lastLeader; position >= 0; position--){
 
         let poolPubKey = oldLeadersSequenceForShard[position]
 
-        // Get the first block of this epoch from VERIFICATION_STATS_PER_POOL
+        // In case we know that pool on this position created 0 block - don't return from function and continue the cycle iterations
 
-        let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochIndex,poolPubKey,0)
+        if(infoAboutLastBlocksByPreviousPool && infoAboutLastBlocksByPreviousPool[poolPubKey].index === -1){
 
-        if(!firstBlockInThisEpochByPool) return
+            continue
 
-        // In this block we should have ALRPs for all the previous reservePool + primePool
+        } else {
 
-        let {isOK,filteredReassignments} = await CHECK_ALRP_CHAIN_VALIDITY(
+            // Get the first block of this epoch from VERIFICATION_STATS_PER_POOL
+
+            let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochIndex,poolPubKey,0)
+
+            if(!firstBlockInThisEpochByPool) return
+
+            // In this block we should have ALRPs for all the previous reservePool + primePool
+
+            let {isOK,filteredReassignments} = await CHECK_ALRP_CHAIN_VALIDITY(
             
-            primePoolPubKey,firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true)
+                primePoolPubKey,firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
+            
+            )
 
-        if(isOK){
 
-            filteredReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
+            if(isOK){
+
+                infoAboutFinalBlocksByPool.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
+
+                infoAboutLastBlocksByPreviousPool = filteredReassignments
+
+            }
 
         }
-
 
     }
 
@@ -534,9 +550,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     for(let reservePool of oldLeadersSequenceForShard){
 
-        if(filteredReassignment.has(reservePool)){
+        if(infoAboutFinalBlocksByPool.has(reservePool)){
 
-            let metadataForReassignment = filteredReassignment.get(reservePool)
+            let metadataForReassignment = infoAboutFinalBlocksByPool.get(reservePool)
 
             for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
 
