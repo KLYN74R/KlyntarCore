@@ -43,7 +43,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     // Try to find block locally
 
     let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>null)
-    
+
 
     if(!block){
 
@@ -490,7 +490,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-    let filtratratedReassignment = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
+    let filteredReassignment = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
 
     // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
@@ -523,7 +523,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
         if(isOK){
 
-            filtratratedReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
+            filteredReassignment.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
 
         }
 
@@ -534,9 +534,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     for(let reservePool of oldLeadersSequenceForShard){
 
-        if(filtratratedReassignment.has(reservePool)){
+        if(filteredReassignment.has(reservePool)){
 
-            let metadataForReassignment = filtratratedReassignment.get(reservePool)
+            let metadataForReassignment = filteredReassignment.get(reservePool)
 
             for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
 
@@ -927,6 +927,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         let newPrimePoolsArray = []
 
+
         for(let [poolPubKey,poolMetadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
 
             if(!poolMetadata.isReserve) {
@@ -1028,7 +1029,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
 
-TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
+TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
     /* 
             
@@ -1085,7 +1086,7 @@ TRY_TO_CHANGE_EPOCH_FOR_SHARD = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
+        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
@@ -1529,6 +1530,8 @@ START_VERIFICATION_THREAD=async()=>{
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
+
+
         // eslint-disable-next-line no-constant-condition
         while(true){
 
@@ -1537,6 +1540,7 @@ START_VERIFICATION_THREAD=async()=>{
             localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
             metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+
 
 
             let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
@@ -1646,7 +1650,11 @@ START_VERIFICATION_THREAD=async()=>{
             global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-            if(!currentEpochIsFresh) await TRY_TO_CHANGE_EPOCH_FOR_SHARD(vtEpochHandler)
+            if(!currentEpochIsFresh){
+
+                await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
+
+            }
                     
         
             setImmediate(START_VERIFICATION_THREAD)
@@ -1704,7 +1712,11 @@ START_VERIFICATION_THREAD=async()=>{
     global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]) await TRY_TO_CHANGE_EPOCH_FOR_SHARD(vtEpochHandler)
+    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
+
+        await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
+
+    }
 
 
     if(global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
