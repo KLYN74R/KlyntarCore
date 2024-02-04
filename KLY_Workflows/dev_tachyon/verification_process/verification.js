@@ -982,12 +982,13 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
 
-
         // Finally - delete the AEFP reassignment metadata
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
         // Delete the useless temporary reassignments from previous epoch
         delete global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
+
+        global.SYMBIOTE_META.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
         LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,'S')
