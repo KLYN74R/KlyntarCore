@@ -32,7 +32,7 @@ const NUMBER_OF_BAD_ACTORS = Math.floor(NUMBER_OF_VALIDATORS * BAD_ACTOR_CONTROL
 const NUMBER_OF_NORM_ACTORS = NUMBER_OF_VALIDATORS - NUMBER_OF_BAD_ACTORS
 
 
-let totalChanceOfBad = 0
+let totalProbabilityOfBad = 0
 
 let totalNumberOfPossibleCases = getKFromN(BigInt(QUORUM_SIZE),BigInt(NUMBER_OF_VALIDATORS))
 
@@ -58,15 +58,15 @@ if(THIRD_PART_OF_QUORUM > NUMBER_OF_BAD_ACTORS){
     
         let casesWhenNorm = getKFromN(numberOfNormalActorsInThisQuorum,BigInt(NUMBER_OF_NORM_ACTORS))
     
-        let chance = Number(casesWhenMoreThanOneThirdBadActors * casesWhenNorm) / Number(totalNumberOfPossibleCases)
+        let probability = Number(casesWhenMoreThanOneThirdBadActors * casesWhenNorm) / Number(totalNumberOfPossibleCases)
     
-        console.log(`Bad actors: ${numberOfBadActorsInCurrentQuorum} | Norm actors: ${numberOfNormalActorsInThisQuorum} | Chance: ${chance*100} %`)
+        console.log(`Bad actors: ${numberOfBadActorsInCurrentQuorum} | Norm actors: ${numberOfNormalActorsInThisQuorum} | Probability: ${probability}`)
     
-        totalChanceOfBad += chance * 100
+        totalProbabilityOfBad += probability
     
     }
     
-    console.log('Final value of chance => ',totalChanceOfBad)
+    console.log('Final value of probability => ',totalProbabilityOfBad)
     
 
 }

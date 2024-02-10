@@ -240,13 +240,17 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
     
             for(let pubKeyOfQuorumMember of subsetToSendBlocks){
     
-                // No sense to get the commitment if we already have
+                // No sense to contact if we already have a proof
     
                 if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
     
                 let connection = TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
     
-                if(connection) connection.sendUTF(dataToSend)
+                if(connection){
+
+                    connection.sendUTF(dataToSend)
+
+                }
     
             }    
 
@@ -256,7 +260,6 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
 
     //_______________________ It means that we now have enough FINALIZATION_PROOFs for appropriate block. Now we can start to generate AGGREGATED_FINALIZATION_PROOF _______________________
-
 
     if(finalizationProofsMapping.size >= majority){
 
@@ -324,7 +327,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
         }).catch(()=>{})
 
-        
+
         TEMP_CACHE.delete('FP_SPAM_FLAG')
 
         TEMP_CACHE.delete(blockIDForHunting)
@@ -378,7 +381,6 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     let {DATABASE,TEMP_CACHE} = tempObject
 
-    // Descriptor has the following structure - {checkpointID,height}
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
