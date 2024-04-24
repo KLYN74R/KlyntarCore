@@ -9,7 +9,7 @@ import {
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {LOG,BLAKE3,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {LOG,BLAKE3,ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -991,7 +991,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         global.SYMBIOTE_META.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
-        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,'S')
+        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,COLORS.GREEN)
 
 
         // Finally - set the new index, hash and timestamp for next epoch
@@ -1025,14 +1025,14 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
 
-        LOG(`Epoch on verification thread was updated => \x1b[34;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash}#${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id}`,'S')
+        LOG(`Epoch on verification thread was updated => \x1b[34;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash}#${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id}`,COLORS.GREEN)
         
 
         //_______________________Check the version required for the next checkpoint________________________
 
         if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
 
-            LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
+            LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
         
             // Stop the node to update the software
             GRACEFUL_STOP()
@@ -2016,7 +2016,7 @@ verifyBlock=async(block,shardContext)=>{
 
             global.SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
                 
-                error => LOG(`Failed to store block ${block.index}\nError:${error}`,'W')
+                error => LOG(`Failed to store block ${block.index}\nError:${error}`,COLORS.YELLOW)
                 
             )
 
@@ -2025,7 +2025,7 @@ verifyBlock=async(block,shardContext)=>{
             // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
                 
-                error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,'W')
+                error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,COLORS.YELLOW)
                 
             )
 

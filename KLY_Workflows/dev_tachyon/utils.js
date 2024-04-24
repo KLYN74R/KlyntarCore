@@ -1,4 +1,4 @@
-import {LOG,COLORS,BLAKE3,GET_GMT_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+import {LOG,COLORS,BLAKE3,GET_UTC_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -690,17 +690,17 @@ VT_STATS_LOG = (epochFullID,shardContext) => {
         let {currentLeaderOnShard,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]
 
 
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,'Local VERIFICATION_THREAD state is',COLORS.C)
+        console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.CYAN,'Local VERIFICATION_THREAD state is',COLORS.CLEAR)
     
         console.log('\n')
             
-        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochFullID}`,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochFullID}`,COLORS.CLEAR)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.CLEAR)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  Current Leader:\x1b[36;1m`,currentLeaderOnShard,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Current Leader:\x1b[36;1m`,currentLeaderOnShard,COLORS.CLEAR)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash in current epoch:\x1b[36;1m`,index+' : '+hash,COLORS.C)
+        console.log(` \u001b[38;5;168m│\x1b[33m  Block index and hash in current epoch:\x1b[36;1m`,index+' : '+hash,COLORS.CLEAR)
     
         console.log('\n')    
 
@@ -717,17 +717,17 @@ BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
         let preColor = msg.includes('accepted') ? '\x1b[31m' : '\x1b[32m'
 
-        console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.I,msg,COLORS.C)
+        console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.CYAN,msg,COLORS.CLEAR)
 
         console.log('\n')
         
-        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,epochIndex+':'+block.creator+':'+block.index,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  ID:\x1b[36;1m`,epochIndex+':'+block.creator+':'+block.index,COLORS.CLEAR)
 
-        console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Hash:\x1b[36;1m`,hash,COLORS.CLEAR)
 
-        console.log(` ${preColor}│\x1b[33m  Txs:\x1b[36;1m`,block.transactions.length,COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Txs:\x1b[36;1m`,block.transactions.length,COLORS.CLEAR)
 
-        console.log(` ${preColor}│\x1b[33m  Time:\x1b[36;1m`,new Date(block.time).toString(),COLORS.C)
+        console.log(` ${preColor}│\x1b[33m  Time:\x1b[36;1m`,new Date(block.time).toString(),COLORS.CLEAR)
     
         console.log('\n')
 
@@ -780,7 +780,7 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 
 
-EPOCH_STILL_FRESH = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > GET_GMT_TIMESTAMP(),
+EPOCH_STILL_FRESH = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > GET_UTC_TIMESTAMP(),
 
 
 // PARSE_JSON = async stringJson => JSON.parse(stringJson)
@@ -859,13 +859,13 @@ DECRYPT_KEYS=async spinner=>{
     let rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,'I')
+    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,COLORS.CYAN)
 
 
     
     let hexSeed=await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.T}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.C}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
+        rl.question(`\n ${COLORS.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
         
     )
         

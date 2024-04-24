@@ -82,7 +82,7 @@ export default async service=>{
 
     
 
-let servicesToRun=RUNNER_CONFIGS.SERVICES_TO_RUN
+let servicesToRun = RUNNER_CONFIGS.SERVICES_TO_RUN
 
 
 UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')

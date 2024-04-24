@@ -2,7 +2,7 @@ import {GET_MAJORITY,GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,D
 
 import {START_VERIFICATION_THREAD} from './verification_process/verification.js'
 
-import {LOG,PATH_RESOLVE,BLAKE3} from '../../KLY_Utils/utils.js'
+import {LOG,PATH_RESOLVE,BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -65,17 +65,17 @@ export let GRACEFUL_STOP = async() => {
 
     console.log('\n')
 
-    LOG('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...','I')
+    LOG('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...',COLORS.CYAN)
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),'W')
+    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),COLORS.YELLOW)
 
     console.log('\n')
 
-    LOG('Closing server connections...','I')
+    LOG('Closing server connections...',COLORS.CYAN)
 
     await FASTIFY_SERVER.close()
 
-    LOG('Node was gracefully stopped','I')
+    LOG('Node was gracefully stopped',COLORS.CYAN)
         
     process.exit(0)
 
@@ -685,7 +685,7 @@ PREPARE_SYMBIOTE=async()=>{
         
         }
         :
-        (LOG(`Some problem with loading metadata of generation thread\nError:${error}`,'F'),process.exit(106))
+        (LOG(`Some problem with loading metadata of generation thread\nError:${error}`,COLORS.RED),process.exit(106))
                         
     )
 
@@ -726,7 +726,7 @@ PREPARE_SYMBIOTE=async()=>{
 
         }else{
 
-            LOG(`Some problem with loading metadata of verification thread\nError:${error}`,'F')
+            LOG(`Some problem with loading metadata of verification thread\nError:${error}`,COLORS.RED)
             
             process.exit(105)
 
@@ -761,7 +761,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
-        LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')
+        LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
 
         console.log('\n')
         console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
@@ -775,7 +775,7 @@ PREPARE_SYMBIOTE=async()=>{
 
     if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
 
-        LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,'W')
+        LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
 
         console.log('\n')
         console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
@@ -836,11 +836,11 @@ PREPARE_SYMBIOTE=async()=>{
     await DECRYPT_KEYS(initSpinner).then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
-        LOG(`Private key was decrypted successfully`,'S')        
+        LOG(`Private key was decrypted successfully`,COLORS.GREEN)        
     
     ).catch(error=>{
     
-        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,'F')
+        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,COLORS.RED)
  
         process.exit(107)
 
@@ -894,9 +894,9 @@ RUN_SYMBIOTE=async()=>{
             
             .then(res=>res.text())
             
-            .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,'I'))
+            .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,COLORS.CYAN))
             
-            .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,'F'))
+            .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,COLORS.RED))
 
     )
 

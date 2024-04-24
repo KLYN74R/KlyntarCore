@@ -1,4 +1,4 @@
-import {BLAKE3,GET_GMT_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {BLAKE3,GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 
 
@@ -9,7 +9,7 @@ export default class Block{
         
         this.creator = global.CONFIG.SYMBIOTE.PUB // block creator(validator|pool) Example: 9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK
 
-        this.time = GET_GMT_TIMESTAMP() // UTC timestamp (NOTE:in milliseconds)
+        this.time = GET_UTC_TIMESTAMP() // (NOTE:in milliseconds)
 
         this.epoch = epochFullID
 

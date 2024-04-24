@@ -1,8 +1,8 @@
-import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID,USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+
+import{LOG,ED25519_SIGN_DATA,ED25519_VERIFY,COLORS} from '../../../../KLY_Utils/utils.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
-
-import{LOG,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
 import Block from '../../essences/block.js'
 
@@ -660,7 +660,7 @@ let server = http.createServer({},(_,response)=>{
 
 server.listen(global.CONFIG.SYMBIOTE.WEBSOCKET_PORT,global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE,()=>
 
-    LOG(`Websocket server was activated on \u001b[38;5;168m${global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE}:${global.CONFIG.SYMBIOTE.WEBSOCKET_PORT}`,'CD')
+    LOG(`Websocket server was activated on \u001b[38;5;168m${global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE}:${global.CONFIG.SYMBIOTE.WEBSOCKET_PORT}`,COLORS.CD)
     
 )
 

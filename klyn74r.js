@@ -33,7 +33,7 @@
  * 
  */
 
-import {LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
+import {COLORS, LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -341,20 +341,20 @@ if(process.env.KLY_MODE==='mainnet'){
 }
 
 
-LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,'I')
+LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,COLORS.CYAN)
 
 
 
 
 console.log('\n\n\n')
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),'S')
+LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),COLORS.GREEN)
 
-LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.SYMBIOTE.TLS.ENABLED?'enabled':'disabled'}`,'CON')
+LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.SYMBIOTE.TLS.ENABLED?'enabled':'disabled'}`,COLORS.CON)
 
-LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,'CON')
+LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,COLORS.CON)
 
-LOG(global.CONFIG.SYMBIOTE.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.SYMBIOTE.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.SYMBIOTE.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins','CON')
+LOG(global.CONFIG.SYMBIOTE.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.SYMBIOTE.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.SYMBIOTE.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
 
 
 !global.CONFIG.SYMBIOTE.PRELUDE.OPTIMISTIC
@@ -368,7 +368,7 @@ await new Promise(resolve=>
 ).then(answer=>answer!=='YES'&& process.exit(103))
 
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),'S')
+LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.GREEN)
 
 
 
@@ -388,7 +388,7 @@ export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
             
-            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,'F')
+            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,COLORS.RED)
             
         )
     
@@ -406,9 +406,9 @@ export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
     
     FASTIFY_SERVER.listen({port:global.CONFIG.SYMBIOTE.PORT,host:global.CONFIG.SYMBIOTE.INTERFACE},err=>{
     
-        if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,'S')
+        if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,COLORS.GREEN)
     
-        else LOG('Oops,some problems with server module','F')
+        else LOG('Oops,some problems with server module',COLORS.RED)
     
     })
 

@@ -8,9 +8,9 @@ import {
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
-import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../life.js'
+import {BLAKE3,COLORS,LOG,PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
 
-import {BLAKE3, LOG, PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
+import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../life.js'
 
 import {GET_BLOCK} from '../verification_process/verification.js'
 
@@ -514,7 +514,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
 
 
-                LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,'S')
+                LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,COLORS.GREEN)
 
                 //_______________________ Update the values for new epoch _______________________
 
@@ -559,7 +559,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 global.SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThread
 
-                LOG(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,'S')
+                LOG(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,COLORS.GREEN)
 
 
                 //_______________________Check the version required for the next checkpoint________________________
@@ -567,7 +567,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
 
-                    LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,'W')
+                    LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
 
                     console.log('\n')
                     console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())

@@ -23,15 +23,16 @@ export let
 
 
 COLORS = {
-    C:'\x1b[0m',
-    T:`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`, // for time view
-    F:'\x1b[31;1m', // red(error,no collapse,problems with sequence,etc.)
-    S:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
-    W:'\u001b[38;5;3m', // yellow(non critical warnings)
-    I:'\x1b[36;1m', // cyan(default messages useful to grasp the events)
-    CB:'\u001b[38;5;200m',// ControllerBlock
+    
+    CLEAR:'\x1b[0m',
+    TIME_COLOR:`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`, // for time view
+    
+    RED:'\x1b[31;1m', // red(error,no collapse,problems with sequence,etc.)
+    GREEN:'\x1b[32;1m', // green(new block, exported something, something important, etc.)
+    YELLOW:'\u001b[38;5;3m', // yellow(non critical warnings)
+    CYAN:'\x1b[36;1m', // cyan(default messages useful to grasp the events)
+    
     CD:`\u001b[38;5;50m`,//Canary died
-    GTS:`\u001b[38;5;m`,//Generation Thread Stop
     CON:`\u001b[38;5;168m`//CONFIGS
 },
 
@@ -42,7 +43,7 @@ PATH_RESOLVE=path=>__dirname+'/'+path,//path is relative to this root scope */KL
 
 BLAKE3=(input,length)=>hash(input,{length}).toString('hex'),
 
-GET_GMT_TIMESTAMP=()=>new Date().getTime(),
+GET_UTC_TIMESTAMP=()=>new Date().getTime(),
 
 
 /**# Verification
@@ -103,6 +104,10 @@ ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
 LOG=(msg,msgColor)=>{
 
-    global.CONFIG.SYMBIOTE.DAEMON_LOGS && console.log(COLORS.T,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS[msgColor],msg,COLORS.C)
+    if(global.CONFIG.SYMBIOTE.DAEMON_LOGS){
+
+        console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,COLORS.CLEAR)
+
+    }
 
 }
