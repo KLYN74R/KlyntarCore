@@ -23,9 +23,9 @@ echo -e "\e[42mBuilding addons process started\e[49m"
 GOARCH=wasm GOOS=js go build -o main.wasm
 
 if [ $? -eq 0 ]; then
-     cat ../success.txt
+     cat ../build_status_arts/successful_addons_build.txt
 else
-     cat ../fail.txt
+     cat ../build_status_arts/failed_addons_build.txt
 fi
 
 cd ../../

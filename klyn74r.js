@@ -86,11 +86,11 @@ process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.
 
 //____________________SET MODE__________________________
 
-// All symbiotes are runned in a single instance as mainnets by default
+// Run your node in 'test'/'main' mode
 process.env.KLY_MODE||='main'
 
 
-if(process.env.KLY_MODE!=='main' && process.env.KLY_MODE!=='test'){
+if(process.env.KLY_MODE!=='mainnet' && process.env.KLY_MODE!=='testnet'){
 
     console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'test' for AntiVenom testnet or 'main' for your symbiotes)\x1b[0m`)
 
@@ -124,7 +124,7 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
 ].forEach(scope=>{
 
-    if(process.env.KLY_MODE==='main'){
+    if(process.env.KLY_MODE==='mainnet'){
     
         //If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
         if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
@@ -304,7 +304,7 @@ await new Promise(r=>{
 
 process.stdout.write('\x1Bc')
 
-if(process.env.KLY_MODE==='main'){
+if(process.env.KLY_MODE==='mainnet'){
 
     //Read banner
     console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
@@ -363,7 +363,7 @@ await new Promise(resolve=>
     
     readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
 
-    .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='main'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+    .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
     
 ).then(answer=>answer!=='YES'&& process.exit(103))
 

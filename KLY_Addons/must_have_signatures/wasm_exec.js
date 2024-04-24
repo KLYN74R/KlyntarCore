@@ -339,6 +339,7 @@ globalThis.Go = class {
 
 				// func resetMemoryDataView()
 				"runtime.resetMemoryDataView": (sp) => {
+					// eslint-disable-next-line no-unused-vars
 					sp >>>= 0;
 					this.mem = new DataView(this._inst.exports.mem.buffer);
 				},
