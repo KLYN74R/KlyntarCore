@@ -51,10 +51,7 @@ import os from 'os'
 
 
 /*
-
 _______________OBLIGATORY PATH RESOLUTION_______________
-
-
 
 ✔️Sets the absolute path over relative one
 
@@ -74,36 +71,23 @@ global.__dirname = await import('path').then(async mod=>
 
 )
 
+
 //______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
 
-
-
-
+// Set size of libuv threads pool
 process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
-
-
-
-//____________________SET MODE__________________________
-
 // Run your node in 'test'/'main' mode
-process.env.KLY_MODE||='main'
+process.env.KLY_MODE||='mainnet'
+
+
 
 
 if(process.env.KLY_MODE!=='mainnet' && process.env.KLY_MODE!=='testnet'){
 
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'test' for AntiVenom testnet or 'main' for your symbiotes)\x1b[0m`)
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'testnet' or 'mainnet')\x1b[0m`)
 
     process.exit(101)
-
-}
-
-//SYMBIOTE_DIR must be an absolute path
-if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\'))){
-
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
-
-    process.exit(102)
 
 }
 
@@ -112,31 +96,50 @@ if(process.env.SYMBIOTE_DIR && (!isAbsolute(process.env.SYMBIOTE_DIR) || process
 
 //____________________DEFINE PATHS_______________________
 
+// SYMBIOTE_DIR must be an absolute path
+let pathToChainDataIsAbsolute = process.env.SYMBIOTE_DIR && isAbsolute(process.env.SYMBIOTE_DIR)
+
+// ... and finish with NO slashes
+let finishWithNoSlashes = !( process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\') )
+
+
+if(!(pathToChainDataIsAbsolute && finishWithNoSlashes)){
+
+    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
+
+    process.exit(102)
+
+}
+
+
+// Creating/resolving 3 common directories:
 
 [
 
-    'CHAINDATA',//Data of symbiote
+    'CHAINDATA', // Data of blockchain - epoch data, blocks, state, metadata, etc.
     
-    'GENESIS',//Directory with files for GENESIS data for symbiotes
+    'GENESIS',   // Directory with 'genesis.json'
 
-    'CONFIGS',//Directory with configs(for node,symbiote and so on)
+    'CONFIGS',   // Directory with configs(specific to your node only(not a network-level configs))
 
 
 ].forEach(scope=>{
 
     if(process.env.KLY_MODE==='mainnet'){
     
-        //If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
+        // If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
 
-        //If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
+        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
+
+        // If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
+        
         else process.env[`${scope}_PATH`] ||= PATH_RESOLVE('MAINNET/'+scope)  
 
     }else{
 
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`]=process.env.SYMBIOTE_DIR+`/${scope}`
+        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
 
-        process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`ANTIVENOM/${scope}`)//Testnet available in ANTIVENOM separate directory
+        process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`TESTNET/${scope}`) //Testnet available in a separate directory
 
     }
 
@@ -286,23 +289,17 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 
 
 //_________________________________________________BANNERS INTRO________________________________________________
-
-
-
-
-process.stdout.write('\x1Bc')
     
 //Cool short animation
 await new Promise(r=>{
     
-    let animation=chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
+    let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
 
     setTimeout(()=>{ animation.stop() ; r() },global.CONFIG.SYMBIOTE.PRELUDE.ANIMATION_DURATION)
 
 })
 
 
-process.stdout.write('\x1Bc')
 
 if(process.env.KLY_MODE==='mainnet'){
 
@@ -357,15 +354,18 @@ LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.SYMBIOTE.INTERFACE}]:$
 LOG(global.CONFIG.SYMBIOTE.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.SYMBIOTE.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.SYMBIOTE.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
 
 
-!global.CONFIG.SYMBIOTE.PRELUDE.OPTIMISTIC
-&&
-await new Promise(resolve=>
-    
-    readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
 
-    .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+if(!global.CONFIG.SYMBIOTE.PRELUDE.OPTIMISTIC){
+
+    await new Promise(resolve=>
     
-).then(answer=>answer!=='YES'&& process.exit(103))
+        readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
+    
+        .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
+        
+    ).then(answer=>answer!=='YES'&& process.exit(103))
+
+}
 
 
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.GREEN)
