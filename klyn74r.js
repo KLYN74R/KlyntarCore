@@ -33,7 +33,7 @@
  * 
  */
 
-import {COLORS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
+import {COLORS, LOG, PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -233,16 +233,15 @@ d"""    `""""""""""""Y:d8P                              8,          `b
 
 */
 
-    
-//_________________________________________________CONFIG_PROCESS_______________________________________________
 
 
-// Define globally
+
+//____________________LOAD CONFIGS FROM FILES_______________________
 
 export let CONFIGURATION = {}
 
 
-//Load all the configs
+// Load all the configs
 fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
     Object.assign(CONFIGURATION,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
@@ -250,15 +249,17 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 )
 
 
-//Load genesis
-global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
 
 
-//________________________________________________SHARED RESOURCES______________________________________________
+//____________________LOAD GENESIS FROM FILE_______________________
+
+export let BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
 
 
-//Location for symbiotes
-!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
+
+
+
+
 
 
 /*
@@ -277,11 +278,16 @@ global.GENESIS=JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.jso
 */
 
 
+// Create the directory for chaindata
+!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
+
+
 
 
 //_________________________________________________BANNERS INTRO________________________________________________
     
-//Cool short animation
+
+// Run cool short animation
 await new Promise(r=>{
     
     let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
@@ -331,9 +337,6 @@ if(process.env.KLY_MODE==='mainnet'){
 
 LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,COLORS.CYAN)
 
-
-
-
 console.log('\n\n\n')
 
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),COLORS.GREEN)
@@ -344,25 +347,15 @@ LOG(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]
 
 LOG(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
 
-
-
-if(!CONFIGURATION.NODE_LEVEL.PRELUDE.OPTIMISTIC){
-
-    await new Promise(resolve=>
-    
-        readline.createInterface({input:process.stdin, output:process.stdout, terminal:false})
-    
-        .question(`\n ${`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]${'\x1b[36;1m'}  Do you agree with the current configuration? Enter \x1b[32;1mYES\x1b[36;1m to continue ———> \x1b[0m`,resolve)
-        
-    ).then(answer=>answer!=='YES'&& process.exit(103))
-
-}
-
-
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.GREEN)
 
 
 
+
+//_________________________________________________RUN SERVER________________________________________________
+
+
+// Export it to use in KLY_Workflows(there we'll add routes+handlers)
 
 export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
@@ -371,9 +364,9 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
 (async()=>{
 
-    let {RUN_SYMBIOTE} = await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/life.js`)
+    let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/life.js`)
 
-    await RUN_SYMBIOTE()
+    await RUN_BLOCKCHAIN()
 
     for(let scriptPath of CONFIGURATION.NODE_LEVEL.PLUGINS){
 
@@ -392,7 +385,7 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
     
     // Import routes
     
-    await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
+    await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/routes.js`)
     
     
     FASTIFY_SERVER.listen({port:CONFIGURATION.NODE_LEVEL.PORT,host:CONFIGURATION.NODE_LEVEL.INTERFACE},err=>{

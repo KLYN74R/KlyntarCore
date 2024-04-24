@@ -1,19 +1,22 @@
-import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID,USE_TEMPORARY_DB,VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+import {
+    
+    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF,
 
-import{LOG,ED25519_SIGN_DATA,ED25519_VERIFY,COLORS} from '../../../../KLY_Utils/utils.js'
+    GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB
+
+} from '../../utils.js'
+
+import{LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
+
+import {CONFIGURATION} from '../../../../klyn74r.js'
 
 import Block from '../../essences/block.js'
 
 import WS from 'websocket'
 
 import http from 'http'
-import { CONFIGURATION } from '../../../../klyn74r.js'
-
-
-
-
 
 
 
@@ -345,7 +348,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     
                             tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
         
-                            connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUB,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
+                            connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
     
 
                         })    
@@ -580,7 +583,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                         tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         
-                        connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+                        connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash:proposedBlockHash}))
     
                     })
     
@@ -619,9 +622,9 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
     
     for(let i=1;i<50;i++){
 
-        let blockIdToFind = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(data.hasUntilHeight+i)
+        let blockIdToFind = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(data.hasUntilHeight+i)
 
-        let blockIdToFindAfp = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(data.hasUntilHeight+i+1)
+        let blockIdToFindAfp = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(data.hasUntilHeight+i+1)
 
         let block = await global.SYMBIOTE_META.BLOCKS.get(blockIdToFind).catch(()=>null)
 

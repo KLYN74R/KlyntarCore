@@ -1,6 +1,6 @@
-import loader from '@assemblyscript/loader'
+import {CONFIGURATION} from '../../klyn74r.js'
 
-import {CONFIGURATION} from '../../klyn74r'
+import loader from '@assemblyscript/loader'
 
 import metering from 'wasm-metering'
 

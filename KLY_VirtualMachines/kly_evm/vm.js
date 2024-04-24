@@ -1,4 +1,5 @@
 import {GET_FROM_STATE} from '../../KLY_Workflows/dev_tachyon/utils.js'
+
 import {DefaultStateManager} from '@ethereumjs/statemanager'
 import {Address,Account} from '@ethereumjs/util'
 import {Transaction} from '@ethereumjs/tx'
@@ -32,7 +33,8 @@ const {
     chainId,
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
-    gasLimitForBlock
+    gasLimitForBlock,
+    bindContext
 
 } = CONFIGURATION.KLY_EVM
 
@@ -42,7 +44,7 @@ const web3 = new Web3()
 
 
 
-//_________________________________________________________ FUNCTIONS POOL _________________________________________________________
+//_________________________________________________________ GLOBALS POOL _________________________________________________________
 
 
 global.GET_SHARD_ASSIGNMENT = async addressAsString => {
@@ -53,6 +55,9 @@ global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
 }
 
+
+// Need this object inside EVM
+global.KLY_EVM = { bindContext, coinbase}
 
 
 /*

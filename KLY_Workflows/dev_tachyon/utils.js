@@ -1,8 +1,8 @@
-import {LOG,COLORS,BLAKE3,GET_UTC_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
-
-import {CONFIGURATION} from '../../klyn74r.js'
 
 import Block from './essences/block.js'
 
@@ -11,8 +11,6 @@ import cryptoModule from 'crypto'
 import readline from 'readline'
 
 import fetch from 'node-fetch'
-
-import fs from 'fs'
 
 
 
@@ -843,7 +841,7 @@ DECRYPT_KEYS=async spinner=>{
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${CONFIGURATION.NODE_LEVEL.PUB}\x1b[32;1m)`,COLORS.CYAN)
+    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
 
 
     
@@ -872,7 +870,7 @@ DECRYPT_KEYS=async spinner=>{
 
     let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,initializationVector)
     
-    global.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRV,'hex','utf8')+decipher.final('utf8')
+    global.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRIVATE_KEY,'hex','utf8')+decipher.final('utf8')
 
     
     readLineInterface.close()

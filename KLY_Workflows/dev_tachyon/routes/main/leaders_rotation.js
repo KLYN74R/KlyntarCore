@@ -1,10 +1,10 @@
-import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
+
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {GET_BLOCK} from '../../verification_process/verification.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
-
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import Block from '../../essences/block.js'
 

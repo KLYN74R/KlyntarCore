@@ -63,7 +63,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
     let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
-    let shardID = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUB
+    let shardID = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
     // Find locally
 
@@ -367,7 +367,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
 
-        let poolPresent = epochHandler.poolsRegistry[CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(CONFIGURATION.NODE_LEVEL.PUB) 
+        let poolPresent = epochHandler.poolsRegistry[CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY) 
 
         tempObject.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
 
@@ -377,7 +377,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
-    let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUB)
+    let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
 
@@ -453,7 +453,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
             let leadersSequenceOfMyShard = epochHandler.leadersSequence[myPrimePool]
     
-            let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(CONFIGURATION.NODE_LEVEL.PUB)
+            let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
     
 
             // Get all previous pools - from zero to <my_position>
@@ -552,7 +552,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
         // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+blockCandidate.index
+        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)

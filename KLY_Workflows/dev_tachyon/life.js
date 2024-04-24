@@ -1,12 +1,12 @@
-import {GET_MAJORITY,GET_QUORUM,GET_FROM_QUORUM_THREAD_STATE,IS_MY_VERSION_OLD,DECRYPT_KEYS,HEAP_SORT} from './utils.js'
+import {GET_MAJORITY, GET_QUORUM, GET_FROM_QUORUM_THREAD_STATE, IS_MY_VERSION_OLD, DECRYPT_KEYS, HEAP_SORT} from './utils.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {START_VERIFICATION_THREAD} from './verification_process/verification.js'
 
-import {LOG,PATH_RESOLVE,BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
+import {LOG, PATH_RESOLVE, BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
-
-import {CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -20,7 +20,7 @@ import fs from 'fs'
 
 
 
-// 7 main threads
+// 7 main threads - main core logic
 
 import {BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD} from './life/temp_vt_sequence_builder.js'
 
@@ -37,31 +37,12 @@ import {BLOCKS_GENERATION} from './life/block_generation.js'
 
 
 
-
-
-
-
-//______________________________________________________________VARIABLES POOL___________________________________________________________________
-
-
-//++++++++++++++++++++++++ Define general global object  ++++++++++++++++++++++++
-
-global.SYSTEM_SIGNAL_ACCEPTED=false
-
 // Your decrypted private key
-global.PRIVATE_KEY=null
-
-
-
-
-//*********************** SET HANDLERS ON USEFUL SIGNALS ************************
-
+global.PRIVATE_KEY = null
 
 
 
 export let GRACEFUL_STOP = async() => {
-
-    global.SYSTEM_SIGNAL_ACCEPTED=true
 
     console.log('\n')
 
@@ -84,13 +65,15 @@ export let GRACEFUL_STOP = async() => {
 
 
 
-//Define listeners on typical signals to safely stop the node
+// Define listeners on typical signals to safely stop the node
+
 process.on('SIGTERM',GRACEFUL_STOP)
 process.on('SIGINT',GRACEFUL_STOP)
 process.on('SIGHUP',GRACEFUL_STOP)
 
 
-//************************ END SUB ************************
+
+
 
 
 
@@ -273,14 +256,14 @@ LOAD_GENESIS=async()=>{
     //__________________________________ Load all the configs __________________________________
 
         
-    epochTimestamp = global.GENESIS.EPOCH_TIMESTAMP
+    epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP
 
-    let primePools = new Set(Object.keys(global.GENESIS.POOLS))
+    let primePools = new Set(Object.keys(BLOCKCHAIN_GENESIS.POOLS))
 
     global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL = {} // poolPubKey => {index,hash,isReserve}
 
 
-    for(let [poolPubKey,poolContractStorage] of Object.entries(global.GENESIS.POOLS)){
+    for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
         let {isReserve} = poolContractStorage
 
@@ -373,7 +356,7 @@ LOAD_GENESIS=async()=>{
 
         if(!isReserve){
 
-            let evmStateForThisShard = global.GENESIS.EVM[poolPubKey]
+            let evmStateForThisShard = BLOCKCHAIN_GENESIS.EVM[poolPubKey]
 
             if(evmStateForThisShard){
 
@@ -423,13 +406,13 @@ LOAD_GENESIS=async()=>{
 
     // * Each account / contract must have <shard> property to assign it to appropriate shard
 
-    Object.keys(global.GENESIS.STATE).forEach(
+    Object.keys(BLOCKCHAIN_GENESIS.STATE).forEach(
     
         addressOrContractID => {
 
-            if(global.GENESIS.STATE[addressOrContractID].type==='contract'){
+            if(BLOCKCHAIN_GENESIS.STATE[addressOrContractID].type==='contract'){
 
-                let {lang,balance,uno,storages,bytecode,shard} = global.GENESIS.STATE[addressOrContractID]
+                let {lang,balance,uno,storages,bytecode,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
 
                 let contractMeta = {
 
@@ -446,19 +429,19 @@ LOAD_GENESIS=async()=>{
                 atomicBatch.put(shard+':'+addressOrContractID,contractMeta)
 
                 //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
-                for(let storageID of global.GENESIS.STATE[addressOrContractID].storages){
+                for(let storageID of BLOCKCHAIN_GENESIS.STATE[addressOrContractID].storages){
 
-                    global.GENESIS.STATE[addressOrContractID][storageID].shard = shard
+                    BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID].shard = shard
 
-                    atomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,global.GENESIS.STATE[addressOrContractID][storageID])
+                    atomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID])
 
                 }
 
             } else {
 
-                let shardID = global.GENESIS.STATE[addressOrContractID].shard
+                let shardID = BLOCKCHAIN_GENESIS.STATE[addressOrContractID].shard
 
-                atomicBatch.put(shardID+':'+addressOrContractID,global.GENESIS.STATE[addressOrContractID]) //else - it's default account
+                atomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID]) //else - it's default account
 
             }
 
@@ -483,16 +466,16 @@ LOAD_GENESIS=async()=>{
     */
 
     //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE - update it !
-    global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION = global.GENESIS.VERSION
+    global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
     //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
-    global.SYMBIOTE_META.QUORUM_THREAD.VERSION = global.GENESIS.VERSION
+    global.SYMBIOTE_META.QUORUM_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
     //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS={...global.GENESIS.WORKFLOW_OPTIONS}
+    global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
 
-    global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS={...global.GENESIS.WORKFLOW_OPTIONS}
+    global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
 
 
 
@@ -578,7 +561,7 @@ LOAD_GENESIS=async()=>{
 
 
 
-PREPARE_SYMBIOTE=async()=>{
+PREPARE_BLOCKCHAIN=async()=>{
 
     //Loading spinner
     let initSpinner
@@ -851,10 +834,10 @@ PREPARE_SYMBIOTE=async()=>{
 
 
 
-RUN_SYMBIOTE=async()=>{
+RUN_BLOCKCHAIN=async()=>{
 
 
-    await PREPARE_SYMBIOTE()
+    await PREPARE_BLOCKCHAIN()
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
@@ -886,7 +869,7 @@ RUN_SYMBIOTE=async()=>{
             
             method:'POST',
             
-            body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
+            body:JSON.stringify([BLOCKCHAIN_GENESIS.SYMBIOTE_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
 
             headers:{'contentType':'application/json'}
         

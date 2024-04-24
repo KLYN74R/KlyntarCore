@@ -1,7 +1,7 @@
 {
     
-    "PUB":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
-    "PRV":"e4a1935e868c44c8b45eccfc4098b6e51a0eee35640bfe25c933d9035c153105fa8095b782c2a27c3fefd6c82494eeedf16c19b7fd0ccebaba14c7e84ba846ce6144189d1ccd730b2424a6b997699ef2",
+    "PUBLIC_KEY":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
+    "PRIVATE_KEY":"e4a1935e868c44c8b45eccfc4098b6e51a0eee35640bfe25c933d9035c153105fa8095b782c2a27c3fefd6c82494eeedf16c19b7fd0ccebaba14c7e84ba846ce6144189d1ccd730b2424a6b997699ef2",
 
     "PRIME_POOL_PUBKEY":false,
 
@@ -112,14 +112,11 @@
 
     "PRELUDE":{
 
-        "DECRYPTED":false,
         "ANIMATION_DURATION":0,
         "NO_SPINNERS":false,
         "OPTIMISTIC":true
         
     },
-
-    "DAEMON_LOGS":true,
 
     "PLUGINS":[],
 

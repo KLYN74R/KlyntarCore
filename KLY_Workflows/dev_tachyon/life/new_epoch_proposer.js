@@ -25,7 +25,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     }
 
 
-    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUB)
+    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
     if(iAmInTheQuorum && !EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){

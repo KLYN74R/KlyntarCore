@@ -1,9 +1,9 @@
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
 
-let ED25519_PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUB
+let PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
 
 
@@ -119,8 +119,8 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
 
         // SymbioteID - it's BLAKE3 hash of genesis( SYMBIOTE_ID = BLAKE3(JSON.stringify(<genesis object without SYMBIOTE_ID field>)))
-        
-        let symbioteID = global.GENESIS.SYMBIOTE_ID
+
+        let symbioteID = BLOCKCHAIN_GENESIS.SYMBIOTE_ID
 
         //Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
 
@@ -131,7 +131,7 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
             HOSTCHAINS:hostchains,
             EPOCH_TIMESTAMP:createTimestamp
         
-        } = global.GENESIS
+        } = BLOCKCHAIN_GENESIS
 
         
         //Get the current version of VT and QT
@@ -278,7 +278,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         
     if(global.SYMBIOTE_META.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
     
-        let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,ED25519_PUBKEY_FOR_FILTER)
+        let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
     
         if(filteredEvent){
     
@@ -330,7 +330,7 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE}
 
     let [symbioteID,domain] = acceptedData
    
-    if(global.GENESIS.SYMBIOTE_ID!==symbioteID){
+    if(BLOCKCHAIN_GENESIS.SYMBIOTE_ID!==symbioteID){
 
         response.send({err:'Symbiotic chain not supported'})
         

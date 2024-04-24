@@ -123,7 +123,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     // Get the block index & hash that we're currently hunting for
 
-    let blockIDForHunting = epochHandler.id+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(proofsGrabber.acceptedIndex+1)
+    let blockIDForHunting = epochHandler.id+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(proofsGrabber.acceptedIndex+1)
 
     let finalizationProofsMapping, tmbProofsMapping
 

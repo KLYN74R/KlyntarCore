@@ -1,15 +1,15 @@
 import {
     
-    GET_QUORUM_URLS_AND_PUBKEYS,GET_ALL_KNOWN_PEERS,GET_MAJORITY,IS_MY_VERSION_OLD,EPOCH_STILL_FRESH,
+    GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, VT_STATS_LOG, VERIFY_AGGREGATED_FINALIZATION_PROOF, GET_FIRST_BLOCK_ON_EPOCH,
 
-    GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,VT_STATS_LOG,VERIFY_AGGREGATED_FINALIZATION_PROOF,GET_FIRST_BLOCK_ON_EPOCH
+    GET_QUORUM_URLS_AND_PUBKEYS, GET_ALL_KNOWN_PEERS, GET_MAJORITY, IS_MY_VERSION_OLD, EPOCH_STILL_FRESH,
 
 } from '../utils.js'
 
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {LOG,BLAKE3,ED25519_VERIFY,COLORS} from '../../../KLY_Utils/utils.js'
+import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -2022,7 +2022,7 @@ verifyBlock=async(block,shardContext)=>{
                 
             )
 
-        }else if(block.creator !== CONFIGURATION.NODE_LEVEL.PUB){
+        }else if(block.creator !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
             // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(

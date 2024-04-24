@@ -1,8 +1,8 @@
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_edge_operations_verifiers.js'
 
-import{BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
+import{BLAKE3, ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION,FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {GET_MAJORITY} from '../../utils.js'
 
@@ -198,7 +198,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
 
             response.send({
 
-                signer:CONFIGURATION.NODE_LEVEL.PUB,
+                signer:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,
                 
                 signature
 

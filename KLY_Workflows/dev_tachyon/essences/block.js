@@ -1,6 +1,6 @@
-import {BLAKE3,GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 
 
@@ -9,7 +9,7 @@ export default class Block{
     
     constructor(transactionsSet,extraData={},epochFullID){
         
-        this.creator = CONFIGURATION.NODE_LEVEL.PUB // block creator(validator|pool) Example: 9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK
+        this.creator = CONFIGURATION.NODE_LEVEL.PUBLIC_KEY // block creator(validator|pool) Example: 9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK
 
         this.time = GET_UTC_TIMESTAMP() // (NOTE:in milliseconds)
 
@@ -27,6 +27,6 @@ export default class Block{
     
     }
     
-    static genHash = block => BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + global.GENESIS.SYMBIOTE_ID + block.epoch + block.index + block.prevHash)
+    static genHash = block => BLAKE3( block.creator + block.time + JSON.stringify(block.transactions) + BLOCKCHAIN_GENESIS.SYMBIOTE_ID + block.epoch + block.index + block.prevHash)
 
 }

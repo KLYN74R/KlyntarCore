@@ -1,14 +1,16 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from '../utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from '../utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
-import {BLAKE3,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {BLAKE3, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
+
+import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
 import * as _ from '../system_contracts/root.js'
 
@@ -59,7 +61,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION === tx.v){
 
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
-        let signedData = global.GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
+        let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
         if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)

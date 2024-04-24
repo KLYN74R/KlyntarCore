@@ -593,7 +593,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUB)
+                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
                 if(EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
