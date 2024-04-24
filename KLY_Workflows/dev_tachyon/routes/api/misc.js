@@ -1,9 +1,9 @@
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
 
-let ED25519_PUBKEY_FOR_FILTER = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
+let ED25519_PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUB
 
 
 
@@ -40,7 +40,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
 
     response.header('Access-Control-Allow-Origin','*')
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
 
         let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
@@ -94,7 +94,7 @@ FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
     response
         
         .header('Access-Control-Allow-Origin','*')
-        .header('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE)
+        .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE)
 
         .send(global.MY_KLY_INFRASTRUCTURE)
 
@@ -109,12 +109,12 @@ FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
 FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYMBIOTE_INFO){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYMBIOTE_INFO){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYMBIOTE_INFO}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYMBIOTE_INFO}`)
             
 
 
@@ -182,12 +182,12 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
 
 
         response.send(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
@@ -205,12 +205,12 @@ FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
 
         response
             
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
             
 
         response.send({
@@ -230,7 +230,7 @@ FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
 
 // Handler to accept transaction, make overview and add to mempool ✅
 
-FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     response.header('Access-Control-Allow-Origin','*')
 
@@ -259,7 +259,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD
     
     }
     
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
             
         response.send({err:'Route is off'})
             
@@ -276,7 +276,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD
     }
     
         
-    if(global.SYMBIOTE_META.MEMPOOL.length < global.CONFIG.SYMBIOTE.TXS_MEMPOOL_SIZE){
+    if(global.SYMBIOTE_META.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
     
         let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,ED25519_PUBKEY_FOR_FILTER)
     
@@ -316,7 +316,7 @@ Returns:
 
 */
 
-FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.SYMBIOTE.PAYLOAD_SIZE},(request,response)=>{
+FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE},(request,response)=>{
 
     let acceptedData = JSON.parse(request.body)
 
@@ -338,7 +338,7 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.SYMBIOTE.PAYLOAD_SIZE},(
 
     }
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.NEW_NODES){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.NEW_NODES){
 
         response.send({err:'Route is off'})
         
@@ -351,9 +351,9 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:global.CONFIG.SYMBIOTE.PAYLOAD_SIZE},(
 
         let nodes = global.SYMBIOTE_META.PEERS
         
-        if(!(nodes.includes(domain) || global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.includes(domain))){
+        if(!(nodes.includes(domain) || CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.includes(domain))){
             
-            nodes.length<global.CONFIG.SYMBIOTE.MAX_CONNECTIONS
+            nodes.length<CONFIGURATION.NODE_LEVEL.MAX_CONNECTIONS
             ?
             nodes.push(domain)
             :

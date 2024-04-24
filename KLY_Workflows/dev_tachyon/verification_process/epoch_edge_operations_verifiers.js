@@ -2,6 +2,8 @@ import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE,GET_FROM_QUORUM_THREAD_STATE} fro
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
+import {CONFIGURATION} from '../../../klyn74r.js'
+
 
 
 
@@ -396,7 +398,7 @@ export default {
             &&
             typeof data.pool === 'string' && Array.isArray(data.delayedIds)
             &&
-            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
             await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
             &&
@@ -600,7 +602,7 @@ export default {
             &&
             typeof data === 'number' //new value of rubicon. Some previous epochID
             &&
-            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
             &&
             global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
@@ -667,7 +669,7 @@ export default {
 
             isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
-            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
             await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
 
@@ -732,7 +734,7 @@ export default {
 
             isFromRoute //method used on POST /sign_epoch_edge_operation
             &&
-            global.CONFIG.SYMBIOTE.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
             await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
 

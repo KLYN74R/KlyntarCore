@@ -2,6 +2,8 @@ import {LOG,COLORS,BLAKE3,GET_UTC_TIMESTAMP,ED25519_VERIFY} from '../../KLY_Util
 
 import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
 
+import {CONFIGURATION} from '../../klyn74r.js'
+
 import Block from './essences/block.js'
 
 import cryptoModule from 'crypto'
@@ -710,10 +712,12 @@ VT_STATS_LOG = (epochFullID,shardContext) => {
 
 
 
+
 //Function just for pretty output about information on symbiote
 BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
-    if(global.CONFIG.SYMBIOTE.DAEMON_LOGS){
+
+    if(CONFIGURATION.NODE_LEVEL.DAEMON_LOGS){
 
         let preColor = msg.includes('accepted') ? '\x1b[31m' : '\x1b[32m'
 
@@ -742,7 +746,7 @@ BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
 BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
-GET_ALL_KNOWN_PEERS=()=>[...global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],
+GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],
 
 
 
@@ -782,8 +786,6 @@ IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.
 
 EPOCH_STILL_FRESH = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > GET_UTC_TIMESTAMP(),
 
-
-// PARSE_JSON = async stringJson => JSON.parse(stringJson)
 
 
 
@@ -835,61 +837,44 @@ USE_TEMPORARY_DB=async(operationType,dbReference,keys,values)=>{
 
 DECRYPT_KEYS=async spinner=>{
 
-    
-    if(global.CONFIG.SYMBIOTE.PRELUDE.DECRYPTED){
-
-        spinner?.stop()
-        
-        // Keys is object {kly:<DECRYPTED KLYNTAR PRIVKEY>,eth:<DECRYPTED ETH PRIVKEY>,...(other privkeys in form <<< ticker:privateKey >>>)}
-        let keys = JSON.parse(fs.readFileSync(global.CONFIG.DECRYPTED_KEYS_PATH))//use full path
-
-        // Main key
-        global.PRIVATE_KEY = keys.kly
-
-
-        return
-      
-    }
-
-    //Stop loading
+    // Stop loading
     spinner?.stop()
-
-    let symbioteConfigReference=global.CONFIG.SYMBIOTE
     
-    let rl = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
+    let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${symbioteConfigReference.PUB}\x1b[32;1m)`,COLORS.CYAN)
+    LOG(`Symbiote stats \x1b[32;1m(\x1b[36;1mworkflow:${global.GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / id:${CONFIGURATION.NODE_LEVEL.PUB}\x1b[32;1m)`,COLORS.CYAN)
 
 
     
-    let hexSeed=await new Promise(resolve=>
+    let hexSeed = await new Promise(resolve=>
         
-        rl.question(`\n ${COLORS.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
+        readLineInterface.question(`\n ${COLORS.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
         
     )
         
 
-    //Get 32 bytes SHA256(Password)
-    hexSeed=cryptoModule.createHash('sha256').update(hexSeed,'utf-8').digest('hex')
+    // Get 32 bytes SHA256(Password)
 
-    let IV=Buffer.from(hexSeed.slice(32),'hex')//Get second 16 bytes for initialization vector
+    hexSeed = cryptoModule.createHash('sha256').update(hexSeed,'utf-8').digest('hex')
+
+    let initializationVector = Buffer.from(hexSeed.slice(32),'hex') // Get second 16 bytes for initialization vector
 
 
     console.log('\x1b[0m')
 
-    hexSeed=hexSeed.slice(0,32)//Retrieve first 16 bytes from hash
+    hexSeed = hexSeed.slice(0,32) // Retrieve first 16 bytes from hash
 
 
 
     //__________________________________________DECRYPT PRIVATE KEY____________________________________________
 
 
-    let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,IV)
+    let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,initializationVector)
     
-    global.PRIVATE_KEY=decipher.update(symbioteConfigReference.PRV,'hex','utf8')+decipher.final('utf8')
+    global.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRV,'hex','utf8')+decipher.final('utf8')
 
     
-    rl.close()
+    readLineInterface.close()
 
 }

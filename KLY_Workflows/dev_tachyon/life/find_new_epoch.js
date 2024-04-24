@@ -14,6 +14,8 @@ import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../life.js'
 
 import {GET_BLOCK} from '../verification_process/verification.js'
 
+import {CONFIGURATION} from '../../../klyn74r.js'
+
 import Block from '../essences/block.js'
 
 import level from 'level'
@@ -591,7 +593,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
+                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUB)
 
 
                 if(EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){

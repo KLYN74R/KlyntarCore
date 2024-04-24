@@ -1,4 +1,4 @@
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
@@ -24,7 +24,8 @@ import {FASTIFY_SERVER} from '../../../../klyn74r.js'
  * */
 FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.FROM_STATE){
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
 
         let shardContext = request.params.shardID
 
@@ -38,7 +39,7 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
         response
 
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control','max-age='+global.CONFIG.SYMBIOTE.ROUTE_TTL.API.FROM_STATE)
+            .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.FROM_STATE)
         
             .send(data)
     
@@ -51,12 +52,12 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.TX_RECEIPT){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.TX_RECEIPT){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.TX_RECEIPT}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.TX_RECEIPT}`)
             
 
         global.SYMBIOTE_META.STATE.get('TX:'+request.params.txid).then(
@@ -76,12 +77,12 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SEARCH_RESULT){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SEARCH_RESULT){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SEARCH_RESULT}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SEARCH_RESULT}`)
             
 
 
@@ -195,12 +196,12 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 FASTIFY_SERVER.get('/sync_state',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.SYNC_STATE){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATE){
  
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.SYNC_STATE}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATE}`)
             
             .send(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
             

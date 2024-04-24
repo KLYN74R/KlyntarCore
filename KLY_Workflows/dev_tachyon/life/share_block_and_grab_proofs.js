@@ -2,6 +2,8 @@ import {GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_PSEUDO_RANDOM_SUBSET_FROM_
 
 import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
 
+import {CONFIGURATION} from '../../../klyn74r.js'
+
 import Block from '../essences/block.js'
 
 import WS from 'websocket'
@@ -121,7 +123,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     // Get the block index & hash that we're currently hunting for
 
-    let blockIDForHunting = epochHandler.id+':'+global.CONFIG.SYMBIOTE.PUB+':'+(proofsGrabber.acceptedIndex+1)
+    let blockIDForHunting = epochHandler.id+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(proofsGrabber.acceptedIndex+1)
 
     let finalizationProofsMapping, tmbProofsMapping
 

@@ -9,6 +9,7 @@ import Block from '../../essences/block.js'
 import WS from 'websocket'
 
 import http from 'http'
+import { CONFIGURATION } from '../../../../klyn74r.js'
 
 
 
@@ -109,7 +110,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !tempObject.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
     
         connection.close()
                    
@@ -344,7 +345,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     
                             tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
         
-                            connection.sendUTF(JSON.stringify({voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
+                            connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUB,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
     
 
                         })    
@@ -429,7 +430,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !typeCheckOverviewIsOk){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !typeCheckOverviewIsOk){
     
         connection.close()
                    
@@ -579,7 +580,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                         tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         
-                        connection.sendUTF(JSON.stringify({type:'tmb',voter:global.CONFIG.SYMBIOTE.PUB,finalizationProof,votedForHash:proposedBlockHash}))
+                        connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUB,finalizationProof,votedForHash:proposedBlockHash}))
     
                     })
     
@@ -618,9 +619,9 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
     
     for(let i=1;i<50;i++){
 
-        let blockIdToFind = data.epochIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+(data.hasUntilHeight+i)
+        let blockIdToFind = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(data.hasUntilHeight+i)
 
-        let blockIdToFindAfp = data.epochIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+(data.hasUntilHeight+i+1)
+        let blockIdToFindAfp = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+(data.hasUntilHeight+i+1)
 
         let block = await global.SYMBIOTE_META.BLOCKS.get(blockIdToFind).catch(()=>null)
 
@@ -658,9 +659,9 @@ let server = http.createServer({},(_,response)=>{
 })
 
 
-server.listen(global.CONFIG.SYMBIOTE.WEBSOCKET_PORT,global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE,()=>
+server.listen(CONFIGURATION.NODE_LEVEL.WEBSOCKET_PORT,CONFIGURATION.NODE_LEVEL.WEBSOCKET_INTERFACE,()=>
 
-    LOG(`Websocket server was activated on \u001b[38;5;168m${global.CONFIG.SYMBIOTE.WEBSOCKET_INTERFACE}:${global.CONFIG.SYMBIOTE.WEBSOCKET_PORT}`,COLORS.CD)
+    LOG(`Websocket server was activated on \u001b[38;5;168m${CONFIGURATION.NODE_LEVEL.WEBSOCKET_INTERFACE}:${CONFIGURATION.NODE_LEVEL.WEBSOCKET_PORT}`,COLORS.CD)
     
 )
 

@@ -2,6 +2,7 @@ import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
+import {CONFIGURATION} from '../../../klyn74r.js'
 
 
 
@@ -24,7 +25,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     }
 
 
-    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(global.CONFIG.SYMBIOTE.PUB)
+    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUB)
 
 
     if(iAmInTheQuorum && !EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){

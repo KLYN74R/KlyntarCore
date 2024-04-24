@@ -1,21 +1,20 @@
 import {
     
-    BLOCKLOG, GET_ALL_KNOWN_PEERS, GET_MAJORITY,
-    
     GET_QUORUM_URLS_AND_PUBKEYS, GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
     
-    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF
+    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF,
+
+    BLOCKLOG, GET_ALL_KNOWN_PEERS, GET_MAJORITY
 
 } from '../utils.js'
 
 import {ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
+import {CONFIGURATION} from '../../../klyn74r.js'
+
 import Block from '../essences/block.js'
 
 import fetch from 'node-fetch'
-
-
-
 
 
 
@@ -62,9 +61,9 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
     // global.SYMBIOTE_META.GENERATION_THREAD
 
-    let allKnownNodes = [global.CONFIG.SYMBIOTE.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
+    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
-    let shardID = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY || global.CONFIG.SYMBIOTE.PUB
+    let shardID = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUB
 
     // Find locally
 
@@ -368,7 +367,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
 
-        let poolPresent = epochHandler.poolsRegistry[global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(global.CONFIG.SYMBIOTE.PUB) 
+        let poolPresent = epochHandler.poolsRegistry[CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(CONFIGURATION.NODE_LEVEL.PUB) 
 
         tempObject.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
 
@@ -378,7 +377,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     //Safe "if" branch to prevent unnecessary blocks generation
     if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
-    let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(global.CONFIG.SYMBIOTE.PUB)
+    let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUB)
 
 
 
@@ -450,11 +449,11 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ALRP,reservePool0:ALRP,...,reservePoolN:ALRP}
         
-            let myPrimePool = global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY
+            let myPrimePool = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY
 
             let leadersSequenceOfMyShard = epochHandler.leadersSequence[myPrimePool]
     
-            let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(global.CONFIG.SYMBIOTE.PUB)
+            let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(CONFIGURATION.NODE_LEVEL.PUB)
     
 
             // Get all previous pools - from zero to <my_position>
@@ -504,7 +503,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
         }
 
 
-    }else if(global.CONFIG.SYMBIOTE.PRIME_POOL_PUBKEY) return
+    }else if(CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY) return
     
 
     /*
@@ -528,7 +527,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     // 1.Add the extra data to block from configs(it might be your note, for instance)
 
-    extraData.rest = {...global.CONFIG.SYMBIOTE.EXTRA_DATA_TO_BLOCK}
+    extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
 
 
     if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
@@ -553,7 +552,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
         global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
     
         // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+global.CONFIG.SYMBIOTE.PUB+':'+blockCandidate.index
+        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUB+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)

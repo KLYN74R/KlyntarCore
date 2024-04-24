@@ -2,7 +2,7 @@ import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
@@ -41,7 +41,7 @@ import {FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',async(request,response)=>{
 
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
         let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
 
@@ -73,7 +73,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
 FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
-    // global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE - set the limit mb
+    // CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE - set the limit mb
 
     let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 

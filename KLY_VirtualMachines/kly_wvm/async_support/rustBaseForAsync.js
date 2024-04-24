@@ -1,3 +1,5 @@
+import {CONFIGURATION} from '../../../klyn74r'
+
 import loader from '@assemblyscript/loader'
 
 import metering from 'wasm-metering'
@@ -6,9 +8,10 @@ import {TextDecoder} from 'util'
 
 
 
+
 let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true })
 
-let {TYPE,FUNCTION_NAME,MODULE_NAME}=global.CONFIG.VM.METERING
+let {TYPE,FUNCTION_NAME,MODULE_NAME} = CONFIGURATION.KLY_WVM.METERING
 
 let cachedTextEncoder = new TextEncoder('utf-8')
 
@@ -116,7 +119,7 @@ export default class ContractInstance {
             moduleStr:MODULE_NAME,
         
             //And cost table to meter gas usage by opcodes price
-            costTable:global.CONFIG.VM.GAS_TABLE,
+            costTable:CONFIGURATION.KLY_WVM.GAS_TABLE,
         
         })
 
@@ -498,10 +501,8 @@ export default class ContractInstance {
     }
     
     
-    
-    //-------------------- DIFFERENT
-    
-    __wbindgen_closure_wrapper1032 = (arg0, arg1, arg2) => {
+    // eslint-disable-next-line no-unused-vars
+    __wbindgen_closure_wrapper1032 = (arg0, arg1, _arg2) => {
 
         const ret = this.makeMutClosure(arg0, arg1, 43, this.__wbg_adapter_XXX)
     

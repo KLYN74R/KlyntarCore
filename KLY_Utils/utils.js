@@ -7,7 +7,7 @@ import Base58 from 'base-58'
 
 
 
-process.env.KLY_MODE||='main'
+process.env.KLY_MODE||='mainnet'
 
 
 
@@ -34,6 +34,7 @@ COLORS = {
     
     CD:`\u001b[38;5;50m`,//Canary died
     CON:`\u001b[38;5;168m`//CONFIGS
+
 },
 
 
@@ -104,10 +105,6 @@ ED25519_SIGN_DATA=(data,prv)=>new Promise((resolve,reject)=>
 
 LOG=(msg,msgColor)=>{
 
-    if(global.CONFIG.SYMBIOTE.DAEMON_LOGS){
-
-        console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,COLORS.CLEAR)
-
-    }
+    console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,COLORS.CLEAR)
 
 }

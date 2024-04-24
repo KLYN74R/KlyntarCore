@@ -4,7 +4,7 @@ import {GET_BLOCK} from '../../verification_process/verification.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import Block from '../../essences/block.js'
 
@@ -132,7 +132,7 @@ import Block from '../../essences/block.js'
 
 // Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
 
-FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 
@@ -330,7 +330,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:global.CONFIG.SYMBIOTE.M
 
 // Function to return aggregated skip proofs for proposed authorities✅
 
-FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
 

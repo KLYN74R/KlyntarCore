@@ -9,9 +9,11 @@ import {
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {LOG,BLAKE3,ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
+import {LOG,BLAKE3,ED25519_VERIFY,COLORS} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
+
+import {CONFIGURATION} from '../../../klyn74r.js'
 
 import {GRACEFUL_STOP} from '../life.js'
 
@@ -54,7 +56,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
         setTimeout(() => controller.abort(), 2000)
 
 
-        block = await fetch(global.CONFIG.SYMBIOTE.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
+        block = await fetch(CONFIGURATION.NODE_LEVEL.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
                 
             if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
@@ -77,7 +79,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
     
             for(let host of allKnownNodes){
 
-                if(host===global.CONFIG.SYMBIOTE.MY_HOSTNAME) continue
+                if(host===CONFIGURATION.NODE_LEVEL.MY_HOSTNAME) continue
 
                 const controller = new AbortController()
 
@@ -133,7 +135,7 @@ WAIT_SOME_TIME = async() =>
 
     new Promise(resolve=>
 
-        setTimeout(()=>resolve(),global.CONFIG.SYMBIOTE.WAIT_IF_CANT_FIND_AEFP)
+        setTimeout(()=>resolve(),CONFIGURATION.NODE_LEVEL.WAIT_IF_CANT_FIND_AEFP)
 
     )
 ,
@@ -1185,7 +1187,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
     */
 
 
-    let endpointURL = global.CONFIG.SYMBIOTE?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
+    let endpointURL = CONFIGURATION.NODE_LEVEL?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
 
     if(!endpointURL){
 
@@ -2010,7 +2012,7 @@ verifyBlock=async(block,shardContext)=>{
 
         
         // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(global.CONFIG.SYMBIOTE.STORE_BLOCKS_IN_LOCAL_DATABASE){
+        if(CONFIGURATION.NODE_LEVEL.STORE_BLOCKS_IN_LOCAL_DATABASE){
             
             // No matter if we already have this block-resave it
 
@@ -2020,7 +2022,7 @@ verifyBlock=async(block,shardContext)=>{
                 
             )
 
-        }else if(block.creator !== global.CONFIG.SYMBIOTE.PUB){
+        }else if(block.creator !== CONFIGURATION.NODE_LEVEL.PUB){
 
             // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
             global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
@@ -2033,7 +2035,7 @@ verifyBlock=async(block,shardContext)=>{
 
 
         
-        if(global.SYMBIOTE_META.STATE_CACHE.size>=global.CONFIG.SYMBIOTE.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
+        if(global.SYMBIOTE_META.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
 
 
         /*

@@ -33,7 +33,7 @@
  * 
  */
 
-import {COLORS, LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
+import {COLORS,LOG,PATH_RESOLVE} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -70,6 +70,8 @@ global.__dirname = await import('path').then(async mod=>
     )
 
 )
+
+
 
 
 //______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
@@ -231,30 +233,19 @@ d"""    `""""""""""""Y:d8P                              8,          `b
 
 */
 
-
-
-
-//_________________________________________________CONSTANTS_POOL_______________________________________________
-
-
-
-
-//Check the Roadmap,documentation,official sources,etc. to get more | Смотрите Roadmap проекта,документацию,официальные источники и тд. чтобы узнать больше
-
-
-
     
 //_________________________________________________CONFIG_PROCESS_______________________________________________
 
 
-//Define globally
-global.CONFIG={}
+// Define globally
+
+export let CONFIGURATION = {}
 
 
 //Load all the configs
 fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
     
-    Object.assign(global.CONFIG,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
+    Object.assign(CONFIGURATION,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
     
 )
 
@@ -295,7 +286,7 @@ await new Promise(r=>{
     
     let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
 
-    setTimeout(()=>{ animation.stop() ; r() },global.CONFIG.SYMBIOTE.PRELUDE.ANIMATION_DURATION)
+    setTimeout(()=>{ animation.stop() ; r() },CONFIGURATION.NODE_LEVEL.PRELUDE.ANIMATION_DURATION)
 
 })
 
@@ -347,15 +338,15 @@ console.log('\n\n\n')
 
 LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),COLORS.GREEN)
 
-LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${global.CONFIG.SYMBIOTE.TLS.ENABLED?'enabled':'disabled'}`,COLORS.CON)
+LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.TLS.ENABLED?'enabled':'disabled'}`,COLORS.CON)
 
-LOG(`Server is working on \u001b[38;5;50m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,COLORS.CON)
+LOG(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.CON)
 
-LOG(global.CONFIG.SYMBIOTE.PLUGINS.length!==0 ? `Runned plugins(${global.CONFIG.SYMBIOTE.PLUGINS.length}) are \u001b[38;5;50m${global.CONFIG.SYMBIOTE.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
+LOG(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
 
 
 
-if(!global.CONFIG.SYMBIOTE.PRELUDE.OPTIMISTIC){
+if(!CONFIGURATION.NODE_LEVEL.PRELUDE.OPTIMISTIC){
 
     await new Promise(resolve=>
     
@@ -373,7 +364,7 @@ LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.G
 
 
 
-export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
+export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
 
 
@@ -384,7 +375,7 @@ export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
 
     await RUN_SYMBIOTE()
 
-    for(let scriptPath of global.CONFIG.SYMBIOTE.PLUGINS){
+    for(let scriptPath of CONFIGURATION.NODE_LEVEL.PLUGINS){
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
             
@@ -404,9 +395,9 @@ export let FASTIFY_SERVER = fastify(global.CONFIG.FASTIFY_OPTIONS);
     await import(`./KLY_Workflows/${global.GENESIS.WORKFLOW}/routes.js`)
     
     
-    FASTIFY_SERVER.listen({port:global.CONFIG.SYMBIOTE.PORT,host:global.CONFIG.SYMBIOTE.INTERFACE},err=>{
+    FASTIFY_SERVER.listen({port:CONFIGURATION.NODE_LEVEL.PORT,host:CONFIGURATION.NODE_LEVEL.INTERFACE},err=>{
     
-        if(!err) LOG(`Node started on \x1b[36;1m[${global.CONFIG.SYMBIOTE.INTERFACE}]:${global.CONFIG.SYMBIOTE.PORT}`,COLORS.GREEN)
+        if(!err) LOG(`Node started on \x1b[36;1m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.GREEN)
     
         else LOG('Oops,some problems with server module',COLORS.RED)
     

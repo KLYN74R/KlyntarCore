@@ -1,4 +1,4 @@
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import Block from '../../essences/block.js'
 
@@ -11,12 +11,12 @@ import Block from '../../essences/block.js'
 FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK){
 
         response
         
             .header('Access-Control-Allow-Origin','*')    
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK}`)
     
 
         global.SYMBIOTE_META.BLOCKS.get(request.params.id).then(block=>
@@ -39,12 +39,12 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.BLOCK_BY_SID}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK_BY_SID}`)
             
 
         let shardContext = request.params.shard
@@ -81,12 +81,12 @@ Returns array of blocks sorted by SID in reverse order
 FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,response)=>{
 
     //Set triggers
-    if(global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${global.CONFIG.SYMBIOTE.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
             
 
         let startCount = +request.params.num_of_blocks

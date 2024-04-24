@@ -2,7 +2,7 @@ import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_ed
 
 import{BLAKE3,ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
-import {FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {CONFIGURATION,FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {GET_MAJORITY} from '../../utils.js'
 
@@ -49,7 +49,7 @@ Returns object like:
 
 // Handler to accept EEO with 2/3N+1 aggregated agreements which proves that majority of current quorum verified this EEO and we can add it to block header ✅
 
-FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochEdgeOperationWithAgreementProofs = JSON.parse(request.body)
 
@@ -72,7 +72,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:global.CONFIG.
     let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
         response.send({err:`Route is off. This node don't accept epoch edge operations`})
 
@@ -150,7 +150,7 @@ Body is
 
 // Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
 
-FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.SYMBIOTE.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
     let epochEdgeOperation = JSON.parse(request.body)
 
@@ -166,7 +166,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.SYMBIO
     }
 
 
-    if(!global.CONFIG.SYMBIOTE.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
+    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
 
         response.send({err:`Route is off. This node don't accept epoch edge operations`})
 
@@ -198,7 +198,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:global.CONFIG.SYMBIO
 
             response.send({
 
-                signer:global.CONFIG.SYMBIOTE.PUB,
+                signer:CONFIGURATION.NODE_LEVEL.PUB,
                 
                 signature
 

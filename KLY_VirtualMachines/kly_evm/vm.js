@@ -12,6 +12,7 @@ import {Level} from 'level'
 import Web3 from 'web3'
 
 
+import {CONFIGURATION} from '../../klyn74r.js'
 
 
 //_________________________________________________________ CONSTANTS POOL _________________________________________________________
@@ -33,7 +34,7 @@ const {
     hardfork,
     gasLimitForBlock
 
-} = global.CONFIG.KLY_EVM
+} = CONFIGURATION.KLY_EVM
 
 const common = Common.custom({name,networkId,chainId},{hardfork})
 
@@ -144,7 +145,7 @@ class KLY_EVM_CLASS {
     
         if(evmCaller){
 
-            // tx.gasLimit = BigInt(global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
+            // tx.gasLimit = BigInt(CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
             
             let vmCopy = await this.vm.copy()
 
@@ -291,7 +292,7 @@ class KLY_EVM_CLASS {
     estimateGasUsed = async txData => {
 
 
-        txData.gasLimit = global.CONFIG.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
+        txData.gasLimit = CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
 
 
         let tx = Transaction.fromTxData(txData,{common})

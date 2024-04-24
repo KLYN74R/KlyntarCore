@@ -6,7 +6,7 @@ import {LOG,PATH_RESOLVE,BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {FASTIFY_SERVER} from '../../klyn74r.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import fetch from 'node-fetch'
 
@@ -48,7 +48,7 @@ import {BLOCKS_GENERATION} from './life/block_generation.js'
 
 global.SYSTEM_SIGNAL_ACCEPTED=false
 
-//Your decrypted private key
+// Your decrypted private key
 global.PRIVATE_KEY=null
 
 
@@ -583,7 +583,7 @@ PREPARE_SYMBIOTE=async()=>{
     //Loading spinner
     let initSpinner
 
-    if(!global.CONFIG.SYMBIOTE.PRELUDE.NO_SPINNERS){
+    if(!CONFIGURATION.NODE_LEVEL.PRELUDE.NO_SPINNERS){
 
         initSpinner = ora({
         
@@ -880,13 +880,13 @@ RUN_SYMBIOTE=async()=>{
     BLOCKS_GENERATION()
 
     //Check if bootstrap nodes is alive
-    global.CONFIG.SYMBIOTE.BOOTSTRAP_NODES.forEach(endpoint=>
+    CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.forEach(endpoint=>
                 
         fetch(endpoint+'/addpeer',{
             
             method:'POST',
             
-            body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,global.CONFIG.SYMBIOTE.MY_HOSTNAME]),
+            body:JSON.stringify([global.GENESIS.SYMBIOTE_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
 
             headers:{'contentType':'application/json'}
         
