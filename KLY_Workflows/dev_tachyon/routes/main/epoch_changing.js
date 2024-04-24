@@ -32,7 +32,7 @@ import {FASTIFY_SERVER} from '../../../../klyn74r.js'
     
     }
 
-    Signature is ED25519('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+firstBlockHash+epochFullId)
+    Signature is => ED25519('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+firstBlockHash+epochFullId)
 
 
 */
