@@ -109,14 +109,7 @@
     "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
     "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
 
-
-    "PRELUDE":{
-
-        "ANIMATION_DURATION":0,
-        "NO_SPINNERS":false,
-        "OPTIMISTIC":true
-        
-    },
+    "ANIMATION_DURATION":1000,
 
     "PLUGINS":[],
 

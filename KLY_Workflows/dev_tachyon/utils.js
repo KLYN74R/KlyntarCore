@@ -2,8 +2,6 @@ import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
-import BLS from '../../KLY_Utils/signatures/multisig/bls.js'
-
 import Block from './essences/block.js'
 
 import cryptoModule from 'crypto'
@@ -738,10 +736,6 @@ BLOCKLOG=(msg,hash,block,epochIndex)=>{
 },
 
 
-BLS_SIGN_DATA=data=>BLS.singleSig(data,global.PRIVATE_KEY),
-
-
-BLS_VERIFY=(data,signature,validatorPubKey)=>BLS.singleVerify(data,validatorPubKey,signature),
 
 
 GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],
@@ -833,10 +827,7 @@ USE_TEMPORARY_DB=async(operationType,dbReference,keys,values)=>{
 
 
 
-DECRYPT_KEYS=async spinner=>{
-
-    // Stop loading
-    spinner?.stop()
+DECRYPT_KEYS=async()=>{
     
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
@@ -870,7 +861,7 @@ DECRYPT_KEYS=async spinner=>{
 
     let decipher = cryptoModule.createDecipheriv('aes-256-cbc',hexSeed,initializationVector)
     
-    global.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRIVATE_KEY,'hex','utf8')+decipher.final('utf8')
+    CONFIGURATION.NODE_LEVEL.PRIVATE_KEY = decipher.update(CONFIGURATION.NODE_LEVEL.PRIVATE_KEY,'hex','utf8')+decipher.final('utf8')
 
     
     readLineInterface.close()

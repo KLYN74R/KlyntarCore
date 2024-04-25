@@ -14,8 +14,6 @@ import level from 'level'
 
 import Web3 from 'web3'
 
-import ora from 'ora'
-
 import fs from 'fs'
 
 
@@ -38,7 +36,6 @@ import {BLOCKS_GENERATION} from './life/block_generation.js'
 
 
 // Your decrypted private key
-global.PRIVATE_KEY = null
 
 
 
@@ -563,21 +560,6 @@ LOAD_GENESIS=async()=>{
 
 PREPARE_BLOCKCHAIN=async()=>{
 
-    //Loading spinner
-    let initSpinner
-
-    if(!CONFIGURATION.NODE_LEVEL.PRELUDE.NO_SPINNERS){
-
-        initSpinner = ora({
-        
-            color:'red',
-        
-            prefixText:`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m [${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})  \x1b[36;1mPreparing symbiote\x1b[0m`
-        
-        }).start()
-
-    }
-
 
     //____________________________________________Prepare structures_________________________________________________
 
@@ -816,7 +798,7 @@ PREPARE_BLOCKCHAIN=async()=>{
 
 
 
-    await DECRYPT_KEYS(initSpinner).then(()=>
+    await DECRYPT_KEYS().then(()=>
     
         //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
         LOG(`Private key was decrypted successfully`,COLORS.GREEN)        

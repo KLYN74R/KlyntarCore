@@ -542,7 +542,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
         let hash = Block.genHash(blockCandidate)
 
 
-        blockCandidate.sig = await ED25519_SIGN_DATA(hash,global.PRIVATE_KEY)
+        blockCandidate.sig = await ED25519_SIGN_DATA(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
             
         BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.epochIndex)
 

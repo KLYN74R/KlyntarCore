@@ -337,13 +337,13 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
         
-                            let finalizationProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                            let finalizationProof = await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
 
                             // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
 
                             dataToSign += 'VALID_BLOCK_RECEIVED'
 
-                            let tmbProof = await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                            let tmbProof = await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
     
     
                             tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
@@ -579,7 +579,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                         tempObject.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
             
-                        let finalizationProof = await ED25519_SIGN_DATA(dataToSignToApproveProposedBlock,global.PRIVATE_KEY)    
+                        let finalizationProof = await ED25519_SIGN_DATA(dataToSignToApproveProposedBlock,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)    
     
                         tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         

@@ -39,8 +39,6 @@ import chalkAnimation from 'chalk-animation'
 
 import {isAbsolute} from 'path'
 
-import readline from 'readline'
-
 import fastify from 'fastify'
 
 import fs from 'fs'
@@ -288,11 +286,17 @@ export let BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_P
     
 
 // Run cool short animation
-await new Promise(r=>{
+await new Promise(resolve=>{
     
     let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
 
-    setTimeout(()=>{ animation.stop() ; r() },CONFIGURATION.NODE_LEVEL.PRELUDE.ANIMATION_DURATION)
+    setTimeout(()=>{
+        
+        animation.stop()
+        
+        resolve()
+    
+    }, CONFIGURATION.NODE_LEVEL.ANIMATION_DURATION)
 
 })
 
@@ -364,9 +368,15 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
 (async()=>{
 
+
+    // 0. Import the entrypoint to run the blockchain logic
+
     let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/life.js`)
 
     await RUN_BLOCKCHAIN()
+
+
+    // 1. Load plugins in case they need access to process (memory)
 
     for(let scriptPath of CONFIGURATION.NODE_LEVEL.PLUGINS){
 
@@ -377,15 +387,12 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
         )
     
     }
+
     
-    
-    
-    
-    //_______________________________________________GET SERVER ROUTES______________________________________________    
-    
-    // Import routes
+    // 2. Import routes
     
     await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/routes.js`)
+    
     
     
     FASTIFY_SERVER.listen({port:CONFIGURATION.NODE_LEVEL.PORT,host:CONFIGURATION.NODE_LEVEL.INTERFACE},err=>{

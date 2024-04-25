@@ -299,7 +299,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                                                 
                             status:'OK',
                                             
-                            sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                            sig:await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                                             
                         }
 
@@ -347,7 +347,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                                     status:'OK',
                         
-                                    sig:await ED25519_SIGN_DATA(dataToSign,global.PRIVATE_KEY)
+                                    sig:await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                         
                                 }
 

@@ -280,7 +280,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
                     
                     type:'OK',
 
-                    sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,global.PRIVATE_KEY)
+                    sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                 }
 
                 response.send(skipMessage)

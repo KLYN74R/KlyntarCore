@@ -192,7 +192,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
 
                 BLAKE3(JSON.stringify(possibleEpochEdgeOperation)+epochFullID),
 
-                global.PRIVATE_KEY
+                CONFIGURATION.NODE_LEVEL.PRIVATE_KEY
 
             )
 
