@@ -57,7 +57,7 @@ global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
 
 // Need this object inside EVM
-global.KLY_EVM = { bindContext, coinbase}
+global.KLY_EVM_OPTIONS = { bindContext, coinbase}
 
 
 /*

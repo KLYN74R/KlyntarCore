@@ -152,7 +152,7 @@ class VmState {
 
         if(!bindedToShard){
 
-            if(this.isSandboxExecution) bindedToShard = global.KLY_EVM.bindContext
+            if(this.isSandboxExecution) bindedToShard = global.KLY_EVM_OPTIONS.bindContext
 
             else {
 
@@ -166,10 +166,10 @@ class VmState {
 
         // In case it's sandbox call to filter txs - we use choosen context. It might be own context or some other one(for example, using Bumblebee tools for KLY Infra)
 
-        let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM.bindContext : this.evmContext
+        let evmExecutionContext = this.isSandboxExecution ? global.KLY_EVM_OPTIONS.bindContext : this.evmContext
 
 
-        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== global.KLY_EVM.coinbase){
+        if(bindedToShard !== evmExecutionContext && addressAsStringWithout0x !== global.KLY_EVM_OPTIONS.coinbase){
 
             throw new Error(`Account 0x${addressAsStringWithout0x} binded to shard ${bindedToShard}, but you try to change the state of it via tx on shard ${evmExecutionContext}`)
 
