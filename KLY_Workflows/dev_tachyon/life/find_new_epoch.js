@@ -10,7 +10,7 @@ import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_
 
 import {BLAKE3,COLORS,LOG,PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
 
-import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../life.js'
+import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../blockchain_preparation.js'
 
 import {GET_BLOCK} from '../verification_process/verification.js'
 
@@ -58,10 +58,10 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
 
     let workflowOptionsTemplate = {...fullCopyOfQuorumThread.WORKFLOW_OPTIONS}
     
-    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
     
     // Structure is <poolID> => true if pool should be deleted
-    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set('SLASH_OBJECT',{})
+    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set('SLASH_OBJECT',{})
     
 
     // But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
@@ -149,7 +149,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
         arrayToDeleteFrom.splice(indexToDelete,1)
     
         // Remove from cache
-        global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+        global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
 
     }
 
@@ -157,14 +157,14 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
     // Update the WORKFLOW_OPTIONS
     fullCopyOfQuorumThread.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
 
-    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.delete('SLASH_OBJECT')
+    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete('SLASH_OBJECT')
 
 
     //After all ops - commit state and make changes to workflow
 
-    global.SYMBIOTE_META.QUORUM_THREAD_CACHE.forEach((value,recordID)=>{
+    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
 
         atomicBatch.put(recordID,value)
 

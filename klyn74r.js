@@ -371,7 +371,7 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
     // 0. Import the entrypoint to run the blockchain logic
 
-    let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/life.js`)
+    let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/entrypoint.js`)
 
     await RUN_BLOCKCHAIN()
 

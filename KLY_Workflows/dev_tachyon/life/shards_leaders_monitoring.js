@@ -1,6 +1,6 @@
-import {EPOCH_STILL_FRESH,USE_TEMPORARY_DB} from '../utils.js'
+import {EPOCH_STILL_FRESH,GET_FROM_QUORUM_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_DB} from '../utils.js'
 
-import {GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
 
 
@@ -13,6 +13,83 @@ let TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSeq
 
 }
 
+
+
+export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
+
+
+    epochHandler.leadersSequence = {}
+
+
+    let reservePoolsRelatedToShard = new Map() // shardID => [] - array of reserve pools
+
+    let primePoolsPubKeys = new Set(epochHandler.poolsRegistry.primePools)
+
+
+    for(let reservePoolPubKey of epochHandler.poolsRegistry.reservePools){
+
+        // Otherwise - it's reserve pool
+        
+        let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+    
+        if(poolStorage){
+
+            let {reserveFor} = poolStorage
+
+            if(!reservePoolsRelatedToShard.has(reserveFor)) reservePoolsRelatedToShard.set(reserveFor,[])
+
+            reservePoolsRelatedToShard.get(reserveFor).push(reservePoolPubKey)
+                    
+        }
+
+    }
+
+
+    /*
+    
+        After this cycle we have:
+
+        [0] primePoolsIDs - Set(primePool0,primePool1,...)
+        [1] reservePoolsRelatedToShardAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
+
+    
+    */
+
+    let hashOfMetadataFromOldEpoch = BLAKE3(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
+
+    
+    //___________________________________________________ Now, build the leaders sequence ___________________________________________________
+    
+    for(let primePoolID of primePoolsPubKeys){
+
+
+        let arrayOfReservePoolsRelatedToThisShard = reservePoolsRelatedToShard.get(primePoolID) || []
+
+        let mapping = new Map()
+
+        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisShard.map(validatorPubKey=>{
+
+            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldEpoch),16)
+
+            mapping.set(challenge,validatorPubKey)
+
+            return challenge
+
+        })
+
+
+        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
+
+        let leadersSequence = []
+
+        for(let challenge of sortedChallenges) leadersSequence.push(mapping.get(challenge))
+
+        
+        epochHandler.leadersSequence[primePoolID] = leadersSequence
+        
+    }
+    
+}
 
 
 

@@ -501,13 +501,13 @@ GET_FROM_STATE = async recordID => {
 
 GET_FROM_QUORUM_THREAD_STATE = async recordID => {
 
-    return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)||global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
+    return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID)||global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
     
     .then(something=>{
  
-        global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(recordID,something)
+        global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(recordID,something)
 
-        return global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(recordID)
+        return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID)
  
     
     }).catch(()=>false)
@@ -751,7 +751,7 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     for(let pubKey of epochHandler.quorum){
 
-        let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 

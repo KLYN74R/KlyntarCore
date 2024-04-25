@@ -15,7 +15,7 @@ import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {GRACEFUL_STOP} from '../life.js'
+import {GRACEFUL_STOP} from '../blockchain_preparation.js'
 
 import Block from '../essences/block.js'
 

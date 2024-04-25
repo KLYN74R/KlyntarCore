@@ -25,7 +25,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
 
         if(!TEMP_CACHE.has('WS:'+pubKey)){
 
-            let poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            let poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(poolStorage){
 

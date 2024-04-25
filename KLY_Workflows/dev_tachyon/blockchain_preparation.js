@@ -1,14 +1,12 @@
-import {GET_MAJORITY, GET_QUORUM, GET_FROM_QUORUM_THREAD_STATE, IS_MY_VERSION_OLD, DECRYPT_KEYS, HEAP_SORT} from './utils.js'
+import {GET_MAJORITY, GET_QUORUM, IS_MY_VERSION_OLD, DECRYPT_KEYS} from './utils.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../klyn74r.js'
-
-import {START_VERIFICATION_THREAD} from './verification_process/verification.js'
+import {SET_LEADERS_SEQUENCE_FOR_SHARDS} from './life/shards_leaders_monitoring.js'
 
 import {LOG, PATH_RESOLVE, BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
 
-import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+import {BLOCKCHAIN_GENESIS, FASTIFY_SERVER} from '../../klyn74r.js'
 
-import fetch from 'node-fetch'
+import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import level from 'level'
 
@@ -18,26 +16,46 @@ import fs from 'fs'
 
 
 
-// 7 main threads - main core logic
 
-import {BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD} from './life/temp_vt_sequence_builder.js'
+// First of all - define the BLOCKCHAIN_METADATA globally available object
 
-import {SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS} from './life/share_block_and_grab_proofs.js'
+export let BLOCKCHAIN_METADATA = {
 
-import {FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS} from './life/find_new_epoch.js'
+    VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
+    
+    MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
-import {CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH} from './life/new_epoch_proposer.js'
+    STATE_CACHE:new Map(), // Cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE)
 
-import {SHARDS_LEADERS_MONITORING} from './life/shards_leaders_monitoring.js'
+    APPROVEMENT_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
 
-import {BLOCKS_GENERATION} from './life/block_generation.js'
+    STUFF_CACHE:new Map(),
+
+    
+    PEERS:[], // Peers to exchange data with
+
+    //________________ CONSENSUS RELATED MAPPINGS(per epoch) _____________
+
+    TEMP:new Map()
+    
+}
 
 
 
 
-// Your decrypted private key
 
 
+
+
+
+
+
+
+//___________________________________________________________ 0. Set the handlers for system signals(e.g. Ctrl+C to stop blockchain) ___________________________________________________________
+
+
+
+// Need it with 'export' keyword because used in other files - for example to gracefully stop the node when it's version is outdated
 
 export let GRACEFUL_STOP = async() => {
 
@@ -59,11 +77,6 @@ export let GRACEFUL_STOP = async() => {
 
 }
 
-
-
-
-// Define listeners on typical signals to safely stop the node
-
 process.on('SIGTERM',GRACEFUL_STOP)
 process.on('SIGINT',GRACEFUL_STOP)
 process.on('SIGHUP',GRACEFUL_STOP)
@@ -75,91 +88,16 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
-
-
-    epochHandler.leadersSequence = {}
-
-
-    let reservePoolsRelatedToShard = new Map() // shardID => [] - array of reserve pools
-
-    let primePoolsPubKeys = new Set(epochHandler.poolsRegistry.primePools)
-
-
-    for(let reservePoolPubKey of epochHandler.poolsRegistry.reservePools){
-
-        // Otherwise - it's reserve pool
-        
-        let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
-    
-        if(poolStorage){
-
-            let {reserveFor} = poolStorage
-
-            if(!reservePoolsRelatedToShard.has(reserveFor)) reservePoolsRelatedToShard.set(reserveFor,[])
-
-            reservePoolsRelatedToShard.get(reserveFor).push(reservePoolPubKey)
-                    
-        }
-
-    }
-
-
-    /*
-    
-        After this cycle we have:
-
-        [0] primePoolsIDs - Set(primePool0,primePool1,...)
-        [1] reservePoolsRelatedToShardAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
-
-    
-    */
-
-    let hashOfMetadataFromOldEpoch = BLAKE3(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
-
-    
-    //___________________________________________________ Now, build the leaders sequence ___________________________________________________
-    
-    for(let primePoolID of primePoolsPubKeys){
-
-
-        let arrayOfReservePoolsRelatedToThisShard = reservePoolsRelatedToShard.get(primePoolID) || []
-
-        let mapping = new Map()
-
-        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisShard.map(validatorPubKey=>{
-
-            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldEpoch),16)
-
-            mapping.set(challenge,validatorPubKey)
-
-            return challenge
-
-        })
-
-
-        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
-
-        let leadersSequence = []
-
-        for(let challenge of sortedChallenges) leadersSequence.push(mapping.get(challenge))
-
-        
-        epochHandler.leadersSequence[primePoolID] = leadersSequence
-        
-    }
-    
-}
 
 
 
 
-//________________________________________________________________INTERNAL_______________________________________________________________________
+//___________________________________________________________ 1. Function to restore metadata since the last turn off ___________________________________________________________
 
 
 
 
-let RESTORE_STATE=async()=>{
+let RESTORE_METADATA_CACHE=async()=>{
 
     let poolsRegistry = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry
 
@@ -225,16 +163,20 @@ let RESTORE_STATE=async()=>{
 
 
 
-//________________________________________________________________EXTERNAL_______________________________________________________________________
 
 
 
 
-export let
 
 
 
-LOAD_GENESIS=async()=>{
+
+//___________________________________________________________ 2. Function to load the data from genesis to state ___________________________________________________________
+
+
+
+
+export let SET_GENESIS_TO_STATE=async()=>{
 
 
     let atomicBatch = global.SYMBIOTE_META.STATE.batch(),
@@ -422,10 +364,11 @@ LOAD_GENESIS=async()=>{
                 
                 } 
 
-                //Write metadata first
+                // Write metadata first
                 atomicBatch.put(shard+':'+addressOrContractID,contractMeta)
 
-                //Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+                // Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+
                 for(let storageID of BLOCKCHAIN_GENESIS.STATE[addressOrContractID].storages){
 
                     BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID].shard = shard
@@ -438,7 +381,7 @@ LOAD_GENESIS=async()=>{
 
                 let shardID = BLOCKCHAIN_GENESIS.STATE[addressOrContractID].shard
 
-                atomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID]) //else - it's default account
+                atomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID]) // else - it's default account
 
             }
 
@@ -553,39 +496,29 @@ LOAD_GENESIS=async()=>{
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(qtEpochHandler.leadersSequence))
 
-},
+}
 
 
 
 
-PREPARE_BLOCKCHAIN=async()=>{
+
+
+
+
+
+
+
+
+//___________________________________________________________ 2. Function to load the data from genesis to state ___________________________________________________________
+
+
+
+
+export let PREPARE_BLOCKCHAIN=async()=>{
 
 
     //____________________________________________Prepare structures_________________________________________________
 
-
-    //Contains default set of properties for major part of potential use-cases on symbiote
-    global.SYMBIOTE_META = {
-
-        VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
-        
-        MEMPOOL:[], //to hold onchain transactions here(contract calls,txs,delegations and so on)
-
-   
-        STATE_CACHE:new Map(), // ID => ACCOUNT_STATE
-
-        QUORUM_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
-
-        STUFF_CACHE:new Map(),
-
-        
-        PEERS:[], // Peers to exchange data with
-
-        //________________ CONSENSUS RELATED MAPPINGS(per epoch) _____________
-
-        TEMP:new Map()
-    
-    }
 
 
     !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
@@ -702,7 +635,7 @@ PREPARE_BLOCKCHAIN=async()=>{
         
     if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
 
-        await LOAD_GENESIS()
+        await SET_GENESIS_TO_STATE()
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
@@ -791,16 +724,13 @@ PREPARE_BLOCKCHAIN=async()=>{
 
     // Fill the FINALIZATION_STATS with the latest, locally stored data
 
-    await RESTORE_STATE()
+    await RESTORE_METADATA_CACHE()
 
 
     //__________________________________Decrypt private key to memory of process__________________________________
 
-
-
     await DECRYPT_KEYS().then(()=>
-    
-        //Print just first few bytes of keys to view that they were decrypted well.Looks like checksum
+            
         LOG(`Private key was decrypted successfully`,COLORS.GREEN)        
     
     ).catch(error=>{
@@ -810,59 +740,5 @@ PREPARE_BLOCKCHAIN=async()=>{
         process.exit(107)
 
     })
-
-},
-
-
-
-
-RUN_BLOCKCHAIN=async()=>{
-
-
-    await PREPARE_BLOCKCHAIN()
-
-    //_________________________ RUN SEVERAL ASYNC THREADS _________________________
-
-    //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
-
-    //✅1.Thread to find AEFPs and change the epoch for QT
-    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
-
-    //✅2.Share our blocks within quorum members and get the finalization proofs
-    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
-
-    //✅3.Thread to propose AEFPs to move to next epoch
-    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
-
-    //✅4.Thread to track changes of leaders on shards
-    SHARDS_LEADERS_MONITORING()
-
-    //✅5.Function to build the temporary sequence of blocks to verify them
-    BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
-
-    //✅6.Start to generate blocks
-    BLOCKS_GENERATION()
-
-    //Check if bootstrap nodes is alive
-    CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.forEach(endpoint=>
-                
-        fetch(endpoint+'/addpeer',{
-            
-            method:'POST',
-            
-            body:JSON.stringify([BLOCKCHAIN_GENESIS.SYMBIOTE_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
-
-            headers:{'contentType':'application/json'}
-        
-        })
-            
-            .then(res=>res.text())
-            
-            .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,COLORS.CYAN))
-            
-            .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,COLORS.RED))
-
-    )
 
 }

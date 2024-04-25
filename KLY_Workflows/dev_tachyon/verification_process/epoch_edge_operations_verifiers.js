@@ -173,9 +173,9 @@ export default {
 
                 }
 
-                global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
+                global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
 
-                poolStorage = global.SYMBIOTE_META.QUORUM_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
+                poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
             
             }
             
@@ -188,7 +188,7 @@ export default {
             
 
             //Put to cache that this tx was spent
-            global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(txid,true)
 
             
             let workflowConfigs = fullCopyOfQuorumThread.WORKFLOW_OPTIONS
@@ -515,7 +515,7 @@ export default {
             let slashHelper = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
-            if(!slashHelper[pool]) global.SYMBIOTE_META.QUORUM_THREAD_CACHE.set(txid,true)
+            if(!slashHelper[pool]) global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(txid,true)
 
         }
         else{
