@@ -1,8 +1,10 @@
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+
+import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
 import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
-
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
@@ -47,14 +49,14 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
         if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
-            response.send({err:'QT epoch handler is not ready'})
+            response.send({err:'AT epoch handler is not ready'})
         
             return
 
         }
 
 
-        let aggregatedEpochFinalizationProofForShard = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
+        let aggregatedEpochFinalizationProofForShard = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${request.params.epoch_index}:${request.params.shard}`).catch(()=>null)
 
         
         if(aggregatedEpochFinalizationProofForShard){

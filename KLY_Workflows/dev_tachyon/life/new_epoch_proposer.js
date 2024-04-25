@@ -1,8 +1,12 @@
 import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
 
+import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
+
+
 
 
 
@@ -259,7 +263,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             */
          
-            let aefpExistsLocally = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${shardId}`).catch(()=>false)
+            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${shardId}`).catch(()=>false)
 
             if(!aefpExistsLocally){
 
@@ -279,7 +283,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
                     let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
     
-                    epochFinishProposition[shardId].afpForFirstBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
+                    epochFinishProposition[shardId].afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
     
                 }    
 
@@ -428,7 +432,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                     
                 }
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             }
 

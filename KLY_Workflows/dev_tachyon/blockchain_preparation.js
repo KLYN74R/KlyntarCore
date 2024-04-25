@@ -21,28 +21,41 @@ import fs from 'fs'
 
 export let BLOCKCHAIN_METADATA = {
 
-    VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()),
+    VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
-    STATE_CACHE:new Map(), // Cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE)
+    STATE_CACHE:new Map(), // cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE). Used by VERIFICATION_THREAD
 
-    APPROVEMENT_THREAD_CACHE:new Map(), // ADDRESS => ACCOUNT_STATE
+    APPROVEMENT_THREAD_CACHE:new Map(), // ... the same, but used by APPROVEMENT_THREAD
 
-    STUFF_CACHE:new Map(),
+    STUFF_CACHE:new Map(), // cache for different stuff during node work
 
-    
-    PEERS:[], // Peers to exchange data with
+    PEERS:[], // peers to exchange data with. Just strings with addresses
 
-    //________________ CONSENSUS RELATED MAPPINGS(per epoch) _____________
-
-    TEMP:new Map()
+    EPOCH_METADATA:new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
     
 }
 
 
 
 
+// Global object which holds LevelDB instances for databases for blocks, state, metadata, KLY_EVM, etc.
+
+let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{valueEncoding:'json'})
+
+
+export let BLOCKCHAIN_DATABASES = {
+
+    BLOCKS: resolveDatabase('BLOCKS'), // blockID => block
+    
+    STATE: resolveDatabase('STATE'), // contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
+
+    EPOCH_DATA: resolveDatabase('EPOCH_DATA'), // contains epoch data that shouldn't be deleted each new epoch (e.g. AEFPs, AFPs, etc.) 
+
+    APPROVEMENT_THREAD_METADATA: resolveDatabase('APPROVEMENT_THREAD_METADATA'), // metadata for APPROVEMENT_THREAD
+
+}
 
 
 
@@ -179,9 +192,9 @@ let RESTORE_METADATA_CACHE=async()=>{
 export let SET_GENESIS_TO_STATE=async()=>{
 
 
-    let atomicBatch = global.SYMBIOTE_META.STATE.batch(),
+    let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
 
-        quorumThreadAtomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch(),
+        quorumThreadAtomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch(),
     
         epochTimestamp,
 
@@ -537,37 +550,9 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
     //Might be individual for each node
     global.SYMBIOTE_META.FILTERS=(await import(`./verification_process/txs_filters.js`)).default;
-
-
-    //______________________________________Prepare databases and storages___________________________________________
-
-
-    //Create subdirs due to rational solutions
-    [
-    
-        'BLOCKS', // For blocks. BlockID => block
-    
-        'STATE', // Contains state of accounts, contracts, services, metadata and so on. The main database like NTDS.dit
-
-        'EPOCH_DATA', // Contains epoch data - AEFPs, AFPs, etc.
-
-        'QUORUM_THREAD_METADATA', // QUORUM_THREAD itself and other stuff
-
-        //_______________________________ EVM storage _______________________________
-
-        //'KLY_EVM' Contains state of EVM
-
-        //'KLY_EVM_METADATA' Contains metadata for KLY-EVM pseudochain (e.g. blocks, logs and so on)
-        
-
-    ].forEach(
-        
-        dbName => global.SYMBIOTE_META[dbName]=level(process.env.CHAINDATA_PATH+`/${dbName}`,{valueEncoding:'json'})
-        
-    )
     
 
-    global.SYMBIOTE_META.GENERATION_THREAD = await global.SYMBIOTE_META.BLOCKS.get('GT').catch(error=>
+    global.SYMBIOTE_META.GENERATION_THREAD = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(error=>
         
         error.notFound
         ?
@@ -589,7 +574,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
 
     //Load from db or return empty object
-    global.SYMBIOTE_META.QUORUM_THREAD = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get('QT').catch(()=>({}))
+    global.SYMBIOTE_META.QUORUM_THREAD = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>({}))
         
 
 
@@ -597,7 +582,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
 
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD = await global.SYMBIOTE_META.STATE.get('VT').catch(error=>{
+    global.SYMBIOTE_META.VERIFICATION_THREAD = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(error=>{
 
         if(error.notFound){
 
@@ -639,9 +624,9 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
-        await global.SYMBIOTE_META.STATE.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
+        await BLOCKCHAIN_DATABASES.BLOCKS.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
 
-        await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.put('QT',global.SYMBIOTE_META.QUORUM_THREAD)
+        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',global.SYMBIOTE_META.QUORUM_THREAD)
 
     }
 

@@ -1,5 +1,7 @@
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
+import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
 import Block from '../../essences/block.js'
 
 
@@ -19,7 +21,7 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.BLOCK}`)
     
 
-        global.SYMBIOTE_META.BLOCKS.get(request.params.id).then(block=>
+        BLOCKCHAIN_DATABASES.BLOCKS.get(request.params.id).then(block=>
 
             response.send(block)
             
@@ -52,9 +54,9 @@ FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
         let indexOfBlockOnShard = request.params.sid
 
 
-        global.SYMBIOTE_META.STATE.get(`SID:${shardContext}:${indexOfBlockOnShard}`).then(blockID =>
+        BLOCKCHAIN_DATABASES.STATE.get(`SID:${shardContext}:${indexOfBlockOnShard}`).then(blockID =>
 
-            global.SYMBIOTE_META.BLOCKS.get(blockID).then(
+            BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).then(
                 
                 block => response.send(block)
             
@@ -99,9 +101,9 @@ FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,respon
 
             let sid = startCount-i
 
-            let blockPromise = global.SYMBIOTE_META.STATE.get('SID:'+sid).then(
+            let blockPromise = BLOCKCHAIN_DATABASES.STATE.get('SID:'+sid).then(
             
-                blockID => global.SYMBIOTE_META.BLOCKS.get(blockID).then(block=>{
+                blockID => BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).then(block=>{
 
                     block.hash = Block.genHash(block)
 

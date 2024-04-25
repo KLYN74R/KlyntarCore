@@ -2,6 +2,8 @@ import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
+import {BLOCKCHAIN_DATABASES} from './blockchain_preparation.js'
+
 import Block from './essences/block.js'
 
 import cryptoModule from 'crypto'
@@ -9,6 +11,8 @@ import cryptoModule from 'crypto'
 import readline from 'readline'
 
 import fetch from 'node-fetch'
+
+
 
 
 
@@ -31,7 +35,7 @@ GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash)||global.SYMBIOTE_META.STATE.get(identificationHash)
+    return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash) || BLOCKCHAIN_DATABASES.STATE.get(identificationHash)
     
     .then(account=>{
  
@@ -285,7 +289,7 @@ GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
 
 GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
 
-    let localVersionOfAfp = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
+    let localVersionOfAfp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
 
     if(!localVersionOfAfp){
 
@@ -483,7 +487,7 @@ GET_FROM_STATE = async recordID => {
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return global.SYMBIOTE_META.STATE_CACHE.get(recordID)||global.SYMBIOTE_META.STATE.get(recordID)
+    return global.SYMBIOTE_META.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
     
     .then(something=>{
  
@@ -501,7 +505,7 @@ GET_FROM_STATE = async recordID => {
 
 GET_FROM_QUORUM_THREAD_STATE = async recordID => {
 
-    return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID)||global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(recordID)
+    return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(recordID)
     
     .then(something=>{
  

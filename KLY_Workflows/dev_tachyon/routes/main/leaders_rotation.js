@@ -2,11 +2,15 @@ import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATE
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
+import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
 import {GET_BLOCK} from '../../verification_process/verification.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
 import Block from '../../essences/block.js'
+
+
 
 
 
@@ -370,7 +374,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
                 let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 
-                let firstBlockByCurrentLeader = await global.SYMBIOTE_META.BLOCKS.get(firstBlockID).catch(()=>null)
+                let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
 
 
                 if(firstBlockByCurrentLeader){

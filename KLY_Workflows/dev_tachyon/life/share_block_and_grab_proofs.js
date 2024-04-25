@@ -1,12 +1,16 @@
-import {GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID,USE_TEMPORARY_DB} from '../utils.js'
+import {GET_FROM_QUORUM_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
 
 import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
+
+import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
 import Block from '../essences/block.js'
 
 import WS from 'websocket'
+
+
 
 
 
@@ -149,7 +153,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     let majority = GET_MAJORITY(epochHandler)
 
-    let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await global.SYMBIOTE_META.BLOCKS.get(blockIDForHunting).catch(()=>null)
+    let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIDForHunting).catch(()=>null)
 
 
     if(!blockToSend) return
@@ -306,7 +310,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
 
         // Store locally
-        await global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
         LOG(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,COLORS.RED)
 

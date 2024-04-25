@@ -2,7 +2,11 @@ import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_QUORUM_THREAD_STATE} f
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
+import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+
 import {CONFIGURATION} from '../../../klyn74r.js'
+
+
 
 
 
@@ -84,21 +88,21 @@ export default {
 
         let {txid,pool,type,amount,storageOrigin,isReserve,reserveFor,poolURL,wssPoolURL}=payload
 
-        if(txid==='QT') return
+        if(txid==='AT') return
 
 
         if(isFromRoute){
 
             //To check payload received from route
 
-            let poolStorage = await global.SYMBIOTE_META.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
 
             if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
 
-                let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(()=>false))
+                let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
 
                 if(stillUnspent){
                     
@@ -402,7 +406,7 @@ export default {
             &&
             await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
             &&
-            await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
 
         if(isFromRoute){
@@ -415,7 +419,7 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolStorage = await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
             if(poolStorage){
 
@@ -431,9 +435,9 @@ export default {
             // On VERIFICATION_THREAD we should delete the pool from VERIFICATION_STATS_PER_POOL, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(payload.pool+'(POOL)_POINTER').catch(()=>false)
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(payload.pool+'(POOL)_POINTER').catch(()=>false)
 
-            let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
 
             if(poolStorage){
@@ -463,18 +467,18 @@ export default {
         let {txid,pool}=payload
 
         
-        if(txid==='QT') return
+        if(txid==='AT') return
 
 
         if(isFromRoute){
 
             //To check payload received from route
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
 
             if(originWherePoolStorage){
 
-                let poolStorage = await global.SYMBIOTE_META.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false),
+                let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
@@ -485,7 +489,7 @@ export default {
 
                 if(stakingTx && isNotTooOld && isStakeTx){
 
-                    let stillUnspent = !(await global.SYMBIOTE_META.QUORUM_THREAD_METADATA.get(txid).catch(()=>false))
+                    let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
 
                     if(stillUnspent){
 
@@ -525,7 +529,7 @@ export default {
             if(slashHelper[pool]) return
 
 
-            let originWherePoolStorage = await global.SYMBIOTE_META.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
 
             if(originWherePoolStorage){
 
@@ -569,7 +573,7 @@ export default {
     //___________________________________________________ Separate methods ___________________________________________________
 
 
-    //To set new rubicon and clear tracks from QUORUM_THREAD_METADATA
+    //To set new rubicon and clear tracks from APPROVEMENT_THREAD_METADATA
     RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
 
         /*

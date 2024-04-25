@@ -15,6 +15,7 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 import Block from '../essences/block.js'
 
 import fetch from 'node-fetch'
+import { BLOCKCHAIN_DATABASES } from '../blockchain_preparation.js'
 
 
 
@@ -67,7 +68,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
     // Find locally
 
-    let aefpProof = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
+    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -532,7 +533,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
 
-    let atomicBatch = global.SYMBIOTE_META.BLOCKS.batch()
+    let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
 
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 

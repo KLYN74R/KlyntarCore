@@ -1,6 +1,10 @@
 import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from '../utils.js'
 
+import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+
 import {BLAKE3} from '../../../KLY_Utils/utils.js'
+
+
 
 
 
@@ -44,7 +48,7 @@ export let CONTRACT = {
         
             [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
 
-            poolAlreadyExists = await global.SYMBIOTE_META.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
+            poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){

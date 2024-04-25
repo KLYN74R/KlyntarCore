@@ -10,6 +10,8 @@ import{LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Uti
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
+import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
 import Block from '../../essences/block.js'
@@ -17,6 +19,8 @@ import Block from '../../essences/block.js'
 import WS from 'websocket'
 
 import http from 'http'
+
+
 
 
 
@@ -235,8 +239,8 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                     //_________________________________________1_________________________________________
                     
                     // Since we need to verify the AEFP signed by previous quorum - take it from legacy data
-
-                    let legacyEpochData = await global.SYMBIOTE_META.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}
+                    
+                    let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}
 
                     let aefpIsOk = epochHandler.id === 0 || legacyEpochData && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
         
@@ -323,14 +327,14 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                 USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>
 
                     // Store the block
-    
-                    global.SYMBIOTE_META.BLOCKS.put(proposedBlockID,block).then(()=>{
+
+                    BLOCKCHAIN_DATABASES.BLOCKS.put(proposedBlockID,block).then(()=>{
 
                         // Store the AFP for previous block
 
                         let {prevBlockHash,blockID,blockHash,proofs} = previousBlockAFP
 
-                        global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
+                        BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
 
                             tempObject.FINALIZATION_STATS.set(block.creator,futureMetadataToStore)
     
@@ -575,7 +579,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                     // Store the AFP for previous block
 
-                    global.SYMBIOTE_META.EPOCH_DATA.put('AFP:'+blockIDFromAFP,{prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs}).then(async()=>{
+                    BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDFromAFP,{prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs}).then(async()=>{
 
                         tempObject.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
             
@@ -626,9 +630,9 @@ let RETURN_BLOCKS_RANGE = async(data,connection)=>{
 
         let blockIdToFindAfp = data.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+(data.hasUntilHeight+i+1)
 
-        let block = await global.SYMBIOTE_META.BLOCKS.get(blockIdToFind).catch(()=>null)
+        let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIdToFind).catch(()=>null)
 
-        let afpForBlock = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+blockIdToFindAfp).catch(()=>null)
+        let afpForBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockIdToFindAfp).catch(()=>null)
 
         if(block && afpForBlock){
 

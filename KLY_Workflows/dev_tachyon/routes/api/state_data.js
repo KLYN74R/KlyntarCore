@@ -1,5 +1,6 @@
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
+import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
 
 
 /**## Returns the data directrly from state
@@ -33,7 +34,7 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 
         let fullID = shardContext === 'X' ? cellID : shardContext+':'+cellID
 
-        let data = await global.SYMBIOTE_META.STATE.get(fullID).catch(()=>null)
+        let data = await BLOCKCHAIN_DATABASES.STATE.get(fullID).catch(()=>null)
 
 
         response
@@ -60,7 +61,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.TX_RECEIPT}`)
             
 
-        global.SYMBIOTE_META.STATE.get('TX:'+request.params.txid).then(
+        BLOCKCHAIN_DATABASES.STATE.get('TX:'+request.params.txid).then(
             
             txReceipt => response.send(txReceipt)
             
@@ -93,7 +94,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
         let responseType
 
         
-        let possibleTxReceipt = await global.SYMBIOTE_META.STATE.get('TX:'+query).then(receipt=>{
+        let possibleTxReceipt = await BLOCKCHAIN_DATABASES.STATE.get('TX:'+query).then(receipt=>{
 
             responseType='TX_RECEIPT'
 
@@ -111,7 +112,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
         }
         
     
-        let possibleBlock = await global.SYMBIOTE_META.BLOCKS.get(query).then(block=>{
+        let possibleBlock = await BLOCKCHAIN_DATABASES.BLOCKS.get(query).then(block=>{
 
             responseType='BLOCK_BY_ID'
 
@@ -129,7 +130,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
         }
 
             
-        let possibleFromState = await global.SYMBIOTE_META.STATE.get(query).then(stateCell=>{
+        let possibleFromState = await BLOCKCHAIN_DATABASES.STATE.get(query).then(stateCell=>{
 
             responseType='FROM_STATE'
 
@@ -160,8 +161,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
         }else{
 
-
-            let possibleAggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get(query).then(aggregatedFinalizationProof=>{
+            let possibleAggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(query).then(aggregatedFinalizationProof=>{
 
                 responseType = query.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
 

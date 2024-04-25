@@ -774,6 +774,7 @@ let KLY_EVM_INSTANCE = new KLY_EVM_CLASS(process.env.CHAINDATA_PATH+'/KLY_EVM')
 
 await KLY_EVM_INSTANCE.startEVM()
 
+// Need for // 0x40: BLOCKHASH. See functions.js
 global.KLY_EVM = KLY_EVM_INSTANCE
 
 export {KLY_EVM_INSTANCE as KLY_EVM}

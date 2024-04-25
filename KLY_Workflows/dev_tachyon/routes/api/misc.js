@@ -1,4 +1,5 @@
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import { BLOCKCHAIN_DATABASES } from '../../blockchain_preparation.js'
 
 
 
@@ -52,7 +53,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
         }
        
 
-        let aggregatedFinalizationProof = await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
+        let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
 
 
         if(aggregatedFinalizationProof){

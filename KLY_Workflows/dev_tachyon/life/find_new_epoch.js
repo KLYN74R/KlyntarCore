@@ -6,11 +6,11 @@ import {
 
 } from '../utils.js'
 
+import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
 import {BLAKE3,COLORS,LOG,PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
-
-import {GRACEFUL_STOP,SET_LEADERS_SEQUENCE_FOR_SHARDS} from '../blockchain_preparation.js'
 
 import {GET_BLOCK} from '../verification_process/verification.js'
 
@@ -242,7 +242,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             }
                         
-            and try to find AFP_FOR_FIRST_BLOCK => await global.SYMBIOTE_META.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
+            and try to find AFP_FOR_FIRST_BLOCK => await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:epochID:PubKey:0').catch(()=>false)
 
             If we can't get it - make call to GET /aggregated_finalization_proof/:BLOCK_ID to quorum members
 
@@ -291,7 +291,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         // Get the special object from DB not to repeat requests
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
+        let epochCache = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>null) || {} // {shardID:{firstBlockCreator,firstBlockHash,aefp,firstBlockOnShardFound}}
 
         let entries = Object.entries(leadersSequence)
 
@@ -349,7 +349,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 // Try to find locally
 
-                let aefp = await global.SYMBIOTE_META.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
+                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
 
                 if(aefp){
 
@@ -372,7 +372,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                                 // Store locally
 
-                                await global.SYMBIOTE_META.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
+                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
 
                                 // No sense to find more
 
@@ -429,7 +429,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         // Store the changes in CHECKPOINT_CACHE for persistence
 
-        await global.SYMBIOTE_META.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
 
 
         //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
@@ -474,11 +474,11 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 // Store the system sync operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
 
 
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`LEGACY_DATA:${qtEpochHandler.id}`,{
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${qtEpochHandler.id}`,{
 
                     epochFullID:oldEpochFullID,
                     quorum:qtEpochHandler.quorum,
@@ -491,7 +491,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
 
                 // All operations must be atomic
-                let atomicBatch = global.SYMBIOTE_META.QUORUM_THREAD_METADATA.batch()
+                let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
 
                 // Execute epoch edge operations from new checkpoint using our copy of QT and atomic handler
@@ -507,13 +507,13 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>false)
 
 
                 // After execution - create the reassignment chains
                 await SET_LEADERS_SEQUENCE_FOR_SHARDS(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
 
 
                 LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,COLORS.GREEN)
@@ -528,13 +528,13 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 fullCopyOfQuorumThread.EPOCH.quorum = GET_QUORUM(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
                 
                 // Create new temporary db for the next epoch
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
 
                 // Commit changes
-                atomicBatch.put('QT',fullCopyOfQuorumThread)
+                atomicBatch.put('AT',fullCopyOfQuorumThread)
 
                 await atomicBatch.write()
 
@@ -621,7 +621,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
 
                 // Delete the cache that we don't need more
-                await global.SYMBIOTE_META.EPOCH_DATA.del(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
 
 
             }

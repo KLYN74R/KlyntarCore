@@ -12,6 +12,7 @@ import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
 import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
+// eslint-disable-next-line no-unused-vars
 import * as _ from '../system_contracts/root.js'
 
 import FILTERS from './txs_filters.js'
@@ -37,6 +38,7 @@ let GET_SPEND_BY_SIG_TYPE = transaction => {
 
 
 //Load required modules and inject to contract
+// eslint-disable-next-line no-unused-vars
 let GET_METHODS_TO_INJECT=_imports=>{
 
     return {}
@@ -359,6 +361,7 @@ export let VERIFIERS = {
 
                     }catch(err){
 
+                        // eslint-disable-next-line no-unused-vars
                         result = err.message
 
                     }

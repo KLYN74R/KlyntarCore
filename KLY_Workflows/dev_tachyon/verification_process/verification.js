@@ -9,13 +9,13 @@ import {
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
+import {BLOCKCHAIN_DATABASES, GRACEFUL_STOP} from '../blockchain_preparation.js'
+
 import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
-
-import {GRACEFUL_STOP} from '../blockchain_preparation.js'
 
 import Block from '../essences/block.js'
 
@@ -44,7 +44,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
     // Try to find block locally
 
-    let block = await global.SYMBIOTE_META.BLOCKS.get(blockID).catch(()=>null)
+    let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).catch(()=>null)
 
 
     if(!block){
@@ -60,7 +60,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
                 
             if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
 
-                global.SYMBIOTE_META.BLOCKS.put(blockID,block)
+                BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,block)
     
                 return block
     
@@ -108,7 +108,7 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
                     if(overviewIsOk){
 
-                        global.SYMBIOTE_META.BLOCKS.put(blockID,itsProbablyBlock).catch(()=>{})
+                        BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,itsProbablyBlock).catch(()=>{})
     
                         return itsProbablyBlock
     
@@ -632,16 +632,16 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
     // Stuff related for next epoch
 
-    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochLeadersSequences = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
 
 
     // Get the epoch edge operations that we need to execute
 
-    let epochEdgeOperations = await global.SYMBIOTE_META.EPOCH_DATA.get(`EEO:${vtEpochFullID}`).catch(()=>null)
+    let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EEO:${vtEpochFullID}`).catch(()=>null)
 
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
@@ -766,7 +766,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         // These operations must be atomic
     
-        let atomicBatch = global.SYMBIOTE_META.STATE.batch()
+        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
 
         let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
         
@@ -1019,11 +1019,11 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         // Now we can delete useless data from EPOCH_DATA db
 
-        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
 
-        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-        await global.SYMBIOTE_META.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
 
 
 
@@ -1056,15 +1056,15 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
             
         For this we need 5 things:
 
-            1) Epoch edge operations for current epoch - we take it from await global.SYMBIOTE_META.EPOCH_DATA.put(`EEO:${oldEpochFullID}`).catch(()=>false)
+            1) Epoch edge operations for current epoch - we take it from await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EEO:${oldEpochFullID}`).catch(()=>false)
 
                 This is the array that we need to execute later in sync mode
 
-            2) Next epoch hash - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`).catch(()=>false)
+            2) Next epoch hash - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`).catch(()=>false)
 
-            3) Next epoch quorum - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`).catch(()=>false)
+            3) Next epoch quorum - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`).catch(()=>false)
 
-            4) Reassignment chains for new epoch - await global.SYMBIOTE_META.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`).catch(()=>false)
+            4) Reassignment chains for new epoch - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`).catch(()=>false)
 
             5) AEFPs for all the shard from the first blocks of next epoch(X+1) to know where current epoch finished
 
@@ -1084,11 +1084,11 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochQuorum = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
 
-    let nextEpochLeadersSequences = await global.SYMBIOTE_META.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
 
     let nextEpochHandlerTemplate = {
 
@@ -1105,7 +1105,7 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
 
-        let epochCache = await global.SYMBIOTE_META.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
+        let epochCache = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
 
         let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
 
@@ -1131,7 +1131,7 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
                 }
 
-                await global.SYMBIOTE_META.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>false)
 
             }
 
@@ -1925,7 +1925,7 @@ verifyBlock=async(block,shardContext)=>{
         KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.nextBlockIndex,currentKlyEvmContextMetadata.timestamp,currentKlyEvmContextMetadata.parentHash)
 
         // To change the state atomically
-        let atomicBatch = global.SYMBIOTE_META.STATE.batch()
+        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
 
 
         if(block.transactions.length !== 0){
@@ -2016,7 +2016,7 @@ verifyBlock=async(block,shardContext)=>{
             
             // No matter if we already have this block-resave it
 
-            global.SYMBIOTE_META.BLOCKS.put(currentBlockID,block).catch(
+            BLOCKCHAIN_DATABASES.BLOCKS.put(currentBlockID,block).catch(
                 
                 error => LOG(`Failed to store block ${block.index}\nError:${error}`,COLORS.YELLOW)
                 
@@ -2025,7 +2025,8 @@ verifyBlock=async(block,shardContext)=>{
         }else if(block.creator !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
 
             // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-            global.SYMBIOTE_META.BLOCKS.del(currentBlockID).catch(
+
+            BLOCKCHAIN_DATABASES.BLOCKS.del(currentBlockID).catch(
                 
                 error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,COLORS.YELLOW)
                 
