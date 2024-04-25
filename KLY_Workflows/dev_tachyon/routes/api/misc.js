@@ -1,5 +1,8 @@
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
-import { BLOCKCHAIN_DATABASES } from '../../blockchain_preparation.js'
+
+
 
 
 
@@ -43,7 +46,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
 
-        let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
         if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
@@ -137,14 +140,14 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
         
         //Get the current version of VT and QT
 
-        let verificationThreadWorkflowVersion = global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION
-        let quorumThreadWorkflowVersion = global.SYMBIOTE_META.QUORUM_THREAD.VERSION
+        let verificationThreadWorkflowVersion = WORKING_THREADS.VERIFICATION_THREAD.VERSION
+        let quorumThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.VERSION
 
 
         //Get the current version of workflows_options on VT and QT
 
-        let verificationThreadWorkflowOptions = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
-        let quorumThreadWorkflowOptions = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS
+        let verificationThreadWorkflowOptions = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+        let quorumThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
 
 
         response.send({
@@ -191,7 +194,7 @@ FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
 
 
-        response.send(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
+        response.send(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
 
     }else response.send({err:'Symbiote not supported'})
 
@@ -216,9 +219,9 @@ FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
 
         response.send({
 
-            quorumThread:global.SYMBIOTE_META.QUORUM_THREAD.EPOCH,
+            quorumThread:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH,
 
-            verificationThread:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
+            verificationThread:WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
         })
 

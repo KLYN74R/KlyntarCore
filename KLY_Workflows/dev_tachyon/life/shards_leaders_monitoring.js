@@ -2,6 +2,8 @@ import {EPOCH_STILL_FRESH,GET_FROM_QUORUM_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_D
 
 import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
+import {WORKING_THREADS} from '../blockchain_preparation.js'
+
 
 
 
@@ -96,7 +98,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 // Iterate over shards and change the leader if it's appropriate timeframe
 export let SHARDS_LEADERS_MONITORING=async()=>{
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -111,7 +113,7 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
     }
 
 
-    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
 
         setTimeout(SHARDS_LEADERS_MONITORING,3000)
 
@@ -147,7 +149,7 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
         // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
         let itsNotFinishOfSequence = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence+1]
 
-        if(itsNotFinishOfSequence && TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
+        if(itsNotFinishOfSequence && TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
 
             // Inform websocket server that we shouldn't generate proofs for this leader anymore
             tempObject.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)

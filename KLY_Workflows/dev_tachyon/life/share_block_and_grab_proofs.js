@@ -1,8 +1,8 @@
 import {GET_FROM_QUORUM_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
 
-import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -359,7 +359,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
 export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
-    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
     let epochFullID = qtEpochHandler.hash + "#" + qtEpochHandler.id
 

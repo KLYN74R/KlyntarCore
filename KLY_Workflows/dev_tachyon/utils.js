@@ -1,8 +1,8 @@
 import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from './blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES} from './blockchain_preparation.js'
+import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
 import Block from './essences/block.js'
 
@@ -686,10 +686,10 @@ GET_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
 VT_STATS_LOG = (epochFullID,shardContext) => {
 
 
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]){
+    if(WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]){
 
 
-        let {currentLeaderOnShard,index,hash} = global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]
+        let {currentLeaderOnShard,index,hash} = WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]
 
 
         console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,COLORS.CYAN,'Local VERIFICATION_THREAD state is',COLORS.CLEAR)
@@ -698,7 +698,7 @@ VT_STATS_LOG = (epochFullID,shardContext) => {
             
         console.log(` \u001b[38;5;168m│\x1b[33m  Epoch:\x1b[36;1m`,`${epochFullID}`,COLORS.CLEAR)
     
-        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.CLEAR)
+        console.log(` \u001b[38;5;168m│\x1b[33m  SID:\x1b[36;1m`,`${shardContext}:${(WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]-1)}`,COLORS.CLEAR)
     
         console.log(` \u001b[38;5;168m│\x1b[33m  Current Leader:\x1b[36;1m`,currentLeaderOnShard,COLORS.CLEAR)
     
@@ -751,7 +751,7 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     let toReturn = []
 
-    epochHandler ||= global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    epochHandler ||= WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     for(let pubKey of epochHandler.quorum){
 

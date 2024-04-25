@@ -2,7 +2,7 @@ import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATE
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {GET_BLOCK} from '../../verification_process/verification.js'
 
@@ -138,7 +138,7 @@ import Block from '../../essences/block.js'
 
 FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -336,7 +336,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
 FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 

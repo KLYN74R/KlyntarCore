@@ -1,6 +1,6 @@
 import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -13,7 +13,7 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 
 export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
-    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 
@@ -29,10 +29,10 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     }
 
 
-    let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+    let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
-    if(iAmInTheQuorum && !EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(iAmInTheQuorum && !EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
         
         // Stop to generate commitments/finalization proofs
         temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)

@@ -1,6 +1,6 @@
 import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {BLAKE3} from '../../../KLY_Utils/utils.js'
 
@@ -139,14 +139,14 @@ export let CONTRACT = {
             let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+transaction.creator)
 
             if(stakerAccount){
-            
-                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
 
-                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
+                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+
+                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
                     poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                        epochID:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id,
+                        epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 
                         staker:transaction.creator,
 
@@ -203,7 +203,7 @@ export let CONTRACT = {
 
             poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
 
-                epochID:global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id,
+                epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 
                 staker:transaction.creator,
 

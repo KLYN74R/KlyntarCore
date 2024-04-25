@@ -1,6 +1,8 @@
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
 
 
 /**## Returns the data directrly from state
@@ -149,7 +151,7 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
         }
 
 
-        let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
         let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
 
@@ -203,7 +205,7 @@ FASTIFY_SERVER.get('/sync_state',(request,response)=>{
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATE}`)
             
-            .send(global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
+            .send(WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
             
  
     }else response.send({err:'Route is off'})

@@ -6,6 +6,8 @@ import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
 import {BLAKE3, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
+import {WORKING_THREADS} from '../blockchain_preparation.js'
+
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
@@ -18,6 +20,8 @@ import * as _ from '../system_contracts/root.js'
 import FILTERS from './txs_filters.js'
 
 import web3 from 'web3'
+
+
 
 
 
@@ -60,7 +64,7 @@ let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,tx,goingToSpend)=>
 export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originShard) => {
 
     
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION === tx.v){
+    if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){
 
         //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
         let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee

@@ -6,7 +6,7 @@ import {
 
 } from '../utils.js'
 
-import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
@@ -220,7 +220,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             We'll use 1 option for this:
 
-                [*] global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
+                [*] WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
                 
                     This value shows how many first blocks we need to get to extract epoch edge operations to execute before move to next epoch
                     
@@ -260,9 +260,9 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
     */
 
-    if(!EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD)){
+    if(!EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+        let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
         let oldEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
     
@@ -277,7 +277,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         }
 
 
-        // let numberOfFirstBlocksToFetchFromEachShard = global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS // 1. DO NOT CHANGE
+        // let numberOfFirstBlocksToFetchFromEachShard = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
         let totalNumberOfShards = 0
 
@@ -488,7 +488,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
 
                 // We need it for changes
-                let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(global.SYMBIOTE_META.QUORUM_THREAD))
+                let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
 
                 // All operations must be atomic
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
@@ -559,7 +559,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 }
 
 
-                global.SYMBIOTE_META.QUORUM_THREAD = fullCopyOfQuorumThread
+                WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfQuorumThread
 
                 LOG(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,COLORS.GREEN)
 
@@ -593,22 +593,22 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 //________________________________ If it's fresh checkpoint and we present there as a member of quorum - then continue the logic ________________________________
 
 
-                let iAmInTheQuorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+                let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
-                if(EPOCH_STILL_FRESH(global.SYMBIOTE_META.QUORUM_THREAD) && iAmInTheQuorum){
+                if(EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
 
                     // Fill the checkpoints manager with the latest data
 
                     let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
 
-                    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry.primePools.forEach(poolPubKey=>
+                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.primePools.forEach(poolPubKey=>
 
                         currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
 
-                    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry.reservePools.forEach(poolPubKey=>
+                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.reservePools.forEach(poolPubKey=>
 
                         currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 

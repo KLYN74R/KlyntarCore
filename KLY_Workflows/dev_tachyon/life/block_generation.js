@@ -8,6 +8,8 @@ import {
 
 } from '../utils.js'
 
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
@@ -15,7 +17,6 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 import Block from '../essences/block.js'
 
 import fetch from 'node-fetch'
-import { BLOCKCHAIN_DATABASES } from '../blockchain_preparation.js'
 
 
 
@@ -25,7 +26,7 @@ let
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 
-GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
 
 
@@ -36,7 +37,7 @@ GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
 
     let epochEdgeOperationsMempool = global.SYMBIOTE_META.TEMP.get(epochFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
 
-    return epochEdgeOperationsMempool.splice(0,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
+    return epochEdgeOperationsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
 }
 
@@ -60,7 +61,6 @@ Ask the network in special order:
 */
 let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
-    // global.SYMBIOTE_META.GENERATION_THREAD
 
     let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
 
@@ -68,7 +68,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
     // Find locally
 
-    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
+    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${WORKING_THREADS.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -76,7 +76,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
         for(let nodeEndpoint of allKnownNodes){
 
-            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${global.SYMBIOTE_META.GENERATION_THREAD.epochIndex}/${shardID}`
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${WORKING_THREADS.GENERATION_THREAD.epochIndex}/${shardID}`
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(()=>false)
     
@@ -84,11 +84,11 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
-                global.SYMBIOTE_META.GENERATION_THREAD.quorum,
+                WORKING_THREADS.GENERATION_THREAD.quorum,
     
-                global.SYMBIOTE_META.GENERATION_THREAD.majority,        
+                WORKING_THREADS.GENERATION_THREAD.majority,        
     
-                global.SYMBIOTE_META.GENERATION_THREAD.epochFullId
+                WORKING_THREADS.GENERATION_THREAD.epochFullId
             
             )
     
@@ -344,7 +344,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
 let GENERATE_BLOCKS_PORTION = async() => {
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
     let qtEpochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -361,7 +361,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     let proofsGrabber = tempObject.TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(proofsGrabber && global.SYMBIOTE_META.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
+    if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
     //__________________________________________________________________________________________________________________
 
@@ -387,7 +387,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     // Check if <epochFullID> is the same in QT and in GT
 
-    if(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId !== qtEpochFullID){
+    if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== qtEpochFullID){
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
@@ -399,28 +399,28 @@ let GENERATE_BLOCKS_PORTION = async() => {
             // Only in case it's initial epoch(index is -1) - no sense to push it
             if(!aefpForPreviousEpoch) return
 
-            global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
+            WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
 
         }
 
         // Update the index & hash of epoch
 
-        global.SYMBIOTE_META.GENERATION_THREAD.epochFullId = qtEpochFullID
+        WORKING_THREADS.GENERATION_THREAD.epochFullId = qtEpochFullID
 
-        global.SYMBIOTE_META.GENERATION_THREAD.epochIndex = epochIndex
+        WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
 
         // Recount new values
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorum = epochHandler.quorum
+        WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(epochHandler)
+        WORKING_THREADS.GENERATION_THREAD.majority = GET_MAJORITY(epochHandler)
 
 
         // And nullish the index & hash in generation thread for new epoch
 
-        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+        WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
  
-        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex = 0
+        WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
     
     }
 
@@ -429,11 +429,11 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     //___________________ Add the AEFP to the first block of epoch ___________________
 
-    if(global.SYMBIOTE_META.GENERATION_THREAD.epochIndex > 0){
+    if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0){
 
         // Add the AEFP for previous epoch
 
-        extraData.aefpForPreviousEpoch = global.SYMBIOTE_META.GENERATION_THREAD.aefpForPreviousEpoch
+        extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
 
         if(!extraData.aefpForPreviousEpoch) return
 
@@ -446,7 +446,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         // Do it only for the first block in epoch(with index 0)
 
-        if(global.SYMBIOTE_META.GENERATION_THREAD.nextIndex === 0){
+        if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
 
             // Build the template to insert to the extraData of block. Structure is {primePool:ALRP,reservePool0:ALRP,...,reservePoolN:ALRP}
         
@@ -515,7 +515,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-    let numberOfBlocksToGenerate = Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate = Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
 
 
@@ -524,7 +524,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     // 0.Add the epoch edge operations to block extra data
 
-    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId)
+    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(WORKING_THREADS.GENERATION_THREAD.epochFullId)
 
     // 1.Add the extra data to block from configs(it might be your note, for instance)
 
@@ -538,22 +538,22 @@ let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,global.SYMBIOTE_META.GENERATION_THREAD.epochFullId)
+        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
                         
         let hash = Block.genHash(blockCandidate)
 
 
         blockCandidate.sig = await ED25519_SIGN_DATA(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
             
-        BLOCKLOG(`New block generated`,hash,blockCandidate,global.SYMBIOTE_META.GENERATION_THREAD.epochIndex)
+        BLOCKLOG(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
 
 
-        global.SYMBIOTE_META.GENERATION_THREAD.prevHash = hash
+        WORKING_THREADS.GENERATION_THREAD.prevHash = hash
  
-        global.SYMBIOTE_META.GENERATION_THREAD.nextIndex++
+        WORKING_THREADS.GENERATION_THREAD.nextIndex++
     
         // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-        let blockID = global.SYMBIOTE_META.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
+        let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
 
         //Store block locally
         atomicBatch.put(blockID,blockCandidate)
@@ -561,7 +561,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     }
 
     //Update the GENERATION_THREAD after all
-    atomicBatch.put('GT',global.SYMBIOTE_META.GENERATION_THREAD)
+    atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
 
     await atomicBatch.write()
 
@@ -573,6 +573,6 @@ export let BLOCKS_GENERATION=async()=>{
 
     await GENERATE_BLOCKS_PORTION()
 
-    setTimeout(BLOCKS_GENERATION,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
+    setTimeout(BLOCKS_GENERATION,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
  
 }

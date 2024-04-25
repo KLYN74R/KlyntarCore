@@ -4,7 +4,10 @@ import{BLAKE3, ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../../KLY_Utils/ut
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
+import {WORKING_THREADS} from '../../blockchain_preparation.js'
+
 import {GET_MAJORITY} from '../../utils.js'
+
 
 
 
@@ -53,7 +56,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
 
     let epochEdgeOperationWithAgreementProofs = JSON.parse(request.body)
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -154,7 +157,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
 
     let epochEdgeOperation = JSON.parse(request.body)
 
-    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+    let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     response.header('access-control-allow-origin','*')
 

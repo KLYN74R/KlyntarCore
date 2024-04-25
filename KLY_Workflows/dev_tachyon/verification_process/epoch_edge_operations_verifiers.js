@@ -2,7 +2,7 @@ import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_QUORUM_THREAD_STATE} f
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
-import {BLOCKCHAIN_DATABASES} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -316,16 +316,16 @@ export default {
                 delete poolStorage.waitingRoom[txid]
 
 
-                let workflowConfigs = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+                let workflowConfigs = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
                 if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
                     // Do it only if pool is not in current VERIFICATION_STATS_PER_POOL
-                    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]){
+                    if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]){
 
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]={   
+                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]={   
                                 
                             index:-1,
                         
@@ -340,7 +340,7 @@ export default {
                         global.SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
 
                         // Add the SID tracker
-                        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
+                        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
         
                     }
                     
@@ -389,7 +389,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
+        SIG(JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)
 
         */
 
@@ -404,7 +404,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
             &&
             await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
@@ -482,7 +482,7 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
                     
-                    isNotTooOld = stakingTx?.epochID >= global.SYMBIOTE_META.QUORUM_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.APPROVEMENT_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
             
@@ -537,7 +537,7 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
-                    isNotTooOld = stakingTx?.epochID >= global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON,
+                    isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.VERIFICATION_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
 
@@ -594,7 +594,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(data+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
+        SIG(data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)
         
         */
 
@@ -608,9 +608,9 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
             &&
-            global.SYMBIOTE_META.QUORUM_THREAD.RUBICON < data //new value of rubicon should be more than current 
+            WORKING_THREADS.APPROVEMENT_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -625,7 +625,7 @@ export default {
         }else{
 
             //Used on VERIFICATION_THREAD
-            if(global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON < payload) global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON=payload
+            if(WORKING_THREADS.VERIFICATION_THREAD.RUBICON < payload) WORKING_THREADS.VERIFICATION_THREAD.RUBICON=payload
 
         }
 
@@ -662,7 +662,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)
+        SIG(JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)
         
         
         */
@@ -675,7 +675,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -728,7 +728,7 @@ export default {
 
         Also, you must sign the data with the latest payload's header hash
 
-        SIG(JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash)        
+        SIG(JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)        
         
         */
 
@@ -740,7 +740,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash) // and signature check
+            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
 
@@ -755,10 +755,10 @@ export default {
 
             fullCopyOfQuorumThread.VERSION=payload.major
 
-        }else if(payload.major > global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION){
+        }else if(payload.major > WORKING_THREADS.VERIFICATION_THREAD.VERSION){
 
             //Used on VT
-            global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION=payload.major
+            WORKING_THREADS.VERIFICATION_THREAD.VERSION=payload.major
 
         }
         

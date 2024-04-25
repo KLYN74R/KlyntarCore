@@ -2,9 +2,13 @@ import {GET_QUORUM_URLS_AND_PUBKEYS,GET_RANDOM_FROM_ARRAY,VERIFY_AGGREGATED_FINA
 
 import {CHECK_ALRP_CHAIN_VALIDITY,GET_BLOCK} from '../verification_process/verification.js'
 
+import {WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {CONFIGURATION} from '../../../klyn74r.js'
 
 import Block from '../essences/block.js'
+
+
 
 
 
@@ -23,7 +27,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
     */
 
 
-    let verificationThread = global.SYMBIOTE_META.VERIFICATION_THREAD
+    let verificationThread = WORKING_THREADS.VERIFICATION_THREAD
 
     let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
 

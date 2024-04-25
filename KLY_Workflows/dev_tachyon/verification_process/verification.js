@@ -9,7 +9,7 @@ import {
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {BLOCKCHAIN_DATABASES, GRACEFUL_STOP} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP} from '../blockchain_preparation.js'
 
 import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
@@ -151,9 +151,9 @@ DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
     poolStorage.lackOfTotalPower = true
 
-    poolStorage.stopEpochID = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
+    poolStorage.stopEpochID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
-    delete global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+    delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
 },
 
@@ -369,9 +369,9 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
         ________________________________Let's use this algorithm________________________________
 
-        0) Once we get the new valid AEFP, use the REASSIGNMENT_CHAINS built for this epoch(from global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH)
+        0) Once we get the new valid AEFP, use the REASSIGNMENT_CHAINS built for this epoch(from WORKING_THREADS.VERIFICATION_THREAD.EPOCH)
 
-        1) Using global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <leaderRotationProof> for all the previous reserve pools
+        1) Using WORKING_THREADS.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <leaderRotationProof> for all the previous reserve pools
 
         2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was reassigned on the first block of this epoch
 
@@ -490,7 +490,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[primePoolPubKey]
 
-    if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
+    if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
     let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
@@ -566,7 +566,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     }
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
+    WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
 
 
         /*
@@ -574,7 +574,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
         
         After execution of this function we have:
 
-        [0] global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.leadersSequence with structure:
+        [0] WORKING_THREADS.VERIFICATION_THREAD.CHECKPOINT.leadersSequence with structure:
         
         {
             primePoolA:[ReservePool0A,ReservePool1A,....,ReservePoolNA],
@@ -586,7 +586,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
         Using this chains we'll finish the verification process to get the ranges of checkpoint
 
-        [1] global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA with structure:
+        [1] WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA with structure:
 
         {
             primePoolA:{
@@ -648,16 +648,16 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         // Copy the current workflow options(i.e. network params like epoch duration, required stake for validators,etc.)
 
-        let workflowOptionsTemplate = {...global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
+        let workflowOptionsTemplate = {...WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
 
-        // We add this copy to cache to make changes and update the global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
+        // We add this copy to cache to make changes and update the WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
 
         global.SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
 
         // Create the array of delayed unstaking transactions
         // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
-        // X = global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
+        // X = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
 
         global.SYMBIOTE_META.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
     
@@ -731,7 +731,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         //_______________________Remove pools if lack of staking power_______________________
 
 
-        let poolsToBeRemoved = [], poolsArray = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
+        let poolsToBeRemoved = [], poolsArray = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
 
 
         for(let poolPubKey of poolsArray){
@@ -742,7 +742,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
     
             let poolStorage = await GET_FROM_STATE(poolHashID)
     
-            if(poolStorage.totalPower<global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
+            if(poolStorage.totalPower<WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
     
         }
     
@@ -794,7 +794,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
             // Remove from pools tracking
-            delete global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolIdentifier]
+            delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolIdentifier]
 
             // Delete from cache
             global.SYMBIOTE_META.STATE_CACHE.delete(poolStorageHashID)
@@ -836,7 +836,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         if(!delayedTableOfIds) delayedTableOfIds=[]
     
 
-        let currentEpochIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
+        let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
         let idsToDelete = []
 
@@ -846,7 +846,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
 
-            if(delayedTableOfIds[i] + global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
+            if(delayedTableOfIds[i] + WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
 
                 let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
 
@@ -929,16 +929,16 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         //_______________________Commit changes after operations here________________________
 
         // Update the WORKFLOW_OPTIONS
-        global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
+        WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
 
         global.SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
 
     
         // Update the quorum for next epoch
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
 
         // Change reassignment chains
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
 
         
         // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
@@ -946,13 +946,13 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         let newPrimePoolsArray = []
 
 
-        for(let [poolPubKey,poolMetadata] of Object.entries(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
+        for(let [poolPubKey,poolMetadata] of Object.entries(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
 
             if(!poolMetadata.isReserve) {
 
                 newPrimePoolsArray.push(poolPubKey)
 
-                global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
+                WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
 
                     currentLeaderOnShard:poolPubKey,
 
@@ -964,7 +964,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             }
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
+            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
                 
                 index:-1,
                 
@@ -985,24 +985,24 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
 
         // Finally - delete the AEFP reassignment metadata
-        delete global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
+        delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
         // Delete the useless temporary reassignments from previous epoch
-        delete global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
+        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
 
         global.SYMBIOTE_META.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
-        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id} ### ${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,COLORS.GREEN)
+        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,COLORS.GREEN)
 
 
         // Finally - set the new index, hash and timestamp for next epoch
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.startTimestamp += global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
 
 
         // Commit the changes of state using atomic batch
@@ -1012,7 +1012,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
             
         )
 
-        atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
+        atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         await atomicBatch.write()
 
@@ -1027,7 +1027,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
 
-        LOG(`Epoch on verification thread was updated => \x1b[34;1m${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.hash}#${global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id}`,COLORS.GREEN)
+        LOG(`Epoch on verification thread was updated => \x1b[34;1m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash}#${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id}`,COLORS.GREEN)
         
 
         //_______________________Check the version required for the next checkpoint________________________
@@ -1052,7 +1052,7 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
     /* 
             
-        Start to build the global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA
+        Start to build the WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
             
         For this we need 5 things:
 
@@ -1153,13 +1153,13 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
         if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
 
             // Create empty template
-            if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA) global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
+            if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
             for(let primePoolPubKey of Object.keys(nextEpochLeadersSequences)){
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SHARDS(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SHARDS(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
 
             }
 
@@ -1412,7 +1412,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                 })
 
-                let hasUntilHeight = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKeyToOpenConnectionWith].index
+                let hasUntilHeight = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKeyToOpenConnectionWith].index
 
                 global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
 
@@ -1477,9 +1477,9 @@ START_VERIFICATION_THREAD=async()=>{
 
     if(!shardsIdentifiers){
 
-        let primePools = Object.keys(global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL).filter(
+        let primePools = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL).filter(
                 
-            pubKey => !global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pubKey].isReserve
+            pubKey => !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pubKey].isReserve
                 
         )
 
@@ -1490,11 +1490,11 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
     
-    let currentEpochIsFresh = EPOCH_STILL_FRESH(global.SYMBIOTE_META.VERIFICATION_THREAD)
+    let currentEpochIsFresh = EPOCH_STILL_FRESH(WORKING_THREADS.VERIFICATION_THREAD)
 
-    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
+    let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let previousShardWeChecked = global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER
+    let previousShardWeChecked = WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER
 
     let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
 
@@ -1510,10 +1510,10 @@ START_VERIFICATION_THREAD=async()=>{
 
     // Get the stats from reassignments
 
-    let tempReassignmentsForSomeShard = global.SYMBIOTE_META.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
+    let tempReassignmentsForSomeShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
 
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
+    if(WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
 
         
         /*
@@ -1545,7 +1545,7 @@ START_VERIFICATION_THREAD=async()=>{
         
         let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
-        let metadataForShardFromAefp = global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
+        let metadataForShardFromAefp = WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
@@ -1556,7 +1556,7 @@ START_VERIFICATION_THREAD=async()=>{
 
             let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
 
-            localVtMetadataForPool = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
             metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
@@ -1656,7 +1656,7 @@ START_VERIFICATION_THREAD=async()=>{
         
         let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.leadersSequence[currentShardToCheck][indexOfCurrentPoolToVerify]
         
-        let verificationStatsOfThisPool = global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash,isReserve}
+        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash,isReserve}
 
         let metadataWherePoolWasReassigned = tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentLeader)
 
@@ -1666,7 +1666,7 @@ START_VERIFICATION_THREAD=async()=>{
             // Move to next one
             tempReassignmentsForSomeShard.currentToVerify++
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
+            WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
             if(!currentEpochIsFresh){
@@ -1728,10 +1728,10 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
+    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-    if(!currentEpochIsFresh && !global.SYMBIOTE_META.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
+    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
 
         await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
 
@@ -1859,7 +1859,7 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,shardContext,array
     
     */
 
-    let payToCreatorAndHisPool = totalFees * global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+    let payToCreatorAndHisPool = totalFees * WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
 
         payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(arrayOfPrimePools.length-1)), //and share the rest among other pools
     
@@ -1895,9 +1895,9 @@ verifyBlock=async(block,shardContext)=>{
 
         overviewOk=
         
-            block.transactions?.length<=global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
+            block.transactions?.length<=WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
             &&
-            global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
+            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
 
 
 
@@ -1908,7 +1908,7 @@ verifyBlock=async(block,shardContext)=>{
         
         let rewardBox = {fees:0}
 
-        let currentEpochIndex = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH.id
+        let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
         let currentBlockID = currentEpochIndex+':'+block.creator+':'+block.index
 
@@ -1919,7 +1919,7 @@ verifyBlock=async(block,shardContext)=>{
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
         
-        let currentKlyEvmContextMetadata = global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
+        let currentKlyEvmContextMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
 
         // Set the next block's parameters
         KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.nextBlockIndex,currentKlyEvmContextMetadata.timestamp,currentKlyEvmContextMetadata.parentHash)
@@ -2063,34 +2063,34 @@ verifyBlock=async(block,shardContext)=>{
         */
 
 
-        let currentSID = global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]
+        let currentSID = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
         atomicBatch.put(`SID:${shardContext}:${currentSID}`,currentBlockID)
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
+        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = shardContext
+        WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
-        if(!global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]) global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
+        if(!WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]) WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].currentLeaderOnShard = block.creator
+        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].currentLeaderOnShard = block.creator
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index = block.index
+        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index = block.index
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
+        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
         
         // Change metadata per validator's thread
         
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].index = block.index
+        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].index = block.index
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash = blockHash
+        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash = blockHash
 
 
         //___________________ Update the KLY-EVM ___________________
 
         // Update stateRoot
-        global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
         // Increase block index
         let nextIndex = BigInt(currentKlyEvmContextMetadata.nextBlockIndex)+BigInt(1)
@@ -2130,7 +2130,7 @@ verifyBlock=async(block,shardContext)=>{
         //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 
 
-        atomicBatch.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
+        atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         await atomicBatch.write()
         

@@ -8,9 +8,9 @@ import {
 
 import{LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
 
-import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
@@ -95,7 +95,7 @@ import http from 'http'
  */
 let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
@@ -405,7 +405,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 */
 let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
-    let epochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 

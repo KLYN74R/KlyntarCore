@@ -33,8 +33,51 @@ export let BLOCKCHAIN_METADATA = {
 
     PEERS:[], // peers to exchange data with. Just strings with addresses
 
-    EPOCH_METADATA:new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
+    EPOCH_METADATA:new Map(), // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
+
+}
+
+
+
+
+export let WORKING_THREADS = {
+
+    VERIFICATION_THREAD: {
+            
+        SHARD_POINTER:'',
+
+        VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentLeaderOnShard,index,hash}
+
+        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
+
+        KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
+
+        KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
+
+        TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentLeader:<uint - index of current shard leader based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
+
+        SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
+
+        EPOCH:{} // epoch handler
+
+    },
+
+
+    GENERATION_THREAD: {
+            
+        epochFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
+
+        epochIndex:0,
+        
+        prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
+        
+        nextIndex:0 // so the first block will be with index 0
     
+    },
+
+
+    APPROVEMENT_THREAD:{}
+
 }
 
 
@@ -112,11 +155,11 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 let RESTORE_METADATA_CACHE=async()=>{
 
-    let poolsRegistry = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.poolsRegistry
+    let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
 
     let allThePools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
-    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+    let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
     
@@ -146,7 +189,7 @@ let RESTORE_METADATA_CACHE=async()=>{
 
                 // Using pointer - find the appropriate reserve pool
 
-                let currentLeaderPubKey = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.leadersSequence[poolPubKey][leadersHandler.currentLeader]
+                let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[poolPubKey][leadersHandler.currentLeader]
 
                 // Key is reserve pool which points to his prime pool
 
@@ -212,8 +255,6 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
     let primePools = new Set(Object.keys(BLOCKCHAIN_GENESIS.POOLS))
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL = {} // poolPubKey => {index,hash,isReserve}
-
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
@@ -223,7 +264,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
         // Create the value in VT
 
-        global.SYMBIOTE_META.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve}
+        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve}
 
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
@@ -268,7 +309,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
             atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
+            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
 
             poolsRegistryForEpochHandler.primePools.push(poolPubKey)
 
@@ -339,7 +380,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
             }
 
-            global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
+            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
         
                 nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
         
@@ -419,16 +460,16 @@ export let SET_GENESIS_TO_STATE=async()=>{
     */
 
     //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE - update it !
-    global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
+    WORKING_THREADS.VERIFICATION_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
     //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
-    global.SYMBIOTE_META.QUORUM_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
+    WORKING_THREADS.APPROVEMENT_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
     //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
+    WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
 
-    global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
+    WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
 
 
 
@@ -442,12 +483,12 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
     // Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    global.SYMBIOTE_META.VERIFICATION_THREAD.SHARD_POINTER = startPool
+    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = startPool
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
 
-    global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH = {
+    WORKING_THREADS.VERIFICATION_THREAD.EPOCH = {
 
         id:0,
 
@@ -465,7 +506,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
     
 
     //Make template, but anyway - we'll find checkpoints on hostchains
-    global.SYMBIOTE_META.QUORUM_THREAD.EPOCH = {
+    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH = {
 
         id:0,
 
@@ -484,23 +525,23 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
     // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
     // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
-    global.SYMBIOTE_META.VERIFICATION_THREAD.RUBICON = 0
+    WORKING_THREADS.VERIFICATION_THREAD.RUBICON = 0
     
-    global.SYMBIOTE_META.QUORUM_THREAD.RUBICON = 0
+    WORKING_THREADS.APPROVEMENT_THREAD.RUBICON = 0
 
 
     let nullHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
-    let vtEpochHandler = global.SYMBIOTE_META.VERIFICATION_THREAD.EPOCH
+    let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
-    vtEpochHandler.quorum = GET_QUORUM(vtEpochHandler.poolsRegistry,global.SYMBIOTE_META.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
+    vtEpochHandler.quorum = GET_QUORUM(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
     //...However, quorum for QUORUM_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
-    qtEpochHandler.quorum = GET_QUORUM(qtEpochHandler.poolsRegistry,global.SYMBIOTE_META.QUORUM_THREAD.WORKFLOW_OPTIONS,nullHash)
+    qtEpochHandler.quorum = GET_QUORUM(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
     //Finally, build the reassignment chains for current epoch in QT and VT
@@ -552,81 +593,43 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     global.SYMBIOTE_META.FILTERS=(await import(`./verification_process/txs_filters.js`)).default;
     
 
-    global.SYMBIOTE_META.GENERATION_THREAD = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(error=>
-        
-        error.notFound
-        ?
-        {
-            
-            epochFullId:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef#-1',
+    let gtFromDB = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(()=>null)
 
-            epochIndex:0,
-            
-            prevHash:`0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef`, // "null" hash
-            
-            nextIndex:0 // so the first block will be with index 0
-        
-        }
-        :
-        (LOG(`Some problem with loading metadata of generation thread\nError:${error}`,COLORS.RED),process.exit(106))
-                        
-    )
+    if(gtFromDB){
 
+        WORKING_THREADS.GENERATION_THREAD = gtFromDB
 
-    //Load from db or return empty object
-    global.SYMBIOTE_META.QUORUM_THREAD = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>({}))
-        
+    }
+    
+    // Load from db or return empty object
 
+    let atFromDB = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>null)
+
+    if(atFromDB){
+
+        global.SYMBIOTE_META.APPROVEMENT_THREAD = atFromDB
+
+    }
 
     //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
 
+    let vtFromDB = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(()=>null)
 
-    
-    global.SYMBIOTE_META.VERIFICATION_THREAD = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(error=>{
+    if(vtFromDB){
 
-        if(error.notFound){
+        WORKING_THREADS.VERIFICATION_THREAD = vtFromDB
 
-            //Default initial value
-            return {
-            
-                SHARD_POINTER:'',
-
-                VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentLeaderOnShard,index,hash}
-
-                VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
-
-                KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
- 
-                KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
-
-                TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentLeader:<uint - index of current shard leader based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
-
-                SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
-
-                EPOCH:{} // epoch handler
-
-            }
-
-        }else{
-
-            LOG(`Some problem with loading metadata of verification thread\nError:${error}`,COLORS.RED)
-            
-            process.exit(105)
-
-        }
+    }
         
-    })
-
-        
-    if(global.SYMBIOTE_META.VERIFICATION_THREAD.VERSION===undefined){
+    if(WORKING_THREADS.VERIFICATION_THREAD.VERSION===undefined){
 
         await SET_GENESIS_TO_STATE()
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
-        await BLOCKCHAIN_DATABASES.BLOCKS.put('VT',global.SYMBIOTE_META.VERIFICATION_THREAD)
+        await BLOCKCHAIN_DATABASES.BLOCKS.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
-        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',global.SYMBIOTE_META.QUORUM_THREAD)
+        await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
     }
 
@@ -634,7 +637,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     //________________________________________Set the state of KLY-EVM______________________________________________
 
 
-    await KLY_EVM.setStateRoot(global.SYMBIOTE_META.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
+    await KLY_EVM.setStateRoot(WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
 
 
     //_______________________________Check the version of QT and VT and if need - update________________________________
@@ -670,14 +673,14 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     }
 
 
-    let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+    let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
 
-    if(global.SYMBIOTE_META.GENERATION_THREAD.epochFullId === epochFullID && !global.SYMBIOTE_META.GENERATION_THREAD.quorum){
+    if(WORKING_THREADS.GENERATION_THREAD.epochFullId === epochFullID && !WORKING_THREADS.GENERATION_THREAD.quorum){
 
-        global.SYMBIOTE_META.GENERATION_THREAD.quorum = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.quorum
+        WORKING_THREADS.GENERATION_THREAD.quorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum
 
-        global.SYMBIOTE_META.GENERATION_THREAD.majority = GET_MAJORITY(global.SYMBIOTE_META.QUORUM_THREAD.EPOCH)
+        WORKING_THREADS.GENERATION_THREAD.majority = GET_MAJORITY(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
 
     }
 

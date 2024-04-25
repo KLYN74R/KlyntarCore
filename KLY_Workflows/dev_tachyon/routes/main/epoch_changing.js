@@ -1,6 +1,6 @@
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
@@ -45,7 +45,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_EPOCH_FINALIZATION_PROOF){
 
-        let epochFullID = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.hash+"#"+global.SYMBIOTE_META.QUORUM_THREAD.EPOCH.id
+        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
         if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
 
@@ -77,7 +77,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     // CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE - set the limit mb
 
-    let qtEpochHandler = global.SYMBIOTE_META.QUORUM_THREAD.EPOCH
+    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
     let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 

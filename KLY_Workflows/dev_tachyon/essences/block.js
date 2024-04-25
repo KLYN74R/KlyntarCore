@@ -2,6 +2,8 @@ import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../../klyn74r.js'
 
 import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
+import {WORKING_THREADS} from '../blockchain_preparation.js'
+
 
 
 
@@ -19,9 +21,9 @@ export default class Block{
 
         this.extraData = extraData // extradata to be added to block. Used mostly to add <leaderRotationProofs>
 
-        this.index = global.SYMBIOTE_META.GENERATION_THREAD.nextIndex // index of block in validator's thread
+        this.index = WORKING_THREADS.GENERATION_THREAD.nextIndex // index of block in validator's thread
         
-        this.prevHash = global.SYMBIOTE_META.GENERATION_THREAD.prevHash // hash of previous block in validator's thread
+        this.prevHash = WORKING_THREADS.GENERATION_THREAD.prevHash // hash of previous block in validator's thread
         
         this.sig = '' // Ed25519 signature of block
     
