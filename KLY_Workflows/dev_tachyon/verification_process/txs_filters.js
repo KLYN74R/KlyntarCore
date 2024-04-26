@@ -42,7 +42,7 @@ let VERIFY_WRAP=async (tx,originShard)=>{
 
 
 
-export default {
+export let TXS_FILTERS = {
 
     
     /*

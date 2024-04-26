@@ -581,28 +581,10 @@ export let SET_GENESIS_TO_STATE=async()=>{
 export let PREPARE_BLOCKCHAIN=async()=>{
 
 
-    //____________________________________________Prepare structures_________________________________________________
-
-
-
     !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
 
 
-
-    //___________________________Load functionality to verify/filter/transform txs_______________________________
-
-
-    // Importnat and must be the same for symbiote at appropriate chunks of time
-    await import(`./verification_process/txs_verifiers.js`).then(mod=>
     
-        global.SYMBIOTE_META.VERIFIERS = mod.VERIFIERS
-        
-    )
-
-    //Might be individual for each node
-    global.SYMBIOTE_META.FILTERS = (await import(`./verification_process/txs_filters.js`)).default;
-    
-
     let storedGenerationThreadFromDB = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(()=>null)
 
     if(storedGenerationThreadFromDB){

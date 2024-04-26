@@ -23,6 +23,7 @@ import fetch from 'node-fetch'
 import WS from 'websocket'
 
 import Web3 from 'web3'
+import { VERIFIERS } from './txs_verifiers.js'
 
 
 
@@ -1949,18 +1950,18 @@ verifyBlock=async(block,shardContext)=>{
             await Promise.all(accountsToAddToCache.splice(0))
 
 
-            //___________________________________________START TO PERFORM TXS____________________________________________
+            //___________________________________________START TO EXECUTE TXS____________________________________________
 
 
             let txIndexInBlock = 0
 
             for(let transaction of block.transactions){
 
-                if(global.SYMBIOTE_META.VERIFIERS[transaction.type]){
+                if(VERIFIERS[transaction.type]){
 
                     let txCopy = JSON.parse(JSON.stringify(transaction))
 
-                    let {isOk,reason} = await global.SYMBIOTE_META.VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+                    let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
 
                     // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
                     if(reason!=='EVM'){

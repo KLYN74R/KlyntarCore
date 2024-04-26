@@ -1,6 +1,7 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import { TXS_FILTERS } from '../../verification_process/txs_filters.js'
 
 
 
@@ -271,7 +272,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
             
     }
     
-    if(!global.SYMBIOTE_META.FILTERS[transaction.type]){
+    if(!TXS_FILTERS[transaction.type]){
     
         response.send({err:'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'})
             
@@ -282,7 +283,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
         
     if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
     
-        let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
+        let filteredEvent = await TXS_FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
     
         if(filteredEvent){
     
