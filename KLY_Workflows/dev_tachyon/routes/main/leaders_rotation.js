@@ -1,6 +1,6 @@
-import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+
+import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -8,8 +8,7 @@ import {GET_BLOCK} from '../../verification_process/verification.js'
 
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
 
-import Block from '../../essences/block.js'
-
+import Block from '../../structures/block.js'
 
 
 

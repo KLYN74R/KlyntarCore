@@ -1,8 +1,10 @@
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_APPROVEMENT_THREAD_STATE} from '../utils.js'
-
-import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './txs_verifiers.js'
+import {GET_FROM_APPROVEMENT_THREAD_STATE} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {GET_ACCOUNT_FROM_STATE, GET_FROM_STATE} from '../common_functions/state_interactions.js'
+
+import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './txs_verifiers.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -550,7 +552,7 @@ export default {
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
 
-                    let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originWherePoolStorage+':'+stakingTx.staker)
+                    let stakerAccount = await GET_ACCOUNT_FROM_STATE(originWherePoolStorage+':'+stakingTx.staker)
 
                     if(stakerAccount){
                     

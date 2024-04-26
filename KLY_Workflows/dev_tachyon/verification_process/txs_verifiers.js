@@ -1,6 +1,6 @@
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from '../utils.js'
+import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -16,7 +16,7 @@ import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
 
 import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
-import FILTERS from './txs_filters.js'
+import {TXS_FILTERS} from './txs_filters.js'
 
 import web3 from 'web3'
 
@@ -65,7 +65,8 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
     
     if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){
 
-        //Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        // Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        
         let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
@@ -143,13 +144,13 @@ export let VERIFIERS = {
 
     TX:async (originShard,tx,rewardBox)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator),
+        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
         
-            recipientAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.payload.to),
+            recipientAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.payload.to),
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.payload.amount+tx.fee
 
-        tx = await FILTERS.TX(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.TX(tx,originShard) //pass through the filter
 
         if(!tx){
 
@@ -217,12 +218,12 @@ export let VERIFIERS = {
 
     CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator)
+        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator)
 
         let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
-        tx = await FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
 
         if(!tx){
@@ -300,11 +301,11 @@ export let VERIFIERS = {
     */
     CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator),
+        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
 
             goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.gasLimit
 
-        tx = await FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
 
         
         if(!tx){

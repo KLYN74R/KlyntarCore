@@ -4,9 +4,9 @@ import{BLAKE3, ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../../KLY_Utils/ut
 
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {GET_QUORUM_MAJORITY} from '../../common_functions/quorum_related.js'
 
-import {GET_MAJORITY} from '../../utils.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
@@ -100,7 +100,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
     )
 
 
-    let majority = GET_MAJORITY(epochHandler)
+    let majority = GET_QUORUM_MAJORITY(epochHandler)
 
     let promises = []
 

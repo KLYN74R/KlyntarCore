@@ -1,12 +1,12 @@
-import {
-    
-    GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, VT_STATS_LOG, VERIFY_AGGREGATED_FINALIZATION_PROOF, GET_FIRST_BLOCK_ON_EPOCH,
-
-    GET_QUORUM_URLS_AND_PUBKEYS, GET_ALL_KNOWN_PEERS, GET_MAJORITY, IS_MY_VERSION_OLD, EPOCH_STILL_FRESH,
-
-} from '../utils.js'
+import {GET_FIRST_BLOCK_ON_EPOCH, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
+
+import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+
+import {GET_ACCOUNT_FROM_STATE, GET_FROM_STATE} from '../common_functions/state_interactions.js'
+
+import {GET_ALL_KNOWN_PEERS, IS_MY_VERSION_OLD, EPOCH_STILL_FRESH} from '../utils.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
@@ -14,16 +14,19 @@ import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
+import {VT_STATS_LOG} from '../common_functions/logging.js'
+
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import Block from '../essences/block.js'
+import {VERIFIERS} from './txs_verifiers.js'
+
+import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
 
 import WS from 'websocket'
 
 import Web3 from 'web3'
-import { VERIFIERS } from './txs_verifiers.js'
 
 
 
@@ -201,7 +204,7 @@ CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY = async (pubKeyOfSomePreviousLea
     
         let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedLeaderRotationProof
 
-        let majority = GET_MAJORITY(epochHandler)
+        let majority = GET_QUORUM_MAJORITY(epochHandler)
 
         let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
@@ -875,7 +878,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
                     
                         */
 
-                        let account = await GET_ACCOUNT_ON_SYMBIOTE(BLAKE3(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
+                        let account = await GET_ACCOUNT_FROM_STATE(BLAKE3(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
 
                         // Return back staked KLY / UNO to the state of user's account
                         if(delayedTx.units==='kly') account.balance += delayedTx.amount
@@ -1781,7 +1784,7 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(shardContext,feeToPay,blockCreat
     if(mainStorageOfBlockCreator.percentage!==0){
 
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await GET_ACCOUNT_ON_SYMBIOTE(shardContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,blockCreator)
+        let poolBindedAccount = await GET_ACCOUNT_FROM_STATE(shardContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,blockCreator)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
         
@@ -1800,7 +1803,7 @@ SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(shardContext,feeToPay,blockCreat
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
 
-        let stakerAccountBindedToCurrentShardContext = await GET_ACCOUNT_ON_SYMBIOTE(shardContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,stakerPubKey)
+        let stakerAccountBindedToCurrentShardContext = await GET_ACCOUNT_FROM_STATE(shardContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,stakerPubKey)
 
         stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent*restOfFees
 
@@ -1818,7 +1821,7 @@ SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD = async(shardID,feeRecepientPoolPubKey,f
 
     let accountsForFeesId = shardID+':'+feeRecepientPoolPubKey
 
-    let feesAccountForGivenPoolOnThisShard = await GET_ACCOUNT_ON_SYMBIOTE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(accountsForFeesId)
+    let feesAccountForGivenPoolOnThisShard = await GET_ACCOUNT_FROM_STATE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(accountsForFeesId)
 
     feesAccountForGivenPoolOnThisShard.balance += feeReward
 

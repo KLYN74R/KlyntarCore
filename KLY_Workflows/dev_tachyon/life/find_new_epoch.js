@@ -1,14 +1,22 @@
 import {
     
-    EPOCH_STILL_FRESH,GET_FIRST_BLOCK_ON_EPOCH,GET_FROM_APPROVEMENT_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
+    EPOCH_STILL_FRESH,
     
-    IS_MY_VERSION_OLD, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF
+    IS_MY_VERSION_OLD
 
 } from '../utils.js'
 
-import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
+import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
+
+import {GET_FROM_APPROVEMENT_THREAD_STATE} from '../common_functions/approvement_thread_related.js'
+
+import {GET_FIRST_BLOCK_ON_EPOCH, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
+
+import {GET_CURRENT_EPOCH_QUORUM, GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+
+import {SET_LEADERS_SEQUENCE_FOR_SHARDS} from './shards_leaders_monitoring.js'
 
 import {BLAKE3, COLORS, LOG, PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
 
@@ -16,11 +24,18 @@ import {GET_BLOCK} from '../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import Block from '../essences/block.js'
+import Block from '../structures/block.js'
 
 import level from 'level'
 
 import fs from 'fs'
+
+
+
+
+
+
+
 
 
 
@@ -285,7 +300,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let leadersSequence = qtEpochHandler.leadersSequence
 
-        let majority = GET_MAJORITY(qtEpochHandler)
+        let majority = GET_QUORUM_MAJORITY(qtEpochHandler)
 
         let allKnownPeers = await GET_QUORUM_URLS_AND_PUBKEYS()
 
@@ -526,7 +541,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 fullCopyOfQuorumThread.EPOCH.hash = nextEpochHash
 
-                fullCopyOfQuorumThread.EPOCH.quorum = GET_QUORUM(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
+                fullCopyOfQuorumThread.EPOCH.quorum = GET_CURRENT_EPOCH_QUORUM(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
                 

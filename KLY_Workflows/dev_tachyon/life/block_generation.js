@@ -1,37 +1,43 @@
 import {
-    
-    GET_QUORUM_URLS_AND_PUBKEYS, GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
-    
-    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF,
 
-    BLOCKLOG, GET_ALL_KNOWN_PEERS, GET_MAJORITY
+    GET_ALL_KNOWN_PEERS
 
 } from '../utils.js'
 
+import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+
+import {BLOCKLOG} from '../common_functions/logging.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import Block from '../essences/block.js'
+import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
 
-
-
-
-let 
-
-
-//TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
-
-GET_TRANSACTIONS = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
 
 
 
 
-GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
+
+export let BLOCKS_GENERATION=async()=>{
+
+    await GENERATE_BLOCKS_PORTION()
+
+    setTimeout(BLOCKS_GENERATION,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
+ 
+}
+
+
+
+
+let GET_TRANSACTIONS = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+
+let GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
 
     if(!EPOCH_METADATA_MAPPING.has(epochFullID)) return []
 
@@ -40,10 +46,6 @@ GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
     return epochEdgeOperationsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
 }
-
-
-
-
 
 
 
@@ -252,7 +254,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
             
         let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${localFinalizationStatsForThisPool.index}:${localFinalizationStatsForThisPool.hash}:${epochFullID}`
         
-        let majority = GET_MAJORITY(epochHandler)
+        let majority = GET_QUORUM_MAJORITY(epochHandler)
         
 
         // Start the cycle over results
@@ -413,7 +415,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
 
-        WORKING_THREADS.GENERATION_THREAD.majority = GET_MAJORITY(epochHandler)
+        WORKING_THREADS.GENERATION_THREAD.majority = GET_QUORUM_MAJORITY(epochHandler)
 
 
         // And nullish the index & hash in generation thread for new epoch
@@ -565,14 +567,4 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     await atomicBatch.write()
 
-}
-
-
-
-export let BLOCKS_GENERATION=async()=>{
-
-    await GENERATE_BLOCKS_PORTION()
-
-    setTimeout(BLOCKS_GENERATION,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
- 
 }

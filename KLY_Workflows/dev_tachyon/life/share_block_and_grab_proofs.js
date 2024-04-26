@@ -1,16 +1,16 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, GET_QUORUM_MAJORITY} from '../common_functions/quorum_related.js'
+
+import {GET_FROM_APPROVEMENT_THREAD_STATE, USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
 
 import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import Block from '../essences/block.js'
+import Block from '../structures/block.js'
 
 import WS from 'websocket'
-
-
 
 
 
@@ -151,7 +151,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     }
 
-    let majority = GET_MAJORITY(epochHandler)
+    let majority = GET_QUORUM_MAJORITY(epochHandler)
 
     let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIDForHunting).catch(()=>null)
 

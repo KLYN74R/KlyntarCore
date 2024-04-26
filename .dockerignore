@@ -1,41 +1,17 @@
-#Always
+# Always
 build
 .vscode
 .idea
 node_modules
-LOGS/
-.log
+dist
 
 
 #Debug
 .pnpm-debug.log
 
 
-#Hello legend
-DEVELOPMENT/useful.txt
 
-#Images collection for docs
-images/RELEASES
-images/SYMBIOTES
-images/SITES
-
-
-#Databases
-M
-CHAINDATA
-!GENESIS/README.md
-SNAPSHOTS
-GENESIS
-
-
-#Workflow
-tr.js
-RELEASES
-SERVICES
-DOCS
-DEVELOPMENT
-KIPs
-dist
+# Common extensions
 *.exe
 *.pdb
 *.wasm
@@ -45,26 +21,14 @@ dist
 *.so
 *.h
 
-#Configs
-CONFIGS/symbiotes*
-KEYSTORE
+
+
+# Separate files
 decrypted.json
+tr.js
 
 
 
-#The Hell
-KLY_Tests/test_evm*
-KLY_Tests/hostchains/monitors/evm.js
-KLY_Tests/hostchains/contracts/*.js
-KLY_Tests/hostchains/connectors/
-KLY_Tests/hostchains/tokens/
-
-
-#AntiVenom testnet data
-!ANTIVENOM/CONFIGS
-!ANTIVENOM/GENESIS
+# Testnet data
 ANTIVENOM_*
-
-
-#Custom workflow example dir
-!HELLO_WORLD_DIR/GENESIS
+GCP_TESTNET

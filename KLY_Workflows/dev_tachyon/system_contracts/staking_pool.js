@@ -1,4 +1,4 @@
-import {GET_ACCOUNT_ON_SYMBIOTE,GET_FROM_STATE} from '../utils.js'
+import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
@@ -136,7 +136,7 @@ export let CONTRACT = {
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+transaction.creator)
+            let stakerAccount = await GET_ACCOUNT_FROM_STATE(originShard+':'+transaction.creator)
 
             if(stakerAccount){
 

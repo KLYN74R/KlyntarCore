@@ -1,13 +1,16 @@
-import {GET_QUORUM_URLS_AND_PUBKEYS,GET_RANDOM_FROM_ARRAY,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
+import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY,GET_BLOCK} from '../verification_process/verification.js'
+
+import {GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
 
 import {WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import Block from '../essences/block.js'
+import {GET_RANDOM_FROM_ARRAY} from '../utils.js'
 
+import Block from '../structures/block.js'
 
 
 

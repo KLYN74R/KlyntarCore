@@ -1,26 +1,22 @@
-import {
-    
-    VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF,
-
-    GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB
-
-} from '../../utils.js'
-
-import{LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
+import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+
+import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID} from '../../common_functions/quorum_related.js'
+
+import {LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
+
+import {USE_TEMPORARY_DB} from '../../common_functions/approvement_thread_related.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
-import Block from '../../essences/block.js'
+import Block from '../../structures/block.js'
 
 import WS from 'websocket'
 
 import http from 'http'
-
-
 
 
 

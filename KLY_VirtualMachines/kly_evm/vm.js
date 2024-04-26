@@ -1,4 +1,4 @@
-import {GET_FROM_STATE} from '../../KLY_Workflows/dev_tachyon/utils.js'
+import {GET_FROM_STATE} from '../../KLY_Workflows/dev_tachyon/common_functions/state_interactions.js'
 
 import {DefaultStateManager} from '@ethereumjs/statemanager'
 import {Address,Account} from '@ethereumjs/util'
@@ -14,6 +14,7 @@ import Web3 from 'web3'
 
 
 import {CONFIGURATION} from '../../klyn74r.js'
+
 
 
 //_________________________________________________________ CONSTANTS POOL _________________________________________________________

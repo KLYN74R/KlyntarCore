@@ -1,12 +1,10 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
+import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
-
 import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
-
-
 
 
 

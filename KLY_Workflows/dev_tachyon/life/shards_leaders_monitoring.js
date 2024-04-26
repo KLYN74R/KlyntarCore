@@ -1,8 +1,12 @@
-import {EPOCH_STILL_FRESH,GET_FROM_APPROVEMENT_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_DB} from '../utils.js'
+import {GET_FROM_APPROVEMENT_THREAD_STATE, USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
 
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+
+import {EPOCH_STILL_FRESH, HEAP_SORT,} from '../utils.js'
+
+
 
 
 

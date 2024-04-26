@@ -1,4 +1,4 @@
-import {GET_MAJORITY, GET_QUORUM, IS_MY_VERSION_OLD, DECRYPT_KEYS} from './utils.js'
+import {GET_CURRENT_EPOCH_QUORUM, GET_QUORUM_MAJORITY} from './common_functions/quorum_related.js'
 
 import {SET_LEADERS_SEQUENCE_FOR_SHARDS} from './life/shards_leaders_monitoring.js'
 
@@ -7,6 +7,8 @@ import {LOG, PATH_RESOLVE, BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
 import {BLOCKCHAIN_GENESIS, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
+
+import {IS_MY_VERSION_OLD, DECRYPT_KEYS} from './utils.js'
 
 import level from 'level'
 
@@ -548,10 +550,10 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
-    vtEpochHandler.quorum = GET_QUORUM(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
+    vtEpochHandler.quorum = GET_CURRENT_EPOCH_QUORUM(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
     //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
-    qtEpochHandler.quorum = GET_QUORUM(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
+    qtEpochHandler.quorum = GET_CURRENT_EPOCH_QUORUM(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
     //Finally, build the reassignment chains for current epoch in QT and VT
@@ -581,10 +583,16 @@ export let SET_GENESIS_TO_STATE=async()=>{
 export let PREPARE_BLOCKCHAIN=async()=>{
 
 
+    // Create the directory for chaindata in case it's doesn't exist yet
+
     !fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
 
 
+
     
+    //_____________________ Now, we need to load the metadata of GENERATION, APPROVEMENT and VERIFICATION threads _____________________
+
+    // Load generation thread metadata
     let storedGenerationThreadFromDB = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(()=>null)
 
     if(storedGenerationThreadFromDB){
@@ -592,9 +600,8 @@ export let PREPARE_BLOCKCHAIN=async()=>{
         WORKING_THREADS.GENERATION_THREAD = storedGenerationThreadFromDB
 
     }
-    
-    // Load from db or return empty object
 
+    // Load approvement thread metadata
     let storedApprovementThreadFromDB = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>null)
 
     if(storedApprovementThreadFromDB){
@@ -603,8 +610,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
     }
 
-    //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
-
+    // And finally - verification thread metadata
     let storedVerificaionThreadFromDB = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(()=>null)
 
     if(storedVerificaionThreadFromDB){
@@ -612,7 +618,12 @@ export let PREPARE_BLOCKCHAIN=async()=>{
         WORKING_THREADS.VERIFICATION_THREAD = storedVerificaionThreadFromDB
 
     }
-        
+    
+    
+
+
+
+
     if(WORKING_THREADS.VERIFICATION_THREAD.VERSION===undefined){
 
         await SET_GENESIS_TO_STATE()
@@ -672,7 +683,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
         WORKING_THREADS.GENERATION_THREAD.quorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum
 
-        WORKING_THREADS.GENERATION_THREAD.majority = GET_MAJORITY(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
+        WORKING_THREADS.GENERATION_THREAD.majority = GET_QUORUM_MAJORITY(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
 
     }
 

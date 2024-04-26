@@ -7,16 +7,16 @@
 
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
+import {GET_ACCOUNT_FROM_STATE} from '../common_functions/state_interactions.js'
 
 import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './txs_verifiers.js'
 
-import {GET_ACCOUNT_ON_SYMBIOTE} from '../utils.js'
 
 
 
 let VERIFY_WRAP=async (tx,originShard)=>{
 
-    let creatorAccount = await GET_ACCOUNT_ON_SYMBIOTE(originShard+':'+tx.creator)
+    let creatorAccount = await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator)
 
     let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originShard).catch(()=>false)
 

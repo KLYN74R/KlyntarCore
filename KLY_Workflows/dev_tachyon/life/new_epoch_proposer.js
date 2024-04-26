@@ -1,12 +1,16 @@
-import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
+import {USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+
+import {EPOCH_STILL_FRESH} from '../utils.js'
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-
+import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
 
 
 
@@ -81,7 +85,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let epochFinishProposition = {}
 
-        let majority = GET_MAJORITY(qtEpochHandler)
+        let majority = GET_QUORUM_MAJORITY(qtEpochHandler)
 
         let leadersSequencePerShard = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
