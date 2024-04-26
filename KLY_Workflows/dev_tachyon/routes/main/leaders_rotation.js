@@ -1,8 +1,8 @@
 import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {GET_BLOCK} from '../../verification_process/verification.js'
 
@@ -142,7 +142,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let tempObject = EPOCH_METADATA_MAPPING.get(epochFullID)
 
     if(!tempObject){
 
@@ -340,9 +340,9 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
         
         response.send({err:'Epoch handler on QT is not ready'})
 
@@ -364,7 +364,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
             // Try to get the current leader on shard
 
-            let leaderHandlerForShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID)
+            let leaderHandlerForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID)
 
             if(leaderHandlerForShard && epochHandler.leadersSequence[shardID]){
 

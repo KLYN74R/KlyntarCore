@@ -8,7 +8,7 @@ import {
 
 } from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -26,16 +26,16 @@ let
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 
-GET_TRANSACTIONS = () => BLOCKCHAIN_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+GET_TRANSACTIONS = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
 
 
 
 GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
 
-    if(!global.SYMBIOTE_META.TEMP.has(epochFullID)) return []
+    if(!EPOCH_METADATA_MAPPING.has(epochFullID)) return []
 
-    let epochEdgeOperationsMempool = global.SYMBIOTE_META.TEMP.get(epochFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
+    let epochEdgeOperationsMempool = EPOCH_METADATA_MAPPING.get(epochFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
 
     return epochEdgeOperationsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
@@ -112,9 +112,9 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
 
         return
 
@@ -129,7 +129,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let firstBlockHash
 
-    let localFinalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(pubKeyOfOneOfPreviousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+    let localFinalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfOneOfPreviousLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
     if(localFinalizationStatsForThisPool.index === -1){
@@ -302,7 +302,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
     
                         // Store the updated version of finalization stats
 
-                        tempObject.FINALIZATION_STATS.set(pubKeyOfOneOfPreviousLeader,localFinalizationStatsForThisPool)                    
+                        currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfOneOfPreviousLeader,localFinalizationStatsForThisPool)                    
     
                         // If our local version had lower index - break the cycle and try again next time with updated value
         
@@ -346,19 +346,19 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
-    let qtEpochFullID = epochHandler.hash+"#"+epochHandler.id
+    let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
     let epochIndex = epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(qtEpochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
-    if(!tempObject) return
+    if(!currentEpochMetadata) return
 
 
     //_________________ No sense to generate blocks more in case we haven't approved the previous ones _________________
 
-    let proofsGrabber = tempObject.TEMP_CACHE.get('PROOFS_GRABBER')
+    let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
 
 
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
@@ -366,19 +366,19 @@ let GENERATE_BLOCKS_PORTION = async() => {
     //__________________________________________________________________________________________________________________
 
 
-    if(!tempObject.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
+    if(!currentEpochMetadata.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
 
         let poolPresent = epochHandler.poolsRegistry[CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY) 
 
-        tempObject.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
+        currentEpochMetadata.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
 
     }
 
 
     //Safe "if" branch to prevent unnecessary blocks generation
-    if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
+    if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
-    let myDataInShardsLeadersMonitoring = tempObject.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
+    let myDataInShardsLeadersMonitoring = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
 
@@ -387,7 +387,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     // Check if <epochFullID> is the same in QT and in GT
 
-    if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== qtEpochFullID){
+    if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
 
         // If new epoch - add the aggregated proof of previous epoch finalization
 
@@ -405,7 +405,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         // Update the index & hash of epoch
 
-        WORKING_THREADS.GENERATION_THREAD.epochFullId = qtEpochFullID
+        WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
 
         WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
 
@@ -515,7 +515,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-    let numberOfBlocksToGenerate = Math.ceil(BLOCKCHAIN_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
 
 

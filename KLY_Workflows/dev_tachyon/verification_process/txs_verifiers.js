@@ -12,10 +12,9 @@ import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
 import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
+import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
 
-// eslint-disable-next-line no-unused-vars
-import * as _ from '../system_contracts/root.js'
+import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
 
 import FILTERS from './txs_filters.js'
 
@@ -237,9 +236,9 @@ export let VERIFIERS = {
 
                 let typeofContract = tx.payload.lang.split('/')[1]
 
-                if(global.SYSTEM_CONTRACTS.has(typeofContract)){
+                if(SYSTEM_CONTRACTS.has(typeofContract)){
 
-                    await global.SYSTEM_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
+                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
 
                     senderAccount.balance-=goingToSpend
             
@@ -322,13 +321,13 @@ export let VERIFIERS = {
 
                 if(contractMeta.lang.startsWith('spec/')){
 
-                    let typeofContract = contractMeta.lang.split('/')[1]
+                    let systemContractName = contractMeta.lang.split('/')[1]
 
-                    if(global.SYSTEM_CONTRACTS.has(typeofContract)){
+                    if(SYSTEM_CONTRACTS.has(systemContractName)){
 
-                        let contract = global.SYSTEM_CONTRACTS.get(typeofContract)
+                        let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
                         
-                        await contract[tx.payload.method](tx,originShard,atomicBatch)
+                        await systemContract[tx.payload.method](tx,originShard,atomicBatch)
 
 
                         senderAccount.balance-=goingToSpend

@@ -2,9 +2,9 @@ import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_ed
 
 import{BLAKE3, ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {WORKING_THREADS} from '../../blockchain_preparation.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {GET_MAJORITY} from '../../utils.js'
 
@@ -64,7 +64,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
     response.header('access-control-allow-origin','*')
 
     
-    if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
+    if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
 
         response.send({err:'Epoch handler on QT is not ready'})
 
@@ -72,7 +72,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
     }
 
     
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let tempObject = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
@@ -161,7 +161,7 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
 
     response.header('access-control-allow-origin','*')
 
-    if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
+    if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
 
         response.send({err:'Epoch handler on QT is not ready'})
 

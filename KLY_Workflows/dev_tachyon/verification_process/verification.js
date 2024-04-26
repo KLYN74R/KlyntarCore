@@ -1177,12 +1177,6 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
     
         Open connection with websocket endpoint which was set by target pool
 
-        Use the following rules to define the priority
-
-            1) In case we have a URL in global.CONIG.SYMBIOTE_META.BLOCKS_TUNNELS[poolPubKeyToOpenConnectionWith] - use this URL
-
-            2) Otherwise - use endpoint from GET_FROM_STATE(poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
-
     */
 
 

@@ -1,12 +1,15 @@
-global.SYSTEM_CONTRACTS=new Map()
-
 // Will be available in the following releases
 // let systemContracts = ['aliases','mintUnobtanium','deployService','stakingPool','rwxContract']
 
-let systemContracts = ['staking_pool']
+export let SYSTEM_CONTRACTS = new Map()
 
-for(let name of systemContracts){
+let systemContractsNames = ['staking_pool']
 
-    await import(`./${name}.js`).then(contract=>global.SYSTEM_CONTRACTS.set(name,contract.CONTRACT))
+
+
+
+for(let name of systemContractsNames){
+
+    await import(`./${name}.js`).then(contract=>SYSTEM_CONTRACTS.set(name,contract.CONTRACT))
 
 }

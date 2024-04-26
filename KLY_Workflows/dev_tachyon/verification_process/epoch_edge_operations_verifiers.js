@@ -1,6 +1,6 @@
 import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_APPROVEMENT_THREAD_STATE} from '../utils.js'
 
-import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
+import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './txs_verifiers.js'
 
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
@@ -15,9 +15,9 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     let {type,amount}=payload
 
-    let workflowConfigs = global.SYMBIOTE_META[threadID].WORKFLOW_OPTIONS,
+    let workflowConfigs = WORKING_THREADS[threadID].WORKFLOW_OPTIONS,
         
-        isNotTooOld = stakeOrUnstakeTx.epochID >= global.SYMBIOTE_META[threadID].RUBICON,
+        isNotTooOld = stakeOrUnstakeTx.epochID >= WORKING_THREADS[threadID].RUBICON,
     
         isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
 
@@ -28,7 +28,7 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || global.SYMBIOTE_META[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
 
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 

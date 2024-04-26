@@ -8,7 +8,7 @@
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 
-import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './verifiers.js'
+import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './txs_verifiers.js'
 
 import {GET_ACCOUNT_ON_SYMBIOTE} from '../utils.js'
 

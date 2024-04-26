@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -48,7 +48,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
 
         let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-        if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
+        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
 
             response.send({err:'Epoch handler on QT is not ready'})
 
@@ -76,9 +76,9 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
  * 
  * ### Info
  * 
- * This route returns the JSON object that you set manually in CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE
+ * This route returns the JSON object that you set manually in CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE
  * Here you can describe your infrastructure - redirects, supported services, plugins installed
- *  Set the CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE with extra data 
+ *  Set the CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE with extra data 
  * 
  * 
  * ### Params
@@ -88,7 +88,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
  * 
  * ### Returns
  * 
- *  + JSON'ed value in CONFIG.SYMBIOTE.MY_KLY_INFRASTRUCTURE
+ *  + JSON'ed value in CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE
  * 
  *  
  * */
@@ -100,7 +100,7 @@ FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
         .header('Access-Control-Allow-Origin','*')
         .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE)
 
-        .send(global.MY_KLY_INFRASTRUCTURE)
+        .send(JSON.stringify(CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE))
 
 
 })
@@ -280,7 +280,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     }
     
         
-    if(BLOCKCHAIN_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+    if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
     
         let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
     
@@ -288,7 +288,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
             response.send({status:'OK'})
     
-            BLOCKCHAIN_METADATA.MEMPOOL.push(filteredEvent)
+            NODE_METADATA.MEMPOOL.push(filteredEvent)
                             
         }else response.send({err:`Can't get filtered value of tx`})
     
@@ -353,7 +353,7 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE}
         
         //Add more advanced logic in future(or use plugins - it's even better)
 
-        let nodes = global.SYMBIOTE_META.PEERS
+        let nodes = NODE_METADATA.PEERS
         
         if(!(nodes.includes(domain) || CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.includes(domain))){
             

@@ -1,6 +1,6 @@
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../utils.js'
 
@@ -47,7 +47,7 @@ FASTIFY_SERVER.get('/aggregated_epoch_finalization_proof/:epoch_index/:shard',as
 
         let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-        if(!global.SYMBIOTE_META.TEMP.has(epochFullID)){
+        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
 
             response.send({err:'AT epoch handler is not ready'})
         
@@ -81,17 +81,17 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
 
         response.send({err:'Epoch handler on QT is not fresh'})
 
         return
     }
 
-    if(!tempObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
+    if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
         response.send({err:'Not ready'})
 
@@ -236,7 +236,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 // Get the local version of SHARDS_LEADERS_HANDLERS and FINALIZATION_STATS
 
-                let leadersHandlerForThisShard = tempObject.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
+                let leadersHandlerForThisShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
 
                 let pubKeyOfCurrentLeaderOnShard, localIndexOfLeader
                 
@@ -261,7 +261,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
-                let epochManagerForLeader = tempObject.FINALIZATION_STATS.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                let epochManagerForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
 
                 // Try to define the first block hash. For this, use the proposition.afpForFirstBlock
@@ -327,7 +327,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                                 if(leadersHandlerForThisShard) leadersHandlerForThisShard.currentLeader = proposition.currentLeader
 
-                                else tempObject.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:proposition.currentLeader})
+                                else currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:proposition.currentLeader})
     
 
                                 if(epochManagerForLeader){
@@ -338,7 +338,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
     
                                     epochManagerForLeader.afp = afp
     
-                                }else tempObject.FINALIZATION_STATS.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
+                                }else currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfCurrentLeaderOnShard,{index,hash,afp})
 
                             
                                 // Generate EPOCH_FINALIZATION_PROOF_SIGNATURE

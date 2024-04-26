@@ -17,19 +17,22 @@ import fs from 'fs'
 
 
 
-// First of all - define the BLOCKCHAIN_METADATA globally available object
+// First of all - define the NODE_METADATA globally available object
 
-export let BLOCKCHAIN_METADATA = {
+export let NODE_METADATA = {
 
     VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
-    PEERS:[], // peers to exchange data with. Just strings with addresses
-
-    EPOCH_METADATA:new Map(), // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
+    PEERS:[] // peers to exchange data with. Just strings with addresses    
 
 }
+
+
+
+
+export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
 
 
 
@@ -82,7 +85,6 @@ export let WORKING_THREADS = {
         nextIndex:0 // so the first block will be with index 0
     
     },
-
 
     APPROVEMENT_THREAD:{}
 
@@ -169,7 +171,7 @@ let RESTORE_METADATA_CACHE=async()=>{
 
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
 
 
@@ -178,10 +180,10 @@ let RESTORE_METADATA_CACHE=async()=>{
         // If this value is related to the current epoch - set to manager, otherwise - take from the VERIFICATION_STATS_PER_POOL as a start point
         // Returned value is {index,hash,(?)afp}
 
-        let {index,hash,afp} = await tempObject.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let {index,hash,afp} = await currentEpochMetadata.DATABASE.get(poolPubKey).catch(()=>null) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         
-        tempObject.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
+        currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
 
         //___________________________________ Get the info about current leader _______________________________________
 
@@ -189,11 +191,11 @@ let RESTORE_METADATA_CACHE=async()=>{
         
         if(poolsRegistry.primePools.includes(poolPubKey)){
 
-            let leadersHandler = await tempObject.DATABASE.get('LEADERS_HANDLER:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.leadersSequence[<primePool>]>}
+            let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.leadersSequence[<primePool>]>}
 
             if(leadersHandler){
 
-                tempObject.SHARDS_LEADERS_HANDLERS.set(poolPubKey,leadersHandler)
+                currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(poolPubKey,leadersHandler)
 
                 // Using pointer - find the appropriate reserve pool
 
@@ -201,7 +203,7 @@ let RESTORE_METADATA_CACHE=async()=>{
 
                 // Key is reserve pool which points to his prime pool
 
-                tempObject.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,poolPubKey)                
+                currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,poolPubKey)                
 
             }
 
@@ -212,13 +214,13 @@ let RESTORE_METADATA_CACHE=async()=>{
 
     // Finally, once we've started the "next epoch" process - restore it
 
-    let itsTimeForTheNextEpoch = await tempObject.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
+    let itsTimeForTheNextEpoch = await currentEpochMetadata.DATABASE.get('TIME_TO_NEW_EPOCH').catch(()=>false)
 
     if(itsTimeForTheNextEpoch) {
 
-        tempObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
+        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
-        tempObject.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
+        currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
 
     }
 
@@ -590,42 +592,42 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     //___________________________Load functionality to verify/filter/transform txs_______________________________
 
 
-    //Importnat and must be the same for symbiote at appropriate chunks of time
-    await import(`./verification_process/verifiers.js`).then(mod=>
+    // Importnat and must be the same for symbiote at appropriate chunks of time
+    await import(`./verification_process/txs_verifiers.js`).then(mod=>
     
-        global.SYMBIOTE_META.VERIFIERS=mod.VERIFIERS
+        global.SYMBIOTE_META.VERIFIERS = mod.VERIFIERS
         
     )
 
     //Might be individual for each node
-    global.SYMBIOTE_META.FILTERS=(await import(`./verification_process/txs_filters.js`)).default;
+    global.SYMBIOTE_META.FILTERS = (await import(`./verification_process/txs_filters.js`)).default;
     
 
-    let gtFromDB = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(()=>null)
+    let storedGenerationThreadFromDB = await BLOCKCHAIN_DATABASES.BLOCKS.get('GT').catch(()=>null)
 
-    if(gtFromDB){
+    if(storedGenerationThreadFromDB){
 
-        WORKING_THREADS.GENERATION_THREAD = gtFromDB
+        WORKING_THREADS.GENERATION_THREAD = storedGenerationThreadFromDB
 
     }
     
     // Load from db or return empty object
 
-    let atFromDB = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>null)
+    let storedApprovementThreadFromDB = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get('AT').catch(()=>null)
 
-    if(atFromDB){
+    if(storedApprovementThreadFromDB){
 
-        global.SYMBIOTE_META.APPROVEMENT_THREAD = atFromDB
+        WORKING_THREADS.APPROVEMENT_THREAD = storedApprovementThreadFromDB
 
     }
 
     //________________Load metadata about symbiote-current hight,collaped height,height for export,etc.___________________
 
-    let vtFromDB = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(()=>null)
+    let storedVerificaionThreadFromDB = await BLOCKCHAIN_DATABASES.STATE.get('VT').catch(()=>null)
 
-    if(vtFromDB){
+    if(storedVerificaionThreadFromDB){
 
-        WORKING_THREADS.VERIFICATION_THREAD = vtFromDB
+        WORKING_THREADS.VERIFICATION_THREAD = storedVerificaionThreadFromDB
 
     }
         
@@ -696,7 +698,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     
     let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
     
-    global.SYMBIOTE_META.TEMP.set(epochFullID,{
+    EPOCH_METADATA_MAPPING.set(epochFullID,{
 
         FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 

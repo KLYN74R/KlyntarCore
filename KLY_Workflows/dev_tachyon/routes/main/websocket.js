@@ -8,7 +8,7 @@ import {
 
 import{LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
 
@@ -99,11 +99,11 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(!tempObject || tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+    if(!currentEpochMetadata || currentEpochMetadata.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
         connection.close()
     
@@ -114,7 +114,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
     let {block,previousBlockAFP} = parsedData
 
-    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !tempObject.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
+    let overviewIsOk = typeof block === 'object' && typeof previousBlockAFP === 'object' && !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+block.creator)
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_BLOCKS_AND_RETURN_FINALIZATION_PROOFS || !overviewIsOk){
@@ -123,10 +123,10 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                    
         return
     
-    }else if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
+    }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+block.creator)){
     
         // Add the sync flag to prevent creation proofs during the process of skip this pool
-        tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
+        currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
         let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
 
@@ -147,19 +147,19 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                 // Check if it still a leader on own shard
 
-                if(tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator)){
+                if(currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)){
 
                     connection.close()
 
-                    tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                    currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
             
                     return
                     
                 }
 
-            } else if(typeof tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
+            } else if(typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
     
-                primePoolPubKey = tempObject.SHARDS_LEADERS_HANDLERS.get(block.creator)
+                primePoolPubKey = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)
     
                 itIsReservePoolWhichIsLeaderNow = true
     
@@ -173,7 +173,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     
             connection.close()
 
-            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+            currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
     
             return
     
@@ -182,7 +182,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
         
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        let finalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let finalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(block.creator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         let proposedBlockHash = Block.genHash(block)
 
@@ -283,7 +283,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                         connection.close()
 
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
 
                         return
 
@@ -302,7 +302,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                         
                         connection.close()
 
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
                 
                         return
                 
@@ -312,7 +312,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     
                     if(!isOK){
 
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
 
                         return
 
@@ -324,7 +324,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                 // Store the metadata for FINALIZATION_STATS
 
-                USE_TEMPORARY_DB('put',tempObject.DATABASE,block.creator,futureMetadataToStore).then(()=>
+                USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,block.creator,futureMetadataToStore).then(()=>
 
                     // Store the block
 
@@ -336,7 +336,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                         BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+previousBlockID,{prevBlockHash,blockID,blockHash,proofs}).then(async()=>{
 
-                            tempObject.FINALIZATION_STATS.set(block.creator,futureMetadataToStore)
+                            currentEpochMetadata.FINALIZATION_STATS.set(block.creator,futureMetadataToStore)
     
 
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
@@ -350,7 +350,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                             let tmbProof = await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
     
     
-                            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                            currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
         
                             connection.sendUTF(JSON.stringify({voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,tmbProof,votedForHash:proposedBlockHash}))
     
@@ -366,7 +366,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                 connection.close()
 
-                tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
+                currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
             }
 
         }        
@@ -409,11 +409,11 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
     // Check if we should accept this block.NOTE-use this option only in case if you want to stop accept blocks or override this process via custom runtime scripts or external services
         
-    if(!tempObject || tempObject.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
+    if(!currentEpochMetadata || currentEpochMetadata.SYNCHRONIZER.has('TIME_TO_NEW_EPOCH')){
 
         connection.close()
     
@@ -433,7 +433,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
                                 
                                 &&
                                 
-                                !tempObject.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+blockCreator)
+                                !currentEpochMetadata.SYNCHRONIZER.has('STOP_PROOFS_GENERATION:'+blockCreator)
 
 
 
@@ -443,10 +443,10 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
                    
         return
     
-    }else if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+blockCreator)){
+    }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+blockCreator)){
     
         // Add the sync flag to prevent creation proofs during the process of skip this pool
-        tempObject.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
+        currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
         let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
 
@@ -456,7 +456,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
         let poolIsReal = itsPrimePool || itsReservePool
 
-        let shardsLeadersData = tempObject.SHARDS_LEADERS_HANDLERS.get(blockCreator)
+        let shardsLeadersData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(blockCreator)
     
         let itIsReservePoolWhichIsLeaderNow = poolIsReal && typeof shardsLeadersData === 'string'
 
@@ -467,7 +467,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
             connection.close()
 
-            tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+            currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
     
             return
     
@@ -476,7 +476,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
         
         // Make sure that we work in a sync mode + verify the signature for the latest block
     
-        let finalizationStatsForThisPool = tempObject.FINALIZATION_STATS.get(blockCreator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+        let finalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(blockCreator) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
         let proposedBlockHash = blockHash
 
@@ -554,7 +554,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
                             
                         connection.close()
     
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
                 
                         return
                 
@@ -564,7 +564,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
     
                     if(!isOK){
     
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
     
                         return
     
@@ -575,17 +575,17 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                 // Store the metadata for FINALIZATION_STATS
 
-                USE_TEMPORARY_DB('put',tempObject.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
+                USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
 
                     // Store the AFP for previous block
 
                     BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDFromAFP,{prevBlockHash,blockID:blockIDFromAFP,blockHash:blockHashFromAFP,proofs}).then(async()=>{
 
-                        tempObject.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
+                        currentEpochMetadata.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
             
                         let finalizationProof = await ED25519_SIGN_DATA(dataToSignToApproveProposedBlock,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)    
     
-                        tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+                        currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         
                         connection.sendUTF(JSON.stringify({type:'tmb',voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,finalizationProof,votedForHash:proposedBlockHash}))
     
@@ -598,7 +598,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                 connection.close()
 
-                tempObject.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
+                currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
             }
 
         }        

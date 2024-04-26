@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -153,9 +153,9 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
         let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-        let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-        if(!tempObject){
+        if(!currentEpochMetadata){
 
             response.send({responseType:'ERROR',data:'Wait for a next epoch'})
 

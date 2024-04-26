@@ -1,6 +1,6 @@
 import {EPOCH_STILL_FRESH,GET_MAJORITY,GET_QUORUM_URLS_AND_PUBKEYS,USE_TEMPORARY_DB,VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -17,10 +17,10 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
     let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
 
-    let temporaryObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
-    if(!temporaryObject){
+    if(!currentEpochMetadata){
 
         setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
 
@@ -35,19 +35,19 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     if(iAmInTheQuorum && !EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
         
         // Stop to generate commitments/finalization proofs
-        temporaryObject.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
+        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
         let canGenerateEpochFinalizationProof = true
 
         
         for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
 
-            let reassignmentData = temporaryObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
+            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
 
             let pubKeyOfLeader = qtEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
 
 
-            if(temporaryObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
+            if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
 
                 canGenerateEpochFinalizationProof = false
 
@@ -59,9 +59,9 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         if(canGenerateEpochFinalizationProof){
 
-            await USE_TEMPORARY_DB('put',temporaryObject.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
+            await USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
 
-                temporaryObject.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
+                currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
 
 
             ).catch(()=>{})
@@ -70,7 +70,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         
 
         // Check the safety
-        if(!temporaryObject.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
+        if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
             setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
 
@@ -89,7 +89,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
         for(let [shardId,arrayOfReservePools] of Object.entries(leadersSequencePerShard)){
 
-            let handlerWithIndexOfCurrentLeaderOnShard = temporaryObject.SHARDS_LEADERS_HANDLERS.get(shardId) || {currentLeader:-1}// {currentLeader:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardId) || {currentLeader:-1}// {currentLeader:<number>}
 
             let pubKeyOfLeader, indexOfLeader
             
@@ -115,7 +115,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             */
 
-            let localVotingDataForLeader = temporaryObject.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+            let localVotingDataForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
             if(localVotingDataForLeader.index === -1){
 
@@ -125,7 +125,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                     let previousShardLeader = arrayOfReservePools[position] || shardId
 
-                    let localVotingData = temporaryObject.FINALIZATION_STATS.get(previousShardLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                    let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(previousShardLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
                     if(localVotingData.index > -1){
 
@@ -135,7 +135,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                         // Also, change the value in pointer to current leader
 
-                        temporaryObject.SHARDS_LEADERS_HANDLERS.set(shardId,{currentLeader:position})
+                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardId,{currentLeader:position})
 
                         break
 
@@ -147,13 +147,13 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
             
             // Structure is Map(shard=>Map(quorumMember=>SIG('EPOCH_DONE'+shard+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)))
-            let agreements = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION')
+            let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
             if(!agreements){
 
                 agreements = new Map()
 
-                temporaryObject.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
+                currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
             
             }
 
@@ -273,7 +273,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     
                     afpForFirstBlock:{},
     
-                    metadataForCheckpoint:temporaryObject.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                    metadataForCheckpoint:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
     
                 }
     
@@ -346,7 +346,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                     for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
 
-                        let agreementsForThisShard = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
+                        let agreementsForThisShard = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
 
                         let response = possibleAgreements[primePoolPubKey]
 
@@ -381,11 +381,11 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                             
                                     // Update the SHARDS_LEADERS_HANDLERS
 
-                                    temporaryObject.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,{currentLeader:response.currentLeader})
+                                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,{currentLeader:response.currentLeader})
                                     
                                     // Update FINALIZATION_STATS
 
-                                    temporaryObject.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
+                                    currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
                             
                                     // Clear the mapping with signatures because it becomes invalid
 
@@ -411,7 +411,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
 
-            let agreementsForEpochManager = temporaryObject.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
+            let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
 
             if(agreementsForEpochManager.size >= majority){
 

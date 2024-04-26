@@ -6,11 +6,11 @@ import {
 
 } from '../utils.js'
 
-import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../blockchain_preparation.js'
+import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
-import {BLAKE3,COLORS,LOG,PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
+import {BLAKE3, COLORS, LOG, PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
 
 import {GET_BLOCK} from '../verification_process/verification.js'
 
@@ -27,7 +27,7 @@ import fs from 'fs'
 
 let DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThread) => {
 
-    //Try to get storage "POOL" of appropriate pool
+    // Try to get storage "POOL" of appropriate pool
 
     let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
 
@@ -37,7 +37,7 @@ let DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQ
     poolStorage.stopEpochID = fullCopyOfQuorumThread.EPOCH.id
 
     
-    //Remove from POOLS array(to prevent be elected to quorum) and metadata
+    // Remove from POOLS array(to prevent be elected to quorum) and metadata
 
     let arrayToDeleteFrom = fullCopyOfQuorumThread.EPOCH.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
 
@@ -266,7 +266,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let oldEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
     
-        let temporaryObject = global.SYMBIOTE_META.TEMP.get(oldEpochFullID)
+        let temporaryObject = EPOCH_METADATA_MAPPING.get(oldEpochFullID)
     
         if(!temporaryObject){
     
@@ -582,11 +582,11 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 // Close & delete the old temporary db
             
-                await global.SYMBIOTE_META.TEMP.get(oldEpochFullID).DATABASE.close()
+                await EPOCH_METADATA_MAPPING.get(oldEpochFullID).DATABASE.close()
         
                 fs.rm(process.env.CHAINDATA_PATH+`/${oldEpochFullID}`,{recursive:true},()=>{})
         
-                global.SYMBIOTE_META.TEMP.delete(oldEpochFullID)
+                EPOCH_METADATA_MAPPING.delete(oldEpochFullID)
 
                 
                 
@@ -618,9 +618,11 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 }
 
                 // Set next temporary object by ID
-                global.SYMBIOTE_META.TEMP.set(nextEpochFullID,nextTemporaryObject)
+
+                EPOCH_METADATA_MAPPING.set(nextEpochFullID,nextTemporaryObject)
 
                 // Delete the cache that we don't need more
+
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_CACHE:${oldEpochFullID}`).catch(()=>{})
 
 

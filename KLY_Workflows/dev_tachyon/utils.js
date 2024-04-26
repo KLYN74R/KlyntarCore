@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, GLOBAL_CACHES, WORKING_THREADS} from './blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, NODE_METADATA, GLOBAL_CACHES, WORKING_THREADS} from './blockchain_preparation.js'
 
 import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
@@ -742,7 +742,7 @@ BLOCKLOG=(msg,hash,block,epochIndex)=>{
 
 
 
-GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...global.SYMBIOTE_META.PEERS],
+GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...NODE_METADATA.PEERS],
 
 
 
@@ -755,7 +755,7 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     for(let pubKey of epochHandler.quorum){
 
-        let poolStorage = BLOCKCHAIN_METADATA.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = NODE_METADATA.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 
@@ -772,10 +772,10 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
 
 
-// BLOCKCHAIN_METADATA.VERSION shows the real software version of appropriate workflow
-//We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure we can continue to work
-//If major version was changed and we still has an old version - we should stop node and update software
-IS_MY_VERSION_OLD = threadID => WORKING_THREADS[threadID].VERSION > BLOCKCHAIN_METADATA.VERSION,
+// NODE_METADATA.VERSION shows the software version of your node
+// We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure we can continue to work
+// If major version was changed and we still has an old version - we should stop node and update software
+IS_MY_VERSION_OLD = threadID => WORKING_THREADS[threadID].VERSION > NODE_METADATA.VERSION,
 
 
 
@@ -836,7 +836,7 @@ DECRYPT_KEYS=async()=>{
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${BLOCKCHAIN_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
+    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${NODE_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
 
 
     

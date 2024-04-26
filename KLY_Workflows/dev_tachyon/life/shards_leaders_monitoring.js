@@ -1,8 +1,9 @@
 import {EPOCH_STILL_FRESH,GET_FROM_APPROVEMENT_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_DB} from '../utils.js'
 
+import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
-import {WORKING_THREADS} from '../blockchain_preparation.js'
 
 
 
@@ -102,9 +103,9 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
 
         setTimeout(SHARDS_LEADERS_MONITORING,3000)
 
@@ -127,7 +128,7 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
 
         // Get the current handler and check the timeframe
 
-        let leaderSequenceHandler = tempObject.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
+        let leaderSequenceHandler = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
 
         let pubKeyOfCurrentShardLeader, indexOfCurrentLeaderInSequence
 
@@ -152,10 +153,10 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
         if(itsNotFinishOfSequence && TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
 
             // Inform websocket server that we shouldn't generate proofs for this leader anymore
-            tempObject.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)
+            currentEpochMetadata.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)
 
             // But anyway - in async env wait until server callback us here that proofs creation is stopped
-            if(!tempObject.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfCurrentShardLeader)){
+            if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfCurrentShardLeader)){
 
                 // Now, update the LEADERS_HANDLER
 
@@ -165,20 +166,20 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
                 
                 }
 
-                await USE_TEMPORARY_DB('put',tempObject.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
+                await USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
 
                     // Set new reserve pool and delete the old one
 
                     // Delete the pointer to prime pool for old leader
-                    tempObject.SHARDS_LEADERS_HANDLERS.delete(pubKeyOfCurrentShardLeader)
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.delete(pubKeyOfCurrentShardLeader)
 
                     // Set new value of handler
-                    tempObject.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,newLeadersHandler)
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,newLeadersHandler)
 
                     // Add the pointer: NewShardLeaderPubKey => ShardID 
-                    tempObject.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[primePoolPubKey][newLeadersHandler.currentLeader],primePoolPubKey)
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[primePoolPubKey][newLeadersHandler.currentLeader],primePoolPubKey)
 
-                    tempObject.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader)
+                    currentEpochMetadata.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader)
 
                 }).catch(()=>false)
 

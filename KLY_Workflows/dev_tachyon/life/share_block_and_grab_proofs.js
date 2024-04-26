@@ -1,6 +1,6 @@
 import {GET_FROM_APPROVEMENT_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
 
@@ -118,11 +118,11 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!tempObject) return
+    if(!currentEpochMetadata) return
 
-    let {FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = tempObject
+    let {FINALIZATION_PROOFS,DATABASE,TEMP_CACHE} = currentEpochMetadata
 
 
     // Get the block index & hash that we're currently hunting for
@@ -363,11 +363,11 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     
     let epochFullID = qtEpochHandler.hash + "#" + qtEpochHandler.id
 
-    let tempObject = global.SYMBIOTE_META.TEMP.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
 
         setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,2000)
 
@@ -377,7 +377,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
 
     // If we don't generate the blocks - skip this function
-    if(!tempObject.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
+    if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
 
         setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,2000)
 
@@ -385,7 +385,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     }
 
-    let {DATABASE,TEMP_CACHE} = tempObject
+    let {DATABASE,TEMP_CACHE} = currentEpochMetadata
 
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
@@ -422,7 +422,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     }
 
 
-    await OPEN_CONNECTIONS_WITH_QUORUM(qtEpochHandler,tempObject)
+    await OPEN_CONNECTIONS_WITH_QUORUM(qtEpochHandler,currentEpochMetadata)
 
     await RUN_FINALIZATION_PROOFS_GRABBING(qtEpochHandler,proofsGrabber).catch(()=>{})
 
