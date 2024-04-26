@@ -8,7 +8,7 @@ import {
 
 } from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {ED25519_SIGN_DATA,ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
@@ -26,7 +26,7 @@ let
 
 //TODO:Add more advanced logic(e.g. number of txs,ratings,etc.)
 
-GET_TRANSACTIONS = () => global.SYMBIOTE_META.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
+GET_TRANSACTIONS = () => BLOCKCHAIN_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK),
 
 
 
@@ -515,7 +515,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
     
     */
 
-    let numberOfBlocksToGenerate = Math.ceil(global.SYMBIOTE_META.MEMPOOL.length/WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+    let numberOfBlocksToGenerate = Math.ceil(BLOCKCHAIN_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
 
 

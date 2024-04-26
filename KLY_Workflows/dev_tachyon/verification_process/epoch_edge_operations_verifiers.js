@@ -1,8 +1,8 @@
-import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_QUORUM_THREAD_STATE} from '../utils.js'
+import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE, GET_FROM_APPROVEMENT_THREAD_STATE} from '../utils.js'
 
 import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './verifiers.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -100,7 +100,7 @@ export default {
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
 
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'QUORUM_THREAD',payload)){
+            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'APPROVEMENT_THREAD',payload)){
 
                 let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
 
@@ -132,15 +132,15 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            // Basic ops on QUORUM_THREAD
+            // Basic ops on APPROVEMENT_THREAD
 
-            let slashHelper = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
+            let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
             if(slashHelper[pool]) return
 
 
 
-            let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(pool+'(POOL)_STORAGE_POOL')
 
             /* 
             
@@ -177,9 +177,9 @@ export default {
 
                 }
 
-                global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
 
-                poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
+                poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
             
             }
             
@@ -192,7 +192,7 @@ export default {
             
 
             //Put to cache that this tx was spent
-            global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(txid,true)
+            GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
 
             
             let workflowConfigs = fullCopyOfQuorumThread.WORKFLOW_OPTIONS
@@ -323,6 +323,7 @@ export default {
                 if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
                     // Do it only if pool is not in current VERIFICATION_STATS_PER_POOL
+
                     if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]){
 
                         WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]={   
@@ -337,10 +338,11 @@ export default {
 
                         // Add the pointer where pool is created to state
 
-                        global.SYMBIOTE_META.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
+                        GLOBAL_CACHES.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
 
                         // Add the SID tracker
-                        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool]=0                                
+
+                        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool] = 0                                
         
                     }
                     
@@ -423,7 +425,7 @@ export default {
 
             if(poolStorage){
 
-                let slashObject = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
+                let slashObject = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
                 slashObject[payload.pool] = {isReserve:poolStorage.isReserve}
     
@@ -516,10 +518,10 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let slashHelper = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
+            let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
-            if(!slashHelper[pool]) global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(txid,true)
+            if(!slashHelper[pool]) GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
 
         }
         else{
@@ -578,7 +580,7 @@ export default {
 
         /*
         
-        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload=<ID of new epoch which will be rubicon>
+        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload=<ID of new epoch which will be rubicon>
         
         If received from route - then payload has the following structure
 
@@ -639,7 +641,7 @@ export default {
 
         /*
         
-        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload has the following structure:
+        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
 
         {
             fieldName
@@ -687,7 +689,7 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let updatedOptions = await GET_FROM_QUORUM_THREAD_STATE('WORKFLOW_OPTIONS')
+            let updatedOptions = await GET_FROM_APPROVEMENT_THREAD_STATE('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 
@@ -709,7 +711,7 @@ export default {
 
         /*
         
-        If used on QUORUM_THREAD | VERIFICATION_THREAD - then payload has the following structure:
+        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
 
         {
             major:<typeof Number>

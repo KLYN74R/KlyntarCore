@@ -22,7 +22,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
         [+] Use VT.TEMP_REASSIGNMENTS
 
 
-        Based on current epoch in QUORUM_THREAD - build the temporary reassignments
+        Based on current epoch in APPROVEMENT_THREAD - build the temporary reassignments
     
     */
 
@@ -117,7 +117,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
         -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-        [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the QUORUM_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
+        [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the APPROVEMENT_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
 
         [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
 

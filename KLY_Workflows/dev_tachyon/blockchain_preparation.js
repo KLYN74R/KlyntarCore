@@ -25,15 +25,23 @@ export let BLOCKCHAIN_METADATA = {
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
+    PEERS:[], // peers to exchange data with. Just strings with addresses
+
+    EPOCH_METADATA:new Map(), // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
+
+}
+
+
+
+
+export let GLOBAL_CACHES = {
+
     STATE_CACHE:new Map(), // cache to hold accounts of EOAs/contracts. Mapping(ID => ACCOUNT_STATE). Used by VERIFICATION_THREAD
 
     APPROVEMENT_THREAD_CACHE:new Map(), // ... the same, but used by APPROVEMENT_THREAD
 
     STUFF_CACHE:new Map(), // cache for different stuff during node work
 
-    PEERS:[], // peers to exchange data with. Just strings with addresses
-
-    EPOCH_METADATA:new Map(), // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
 
 }
 
@@ -455,14 +463,14 @@ export let SET_GENESIS_TO_STATE=async()=>{
     However, if workflow_version has differences in minor or patch values - you can continue to work
 
 
-    KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and QUORUM_THREAD) because only this matter
+    KLYNTAR threads holds only MAJOR version(VERIFICATION_THREAD and APPROVEMENT_THREAD) because only this matter
 
     */
 
     //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE - update it !
     WORKING_THREADS.VERIFICATION_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
-    //We update this during the work on QUORUM_THREAD. But initially, QUORUM_THREAD has the same version as VT
+    //We update this during the work on APPROVEMENT_THREAD. But initially, APPROVEMENT_THREAD has the same version as VT
     WORKING_THREADS.APPROVEMENT_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
 
     //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
@@ -540,7 +548,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
     vtEpochHandler.quorum = GET_QUORUM(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
-    //...However, quorum for QUORUM_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
+    //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
     qtEpochHandler.quorum = GET_QUORUM(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
@@ -645,9 +653,9 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
 
 
-    if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
+    if(IS_MY_VERSION_OLD('APPROVEMENT_THREAD')){
 
-        LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
+        LOG(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
 
         console.log('\n')
         console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())

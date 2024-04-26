@@ -1,3 +1,5 @@
+import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {GET_ACCOUNT_ON_SYMBIOTE, GET_FROM_STATE} from '../utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
@@ -5,8 +7,6 @@ import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
 import {BLAKE3, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
-
-import {WORKING_THREADS} from '../blockchain_preparation.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -173,7 +173,7 @@ export let VERIFIERS = {
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
     
-                global.SYMBIOTE_META.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
+                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
             
             }
             
@@ -414,7 +414,15 @@ export let VERIFIERS = {
 
             rewardBox.fees += totalSpentByTxInKLY
 
-            let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(txWithPayload.payload,evmResult,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+            let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
+                
+                txWithPayload.payload,
+            
+                evmResult,
+            
+                GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP')
+            
+            )
 
             if(possibleReceipt){
 

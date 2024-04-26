@@ -1,12 +1,12 @@
 import {
     
-    EPOCH_STILL_FRESH,GET_FIRST_BLOCK_ON_EPOCH,GET_FROM_QUORUM_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
+    EPOCH_STILL_FRESH,GET_FIRST_BLOCK_ON_EPOCH,GET_FROM_APPROVEMENT_THREAD_STATE,GET_MAJORITY,GET_QUORUM,GET_QUORUM_URLS_AND_PUBKEYS,
     
     IS_MY_VERSION_OLD, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF
 
 } from '../utils.js'
 
-import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {GRACEFUL_STOP, SET_LEADERS_SEQUENCE_FOR_SHARDS, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
@@ -29,7 +29,7 @@ let DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQ
 
     //Try to get storage "POOL" of appropriate pool
 
-    let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
+    let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
 
 
     poolStorage.lackOfTotalPower = true
@@ -58,10 +58,10 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
 
     let workflowOptionsTemplate = {...fullCopyOfQuorumThread.WORKFLOW_OPTIONS}
     
-    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
     
     // Structure is <poolID> => true if pool should be deleted
-    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set('SLASH_OBJECT',{})
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('SLASH_OBJECT',{})
     
 
     // But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
@@ -100,7 +100,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
 
     for(let poolPubKey of allThePools){
 
-        let promise = GET_FROM_QUORUM_THREAD_STATE(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+        let promise = GET_FROM_APPROVEMENT_THREAD_STATE(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
             if(poolStorage.totalPower < fullCopyOfQuorumThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
 
@@ -129,7 +129,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
     //________________________________Remove rogue pools_________________________________
 
     
-    let slashObject = await GET_FROM_QUORUM_THREAD_STATE('SLASH_OBJECT')
+    let slashObject = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
     
     let slashObjectKeys = Object.keys(slashObject)
         
@@ -149,7 +149,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
         arrayToDeleteFrom.splice(indexToDelete,1)
     
         // Remove from cache
-        global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
+        GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
 
     }
 
@@ -157,14 +157,14 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
     // Update the WORKFLOW_OPTIONS
     fullCopyOfQuorumThread.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
-    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
 
-    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.delete('SLASH_OBJECT')
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('SLASH_OBJECT')
 
 
     //After all ops - commit state and make changes to workflow
 
-    global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
 
         atomicBatch.put(recordID,value)
 
@@ -567,9 +567,9 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 //_______________________Check the version required for the next checkpoint________________________
 
 
-                if(IS_MY_VERSION_OLD('QUORUM_THREAD')){
+                if(IS_MY_VERSION_OLD('APPROVEMENT_THREAD')){
 
-                    LOG(`New version detected on QUORUM_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
+                    LOG(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
 
                     console.log('\n')
                     console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())

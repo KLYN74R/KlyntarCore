@@ -1,4 +1,4 @@
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -280,7 +280,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     }
     
         
-    if(global.SYMBIOTE_META.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+    if(BLOCKCHAIN_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
     
         let filteredEvent = await global.SYMBIOTE_META.FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
     
@@ -288,7 +288,7 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
             response.send({status:'OK'})
     
-            global.SYMBIOTE_META.MEMPOOL.push(filteredEvent)
+            BLOCKCHAIN_METADATA.MEMPOOL.push(filteredEvent)
                             
         }else response.send({err:`Can't get filtered value of tx`})
     

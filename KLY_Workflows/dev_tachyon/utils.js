@@ -1,6 +1,6 @@
-import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_Utils/utils.js'
+import {BLOCKCHAIN_DATABASES, BLOCKCHAIN_METADATA, GLOBAL_CACHES, WORKING_THREADS} from './blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from './blockchain_preparation.js'
+import {LOG, COLORS, BLAKE3, GET_UTC_TIMESTAMP, ED25519_VERIFY} from '../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
@@ -35,13 +35,13 @@ GET_ACCOUNT_ON_SYMBIOTE = async identificationHash =>{
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash) || BLOCKCHAIN_DATABASES.STATE.get(identificationHash)
+    return GLOBAL_CACHES.STATE_CACHE.get(identificationHash) || BLOCKCHAIN_DATABASES.STATE.get(identificationHash)
     
     .then(account=>{
  
-        if(account.type==='account') global.SYMBIOTE_META.STATE_CACHE.set(identificationHash,account)
+        if(account.type==='account') GLOBAL_CACHES.STATE_CACHE.set(identificationHash,account)
 
-        return global.SYMBIOTE_META.STATE_CACHE.get(identificationHash)
+        return GLOBAL_CACHES.STATE_CACHE.get(identificationHash)
  
     
     }).catch(()=>false)
@@ -330,7 +330,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
 
     let pivotShardID = `${epochHandler.id}:${shardID}`
 
-    let pivotPoolData = global.SYMBIOTE_META.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
+    let pivotPoolData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID) // {position,pivotPubKey,firstBlockByPivot,firstBlockHash}
 
     if(!pivotPoolData){
 
@@ -365,7 +365,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
 
                 }
 
-                global.SYMBIOTE_META.STUFF_CACHE.set(pivotShardID,pivotTemplate)
+                GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,pivotTemplate)
 
                 break
 
@@ -376,7 +376,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
     }
 
     
-    pivotPoolData = global.SYMBIOTE_META.STUFF_CACHE.get(pivotShardID)
+    pivotPoolData = GLOBAL_CACHES.STUFF_CACHE.get(pivotShardID)
 
 
     if(pivotPoolData){
@@ -418,7 +418,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
 
                     if(leaderRotationProofForPreviousPool.skipIndex === -1){
 
-                        global.SYMBIOTE_META.STUFF_CACHE.delete(pivotShardID)
+                        GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
 
                         return {firstBlockCreator:pivotPoolData.pivotPubKey,firstBlockHash:pivotPoolData.firstBlockHash}
 
@@ -426,7 +426,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
 
                         // Clear the cache and return the result that the first block creator 
 
-                        global.SYMBIOTE_META.STUFF_CACHE.delete(pivotShardID)
+                        GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
                         
                         return {firstBlockCreator:shardID,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
 
@@ -453,7 +453,7 @@ GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
     
                         }
 
-                        global.SYMBIOTE_META.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
+                        GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
 
                         return
 
@@ -487,13 +487,13 @@ GET_FROM_STATE = async recordID => {
 
     //We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
-    return global.SYMBIOTE_META.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
+    return GLOBAL_CACHES.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
     
     .then(something=>{
  
-        global.SYMBIOTE_META.STATE_CACHE.set(recordID,something)
+        GLOBAL_CACHES.STATE_CACHE.set(recordID,something)
 
-        return global.SYMBIOTE_META.STATE_CACHE.get(recordID)
+        return GLOBAL_CACHES.STATE_CACHE.get(recordID)
  
     
     }).catch(()=>false)
@@ -503,15 +503,15 @@ GET_FROM_STATE = async recordID => {
 
 
 
-GET_FROM_QUORUM_THREAD_STATE = async recordID => {
+GET_FROM_APPROVEMENT_THREAD_STATE = async recordID => {
 
-    return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(recordID)
+    return GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(recordID)
     
     .then(something=>{
  
-        global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.set(recordID,something)
+        GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(recordID,something)
 
-        return global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(recordID)
+        return GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(recordID)
  
     
     }).catch(()=>false)
@@ -755,7 +755,7 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     for(let pubKey of epochHandler.quorum){
 
-        let poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = BLOCKCHAIN_METADATA.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 
@@ -772,10 +772,10 @@ GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
 
 
-//global.SYMBIOTE_META.VERSION shows the real software version of appropriate workflow
-//We use this function on VERIFICATION_THREAD and QUORUM_THREAD to make sure we can continue to work
+// BLOCKCHAIN_METADATA.VERSION shows the real software version of appropriate workflow
+//We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure we can continue to work
 //If major version was changed and we still has an old version - we should stop node and update software
-IS_MY_VERSION_OLD = threadID => global.SYMBIOTE_META[threadID].VERSION > global.SYMBIOTE_META.VERSION,
+IS_MY_VERSION_OLD = threadID => WORKING_THREADS[threadID].VERSION > BLOCKCHAIN_METADATA.VERSION,
 
 
 
@@ -836,7 +836,7 @@ DECRYPT_KEYS=async()=>{
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${global.SYMBIOTE_META.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
+    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${BLOCKCHAIN_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
 
 
     

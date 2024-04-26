@@ -1,6 +1,6 @@
-import {GET_FROM_QUORUM_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
+import {GET_FROM_APPROVEMENT_THREAD_STATE, GET_MAJORITY, GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, USE_TEMPORARY_DB} from '../utils.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
 
@@ -28,8 +28,8 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
         // Check if we already have an open connection stored in cache
 
         if(!TEMP_CACHE.has('WS:'+pubKey)){
-
-            let poolStorage = global.SYMBIOTE_META.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_QUORUM_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            
+            let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(poolStorage){
 

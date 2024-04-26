@@ -6,10 +6,9 @@ import {
 
 } from '../utils.js'
 
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
-
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP} from '../blockchain_preparation.js'
 
 import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
 
@@ -651,20 +650,20 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         let workflowOptionsTemplate = {...WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
 
         // We add this copy to cache to make changes and update the WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
-
-        global.SYMBIOTE_META.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+        
+        GLOBAL_CACHES.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
 
 
         // Create the array of delayed unstaking transactions
         // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
         // X = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
 
-        global.SYMBIOTE_META.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
+        GLOBAL_CACHES.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
     
 
         // Create the object to perform slashing. Structure <pool> => <{delayedIds,pool}>
 
-        global.SYMBIOTE_META.STATE_CACHE.set('SLASH_OBJECT',{})
+        GLOBAL_CACHES.STATE_CACHE.set('SLASH_OBJECT',{})
 
 
         //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
@@ -697,7 +696,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         }
 
-        // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in global.SYMBIOTE_META.STATE_CACHE['SLASH_OBJECT']
+        // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in GLOBAL_CACHES.STATE_CACHE['SLASH_OBJECT']
 
 
         //________________________________ NOW RUN THE REST OF EPOCH EDGE OPERATIONS ______________________________________
@@ -797,9 +796,9 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
             delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolIdentifier]
 
             // Delete from cache
-            global.SYMBIOTE_META.STATE_CACHE.delete(poolStorageHashID)
+            GLOBAL_CACHES.STATE_CACHE.delete(poolStorageHashID)
 
-            global.SYMBIOTE_META.STATE_CACHE.delete(poolMetadataHashID)
+            GLOBAL_CACHES.STATE_CACHE.delete(poolMetadataHashID)
 
 
             let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
@@ -908,22 +907,22 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             delayedTableOfIds.push(currentEpochIndex)
 
-            global.SYMBIOTE_META.STATE_CACHE.set('DEL_OPER_'+currentEpochIndex,currentArrayOfDelayedOperations)
+            GLOBAL_CACHES.STATE_CACHE.set('DEL_OPER_'+currentEpochIndex,currentArrayOfDelayedOperations)
 
         }
 
 
         // Set the DELAYED_TABLE_OF_IDS to DB
 
-        global.SYMBIOTE_META.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
+        GLOBAL_CACHES.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
 
     
     
         // Delete the temporary from cache
     
-        global.SYMBIOTE_META.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
+        GLOBAL_CACHES.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
     
-        global.SYMBIOTE_META.STATE_CACHE.delete('SLASH_OBJECT')
+        GLOBAL_CACHES.STATE_CACHE.delete('SLASH_OBJECT')
 
 
         //_______________________Commit changes after operations here________________________
@@ -931,7 +930,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         // Update the WORKFLOW_OPTIONS
         WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
 
-        global.SYMBIOTE_META.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+        GLOBAL_CACHES.STATE_CACHE.delete('WORKFLOW_OPTIONS')
 
     
         // Update the quorum for next epoch
@@ -976,13 +975,13 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             // Close connection in case we have
             
-            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKey)
+            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey)
 
             if(tunnelHandler) tunnelHandler.connection.close()
 
         }
 
-        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
+        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
 
         // Finally - delete the AEFP reassignment metadata
         delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
@@ -990,7 +989,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
         // Delete the useless temporary reassignments from previous epoch
         delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
 
-        global.SYMBIOTE_META.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
+        GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
         LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,COLORS.GREEN)
@@ -1006,7 +1005,7 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
 
         // Commit the changes of state using atomic batch
-        global.SYMBIOTE_META.STATE_CACHE.forEach(
+        GLOBAL_CACHES.STATE_CACHE.forEach(
             
             (value,recordID) => atomicBatch.put(recordID,value)
             
@@ -1206,7 +1205,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
         // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time. 
 
-        // global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
+        // GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
 
         await new Promise(resolve=>{
 
@@ -1227,11 +1226,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                     if(message.type === 'utf8'){
 
-                        if(global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
+                        if(GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
 
-                        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
+                        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
                         
-                        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                        let handler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
                         let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
 
@@ -1240,7 +1239,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                         if(handler && typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
 
-                            let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                            let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
 
                             if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index){
 
@@ -1258,7 +1257,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                                         
                                         handler.hasUntilHeight = lastBlockThatWeGet.index
                                         
-                                        global.SYMBIOTE_META.STUFF_CACHE.delete('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                                        GLOBAL_CACHES.STUFF_CACHE.delete('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
 
                                     }
 
@@ -1354,7 +1353,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                             
                         }
 
-                        global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
+                        GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
                     
                     }        
 
@@ -1364,11 +1363,11 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                 
                 let stopHandler = setInterval(()=>{
 
-                    if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
+                    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
 
-                        let handler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                        let handler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-                        let lastBlockInfo = global.SYMBIOTE_META.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                        let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
 
                         if(handler){
     
@@ -1398,7 +1397,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                 connection.on('close',()=>{
 
-                    global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+                    GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
 
                     clearInterval(stopHandler)
 
@@ -1406,7 +1405,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                       
                 connection.on('error',()=>{
 
-                    global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+                    GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
 
                     clearInterval(stopHandler)
 
@@ -1414,7 +1413,7 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
                 let hasUntilHeight = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKeyToOpenConnectionWith].index
 
-                global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
+                GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
 
             })
 
@@ -1431,36 +1430,36 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
 
 CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
 
-    if(!global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !global.SYMBIOTE_META.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
+    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
 
         await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
 
-        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
         setTimeout(()=>{
 
-            global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
 
         },5000)
 
         
-    }else if(global.SYMBIOTE_META.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
+    }else if(GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
 
         // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
 
-        let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
         tunnelHandler.connection.close()
 
-        global.SYMBIOTE_META.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
+        GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
 
         await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
         
-        global.SYMBIOTE_META.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
 
         setTimeout(()=>{
 
-            global.SYMBIOTE_META.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
 
         },5000)
 
@@ -1473,7 +1472,7 @@ CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
 
 START_VERIFICATION_THREAD=async()=>{
 
-    let shardsIdentifiers = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
+    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
 
     if(!shardsIdentifiers){
 
@@ -1483,7 +1482,7 @@ START_VERIFICATION_THREAD=async()=>{
                 
         )
 
-        global.SYMBIOTE_META.STATE_CACHE.set('PRIME_POOLS',primePools)
+        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',primePools)
 
         shardsIdentifiers = primePools
 
@@ -1536,14 +1535,14 @@ START_VERIFICATION_THREAD=async()=>{
         */
 
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) global.SYMBIOTE_META.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
+        if(!GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
 
-        if(!global.SYMBIOTE_META.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) global.SYMBIOTE_META.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
+        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
 
 
-        let shardsReadyToNewEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
+        let shardsReadyToNewEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
         
-        let handlerWithIndexToVerify = global.SYMBIOTE_META.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
+        let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
         let metadataForShardFromAefp = WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
@@ -1585,11 +1584,11 @@ START_VERIFICATION_THREAD=async()=>{
             await CHECK_CONNECTION_WITH_POOL(poolPubKey,vtEpochHandler)
 
 
-            let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
             if(tunnelHandler){
 
-                global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForShardFromAefp[poolPubKey])
+                GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForShardFromAefp[poolPubKey])
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
@@ -1689,7 +1688,7 @@ START_VERIFICATION_THREAD=async()=>{
 
         // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
 
-        let tunnelHandler = global.SYMBIOTE_META.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
 
         if(tunnelHandler){
@@ -1699,7 +1698,7 @@ START_VERIFICATION_THREAD=async()=>{
             let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
 
             // In this case we can grab the final block
-            if(metadataWherePoolWasReassigned) global.SYMBIOTE_META.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,metadataWherePoolWasReassigned)
+            if(metadataWherePoolWasReassigned) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,metadataWherePoolWasReassigned)
 
             // Start the cycle to process all the blocks
 
@@ -1738,9 +1737,9 @@ START_VERIFICATION_THREAD=async()=>{
     }
 
 
-    if(global.SYMBIOTE_META.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
+    if(GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
 
-        let mapOfShardsReadyToNextEpoch = global.SYMBIOTE_META.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mappping(shardID=>boolean)
+        let mapOfShardsReadyToNextEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mappping(shardID=>boolean)
 
         // We move to the next epoch (N+1) only in case we finish the verification on all the shards in this epoch (N)
         if(mapOfShardsReadyToNextEpoch.size === shardsIdentifiers.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
@@ -1768,7 +1767,7 @@ GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD=async(shardContext,publicKey)=>{
 
     // Add to cache to write to permanent db after block verification
 
-    global.SYMBIOTE_META.STATE_CACHE.set(shardContext+':'+publicKey,emptyTemplate)
+    GLOBAL_CACHES.STATE_CACHE.set(shardContext+':'+publicKey,emptyTemplate)
 
     return emptyTemplate
 
@@ -1913,7 +1912,7 @@ verifyBlock=async(block,shardContext)=>{
         let currentBlockID = currentEpochIndex+':'+block.creator+':'+block.index
 
 
-        global.SYMBIOTE_META.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
+        GLOBAL_CACHES.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
 
         //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
@@ -1936,7 +1935,7 @@ verifyBlock=async(block,shardContext)=>{
             // Push accounts for fees of shards prime pools
 
 
-            let primePools = global.SYMBIOTE_META.STATE_CACHE.get('PRIME_POOLS')
+            let primePools = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
 
             let accountsToAddToCache=[]
 
@@ -2002,7 +2001,7 @@ verifyBlock=async(block,shardContext)=>{
             //________________________________________________COMMIT STATE__________________________________________________    
 
 
-            global.SYMBIOTE_META.STATE_CACHE.forEach((account,addr)=>
+            GLOBAL_CACHES.STATE_CACHE.forEach((account,addr)=>
 
                 atomicBatch.put(addr,account)
 
@@ -2036,7 +2035,7 @@ verifyBlock=async(block,shardContext)=>{
 
 
         
-        if(global.SYMBIOTE_META.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) global.SYMBIOTE_META.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
+        if(GLOBAL_CACHES.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
 
 
         /*
@@ -2116,7 +2115,7 @@ verifyBlock=async(block,shardContext)=>{
 
         atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
 
-        atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,global.SYMBIOTE_META.STATE_CACHE.get('EVM_LOGS_MAP'))
+        atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
         atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
         

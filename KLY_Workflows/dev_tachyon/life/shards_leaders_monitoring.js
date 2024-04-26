@@ -1,4 +1,4 @@
-import {EPOCH_STILL_FRESH,GET_FROM_QUORUM_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_DB} from '../utils.js'
+import {EPOCH_STILL_FRESH,GET_FROM_APPROVEMENT_THREAD_STATE,HEAP_SORT,USE_TEMPORARY_DB} from '../utils.js'
 
 import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
 
@@ -32,7 +32,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 
         // Otherwise - it's reserve pool
         
-        let poolStorage = await GET_FROM_QUORUM_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+        let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
     
         if(poolStorage){
 
