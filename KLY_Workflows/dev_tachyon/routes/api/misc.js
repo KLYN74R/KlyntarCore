@@ -387,7 +387,7 @@ GET /epoch_info - {vtEpochHandler,gtEpochHandler}
 
 GET /current_shard_leader/:SHARD - returns info about current shard leader - returns data from tempData.SHARD_LEADERS_HANDLERS.get(SHARD)
 
-GET /finalization_stats - returns the data from local FINALIZATION_STATS object (tempObject.FINALIZATION_STATS.get(poolPubKey))
+GET /finalization_stats - returns the data from local FINALIZATION_STATS object (currentEpochMetadata.FINALIZATION_STATS.get(poolPubKey))
 
 GET /eeo_mempool - tempData.EPOCH_EDGE_OPERATIONS_MEMPOOL
 

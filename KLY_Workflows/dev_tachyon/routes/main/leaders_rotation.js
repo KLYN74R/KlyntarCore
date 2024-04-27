@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -141,9 +141,9 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
 
-    let tempObject = EPOCH_METADATA_MAPPING.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    if(!tempObject){
+    if(!currentEpochMetadata){
 
         response.send({err:'Epoch handler on QT is not ready'})
 
@@ -160,7 +160,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
     
     overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
 
-    overviewIsOk &&= tempObject.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
+    overviewIsOk &&= currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
 
 
     if(overviewIsOk){
@@ -169,7 +169,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
         
         let {index,hash,afp} = requestForLeaderRotationProof.skipData
 
-        let localFinalizationStats = tempObject.FINALIZATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
+        let localFinalizationStats = currentEpochMetadata.FINALIZATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
 
 
 

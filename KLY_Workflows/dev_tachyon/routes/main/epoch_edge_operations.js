@@ -72,7 +72,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
     }
 
     
-    let tempObject = EPOCH_METADATA_MAPPING.get(epochFullID)
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
 
     if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.EPOCH_EDGE_OPERATIONS){
@@ -120,7 +120,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
 
         // Add to mempool
         
-        tempObject.EPOCH_EDGE_OPERATIONS_MEMPOOL.push(epochEdgeOperationWithAgreementProofs.epochEdgeOperation)
+        currentEpochMetadata.EPOCH_EDGE_OPERATIONS_MEMPOOL.push(epochEdgeOperationWithAgreementProofs.epochEdgeOperation)
 
         response.send({status:`OK`})
         

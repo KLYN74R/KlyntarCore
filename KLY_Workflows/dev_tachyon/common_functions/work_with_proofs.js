@@ -1,8 +1,8 @@
+import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from './quorum_related.js'
+
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
-
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from './quorum_related.js'
 
 import Block from '../structures/block.js'
 

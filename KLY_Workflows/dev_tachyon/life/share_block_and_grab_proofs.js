@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, GET_QUORUM_MAJORITY} from '../common_functions/quorum_related.js'
+
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {GET_FROM_APPROVEMENT_THREAD_STATE, USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
 
@@ -15,11 +15,11 @@ import WS from 'websocket'
 
 
 
-let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,tempObject) => {
+let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => {
 
     // Now we can open required WebSocket connections with quorums majority
 
-    let {FINALIZATION_PROOFS,TEMP_CACHE} = tempObject
+    let {FINALIZATION_PROOFS,TEMP_CACHE} = currentEpochMetadata
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -270,7 +270,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
     if(finalizationProofsMapping.size >= majority){
 
         // In this case , aggregate FINALIZATION_PROOFs to get the AGGREGATED_FINALIZATION_PROOF and share over the network
-        // Also, increase the counter of tempObject.TEMP_CACHE.get('PROOFS_GRABBER') to move to the next block and udpate the hash
+        // Also, increase the counter of currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER') to move to the next block and udpate the hash
 
         /*
         

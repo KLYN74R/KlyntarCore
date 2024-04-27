@@ -162,7 +162,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
 
         1) We need to iterate over propositions(per shard)
-        2) Compare <currentAuth> with our local version of current leader on shard(take it from tempObj.SHARDS_LEADERS_HANDLERS)
+        2) Compare <currentAuth> with our local version of current leader on shard(take it from currentEpochMetadata.SHARDS_LEADERS_HANDLERS)
         
             [If proposed.currentAuth >= local.currentAuth]:
 
@@ -170,11 +170,11 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                 
                 2) If proposed height >= local version - generate and return signature ED25519_SIG('EPOCH_DONE'+shard+lastAuth+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)
 
-                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from tempObject.FINALIZATION_STATS)
+                3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from currentEpochMetadata.FINALIZATION_STATS)
 
-            [Else if proposed.currentAuth < local.currentAuth AND tempObj.FINALIZATION_STATS.has(local.currentAuth)]:
+            [Else if proposed.currentAuth < local.currentAuth AND currentEpochMetadata.FINALIZATION_STATS.has(local.currentAuth)]:
 
-                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from tempObject.FINALIZATION_STATS), index and hash
+                1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from currentEpochMetadata.FINALIZATION_STATS), index and hash
 
 
 
