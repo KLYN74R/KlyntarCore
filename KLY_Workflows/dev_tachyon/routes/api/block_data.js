@@ -2,7 +2,7 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
 
-import Block from '../../essences/block.js'
+import Block from '../../structures/block.js'
 
 
 

@@ -1,7 +1,8 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
-import { TXS_FILTERS } from '../../verification_process/txs_filters.js'
+
+import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
 
 
 

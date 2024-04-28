@@ -9,6 +9,10 @@ import Block from '../structures/block.js'
 
 
 
+
+
+
+
 export let VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,epochFullID) => {
 
     let overviewIsOK =
@@ -198,8 +202,6 @@ export let GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (block
     }else return localVersionOfAfp
 
 }
-
-
 
 
 

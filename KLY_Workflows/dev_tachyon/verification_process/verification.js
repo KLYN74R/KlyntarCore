@@ -133,19 +133,6 @@ GET_BLOCK = async (epochIndex,blockCreator,index) => {
 
 
 
-
-WAIT_SOME_TIME = async() =>
-
-    new Promise(resolve=>
-
-        setTimeout(()=>resolve(),CONFIGURATION.NODE_LEVEL.WAIT_IF_CANT_FIND_AEFP)
-
-    )
-,
-
-
-
-
 DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
 
     //Try to get storage "POOL" of appropriate pool
@@ -1462,6 +1449,50 @@ CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
         },5000)
 
     }
+
+},
+
+
+
+
+GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
+
+
+    /*
+    
+    
+    
+    
+    
+    */
+
+    let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
+
+
+    for(let transaction of txsArray){
+
+        if(transaction.touched){
+
+            for(let touchedAccount of transaction.touched){
+
+                if(numberOfAccountTouchesPerAccount.has(touchedAccount)){
+    
+                    let number = numberOfAccountTouchesPerAccount.get(touchedAccount)
+    
+                    numberOfAccountTouchesPerAccount.set(touchedAccount,number+1)
+    
+                } else numberOfAccountTouchesPerAccount.set(touchedAccount,1) 
+    
+            }
+
+        }
+
+    }
+
+    //____________ Now, all the txs where all accounts in <touchedAccount> has 1 point can be executed independently ____________
+
+    for(let transaction of txsArray){}
+
 
 },
 

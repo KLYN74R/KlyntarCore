@@ -13,46 +13,8 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 
 
 
-let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadID,payload)=>{
-
-    let {type,amount}=payload
-
-    let workflowConfigs = WORKING_THREADS[threadID].WORKFLOW_OPTIONS,
-        
-        isNotTooOld = stakeOrUnstakeTx.epochID >= WORKING_THREADS[threadID].RUBICON,
-    
-        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
-
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
-
-        inWaitingRoomTheSameAsInPayload = stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
 
 
-    if(type==='+'){
-
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
-
-        let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
-
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored = isStillPossibleBeActive && noOverStake
-
-    }else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
-
-
-    let overviewIsOk = 
-
-        isNotTooOld
-        &&
-        isMinimalRequiredAmountOrItsUnstake
-        &&
-        inWaitingRoomTheSameAsInPayload
-        &&
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored
-
-
-    return overviewIsOk
-
-}
 
 
 
@@ -767,5 +729,50 @@ export default {
         }
         
     }
+
+}
+
+
+
+
+
+let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadID,payload)=>{
+
+    let {type,amount}=payload
+
+    let workflowConfigs = WORKING_THREADS[threadID].WORKFLOW_OPTIONS,
+        
+        isNotTooOld = stakeOrUnstakeTx.epochID >= WORKING_THREADS[threadID].RUBICON,
+    
+        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
+
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
+
+        inWaitingRoomTheSameAsInPayload = stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
+
+
+    if(type==='+'){
+
+        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
+
+        let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
+
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored = isStillPossibleBeActive && noOverStake
+
+    }else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
+
+
+    let overviewIsOk = 
+
+        isNotTooOld
+        &&
+        isMinimalRequiredAmountOrItsUnstake
+        &&
+        inWaitingRoomTheSameAsInPayload
+        &&
+        ifStakeCheckIfPoolIsActiveOrCanBeRestored
+
+
+    return overviewIsOk
 
 }
