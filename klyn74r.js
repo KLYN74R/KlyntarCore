@@ -1,52 +1,47 @@
 #!/usr/bin/env node
 
 /**
- * 
- * 
- * 
- * 
- * 
- *                                                               ██╗  ██╗██╗  ██╗   ██╗███╗   ██╗████████╗ █████╗ ██████╗ 
+ *
+ *
+ *
+ *
+ *
+ *                                                               ██╗  ██╗██╗  ██╗   ██╗███╗   ██╗████████╗ █████╗ ██████╗
  *                                                               ██║ ██╔╝██║  ╚██╗ ██╔╝████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗
  *                                                               █████╔╝ ██║   ╚████╔╝ ██╔██╗ ██║   ██║   ███████║██████╔╝
  *                                                               ██╔═██╗ ██║    ╚██╔╝  ██║╚██╗██║   ██║   ██╔══██║██╔══██╗
  *                                                               ██║  ██╗███████╗██║   ██║ ╚████║   ██║   ██║  ██║██║  ██║
  *                                                               ╚═╝  ╚═╝╚══════╝╚═╝   ╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝
- * 
- * 
- * 
+ *
+ *
+ *
  *                                                               Developed on Earth,Milky Way(Sagittarius A*) by humanity
- * 
- * 
+ *
+ *
  *                                                                          Date: ~66.5 ml after Chicxulub
- * 
- * 
+ *
+ *
  *                                                                          Dev:Vlad Chernenko(@V14D4RT3M)
- * 
- * 
+ *
+ *
  *                                                       ⟒10⏚19⎎12⟒33⏃☊0⟒⟒⏚401⎅671⏚⏃23⟒38899⎎⎅387847183☊⎅6⏚8308⏃☊72⎅511⏃⏚
- * 
- * 
- * 
- * 
- * 
- * 
+ *
+ *
+ *
+ *
  */
 
-import {COLORS, LOG, PATH_RESOLVE} from './KLY_Utils/utils.js'
+import { COLORS, LOG, PATH_RESOLVE } from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
-import {isAbsolute} from 'path'
+import { isAbsolute } from 'path'
 
 import fastify from 'fastify'
 
 import fs from 'fs'
 
 import os from 'os'
-
-
-
 
 /*
 _______________OBLIGATORY PATH RESOLUTION_______________
@@ -59,40 +54,26 @@ _______________OBLIGATORY PATH RESOLUTION_______________
 prevent privilleges escalation via path misconfiguration or lack of access control.
 
 */
-global.__dirname = await import('path').then(async mod=>
-  
-    mod.dirname(
-      
-      (await import('url')).fileURLToPath(import.meta.url)
-      
-    )
-
+global.__dirname = await import('path').then(async mod =>
+    mod.dirname((await import('url')).fileURLToPath(import.meta.url))
 )
-
-
-
 
 //______INITIALLY,LET'S COPE WITH ENV VARIABLES_________
 
 // Set size of libuv threads pool
-process.env.UV_THREADPOOL_SIZE = process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
+process.env.UV_THREADPOOL_SIZE =
+    process.env.KLYNTAR_THREADPOOL_SIZE || process.env.NUMBER_OF_PROCESSORS
 
 // Run your node in 'test'/'main' mode
-process.env.KLY_MODE||='mainnet'
+process.env.KLY_MODE ||= 'mainnet'
 
-
-
-
-if(process.env.KLY_MODE!=='mainnet' && process.env.KLY_MODE!=='testnet'){
-
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'testnet' or 'mainnet')\x1b[0m`)
+if (process.env.KLY_MODE !== 'mainnet' && process.env.KLY_MODE !== 'testnet') {
+    console.log(
+        `\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Unrecognized mode \x1b[32;1m${process.env.KLY_MODE}\x1b[0m\x1b[36;1m(choose 'testnet' or 'mainnet')\x1b[0m`
+    )
 
     process.exit(101)
-
 }
-
-
-
 
 //____________________DEFINE PATHS_______________________
 
@@ -100,54 +81,41 @@ if(process.env.KLY_MODE!=='mainnet' && process.env.KLY_MODE!=='testnet'){
 let pathToChainDataIsAbsolute = process.env.SYMBIOTE_DIR && isAbsolute(process.env.SYMBIOTE_DIR)
 
 // ... and finish with NO slashes
-let finishWithNoSlashes = !( process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\') )
+let finishWithNoSlashes = !(
+    process.env.SYMBIOTE_DIR.endsWith('/') || process.env.SYMBIOTE_DIR.endsWith('\\')
+)
 
-
-if(!(pathToChainDataIsAbsolute && finishWithNoSlashes)){
-
-    console.log(`\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`)
+if (!(pathToChainDataIsAbsolute && finishWithNoSlashes)) {
+    console.log(
+        `\u001b[38;5;202m[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})\x1b[36;1m Path to SYMBIOTE_DIR must be absolute and without '/' or '\\' on the end\x1b[0m`
+    )
 
     process.exit(102)
-
 }
-
 
 // Creating/resolving 3 common directories:
 
-[
-
+;[
     'CHAINDATA', // Data of blockchain - epoch data, blocks, state, metadata, etc.
-    
-    'GENESIS',   // Directory with 'genesis.json'
 
-    'CONFIGS',   // Directory with configs(specific to your node only(not a network-level configs))
+    'GENESIS', // Directory with 'genesis.json'
 
-
-].forEach(scope=>{
-
-    if(process.env.KLY_MODE==='mainnet'){
-    
+    'CONFIGS' // Directory with configs(specific to your node only(not a network-level configs))
+].forEach(scope => {
+    if (process.env.KLY_MODE === 'mainnet') {
         // If SYMBIOTE_DIR is set - it will be a location for all the subdirs above(CHAINDATA,GENESIS,CONFIGS)
 
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
-
+        if (process.env.SYMBIOTE_DIR)
+            process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR + `/${scope}`
         // If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
-        
-        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE('MAINNET/'+scope)  
-
-    }else{
-
-        if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
+        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE('MAINNET/' + scope)
+    } else {
+        if (process.env.SYMBIOTE_DIR)
+            process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR + `/${scope}`
 
         process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`TESTNET/${scope}`) //Testnet available in a separate directory
-
     }
-
 })
-
-
-
-
 
 /*
 
@@ -231,177 +199,181 @@ d"""    `""""""""""""Y:d8P                              8,          `b
 
 */
 
-
-
-
 //____________________LOAD CONFIGS FROM FILES_______________________
 
 export let CONFIGURATION = {}
 
-
 // Load all the configs
-fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
-    
-    Object.assign(CONFIGURATION,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
-    
+fs.readdirSync(process.env.CONFIGS_PATH).forEach(file =>
+    Object.assign(CONFIGURATION, JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH + `/${file}`)))
 )
-
-
-
 
 //____________________LOAD GENESIS FROM FILE_______________________
 
-export let BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
-
-
-
-
-
-
-
+export let BLOCKCHAIN_GENESIS = JSON.parse(
+    fs.readFileSync(process.env.GENESIS_PATH + `/genesis.json`)
+)
 
 /*
-****************************************************************************************************************
-*                                                                                                              *
-*                                                                                                              *
-*                                    ░██████╗████████╗░█████╗░██████╗░████████╗                                *
-*                                    ██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝                                *
-*                                    ╚█████╗░░░░██║░░░███████║██████╔╝░░░██║░░░                                *
-*                                    ░╚═══██╗░░░██║░░░██╔══██║██╔══██╗░░░██║░░░                                *
-*                                    ██████╔╝░░░██║░░░██║░░██║██║░░██║░░░██║░░░                                *
-*                                    ╚═════╝░░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░                                *
-*                                                                                                              *
-*                                                                                                              *
-****************************************************************************************************************
-*/
-
+ ****************************************************************************************************************
+ *                                                                                                              *
+ *                                                                                                              *
+ *                                    ░██████╗████████╗░█████╗░██████╗░████████╗                                *
+ *                                    ██╔════╝╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝                                *
+ *                                    ╚█████╗░░░░██║░░░███████║██████╔╝░░░██║░░░                                *
+ *                                    ░╚═══██╗░░░██║░░░██╔══██║██╔══██╗░░░██║░░░                                *
+ *                                    ██████╔╝░░░██║░░░██║░░██║██║░░██║░░░██║░░░                                *
+ *                                    ╚═════╝░░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░                                *
+ *                                                                                                              *
+ *                                                                                                              *
+ ****************************************************************************************************************
+ */
 
 // Create the directory for chaindata
-!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH);
-
-
-
+!fs.existsSync(process.env.CHAINDATA_PATH) && fs.mkdirSync(process.env.CHAINDATA_PATH)
 
 //_________________________________________________BANNERS INTRO________________________________________________
-    
 
 // Run cool short animation
-await new Promise(resolve=>{
-    
-    let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
+await new Promise(resolve => {
+    let animation = chalkAnimation.glitch(
+        '\x1b[31;1m' + fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString() + '\x1b[0m'
+    )
 
-    setTimeout(()=>{
-        
+    setTimeout(() => {
         animation.stop()
-        
-        resolve()
-    
-    }, CONFIGURATION.NODE_LEVEL.ANIMATION_DURATION)
 
+        resolve()
+    }, CONFIGURATION.NODE_LEVEL.ANIMATION_DURATION)
 })
 
-
-
-if(process.env.KLY_MODE==='mainnet'){
-
+if (process.env.KLY_MODE === 'mainnet') {
     //Read banner
-    console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
+    console.log(
+        '\x1b[36;1m' +
+            fs
+                .readFileSync(PATH_RESOLVE('images/banner.txt'))
+                .toString()
 
-    //...and add extra colors & changes)
-    .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
-    .replace('REMEMBER:To infinity and beyond!','\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m')
-    .replaceAll('≈','\x1b[31m≈\x1b[36m')
-    .replaceAll('#','\x1b[31m#\x1b[36m')+'\x1b[0m\n')
-
-}else{
-
+                //...and add extra colors & changes)
+                .replace('Made on Earth for Universe', '\x1b[31mMade on Earth for Universe\x1b[36m')
+                .replace(
+                    'REMEMBER:To infinity and beyond!',
+                    '\x1b[31mREMEMBER:To infinity and beyond!\x1b[36m'
+                )
+                .replaceAll('≈', '\x1b[31m≈\x1b[36m')
+                .replaceAll('#', '\x1b[31m#\x1b[36m') +
+            '\x1b[0m\n'
+    )
+} else {
     //else show the testnet banner
 
-     //Read banner
-    console.log('\u001b[37m'+fs.readFileSync(PATH_RESOLVE('images/testmode_banner.txt')).toString()
+    //Read banner
+    console.log(
+        '\u001b[37m' +
+            fs
+                .readFileSync(PATH_RESOLVE('images/testmode_banner.txt'))
+                .toString()
 
-    //...and add extra colors & changes)
-    .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
-    .replace('REMEMBER:To infinity and beyond!','\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m')
-     
-    .replaceAll('≈','\x1b[31m≈\u001b[37m')
+                //...and add extra colors & changes)
+                .replace(
+                    'Made on Earth for Universe',
+                    '\u001b[38;5;87mMade on Earth for Universe\u001b[37m'
+                )
+                .replace(
+                    'REMEMBER:To infinity and beyond!',
+                    '\u001b[38;5;87mREMEMBER:To infinity and beyond!\u001b[37m'
+                )
 
-    .replaceAll('█','\u001b[38;5;202m█\u001b[37m')
+                .replaceAll('≈', '\x1b[31m≈\u001b[37m')
 
-    .replaceAll('═','\u001b[38;5;87m═\u001b[37m')
-    .replaceAll('╝','\u001b[38;5;87m╝\u001b[37m')
-    .replaceAll('╚','\u001b[38;5;87m╚\u001b[37m')
+                .replaceAll('█', '\u001b[38;5;202m█\u001b[37m')
 
-    .replaceAll('#','\u001b[38;5;202m#\u001b[37m')+'\x1b[0m\n')
+                .replaceAll('═', '\u001b[38;5;87m═\u001b[37m')
+                .replaceAll('╝', '\u001b[38;5;87m╝\u001b[37m')
+                .replaceAll('╚', '\u001b[38;5;87m╚\u001b[37m')
 
-
-
+                .replaceAll('#', '\u001b[38;5;202m#\u001b[37m') +
+            '\x1b[0m\n'
+    )
 }
 
-
-LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,COLORS.CYAN)
+LOG(
+    `System info \x1b[31m${['node:' + process.version, `info:${process.platform + os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`, `runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,
+    COLORS.CYAN
+)
 
 console.log('\n\n\n')
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),COLORS.GREEN)
+LOG(
+    fs
+        .readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt'))
+        .toString()
+        .replaceAll('@', '\x1b[31m@\x1b[32m')
+        .replaceAll(
+            'Check the configs carefully',
+            '\u001b[38;5;50mCheck the configs carefully\x1b[32m'
+        ),
+    COLORS.GREEN
+)
 
-LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.TLS.ENABLED?'enabled':'disabled'}`,COLORS.CON)
+LOG(
+    `\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.TLS.ENABLED ? 'enabled' : 'disabled'}`,
+    COLORS.CON
+)
 
-LOG(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.CON)
+LOG(
+    `Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,
+    COLORS.CON
+)
 
-LOG(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
+LOG(
+    CONFIGURATION.NODE_LEVEL.PLUGINS.length !== 0
+        ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`
+        : 'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',
+    COLORS.CON
+)
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.GREEN)
-
-
-
+LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(), COLORS.GREEN)
 
 //_________________________________________________RUN SERVER________________________________________________
 
-
 // Export it to use in KLY_Workflows(there we'll add routes+handlers)
 
-export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
-
-
-
-
-(async()=>{
-
-
+export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS)
+;(async () => {
     // 0. Import the entrypoint to run the blockchain logic
 
-    let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/entrypoint.js`)
+    let { RUN_BLOCKCHAIN } = await import(
+        `./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/entrypoint.js`
+    )
 
     await RUN_BLOCKCHAIN()
 
-
     // 1. Load plugins in case they need access to process (memory)
 
-    for(let scriptPath of CONFIGURATION.NODE_LEVEL.PLUGINS){
-
-        import(`./KLY_Plugins/${scriptPath}`).catch(
-            
-            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,COLORS.RED)
-            
+    for (let scriptPath of CONFIGURATION.NODE_LEVEL.PLUGINS) {
+        import(`./KLY_Plugins/${scriptPath}`).catch(e =>
+            LOG(
+                `Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,
+                COLORS.RED
+            )
         )
-    
     }
 
-    
     // 2. Import routes
-    
+
     await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/routes.js`)
-    
-    
-    
-    FASTIFY_SERVER.listen({port:CONFIGURATION.NODE_LEVEL.PORT,host:CONFIGURATION.NODE_LEVEL.INTERFACE},err=>{
-    
-        if(!err) LOG(`Node started on \x1b[36;1m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.GREEN)
-    
-        else LOG('Oops,some problems with server module',COLORS.RED)
-    
-    })
 
-
+    FASTIFY_SERVER.listen(
+        { port: CONFIGURATION.NODE_LEVEL.PORT, host: CONFIGURATION.NODE_LEVEL.INTERFACE },
+        err => {
+            if (!err)
+                LOG(
+                    `Node started on \x1b[36;1m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,
+                    COLORS.GREEN
+                )
+            else LOG('Oops,some problems with server module', COLORS.RED)
+        }
+    )
 })()

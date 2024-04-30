@@ -29,46 +29,32 @@ console.log(publicKeyToAddress('0x04fdb05804ddd0d419ec8a234a63e9e0d6edd2e45c03cb
 
 */
 
-
-let elliptic_1 = require("elliptic"),
-
+let elliptic_1 = require('elliptic'),
     bn = require('bn.js'),
-    
     ec = new elliptic_1.ec('secp256k1'),
+    { sign, verify, link } = require('.'),
+    { Wallet } = require('ethers'),
+    serializeRingSigtoHex = ringSig => {
+        ringSig.I = ringSig.I.encode('hex')
+        ringSig.C = ringSig.C.toBuffer().toString('hex')
+        ringSig.S = ringSig.S.map(x => x.toBuffer().toString('hex'))
+        ringSig.M = Buffer.from(ringSig.M).toString('hex')
+        ringSig.Ring = ringSig.Ring.map(pub => pub.getPublic().encode('hex'))
 
-    {sign,verify,link} = require('.'),
-    
-    {Wallet} = require("ethers"),
-
-
-    
-    serializeRingSigtoHex=ringSig=>{
-
-        ringSig.I=ringSig.I.encode('hex')
-        ringSig.C=ringSig.C.toBuffer().toString('hex')
-        ringSig.S=ringSig.S.map(x=>x.toBuffer().toString('hex'))
-        ringSig.M=Buffer.from(ringSig.M).toString('hex')
-        ringSig.Ring=ringSig.Ring.map(pub=>pub.getPublic().encode('hex'))
-
-        return Buffer.from(JSON.stringify(ringSig),'utf-8').toString('hex')                  
-
+        return Buffer.from(JSON.stringify(ringSig), 'utf-8').toString('hex')
     }
 
+let deserializeRingSig = ringSig => {
+    ringSig.I = ec.keyFromPublic(ringSig.I, 'hex').getPublic()
+    ringSig.C = new bn(ringSig.C, 'hex')
+    ringSig.S = ringSig.S.map(x => new bn(x, 'hex'))
+    ringSig.M = new Uint8Array(Buffer.from(ringSig.M, 'hex'))
 
-    let deserializeRingSig=ringSig=>{
+    let hexKeys = ringSig.Ring.map(pub => '0x' + pub)
 
-        ringSig.I=ec.keyFromPublic(ringSig.I,'hex').getPublic()
-        ringSig.C=new bn(ringSig.C,'hex')
-        ringSig.S=ringSig.S.map(x=>new bn(x,'hex'))
-        ringSig.M=new Uint8Array(Buffer.from(ringSig.M,'hex'))
+    ringSig.Ring = ringSig.Ring.map(pub => ec.keyFromPublic(pub, 'hex'))
 
-        let hexKeys=ringSig.Ring.map(pub=>'0x'+pub)
+    return [hexKeys, ringSig]
+}
 
-        ringSig.Ring=ringSig.Ring.map(pub=>ec.keyFromPublic(pub,'hex'))
-
-
-        return [hexKeys,ringSig]
-
-    }
-
-module.exports={sign,verify,link,Wallet,serializeRingSigtoHex,deserializeRingSig}
+module.exports = { sign, verify, link, Wallet, serializeRingSigtoHex, deserializeRingSig }

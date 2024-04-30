@@ -93,18 +93,10 @@ So, in our special operation
 
 */
 
-
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
+import { ED25519_SIGN_DATA } from '../../KLY_Utils/utils.js'
 import fetch from 'node-fetch'
 
-
-
-
 //___________________________________________ CONSTANTS POOL ___________________________________________
-
-
-
 
 const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' //chain on which you wanna send tx
 
@@ -112,115 +104,88 @@ const WORKFLOW_VERSION = 0
 
 const FEE = 5
 
-
-const TRUSTED_KEY_PAIR={
-
-    mnemonic:'dumb museum put goose obvious pipe provide series region hold morning cash',
-    bip44Path:"m/44'/7331'/0'/0'",
-    pub:'6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9',
-    prv:'MC4CAQAwBQYDK2VwBCIEIN8gl2IaD82ox9efz/Ww14/S//5cfd7/sTUwzBenz7Xu'
-  
+const TRUSTED_KEY_PAIR = {
+    mnemonic: 'dumb museum put goose obvious pipe provide series region hold morning cash',
+    bip44Path: "m/44'/7331'/0'/0'",
+    pub: '6BT43SvoKHPfzVuuMNCUTFs15iaRryJ3sARNrSc8NdA9',
+    prv: 'MC4CAQAwBQYDK2VwBCIEIN8gl2IaD82ox9efz/Ww14/S//5cfd7/sTUwzBenz7Xu'
 }
 
-
-
-let SEND_SLASH_UNSTAKE_SPECIAL_OPERATION=async()=>{
-
-
+let SEND_SLASH_UNSTAKE_SPECIAL_OPERATION = async () => {
     let data = {
-
-        pool:'75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG',
-        delayedIds:[0]
-
+        pool: '75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG',
+        delayedIds: [0]
     }
-
 
     let mySpecialOperationToSlashUnstake = {
+        type: 'SLASH_UNSTAKE',
 
-        type:'SLASH_UNSTAKE',
-        
-        payload:{
-
-            sigType:'D',
-            pubKey:TRUSTED_KEY_PAIR.pub,
+        payload: {
+            sigType: 'D',
+            pubKey: TRUSTED_KEY_PAIR.pub,
             data,
-            signa:await ED25519_SIGN_DATA(JSON.stringify(data)+'',TRUSTED_KEY_PAIR.prv)
-    
+            signa: await ED25519_SIGN_DATA(JSON.stringify(data) + '', TRUSTED_KEY_PAIR.prv)
         }
-    
     }
-
 
     let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperationToSlashUnstake)
-    
+        method: 'POST',
+        body: JSON.stringify(mySpecialOperationToSlashUnstake)
     }
 
-
     console.log('============ SLASH_UNSTAKE ============')
-    
+
     console.log(mySpecialOperationToSlashUnstake)
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
-
+    fetch('http://localhost:7331/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7332/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7333/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
 }
 
 SEND_SLASH_UNSTAKE_SPECIAL_OPERATION()
 
-
-
-let SEND_REMOVE_FROM_WAITING_ROOM_SPECIAL_OPERATION=async()=>{
-
-
+let SEND_REMOVE_FROM_WAITING_ROOM_SPECIAL_OPERATION = async () => {
     const GENESIS_VALIDATOR_3 = {
+        privateKey: 'aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24',
 
-        privateKey:"aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24",
-
-        pubKey:"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8"
-
-    
+        pubKey: '61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8'
     }
 
     let data = {
-
-        pool:GENESIS_VALIDATOR_3.pubKey,
-        txid:'f264c0454364971238410e81c05368e23fb63d66665808f527c0c9462a921181'
-
+        pool: GENESIS_VALIDATOR_3.pubKey,
+        txid: 'f264c0454364971238410e81c05368e23fb63d66665808f527c0c9462a921181'
     }
-
 
     let mySpecialOperationToRemoveFromWR = {
+        type: 'REMOVE_FROM_WAITING_ROOM',
 
-        type:'REMOVE_FROM_WAITING_ROOM',
-        
-        payload:data
-    
+        payload: data
     }
-
 
     let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperationToRemoveFromWR)
-    
+        method: 'POST',
+        body: JSON.stringify(mySpecialOperationToRemoveFromWR)
     }
 
-
     console.log('============ REMOVE_FROM_WAITING_ROOM ============')
-    
+
     console.log(mySpecialOperationToRemoveFromWR)
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
-
+    fetch('http://localhost:7331/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7332/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7333/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
 }
-
 
 // SEND_REMOVE_FROM_WAITING_ROOM_SPECIAL_OPERATION()

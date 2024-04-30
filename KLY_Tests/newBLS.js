@@ -1,5 +1,4 @@
 import bls from '@chainsafe/bls'
-import Base58 from 'base-58'
 
 // class-based interface
 // const secretKey = bls.SecretKey.fromKeygen();
@@ -9,16 +8,14 @@ import Base58 from 'base-58'
 // console.log('Secret key ',secretKey.toHex());
 // console.log('Public key ',Base58.encode(publicKey.toBytes()));
 
-
 // const signature = secretKey.sign(message);
 
 // console.log('Signa is ',signature.toHex());
 // console.log("Is valid: ", signature.verify(publicKey, message));
 
-
 //____________________________________ GENERAL TEST ____________________________________
 
-// let 
+// let
 
 // prv1 = bls.SecretKey.fromKeygen(),
 // pub1 = prv1.toPublicKey().toBytes(),
@@ -29,16 +26,13 @@ import Base58 from 'base-58'
 // prv3 = bls.SecretKey.fromKeygen(),
 // pub3 = prv3.toPublicKey().toBytes(),
 
-
 // message = Buffer.from('Hello KLYNTAR','utf8'),
-
 
 // //Sign it
 
 // signa1=prv1.sign(message).toBytes(),
 // signa2=prv2.sign(message).toBytes(),
 // signa3=prv3.sign(message).toBytes()
-
 
 // console.log('Prv1 ',prv1.toHex())
 // console.log('Pub1 ',Base58.encode(pub1))
@@ -66,25 +60,24 @@ import Base58 from 'base-58'
 // console.log('Is signa1 verified ',bls.verify(pub1,message,signa1))
 // console.log('Is aggregated verified ',bls.verify(aggregatedPub,message,aggregatedSigna))
 
-
 //_____________________________________ PERFORMANCE TEST _____________________________________
 
 //*Primitive,just to compare implementations
 
-let privateKeys = [], pubkeys = [], signatures = [], message = Buffer.from('Hello KLYNTAR','utf8')
+let privateKeys = [],
+    pubkeys = [],
+    signatures = [],
+    message = Buffer.from('Hello KLYNTAR', 'utf8')
 
 //Let test with 500
-for(let i=0;i<500;i++){
-
+for (let i = 0; i < 500; i++) {
     let prv1 = bls.SecretKey.fromKeygen(),
-        
         pub1 = prv1.toPublicKey().toBytes()
-    
+
     privateKeys.push(prv1.toBytes())
     pubkeys.push(pub1)
 
     signatures.push(prv1.sign(message).toBytes())
-
 }
 
 console.time('Aggregate 500')
@@ -92,4 +85,4 @@ let aggregatedPub = bls.aggregatePublicKeys(pubkeys)
 let aggregatedSigna = bls.aggregateSignatures(signatures)
 console.timeEnd('Aggregate 500')
 
-console.log(bls.verify(aggregatedPub,message,aggregatedSigna))
+console.log(bls.verify(aggregatedPub, message, aggregatedSigna))

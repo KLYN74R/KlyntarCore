@@ -1,18 +1,16 @@
 {
-    "KLY_EVM":{
+    "KLY_EVM": {
+        "name": "KLYNTAR",
+        "networkId": "0x1ca3",
+        "chainId": "0x1ca3",
+        "coinbase": "0x0000000000000000000000000000000000000000",
+        "hardfork": "merge",
+        "gasLimitForBlock": 30000000,
 
-        "name":"KLYNTAR",
-        "networkId":"0x1ca3",
-        "chainId":"0x1ca3",
-        "coinbase":"0x0000000000000000000000000000000000000000",
-        "hardfork":"merge",
-        "gasLimitForBlock":30000000,
-        
-        "clientVersion":"KLY-EVM/dev_tachyon/v0.13.37/Node.js",
-        "protocolVersionInHex":"0x1",
-        "gasPriceInWeiAndHex":"0x49ad39126",
-        "maxAllowedGasAmountForSandboxExecution":100000,
-        "bindContext":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
-    
+        "clientVersion": "KLY-EVM/dev_tachyon/v0.13.37/Node.js",
+        "protocolVersionInHex": "0x1",
+        "gasPriceInWeiAndHex": "0x49ad39126",
+        "maxAllowedGasAmountForSandboxExecution": 100000,
+        "bindContext": "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
     }
 }

@@ -1,9 +1,9 @@
-const randomBytes = require('randombytes');
-import { ec as EC } from 'elliptic';
-import { SHA3 as SHA3 } from 'sha3';
-import { Buffer } from 'buffer';
-import BN from 'bn.js';
-import { KeyPair, KeyRing } from './ring';
+const randomBytes = require('randombytes')
+import { ec as EC } from 'elliptic'
+import { SHA3 as SHA3 } from 'sha3'
+import { Buffer } from 'buffer'
+import BN from 'bn.js'
+import { KeyPair, KeyRing } from './ring'
 
 /**
  * Returns true if the given arrays are equal
@@ -11,7 +11,8 @@ import { KeyPair, KeyRing } from './ring';
  * @param keyList2 pubkeylist after ring
  */
 export function checkDeepEqual(keyList1: string[], keyList2: string[]) {
-    if (!Array.isArray(keyList1) || !Array.isArray(keyList2)) throw new Error("Input parameters should be arrays")
+    if (!Array.isArray(keyList1) || !Array.isArray(keyList2))
+        throw new Error('Input parameters should be arrays')
     else if (keyList1.length != keyList2.length) return false
 
     const a = keyList2.concat([])
@@ -33,16 +34,20 @@ export function checkDeepEqual(keyList1: string[], keyList2: string[]) {
  * @param signerKeyPair Key pairs of the signer
  * @param position Signer position in the ring
  */
-export function makeKeyring(publicKeyList: string[], signerKeyPair: KeyPair, ringPosition: number): KeyRing {
+export function makeKeyring(
+    publicKeyList: string[],
+    signerKeyPair: KeyPair,
+    ringPosition: number
+): KeyRing {
     if (publicKeyList.length < 2) {
-        throw new Error("The ring size is too small")
+        throw new Error('The ring size is too small')
     }
 
-    let ec = new EC('secp256k1');
+    let ec = new EC('secp256k1')
 
     // make the ring
     const ring: KeyPair[] = publicKeyList.map(publicKey => {
-        publicKey = publicKey.replace(/^0x/, "")
+        publicKey = publicKey.replace(/^0x/, '')
         return ec.keyFromPublic(publicKey, 'hex')
     })
 
@@ -57,27 +62,28 @@ export function makeKeyring(publicKeyList: string[], signerKeyPair: KeyPair, rin
         signerIndex = i
         break
     }
-    if (signerIndex == -1) throw new Error("The given key pair does not match with any public key in the array")
+    if (signerIndex == -1)
+        throw new Error('The given key pair does not match with any public key in the array')
 
     // Swap the signer's keypair with the one at the expected position (really needed?)
     let tmp = ring[ringPosition]
     ring[ringPosition] = ring[signerIndex]
     ring[signerIndex] = tmp
 
-    return ring;
+    return ring
 }
 
 /**
  * Calculates key image I = x * H_p(P) where H_p is a hash function that returns a point
  * H_p(P) = sha3(P) * G
- * @param keyPair 
+ * @param keyPair
  */
 export function getKeyImage(keyPair: KeyPair) {
-    let hash = hashPoint(keyPair);
-    let privKey = keyPair.getPrivate() as BN;
-    let privKey_arr = privKey.toArray("be");
-    let keyImage = hash.mul(privKey_arr);
-    return keyImage;
+    let hash = hashPoint(keyPair)
+    let privKey = keyPair.getPrivate() as BN
+    let privKey_arr = privKey.toArray('be')
+    let keyImage = hash.mul(privKey_arr)
+    return keyImage
 }
 
 /**
@@ -85,16 +91,16 @@ export function getKeyImage(keyPair: KeyPair) {
  * @param keyPair Can be a full keyPair object or just the curve part
  */
 export function hashPoint(keyPair: KeyPair) {
-    let pubKey = keyPair.getPublic();
-    let x = pubKey.getX().toArray('big');
-    let y = pubKey.getY().toArray('big');
+    let pubKey = keyPair.getPublic()
+    let x = pubKey.getX().toArray('big')
+    let y = pubKey.getY().toArray('big')
 
-    let hash = new SHA3(256);
+    let hash = new SHA3(256)
     let append = Buffer.from(x.concat(y))
-    hash.update(append);
-    let sha3 = hash.digest('hex');
-    let res = keyPair.ec.g.mul(sha3); // scalar base mul
-    return res;
+    hash.update(append)
+    let sha3 = hash.digest('hex')
+    let res = keyPair.ec.g.mul(sha3) // scalar base mul
+    return res
 }
 
 /**
@@ -102,13 +108,13 @@ export function hashPoint(keyPair: KeyPair) {
  * Idea taken from: https://github.com/iden3/snarkjs
  */
 export function getRandomBigNumber(): BN {
-    let res = new BN(0);
-    let n = new BN("115792089237316195423570985008687907853269984665640564039457584007908834671663");
+    let res = new BN(0)
+    let n = new BN('115792089237316195423570985008687907853269984665640564039457584007908834671663')
     while (!n.isZero()) {
         res = res.shln(8).add(new BN(randomBytes(1)[0]))
-        n = n.shrn(8);
+        n = n.shrn(8)
     }
-    return res;
+    return res
 }
 
 /**
@@ -117,7 +123,6 @@ export function getRandomBigNumber(): BN {
  */
 export function toHexString(byteArray) {
     return Array.from(byteArray, (byte: any) => {
-        return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-    })
-        .join('')
+        return ('0' + (byte & 0xff).toString(16)).slice(-2)
+    }).join('')
 }

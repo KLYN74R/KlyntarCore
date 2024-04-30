@@ -1,133 +1,116 @@
-import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import { GET_ACCOUNT_FROM_STATE, GET_FROM_STATE } from '../common_functions/state_interactions.js'
 
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import { GLOBAL_CACHES, WORKING_THREADS } from '../blockchain_preparation.js'
 
-import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
+import { KLY_EVM } from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
 
-import {BLAKE3, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import { BLAKE3, ED25519_VERIFY } from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
-import {VM} from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
+import { VM } from '../../../KLY_VirtualMachines/kly_wvm/vm.js'
 
-import {SYSTEM_CONTRACTS} from '../system_contracts/root.js'
+import { SYSTEM_CONTRACTS } from '../system_contracts/root.js'
 
-import {BLOCKCHAIN_GENESIS} from '../../../klyn74r.js'
+import { BLOCKCHAIN_GENESIS } from '../../../klyn74r.js'
 
-import {TXS_FILTERS} from './txs_filters.js'
+import { TXS_FILTERS } from './txs_filters.js'
 
 import web3 from 'web3'
 
-
-
-
-
-
 let GET_SPEND_BY_SIG_TYPE = transaction => {
+    if (transaction.payload.type === 'D') return 0
 
-    if(transaction.payload.type==='D') return 0
-    
-    if(transaction.payload.type==='T') return 0.01
+    if (transaction.payload.type === 'T') return 0.01
 
-    if(transaction.payload.type==='P/D') return 0.03
+    if (transaction.payload.type === 'P/D') return 0.03
 
-    if(transaction.payload.type==='P/B') return 0.02
+    if (transaction.payload.type === 'P/B') return 0.02
 
-    if(transaction.payload.type==='M') return 0.01+transaction.payload.afk.length*0.001
-
+    if (transaction.payload.type === 'M') return 0.01 + transaction.payload.afk.length * 0.001
 }
-
 
 //Load required modules and inject to contract
 // eslint-disable-next-line no-unused-vars
-let GET_METHODS_TO_INJECT=_imports=>{
-
+let GET_METHODS_TO_INJECT = _imports => {
     return {}
-
 }
 
+let DEFAULT_VERIFICATION_PROCESS = async (senderAccount, tx, goingToSpend) =>
+    senderAccount.type === 'account' &&
+    senderAccount.balance - goingToSpend >= 0 &&
+    senderAccount.nonce < tx.nonce
 
-let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,tx,goingToSpend)=>
-
-    senderAccount.type==='account'
-    &&
-    senderAccount.balance-goingToSpend>=0
-    &&
-    senderAccount.nonce<tx.nonce
-
-
-
-
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originShard) => {
-
-    
-    if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){
-
+export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async (tx, senderStorageObject, originShard) => {
+    if (WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v) {
         // Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
-        
-        let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
-    
 
-        if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)
-        
-        if(tx.payload.type==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
-        
-        if(tx.payload.type==='P/D') {
+        let signedData =
+            BLOCKCHAIN_GENESIS.SYMBIOTE_ID +
+            tx.v +
+            originShard +
+            tx.type +
+            JSON.stringify(tx.payload) +
+            tx.nonce +
+            tx.fee
 
+        if (tx.payload.type === 'D') return ED25519_VERIFY(signedData, tx.sig, tx.creator)
+
+        if (tx.payload.type === 'T') return tbls.verifyTBLS(tx.creator, tx.sig, signedData)
+
+        if (tx.payload.type === 'P/D') {
             let isOk = false
 
-            try{
-
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
-            
-            }catch{ isOk = false}
-
-            return isOk === 'true'
-            
-        }
-        
-        if(tx.payload.type==='P/B'){
-          
-            let isOk=false
-
-            try{
-
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyBlissSignature(signedData,tx.payload.pubKey,tx.sig)
-            
-            }catch{ isOk = false}
+            try {
+                isOk =
+                    BLAKE3(tx.payload.pubKey) === tx.creator &&
+                    globalThis.verifyDilithiumSignature(signedData, tx.payload.pubKey, tx.sig)
+            } catch {
+                isOk = false
+            }
 
             return isOk === 'true'
-
         }
-        
-        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t).catch(()=>false)      
 
-    }else return false
+        if (tx.payload.type === 'P/B') {
+            let isOk = false
 
+            try {
+                isOk =
+                    BLAKE3(tx.payload.pubKey) === tx.creator &&
+                    globalThis.verifyBlissSignature(signedData, tx.payload.pubKey, tx.sig)
+            } catch {
+                isOk = false
+            }
+
+            return isOk === 'true'
+        }
+
+        if (tx.payload.type === 'M')
+            return bls
+                .verifyThresholdSignature(
+                    tx.payload.active,
+                    tx.payload.afk,
+                    tx.creator,
+                    signedData,
+                    tx.sig,
+                    senderStorageObject.rev_t
+                )
+                .catch(() => false)
+    } else return false
 }
 
+export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE = (type, pubkey, signa, data) => {
+    if (type === 'D') return ED25519_VERIFY(data, signa, pubkey)
 
+    if (type === 'P/D') return globalThis.verifyDilithiumSignature(data, pubkey, signa)
 
-
-export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE=(type,pubkey,signa,data)=>{
-
-    if(type==='D') return ED25519_VERIFY(data,signa,pubkey)
-    
-    if(type==='P/D') return globalThis.verifyDilithiumSignature(data,pubkey,signa)
-    
-    if(type==='P/B') return globalThis.verifyBlissSignature(data,pubkey,signa)
-    
+    if (type === 'P/B') return globalThis.verifyBlissSignature(data, pubkey, signa)
 }
-
-
-
 
 export let VERIFIERS = {
-
-
-
     /*
 
     Default transaction
@@ -142,57 +125,46 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (originShard,tx,rewardBox)=>{
+    TX: async (originShard, tx, rewardBox) => {
+        let senderAccount = await GET_ACCOUNT_FROM_STATE(originShard + ':' + tx.creator),
+            recipientAccount = await GET_ACCOUNT_FROM_STATE(originShard + ':' + tx.payload.to),
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx) + tx.payload.amount + tx.fee
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
-        
-            recipientAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.payload.to),
+        tx = await TXS_FILTERS.TX(tx, originShard) //pass through the filter
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.payload.amount+tx.fee
-
-        tx = await TXS_FILTERS.TX(tx,originShard) //pass through the filter
-
-        if(!tx){
-
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-        
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
-
-            if(!recipientAccount){
-    
+        if (!tx) {
+            return { isOk: false, reason: `Can't get filtered value of tx` }
+        } else if (await DEFAULT_VERIFICATION_PROCESS(senderAccount, tx, goingToSpend)) {
+            if (!recipientAccount) {
                 //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-                recipientAccount={
-                
-                    type:'account',
-                    balance:0,
-                    uno:0,
-                    nonce:0
-                
+                recipientAccount = {
+                    type: 'account',
+                    balance: 0,
+                    uno: 0,
+                    nonce: 0
                 }
-                
+
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
-                if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
-    
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
-            
+                if (typeof tx.payload.rev_t === 'number') recipientAccount.rev_t = tx.payload.rev_t
+
+                GLOBAL_CACHES.STATE_CACHE.set(originShard + ':' + tx.payload.to, recipientAccount) //add to cache to collapse after all events in blocks of block
             }
-            
-            senderAccount.balance-=goingToSpend
-                
-            recipientAccount.balance+=tx.payload.amount
-        
-            senderAccount.nonce=tx.nonce
-            
-            rewardBox.fees+=tx.fee
 
-            return {isOk:true}
+            senderAccount.balance -= goingToSpend
 
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
-        
+            recipientAccount.balance += tx.payload.amount
+
+            senderAccount.nonce = tx.nonce
+
+            rewardBox.fees += tx.fee
+
+            return { isOk: true }
+        } else
+            return {
+                isOk: false,
+                reason: `Default verification process failed. Make sure input is ok`
+            }
     },
-
-
-
 
     /*
 
@@ -216,70 +188,56 @@ export let VERIFIERS = {
 
     */
 
-    CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
+    CONTRACT_DEPLOY: async (originShard, tx, rewardBox, atomicBatch) => {
+        let senderAccount = await GET_ACCOUNT_FROM_STATE(originShard + ':' + tx.creator)
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator)
+        let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx) + JSON.stringify(tx.payload).length + tx.fee
 
-        let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+JSON.stringify(tx.payload).length+tx.fee
+        tx = await TXS_FILTERS.CONTRACT_DEPLOY(tx, originShard) //pass through the filter
 
-
-        tx = await TXS_FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
-
-
-        if(!tx){
-
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-
-        }
-        else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
-
-            if(tx.payload.lang.startsWith('system/')){
-
+        if (!tx) {
+            return { isOk: false, reason: `Can't get filtered value of tx` }
+        } else if (await DEFAULT_VERIFICATION_PROCESS(senderAccount, tx, goingToSpend)) {
+            if (tx.payload.lang.startsWith('system/')) {
                 let typeofContract = tx.payload.lang.split('/')[1]
 
-                if(SYSTEM_CONTRACTS.has(typeofContract)){
+                if (SYSTEM_CONTRACTS.has(typeofContract)) {
+                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(tx, atomicBatch) // do deployment logic
 
-                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
+                    senderAccount.balance -= goingToSpend
 
-                    senderAccount.balance-=goingToSpend
-            
-                    senderAccount.nonce=tx.nonce
-                    
-                    rewardBox.fees+=tx.fee
+                    senderAccount.nonce = tx.nonce
 
-                }else return {isOk:false,reason:`No such type of system contract`}
-
-            }else{
-
-                let contractID = BLAKE3(originShard+JSON.stringify(tx))
+                    rewardBox.fees += tx.fee
+                } else return { isOk: false, reason: `No such type of system contract` }
+            } else {
+                let contractID = BLAKE3(originShard + JSON.stringify(tx))
 
                 let contractTemplate = {
-    
-                    type:"contract",
-                    lang:tx.payload.lang,
-                    balance:0,
-                    uno:0,
-                    storages:[],
-                    bytecode:tx.payload.bytecode
-    
+                    type: 'contract',
+                    lang: tx.payload.lang,
+                    balance: 0,
+                    uno: 0,
+                    storages: [],
+                    bytecode: tx.payload.bytecode
                 }
-            
-                atomicBatch.put(contractID,contractTemplate)
-    
-                senderAccount.balance-=goingToSpend
-            
-                senderAccount.nonce=tx.nonce
-                
-                rewardBox.fees+=tx.fee
-    
+
+                atomicBatch.put(contractID, contractTemplate)
+
+                senderAccount.balance -= goingToSpend
+
+                senderAccount.nonce = tx.nonce
+
+                rewardBox.fees += tx.fee
             }
 
-            return {isOk:true}
-
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
-
+            return { isOk: true }
+        } else
+            return {
+                isOk: false,
+                reason: `Default verification process failed. Make sure input is ok`
+            }
     },
-
 
     /*
 
@@ -299,93 +257,80 @@ export let VERIFIERS = {
 
 
     */
-    CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
+    CONTRACT_CALL: async (originShard, tx, rewardBox, atomicBatch) => {
+        let senderAccount = await GET_ACCOUNT_FROM_STATE(originShard + ':' + tx.creator),
+            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx) + tx.fee + tx.payload.gasLimit
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
+        tx = await TXS_FILTERS.CONTRACT_CALL(tx, originShard) //pass through the filter
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.gasLimit
+        if (!tx) {
+            return { isOk: false, reason: `Can't get filtered value of tx` }
+        } else if (await DEFAULT_VERIFICATION_PROCESS(senderAccount, tx, goingToSpend)) {
+            let contractMeta = await GET_FROM_STATE(originShard + ':' + tx.payload.contractID)
 
-        tx = await TXS_FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
-
-        
-        if(!tx){
-
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-        
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
-
-
-            let contractMeta = await GET_FROM_STATE(originShard+':'+tx.payload.contractID)
-
-
-            if(contractMeta){
-
-                if(contractMeta.lang.startsWith('spec/')){
-
+            if (contractMeta) {
+                if (contractMeta.lang.startsWith('spec/')) {
                     let systemContractName = contractMeta.lang.split('/')[1]
 
-                    if(SYSTEM_CONTRACTS.has(systemContractName)){
-
+                    if (SYSTEM_CONTRACTS.has(systemContractName)) {
                         let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
-                        
-                        await systemContract[tx.payload.method](tx,originShard,atomicBatch)
 
+                        await systemContract[tx.payload.method](tx, originShard, atomicBatch)
 
-                        senderAccount.balance-=goingToSpend
-            
-                        senderAccount.nonce=tx.nonce
-                    
-                        rewardBox.fees+=tx.fee
+                        senderAccount.balance -= goingToSpend
 
+                        senderAccount.nonce = tx.nonce
 
-                    }else return {isOk:false,reason:`No such type of system contract`}
-
-
-                }else {
-
+                        rewardBox.fees += tx.fee
+                    } else return { isOk: false, reason: `No such type of system contract` }
+                } else {
                     //Create contract instance
                     let gasLimit = tx.payload.gasLimit * 1_000_000_000 // 1 KLY = 10^9 gas. You set the gasLimit in KLY(to avoid confusing)
 
-                        /*
+                    /*
                 
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
                         */
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),gasLimit,await GET_METHODS_TO_INJECT(tx.payload.imports))
+                    let { contractInstance, contractMetadata } = await VM.bytesToMeteredContract(
+                        Buffer.from(contractMeta.bytecode, 'hex'),
+                        gasLimit,
+                        await GET_METHODS_TO_INJECT(tx.payload.imports)
+                    )
 
                     let result
-            
 
-                    try{
-
+                    try {
                         // Get the initial data to pass as '' param
                         // Check if contract is binded to given shard
 
-                        result = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
-
-                    }catch(err){
-
+                        result = VM.callContract(
+                            contractInstance,
+                            contractMetadata,
+                            tx.payload.params,
+                            tx.payload.method,
+                            contractMeta.type
+                        )
+                    } catch (err) {
                         // eslint-disable-next-line no-unused-vars
                         result = err.message
-
                     }
-            
-                    senderAccount.balance-=goingToSpend
-    
-                    senderAccount.nonce=tx.nonce
-            
-                    rewardBox.fees+=tx.fee
 
+                    senderAccount.balance -= goingToSpend
+
+                    senderAccount.nonce = tx.nonce
+
+                    rewardBox.fees += tx.fee
                 }
 
-                return {isOk:true}
-
-            }else return {isOk:false,reason:`No metadata for contract`}
-
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
-
+                return { isOk: true }
+            } else return { isOk: false, reason: `No metadata for contract` }
+        } else
+            return {
+                isOk: false,
+                reason: `Default verification process failed. Make sure input is ok`
+            }
     },
-
 
     /*
 
@@ -394,20 +339,16 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originShard,txWithPayload,rewardBox,atomicBatch)=>{
-
+    EVM_CALL: async (originShard, txWithPayload, rewardBox, atomicBatch) => {
         global.ATOMIC_BATCH = atomicBatch
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard, txWithPayload.payload).catch(() => false)
 
-
-        if(evmResult && !evmResult.execResult.exceptionError){
-          
+        if (evmResult && !evmResult.execResult.exceptionError) {
             let totalSpentInWei = evmResult.amountSpent //BigInt value
 
-            let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
+            let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(), 'ether')
 
-          
             // Add appropriate value to rewardbox to distribute among KLY pools
 
             totalSpentByTxInKLY = +totalSpentByTxInKLY
@@ -415,27 +356,20 @@ export let VERIFIERS = {
             rewardBox.fees += totalSpentByTxInKLY
 
             let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
-                
                 txWithPayload.payload,
-            
+
                 evmResult,
-            
+
                 GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP')
-            
             )
 
-            if(possibleReceipt){
+            if (possibleReceipt) {
+                let { tx, receipt } = possibleReceipt
 
-                let {tx,receipt} = possibleReceipt
+                atomicBatch.put('TX:' + tx.hash, { tx, receipt })
 
-                atomicBatch.put('TX:'+tx.hash,{tx,receipt})
-
-                return {isOk:true,reason:'EVM'}
-
-            }else return {isOk:false,reason:'EVM'}
-
+                return { isOk: true, reason: 'EVM' }
+            } else return { isOk: false, reason: 'EVM' }
         }
-
     }
-
 }

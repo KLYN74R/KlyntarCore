@@ -1,18 +1,21 @@
-import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+import {
+    GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID,
+    VERIFY_AGGREGATED_FINALIZATION_PROOF
+} from '../../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {
+    BLOCKCHAIN_DATABASES,
+    EPOCH_METADATA_MAPPING,
+    WORKING_THREADS
+} from '../../blockchain_preparation.js'
 
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import { CONFIGURATION, FASTIFY_SERVER } from '../../../../klyn74r.js'
 
-import {GET_BLOCK} from '../../verification_process/verification.js'
+import { GET_BLOCK } from '../../verification_process/verification.js'
 
-import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
+import { ED25519_SIGN_DATA } from '../../../../KLY_Utils/utils.js'
 
 import Block from '../../structures/block.js'
-
-
-
-
 
 /*
 
@@ -135,98 +138,87 @@ import Block from '../../structures/block.js'
 
 // Function to return signature of proof that we've changed the leader for some shard. Returns the signature if requested FINALIZATION_STATS.index >= than our own or send UPDATE message✅
 
-FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post(
+    '/leader_rotation_proof',
+    { bodyLimit: CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE },
+    async (request, response) => {
+        let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+        let epochFullID = epochHandler.hash + '#' + epochHandler.id
 
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+        if (!currentEpochMetadata) {
+            response.send({ err: 'Epoch handler on QT is not ready' })
 
-    if(!currentEpochMetadata){
+            return
+        }
 
-        response.send({err:'Epoch handler on QT is not ready'})
+        let requestForLeaderRotationProof = JSON.parse(request.body)
 
-        return
-    }
+        let overviewIsOk
 
+        overviewIsOk =
+            requestForLeaderRotationProof &&
+            typeof requestForLeaderRotationProof === 'object' &&
+            typeof requestForLeaderRotationProof.skipData === 'object'
 
+        overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
 
-    let requestForLeaderRotationProof = JSON.parse(request.body)
+        overviewIsOk &&=
+            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)
+                ?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
 
-    let overviewIsOk    
+        if (overviewIsOk) {
+            response.header('access-control-allow-origin', '*')
 
-    overviewIsOk = requestForLeaderRotationProof && typeof requestForLeaderRotationProof === 'object' && typeof requestForLeaderRotationProof.skipData === 'object'
-    
-    overviewIsOk &&= epochHandler.leadersSequence[requestForLeaderRotationProof.shard] // make sure that shard exists
+            let { index, hash, afp } = requestForLeaderRotationProof.skipData
 
-    overviewIsOk &&= currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(requestForLeaderRotationProof.shard)?.currentLeader > requestForLeaderRotationProof.hisIndexInLeadersSequence // we can't create LRP in case local version of shard leader is bigger/equal to requested
+            let localFinalizationStats = currentEpochMetadata.FINALIZATION_STATS.get(
+                requestForLeaderRotationProof.poolPubKey
+            )
 
+            // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+            if (localFinalizationStats && localFinalizationStats.index > index) {
+                let responseData = {
+                    type: 'UPDATE',
 
-    if(overviewIsOk){
-
-        response.header('access-control-allow-origin','*')
-        
-        let {index,hash,afp} = requestForLeaderRotationProof.skipData
-
-        let localFinalizationStats = currentEpochMetadata.FINALIZATION_STATS.get(requestForLeaderRotationProof.poolPubKey)
-
-
-
-        // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
-        if(localFinalizationStats && localFinalizationStats.index > index){
-
-            let responseData = {
-                
-                type:'UPDATE',
-
-                skipData:localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
-
-            }
-
-            response.send(responseData)
-
-
-        }else{
-
-           
-            //________________________________________________ Verify the proposed AFP ________________________________________________
-            
-            
-            let afpIsOk = false
-
-            if(index > -1 && typeof afp.blockID === 'string'){
-
-                // eslint-disable-next-line no-unused-vars
-                let [_epochID,_blockCreator,indexOfBlockInAfp] = afp.blockID.split(':')
-
-                if(typeof afp === 'object' && afp.blockHash === hash && index == indexOfBlockInAfp){
-
-                    afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)
-
+                    skipData: localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
                 }
 
-            } else afpIsOk = true
+                response.send(responseData)
+            } else {
+                //________________________________________________ Verify the proposed AFP ________________________________________________
 
-            
-            if(!afpIsOk){
+                let afpIsOk = false
 
-                response.send({err:'Wrong aggregated signature for skipIndex > -1'})
+                if (index > -1 && typeof afp.blockID === 'string') {
+                    // eslint-disable-next-line no-unused-vars
+                    let [_epochID, _blockCreator, indexOfBlockInAfp] = afp.blockID.split(':')
 
-                return
+                    if (
+                        typeof afp === 'object' &&
+                        afp.blockHash === hash &&
+                        index == indexOfBlockInAfp
+                    ) {
+                        afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp, epochHandler)
+                    }
+                } else afpIsOk = true
 
-            }
+                if (!afpIsOk) {
+                    response.send({ err: 'Wrong aggregated signature for skipIndex > -1' })
 
+                    return
+                }
 
-            //_____________________ Verify the AFP for the first block to understand the hash of first block ______________________________
+                //_____________________ Verify the AFP for the first block to understand the hash of first block ______________________________
 
-            // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
-            
+                // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
 
-            let dataToSignForSkipProof, firstBlockAfpIsOk = false
+                let dataToSignForSkipProof,
+                    firstBlockAfpIsOk = false
 
-
-            /*
+                /*
             
                 We also need the hash of ASP for previous pool
 
@@ -240,67 +232,70 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
             */
 
-            if(index === -1){
+                if (index === -1) {
+                    // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
 
-                // If skipIndex is -1 then sign the hash '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'(null,default hash) as the hash of firstBlockHash
-                
-                dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
+                    dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef:${index}:${'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}:${epochFullID}`
 
-                firstBlockAfpIsOk = true
+                    firstBlockAfpIsOk = true
+                } else if (
+                    index >= 0 &&
+                    typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'
+                ) {
+                    // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
 
+                    let blockIdOfFirstBlock =
+                        epochHandler.id + ':' + requestForLeaderRotationProof.poolPubKey + ':0'
 
-            }else if(index >= 0 && typeof requestForLeaderRotationProof.afpForFirstBlock === 'object'){
+                    if (
+                        (await VERIFY_AGGREGATED_FINALIZATION_PROOF(
+                            requestForLeaderRotationProof.afpForFirstBlock,
+                            epochHandler
+                        )) &&
+                        requestForLeaderRotationProof.afpForFirstBlock.blockID ===
+                            blockIdOfFirstBlock
+                    ) {
+                        let block = await GET_BLOCK(
+                            epochHandler.id,
+                            requestForLeaderRotationProof.poolPubKey,
+                            0
+                        )
 
-                // Verify the aggregatedFinalizationProofForFirstBlock in case skipIndex > 0
+                        if (
+                            block &&
+                            Block.genHash(block) ===
+                                requestForLeaderRotationProof.afpForFirstBlock.blockHash
+                        ) {
+                            // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
 
-                let blockIdOfFirstBlock = epochHandler.id+':'+requestForLeaderRotationProof.poolPubKey+':0'
-            
-                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
+                            let firstBlockHash =
+                                requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
-                    let block = await GET_BLOCK(epochHandler.id,requestForLeaderRotationProof.poolPubKey,0)
+                            dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
 
-                    if(block && Block.genHash(block) === requestForLeaderRotationProof.afpForFirstBlock.blockHash){
+                            firstBlockAfpIsOk = true
+                        }
+                    }
+                }
 
-                        // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
+                // If proof is ok - generate reassignment proof
 
-                        let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
+                if (firstBlockAfpIsOk) {
+                    let skipMessage = {
+                        type: 'OK',
 
-                        dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
-
-                        firstBlockAfpIsOk = true                    
-    
+                        sig: await ED25519_SIGN_DATA(
+                            dataToSignForSkipProof,
+                            CONFIGURATION.NODE_LEVEL.PRIVATE_KEY
+                        )
                     }
 
-                }
-
+                    response.send(skipMessage)
+                } else response.send({ err: `Wrong signatures in <afpForFirstBlock>` })
             }
-            
-            // If proof is ok - generate reassignment proof
-
-            if(firstBlockAfpIsOk){
-
-                let skipMessage = {
-                    
-                    type:'OK',
-
-                    sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-                }
-
-                response.send(skipMessage)
-
-                
-            }else response.send({err:`Wrong signatures in <afpForFirstBlock>`})
-
-             
-        }
-
-
-    }else response.send({err:'Wrong format'})
-
-})
-
-
-
+        } else response.send({ err: 'Wrong format' })
+    }
+)
 
 /*
 
@@ -333,78 +328,75 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
 // Function to return aggregated skip proofs for proposed authorities✅
 
-FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post(
+    '/data_to_build_temp_data_for_verification_thread',
+    { bodyLimit: CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE },
+    async (request, response) => {
+        let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+        let epochFullID = epochHandler.hash + '#' + epochHandler.id
 
-    let epochFullID = epochHandler.hash+"#"+epochHandler.id
+        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+        if (!currentEpochMetadata) {
+            response.send({ err: 'Epoch handler on QT is not ready' })
 
-    if(!currentEpochMetadata){
-        
-        response.send({err:'Epoch handler on QT is not ready'})
-
-        return
-    }
-
-
-    let proposedIndexesOfLeaders = JSON.parse(request.body) // format {primePoolPubKey:index}
-
-
-    if(typeof proposedIndexesOfLeaders === 'object'){
-
-        let objectToReturn = {}
-
-        // Here we should return the ASP for proposed authorities
-
-        // eslint-disable-next-line no-unused-vars
-        for(let [shardID, _proposedIndexOfLeader] of Object.entries(proposedIndexesOfLeaders)){
-
-            // Try to get the current leader on shard
-
-            let leaderHandlerForShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID)
-
-            if(leaderHandlerForShard && epochHandler.leadersSequence[shardID]){
-
-                // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
-
-                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][leaderHandlerForShard.currentLeader] || shardID
-
-                let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
-
-                let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(firstBlockID).catch(()=>null)
-
-
-                if(firstBlockByCurrentLeader){
-
-                    let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
-
-                    let afpForSecondBlockByCurrentLeader = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(secondBlockID,epochHandler).catch(()=>null)
-
-                    if(afpForSecondBlockByCurrentLeader){
-
-                        objectToReturn[shardID] = {
-                            
-                            proposedIndexOfLeader:leaderHandlerForShard.currentLeader,
-                            
-                            firstBlockByCurrentLeader,
-                            
-                            afpForSecondBlockByCurrentLeader
-                        
-                        }
-
-                    }
-
-                }
-
-            }
-
+            return
         }
 
-        response.send(objectToReturn)
+        let proposedIndexesOfLeaders = JSON.parse(request.body) // format {primePoolPubKey:index}
 
-    } else response.send({err:'Wrong format'})
+        if (typeof proposedIndexesOfLeaders === 'object') {
+            let objectToReturn = {}
 
+            // Here we should return the ASP for proposed authorities
 
-})
+            // eslint-disable-next-line no-unused-vars
+            for (let [shardID, _proposedIndexOfLeader] of Object.entries(
+                proposedIndexesOfLeaders
+            )) {
+                // Try to get the current leader on shard
+
+                let leaderHandlerForShard =
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID)
+
+                if (leaderHandlerForShard && epochHandler.leadersSequence[shardID]) {
+                    // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
+
+                    let currentLeaderPubKeyByMyVersion =
+                        epochHandler.leadersSequence[shardID][
+                            leaderHandlerForShard.currentLeader
+                        ] || shardID
+
+                    let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
+
+                    let firstBlockByCurrentLeader = await BLOCKCHAIN_DATABASES.BLOCKS.get(
+                        firstBlockID
+                    ).catch(() => null)
+
+                    if (firstBlockByCurrentLeader) {
+                        let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
+
+                        let afpForSecondBlockByCurrentLeader =
+                            await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(
+                                secondBlockID,
+                                epochHandler
+                            ).catch(() => null)
+
+                        if (afpForSecondBlockByCurrentLeader) {
+                            objectToReturn[shardID] = {
+                                proposedIndexOfLeader: leaderHandlerForShard.currentLeader,
+
+                                firstBlockByCurrentLeader,
+
+                                afpForSecondBlockByCurrentLeader
+                            }
+                        }
+                    }
+                }
+            }
+
+            response.send(objectToReturn)
+        } else response.send({ err: 'Wrong format' })
+    }
+)

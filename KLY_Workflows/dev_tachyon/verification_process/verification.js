@@ -1,24 +1,35 @@
-import {GET_FIRST_BLOCK_ON_EPOCH, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import {
+    GET_FIRST_BLOCK_ON_EPOCH,
+    VERIFY_AGGREGATED_FINALIZATION_PROOF
+} from '../common_functions/work_with_proofs.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
+import {
+    BLOCKCHAIN_DATABASES,
+    GLOBAL_CACHES,
+    GRACEFUL_STOP,
+    WORKING_THREADS
+} from '../blockchain_preparation.js'
 
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {
+    GET_QUORUM_MAJORITY,
+    GET_QUORUM_URLS_AND_PUBKEYS
+} from '../common_functions/quorum_related.js'
 
-import {GET_ACCOUNT_FROM_STATE, GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import { GET_ACCOUNT_FROM_STATE, GET_FROM_STATE } from '../common_functions/state_interactions.js'
 
-import {GET_ALL_KNOWN_PEERS, IS_MY_VERSION_OLD, EPOCH_STILL_FRESH} from '../utils.js'
+import { EPOCH_STILL_FRESH, GET_ALL_KNOWN_PEERS, IS_MY_VERSION_OLD } from '../utils.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
 
-import {LOG, BLAKE3, ED25519_VERIFY, COLORS} from '../../../KLY_Utils/utils.js'
+import { BLAKE3, COLORS, ED25519_VERIFY, LOG } from '../../../KLY_Utils/utils.js'
 
-import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
+import { KLY_EVM } from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {VT_STATS_LOG} from '../common_functions/logging.js'
+import { VT_STATS_LOG } from '../common_functions/logging.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import { CONFIGURATION } from '../../../klyn74r.js'
 
-import {VERIFIERS} from './txs_verifiers.js'
+import { VERIFIERS } from './txs_verifiers.js'
 
 import Block from '../structures/block.js'
 
@@ -28,131 +39,108 @@ import WS from 'websocket'
 
 import Web3 from 'web3'
 
-
-
-
 //_____________________________________________________________EXPORT SECTION____________________________________________________________________
 
+export let GET_BLOCK = async (epochIndex, blockCreator, index) => {
+        let blockID = epochIndex + ':' + blockCreator + ':' + index
 
+        // Try to find block locally
 
+        let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).catch(() => null)
 
-export let
+        if (!block) {
+            // First of all - try to find by pre-set URL
 
+            const controller = new AbortController()
 
+            setTimeout(() => controller.abort(), 2000)
 
+            block = await fetch(CONFIGURATION.NODE_LEVEL.GET_BLOCKS_URL + `/block/` + blockID, {
+                signal: controller.signal
+            })
+                .then(r => r.json())
+                .then(block => {
+                    if (
+                        typeof block.extraData === 'object' &&
+                        typeof block.prevHash === 'string' &&
+                        typeof block.epoch === 'string' &&
+                        typeof block.sig === 'string' &&
+                        block.index === index &&
+                        block.creator === blockCreator &&
+                        Array.isArray(block.transactions)
+                    ) {
+                        BLOCKCHAIN_DATABASES.BLOCKS.put(blockID, block)
 
-GET_BLOCK = async (epochIndex,blockCreator,index) => {
-
-    let blockID = epochIndex+':'+blockCreator+':'+index
-
-    // Try to find block locally
-
-    let block = await BLOCKCHAIN_DATABASES.BLOCKS.get(blockID).catch(()=>null)
-
-
-    if(!block){
-
-        // First of all - try to find by pre-set URL
-
-        const controller = new AbortController()
-
-        setTimeout(() => controller.abort(), 2000)
-
-
-        block = await fetch(CONFIGURATION.NODE_LEVEL.GET_BLOCKS_URL+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).then(block=>{
-                
-            if(typeof block.extraData==='object' && typeof block.prevHash==='string' && typeof block.epoch==='string' && typeof block.sig==='string' && block.index === index && block.creator === blockCreator && Array.isArray(block.transactions)){
-
-                BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,block)
-    
-                return block
-    
-            } 
-    
-        }).catch(()=>null)
-
-        
-        if(!block){
-
-            // Finally - request blocks from quorum members
-
-            // Combine all nodes we know about and try to find block there
-            
-            let allKnownNodes = [...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
-    
-            for(let host of allKnownNodes){
-
-                if(host===CONFIGURATION.NODE_LEVEL.MY_HOSTNAME) continue
-
-                const controller = new AbortController()
-
-                setTimeout(() => controller.abort(), 2000)
-                
-                let itsProbablyBlock = await fetch(host+`/block/`+blockID,{signal:controller.signal}).then(r=>r.json()).catch(()=>null)
-                
-                if(itsProbablyBlock){
-
-                    let overviewIsOk =
-
-                        typeof itsProbablyBlock.extraData==='object'
-                        &&
-                        typeof itsProbablyBlock.prevHash==='string'
-                        &&
-                        typeof itsProbablyBlock.epoch==='string'
-                        &&
-                        typeof itsProbablyBlock.sig==='string'
-                        &&
-                        itsProbablyBlock.index===index
-                        &&
-                        itsProbablyBlock.creator===blockCreator
-                        &&
-                        Array.isArray(itsProbablyBlock.transactions)
-                
-
-                    if(overviewIsOk){
-
-                        BLOCKCHAIN_DATABASES.BLOCKS.put(blockID,itsProbablyBlock).catch(()=>{})
-    
-                        return itsProbablyBlock
-    
+                        return block
                     }
-    
-                }
-    
-            }
+                })
+                .catch(() => null)
 
+            if (!block) {
+                // Finally - request blocks from quorum members
+
+                // Combine all nodes we know about and try to find block there
+
+                let allKnownNodes = [
+                    ...(await GET_QUORUM_URLS_AND_PUBKEYS()),
+                    ...GET_ALL_KNOWN_PEERS()
+                ]
+
+                for (let host of allKnownNodes) {
+                    if (host === CONFIGURATION.NODE_LEVEL.MY_HOSTNAME) continue
+
+                    const controller = new AbortController()
+
+                    setTimeout(() => controller.abort(), 2000)
+
+                    let itsProbablyBlock = await fetch(host + `/block/` + blockID, {
+                        signal: controller.signal
+                    })
+                        .then(r => r.json())
+                        .catch(() => null)
+
+                    if (itsProbablyBlock) {
+                        let overviewIsOk =
+                            typeof itsProbablyBlock.extraData === 'object' &&
+                            typeof itsProbablyBlock.prevHash === 'string' &&
+                            typeof itsProbablyBlock.epoch === 'string' &&
+                            typeof itsProbablyBlock.sig === 'string' &&
+                            itsProbablyBlock.index === index &&
+                            itsProbablyBlock.creator === blockCreator &&
+                            Array.isArray(itsProbablyBlock.transactions)
+
+                        if (overviewIsOk) {
+                            BLOCKCHAIN_DATABASES.BLOCKS.put(blockID, itsProbablyBlock).catch(
+                                () => {}
+                            )
+
+                            return itsProbablyBlock
+                        }
+                    }
+                }
+            }
         }
 
-    }
+        return block
+    },
+    DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({ poolHashID, poolPubKey }) => {
+        //Try to get storage "POOL" of appropriate pool
 
-    return block
+        let poolStorage = await GET_FROM_STATE(poolHashID)
 
-},
+        poolStorage.lackOfTotalPower = true
 
+        poolStorage.stopEpochID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
-
-
-
-DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async ({poolHashID,poolPubKey}) => {
-
-    //Try to get storage "POOL" of appropriate pool
-
-    let poolStorage = await GET_FROM_STATE(poolHashID)
-
-    poolStorage.lackOfTotalPower = true
-
-    poolStorage.stopEpochID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-    delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-
-},
-
-
-
-
-CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
-
-    /*
+        delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
+    },
+    CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY = async (
+        pubKeyOfSomePreviousLeader,
+        aggregatedLeaderRotationProof,
+        epochFullID,
+        epochHandler
+    ) => {
+        /*
 
     Check the <agregatedLeaderRotationProof>(ALRP) signed by majority(2/3N+1) and aggregated
     
@@ -184,54 +172,52 @@ CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY = async (pubKeyOfSomePreviousLea
 
     */
 
-    
-    if(typeof aggregatedLeaderRotationProof === 'object'){    
+        if (typeof aggregatedLeaderRotationProof === 'object') {
+            // Check the proofs
 
-        // Check the proofs
-    
-        let {firstBlockHash,skipIndex,skipHash,proofs} = aggregatedLeaderRotationProof
+            let { firstBlockHash, skipIndex, skipHash, proofs } = aggregatedLeaderRotationProof
 
-        let majority = GET_QUORUM_MAJORITY(epochHandler)
+            let majority = GET_QUORUM_MAJORITY(epochHandler)
 
-        let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
+            let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfSomePreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`
 
-        let promises = []
-    
-        let okSignatures = 0
+            let promises = []
 
-        let unique = new Set()
-    
-    
-        for(let [signerPubKey,signa] of Object.entries(proofs)){
-    
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+            let okSignatures = 0
 
-                if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
+            let unique = new Set()
 
-                    unique.add(signerPubKey)
+            for (let [signerPubKey, signa] of Object.entries(proofs)) {
+                promises.push(
+                    ED25519_VERIFY(dataThatShouldBeSigned, signa, signerPubKey).then(isOK => {
+                        if (
+                            isOK &&
+                            epochHandler.quorum.includes(signerPubKey) &&
+                            !unique.has(signerPubKey)
+                        ) {
+                            unique.add(signerPubKey)
 
-                    okSignatures++
+                            okSignatures++
+                        }
+                    })
+                )
+            }
 
-                }
+            await Promise.all(promises)
 
-            }))
-    
+            return okSignatures >= majority
         }
-    
-        await Promise.all(promises)
-
-        return okSignatures >= majority
-
-    }
-
-},
-
-
-
-
-CHECK_ALRP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
-
-    /*
+    },
+    CHECK_ALRP_CHAIN_VALIDITY = async (
+        primePoolPubKey,
+        firstBlockInThisEpochByPool,
+        leadersSequence,
+        position,
+        epochFullID,
+        oldEpochHandler,
+        dontCheckSignature
+    ) => {
+        /*
     
         Here we need to check the integrity of chain of proofs to make sure that we can get the obvious variant of a valid chain to verify
 
@@ -246,96 +232,80 @@ CHECK_ALRP_CHAIN_VALIDITY = async (primePoolPubKey,firstBlockInThisEpochByPool,l
     
     */
 
+        let reassignmentsRef =
+            firstBlockInThisEpochByPool.extraData?.aggregatedLeadersRotationProofs
 
-    let reassignmentsRef = firstBlockInThisEpochByPool.extraData?.aggregatedLeadersRotationProofs
+        let filteredReassignments = {}
 
-    let filteredReassignments = {}
+        if (typeof reassignmentsRef === 'object') {
+            let arrayForIteration = leadersSequence.slice(0, position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-zero ALRP
 
+            let arrayIndexer = 0
 
-    if(typeof reassignmentsRef === 'object'){
+            let wasBreakedEarly = false
 
+            for (let poolPubKey of arrayForIteration) {
+                let alrpForThisPool = reassignmentsRef[poolPubKey]
 
-        let arrayForIteration = leadersSequence.slice(0,position).reverse() // take all the pools till position of current pool and reverse it because in optimistic case we just need to find the closest pool to us with non-zero ALRP 
+                if (typeof alrpForThisPool === 'object') {
+                    let signaIsOk =
+                        dontCheckSignature ||
+                        (await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(
+                            poolPubKey,
+                            alrpForThisPool,
+                            epochFullID,
+                            oldEpochHandler
+                        ))
 
-        let arrayIndexer = 0
+                    if (signaIsOk) {
+                        filteredReassignments[poolPubKey] = {
+                            index: alrpForThisPool.skipIndex,
 
-        let wasBreakedEarly = false
+                            hash: alrpForThisPool.skipHash,
 
+                            firstBlockHash: alrpForThisPool.firstBlockHash
+                        }
 
-        for(let poolPubKey of arrayForIteration){
+                        arrayIndexer++
 
-            let alrpForThisPool = reassignmentsRef[poolPubKey]
-    
-            if(typeof alrpForThisPool === 'object'){
+                        if (alrpForThisPool.skipIndex >= 0) {
+                            wasBreakedEarly = true
 
-                let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(poolPubKey,alrpForThisPool,epochFullID,oldEpochHandler)
+                            break
+                        }
+                    } else return { isOK: false }
+                } else return { isOK: false }
+            }
 
-                if(signaIsOk){
+            if (arrayIndexer === position && !wasBreakedEarly) {
+                // In case we've iterated over the whole range - check the ALRP for prime pool
 
-                    filteredReassignments[poolPubKey] = {
-                        
-                        index:alrpForThisPool.skipIndex,
-                        
-                        hash:alrpForThisPool.skipHash,
-                        
-                        firstBlockHash:alrpForThisPool.firstBlockHash
-                    
+                let alrpForPrimePool = reassignmentsRef[primePoolPubKey]
+
+                let signaIsOk =
+                    dontCheckSignature ||
+                    (await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(
+                        primePoolPubKey,
+                        alrpForPrimePool,
+                        epochFullID,
+                        oldEpochHandler
+                    ))
+
+                if (signaIsOk) {
+                    filteredReassignments[primePoolPubKey] = {
+                        index: alrpForPrimePool.skipIndex,
+
+                        hash: alrpForPrimePool.skipHash,
+
+                        firstBlockHash: alrpForPrimePool.firstBlockHash
                     }
+                } else return { isOK: false }
+            }
+        } else return { isOK: false }
 
-                    arrayIndexer++
-
-                    if(alrpForThisPool.skipIndex>=0){
-
-                        wasBreakedEarly = true
-
-                        break
-
-                    }
-
-                }else return {isOK:false}
-
-            } else return {isOK:false}
-    
-        }
-
-        if(arrayIndexer === position && !wasBreakedEarly){
-
-            // In case we've iterated over the whole range - check the ALRP for prime pool
-
-            let alrpForPrimePool = reassignmentsRef[primePoolPubKey]
-
-            let signaIsOk = dontCheckSignature || await CHECK_AGGREGATED_LEADER_ROTATION_PROOF_VALIDITY(primePoolPubKey,alrpForPrimePool,epochFullID,oldEpochHandler)
-
-            if(signaIsOk){
-
-                filteredReassignments[primePoolPubKey] = {
-                    
-                    index:alrpForPrimePool.skipIndex,
-                    
-                    hash:alrpForPrimePool.skipHash,
-                    
-                    firstBlockHash:alrpForPrimePool.firstBlockHash
-                
-                }
-
-            }else return {isOK:false}
-
-        }
-    
-
-    } else return {isOK:false}
-
-
-    return {isOK:true,filteredReassignments}
-
-},
-
-
-
-
-BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,aefp) => {
-
-
+        return { isOK: true, filteredReassignments }
+    },
+    BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler, primePoolPubKey, aefp) => {
         /*
     
     VT.REASSIGNMENT_METADATA has the following structure
@@ -442,7 +412,7 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
 
     */
 
-    /*
+        /*
                 
         Reminder - the structure of AEFP must be:
 
@@ -473,91 +443,82 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
                         
     */
 
+        let emptyTemplate = {}
 
-    let emptyTemplate = {}
+        let vtEpochIndex = vtEpochHandler.id
 
-    let vtEpochIndex = vtEpochHandler.id
+        let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[primePoolPubKey]
 
-    let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[primePoolPubKey]
+        if (!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA)
+            WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-    if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
+        let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
 
-    let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
-        
+        // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
 
-    // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
+        let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader] || primePoolPubKey
 
-    let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader] || primePoolPubKey
+        emptyTemplate[lastLeaderPoolPubKey] = {
+            index: aefp.lastIndex,
 
-    emptyTemplate[lastLeaderPoolPubKey] = {
-        
-        index:aefp.lastIndex,
-        
-        hash:aefp.lastHash
-
-    }
-
-    let infoAboutLastBlocksByPreviousPool
-
-    for(let position = aefp.lastLeader; position >= 0; position--){
-
-        let poolPubKey = oldLeadersSequenceForShard[position]
-
-        // In case we know that pool on this position created 0 block - don't return from function and continue the cycle iterations
-
-        if(infoAboutLastBlocksByPreviousPool && infoAboutLastBlocksByPreviousPool[poolPubKey].index === -1){
-
-            continue
-
-        } else {
-
-            // Get the first block of this epoch from VERIFICATION_STATS_PER_POOL
-
-            let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochIndex,poolPubKey,0)
-
-            if(!firstBlockInThisEpochByPool) return
-
-            // In this block we should have ALRPs for all the previous reservePool + primePool
-
-            let {isOK,filteredReassignments} = await CHECK_ALRP_CHAIN_VALIDITY(
-            
-                primePoolPubKey,firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
-            
-            )
-
-
-            if(isOK){
-
-                infoAboutFinalBlocksByPool.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
-
-                infoAboutLastBlocksByPreviousPool = filteredReassignments
-
-            }
-
+            hash: aefp.lastHash
         }
 
-    }
+        let infoAboutLastBlocksByPreviousPool
 
-    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ALRP
+        for (let position = aefp.lastLeader; position >= 0; position--) {
+            let poolPubKey = oldLeadersSequenceForShard[position]
 
-    for(let reservePool of oldLeadersSequenceForShard){
+            // In case we know that pool on this position created 0 block - don't return from function and continue the cycle iterations
 
-        if(infoAboutFinalBlocksByPool.has(reservePool)){
+            if (
+                infoAboutLastBlocksByPreviousPool &&
+                infoAboutLastBlocksByPreviousPool[poolPubKey].index === -1
+            ) {
+                continue
+            } else {
+                // Get the first block of this epoch from VERIFICATION_STATS_PER_POOL
 
-            let metadataForReassignment = infoAboutFinalBlocksByPool.get(reservePool)
+                let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochIndex, poolPubKey, 0)
 
-            for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
+                if (!firstBlockInThisEpochByPool) return
 
-                if(!emptyTemplate[reassignedPoolPubKey]) emptyTemplate[reassignedPoolPubKey] = alrpData
+                // In this block we should have ALRPs for all the previous reservePool + primePool
 
+                let { isOK, filteredReassignments } = await CHECK_ALRP_CHAIN_VALIDITY(
+                    primePoolPubKey,
+                    firstBlockInThisEpochByPool,
+                    oldLeadersSequenceForShard,
+                    position,
+                    null,
+                    null,
+                    true
+                )
+
+                if (isOK) {
+                    infoAboutFinalBlocksByPool.set(poolPubKey, filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
+
+                    infoAboutLastBlocksByPreviousPool = filteredReassignments
+                }
             }
-
         }
 
-    }
+        // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ALRP
 
-    WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
+        for (let reservePool of oldLeadersSequenceForShard) {
+            if (infoAboutFinalBlocksByPool.has(reservePool)) {
+                let metadataForReassignment = infoAboutFinalBlocksByPool.get(reservePool)
 
+                for (let [reassignedPoolPubKey, alrpData] of Object.entries(
+                    metadataForReassignment
+                )) {
+                    if (!emptyTemplate[reassignedPoolPubKey])
+                        emptyTemplate[reassignedPoolPubKey] = alrpData
+                }
+            }
+        }
+
+        WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
 
         /*
         
@@ -607,59 +568,54 @@ BUILD_REASSIGNMENT_METADATA_FOR_SHARDS = async (vtEpochHandler,primePoolPubKey,a
         
         
         */
-   
+    },
+    SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
+        let vtEpochFullID = vtEpochHandler.hash + '#' + vtEpochHandler.id
 
-},
+        // Stuff related for next epoch
 
+        let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_HASH:${vtEpochFullID}`
+        ).catch(() => false)
 
+        let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_QUORUM:${vtEpochFullID}`
+        ).catch(() => false)
 
+        let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_LS:${vtEpochFullID}`
+        ).catch(() => false)
 
+        // Get the epoch edge operations that we need to execute
 
-SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
- 
+        let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `EEO:${vtEpochFullID}`
+        ).catch(() => null)
 
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
+        if (nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations) {
+            // Copy the current workflow options(i.e. network params like epoch duration, required stake for validators,etc.)
 
-    // Stuff related for next epoch
+            let workflowOptionsTemplate = {
+                ...WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+            }
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+            // We add this copy to cache to make changes and update the WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+            GLOBAL_CACHES.STATE_CACHE.set('WORKFLOW_OPTIONS', workflowOptionsTemplate)
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+            // Create the array of delayed unstaking transactions
+            // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
+            // X = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
 
+            GLOBAL_CACHES.STATE_CACHE.set('UNSTAKING_OPERATIONS', [])
 
-    // Get the epoch edge operations that we need to execute
+            // Create the object to perform slashing. Structure <pool> => <{delayedIds,pool}>
 
-    let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EEO:${vtEpochFullID}`).catch(()=>null)
+            GLOBAL_CACHES.STATE_CACHE.set('SLASH_OBJECT', {})
 
-    
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
+            //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
 
-        // Copy the current workflow options(i.e. network params like epoch duration, required stake for validators,etc.)
-
-        let workflowOptionsTemplate = {...WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
-
-        // We add this copy to cache to make changes and update the WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
-        
-        GLOBAL_CACHES.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
-
-
-        // Create the array of delayed unstaking transactions
-        // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
-        // X = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
-
-        GLOBAL_CACHES.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
-    
-
-        // Create the object to perform slashing. Structure <pool> => <{delayedIds,pool}>
-
-        GLOBAL_CACHES.STATE_CACHE.set('SLASH_OBJECT',{})
-
-
-        //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
-
-        /*
+            /*
 
             0. First of all - run slashing operations to punish the unfair players
         
@@ -681,25 +637,21 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
         */
 
-        for(let epochEdgeOperation of epochEdgeOperations){
-            
-            if(epochEdgeOperation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
+            for (let epochEdgeOperation of epochEdgeOperations) {
+                if (epochEdgeOperation.type === 'SLASH_UNSTAKE')
+                    await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
+            }
 
-        }
+            // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in GLOBAL_CACHES.STATE_CACHE['SLASH_OBJECT']
 
-        // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in GLOBAL_CACHES.STATE_CACHE['SLASH_OBJECT']
+            //________________________________ NOW RUN THE REST OF EPOCH EDGE OPERATIONS ______________________________________
 
+            for (let epochEdgeOperation of epochEdgeOperations) {
+                // Skip the previously executed SLASH_UNSTAKE operations
 
-        //________________________________ NOW RUN THE REST OF EPOCH EDGE OPERATIONS ______________________________________
+                if (epochEdgeOperation.type === 'SLASH_UNSTAKE') continue
 
-        for(let epochEdgeOperation of epochEdgeOperations){
-        
-            // Skip the previously executed SLASH_UNSTAKE operations
-
-            if(epochEdgeOperation.type==='SLASH_UNSTAKE') continue
-
-
-            /*
+                /*
             
                 Perform changes here before move to the next checkpoint
             
@@ -713,138 +665,131 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
 
             */
 
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload) //pass isFromRoute=undefined to make changes to state
-    
-        }
-
-
-        //_______________________Remove pools if lack of staking power_______________________
-
-
-        let poolsToBeRemoved = [], poolsArray = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
-
-
-        for(let poolPubKey of poolsArray){
-    
-            let poolOrigin = await GET_FROM_STATE(poolPubKey+'(POOL)_POINTER')
-    
-            let poolHashID = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
-    
-            let poolStorage = await GET_FROM_STATE(poolHashID)
-    
-            if(poolStorage.totalPower<WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
-    
-        }
-    
-        
-        //_____Now in <toRemovePools> we have IDs of pools which should be deleted from POOLS____
-
-
-        let deletePoolsPromises=[]
-
-        for(let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved){
-
-            deletePoolsPromises.push(DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID))
-    
-        }
-    
-        await Promise.all(deletePoolsPromises.splice(0))
-
-
-
-        //________________________________Remove rogue pools_________________________________
-
-        // These operations must be atomic
-    
-        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
-
-        let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
-        
-        let slashObjectKeys = Object.keys(slashObject)
-
-
-        
-        for(let poolIdentifier of slashObjectKeys){
-
-
-            //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
-        
-            let poolStorageHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)_STORAGE_POOL'
-
-            let poolMetadataHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)'
-
-            // Delete the single storage
-            atomicBatch.del(poolStorageHashID)
-
-            // Delete metadata
-            atomicBatch.del(poolMetadataHashID)
-
-            // Delete pointer
-            atomicBatch.del(poolIdentifier+'(POOL)_POINTER')
-
-
-            // Remove from pools tracking
-            delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolIdentifier]
-
-            // Delete from cache
-            GLOBAL_CACHES.STATE_CACHE.delete(poolStorageHashID)
-
-            GLOBAL_CACHES.STATE_CACHE.delete(poolMetadataHashID)
-
-
-            let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
-
-            //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
-            
-            for(let id of arrayOfDelayed){
-
-                let delayedArray = await GET_FROM_STATE('DEL_OPER_'+id)
-
-                // Each object in delayedArray has the following structure {fromPool,to,amount,units}
-                let toDeleteArray = []
-
-                for(let i=0;i<delayedArray.length;i++){
-
-                    if(delayedArray[i].fromPool===poolIdentifier) toDeleteArray.push(i)
-
-                }
-
-                // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
-
-                for(let txidIndex of toDeleteArray) delayedArray.splice(txidIndex,1) // remove single tx
-
+                await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](
+                    epochEdgeOperation.payload
+                ) //pass isFromRoute=undefined to make changes to state
             }
 
-        }
+            //_______________________Remove pools if lack of staking power_______________________
 
+            let poolsToBeRemoved = [],
+                poolsArray = Object.keys(
+                    WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL
+                )
 
-        //______________Perform earlier delayed operations & add new operations______________
+            for (let poolPubKey of poolsArray) {
+                let poolOrigin = await GET_FROM_STATE(poolPubKey + '(POOL)_POINTER')
 
-        let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
+                let poolHashID = poolOrigin + ':' + poolPubKey + '(POOL)_STORAGE_POOL'
 
-        // If it's first checkpoints - add this array
-        if(!delayedTableOfIds) delayedTableOfIds=[]
-    
+                let poolStorage = await GET_FROM_STATE(poolHashID)
 
-        let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+                if (
+                    poolStorage.totalPower <
+                    WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                )
+                    poolsToBeRemoved.push({ poolHashID, poolPubKey })
+            }
 
-        let idsToDelete = []
+            //_____Now in <toRemovePools> we have IDs of pools which should be deleted from POOLS____
 
-            
+            let deletePoolsPromises = []
 
-        for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
+            for (let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved) {
+                deletePoolsPromises.push(
+                    DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(poolHandlerWithPubKeyAndHashID)
+                )
+            }
 
-            // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+            await Promise.all(deletePoolsPromises.splice(0))
 
-            if(delayedTableOfIds[i] + WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
+            //________________________________Remove rogue pools_________________________________
 
-                let oldDelayOperations = await GET_FROM_STATE('DEL_OPER_'+delayedTableOfIds[i])
+            // These operations must be atomic
 
-                if(oldDelayOperations){
+            let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
 
-                    for(let delayedTx of oldDelayOperations){
+            let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
 
-                        /*
+            let slashObjectKeys = Object.keys(slashObject)
+
+            for (let poolIdentifier of slashObjectKeys) {
+                //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
+
+                let poolStorageHashID =
+                    slashObject[poolIdentifier].poolOrigin +
+                    ':' +
+                    poolIdentifier +
+                    '(POOL)_STORAGE_POOL'
+
+                let poolMetadataHashID =
+                    slashObject[poolIdentifier].poolOrigin + ':' + poolIdentifier + '(POOL)'
+
+                // Delete the single storage
+                atomicBatch.del(poolStorageHashID)
+
+                // Delete metadata
+                atomicBatch.del(poolMetadataHashID)
+
+                // Delete pointer
+                atomicBatch.del(poolIdentifier + '(POOL)_POINTER')
+
+                // Remove from pools tracking
+                delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[
+                    poolIdentifier
+                ]
+
+                // Delete from cache
+                GLOBAL_CACHES.STATE_CACHE.delete(poolStorageHashID)
+
+                GLOBAL_CACHES.STATE_CACHE.delete(poolMetadataHashID)
+
+                let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
+
+                //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
+
+                for (let id of arrayOfDelayed) {
+                    let delayedArray = await GET_FROM_STATE('DEL_OPER_' + id)
+
+                    // Each object in delayedArray has the following structure {fromPool,to,amount,units}
+                    let toDeleteArray = []
+
+                    for (let i = 0; i < delayedArray.length; i++) {
+                        if (delayedArray[i].fromPool === poolIdentifier) toDeleteArray.push(i)
+                    }
+
+                    // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
+
+                    for (let txidIndex of toDeleteArray) delayedArray.splice(txidIndex, 1) // remove single tx
+                }
+            }
+
+            //______________Perform earlier delayed operations & add new operations______________
+
+            let delayedTableOfIds = await GET_FROM_STATE('DELAYED_TABLE_OF_IDS')
+
+            // If it's first checkpoints - add this array
+            if (!delayedTableOfIds) delayedTableOfIds = []
+
+            let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+
+            let idsToDelete = []
+
+            for (let i = 0, lengthOfTable = delayedTableOfIds.length; i < lengthOfTable; i++) {
+                // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+
+                if (
+                    delayedTableOfIds[i] +
+                        WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD <
+                    currentEpochIndex
+                ) {
+                    let oldDelayOperations = await GET_FROM_STATE(
+                        'DEL_OPER_' + delayedTableOfIds[i]
+                    )
+
+                    if (oldDelayOperations) {
+                        for (let delayedTx of oldDelayOperations) {
+                            /*
 
                             Get the accounts and add appropriate amount of KLY / UNO
 
@@ -865,182 +810,160 @@ SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD = async vtEpochHandler => {
                     
                         */
 
-                        let account = await GET_ACCOUNT_FROM_STATE(BLAKE3(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
+                            let account = await GET_ACCOUNT_FROM_STATE(
+                                BLAKE3(delayedTx.storageOrigin + delayedTx.to)
+                            ) // return funds(unstaking) to account that binded to
 
-                        // Return back staked KLY / UNO to the state of user's account
-                        if(delayedTx.units==='kly') account.balance += delayedTx.amount
+                            // Return back staked KLY / UNO to the state of user's account
+                            if (delayedTx.units === 'kly') account.balance += delayedTx.amount
+                            else account.uno += delayedTx.amount
+                        }
 
-                        else account.uno += delayedTx.amount
-                    
+                        // Remove ID (delayedID) from delayed table of IDs because we already used it
+                        idsToDelete.push(i)
                     }
+                }
+            }
 
+            // Remove "spent" ids
 
-                    // Remove ID (delayedID) from delayed table of IDs because we already used it
-                    idsToDelete.push(i)
+            for (let id of idsToDelete) delayedTableOfIds.splice(id, 1)
 
+            // Also, add the array of delayed operations from THIS checkpoint if it's not empty
+
+            let currentArrayOfDelayedOperations = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
+
+            if (currentArrayOfDelayedOperations.length !== 0) {
+                delayedTableOfIds.push(currentEpochIndex)
+
+                GLOBAL_CACHES.STATE_CACHE.set(
+                    'DEL_OPER_' + currentEpochIndex,
+                    currentArrayOfDelayedOperations
+                )
+            }
+
+            // Set the DELAYED_TABLE_OF_IDS to DB
+
+            GLOBAL_CACHES.STATE_CACHE.set('DELAYED_TABLE_OF_IDS', delayedTableOfIds)
+
+            // Delete the temporary from cache
+
+            GLOBAL_CACHES.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
+
+            GLOBAL_CACHES.STATE_CACHE.delete('SLASH_OBJECT')
+
+            //_______________________Commit changes after operations here________________________
+
+            // Update the WORKFLOW_OPTIONS
+            WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = { ...workflowOptionsTemplate }
+
+            GLOBAL_CACHES.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+
+            // Update the quorum for next epoch
+            WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
+
+            // Change reassignment chains
+            WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
+
+            // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
+
+            let newPrimePoolsArray = []
+
+            for (let [poolPubKey, poolMetadata] of Object.entries(
+                WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL
+            )) {
+                if (!poolMetadata.isReserve) {
+                    newPrimePoolsArray.push(poolPubKey)
+
+                    WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
+                        currentLeaderOnShard: poolPubKey,
+
+                        index: -1,
+
+                        hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                    }
                 }
 
-            }
+                WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
+                    index: -1,
 
-        }
+                    hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-
-        // Remove "spent" ids
-
-        for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
-
-
-        // Also, add the array of delayed operations from THIS checkpoint if it's not empty
-
-        let currentArrayOfDelayedOperations = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
-        
-        if(currentArrayOfDelayedOperations.length !== 0){
-
-            delayedTableOfIds.push(currentEpochIndex)
-
-            GLOBAL_CACHES.STATE_CACHE.set('DEL_OPER_'+currentEpochIndex,currentArrayOfDelayedOperations)
-
-        }
-
-
-        // Set the DELAYED_TABLE_OF_IDS to DB
-
-        GLOBAL_CACHES.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
-
-    
-    
-        // Delete the temporary from cache
-    
-        GLOBAL_CACHES.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
-    
-        GLOBAL_CACHES.STATE_CACHE.delete('SLASH_OBJECT')
-
-
-        //_______________________Commit changes after operations here________________________
-
-        // Update the WORKFLOW_OPTIONS
-        WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
-
-        GLOBAL_CACHES.STATE_CACHE.delete('WORKFLOW_OPTIONS')
-
-    
-        // Update the quorum for next epoch
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
-
-        // Change reassignment chains
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
-
-        
-        // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
-
-        let newPrimePoolsArray = []
-
-
-        for(let [poolPubKey,poolMetadata] of Object.entries(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
-
-            if(!poolMetadata.isReserve) {
-
-                newPrimePoolsArray.push(poolPubKey)
-
-                WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
-
-                    currentLeaderOnShard:poolPubKey,
-
-                    index:-1,
-                    
-                    hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
+                    isReserve: poolMetadata.isReserve
                 }
 
+                // Close connection in case we have
+
+                let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:' + poolPubKey)
+
+                if (tunnelHandler) tunnelHandler.connection.close()
             }
 
-            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
-                
-                index:-1,
-                
-                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+            GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS', newPrimePoolsArray)
 
-                isReserve:poolMetadata.isReserve
-            
+            // Finally - delete the AEFP reassignment metadata
+            delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
+
+            // Delete the useless temporary reassignments from previous epoch
+            delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
+
+            GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
+
+            LOG(
+                `\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,
+                COLORS.GREEN
+            )
+
+            // Finally - set the new index, hash and timestamp for next epoch
+
+            WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id + 1
+
+            WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
+
+            WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp +=
+                WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
+
+            // Commit the changes of state using atomic batch
+            GLOBAL_CACHES.STATE_CACHE.forEach((value, recordID) => atomicBatch.put(recordID, value))
+
+            atomicBatch.put('VT', WORKING_THREADS.VERIFICATION_THREAD)
+
+            await atomicBatch.write()
+
+            // Now we can delete useless data from EPOCH_DATA db
+
+            await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(
+                () => {}
+            )
+
+            await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(
+                () => {}
+            )
+
+            await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(
+                () => {}
+            )
+
+            LOG(
+                `Epoch on verification thread was updated => \x1b[34;1m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash}#${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id}`,
+                COLORS.GREEN
+            )
+
+            //_______________________Check the version required for the next checkpoint________________________
+
+            if (IS_MY_VERSION_OLD('VERIFICATION_THREAD')) {
+                LOG(
+                    `New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,
+                    COLORS.YELLOW
+                )
+
+                // Stop the node to update the software
+                GRACEFUL_STOP()
             }
-
-            // Close connection in case we have
-            
-            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey)
-
-            if(tunnelHandler) tunnelHandler.connection.close()
-
         }
-
-        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
-
-        // Finally - delete the AEFP reassignment metadata
-        delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
-
-        // Delete the useless temporary reassignments from previous epoch
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
-
-        GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
-
-
-        LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,COLORS.GREEN)
-
-
-        // Finally - set the new index, hash and timestamp for next epoch
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
-
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
-
-
-        // Commit the changes of state using atomic batch
-        GLOBAL_CACHES.STATE_CACHE.forEach(
-            
-            (value,recordID) => atomicBatch.put(recordID,value)
-            
-        )
-
-        atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
-
-        await atomicBatch.write()
-
-
-        // Now we can delete useless data from EPOCH_DATA db
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
-
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
-
-
-
-        LOG(`Epoch on verification thread was updated => \x1b[34;1m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash}#${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id}`,COLORS.GREEN)
-        
-
-        //_______________________Check the version required for the next checkpoint________________________
-
-        if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
-
-            LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
-        
-            // Stop the node to update the software
-            GRACEFUL_STOP()
-        
-        }
-
-    }
-
-},
-
-
-
-
-TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
-
-    /* 
+    },
+    TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
+        /* 
             
         Start to build the WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
             
@@ -1068,195 +991,215 @@ TRY_TO_FINISH_CURRENT_EPOCH_ON_VT = async vtEpochHandler => {
 
     */
 
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
+        let vtEpochFullID = vtEpochHandler.hash + '#' + vtEpochHandler.id
 
-    let vtEpochIndex = vtEpochHandler.id
+        let vtEpochIndex = vtEpochHandler.id
 
-    let nextEpochIndex = vtEpochIndex+1
+        let nextEpochIndex = vtEpochIndex + 1
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+        let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_HASH:${vtEpochFullID}`
+        ).catch(() => false)
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+        let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_QUORUM:${vtEpochFullID}`
+        ).catch(() => false)
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+        let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            `NEXT_EPOCH_LS:${vtEpochFullID}`
+        ).catch(() => false)
 
-    let nextEpochHandlerTemplate = {
+        let nextEpochHandlerTemplate = {
+            id: nextEpochIndex,
 
-        id:nextEpochIndex,
-        
-        hash:nextEpochHash,
+            hash: nextEpochHash,
 
-        quorum:nextEpochQuorum,
+            quorum: nextEpochQuorum,
 
-        leadersSequence:nextEpochLeadersSequences
+            leadersSequence: nextEpochLeadersSequences
+        }
 
-    }
+        if (nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences) {
+            let epochCache =
+                (await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(
+                    () => false
+                )) || {} // {shardID:{firstBlockCreator,firstBlockHash}}
 
+            let totalNumberOfShards = 0,
+                totalNumberOfShardsReadyForMove = 0
 
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences){
+            // Find the first blocks for epoch X+1 and AFPs for these blocks
+            // Once get it - get the real first block
+            for (let [primePoolPubKey] of Object.entries(nextEpochLeadersSequences)) {
+                totalNumberOfShards++
 
-        let epochCache = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_CACHE:${vtEpochIndex}`).catch(()=>false) || {} // {shardID:{firstBlockCreator,firstBlockHash}} 
+                // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
-        let totalNumberOfShards = 0, totalNumberOfShardsReadyForMove = 0
+                if (!epochCache[primePoolPubKey]) epochCache[primePoolPubKey] = {}
 
-        // Find the first blocks for epoch X+1 and AFPs for these blocks
-        // Once get it - get the real first block
-        for(let [primePoolPubKey] of Object.entries(nextEpochLeadersSequences)){
+                if (!epochCache[primePoolPubKey].firstBlockCreator) {
+                    let findResult = await GET_FIRST_BLOCK_ON_EPOCH(
+                        nextEpochHandlerTemplate,
+                        primePoolPubKey,
+                        GET_BLOCK
+                    )
 
-            totalNumberOfShards++
+                    if (findResult) {
+                        epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
 
-            // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
+                        epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
+                    }
 
-            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey]={}
-
-            if(!epochCache[primePoolPubKey].firstBlockCreator){
-
-                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(nextEpochHandlerTemplate,primePoolPubKey,GET_BLOCK)
-
-                if(findResult){
-
-                    epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
-
-                    epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
-
+                    await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(
+                        `VT_CACHE:${vtEpochIndex}`,
+                        epochCache
+                    ).catch(() => false)
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>false)
+                //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
+                let firstBlockOnThisShardInThisEpoch = await GET_BLOCK(
+                    nextEpochIndex,
+                    epochCache[primePoolPubKey].firstBlockCreator,
+                    0
+                )
+
+                if (
+                    firstBlockOnThisShardInThisEpoch &&
+                    Block.genHash(firstBlockOnThisShardInThisEpoch) ===
+                        epochCache[primePoolPubKey].firstBlockHash
+                ) {
+                    epochCache[primePoolPubKey].aefp =
+                        firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
+                }
+
+                if (epochCache[primePoolPubKey].aefp) totalNumberOfShardsReadyForMove++
             }
 
-            //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
+            if (totalNumberOfShards === totalNumberOfShardsReadyForMove) {
+                // Create empty template
+                if (!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA)
+                    WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-            let firstBlockOnThisShardInThisEpoch = await GET_BLOCK(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
+                for (let primePoolPubKey of Object.keys(nextEpochLeadersSequences)) {
+                    // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
 
-            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[primePoolPubKey].firstBlockHash){
-
-                epochCache[primePoolPubKey].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
-
+                    if (!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey])
+                        await BUILD_REASSIGNMENT_METADATA_FOR_SHARDS(
+                            vtEpochHandler,
+                            primePoolPubKey,
+                            epochCache[primePoolPubKey].aefp
+                        )
+                }
             }
-
-            if(epochCache[primePoolPubKey].aefp) totalNumberOfShardsReadyForMove++
-
         }
-
-
-        if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
-
-            // Create empty template
-            if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
-
-            for(let primePoolPubKey of Object.keys(nextEpochLeadersSequences)){
-
-                // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
-                
-                if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await BUILD_REASSIGNMENT_METADATA_FOR_SHARDS(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
-
-            }
-
-        }
-
-    }
-
-},
-
-
-
-
-OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
-
-    /* 
+    },
+    OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith, epochHandler) => {
+        /* 
     
         Open connection with websocket endpoint which was set by target pool
 
     */
 
+        let endpointURL = CONFIGURATION.NODE_LEVEL?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
 
-    let endpointURL = CONFIGURATION.NODE_LEVEL?.BLOCKS_TUNNELS?.[poolPubKeyToOpenConnectionWith]
+        if (!endpointURL) {
+            let poolBinding = await GET_FROM_STATE(
+                poolPubKeyToOpenConnectionWith + '(POOL)_POINTER'
+            )
 
-    if(!endpointURL){
+            let poolStorage = await GET_FROM_STATE(
+                poolBinding + ':' + poolPubKeyToOpenConnectionWith + '(POOL)_STORAGE_POOL'
+            )
 
-        let poolBinding = await GET_FROM_STATE(poolPubKeyToOpenConnectionWith+'(POOL)_POINTER')
+            if (poolStorage) endpointURL = poolStorage.wssPoolURL
+        }
 
-        let poolStorage = await GET_FROM_STATE(poolBinding+':'+poolPubKeyToOpenConnectionWith+'(POOL)_STORAGE_POOL')
-        
+        if (endpointURL) {
+            // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time.
 
-        if(poolStorage) endpointURL = poolStorage.wssPoolURL
-    
-    }
+            // GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
 
+            await new Promise(resolve => {
+                let WebSocketClient = WS.client
 
+                let client = new WebSocketClient({
+                    maxReceivedMessageSize: 1024 * 1024 * 500
+                })
 
-    if(endpointURL){
+                client.connect(endpointURL, 'echo-protocol')
 
-        // Open tunnel, set listeners for events, add to cache and fetch blocks portions time by time. 
+                client.on('connect', connection => {
+                    connection.on('message', async message => {
+                        if (message.type === 'utf8') {
+                            if (
+                                GLOBAL_CACHES.STUFF_CACHE.has(
+                                    'TUNNEL_REQUEST_ACCEPTED:' + poolPubKeyToOpenConnectionWith
+                                )
+                            )
+                                return
 
-        // GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow)
+                            GLOBAL_CACHES.STUFF_CACHE.set(
+                                'TUNNEL_REQUEST_ACCEPTED:' + poolPubKeyToOpenConnectionWith,
+                                true
+                            )
 
-        await new Promise(resolve=>{
+                            let handler = GLOBAL_CACHES.STUFF_CACHE.get(
+                                'TUNNEL:' + poolPubKeyToOpenConnectionWith
+                            ) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-            let WebSocketClient = WS.client
-    
-            let client = new WebSocketClient({
+                            let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
 
-                maxReceivedMessageSize: 1024 * 1024 * 500
+                            let limit = 500 // max 500 blocks per request. Change it if you neeed
 
-            })
+                            if (
+                                handler &&
+                                typeof parsedData === 'object' &&
+                                typeof parsedData.afpForLatest === 'object' &&
+                                Array.isArray(parsedData.blocks) &&
+                                parsedData.blocks.length <= limit &&
+                                parsedData.blocks[0]?.index === handler.hasUntilHeight + 1
+                            ) {
+                                let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get(
+                                    'GET_FINAL_BLOCK:' + poolPubKeyToOpenConnectionWith
+                                )
 
-            client.connect(endpointURL,'echo-protocol')
+                                if (
+                                    lastBlockInfo &&
+                                    handler.hasUntilHeight + 1 === lastBlockInfo.index
+                                ) {
+                                    let lastBlockThatWeGet =
+                                        parsedData.blocks[parsedData.blocks.length - 1]
 
+                                    if (lastBlockThatWeGet) {
+                                        let blockHash = Block.genHash(lastBlockThatWeGet)
 
-            client.on('connect',connection=>{
+                                        if (
+                                            blockHash === lastBlockInfo.hash &&
+                                            lastBlockInfo.index === lastBlockThatWeGet.index
+                                        ) {
+                                            let blockID =
+                                                epochHandler.id +
+                                                ':' +
+                                                poolPubKeyToOpenConnectionWith +
+                                                ':' +
+                                                lastBlockThatWeGet.index
 
-                connection.on('message',async message=>{
+                                            handler.cache.set(blockID, lastBlockThatWeGet)
 
-                    if(message.type === 'utf8'){
+                                            handler.hasUntilHeight = lastBlockThatWeGet.index
 
-                        if(GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)) return
-
-                        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith,true)
-                        
-                        let handler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-                        let parsedData = JSON.parse(message.utf8Data) // {blocks:[],afpForLatest}
-
-                        let limit = 500 // max 500 blocks per request. Change it if you neeed
-
-
-                        if(handler && typeof parsedData === 'object' && typeof parsedData.afpForLatest === 'object' && Array.isArray(parsedData.blocks) && parsedData.blocks.length <= limit && parsedData.blocks[0]?.index === handler.hasUntilHeight+1){
-
-                            let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
-
-                            if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index){
-
-                                let lastBlockThatWeGet = parsedData.blocks[parsedData.blocks.length-1]
-
-                                if(lastBlockThatWeGet){
-
-                                    let blockHash = Block.genHash(lastBlockThatWeGet)
-
-                                    if(blockHash === lastBlockInfo.hash && lastBlockInfo.index === lastBlockThatWeGet.index){
-
-                                        let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+lastBlockThatWeGet.index
-
-                                        handler.cache.set(blockID,lastBlockThatWeGet)
-                                        
-                                        handler.hasUntilHeight = lastBlockThatWeGet.index
-                                        
-                                        GLOBAL_CACHES.STUFF_CACHE.delete('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
-
+                                            GLOBAL_CACHES.STUFF_CACHE.delete(
+                                                'GET_FINAL_BLOCK:' + poolPubKeyToOpenConnectionWith
+                                            )
+                                        }
                                     }
+                                } else {
+                                    // Make sure it's a chain
 
-                                }
+                                    let breaked = false
 
-                            }else{
-
-
-                                // Make sure it's a chain
-
-                                let breaked = false
-
-                                
-                                /*
+                                    /*
                         
                                     Run the cycle to verify the range:
 
@@ -1268,197 +1211,217 @@ OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL = async (poolPubKeyToOpenConnectionWith,epo
                         
                                 */
 
-                                for(let currentBlockIndexInArray = parsedData.blocks.length-1 ; currentBlockIndexInArray >= 0 ; currentBlockIndexInArray--){
+                                    for (
+                                        let currentBlockIndexInArray = parsedData.blocks.length - 1;
+                                        currentBlockIndexInArray >= 0;
+                                        currentBlockIndexInArray--
+                                    ) {
+                                        let currentBlock =
+                                            parsedData.blocks[currentBlockIndexInArray]
 
-                                    let currentBlock = parsedData.blocks[currentBlockIndexInArray]
+                                        // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
 
-                                    // Compare hashes - currentBlock.prevHash must be the same as Hash(blocks[index-1])
+                                        let hashesAreEqual = true,
+                                            indexesAreOk = true
 
-                                    let hashesAreEqual = true, indexesAreOk = true
+                                        if (currentBlockIndexInArray > 0) {
+                                            hashesAreEqual =
+                                                Block.genHash(
+                                                    parsedData.blocks[currentBlockIndexInArray - 1]
+                                                ) === currentBlock.prevHash
 
-                                    if(currentBlockIndexInArray>0){
+                                            indexesAreOk =
+                                                parsedData.blocks[currentBlockIndexInArray - 1]
+                                                    .index +
+                                                    1 ===
+                                                parsedData.blocks[currentBlockIndexInArray].index
+                                        }
 
-                                        hashesAreEqual = Block.genHash(parsedData.blocks[currentBlockIndexInArray-1]) === currentBlock.prevHash
+                                        // Now, check the structure of block
 
-                                        indexesAreOk = parsedData.blocks[currentBlockIndexInArray-1].index+1 === parsedData.blocks[currentBlockIndexInArray].index
+                                        let typeCheckIsOk =
+                                            typeof currentBlock.extraData === 'object' &&
+                                            typeof currentBlock.prevHash === 'string' &&
+                                            typeof currentBlock.epoch === 'string' &&
+                                            typeof currentBlock.sig === 'string' &&
+                                            Array.isArray(currentBlock.transactions)
 
+                                        let itsTheSameCreator =
+                                            currentBlock.creator === poolPubKeyToOpenConnectionWith
+
+                                        let overviewIsOk =
+                                            typeCheckIsOk &&
+                                            itsTheSameCreator &&
+                                            hashesAreEqual &&
+                                            indexesAreOk
+
+                                        // If it's the last block in array(and first in enumeration) - check the AFP for latest block
+
+                                        if (
+                                            overviewIsOk &&
+                                            currentBlockIndexInArray ===
+                                                parsedData.blocks.length - 1
+                                        ) {
+                                            let blockIDThatMustBeInAfp =
+                                                epochHandler.id +
+                                                ':' +
+                                                poolPubKeyToOpenConnectionWith +
+                                                ':' +
+                                                (currentBlock.index + 1)
+
+                                            let prevBlockHashThatMustBeInAfp =
+                                                Block.genHash(currentBlock)
+
+                                            overviewIsOk &&=
+                                                blockIDThatMustBeInAfp ===
+                                                    parsedData.afpForLatest.blockID &&
+                                                prevBlockHashThatMustBeInAfp ===
+                                                    parsedData.afpForLatest.prevBlockHash &&
+                                                (await VERIFY_AGGREGATED_FINALIZATION_PROOF(
+                                                    parsedData.afpForLatest,
+                                                    epochHandler
+                                                ))
+                                        }
+
+                                        if (!overviewIsOk) {
+                                            breaked = true
+
+                                            break
+                                        }
                                     }
 
-                                    // Now, check the structure of block
+                                    // If we have size - add blocks here. The reserve is 5000 blocks per shard
 
-                                    let typeCheckIsOk = typeof currentBlock.extraData==='object' && typeof currentBlock.prevHash==='string' && typeof currentBlock.epoch==='string' && typeof currentBlock.sig==='string' && Array.isArray(currentBlock.transactions)
-                                
-                                    let itsTheSameCreator = currentBlock.creator === poolPubKeyToOpenConnectionWith
+                                    if (
+                                        handler.cache.size + parsedData.blocks.length <= 5000 &&
+                                        !breaked
+                                    ) {
+                                        // Add the blocks to mapping
 
-                                    let overviewIsOk = typeCheckIsOk && itsTheSameCreator && hashesAreEqual && indexesAreOk
+                                        parsedData.blocks.forEach(block => {
+                                            let blockID =
+                                                epochHandler.id +
+                                                ':' +
+                                                poolPubKeyToOpenConnectionWith +
+                                                ':' +
+                                                block.index
 
-                                    // If it's the last block in array(and first in enumeration) - check the AFP for latest block
+                                            handler.cache.set(blockID, block)
+                                        })
 
-                                    if(overviewIsOk && currentBlockIndexInArray === parsedData.blocks.length-1){
-
-                                        let blockIDThatMustBeInAfp = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+(currentBlock.index+1)
-
-                                        let prevBlockHashThatMustBeInAfp = Block.genHash(currentBlock)
-
-                                        overviewIsOk &&= blockIDThatMustBeInAfp === parsedData.afpForLatest.blockID && prevBlockHashThatMustBeInAfp === parsedData.afpForLatest.prevBlockHash && await VERIFY_AGGREGATED_FINALIZATION_PROOF(parsedData.afpForLatest,epochHandler)
-
+                                        handler.hasUntilHeight =
+                                            parsedData.blocks[parsedData.blocks.length - 1].index
                                     }
-                                
-                                
-                                    if(!overviewIsOk){
-
-                                        breaked = true
-
-                                        break
-
-                                    }
-
                                 }
-
-                            
-                                // If we have size - add blocks here. The reserve is 5000 blocks per shard
-
-                                if(handler.cache.size+parsedData.blocks.length<=5000 && !breaked){
-
-                                    // Add the blocks to mapping
-
-                                    parsedData.blocks.forEach(block=>{
-
-                                        let blockID = epochHandler.id+':'+poolPubKeyToOpenConnectionWith+':'+block.index
-
-                                        handler.cache.set(blockID,block)
-
-                                    })
-
-                                    handler.hasUntilHeight = parsedData.blocks[parsedData.blocks.length-1].index
-                                
-                                }
-
                             }
-                            
+
+                            GLOBAL_CACHES.STUFF_CACHE.delete(
+                                'TUNNEL_REQUEST_ACCEPTED:' + poolPubKeyToOpenConnectionWith
+                            )
                         }
+                    })
 
-                        GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)
-                    
-                    }        
+                    // Start to ask for blocks time by time
 
-                })
+                    let stopHandler = setInterval(() => {
+                        if (
+                            !GLOBAL_CACHES.STUFF_CACHE.has(
+                                'TUNNEL_REQUEST_ACCEPTED:' + poolPubKeyToOpenConnectionWith
+                            )
+                        ) {
+                            let handler = GLOBAL_CACHES.STUFF_CACHE.get(
+                                'TUNNEL:' + poolPubKeyToOpenConnectionWith
+                            ) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-                // Start to ask for blocks time by time
-                
-                let stopHandler = setInterval(()=>{
+                            let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get(
+                                'GET_FINAL_BLOCK:' + poolPubKeyToOpenConnectionWith
+                            )
 
-                    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_REQUEST_ACCEPTED:'+poolPubKeyToOpenConnectionWith)){
+                            if (handler) {
+                                let messageToSend = {
+                                    route: 'get_blocks',
 
-                        let handler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKeyToOpenConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+                                    pool: poolPubKeyToOpenConnectionWith,
 
-                        let lastBlockInfo = GLOBAL_CACHES.STUFF_CACHE.get('GET_FINAL_BLOCK:'+poolPubKeyToOpenConnectionWith)
+                                    hasUntilHeight: handler.hasUntilHeight,
 
-                        if(handler){
-    
-                            let messageToSend = {
-    
-                                route:'get_blocks',
+                                    epochIndex: epochHandler.id,
 
-                                pool:poolPubKeyToOpenConnectionWith,
-        
-                                hasUntilHeight:handler.hasUntilHeight,
+                                    sendWithNoAfp: {}
+                                }
 
-                                epochIndex:epochHandler.id,
+                                if (
+                                    lastBlockInfo &&
+                                    handler.hasUntilHeight + 1 === lastBlockInfo.index
+                                )
+                                    messageToSend.sendWithNoAfp = lastBlockInfo
 
-                                sendWithNoAfp:{}
-        
+                                connection.sendUTF(JSON.stringify(messageToSend))
                             }
+                        }
+                    }, 2000)
 
-                            if(lastBlockInfo && handler.hasUntilHeight+1 === lastBlockInfo.index) messageToSend.sendWithNoAfp = lastBlockInfo
-        
-                            connection.sendUTF(JSON.stringify(messageToSend))
-    
-                        }    
+                    connection.on('close', () => {
+                        GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:' + poolPubKeyToOpenConnectionWith)
 
-                    }
+                        clearInterval(stopHandler)
+                    })
 
-                },2000)
+                    connection.on('error', () => {
+                        GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:' + poolPubKeyToOpenConnectionWith)
 
-                connection.on('close',()=>{
+                        clearInterval(stopHandler)
+                    })
 
-                    GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
+                    let hasUntilHeight =
+                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[
+                            poolPubKeyToOpenConnectionWith
+                        ].index
 
-                    clearInterval(stopHandler)
-
+                    GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL:' + poolPubKeyToOpenConnectionWith, {
+                        url: endpointURL,
+                        hasUntilHeight,
+                        connection,
+                        cache: new Map()
+                    }) // mapping <cache> has the structure blockID => block
                 })
-                      
-                connection.on('error',()=>{
 
-                    GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL:'+poolPubKeyToOpenConnectionWith)
-
-                    clearInterval(stopHandler)
-
-                })
-
-                let hasUntilHeight = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKeyToOpenConnectionWith].index
-
-                GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL:'+poolPubKeyToOpenConnectionWith,{url:endpointURL,hasUntilHeight,connection,cache:new Map()}) // mapping <cache> has the structure blockID => block
-
+                resolve()
             })
+        }
+    },
+    CHECK_CONNECTION_WITH_POOL = async (poolToVerifyRightNow, vtEpochHandler) => {
+        if (
+            !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL:' + poolToVerifyRightNow) &&
+            !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:' + poolToVerifyRightNow)
+        ) {
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow, vtEpochHandler)
 
-            resolve()
+            GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:' + poolToVerifyRightNow, true)
 
-        })                
- 
-    }
+            setTimeout(() => {
+                GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:' + poolToVerifyRightNow)
+            }, 5000)
+        } else if (GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:' + poolToVerifyRightNow)) {
+            // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
 
-},
+            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:' + poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
+            tunnelHandler.connection.close()
 
+            GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:' + poolToVerifyRightNow)
 
+            await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow, vtEpochHandler)
 
-CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
+            GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:' + poolToVerifyRightNow, true)
 
-    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
-
-        await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
-
-        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
-
-        setTimeout(()=>{
-
-            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
-
-        },5000)
-
-        
-    }else if(GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
-
-        // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
-
-        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-        tunnelHandler.connection.close()
-
-        GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
-
-        await OPEN_TUNNEL_TO_FETCH_BLOCKS_FOR_POOL(poolToVerifyRightNow,vtEpochHandler)
-        
-        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
-
-        setTimeout(()=>{
-
-            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
-
-        },5000)
-
-    }
-
-},
-
-
-
-
-GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
-
-
-    /*
+            setTimeout(() => {
+                GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:' + poolToVerifyRightNow)
+            }, 5000)
+        }
+    },
+    GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
+        /*
     
     
     
@@ -1466,85 +1429,66 @@ GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
     
     */
 
-    let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
+        let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
 
+        for (let transaction of txsArray) {
+            if (transaction.touched) {
+                for (let touchedAccount of transaction.touched) {
+                    if (numberOfAccountTouchesPerAccount.has(touchedAccount)) {
+                        let number = numberOfAccountTouchesPerAccount.get(touchedAccount)
 
-    for(let transaction of txsArray){
-
-        if(transaction.touched){
-
-            for(let touchedAccount of transaction.touched){
-
-                if(numberOfAccountTouchesPerAccount.has(touchedAccount)){
-    
-                    let number = numberOfAccountTouchesPerAccount.get(touchedAccount)
-    
-                    numberOfAccountTouchesPerAccount.set(touchedAccount,number+1)
-    
-                } else numberOfAccountTouchesPerAccount.set(touchedAccount,1) 
-    
+                        numberOfAccountTouchesPerAccount.set(touchedAccount, number + 1)
+                    } else numberOfAccountTouchesPerAccount.set(touchedAccount, 1)
+                }
             }
-
         }
 
-    }
+        //____________ Now, all the txs where all accounts in <touchedAccount> has 1 point can be executed independently ____________
 
-    //____________ Now, all the txs where all accounts in <touchedAccount> has 1 point can be executed independently ____________
+        for (let transaction of txsArray) {
+        }
+    },
+    START_VERIFICATION_THREAD = async () => {
+        let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
 
-    for(let transaction of txsArray){}
+        if (!shardsIdentifiers) {
+            let primePools = Object.keys(
+                WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL
+            ).filter(
+                pubKey =>
+                    !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pubKey]
+                        .isReserve
+            )
 
+            GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS', primePools)
 
-},
+            shardsIdentifiers = primePools
+        }
 
+        let currentEpochIsFresh = EPOCH_STILL_FRESH(WORKING_THREADS.VERIFICATION_THREAD)
 
+        let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
+        let previousShardWeChecked = WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER
 
-START_VERIFICATION_THREAD=async()=>{
+        let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
 
-    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
+        let currentShardToCheck =
+            shardsIdentifiers[indexOfPreviousShard + 1] || shardsIdentifiers[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
 
-    if(!shardsIdentifiers){
+        let vtEpochFullID = vtEpochHandler.hash + '#' + vtEpochHandler.id
 
-        let primePools = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL).filter(
-                
-            pubKey => !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pubKey].isReserve
-                
-        )
+        let vtEpochIndex = vtEpochHandler.id
 
-        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',primePools)
+        // Get the stats from reassignments
 
-        shardsIdentifiers = primePools
+        let tempReassignmentsForSomeShard =
+            WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[
+                currentShardToCheck
+            ] // {currentLeader,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
 
-    }
-
-    
-    let currentEpochIsFresh = EPOCH_STILL_FRESH(WORKING_THREADS.VERIFICATION_THREAD)
-
-    let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
-    let previousShardWeChecked = WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER
-
-    let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
-
-    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
-
-    let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
-
-    let vtEpochIndex = vtEpochHandler.id
-
-        
-        
-
-
-    // Get the stats from reassignments
-
-    let tempReassignmentsForSomeShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,reassignments:{poolPubKey:{index,hash}}}
-
-
-    if(WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
-
-        
-        /*
+        if (WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]) {
+            /*
         
             In case we have .REASSIGNMENT_METADATA - it's a signal that the new epoch on QT has started
             In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .REASSIGNMENT_METADATA which has the structure
@@ -1563,308 +1507,296 @@ START_VERIFICATION_THREAD=async()=>{
 
         */
 
+            if (!GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH'))
+                GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH', new Map())
 
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
+            if (!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:' + currentShardToCheck))
+                GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:' + currentShardToCheck, {
+                    indexOfCurrentPoolToVerify: -1
+                })
 
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
+            let shardsReadyToNewEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
 
+            let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get(
+                'CURRENT_TO_FINISH:' + currentShardToCheck
+            ) // {indexOfCurrentPoolToVerify:int}
 
-        let shardsReadyToNewEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)
-        
-        let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
+            let metadataForShardFromAefp =
+                WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
 
-        let metadataForShardFromAefp = WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[currentShardToCheck] // {pool:{index,hash},...}
+            let localVtMetadataForPool, metadataFromAefpForThisPool
 
-        let localVtMetadataForPool, metadataFromAefpForThisPool
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                let poolPubKey =
+                    vtEpochHandler.leadersSequence[currentShardToCheck][
+                        handlerWithIndexToVerify.indexOfCurrentPoolToVerify
+                    ] || currentShardToCheck
 
+                localVtMetadataForPool =
+                    WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
-
-        // eslint-disable-next-line no-constant-condition
-        while(true){
-
-            let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
-
-            localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-
-            metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
-
-
-
-            let weFinishedToVerifyPool = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
-
-            let itsTheLastPoolInSequence = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
-
-
-            if(weFinishedToVerifyPool){
-
-                if(itsTheLastPoolInSequence) break
-
-                else {
-
-                    handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
-
-                    continue
-
+                metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {
+                    index: -1,
+                    hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
                 }
 
+                let weFinishedToVerifyPool =
+                    localVtMetadataForPool.index === metadataFromAefpForThisPool.index
+
+                let itsTheLastPoolInSequence =
+                    vtEpochHandler.leadersSequence[currentShardToCheck].length - 1 ===
+                    handlerWithIndexToVerify.indexOfCurrentPoolToVerify
+
+                if (weFinishedToVerifyPool) {
+                    if (itsTheLastPoolInSequence) break
+                    else {
+                        handlerWithIndexToVerify.indexOfCurrentPoolToVerify++
+
+                        continue
+                    }
+                }
+
+                await CHECK_CONNECTION_WITH_POOL(poolPubKey, vtEpochHandler)
+
+                let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:' + poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+                if (tunnelHandler) {
+                    GLOBAL_CACHES.STUFF_CACHE.set(
+                        'GET_FINAL_BLOCK:' + poolPubKey,
+                        metadataForShardFromAefp[poolPubKey]
+                    )
+
+                    let biggestHeightInCache = tunnelHandler.hasUntilHeight
+
+                    let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
+
+                    if (stepsForWhile <= 0) {
+                        // Break the outer <while> cycle to try to find blocks & finish this epoch on another shard
+
+                        break
+                    }
+
+                    // Start the cycle to process all the blocks
+                    while (stepsForWhile > 0) {
+                        // Move to next one
+                        if (metadataFromAefpForThisPool.index === localVtMetadataForPool.index)
+                            break
+
+                        let blockIdToGet =
+                            vtEpochIndex +
+                            ':' +
+                            poolPubKey +
+                            ':' +
+                            (localVtMetadataForPool.index + 1)
+
+                        let block = tunnelHandler.cache.get(blockIdToGet)
+
+                        if (block) {
+                            await verifyBlock(block, currentShardToCheck)
+
+                            tunnelHandler.cache.delete(blockIdToGet)
+                        }
+
+                        stepsForWhile--
+                    }
+                } else break
             }
 
+            let allBlocksWereVerifiedInPreviousEpoch =
+                vtEpochHandler.leadersSequence[currentShardToCheck].length - 1 ===
+                handlerWithIndexToVerify.indexOfCurrentPoolToVerify
 
-            await CHECK_CONNECTION_WITH_POOL(poolPubKey,vtEpochHandler)
+            let finishedToVerifyTheLastPoolInSequence =
+                localVtMetadataForPool.index === metadataFromAefpForThisPool.index
 
+            let thisShardWasAccounted = shardsReadyToNewEpoch.has(currentShardToCheck)
 
-            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolPubKey) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+            if (
+                allBlocksWereVerifiedInPreviousEpoch &&
+                finishedToVerifyTheLastPoolInSequence &&
+                !thisShardWasAccounted
+            ) {
+                shardsReadyToNewEpoch.set(currentShardToCheck, true)
+            }
+        } else if (currentEpochIsFresh && tempReassignmentsForSomeShard) {
+            let indexOfCurrentPoolToVerify = tempReassignmentsForSomeShard.currentToVerify
 
-            if(tunnelHandler){
+            // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
 
-                GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForShardFromAefp[poolPubKey])
-            
+            let poolToVerifyRightNow =
+                indexOfCurrentPoolToVerify === -1
+                    ? currentShardToCheck
+                    : vtEpochHandler.leadersSequence[currentShardToCheck][
+                          indexOfCurrentPoolToVerify
+                      ]
+
+            let verificationStatsOfThisPool =
+                WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[
+                    poolToVerifyRightNow
+                ] // {index,hash,isReserve}
+
+            let metadataWherePoolWasReassigned =
+                tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentLeader)
+
+            if (
+                metadataWherePoolWasReassigned &&
+                verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index
+            ) {
+                // Move to next one
+                tempReassignmentsForSomeShard.currentToVerify++
+
+                WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
+
+                if (!currentEpochIsFresh) {
+                    await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
+                }
+
+                setImmediate(START_VERIFICATION_THREAD)
+
+                return
+            }
+
+            // Try check if we have established a WSS channel to fetch blocks
+
+            await CHECK_CONNECTION_WITH_POOL(poolToVerifyRightNow, vtEpochHandler)
+
+            // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
+
+            let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:' + poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+
+            if (tunnelHandler) {
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
-                let stepsForWhile = biggestHeightInCache - localVtMetadataForPool.index
+                let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
 
-                if(stepsForWhile <= 0){
+                // In this case we can grab the final block
+                if (metadataWherePoolWasReassigned)
+                    GLOBAL_CACHES.STUFF_CACHE.set(
+                        'GET_FINAL_BLOCK:' + poolToVerifyRightNow,
+                        metadataWherePoolWasReassigned
+                    )
 
-                    // Break the outer <while> cycle to try to find blocks & finish this epoch on another shard
-
-                    break
-
-                }
-                
                 // Start the cycle to process all the blocks
-                while(stepsForWhile > 0){
 
-                    // Move to next one
-                    if(metadataFromAefpForThisPool.index === localVtMetadataForPool.index) break
-        
+                while (stepsForWhile > 0) {
+                    let blockIdToGet =
+                        vtEpochIndex +
+                        ':' +
+                        poolToVerifyRightNow +
+                        ':' +
+                        (verificationStatsOfThisPool.index + 1)
 
-                    let blockIdToGet = vtEpochIndex+':'+poolPubKey+':'+(localVtMetadataForPool.index+1)
-        
                     let block = tunnelHandler.cache.get(blockIdToGet)
-        
-        
-                    if(block){
-        
-                        await verifyBlock(block,currentShardToCheck)
+
+                    if (block) {
+                        await verifyBlock(block, currentShardToCheck)
 
                         tunnelHandler.cache.delete(blockIdToGet)
-
                     }
-                    
+
                     stepsForWhile--
-            
                 }
-
-            } else break
-        
-
-        }
-
-
-        let allBlocksWereVerifiedInPreviousEpoch = vtEpochHandler.leadersSequence[currentShardToCheck].length-1 === handlerWithIndexToVerify.indexOfCurrentPoolToVerify
-
-        let finishedToVerifyTheLastPoolInSequence = localVtMetadataForPool.index === metadataFromAefpForThisPool.index
-
-        let thisShardWasAccounted = shardsReadyToNewEpoch.has(currentShardToCheck)
-
-
-        if(allBlocksWereVerifiedInPreviousEpoch && finishedToVerifyTheLastPoolInSequence && !thisShardWasAccounted){
-
-            shardsReadyToNewEpoch.set(currentShardToCheck,true)
-
-        }
-
-        
-    }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){
-
-        
-        let indexOfCurrentPoolToVerify = tempReassignmentsForSomeShard.currentToVerify
-
-        // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-        
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.leadersSequence[currentShardToCheck][indexOfCurrentPoolToVerify]
-        
-        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash,isReserve}
-
-        let metadataWherePoolWasReassigned = tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentLeader)
-
-        
-        if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
-
-            // Move to next one
-            tempReassignmentsForSomeShard.currentToVerify++
-
-            WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
-
-
-            if(!currentEpochIsFresh){
-
-                await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
-
             }
-                    
-        
-            setImmediate(START_VERIFICATION_THREAD)
-
-            return
-
-        }
-        
-        // Try check if we have established a WSS channel to fetch blocks
-
-        await CHECK_CONNECTION_WITH_POOL(poolToVerifyRightNow,vtEpochHandler)
-
-
-        // Now, when we have connection with some entity which has an ability to give us blocks via WS(s) tunnel
-
-        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
-
-
-        if(tunnelHandler){
-
-            let biggestHeightInCache = tunnelHandler.hasUntilHeight
-
-            let stepsForWhile = biggestHeightInCache - verificationStatsOfThisPool.index
-
-            // In this case we can grab the final block
-            if(metadataWherePoolWasReassigned) GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolToVerifyRightNow,metadataWherePoolWasReassigned)
-
-            // Start the cycle to process all the blocks
-
-            while(stepsForWhile > 0){
-
-    
-                let blockIdToGet = vtEpochIndex+':'+poolToVerifyRightNow+':'+(verificationStatsOfThisPool.index+1)
-    
-                let block = tunnelHandler.cache.get(blockIdToGet)
-    
-    
-                if(block){
-    
-                    await verifyBlock(block,currentShardToCheck)
-
-                    tunnelHandler.cache.delete(blockIdToGet)
-
-                }
-                
-                stepsForWhile--
-        
-            }
-    
         }
 
-    }
+        WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
+        if (
+            !currentEpochIsFresh &&
+            !WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]
+        ) {
+            await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
+        }
 
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
+        if (GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) {
+            let mapOfShardsReadyToNextEpoch = GLOBAL_CACHES.STUFF_CACHE.get(
+                'SHARDS_READY_TO_NEW_EPOCH'
+            ) // Mappping(shardID=>boolean)
 
+            // We move to the next epoch (N+1) only in case we finish the verification on all the shards in this epoch (N)
+            if (mapOfShardsReadyToNextEpoch.size === shardsIdentifiers.length)
+                await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+        }
 
-    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA?.[currentShardToCheck]){
+        setImmediate(START_VERIFICATION_THREAD)
+    },
+    GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD = async (shardContext, publicKey) => {
+        let emptyTemplate = {
+            type: 'account',
+            balance: 0,
+            uno: 0,
+            nonce: 0,
+            rev_t: 0
+        }
 
-        await TRY_TO_FINISH_CURRENT_EPOCH_ON_VT(vtEpochHandler)
+        // Add to cache to write to permanent db after block verification
 
-    }
+        GLOBAL_CACHES.STATE_CACHE.set(shardContext + ':' + publicKey, emptyTemplate)
 
+        return emptyTemplate
+    },
+    SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR = async (shardContext, feeToPay, blockCreator) => {
+        let blockCreatorOrigin = await GET_FROM_STATE(blockCreator + '(POOL)_POINTER')
 
-    if(GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')){
+        let mainStorageOfBlockCreator = await GET_FROM_STATE(
+            blockCreatorOrigin + ':' + blockCreator + '(POOL)_STORAGE_POOL'
+        )
 
-        let mapOfShardsReadyToNextEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mappping(shardID=>boolean)
+        // Transfer part of fees to account with pubkey associated with block creator
+        if (mainStorageOfBlockCreator.percentage !== 0) {
+            // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
+            let poolBindedAccount =
+                (await GET_ACCOUNT_FROM_STATE(shardContext + ':' + blockCreator)) ||
+                (await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext, blockCreator))
 
-        // We move to the next epoch (N+1) only in case we finish the verification on all the shards in this epoch (N)
-        if(mapOfShardsReadyToNextEpoch.size === shardsIdentifiers.length) await SET_UP_NEW_EPOCH_FOR_VERIFICATION_THREAD(vtEpochHandler)
+            poolBindedAccount.balance += mainStorageOfBlockCreator.percentage * feeToPay
+        }
 
-    }
-            
-    setImmediate(START_VERIFICATION_THREAD)
+        let restOfFees = feeToPay - mainStorageOfBlockCreator.percentage * feeToPay
 
-},
+        // Share the rest of fees among stakers due to their % part in total pool stake
 
+        for (let [stakerPubKey, stakerMetadata] of Object.entries(
+            mainStorageOfBlockCreator.stakers
+        )) {
+            // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno}
 
+            let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
 
+            let totalStakerPowerPercent = stakerTotalPower / mainStorageOfBlockCreator.totalPower
 
-GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD=async(shardContext,publicKey)=>{
+            let stakerAccountBindedToCurrentShardContext =
+                (await GET_ACCOUNT_FROM_STATE(shardContext + ':' + stakerPubKey)) ||
+                (await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext, stakerPubKey))
 
-    let emptyTemplate = {
-        
-        type:"account",
-        balance:0,
-        uno:0,
-        nonce:0,
-        rev_t:0
-    
-    }
+            stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent * restOfFees
+        }
+    },
+    SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD = async (
+        shardID,
+        feeRecepientPoolPubKey,
+        feeReward
+    ) => {
+        // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on shard <shardID>"
+        // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    // Add to cache to write to permanent db after block verification
+        let accountsForFeesId = shardID + ':' + feeRecepientPoolPubKey
 
-    GLOBAL_CACHES.STATE_CACHE.set(shardContext+':'+publicKey,emptyTemplate)
+        let feesAccountForGivenPoolOnThisShard =
+            (await GET_ACCOUNT_FROM_STATE(accountsForFeesId)) ||
+            (await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(accountsForFeesId))
 
-    return emptyTemplate
-
-},
-
-
-
-
-SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR=async(shardContext,feeToPay,blockCreator)=>{
-
-    let blockCreatorOrigin = await GET_FROM_STATE(blockCreator+'(POOL)_POINTER')
-
-    let mainStorageOfBlockCreator = await GET_FROM_STATE(blockCreatorOrigin+':'+blockCreator+'(POOL)_STORAGE_POOL')
-
-    // Transfer part of fees to account with pubkey associated with block creator
-    if(mainStorageOfBlockCreator.percentage!==0){
-
-        // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await GET_ACCOUNT_FROM_STATE(shardContext+':'+blockCreator)|| await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,blockCreator)
-
-        poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
-        
-    }
-
-    let restOfFees = feeToPay - mainStorageOfBlockCreator.percentage*feeToPay
-
-
-    // Share the rest of fees among stakers due to their % part in total pool stake
-    
-    for(let [stakerPubKey,stakerMetadata] of Object.entries(mainStorageOfBlockCreator.stakers)){
-
-        // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno}
-
-        let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
-
-        let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
-
-        let stakerAccountBindedToCurrentShardContext = await GET_ACCOUNT_FROM_STATE(shardContext+':'+stakerPubKey) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(shardContext,stakerPubKey)
-
-        stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent*restOfFees
-
-    }
-
-},
-
-
-
-
-SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD = async(shardID,feeRecepientPoolPubKey,feeReward) => {
-
-    // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on shard <shardID>"
-    // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
-
-    let accountsForFeesId = shardID+':'+feeRecepientPoolPubKey
-
-    let feesAccountForGivenPoolOnThisShard = await GET_ACCOUNT_FROM_STATE(accountsForFeesId) || await GET_EMPTY_ACCOUNT_TEMPLATE_BINDED_TO_SHARD(accountsForFeesId)
-
-    feesAccountForGivenPoolOnThisShard.balance += feeReward
-
-},
-
-
-
-
-//Function to distribute stakes among blockCreator/his stakers/rest of prime pools
-DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,shardContext,arrayOfPrimePools,blockCreator)=>{
-
-    /*
+        feesAccountForGivenPoolOnThisShard.balance += feeReward
+    },
+    //Function to distribute stakes among blockCreator/his stakers/rest of prime pools
+    DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS = async (
+        totalFees,
+        shardContext,
+        arrayOfPrimePools,
+        blockCreator
+    ) => {
+        /*
 
         _____________________Here we perform the following logic_____________________
 
@@ -1887,135 +1819,129 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,shardContext,array
     
     */
 
-    let payToCreatorAndHisPool = totalFees * WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+        let payToCreatorAndHisPool =
+                totalFees *
+                WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+                    .REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
+            payToEachPool = Math.floor(
+                (totalFees - payToCreatorAndHisPool) / (arrayOfPrimePools.length - 1)
+            ), //and share the rest among other pools
+            shareFeesPromises = []
 
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(arrayOfPrimePools.length-1)), //and share the rest among other pools
-    
-        shareFeesPromises = []
+        if (arrayOfPrimePools.length === 1) payToEachPool = totalFees - payToCreatorAndHisPool
 
-          
-    if(arrayOfPrimePools.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
+        //___________________________________________ BLOCK_CREATOR ___________________________________________
 
-
-    //___________________________________________ BLOCK_CREATOR ___________________________________________
-
-    shareFeesPromises.push(SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR(shardContext,payToCreatorAndHisPool,blockCreator))
-
-    //_____________________________________________ THE REST ______________________________________________
-
-    arrayOfPrimePools.forEach(feesRecepientPrimePoolPubKey=>
-
-        feesRecepientPrimePoolPubKey !== shardContext && shareFeesPromises.push(SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD(shardContext,feesRecepientPrimePoolPubKey,payToEachPool))
-            
-    )
-     
-    await Promise.all(shareFeesPromises.splice(0))
-
-},
-
-
-
-
-verifyBlock=async(block,shardContext)=>{
-
-
-    let blockHash = Block.genHash(block),
-
-        overviewOk=
-        
-            block.transactions?.length<=WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
-            &&
-            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
-
-
-
-
-    if(overviewOk){
-
-        // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
-        
-        let rewardBox = {fees:0}
-
-        let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-        let currentBlockID = currentEpochIndex+':'+block.creator+':'+block.index
-
-
-        GLOBAL_CACHES.STATE_CACHE.set('EVM_LOGS_MAP',{}) // (contractAddress => array of logs) to store logs created by KLY-EVM
-
-
-        //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
-
-        
-        let currentKlyEvmContextMetadata = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
-
-        // Set the next block's parameters
-        KLY_EVM.setCurrentBlockParams(currentKlyEvmContextMetadata.nextBlockIndex,currentKlyEvmContextMetadata.timestamp,currentKlyEvmContextMetadata.parentHash)
-
-        // To change the state atomically
-        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
-
-
-        if(block.transactions.length !== 0){
-
-
-            //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
-    
-            // Push accounts for fees of shards prime pools
-
-
-            let primePools = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
-
-            let accountsToAddToCache=[]
-
-
-            primePools.forEach(
-            
-                pubKey => {
-    
-                    // Avoid own pubkey to be added. On own chains we send rewards directly
-                    if(pubKey !== block.creator) accountsToAddToCache.push(GET_FROM_STATE(shardContext+':'+pubKey))
-    
-                }
-                
+        shareFeesPromises.push(
+            SHARE_FEES_AMONG_STAKERS_OF_BLOCK_CREATOR(
+                shardContext,
+                payToCreatorAndHisPool,
+                blockCreator
             )
-    
-            // Now cache has all accounts and ready for the next cycles
-            await Promise.all(accountsToAddToCache.splice(0))
+        )
 
+        //_____________________________________________ THE REST ______________________________________________
 
-            //___________________________________________START TO EXECUTE TXS____________________________________________
+        arrayOfPrimePools.forEach(
+            feesRecepientPrimePoolPubKey =>
+                feesRecepientPrimePoolPubKey !== shardContext &&
+                shareFeesPromises.push(
+                    SEND_FEES_TO_ACCOUNTS_ON_THE_SAME_SHARD(
+                        shardContext,
+                        feesRecepientPrimePoolPubKey,
+                        payToEachPool
+                    )
+                )
+        )
 
+        await Promise.all(shareFeesPromises.splice(0))
+    },
+    verifyBlock = async (block, shardContext) => {
+        let blockHash = Block.genHash(block),
+            overviewOk =
+                block.transactions?.length <=
+                    WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK &&
+                WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator]
+                    .hash === block.prevHash // it should be a chain
 
-            let txIndexInBlock = 0
+        if (overviewOk) {
+            // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
 
-            for(let transaction of block.transactions){
+            let rewardBox = { fees: 0 }
 
-                if(VERIFIERS[transaction.type]){
+            let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
-                    let txCopy = JSON.parse(JSON.stringify(transaction))
+            let currentBlockID = currentEpochIndex + ':' + block.creator + ':' + block.index
 
-                    let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+            GLOBAL_CACHES.STATE_CACHE.set('EVM_LOGS_MAP', {}) // (contractAddress => array of logs) to store logs created by KLY-EVM
 
-                    // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-                    if(reason!=='EVM'){
+            //_________________________________________PREPARE THE KLY-EVM STATE____________________________________________
 
-                        let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+            let currentKlyEvmContextMetadata =
+                WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardContext] // {nextBlockIndex,parentHash,timestamp}
 
-                        atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
-    
+            // Set the next block's parameters
+            KLY_EVM.setCurrentBlockParams(
+                currentKlyEvmContextMetadata.nextBlockIndex,
+                currentKlyEvmContextMetadata.timestamp,
+                currentKlyEvmContextMetadata.parentHash
+            )
+
+            // To change the state atomically
+            let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
+
+            if (block.transactions.length !== 0) {
+                //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
+
+                // Push accounts for fees of shards prime pools
+
+                let primePools = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
+
+                let accountsToAddToCache = []
+
+                primePools.forEach(pubKey => {
+                    // Avoid own pubkey to be added. On own chains we send rewards directly
+                    if (pubKey !== block.creator)
+                        accountsToAddToCache.push(GET_FROM_STATE(shardContext + ':' + pubKey))
+                })
+
+                // Now cache has all accounts and ready for the next cycles
+                await Promise.all(accountsToAddToCache.splice(0))
+
+                //___________________________________________START TO EXECUTE TXS____________________________________________
+
+                let txIndexInBlock = 0
+
+                for (let transaction of block.transactions) {
+                    if (VERIFIERS[transaction.type]) {
+                        let txCopy = JSON.parse(JSON.stringify(transaction))
+
+                        let { isOk, reason } = await VERIFIERS[transaction.type](
+                            shardContext,
+                            txCopy,
+                            rewardBox,
+                            atomicBatch
+                        ).catch(() => ({ isOk: false, reason: 'Unknown' }))
+
+                        // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+                        if (reason !== 'EVM') {
+                            let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+
+                            atomicBatch.put('TX:' + txid, {
+                                blockID: currentBlockID,
+                                id: txIndexInBlock,
+                                isOk,
+                                reason
+                            })
+                        }
+
+                        txIndexInBlock++
                     }
-
-                    txIndexInBlock++
-                
                 }
 
-            }
-        
+                //__________________________________________SHARE FEES AMONG POOLS_________________________________________
 
-            //__________________________________________SHARE FEES AMONG POOLS_________________________________________
-        
-            /*
+                /*
             
                 Distribute fees among:
 
@@ -2024,50 +1950,39 @@ verifyBlock=async(block,shardContext)=>{
                     [2] Send the rest of fees to prime pools
 
             */
-            await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(rewardBox.fees,shardContext,primePools,block.creator)
+                await DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS(
+                    rewardBox.fees,
+                    shardContext,
+                    primePools,
+                    block.creator
+                )
 
-            
-            //________________________________________________COMMIT STATE__________________________________________________    
+                //________________________________________________COMMIT STATE__________________________________________________
 
+                GLOBAL_CACHES.STATE_CACHE.forEach((account, addr) => atomicBatch.put(addr, account))
+            }
 
-            GLOBAL_CACHES.STATE_CACHE.forEach((account,addr)=>
+            // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
+            if (CONFIGURATION.NODE_LEVEL.STORE_BLOCKS_IN_LOCAL_DATABASE) {
+                // No matter if we already have this block-resave it
 
-                atomicBatch.put(addr,account)
+                BLOCKCHAIN_DATABASES.BLOCKS.put(currentBlockID, block).catch(error =>
+                    LOG(`Failed to store block ${block.index}\nError:${error}`, COLORS.YELLOW)
+                )
+            } else if (block.creator !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY) {
+                // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
 
+                BLOCKCHAIN_DATABASES.BLOCKS.del(currentBlockID).catch(error =>
+                    LOG(`Failed to delete block ${currentBlockID}\nError:${error}`, COLORS.YELLOW)
+                )
+            }
+
+            if (
+                GLOBAL_CACHES.STATE_CACHE.size >= CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE
             )
+                GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
 
-        }
-
-        
-        // Probably you would like to store only state or you just run another node via cloud module and want to store some range of blocks remotely
-        if(CONFIGURATION.NODE_LEVEL.STORE_BLOCKS_IN_LOCAL_DATABASE){
-            
-            // No matter if we already have this block-resave it
-
-            BLOCKCHAIN_DATABASES.BLOCKS.put(currentBlockID,block).catch(
-                
-                error => LOG(`Failed to store block ${block.index}\nError:${error}`,COLORS.YELLOW)
-                
-            )
-
-        }else if(block.creator !== CONFIGURATION.NODE_LEVEL.PUBLIC_KEY){
-
-            // ...but if we shouldn't store and have it locally(received probably by range loading)-then delete
-
-            BLOCKCHAIN_DATABASES.BLOCKS.del(currentBlockID).catch(
-                
-                error => LOG(`Failed to delete block ${currentBlockID}\nError:${error}`,COLORS.YELLOW)
-                
-            )
-
-        }
-
-
-        
-        if(GLOBAL_CACHES.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
-
-
-        /*
+            /*
         
             Store the current shard block index (SID)
         
@@ -2090,80 +2005,80 @@ verifyBlock=async(block,shardContext)=>{
         
         */
 
+            let currentSID = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
-        let currentSID = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
+            atomicBatch.put(`SID:${shardContext}:${currentSID}`, currentBlockID)
 
-        atomicBatch.put(`SID:${shardContext}:${currentSID}`,currentBlockID)
+            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
-        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
+            WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
-        
-        WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
+            if (!WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext])
+                WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
 
-        if(!WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]) WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
+            WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[
+                shardContext
+            ].currentLeaderOnShard = block.creator
 
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].currentLeaderOnShard = block.creator
+            WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index =
+                block.index
 
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index = block.index
+            WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
 
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
-        
-        // Change metadata per validator's thread
-        
-        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].index = block.index
+            // Change metadata per validator's thread
 
-        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash = blockHash
+            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].index =
+                block.index
 
+            WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash =
+                blockHash
 
-        //___________________ Update the KLY-EVM ___________________
+            //___________________ Update the KLY-EVM ___________________
 
-        // Update stateRoot
-        WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
+            // Update stateRoot
+            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
-        // Increase block index
-        let nextIndex = BigInt(currentKlyEvmContextMetadata.nextBlockIndex)+BigInt(1)
+            // Increase block index
+            let nextIndex = BigInt(currentKlyEvmContextMetadata.nextBlockIndex) + BigInt(1)
 
-        currentKlyEvmContextMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
+            currentKlyEvmContextMetadata.nextBlockIndex = Web3.utils.toHex(nextIndex.toString())
 
-        // Store previous hash
-        let currentHash = KLY_EVM.getCurrentBlock().hash()
-    
-        currentKlyEvmContextMetadata.parentHash = currentHash.toString('hex')
-        
+            // Store previous hash
+            let currentHash = KLY_EVM.getCurrentBlock().hash()
 
-        // Imagine that it's 1 block per 1 second
-        let nextTimestamp = currentKlyEvmContextMetadata.timestamp+1
-    
-        currentKlyEvmContextMetadata.timestamp = nextTimestamp
-        
+            currentKlyEvmContextMetadata.parentHash = currentHash.toString('hex')
 
-        // Finally, store the block
-        let blockToStore = KLY_EVM.getBlockToStore(currentHash)
-        
-        atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
+            // Imagine that it's 1 block per 1 second
+            let nextTimestamp = currentKlyEvmContextMetadata.timestamp + 1
 
-        atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`,blockToStore.number)
+            currentKlyEvmContextMetadata.timestamp = nextTimestamp
 
-        atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
+            // Finally, store the block
+            let blockToStore = KLY_EVM.getBlockToStore(currentHash)
 
-        atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
-        
-        atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
+            atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`, blockToStore)
 
-            sid:currentSID
+            atomicBatch.put(`${shardContext}:EVM_INDEX:${blockToStore.hash}`, blockToStore.number)
 
-        })
+            atomicBatch.put(
+                `${shardContext}:EVM_LOGS:${blockToStore.number}`,
+                GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP')
+            )
 
-        
-        //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
+            atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`, {
+                kly_block: currentBlockID
+            })
 
+            atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`, {
+                sid: currentSID
+            })
 
-        atomicBatch.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
+            //_________________________________Commit the state of VERIFICATION_THREAD_________________________________
 
-        await atomicBatch.write()
-        
-        VT_STATS_LOG(block.epoch,shardContext)
+            atomicBatch.put('VT', WORKING_THREADS.VERIFICATION_THREAD)
 
+            await atomicBatch.write()
+
+            VT_STATS_LOG(block.epoch, shardContext)
+        }
     }
-
-}

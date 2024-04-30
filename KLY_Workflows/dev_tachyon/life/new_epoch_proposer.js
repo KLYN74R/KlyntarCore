@@ -1,87 +1,81 @@
-import {USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
+import { USE_TEMPORARY_DB } from '../common_functions/approvement_thread_related.js'
 
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+import {
+    BLOCKCHAIN_DATABASES,
+    EPOCH_METADATA_MAPPING,
+    WORKING_THREADS
+} from '../blockchain_preparation.js'
 
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import { VERIFY_AGGREGATED_FINALIZATION_PROOF } from '../common_functions/work_with_proofs.js'
 
-import {EPOCH_STILL_FRESH} from '../utils.js'
+import { EPOCH_STILL_FRESH } from '../utils.js'
 
-import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import { ED25519_VERIFY } from '../../../KLY_Utils/utils.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
+import { CONFIGURATION } from '../../../klyn74r.js'
 
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {
+    GET_QUORUM_MAJORITY,
+    GET_QUORUM_URLS_AND_PUBKEYS
+} from '../common_functions/quorum_related.js'
 
-
-
-
-export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
-
+export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH = async () => {
     let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
+    let epochFullID = qtEpochHandler.hash + '#' + qtEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-
-    if(!currentEpochMetadata){
-
-        setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
+    if (!currentEpochMetadata) {
+        setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH, 3000)
 
         return
-
     }
 
+    let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(
+        CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
+    )
 
-    let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-
-    if(iAmInTheQuorum && !EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
-        
+    if (iAmInTheQuorum && !EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)) {
         // Stop to generate commitments/finalization proofs
-        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
+        currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH', true)
 
         let canGenerateEpochFinalizationProof = true
 
-        
-        for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
+        for (let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools) {
+            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(
+                primePoolPubKey
+            ) || {
+                currentLeader: -1
+            }
 
-            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
+            let pubKeyOfLeader =
+                qtEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] ||
+                primePoolPubKey
 
-            let pubKeyOfLeader = qtEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
-
-
-            if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
-
+            if (
+                currentEpochMetadata.SYNCHRONIZER.has(
+                    'GENERATE_FINALIZATION_PROOFS:' + pubKeyOfLeader
+                )
+            ) {
                 canGenerateEpochFinalizationProof = false
 
                 break
-
             }
-
         }
 
-        if(canGenerateEpochFinalizationProof){
-
-            await USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
-
-                currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
-
-
-            ).catch(()=>{})
-
+        if (canGenerateEpochFinalizationProof) {
+            await USE_TEMPORARY_DB('put', currentEpochMetadata.DATABASE, 'TIME_TO_NEW_EPOCH', true)
+                .then(() => currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH', true))
+                .catch(() => {})
         }
-        
 
         // Check the safety
-        if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
-
-            setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
+        if (!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')) {
+            setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH, 3000)
 
             return
-
         }
-    
 
         let epochFinishProposition = {}
 
@@ -89,29 +83,24 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let leadersSequencePerShard = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
-        
-    
-        for(let [shardId,arrayOfReservePools] of Object.entries(leadersSequencePerShard)){
-
-            let handlerWithIndexOfCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardId) || {currentLeader:-1}// {currentLeader:<number>}
+        for (let [shardId, arrayOfReservePools] of Object.entries(leadersSequencePerShard)) {
+            let handlerWithIndexOfCurrentLeaderOnShard =
+                currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardId) || {
+                    currentLeader: -1
+                } // {currentLeader:<number>}
 
             let pubKeyOfLeader, indexOfLeader
-            
-            
-            if(handlerWithIndexOfCurrentLeaderOnShard.currentLeader !== -1){
 
-                pubKeyOfLeader = arrayOfReservePools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
+            if (handlerWithIndexOfCurrentLeaderOnShard.currentLeader !== -1) {
+                pubKeyOfLeader =
+                    arrayOfReservePools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
 
                 indexOfLeader = handlerWithIndexOfCurrentLeaderOnShard.currentLeader
-
-            }else{
-
+            } else {
                 pubKeyOfLeader = shardId
 
                 indexOfLeader = -1
-
             }
-            
 
             /*
             
@@ -119,58 +108,60 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
             
             */
 
-            let localVotingDataForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+            let localVotingDataForLeader = currentEpochMetadata.FINALIZATION_STATS.get(
+                pubKeyOfLeader
+            ) || {
+                index: -1,
+                hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                afp: {}
+            }
 
-            if(localVotingDataForLeader.index === -1){
-
+            if (localVotingDataForLeader.index === -1) {
                 // Change to previous leader that finish its work on height > -1
 
-                for(let position = indexOfLeader-1 ; position >= -1 ; position --){
-
+                for (let position = indexOfLeader - 1; position >= -1; position--) {
                     let previousShardLeader = arrayOfReservePools[position] || shardId
 
-                    let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(previousShardLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                    let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(
+                        previousShardLeader
+                    ) || {
+                        index: -1,
+                        hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                        afp: {}
+                    }
 
-                    if(localVotingData.index > -1){
-
+                    if (localVotingData.index > -1) {
                         pubKeyOfLeader = previousShardLeader
 
                         indexOfLeader = position
 
                         // Also, change the value in pointer to current leader
 
-                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardId,{currentLeader:position})
+                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardId, {
+                            currentLeader: position
+                        })
 
                         break
-
                     }
-
                 }
-
             }
 
-            
             // Structure is Map(shard=>Map(quorumMember=>SIG('EPOCH_DONE'+shard+lastLeaderInRcIndex+lastIndex+lastHash+hashOfFirstBlockByLastLeader+epochFullId)))
             let agreements = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION')
 
-            if(!agreements){
-
+            if (!agreements) {
                 agreements = new Map()
 
-                currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION',agreements)
-            
+                currentEpochMetadata.TEMP_CACHE.set('EPOCH_PROPOSITION', agreements)
             }
 
             let agreementsForThisShard = agreements.get(shardId)
 
-            if(!agreementsForThisShard){
-
+            if (!agreementsForThisShard) {
                 agreementsForThisShard = new Map()
 
-                agreements.set(shardId,agreementsForThisShard)
-            
+                agreements.set(shardId, agreementsForThisShard)
             }
-
 
             /*
             
@@ -266,50 +257,51 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                 
 
             */
-         
-            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${shardId}`).catch(()=>false)
 
-            if(!aefpExistsLocally){
+            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+                `AEFP:${qtEpochHandler.id}:${shardId}`
+            ).catch(() => false)
 
+            if (!aefpExistsLocally) {
                 epochFinishProposition[shardId] = {
+                    currentLeader: indexOfLeader,
 
-                    currentLeader:indexOfLeader,
-    
-                    afpForFirstBlock:{},
-    
-                    metadataForCheckpoint:currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
-    
+                    afpForFirstBlock: {},
+
+                    metadataForCheckpoint: currentEpochMetadata.FINALIZATION_STATS.get(
+                        pubKeyOfLeader
+                    ) || {
+                        index: -1,
+                        hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                        afp: {}
+                    }
                 }
-    
-                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
-    
-                if(epochFinishProposition[shardId].metadataForCheckpoint.index >= 0){
-    
-                    let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
-    
-                    epochFinishProposition[shardId].afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
-    
-                }    
 
+                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
+
+                if (epochFinishProposition[shardId].metadataForCheckpoint.index >= 0) {
+                    let firstBlockID = qtEpochHandler.id + ':' + pubKeyOfLeader + ':0'
+
+                    epochFinishProposition[shardId].afpForFirstBlock =
+                        await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:' + firstBlockID).catch(
+                            () => ({})
+                        )
+                }
             }
-            
         }
 
-        
         //____________________________________ Send the epoch finish proposition ____________________________________
 
+        let optionsToSend = { method: 'POST', body: JSON.stringify(epochFinishProposition) }
 
-        let optionsToSend = {method:'POST',body:JSON.stringify(epochFinishProposition)}
-        
         let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
 
-
         //Descriptor is {url,pubKey}
-        for(let descriptor of quorumMembers){        
-
-            await fetch(descriptor.url+'/epoch_proposition',optionsToSend).then(r=>r.json()).then(async possibleAgreements => {
-
-                /*
+        for (let descriptor of quorumMembers) {
+            await fetch(descriptor.url + '/epoch_proposition', optionsToSend)
+                .then(r => r.json())
+                .then(async possibleAgreements => {
+                    /*
                 
                     possibleAgreements structure is:
                     
@@ -344,106 +336,133 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                 
                 */
 
-                if(typeof possibleAgreements === 'object'){
+                    if (typeof possibleAgreements === 'object') {
+                        // Start iteration
 
-                    // Start iteration
+                        for (let [primePoolPubKey, metadata] of Object.entries(
+                            epochFinishProposition
+                        )) {
+                            let agreementsForThisShard =
+                                currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(
+                                    primePoolPubKey
+                                ) // signer => signature
 
-                    for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
+                            let response = possibleAgreements[primePoolPubKey]
 
-                        let agreementsForThisShard = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
+                            if (response) {
+                                if (
+                                    response.status === 'OK' &&
+                                    typeof metadata.afpForFirstBlock.blockHash === 'string'
+                                ) {
+                                    // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                        let response = possibleAgreements[primePoolPubKey]
+                                    let dataThatShouldBeSigned =
+                                        'EPOCH_DONE' +
+                                        primePoolPubKey +
+                                        metadata.currentLeader +
+                                        metadata.metadataForCheckpoint.index +
+                                        metadata.metadataForCheckpoint.hash +
+                                        metadata.afpForFirstBlock.blockHash +
+                                        epochFullID
 
-                        if(response){
+                                    let isOk = await ED25519_VERIFY(
+                                        dataThatShouldBeSigned,
+                                        response.sig,
+                                        descriptor.pubKey
+                                    )
 
-                            if(response.status==='OK' && typeof metadata.afpForFirstBlock.blockHash === 'string'){
+                                    if (isOk)
+                                        agreementsForThisShard.set(descriptor.pubKey, response.sig)
+                                } else if (response.status === 'UPGRADE') {
+                                    // Check the AFP and update the local data
 
-                                // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
+                                    let { index, hash, afp } = response.metadataForCheckpoint
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
+                                    let pubKeyOfProposedLeader =
+                                        leadersSequencePerShard[primePoolPubKey][
+                                            response.currentLeader
+                                        ] || primePoolPubKey
 
-                                let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
+                                    let afpToUpgradeIsOk =
+                                        await VERIFY_AGGREGATED_FINALIZATION_PROOF(
+                                            afp,
+                                            qtEpochHandler
+                                        )
 
-                                if(isOk) agreementsForThisShard.set(descriptor.pubKey,response.sig)
+                                    let blockIDThatShouldBeInAfp =
+                                        qtEpochHandler.id +
+                                        ':' +
+                                        pubKeyOfProposedLeader +
+                                        ':' +
+                                        index
 
+                                    if (
+                                        afpToUpgradeIsOk &&
+                                        blockIDThatShouldBeInAfp === afp.blockID &&
+                                        hash === afp.blockHash
+                                    ) {
+                                        let { prevBlockHash, blockID, blockHash, proofs } = afp
 
-                            }else if(response.status==='UPGRADE'){
+                                        // Update the SHARDS_LEADERS_HANDLERS
 
-                                // Check the AFP and update the local data
+                                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(
+                                            primePoolPubKey,
+                                            {
+                                                currentLeader: response.currentLeader
+                                            }
+                                        )
 
-                                let {index,hash,afp} = response.metadataForCheckpoint
-                            
-                                let pubKeyOfProposedLeader = leadersSequencePerShard[primePoolPubKey][response.currentLeader] || primePoolPubKey
-                                
-                                let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
+                                        // Update FINALIZATION_STATS
 
-                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
-                            
-                                if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
+                                        currentEpochMetadata.FINALIZATION_STATS.set(
+                                            pubKeyOfProposedLeader,
+                                            {
+                                                index,
+                                                hash,
+                                                afp: { prevBlockHash, blockID, blockHash, proofs }
+                                            }
+                                        )
 
-                                    let {prevBlockHash,blockID,blockHash,proofs} = afp
-                            
-                                    // Update the SHARDS_LEADERS_HANDLERS
+                                        // Clear the mapping with signatures because it becomes invalid
 
-                                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,{currentLeader:response.currentLeader})
-                                    
-                                    // Update FINALIZATION_STATS
-
-                                    currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfProposedLeader,{index,hash,afp:{prevBlockHash,blockID,blockHash,proofs}})
-                            
-                                    // Clear the mapping with signatures because it becomes invalid
-
-                                    agreementsForThisShard.clear()
-
+                                        agreementsForThisShard.clear()
+                                    }
                                 }
-
                             }
-
                         }
-
                     }
-
-                }
-                
-            }).catch(()=>{});
-            
-            
+                })
+                .catch(() => {})
         }
-            
-    
+
         // Iterate over upgrades and set new values for finalization proofs
 
-        for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
+        for (let [primePoolPubKey, metadata] of Object.entries(epochFinishProposition)) {
+            let agreementsForEpochManager =
+                currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
 
-            let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
-
-            if(agreementsForEpochManager.size >= majority){
-
-        
+            if (agreementsForEpochManager.size >= majority) {
                 let aggregatedEpochFinalizationProof = {
+                    shard: primePoolPubKey,
 
-                    shard:primePoolPubKey,
+                    lastLeader: metadata.currentLeader,
 
-                    lastLeader:metadata.currentLeader,
-                    
-                    lastIndex:metadata.metadataForCheckpoint.index,
-                    
-                    lastHash:metadata.metadataForCheckpoint.hash,
+                    lastIndex: metadata.metadataForCheckpoint.index,
 
-                    hashOfFirstBlockByLastLeader:metadata.afpForFirstBlock.blockHash,
+                    lastHash: metadata.metadataForCheckpoint.hash,
 
-                    proofs:Object.fromEntries(agreementsForEpochManager)
-                    
+                    hashOfFirstBlockByLastLeader: metadata.afpForFirstBlock.blockHash,
+
+                    proofs: Object.fromEntries(agreementsForEpochManager)
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
-
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(
+                    `AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,
+                    aggregatedEpochFinalizationProof
+                ).catch(() => {})
             }
-
         }
-
     }
 
-    setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000) // each 3 seconds - do monitoring
-
+    setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH, 3000) // each 3 seconds - do monitoring
 }

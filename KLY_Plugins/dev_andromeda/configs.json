@@ -1,63 +1,50 @@
 {
-    "DOCKER_CONFIGS":{
-        
-        "protocol":"http",
-        "host":"localhost",
-        "port":2375
-    
+    "DOCKER_CONFIGS": {
+        "protocol": "http",
+        "host": "localhost",
+        "port": 2375
     },
 
-    "DESC_MAX_LEN":200,
-    "REDIRECTION_DEPTH":3,
+    "DESC_MAX_LEN": 200,
+    "REDIRECTION_DEPTH": 3,
 
-    "MUST_SEND":[
-        "https://someklyntarpool.io",
-        "htts://api-klyntar.coinbase.com"
-    ],
+    "MUST_SEND": ["https://someklyntarpool.io", "htts://api-klyntar.coinbase.com"],
 
-    "TRUSTED_HUBS":{
-        "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq":{},
-        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4":{},
-        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK":{}       
+    "TRUSTED_HUBS": {
+        "WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq": {},
+        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4": {},
+        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK": {}
     },
 
-    "PREFER_TOOLCHAIN":{
-        
-        "docker":["rust","node.js","c","c++"],
+    "PREFER_TOOLCHAIN": {
+        "docker": ["rust", "node.js", "c", "c++"],
 
-        "host":["rust","node.js","c","c++"]
-        
+        "host": ["rust", "node.js", "c", "c++"]
     },
 
-    "KEYWORDS":["web3","defi","bridge","tor","control","storage","api"],
+    "KEYWORDS": ["web3", "defi", "bridge", "tor", "control", "storage", "api"],
 
-    "NETCAP":{
- 
-    },
+    "NETCAP": {},
 
-    "PREFER_SYMBIOTES":{
-    
-        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK":{
-            "MIN_FREEZE":0
+    "PREFER_SYMBIOTES": {
+        "QfzhbWJsPa9NjqxepcXSbp1X58pkQNACS2ReyRo2SMCK": {
+            "MIN_FREEZE": 0
         },
-        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4":{},
-        "LvjcXxRbXbKnHSgaJrDWLx7vo8yR3BwpkBXApKukoaGX":{}
+        "NrHwU6YMS5VZatxo9Z188ptR7dbNyYexRKCYickQBJG4": {},
+        "LvjcXxRbXbKnHSgaJrDWLx7vo8yR3BwpkBXApKukoaGX": {}
     },
-    
-    "PREFER_HOSTCHAINS":{
-    
-        "btc":{
-            "MIN_FREEZE":0
+
+    "PREFER_HOSTCHAINS": {
+        "btc": {
+            "MIN_FREEZE": 0
         },
-        "algo":{},
-        "sol":{}
+        "algo": {},
+        "sol": {}
     },
-    
-    "DORMITORY":{
-        
-    },
-    
-    "ALLOWED_STORAGE":[
+
+    "DORMITORY": {},
+
+    "ALLOWED_STORAGE": [
         "github.com",
         "gitlab.com",
         "pkg.go.dev",
@@ -70,38 +57,17 @@
         "index.scala-lang.org"
     ],
 
-
-    "REGISTRIES":{
-
-        "NODE.JS":[
-            
-            "https://localhost:4873"
-        
-        ],
-        "PYTHON":[
-
-
-        ],
-        "RUST":[
-
-
-        ],
-        "DOCKER":[
-            
-            "https://localhost:5000"
-            
-        ]
-
+    "REGISTRIES": {
+        "NODE.JS": ["https://localhost:4873"],
+        "PYTHON": [],
+        "RUST": [],
+        "DOCKER": ["https://localhost:5000"]
     },
 
-    "CONTAINERS":[
+    "CONTAINERS": [
         "group1-WoD3FV8ByzerAUUCZ5rF58aTLpz5kTNxHnyBS5vzuqeq-node",
         "group1-JeVZcdi8TQZaX6TKhtSKLCzMQMRCx5JjsQTiGbAaLPXW-rust.node.go.python"
     ],
 
-
-    "SERVICES_TO_RUN":{
-        
-    }
-    
+    "SERVICES_TO_RUN": {}
 }

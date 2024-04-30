@@ -5,11 +5,6 @@ export let SYSTEM_CONTRACTS = new Map()
 
 let systemContractsNames = ['staking_pool']
 
-
-
-
-for(let name of systemContractsNames){
-
-    await import(`./${name}.js`).then(contract=>SYSTEM_CONTRACTS.set(name,contract.CONTRACT))
-
+for (let name of systemContractsNames) {
+    await import(`./${name}.js`).then(contract => SYSTEM_CONTRACTS.set(name, contract.CONTRACT))
 }

@@ -1,17 +1,15 @@
 export let DEFAULT = {
+    CONTRACT_CALL: (contractID, params) => {},
 
-    CONTRACT_CALL:(contractID,params)=>{},
+    LOG: (logID, payload) => {},
 
-    LOG:(logID,payload) => {},
+    MULTISIG: () => {},
 
-    MULTISIG:()=>{},
+    PQC_SIG: () => {},
 
-    PQC_SIG:()=>{},
+    TBLS_SIG: () => {},
 
-    TBLS_SIG:()=>{},
+    ED25519: () => {},
 
-    ED25519:()=>{},
-
-    EVM_CALL:()=>{}
-
+    EVM_CALL: () => {}
 }

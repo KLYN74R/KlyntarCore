@@ -1,11 +1,6 @@
-import {LOG} from '../../KLY_Services/CommonResources/utils.js'
-import {LOG as UTIL_LOG} from '../../KLY_Utils/utils.js'
-import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
-import Docker from 'dockerode'
+import { LOG } from '../../KLY_Services/CommonResources/utils.js'
+import { LOG as UTIL_LOG, PATH_RESOLVE } from '../../KLY_Utils/utils.js'
 import fs from 'fs'
-
-
-
 
 /*
 
@@ -58,60 +53,46 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 
 */
 
-let RUNNER_CONFIGS=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json')))
+let RUNNER_CONFIGS = JSON.parse(
+    fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json'))
+)
 
-let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)//https://www.npmjs.com/package/dockerode - use to check the configs 
+// let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS) //https://www.npmjs.com/package/dockerode - use to check the configs
 
 // docker.listContainers().then(console.log)
 
-
-
-export default async service=>{
-
-    if(typeof service.title==='string' && service.desc.length<RUNNER_CONFIGS.DESC_MAX_LEN){
-
-        LOG({data:`Received new service \x1b[31;1m${service.desc}\x1b[0m`,pid:process.pid},'CD')
-
+export default async service => {
+    if (typeof service.title === 'string' && service.desc.length < RUNNER_CONFIGS.DESC_MAX_LEN) {
+        LOG(
+            { data: `Received new service \x1b[31;1m${service.desc}\x1b[0m`, pid: process.pid },
+            'CD'
+        )
     }
-
-    
 }
-
 
 //____________________________________________________________ RUNNING SERVICES ____________________________________________________________
 
-    
-
 let servicesToRun = RUNNER_CONFIGS.SERVICES_TO_RUN
 
+UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(), 'CD')
 
-UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
-
-if(Object.keys(servicesToRun).length){
-
-    Object.keys(servicesToRun).forEach(
-        
-        servicePath => UTIL_LOG(`Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${servicesToRun[servicePath]}\u001b[38;5;168m)`,'CON')
-            
+if (Object.keys(servicesToRun).length) {
+    Object.keys(servicesToRun).forEach(servicePath =>
+        UTIL_LOG(
+            `Service \x1b[36;1m${servicePath}\u001b[38;5;168m will be runned \u001b[38;5;168m(\x1b[36;1m${servicesToRun[servicePath]}\u001b[38;5;168m)`,
+            'CON'
+        )
     )
-    
-}else UTIL_LOG('No services will be runned','I')
+} else UTIL_LOG('No services will be runned', 'I')
 
-
-
-for(let servicePath in servicesToRun){
-
-    import(`../../KLY_Services/${servicePath}/entry.js`).catch(
-        
-        e => UTIL_LOG(`Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,'F')
-        
+for (let servicePath in servicesToRun) {
+    import(`../../KLY_Services/${servicePath}/entry.js`).catch(e =>
+        UTIL_LOG(
+            `Some error has been occured in process of service \u001b[38;5;50m${servicePath}\x1b[31;1m load\n${e}\n`,
+            'F'
+        )
     )
-
 }
-
-
-
-
 
 /*
 

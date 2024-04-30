@@ -1,33 +1,24 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE} from '../common_functions/approvement_thread_related.js'
+import { GET_FROM_APPROVEMENT_THREAD_STATE } from '../common_functions/approvement_thread_related.js'
 
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import { BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS } from '../blockchain_preparation.js'
 
-import {GET_ACCOUNT_FROM_STATE, GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import { GET_ACCOUNT_FROM_STATE, GET_FROM_STATE } from '../common_functions/state_interactions.js'
 
-import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './txs_verifiers.js'
+import { SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE } from './txs_verifiers.js'
 
-import {CONFIGURATION} from '../../../klyn74r.js'
-
-
-
-
-
-
-
-
-
-
-
+import { CONFIGURATION } from '../../../klyn74r.js'
 
 export default {
-
     //______________________________ FUNCTIONS TO PROCESS EPOCH EDGE OPERATIONS ______________________________
 
-
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
-
-    /*
+    STAKING_CONTRACT_CALL: async (
+        payload,
+        isFromRoute,
+        usedOnQuorumThread,
+        fullCopyOfQuorumThread
+    ) => {
+        /*
 
         Structure of payload
 
@@ -50,61 +41,71 @@ export default {
     
     */
 
-        let {txid,pool,type,amount,storageOrigin,isReserve,reserveFor,poolURL,wssPoolURL}=payload
+        let {
+            txid,
+            pool,
+            type,
+            amount,
+            storageOrigin,
+            isReserve,
+            reserveFor,
+            poolURL,
+            wssPoolURL
+        } = payload
 
-        if(txid==='AT') return
+        if (txid === 'AT') return
 
-
-        if(isFromRoute){
-
+        if (isFromRoute) {
             //To check payload received from route
 
-            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                storageOrigin + ':' + pool + '(POOL)_STORAGE_POOL'
+            ).catch(() => false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
-        
 
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'APPROVEMENT_THREAD',payload)){
+            if (
+                stakeOrUnstakeTx &&
+                MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(
+                    poolStorage,
+                    stakeOrUnstakeTx,
+                    'APPROVEMENT_THREAD',
+                    payload
+                )
+            ) {
+                let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(
+                    txid
+                ).catch(() => false))
 
-                let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
-
-                if(stillUnspent){
-                    
+                if (stillUnspent) {
                     let specOpsTemplate = {
-                    
-                        type:'STAKING_CONTRACT_CALL',
-                    
-                        payload:{
-                            
-                            txid,pool,type,amount,storageOrigin,
+                        type: 'STAKING_CONTRACT_CALL',
 
-                            isReserve:poolStorage.isReserve,
-                            reserveFor:poolStorage.reserveFor,
-                            poolURL:poolStorage.poolURL,
-                            wssPoolURL:poolStorage.wssPoolURL
-                        
+                        payload: {
+                            txid,
+                            pool,
+                            type,
+                            amount,
+                            storageOrigin,
+
+                            isReserve: poolStorage.isReserve,
+                            reserveFor: poolStorage.reserveFor,
+                            poolURL: poolStorage.poolURL,
+                            wssPoolURL: poolStorage.wssPoolURL
                         }
-                    
                     }
-                
+
                     return specOpsTemplate
-                
                 }
-
             }
-
-        }
-        else if(usedOnQuorumThread){
-
+        } else if (usedOnQuorumThread) {
             // Basic ops on APPROVEMENT_THREAD
 
             let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
-            if(slashHelper[pool]) return
+            if (slashHelper[pool]) return
 
-
-
-            let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(pool + '(POOL)_STORAGE_POOL')
 
             /* 
             
@@ -121,66 +122,53 @@ export default {
             
             */
 
-            if(!poolStorage){
-
+            if (!poolStorage) {
                 let poolTemplateForQt = {
-
-                    totalPower:0,       
-                    lackOfTotalPower:true,
-                    stopEpochID:-1,
+                    totalPower: 0,
+                    lackOfTotalPower: true,
+                    stopEpochID: -1,
                     poolURL,
                     wssPoolURL
-                
                 }
 
-                if(isReserve){
+                if (isReserve) {
+                    poolTemplateForQt.isReserve = isReserve
 
-                    poolTemplateForQt.isReserve=isReserve
-
-                    poolTemplateForQt.reserveFor=reserveFor
-
+                    poolTemplateForQt.reserveFor = reserveFor
                 }
 
-                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(
+                    pool + '(POOL)_STORAGE_POOL',
+                    poolTemplateForQt
+                )
 
-                poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pool+'(POOL)_STORAGE_POOL')
-            
+                poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(
+                    pool + '(POOL)_STORAGE_POOL'
+                )
             }
-            
 
             //If everything is ok - add or slash totalPower of the pool
 
-            if(type==='+') poolStorage.totalPower+=amount
-                    
-            else poolStorage.totalPower-=amount
-            
+            if (type === '+') poolStorage.totalPower += amount
+            else poolStorage.totalPower -= amount
 
             //Put to cache that this tx was spent
-            GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
+            GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid, true)
 
-            
             let workflowConfigs = fullCopyOfQuorumThread.WORKFLOW_OPTIONS
 
-
-            if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
-
-
-                if(poolStorage.isReserve) fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools.push(pool)
-
+            if (poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE) {
+                if (poolStorage.isReserve)
+                    fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools.push(pool)
                 else fullCopyOfQuorumThread.EPOCH.poolsRegistry.primePools.push(pool)
-                
 
                 // Make it "null" again
 
                 poolStorage.lackOfTotalPower = false
 
                 poolStorage.stopEpochID = -1
-
             }
-        
-        }
-        else{
-
+        } else {
             /*
             
             Logic on VERIFICATION_THREAD
@@ -218,59 +206,61 @@ export default {
 
             // To check payload received from route
 
-
             let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
 
-            if(slashHelper[pool]) return
+            if (slashHelper[pool]) return
 
-
-
-            let poolStorage = await GET_FROM_STATE(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await GET_FROM_STATE(
+                storageOrigin + ':' + pool + '(POOL)_STORAGE_POOL'
+            )
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
-            
 
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'VERIFICATION_THREAD',payload)){
+            if (
+                stakeOrUnstakeTx &&
+                MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(
+                    poolStorage,
+                    stakeOrUnstakeTx,
+                    'VERIFICATION_THREAD',
+                    payload
+                )
+            ) {
+                let stakerAccount = poolStorage.stakers[stakeOrUnstakeTx.staker] || {
+                    kly: 0,
+                    uno: 0
+                }
 
-                let stakerAccount = poolStorage.stakers[stakeOrUnstakeTx.staker] || {kly:0,uno:0}
-
-                if(stakeOrUnstakeTx.type==='+'){
-
+                if (stakeOrUnstakeTx.type === '+') {
                     // Staking logic
 
-                    stakerAccount[stakeOrUnstakeTx.units]+=stakeOrUnstakeTx.amount
+                    stakerAccount[stakeOrUnstakeTx.units] += stakeOrUnstakeTx.amount
 
-                    poolStorage.totalPower+=stakeOrUnstakeTx.amount
-
-                }else {
-
+                    poolStorage.totalPower += stakeOrUnstakeTx.amount
+                } else {
                     // Unstaking logic
 
-                    stakerAccount[stakeOrUnstakeTx.units]-=stakeOrUnstakeTx.amount
+                    stakerAccount[stakeOrUnstakeTx.units] -= stakeOrUnstakeTx.amount
 
-                    poolStorage.totalPower-=stakeOrUnstakeTx.amount
+                    poolStorage.totalPower -= stakeOrUnstakeTx.amount
 
                     // Add KLY / UNO to the user's account
                     let unstakingOperationsArray = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
 
-                    let txTemplate={
-
-                        fromPool:pool,
+                    let txTemplate = {
+                        fromPool: pool,
 
                         storageOrigin,
 
-                        to:stakeOrUnstakeTx.staker,
-                        
-                        amount:stakeOrUnstakeTx.amount,
-                        
-                        units:stakeOrUnstakeTx.units
+                        to: stakeOrUnstakeTx.staker,
 
+                        amount: stakeOrUnstakeTx.amount,
+
+                        units: stakeOrUnstakeTx.units
                     }
 
                     // This will be performed after <<< WORKFLOW_OPTIONS.UNSTAKING_PERIOD >>> epoch
-                    
-                    unstakingOperationsArray.push(txTemplate)
 
+                    unstakingOperationsArray.push(txTemplate)
                 }
 
                 // Assign updated state
@@ -279,58 +269,44 @@ export default {
                 // Remove from WAITING_ROOM
                 delete poolStorage.waitingRoom[txid]
 
-
                 let workflowConfigs = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
 
                 // If required number of power is ok and pool was stopped - then make it <active> again
 
-                if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
-
+                if (poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE) {
                     // Do it only if pool is not in current VERIFICATION_STATS_PER_POOL
 
-                    if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]){
+                    if (!WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]) {
+                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool] = {
+                            index: -1,
 
-                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pool]={   
-                                
-                            index:-1,
-                        
-                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                            hash: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
-                            isReserve:poolStorage.isReserve
-                        
+                            isReserve: poolStorage.isReserve
                         }
 
                         // Add the pointer where pool is created to state
 
-                        GLOBAL_CACHES.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
+                        GLOBAL_CACHES.STATE_CACHE.set(pool + '(POOL)_POINTER', storageOrigin)
 
                         // Add the SID tracker
 
-                        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool] = 0                                
-        
+                        WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool] = 0
                     }
-                    
+
                     // Make it "null" again
 
-                    poolStorage.lackOfTotalPower=false
+                    poolStorage.lackOfTotalPower = false
 
-                    poolStorage.stopEpochID=-1
-
+                    poolStorage.stopEpochID = -1
                 }
-                
             }
-
         }
-
     },
 
-
-
-    
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread)=>{
-
+    SLASH_UNSTAKE: async (payload, isFromRoute, usedOnQuorumThread) => {
         /*
         
             Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
@@ -359,189 +335,149 @@ export default {
 
         */
 
-        let {sigType,pubKey,signa,data} = payload
+        let { sigType, pubKey, signa, data } = payload
 
+        let overviewIfFromRoute =
+            isFromRoute && //method used on POST /epoch_edge_operation
+            typeof data.pool === 'string' &&
+            Array.isArray(data.delayedIds) &&
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) && //set it in configs
+            (await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(
+                sigType,
+                pubKey,
+                signa,
+                JSON.stringify(data) + WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash
+            )) && // and signature check
+            (await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(
+                data.pool + '(POOL)_STORAGE_POOL'
+            ).catch(() => false))
 
-        let overviewIfFromRoute = 
-
-            isFromRoute //method used on POST /epoch_edge_operation
-            &&
-            typeof data.pool === 'string' && Array.isArray(data.delayedIds)
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
-            &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-            &&
-            await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
-
-
-        if(isFromRoute){
-        
-            return overviewIfFromRoute ? {type:'SLASH_UNSTAKE',payload:payload.data} : false
-
-        }
-        else if(usedOnQuorumThread){
-
+        if (isFromRoute) {
+            return overviewIfFromRoute ? { type: 'SLASH_UNSTAKE', payload: payload.data } : false
+        } else if (usedOnQuorumThread) {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
-            
-            let poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
-            if(poolStorage){
+            let poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(
+                payload.pool + '(POOL)_STORAGE_POOL'
+            ).catch(() => false)
 
+            if (poolStorage) {
                 let slashObject = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
-                slashObject[payload.pool] = {isReserve:poolStorage.isReserve}
-    
+                slashObject[payload.pool] = { isReserve: poolStorage.isReserve }
             }
-
-        }
-        else{
-
+        } else {
             // On VERIFICATION_THREAD we should delete the pool from VERIFICATION_STATS_PER_POOL, VALIDATORS, from STATE and clear the "UNSTAKE" operations from delayed operations related to this rogue pool entity
             // We just get the special array from cache to push appropriate ids and poolID
 
-            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(payload.pool+'(POOL)_POINTER').catch(()=>false)
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                payload.pool + '(POOL)_POINTER'
+            ).catch(() => false)
 
-            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(originWherePoolStorage+':'+payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                originWherePoolStorage + ':' + payload.pool + '(POOL)_STORAGE_POOL'
+            ).catch(() => false)
 
-
-            if(poolStorage){
-
+            if (poolStorage) {
                 let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
 
                 payload.poolOrigin = originWherePoolStorage
 
                 payload.isReserve = poolStorage.isReserve
-            
+
                 slashObject[payload.pool] = payload
-
             }
-
         }
-
     },
 
-    
-
-
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread)=>{
-        
+    REMOVE_FROM_WAITING_ROOM: async (payload, isFromRoute, usedOnQuorumThread) => {
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
-        let {txid,pool}=payload
+        let { txid, pool } = payload
 
-        
-        if(txid==='AT') return
+        if (txid === 'AT') return
 
-
-        if(isFromRoute){
-
+        if (isFromRoute) {
             //To check payload received from route
 
-            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                pool + '(POOL)_POINTER'
+            ).catch(() => false)
 
-            if(originWherePoolStorage){
-
-                let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false),
-
+            if (originWherePoolStorage) {
+                let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                        originWherePoolStorage + ':' + pool + '(POOL)_STORAGE_POOL'
+                    ).catch(() => false),
                     stakingTx = poolStorage?.waitingRoom?.[txid],
-                    
                     isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.APPROVEMENT_THREAD.RUBICON,
-
                     isStakeTx = stakingTx?.type === '+'
-            
 
-                if(stakingTx && isNotTooOld && isStakeTx){
+                if (stakingTx && isNotTooOld && isStakeTx) {
+                    let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(
+                        txid
+                    ).catch(() => false))
 
-                    let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
-
-                    if(stillUnspent){
-
+                    if (stillUnspent) {
                         let specOpsTemplate = {
+                            type: 'REMOVE_FROM_WAITING_ROOM',
 
-                            type:'REMOVE_FROM_WAITING_ROOM',
-
-                            payload:{
-
-                                txid,pool
-
+                            payload: {
+                                txid,
+                                pool
                             }
-
                         }
 
                         return specOpsTemplate
-
                     }
-
                 }
-
             }
-
-        }
-        else if(usedOnQuorumThread){
-
+        } else if (usedOnQuorumThread) {
             let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
-            if(!slashHelper[pool]) GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
-
-        }
-        else{
-
+            if (!slashHelper[pool]) GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid, true)
+        } else {
             let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
 
-            if(slashHelper[pool]) return
+            if (slashHelper[pool]) return
 
+            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(
+                pool + '(POOL)_POINTER'
+            ).catch(() => false)
 
-            let originWherePoolStorage = await BLOCKCHAIN_DATABASES.STATE.get(pool+'(POOL)_POINTER').catch(()=>false)
-
-            if(originWherePoolStorage){
-
-                let poolStorage = await GET_FROM_STATE(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL'),
-
+            if (originWherePoolStorage) {
+                let poolStorage = await GET_FROM_STATE(
+                        originWherePoolStorage + ':' + pool + '(POOL)_STORAGE_POOL'
+                    ),
                     stakingTx = poolStorage?.waitingRoom?.[txid],
-
                     isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.VERIFICATION_THREAD.RUBICON,
-
                     isStakeTx = stakingTx?.type === '+'
 
-            
-
-                if(stakingTx && isNotTooOld && isStakeTx){
-
+                if (stakingTx && isNotTooOld && isStakeTx) {
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
 
-                    let stakerAccount = await GET_ACCOUNT_FROM_STATE(originWherePoolStorage+':'+stakingTx.staker)
+                    let stakerAccount = await GET_ACCOUNT_FROM_STATE(
+                        originWherePoolStorage + ':' + stakingTx.staker
+                    )
 
-                    if(stakerAccount){
-                    
+                    if (stakerAccount) {
                         // Return the stake
-                        if(stakingTx.units === 'kly'){
-
+                        if (stakingTx.units === 'kly') {
                             stakerAccount.balance += stakingTx.amount
-
-                        }else stakerAccount.uno += stakingTx.amount
-
+                        } else stakerAccount.uno += stakingTx.amount
                     }
-                
-                }            
-
+                }
             }
-
-        }        
-
+        }
     },
-
 
     //___________________________________________________ Separate methods ___________________________________________________
 
-
     //To set new rubicon and clear tracks from APPROVEMENT_THREAD_METADATA
-    RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
-
+    RUBICON_UPDATE: async (payload, isFromRoute, usedOnQuorumThread, fullCopyOfQuorumThread) => {
         /*
         
         If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload=<ID of new epoch which will be rubicon>
@@ -564,45 +500,34 @@ export default {
         
         */
 
-        let {sigType,pubKey,signa,data} = payload
+        let { sigType, pubKey, signa, data } = payload
 
-        let overviewIfFromRoute = 
+        let overviewIfFromRoute =
+            isFromRoute && //method used on POST /sign_epoch_edge_operation
+            typeof data === 'number' && //new value of rubicon. Some previous epochID
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) && //set it in configs
+            WORKING_THREADS.APPROVEMENT_THREAD.RUBICON < data && //new value of rubicon should be more than current
+            (await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(
+                sigType,
+                pubKey,
+                signa,
+                data + WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash
+            )) // and signature check
 
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            typeof data === 'number' //new value of rubicon. Some previous epochID
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
-            &&
-            WORKING_THREADS.APPROVEMENT_THREAD.RUBICON < data //new value of rubicon should be more than current 
-            &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-        if(overviewIfFromRoute){
-
+        if (overviewIfFromRoute) {
             //In this case, <proposer> property is the address should be included to your whitelist in configs
-            return {type:'UPDATE_RUBICON',payload:data}
-
-        }else if(usedOnQuorumThread){
-    
-            if(fullCopyOfQuorumThread.RUBICON < payload) fullCopyOfQuorumThread.RUBICON=payload
-
-        }else{
-
+            return { type: 'UPDATE_RUBICON', payload: data }
+        } else if (usedOnQuorumThread) {
+            if (fullCopyOfQuorumThread.RUBICON < payload) fullCopyOfQuorumThread.RUBICON = payload
+        } else {
             //Used on VERIFICATION_THREAD
-            if(WORKING_THREADS.VERIFICATION_THREAD.RUBICON < payload) WORKING_THREADS.VERIFICATION_THREAD.RUBICON=payload
-
+            if (WORKING_THREADS.VERIFICATION_THREAD.RUBICON < payload)
+                WORKING_THREADS.VERIFICATION_THREAD.RUBICON = payload
         }
-
     },
 
-
-
-
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread)=>{
-
+    WORKFLOW_UPDATE: async (payload, isFromRoute, usedOnQuorumThread) => {
         /*
         
         If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
@@ -633,46 +558,35 @@ export default {
         
         */
 
-        let {sigType,pubKey,signa,data} = payload
+        let { sigType, pubKey, signa, data } = payload
 
-        let overviewIfFromRoute = 
+        let overviewIfFromRoute =
+            isFromRoute && //method used on POST /sign_epoch_edge_operation
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) && //set it in configs
+            (await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(
+                sigType,
+                pubKey,
+                signa,
+                JSON.stringify(data) + WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash
+            )) // and signature check
 
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
-            &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-        if(overviewIfFromRoute){
-
+        if (overviewIfFromRoute) {
             //In this case, <proposer> property is the address should be included to your whitelist in configs
 
-            return {type:'WORKFLOW_UPDATE',payload:data}
-
-        }
-        else if(usedOnQuorumThread){
-
+            return { type: 'WORKFLOW_UPDATE', payload: data }
+        } else if (usedOnQuorumThread) {
             let updatedOptions = await GET_FROM_APPROVEMENT_THREAD_STATE('WORKFLOW_OPTIONS')
 
-            updatedOptions[payload.fieldName]=payload.newValue
-
-        }else{
-
+            updatedOptions[payload.fieldName] = payload.newValue
+        } else {
             //Used on VT
             let updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
 
-            updatedOptions[payload.fieldName]=payload.newValue
-
+            updatedOptions[payload.fieldName] = payload.newValue
         }
-        
     },
 
-
-
-
-    VERSION_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
-
+    VERSION_UPDATE: async (payload, isFromRoute, usedOnQuorumThread, fullCopyOfQuorumThread) => {
         /*
         
         If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
@@ -698,81 +612,60 @@ export default {
         
         */
 
-        let {sigType,pubKey,signa,data} = payload
+        let { sigType, pubKey, signa, data } = payload
 
-        let overviewIfFromRoute = 
+        let overviewIfFromRoute =
+            isFromRoute && //method used on POST /sign_epoch_edge_operation
+            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) && //set it in configs
+            (await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(
+                sigType,
+                pubKey,
+                signa,
+                JSON.stringify(data) + WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash
+            )) // and signature check
 
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
-            &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-
-        if(overviewIfFromRoute){
-
+        if (overviewIfFromRoute) {
             //In this case, <proposer> property is the address should be included to your whitelist in configs
 
-            return {type:'VERSION_UPDATE',payload:data}
-
-        }
-        else if(usedOnQuorumThread && payload.major > fullCopyOfQuorumThread.VERSION){
-
-            fullCopyOfQuorumThread.VERSION=payload.major
-
-        }else if(payload.major > WORKING_THREADS.VERIFICATION_THREAD.VERSION){
-
+            return { type: 'VERSION_UPDATE', payload: data }
+        } else if (usedOnQuorumThread && payload.major > fullCopyOfQuorumThread.VERSION) {
+            fullCopyOfQuorumThread.VERSION = payload.major
+        } else if (payload.major > WORKING_THREADS.VERIFICATION_THREAD.VERSION) {
             //Used on VT
-            WORKING_THREADS.VERIFICATION_THREAD.VERSION=payload.major
-
+            WORKING_THREADS.VERIFICATION_THREAD.VERSION = payload.major
         }
-        
     }
-
 }
 
-
-
-
-
-let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadID,payload)=>{
-
-    let {type,amount}=payload
+let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL = (poolStorage, stakeOrUnstakeTx, threadID, payload) => {
+    let { type, amount } = payload
 
     let workflowConfigs = WORKING_THREADS[threadID].WORKFLOW_OPTIONS,
-        
         isNotTooOld = stakeOrUnstakeTx.epochID >= WORKING_THREADS[threadID].RUBICON,
-    
-        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
-
+        isMinimalRequiredAmountOrItsUnstake =
+            type === '-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
         ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
+        inWaitingRoomTheSameAsInPayload =
+            stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
 
-        inWaitingRoomTheSameAsInPayload = stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
+    if (type === '+') {
+        let isStillPossibleBeActive =
+            !poolStorage.lackOfTotalPower ||
+            WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <=
+                workflowConfigs.POOL_AFK_MAX_TIME
 
-
-    if(type==='+'){
-
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
-
-        let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
+        let noOverStake =
+            poolStorage.totalPower + poolStorage.overStake <=
+            poolStorage.totalPower + stakeOrUnstakeTx.amount
 
         ifStakeCheckIfPoolIsActiveOrCanBeRestored = isStillPossibleBeActive && noOverStake
+    } else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
 
-    }else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
-
-
-    let overviewIsOk = 
-
-        isNotTooOld
-        &&
-        isMinimalRequiredAmountOrItsUnstake
-        &&
-        inWaitingRoomTheSameAsInPayload
-        &&
+    let overviewIsOk =
+        isNotTooOld &&
+        isMinimalRequiredAmountOrItsUnstake &&
+        inWaitingRoomTheSameAsInPayload &&
         ifStakeCheckIfPoolIsActiveOrCanBeRestored
 
-
     return overviewIsOk
-
 }

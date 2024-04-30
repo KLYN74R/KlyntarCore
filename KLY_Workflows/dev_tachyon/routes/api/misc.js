@@ -1,18 +1,16 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {
+    BLOCKCHAIN_DATABASES,
+    EPOCH_METADATA_MAPPING,
+    NODE_METADATA,
+    WORKING_THREADS
+} from '../../blockchain_preparation.js'
 
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import { BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER } from '../../../../klyn74r.js'
 
-import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
+import { TXS_FILTERS } from '../../verification_process/txs_filters.js'
 
-
-
-
-
-
-let PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
-
-
-
+let PUBKEY_FOR_FILTER =
+    CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
 /*
 
@@ -42,87 +40,77 @@ Returns:
 */
 
 // Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>) ✅
-FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,response)=>{
+FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID', async (request, response) => {
+    response.header('Access-Control-Allow-Origin', '*')
 
-    response.header('Access-Control-Allow-Origin','*')
+    if (CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS) {
+        let epochFullID =
+            WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash +
+            '#' +
+            WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
-
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
-
-            response.send({err:'Epoch handler on QT is not ready'})
+        if (!EPOCH_METADATA_MAPPING.has(epochFullID)) {
+            response.send({ err: 'Epoch handler on QT is not ready' })
 
             return
         }
-       
 
-        let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
+        let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(
+            'AFP:' + request.params.blockID
+        ).catch(() => null)
 
-
-        if(aggregatedFinalizationProof){
-
+        if (aggregatedFinalizationProof) {
             response.send(aggregatedFinalizationProof)
-
-        }else response.send({err:'No proof'})
-
-    }else response.send({err:'Route is off'})
-
+        } else response.send({ err: 'No proof' })
+    } else response.send({ err: 'Route is off' })
 })
-
-
 
 /**## Returns the info about your KLY infrastructure
  *
- * 
+ *
  * ### Info
- * 
+ *
  * This route returns the JSON object that you set manually in CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE
  * Here you can describe your infrastructure - redirects, supported services, plugins installed
- *  Set the CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE with extra data 
- * 
- * 
+ *  Set the CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE with extra data
+ *
+ *
  * ### Params
- * 
+ *
  *  + 0 - Nothing
- * 
- * 
+ *
+ *
  * ### Returns
- * 
+ *
  *  + JSON'ed value in CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE
- * 
- *  
+ *
+ *
  * */
 
-FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
-
+FASTIFY_SERVER.get('/kly_infrastructure_info', (request, response) => {
     response
-        
-        .header('Access-Control-Allow-Origin','*')
-        .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE)
+
+        .header('Access-Control-Allow-Origin', '*')
+        .header(
+            'Cache-Control',
+            'max-age=' + CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE
+        )
 
         .send(JSON.stringify(CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE))
-
-
 })
-
-
-
 
 // Returns info about symbiotic chain
 
-FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
-
+FASTIFY_SERVER.get('/symbiote_info', (_request, response) => {
     //Set triggers
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYMBIOTE_INFO){
-
+    if (CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYMBIOTE_INFO) {
         response
-        
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYMBIOTE_INFO}`)
-            
 
+            .header('Access-Control-Allow-Origin', '*')
+            .header(
+                'Cache-Control',
+                `max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYMBIOTE_INFO}`
+            )
 
         // SymbioteID - it's BLAKE3 hash of genesis( SYMBIOTE_ID = BLAKE3(JSON.stringify(<genesis object without SYMBIOTE_ID field>)))
 
@@ -131,120 +119,94 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
         //Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
 
         let {
-        
-            WORKFLOW:workflowID,
-            HIVEMIND:hivemind,
-            HOSTCHAINS:hostchains,
-            EPOCH_TIMESTAMP:createTimestamp
-        
+            WORKFLOW: workflowID,
+            HIVEMIND: hivemind,
+            HOSTCHAINS: hostchains,
+            EPOCH_TIMESTAMP: createTimestamp
         } = BLOCKCHAIN_GENESIS
 
-        
         //Get the current version of VT and QT
 
         let verificationThreadWorkflowVersion = WORKING_THREADS.VERIFICATION_THREAD.VERSION
         let quorumThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.VERSION
-
 
         //Get the current version of workflows_options on VT and QT
 
         let verificationThreadWorkflowOptions = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
         let quorumThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
 
-
         response.send({
-
-            genesis:{
-
-                symbioteID,createTimestamp,workflowID,hivemind,hostchains
-            
+            genesis: {
+                symbioteID,
+                createTimestamp,
+                workflowID,
+                hivemind,
+                hostchains
             },
 
-            verificationThread:{
-
-                version:verificationThreadWorkflowVersion,
-                options:verificationThreadWorkflowOptions
-
+            verificationThread: {
+                version: verificationThreadWorkflowVersion,
+                options: verificationThreadWorkflowOptions
             },
 
-            quorumThread:{
-
-                version:quorumThreadWorkflowVersion,
-                options:quorumThreadWorkflowOptions
-            
+            quorumThread: {
+                version: quorumThreadWorkflowVersion,
+                options: quorumThreadWorkflowOptions
             }
-
         })
-            
-
-    }else response.send({err:'Route is off'})
-
+    } else response.send({ err: 'Route is off' })
 })
-
-
-
 
 //Returns current pools data
-FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
-
+FASTIFY_SERVER.get('/verification_stats_per_pool', (request, response) => {
     //Set triggers
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
-
+    if (CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL) {
         response
-        
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
 
+            .header('Access-Control-Allow-Origin', '*')
+            .header(
+                'Cache-Control',
+                `max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`
+            )
 
         response.send(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
-
-    }else response.send({err:'Symbiote not supported'})
-
+    } else response.send({ err: 'Symbiote not supported' })
 })
-
-
-
-
 
 //Returns the info about epoch on QT and VT
 
-FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
-
+FASTIFY_SERVER.get('/epoch_on_threads', (request, response) => {
     //Set triggers
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
-
+    if (CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_EPOCH_DATA) {
         response
-            
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
-            
+
+            .header('Access-Control-Allow-Origin', '*')
+            .header(
+                'Cache-Control',
+                `max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`
+            )
 
         response.send({
+            quorumThread: WORKING_THREADS.APPROVEMENT_THREAD.EPOCH,
 
-            quorumThread:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH,
-
-            verificationThread:WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
+            verificationThread: WORKING_THREADS.VERIFICATION_THREAD.EPOCH
         })
-
-    }else response.send({err:'Route is off'})
-
+    } else response.send({ err: 'Route is off' })
 })
-
-
-
 
 // Handler to accept transaction, make overview and add to mempool ✅
 
-FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
+FASTIFY_SERVER.post(
+    '/transaction',
+    { bodyLimit: CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE },
+    async (request, response) => {
+        response.header('Access-Control-Allow-Origin', '*')
 
-    response.header('Access-Control-Allow-Origin','*')
+        let transaction = JSON.parse(request.body)
 
-    let transaction = JSON.parse(request.body)
+        //Reject all txs if route is off and other guards methods
 
-    //Reject all txs if route is off and other guards methods
-
-    /*
+        /*
     
         ...and do such "lightweight" verification here to prevent db bloating
         Anyway we can bump with some short-term desynchronization while perform operations over block
@@ -257,50 +219,41 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
     */
 
-    if(typeof transaction?.creator!=='string' || typeof transaction.nonce!=='number' || typeof transaction.sig!=='string'){
+        if (
+            typeof transaction?.creator !== 'string' ||
+            typeof transaction.nonce !== 'number' ||
+            typeof transaction.sig !== 'string'
+        ) {
+            response.send({ err: 'Event structure is wrong' })
 
-        response.send({err:'Event structure is wrong'})
-    
-        return
-    
+            return
+        }
+
+        if (!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS) {
+            response.send({ err: 'Route is off' })
+
+            return
+        }
+
+        if (!TXS_FILTERS[transaction.type]) {
+            response.send({
+                err: 'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'
+            })
+
+            return
+        }
+
+        if (NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE) {
+            let filteredEvent = await TXS_FILTERS[transaction.type](transaction, PUBKEY_FOR_FILTER)
+
+            if (filteredEvent) {
+                response.send({ status: 'OK' })
+
+                NODE_METADATA.MEMPOOL.push(filteredEvent)
+            } else response.send({ err: `Can't get filtered value of tx` })
+        } else response.send({ err: 'Mempool is fullfilled' })
     }
-    
-    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.ACCEPT_TXS){
-            
-        response.send({err:'Route is off'})
-            
-        return
-            
-    }
-    
-    if(!TXS_FILTERS[transaction.type]){
-    
-        response.send({err:'No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote'})
-            
-        return
-    
-    }
-    
-        
-    if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
-    
-        let filteredEvent = await TXS_FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
-    
-        if(filteredEvent){
-    
-            response.send({status:'OK'})
-    
-            NODE_METADATA.MEMPOOL.push(filteredEvent)
-                            
-        }else response.send({err:`Can't get filtered value of tx`})
-    
-    }else response.send({err:'Mempool is fullfilled'})
-    
-
-})
-
-
-
+)
 
 // Handler to accept peers to exchange data with ✅
 /*
@@ -322,61 +275,57 @@ Returns:
 
 */
 
-FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE},(request,response)=>{
+FASTIFY_SERVER.post(
+    '/addpeer',
+    { bodyLimit: CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE },
+    (request, response) => {
+        let acceptedData = JSON.parse(request.body)
 
-    let acceptedData = JSON.parse(request.body)
+        if (!Array.isArray(acceptedData)) {
+            response.send({
+                err: 'Input must be a 2-elements array like [symbioteID,you_endpoint]'
+            })
 
-    if(!Array.isArray(acceptedData)){
+            return
+        }
 
-        response.send({err:'Input must be a 2-elements array like [symbioteID,you_endpoint]'})
-        
-        return
+        let [symbioteID, domain] = acceptedData
 
+        if (BLOCKCHAIN_GENESIS.SYMBIOTE_ID !== symbioteID) {
+            response.send({ err: 'Symbiotic chain not supported' })
+
+            return
+        }
+
+        if (!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.NEW_NODES) {
+            response.send({ err: 'Route is off' })
+
+            return
+        }
+
+        if (typeof domain === 'string' && domain.length <= 256) {
+            //Add more advanced logic in future(or use plugins - it's even better)
+
+            let nodes = NODE_METADATA.PEERS
+
+            if (
+                !(
+                    nodes.includes(domain) ||
+                    CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.includes(domain)
+                )
+            ) {
+                nodes.length < CONFIGURATION.NODE_LEVEL.MAX_CONNECTIONS
+                    ? nodes.push(domain)
+                    : (nodes[~~(Math.random() * nodes.length)] = domain) //if no place-paste instead of random node
+
+                response.send({ ok: 'Your node has been added' })
+            } else response.send({ ok: 'Your node already in scope' })
+        } else
+            response.send({
+                err: 'Wrong types => endpoint(domain) must be 256 chars in length or less'
+            })
     }
-
-    let [symbioteID,domain] = acceptedData
-   
-    if(BLOCKCHAIN_GENESIS.SYMBIOTE_ID!==symbioteID){
-
-        response.send({err:'Symbiotic chain not supported'})
-        
-        return
-
-    }
-
-    if(!CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.NEW_NODES){
-
-        response.send({err:'Route is off'})
-        
-        return
-    }
-
-    if(typeof domain==='string' && domain.length<=256){
-        
-        //Add more advanced logic in future(or use plugins - it's even better)
-
-        let nodes = NODE_METADATA.PEERS
-        
-        if(!(nodes.includes(domain) || CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES.includes(domain))){
-            
-            nodes.length<CONFIGURATION.NODE_LEVEL.MAX_CONNECTIONS
-            ?
-            nodes.push(domain)
-            :
-            nodes[~~(Math.random() * nodes.length)]=domain//if no place-paste instead of random node
-    
-            response.send({ok:'Your node has been added'})
-    
-        }else response.send({ok:'Your node already in scope'})
-    
-    }else response.send({err:'Wrong types => endpoint(domain) must be 256 chars in length or less'})
-
-
-
-})
-
-
-
+)
 
 /*
 

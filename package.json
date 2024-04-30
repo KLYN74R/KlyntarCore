@@ -1,56 +1,69 @@
 {
-  "name": "klyntar",
-  "version": "1.0.0",
-  "description": "KLYNTAR core for everything in endless space!",
-  "main": "klyn74r.js",
-  "type": "module",
-  "scripts": {
-    "init": "npm ci --only=production && node klyn74r.js",
-    "postinstall": "node ./npm_scripts/script.js"
-  },
-  "bin": {
-    "klyntar": "klyn74r.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/KLYN74R/KlyntarCore.git"
-  },
-  "author": "KlyntarTeam",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/KLYN74R/KlyntarCore/issues"
-  },
-  "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
-  "dependencies": {
-    "@assemblyscript/loader": "^0.20.19",
-    "@idena/vrf-js": "^1.0.1",
-    "@klyntar/klyntarevmjsonrpc": "github:KLYN74R/KlyntarEVMJsonRPC#v3",
-    "assemblyscript": "^0.19.23",
-    "base-58": "^0.0.1",
-    "bigi": "^1.4.2",
-    "bip-schnorr": "^0.6.7",
-    "blake3-wasm": "^2.1.5",
-    "bls-eth-wasm": "^1.1.1",
-    "chalk-animation": "^1.6.0",
-    "cli-spinners": "^2.9.2",
-    "fastify": "^4.25.1",
-    "level": "^7.0.1",
-    "node-fetch": "^3.3.2",
-    "node-seal": "^5.1.3",
-    "ntru": "^3.2.4",
-    "ora": "^6.3.1",
-    "secp256k1": "^4.0.3",
-    "wasm-metering": "^0.2.1",
-    "websocket": "^1.0.34"
-  },
-  "devDependencies": {
-    "@ethereumjs/common": "^3.0.0",
-    "@ethereumjs/tx": "^4.0.0",
-    "@solana/web3.js": "^1.87.6",
-    "eslint": "^8.56.0",
-    "ethereumjs-common": "^1.5.2",
-    "ethereumjs-tx": "^2.1.2",
-    "random-bytes": "^1.0.0",
-    "web3": "^1.8.0"
-  }
+    "name": "klyntar",
+    "version": "1.0.0",
+    "description": "KLYNTAR core for everything in endless space!",
+    "main": "klyn74r.js",
+    "type": "module",
+    "scripts": {
+        "init": "npm ci --only=production && node klyn74r.js",
+        "postinstall": "node ./npm_scripts/script.js",
+        "prepare": "husky && husky install",
+        "lint": "eslint ."
+    },
+    "bin": {
+        "klyntar": "klyn74r.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/KLYN74R/KlyntarCore.git"
+    },
+    "author": "KlyntarTeam",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/KLYN74R/KlyntarCore/issues"
+    },
+    "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
+    "dependencies": {
+        "@assemblyscript/loader": "^0.20.19",
+        "@idena/vrf-js": "^1.0.1",
+        "@klyntar/klyntarevmjsonrpc": "github:KLYN74R/KlyntarEVMJsonRPC#v3",
+        "assemblyscript": "^0.19.23",
+        "base-58": "^0.0.1",
+        "bigi": "^1.4.2",
+        "bip-schnorr": "^0.6.7",
+        "blake3-wasm": "^2.1.5",
+        "bls-eth-wasm": "^1.1.1",
+        "chalk-animation": "^1.6.0",
+        "cli-spinners": "^2.9.2",
+        "fastify": "^4.25.1",
+        "level": "^7.0.1",
+        "node-fetch": "^3.3.2",
+        "node-seal": "^5.1.3",
+        "ntru": "^3.2.4",
+        "ora": "^6.3.1",
+        "secp256k1": "^4.0.3",
+        "wasm-metering": "^0.2.1",
+        "websocket": "^1.0.34"
+    },
+    "devDependencies": {
+        "@ethereumjs/common": "^3.0.0",
+        "@ethereumjs/tx": "^4.0.0",
+        "@solana/web3.js": "^1.87.6",
+        "eslint": "^8.56.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-unused-imports": "^3.2.0",
+        "ethereumjs-common": "^1.5.2",
+        "ethereumjs-tx": "^2.1.2",
+        "husky": "^8.0.0",
+        "lint-staged": "^15.2.2",
+        "prettier": "3.2.5",
+        "random-bytes": "^1.0.0",
+        "web3": "^1.8.0"
+    },
+    "lint-staged": {
+        "*.js": [
+            "eslint --fix",
+            "prettier . --write"
+        ]
+    }
 }

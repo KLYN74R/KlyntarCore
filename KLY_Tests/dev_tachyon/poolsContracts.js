@@ -1,117 +1,87 @@
 import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 import fetch from 'node-fetch'
 
-
-
-
 //___________________________________________ CONSTANTS POOL ___________________________________________
 
-
-
-
-const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
+const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' //chain on which you wanna send tx
 
 const WORKFLOW_VERSION = 0
 
 const FEE = 5
 
 const TX_TYPES = {
-
-    TX:'TX', // default address <=> address tx
-    CONTRACT_DEPLOY:'CONTRACT_DEPLOY',
-    CONTRACT_CALL:'CONTRACT_CALL',
-    EVM_CALL:'EVM_CALL',
-    MIGRATE_BETWEEN_ENV:'MIGRATE_BETWEEN_ENV'
-
+    TX: 'TX', // default address <=> address tx
+    CONTRACT_DEPLOY: 'CONTRACT_DEPLOY',
+    CONTRACT_CALL: 'CONTRACT_CALL',
+    EVM_CALL: 'EVM_CALL',
+    MIGRATE_BETWEEN_ENV: 'MIGRATE_BETWEEN_ENV'
 }
 
 const SIG_TYPES = {
-    
-    DEFAULT:'D',                    // Default ed25519
-    TBLS:'T',                       // TBLS(threshold sig)
-    POST_QUANTUM_DIL:'P/D',         // Post-quantum Dilithium(2/3/5,2 used by default)
-    POST_QUANTUM_BLISS:'P/B',       // Post-quantum BLISS
-    MULTISIG:'M'                    // Multisig BLS
+    DEFAULT: 'D', // Default ed25519
+    TBLS: 'T', // TBLS(threshold sig)
+    POST_QUANTUM_DIL: 'P/D', // Post-quantum Dilithium(2/3/5,2 used by default)
+    POST_QUANTUM_BLISS: 'P/B', // Post-quantum BLISS
+    MULTISIG: 'M' // Multisig BLS
 }
 
-const SPECIAL_OPERATIONS_TYPES={
-
-    STAKING_CONTRACT_CALL:'STAKING_CONTRACT_CALL',
-    SLASH_UNSTAKE:'SLASH_UNSTAKE',
-    REMOVE_FROM_WAITING_ROOM:'REMOVE_FROM_WAITING_ROOM',
-    UPDATE_RUBICON:'UPDATE_RUBICON',
-    WORKFLOW_UPDATE:'WORKFLOW_UPDATE',
-    VERSION_UPDATE:'VERSION_UPDATE',
-
+const SPECIAL_OPERATIONS_TYPES = {
+    STAKING_CONTRACT_CALL: 'STAKING_CONTRACT_CALL',
+    SLASH_UNSTAKE: 'SLASH_UNSTAKE',
+    REMOVE_FROM_WAITING_ROOM: 'REMOVE_FROM_WAITING_ROOM',
+    UPDATE_RUBICON: 'UPDATE_RUBICON',
+    WORKFLOW_UPDATE: 'WORKFLOW_UPDATE',
+    VERSION_UPDATE: 'VERSION_UPDATE'
 }
 
 //___________________________________________ TEST ACCOUNTS ___________________________________________
 
-
 // BLS multisig
 const POOL_OWNER = {
+    privateKey: 'aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24',
 
-    privateKey:"aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24",
-        
-    pubKey:"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8"
-    
+    pubKey: '61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8'
 }
-
 
 //___________________________________________ FUNCTIONS ___________________________________________
 
-
-let GET_ACCOUNT_DATA=async account=>{
-
+let GET_ACCOUNT_DATA = async account => {
     return fetch(`http://localhost:7331/account/${account}`)
+        .then(r => r.json())
+        .catch(() => {
+            console.log(_)
 
-    .then(r=>r.json()).catch(()=>{
-    
-        console.log(_)
-
-        console.log(`Can't get chain level data`)
-
-    })
-
+            console.log(`Can't get chain level data`)
+        })
 }
 
-
-let SEND_TRANSACTION=transaction=>{
-
-    return fetch('http://localhost:7331/transaction',
+let SEND_TRANSACTION = transaction => {
+    return fetch(
+        'http://localhost:7331/transaction',
 
         {
-        
-            method:'POST',
-        
-            body:JSON.stringify(transaction)
-    
+            method: 'POST',
+
+            body: JSON.stringify(transaction)
         }
-
-    ).then(r=>r.text()).catch(console.log)
-
+    )
+        .then(r => r.text())
+        .catch(console.log)
 }
 
-
-
-let SEND_SPECIAL_OPERATION=(type,payload)=>{
-
-    return fetch('http://localhost:7331/special_operations',
+let SEND_SPECIAL_OPERATION = (type, payload) => {
+    return fetch(
+        'http://localhost:7331/special_operations',
 
         {
-        
-            method:'POST',
-        
-            body:JSON.stringify({type,payload})
-    
+            method: 'POST',
+
+            body: JSON.stringify({ type, payload })
         }
-
-    ).then(r=>r.text()).catch(console.log)
-
+    )
+        .then(r => r.text())
+        .catch(console.log)
 }
-
-
-
 
 /*
 
@@ -219,10 +189,7 @@ On this step, we've created everything for pool. But it's still not active becau
 
 */
 
-
-let DEPLOY_POOL_CONTRACT=async()=>{
-
-
+let DEPLOY_POOL_CONTRACT = async () => {
     /*
     
     0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload
@@ -237,53 +204,56 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
     */
 
-    let poolContractCreationTx={
-
-        v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_DEPLOY',
-        nonce:1,
-        fee:FEE,
-        payload:{
-            
+    let poolContractCreationTx = {
+        v: WORKFLOW_VERSION,
+        creator: POOL_OWNER.pubKey,
+        type: 'CONTRACT_DEPLOY',
+        nonce: 1,
+        fee: FEE,
+        payload: {
             //________________ Account related stuff ________________
 
-            type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            afk:[],
+            type: 'M', //multisig tx
+            active: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            afk: [],
 
             //____________________ For contract _____________________
 
-            bytecode:'',
-            lang:'spec/stakingPool',
-            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],'http://localhost:7334']
+            bytecode: '',
+            lang: 'spec/stakingPool',
+            constructorParams: [
+                '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+                0.7,
+                0,
+                ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
+                'http://localhost:7334'
+            ]
         },
-        sig:''
-
+        sig: ''
     }
 
+    let dataToSign =
+        SYMBIOTE_ID +
+        WORKFLOW_VERSION +
+        'CONTRACT_DEPLOY' +
+        JSON.stringify(poolContractCreationTx.payload) +
+        poolContractCreationTx.nonce +
+        FEE
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_DEPLOY'+JSON.stringify(poolContractCreationTx.payload)+poolContractCreationTx.nonce+FEE
+    poolContractCreationTx.sig = await bls.singleSig(dataToSign, POOL_OWNER.privateKey)
 
-    poolContractCreationTx.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
-
-    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
+    console.log(
+        '\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n'
+    )
 
     console.log(poolContractCreationTx)
 
     let status = await SEND_TRANSACTION(poolContractCreationTx)
 
-    console.log('POOL DEPLOYMENT STATUS => ',status);
-
+    console.log('POOL DEPLOYMENT STATUS => ', status)
 }
 
-
-
 // DEPLOY_POOL_CONTRACT()
-
-
-
-
 
 /*
 
@@ -348,10 +318,7 @@ The state will look like this
 
 */
 
-
-let SEND_STAKE_TX=async()=>{
-
-
+let SEND_STAKE_TX = async () => {
     /*
     
 TX_TYPE=CONTRACT_CALL, required payload is
@@ -376,62 +343,57 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
     */
 
-    let stakingTxToPool={
-
-        v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:5,
-        fee:FEE,
-        payload:{
-            
+    let stakingTxToPool = {
+        v: WORKFLOW_VERSION,
+        creator: POOL_OWNER.pubKey,
+        type: 'CONTRACT_CALL',
+        nonce: 5,
+        fee: FEE,
+        payload: {
             //________________ Account related stuff ________________
 
-            type:'M', //multisig tx
-            active:POOL_OWNER.pubKey,
-            afk:[],
+            type: 'M', //multisig tx
+            active: POOL_OWNER.pubKey,
+            afk: [],
 
             //____________________ For contract _____________________
-            contractID:POOL_OWNER.pubKey+'(POOL)',
-            method:'stake',
-            gasLimit:0,
-            params:[
-
+            contractID: POOL_OWNER.pubKey + '(POOL)',
+            method: 'stake',
+            gasLimit: 0,
+            params: [
                 {
-                    amount:500,
-                    units:'KLY'
+                    amount: 500,
+                    units: 'KLY'
                 }
-
             ],
-            imports:[] 
-            
+            imports: []
         },
 
-        sig:''
-
+        sig: ''
     }
 
+    let dataToSign =
+        SYMBIOTE_ID +
+        WORKFLOW_VERSION +
+        'CONTRACT_CALL' +
+        JSON.stringify(stakingTxToPool.payload) +
+        stakingTxToPool.nonce +
+        FEE
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+    stakingTxToPool.sig = await bls.singleSig(dataToSign, POOL_OWNER.privateKey)
 
-    stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
-
-    console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
+    console.log(
+        '\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n'
+    )
 
     console.log(stakingTxToPool)
 
     let status = await SEND_TRANSACTION(stakingTxToPool)
 
-    console.log('SEND_STAKE TX STATUS => ',status);
-
+    console.log('SEND_STAKE TX STATUS => ', status)
 }
 
-
 // SEND_STAKE_TX()
-
-
-
-
 
 /*
 
@@ -518,46 +480,36 @@ REWARD shows how much you earned since the last <getReward> call.
 
 */
 
-
-
-
-let MOVE_FROM_WAITING_ROOM_TO_STAKERS=async()=>{
-
+let MOVE_FROM_WAITING_ROOM_TO_STAKERS = async () => {
     let mySpecialOperation = {
+        type: 'STAKING_CONTRACT_CALL',
 
-        type:'STAKING_CONTRACT_CALL',
-        
-        payload:{
-
-            txid:'dba4f76346a945aaf6855f2c98904c871a14a4c81d46fd93ff2f248296509c5d',
-            pool:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            type:'+',
-            amount:50000
-    
+        payload: {
+            txid: 'dba4f76346a945aaf6855f2c98904c871a14a4c81d46fd93ff2f248296509c5d',
+            pool: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+            type: '+',
+            amount: 50000
         }
-    
     }
-
 
     let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperation)
-    
+        method: 'POST',
+        body: JSON.stringify(mySpecialOperation)
     }
-    
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
+    fetch('http://localhost:7331/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7332/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7333/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 }
 
-
 // MOVE_FROM_WAITING_ROOM_TO_STAKERS()
-
-
 
 /*
 
@@ -744,58 +696,51 @@ From the previous step, the state looks like this
 
 */
 
-
-let UNSTAKING=async()=>{
-
-    
+let UNSTAKING = async () => {
     const GENESIS_VALIDATOR_1 = {
-
-        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    
+        privateKey: 'af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867',
+        pubKey: '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'
     }
 
-    
-    let unstakingTxToPool={
-
-        v:WORKFLOW_VERSION,
-        creator:GENESIS_VALIDATOR_1.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:2,
-        fee:FEE,
-        payload:{
-            
+    let unstakingTxToPool = {
+        v: WORKFLOW_VERSION,
+        creator: GENESIS_VALIDATOR_1.pubKey,
+        type: 'CONTRACT_CALL',
+        nonce: 2,
+        fee: FEE,
+        payload: {
             //________________ Account related stuff ________________
 
-            type:'M', //multisig tx
-            active:GENESIS_VALIDATOR_1.pubKey,
-            afk:[],
+            type: 'M', //multisig tx
+            active: GENESIS_VALIDATOR_1.pubKey,
+            afk: [],
 
             //____________________ For contract _____________________
 
-            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
-            method:'unstake',
-            gasLimit:0,
-            params:[
-
+            contractID: GENESIS_VALIDATOR_1.pubKey + '(POOL)',
+            method: 'unstake',
+            gasLimit: 0,
+            params: [
                 {
-                    amount:50000,
-                    units:'KLY'
+                    amount: 50000,
+                    units: 'KLY'
                 }
-
             ],
-            imports:[] 
-            
+            imports: []
         },
 
-        sig:''
-
+        sig: ''
     }
 
+    let dataToSign =
+        SYMBIOTE_ID +
+        WORKFLOW_VERSION +
+        'CONTRACT_CALL' +
+        JSON.stringify(unstakingTxToPool.payload) +
+        unstakingTxToPool.nonce +
+        FEE
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
-
-    unstakingTxToPool.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
+    unstakingTxToPool.sig = await bls.singleSig(dataToSign, GENESIS_VALIDATOR_1.privateKey)
 
     console.log('\n=============== SIGNED TX FOR UNSTAKING ===============\n')
 
@@ -803,57 +748,43 @@ let UNSTAKING=async()=>{
 
     let status = await SEND_TRANSACTION(unstakingTxToPool)
 
-    console.log('UNSTAKING TX STATUS => ',status);
-
-
+    console.log('UNSTAKING TX STATUS => ', status)
 }
-
 
 // UNSTAKING()
 
-
 // And special operation to move from WAITING ROOM to delayed operations
 
-
-
-
-let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
-
+let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE = async () => {
     let mySpecialOperationToUnstake = {
+        type: 'STAKING_CONTRACT_CALL',
 
-        type:'STAKING_CONTRACT_CALL',
-        
-        payload:{
-
-            txid:'3af3102de898b8fc67f1400e14b8542a42d1d09125cd7a737cb7d00b14b93498',
-            pool:'7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
-            type:'-',
-            amount:50000
-    
+        payload: {
+            txid: '3af3102de898b8fc67f1400e14b8542a42d1d09125cd7a737cb7d00b14b93498',
+            pool: '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta',
+            type: '-',
+            amount: 50000
         }
-    
     }
-
 
     let optionsToSend = {
-
-        method:'POST',
-        body:JSON.stringify(mySpecialOperationToUnstake)
-    
+        method: 'POST',
+        body: JSON.stringify(mySpecialOperationToUnstake)
     }
-    
-    
-    fetch('http://localhost:7331/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7332/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    fetch('http://localhost:7333/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
-    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 
+    fetch('http://localhost:7331/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7332/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    fetch('http://localhost:7333/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(resp => console.log('STATUS => ', resp))
+    //fetch('http://localhost:7334/special_operations',optionsToSend).then(r=>r.text()).then(resp=>console.log('STATUS => ',resp))
 }
 
-
 // MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
-
-
 
 /*
 ![*] ------------------------------------------------------ How to get rewards --------------------------------------------------------
@@ -906,75 +837,62 @@ PAYLOAD={
 
 */
 
-
-let GET_REWARD=async()=>{
-
-
+let GET_REWARD = async () => {
     const GENESIS_VALIDATOR_1 = {
-
-        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    
+        privateKey: 'af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867',
+        pubKey: '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'
     }
-    
 
-    let getRewardTxCall={
-
-        v:WORKFLOW_VERSION,
-        creator:GENESIS_VALIDATOR_1.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:4,
-        fee:FEE,
-        payload:{
-            
+    let getRewardTxCall = {
+        v: WORKFLOW_VERSION,
+        creator: GENESIS_VALIDATOR_1.pubKey,
+        type: 'CONTRACT_CALL',
+        nonce: 4,
+        fee: FEE,
+        payload: {
             //________________ Account related stuff ________________
 
-            type:'M', //multisig tx
-            active:GENESIS_VALIDATOR_1.pubKey,
-            afk:[],
+            type: 'M', //multisig tx
+            active: GENESIS_VALIDATOR_1.pubKey,
+            afk: [],
 
             //____________________ For contract _____________________
 
-            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
-            method:'getReward',
-            gasLimit:0,
-            params:[],
-            imports:[] 
-            
+            contractID: GENESIS_VALIDATOR_1.pubKey + '(POOL)',
+            method: 'getReward',
+            gasLimit: 0,
+            params: [],
+            imports: []
         },
 
-        sig:''
-
+        sig: ''
     }
 
+    let dataToSign =
+        SYMBIOTE_ID +
+        WORKFLOW_VERSION +
+        'CONTRACT_CALL' +
+        JSON.stringify(getRewardTxCall.payload) +
+        getRewardTxCall.nonce +
+        FEE
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(getRewardTxCall.payload)+getRewardTxCall.nonce+FEE
+    getRewardTxCall.sig = await bls.singleSig(dataToSign, GENESIS_VALIDATOR_1.privateKey)
 
-    getRewardTxCall.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
-
-    console.log('\n=============== SIGNED TX TO CALL POOL CONTRACT AND GET THE REWARDS ===============\n')
+    console.log(
+        '\n=============== SIGNED TX TO CALL POOL CONTRACT AND GET THE REWARDS ===============\n'
+    )
 
     console.log(getRewardTxCall)
 
     let status = await SEND_TRANSACTION(getRewardTxCall)
 
-    console.log('STATUS => ',status);
-
-
+    console.log('STATUS => ', status)
 }
-
-
 
 // GET_REWARD()
 
-
-
-
-
-
-
 //________________________ GET INFO ________________________
 
-let acc2Stat = await GET_ACCOUNT_DATA(POOL_OWNER.pubKey+'(POOL)_STORAGE_POOL')
+let acc2Stat = await GET_ACCOUNT_DATA(POOL_OWNER.pubKey + '(POOL)_STORAGE_POOL')
 
 console.log(acc2Stat)

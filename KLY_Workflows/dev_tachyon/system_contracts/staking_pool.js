@@ -1,16 +1,10 @@
-import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import { GET_ACCOUNT_FROM_STATE, GET_FROM_STATE } from '../common_functions/state_interactions.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
+import { BLOCKCHAIN_DATABASES, WORKING_THREADS } from '../blockchain_preparation.js'
 
-import {BLAKE3} from '../../../KLY_Utils/utils.js'
-
-
-
-
-
+import { BLAKE3 } from '../../../KLY_Utils/utils.js'
 
 export let CONTRACT = {
-
     /*
     
     Used by pool creators to create contract instance and a storage "POOL"
@@ -42,30 +36,39 @@ export let CONTRACT = {
         [*] reserveFor - ShardID(pubkey of prime pool)
 
     */
-    constructor:async (transaction,atomicBatch,originShard) => {
+    constructor: async (transaction, atomicBatch, originShard) => {
+        let { constructorParams } = transaction.payload,
+            [
+                ed25519PubKey,
+                percentage,
+                overStake,
+                whiteList,
+                poolURL,
+                wssPoolURL,
+                isReserve,
+                reserveFor
+            ] = constructorParams,
+            poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(
+                originShard + ':' + ed25519PubKey + '(POOL)'
+            ).catch(() => false)
 
-        let{constructorParams}=transaction.payload,
-        
-            [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
-
-            poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
-
-
-        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
-
+        if (
+            !poolAlreadyExists &&
+            overStake >= 0 &&
+            Array.isArray(whiteList) &&
+            typeof poolURL === 'string' &&
+            typeof wssPoolURL === 'string'
+        ) {
             let contractMetadataTemplate = {
-
-                type:"contract",
-                lang:'spec/stakingPool',
-                balance:0,
-                uno:0,
-                storages:['POOL'],
-                bytecode:''
-
+                type: 'contract',
+                lang: 'spec/stakingPool',
+                balance: 0,
+                uno: 0,
+                storages: ['POOL'],
+                bytecode: ''
             }
 
-            let onlyOnePossibleStorageForStakingContract={
-                
+            let onlyOnePossibleStorageForStakingContract = {
                 percentage,
 
                 overStake,
@@ -78,34 +81,32 @@ export let CONTRACT = {
 
                 isReserve,
 
-                lackOfTotalPower:false,
-                    
-                stopEpochID:-1,
+                lackOfTotalPower: false,
 
-                totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
-                
-                stakers:{}, // Pubkey => {kly,uno}
+                stopEpochID: -1,
 
-                waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via epoch edge operations
+                totalPower: 0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
 
+                stakers: {}, // Pubkey => {kly,uno}
+
+                waitingRoom: {} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via epoch edge operations
             }
 
-
-            if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
+            if (isReserve) onlyOnePossibleStorageForStakingContract.reserveFor = reserveFor
 
             //Put pool pointer
-            atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
+            atomicBatch.put(ed25519PubKey + '(POOL)_POINTER', originShard)
 
-            
             //Put metadata
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+            atomicBatch.put(originShard + ':' + ed25519PubKey + '(POOL)', contractMetadataTemplate)
 
             //Put storage
             //NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-
+            atomicBatch.put(
+                originShard + ':' + ed25519PubKey + '(POOL)_STORAGE_POOL',
+                onlyOnePossibleStorageForStakingContract
+            )
         }
-
     },
 
     /*
@@ -121,56 +122,60 @@ export let CONTRACT = {
     }
     
     */
-    
-    stake:async(transaction,originShard) => {
 
+    stake: async (transaction, originShard) => {
         let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => Ed25519_pubkey(POOL)
-
-            {amount,units} = transaction.payload.params[0],
-
-            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
-
+            { amount, units } = transaction.payload.params[0],
+            poolStorage = await GET_FROM_STATE(
+                originShard + ':' + fullPoolIdWithPostfix + '_STORAGE_POOL'
+            )
 
         //Here we also need to check if pool is still not fullfilled
         //Also, instantly check if account is whitelisted
 
-        if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
+        if (
+            poolStorage &&
+            (poolStorage.whiteList.length === 0 ||
+                poolStorage.whiteList.includes(transaction.creator))
+        ) {
+            let stakerAccount = await GET_ACCOUNT_FROM_STATE(
+                originShard + ':' + transaction.creator
+            )
 
-            let stakerAccount = await GET_ACCOUNT_FROM_STATE(originShard+':'+transaction.creator)
+            if (stakerAccount) {
+                let stakeIsOk =
+                    (units === 'kly'
+                        ? amount <= stakerAccount.balance
+                        : amount <= stakerAccount.uno) &&
+                    amount >=
+                        WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
+                            .MINIMAL_STAKE_PER_ENTITY
 
-            if(stakerAccount){
+                if (
+                    stakeIsOk &&
+                    poolStorage.totalPower + amount <=
+                        poolStorage.overStake +
+                            WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                ) {
+                    poolStorage.waitingRoom[BLAKE3(transaction.sig)] = {
+                        epochID: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 
-                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
-
-                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
-
-                    poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
-
-                        epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
-
-                        staker:transaction.creator,
+                        staker: transaction.creator,
 
                         amount,
 
                         units,
 
-                        type:'+' //means "STAKE"
-                    
+                        type: '+' //means "STAKE"
                     }
 
                     //Reduce number of KLY/UNO from account
-                    if(units==='kly') stakerAccount.balance-=amount
-                    
-                    else stakerAccount.uno-=amount
-
+                    if (units === 'kly') stakerAccount.balance -= amount
+                    else stakerAccount.uno -= amount
                 }
-
             }
-    
         }
-
     },
-
 
     /*
      
@@ -186,37 +191,27 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (transaction,originShard) => {
-
-        let fullPoolIdWithPostfix=transaction.payload.contractID,
-
-            {amount,units}=transaction.payload.params[0],
-
-            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
-
+    unstake: async (transaction, originShard) => {
+        let fullPoolIdWithPostfix = transaction.payload.contractID,
+            { amount, units } = transaction.payload.params[0],
+            poolStorage = await GET_FROM_STATE(
+                originShard + ':' + fullPoolIdWithPostfix + '_STORAGE_POOL'
+            ),
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
+            wishedUnstakingAmountIsOk = stakerInfo[units === 'kly' ? 'kly' : 'uno'] >= amount
 
-            wishedUnstakingAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
+        if (poolStorage && wishedUnstakingAmountIsOk) {
+            poolStorage.waitingRoom[BLAKE3(transaction.sig)] = {
+                epochID: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 
-
-        if(poolStorage && wishedUnstakingAmountIsOk){
-
-            poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
-
-                epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
-
-                staker:transaction.creator,
+                staker: transaction.creator,
 
                 amount,
 
                 units,
 
-                type:'-' //means "UNSTAKE"
-
+                type: '-' //means "UNSTAKE"
             }
-    
         }
-
     }
-        
 }

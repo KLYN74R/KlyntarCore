@@ -1,69 +1,68 @@
 {
-    "DASH":{
-        "@dashevo/dashcore-lib":"^0.19.30"    
+    "DASH": {
+        "@dashevo/dashcore-lib": "^0.19.30"
     },
-    "EVM":{
+    "EVM": {
         "@ethereumjs/common": "^2.6.2",
         "@ethereumjs/tx": "^3.5.0",
         "web3": "^1.4.0"
     },
-    "HARMONY":{
+    "HARMONY": {
         "@harmony-js/account": "^0.1.57",
         "@harmony-js/crypto": "^0.1.56"
     },
-    "KLYNTAR":{
-        "@klyntar/valardohaeris": "^13.0.2"    
+    "KLYNTAR": {
+        "@klyntar/valardohaeris": "^13.0.2"
     },
-    "SOLANA":{
+    "SOLANA": {
         "@solana/spl-token": "^0.1.8",
         "@solana/web3.js": "^1.24.0"
     },
-    "POLKADOT":{
+    "POLKADOT": {
         "@polkadot/api": "^6.10.3"
     },
-    "TERRA":{
+    "TERRA": {
         "@terra-money/terra.js": "^3.0.2"
     },
-    "ZILLIQA":{
+    "ZILLIQA": {
         "@zilliqa-js/crypto": "^3.3.4"
     },
-    "ALGORAND":{
+    "ALGORAND": {
         "algosdk": "^1.12.0"
     },
-    "ARWEAVE":{
+    "ARWEAVE": {
         "arweave": "^1.10.18"
-    },    
-    "SCHNORR":{
+    },
+    "SCHNORR": {
         "bigi": "^1.4.2",
         "bip-schnorr": "^0.6.4"
     },
-    "BITCOIN":{
+    "BITCOIN": {
         "bitcoinjs-lib": "^6.0.0",
         "bitcore-lib": "^8.25.10"
     },
-    "LITECOIN":{
+    "LITECOIN": {
         "litecore-lib-v5": "^0.15.0"
     },
-    "DOGE":{
-        "bitcore-doge-lib": "^8.25.8"   
+    "DOGE": {
+        "bitcore-doge-lib": "^8.25.8"
     },
-    "BITCOIN_CASH":{
+    "BITCOIN_CASH": {
         "bitcore-lib-cash": "^8.25.10"
     },
-    "RIPPLE":{
+    "RIPPLE": {
         "ripple-lib": "^1.10.0"
     },
-    "TEZOS":{
+    "TEZOS": {
         "sotez": "^10.0.0"
     },
-    "STELLAR":{
+    "STELLAR": {
         "stellar-sdk": "^9.0.1"
     },
-    "TRON":{
+    "TRON": {
         "tronweb": "^4.0.0"
     },
-    "ANDROMEDA":{
+    "ANDROMEDA": {
         "dockerode": "^3.3.1"
     }
-
 }

@@ -1,21 +1,17 @@
-export default class{
-    
-    constructor(version,creator,txType,nonce,fee,payload){
-    
-        this.v=version
+export default class {
+    constructor(version, creator, txType, nonce, fee, payload) {
+        this.v = version
 
-        this.creator=creator
+        this.creator = creator
 
-        this.type=txType
-    
-        this.nonce=nonce
-        
-        this.fee=fee
+        this.type = txType
 
-        this.payload=payload
+        this.nonce = nonce
+
+        this.fee = fee
+
+        this.payload = payload
 
         //this.sig=signature
-        
     }
-    
 }

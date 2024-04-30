@@ -1,58 +1,42 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE} from './approvement_thread_related.js'
+import { GET_FROM_APPROVEMENT_THREAD_STATE } from './approvement_thread_related.js'
 
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import { GLOBAL_CACHES, WORKING_THREADS } from '../blockchain_preparation.js'
 
-import {BLAKE3} from '../../../KLY_Utils/utils.js'
+import { BLAKE3 } from '../../../KLY_Utils/utils.js'
 
-import {HEAP_SORT} from '../utils.js'
-
-
-
-
+import { HEAP_SORT } from '../utils.js'
 
 export let GET_QUORUM_MAJORITY = epochHandler => {
-
     let quorumNumber = epochHandler.quorum.length
 
-    let majority = Math.floor(quorumNumber*(2/3))+1
-
+    let majority = Math.floor(quorumNumber * (2 / 3)) + 1
 
     //Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
 
     return majority > quorumNumber ? quorumNumber : majority
-
 }
 
-
-
-
-export let GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
-
+export let GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey, epochHandler) => {
     let toReturn = []
 
     epochHandler ||= WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    for(let pubKey of epochHandler.quorum){
+    for (let pubKey of epochHandler.quorum) {
+        let poolStorage =
+            GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey + '(POOL)_STORAGE_POOL') ||
+            (await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey + '(POOL)_STORAGE_POOL').catch(
+                () => null
+            ))
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
-
-        if(poolStorage){
-
-            toReturn.push(withPubkey ? {url:poolStorage.poolURL,pubKey} : poolStorage.poolURL)
-        
+        if (poolStorage) {
+            toReturn.push(withPubkey ? { url: poolStorage.poolURL, pubKey } : poolStorage.poolURL)
         }
-
     }
 
     return toReturn
-
 }
 
-
-
-
-export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
-
+export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID = (ticketID, epochHandler) => {
     /*
 
         _________________DISCLAIMER_________________
@@ -95,78 +79,59 @@ export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHand
     */
 
     // If QUORUM_SIZE > 21 - do challenge, otherwise - return the whole quorum
-    if(epochHandler.quorum.length > 21){
-
+    if (epochHandler.quorum.length > 21) {
         // Based on ticket_id + epochHandler.hash as a seed value - generate 21 values in range [0;quorum.size]
 
         // Then, return the resulting array of 21 validators by indexes in <quorum> array
 
         let subsetToReturn = []
 
-        for(let i=0 ; i < 21 ; i++) {
-
+        for (let i = 0; i < 21; i++) {
             let seed = BLAKE3(`${epochHandler.hash}:${ticketID}:${i}`)
 
             // Hex => Number
-            let hashAsNumber = parseInt(seed, 16);
-    
+            let hashAsNumber = parseInt(seed, 16)
+
             // Normalize to [0, 1]
-            let normalizedValue = hashAsNumber / (parseInt('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 16) + 1);
-    
-            let min = 0, max = epochHandler.quorum.length-1
-    
+            let normalizedValue =
+                hashAsNumber /
+                (parseInt('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 16) +
+                    1)
+
+            let min = 0,
+                max = epochHandler.quorum.length - 1
+
             // Normalize to [min, max]
             let scaledValue = min + Math.floor(normalizedValue * (max - min + 1))
-                
-            subsetToReturn.push(epochHandler.quorum[scaledValue])
 
+            subsetToReturn.push(epochHandler.quorum[scaledValue])
         }
 
         return subsetToReturn
-
-
     } else return epochHandler.quorum
-
-
 }
-
-
 
 //We get the quorum based on pools' metadata(pass via parameter)
 
-export let GET_CURRENT_EPOCH_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
-
+export let GET_CURRENT_EPOCH_QUORUM = (poolsRegistry, workflowOptions, newEpochSeed) => {
     let pools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
     //If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
-    if(pools.length > workflowOptions.QUORUM_SIZE){
-
-        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsRegistry)+newEpochSeed),
-
+    if (pools.length > workflowOptions.QUORUM_SIZE) {
+        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsRegistry) + newEpochSeed),
             mapping = new Map(),
-
             sortedChallenges = HEAP_SORT(
+                pools.map(validatorPubKey => {
+                    let challenge = parseInt(BLAKE3(validatorPubKey + poolsMetadataHash), 16)
 
-                pools.map(
-                
-                    validatorPubKey => {
+                    mapping.set(challenge, validatorPubKey)
 
-                        let challenge = parseInt(BLAKE3(validatorPubKey+poolsMetadataHash),16)
-
-                        mapping.set(challenge,validatorPubKey)
-
-                        return challenge
-
-                    }
-                    
-                )
-
+                    return challenge
+                })
             )
 
-        return sortedChallenges.slice(0,workflowOptions.QUORUM_SIZE).map(challenge=>mapping.get(challenge))
-
-
+        return sortedChallenges
+            .slice(0, workflowOptions.QUORUM_SIZE)
+            .map(challenge => mapping.get(challenge))
     } else return pools
-
-
 }

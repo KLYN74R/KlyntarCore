@@ -33,32 +33,22 @@ POST /addpeer [✅]
 
 */
 
-
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
 import fetch from 'node-fetch'
-
-
 
 //___________________________________ IMPORTS / CONSTANTS POOL ___________________________________
 
-
 let CREDS = {
+    url: 'http://localhost:7331',
 
-    url:'http://localhost:7331',
+    prv: 'af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867',
 
-    prv:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-    
-    pub:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-
+    pub: '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta'
 }
-
 
 //___________________________________________ TESTS ______________________________________________
 
-
-let POST_FINALIZATION_ROUTE_TEST=async()=>{
-
-/*
+let POST_FINALIZATION_ROUTE_TEST = async () => {
+    /*
 
 [Description]:
     
@@ -111,51 +101,39 @@ ___________________________Verification steps___________________________
 
     //______________________ Empty object ______________________
 
-
     // let emptyObject={}
 
     // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
 
-
     // await fetch(CREDS.url+'/finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-
 
     //______________________ Normal object ______________________
 
-    let normalObject =   {
-        
-        blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+    let normalObject = {
+        blockID: '7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337',
 
-        blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
-        
-        aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+        blockHash: '0123456701234567012345670123456701234567012345670123456701234567',
 
-        aggregatedSignature:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+        aggregatedPub: '7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP',
 
-        afkVoters:[]
+        aggregatedSignature:
+            'kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD',
 
+        afkVoters: []
     }
 
-    optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normalObject) }
 
-    await fetch(CREDS.url+'/finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-
-
+    await fetch(CREDS.url + '/finalization', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
-
 
 // POST_FINALIZATION_ROUTE_TEST()
 
-
-
-
-
-
-
-
-let POST_SUPER_FINALIZATION_ROUTE_TEST=async()=>{
-
-/*
+let POST_SUPER_FINALIZATION_ROUTE_TEST = async () => {
+    /*
 
 ****************************************************************
                                                                *
@@ -167,11 +145,9 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 
 */
 
-
     let optionsToSend
 
     //______________________ Empty object ______________________
-
 
     // let emptyObject={}
 
@@ -179,41 +155,33 @@ Accept SUPER_FINALIZATION_PROOF or send if it exists locally   *
 
     // await fetch(CREDS.url+'/super_finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-
     //______________________ Normal object ______________________
 
-    let normalObject =   {
-        
-        blockID:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337",
+    let normalObject = {
+        blockID: '7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP:1337',
 
-        blockHash:"0123456701234567012345670123456701234567012345670123456701234567",
-        
-        aggregatedPub:"7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP",
+        blockHash: '0123456701234567012345670123456701234567012345670123456701234567',
 
-        aggregatedSignature:"kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD",
+        aggregatedPub: '7cBETvyWGSvnaVbc7ZhSfRPYXmsTzZzYmraKEgxQMng8UPEEexpvVSgTuo8iza73oP',
 
-        afkVoters:[]
+        aggregatedSignature:
+            'kffamjvjEg4CMP8VsxTSfC/Gs3T/MgV1xHSbP5YXJI5eCINasivnw07f/lHmWdJjC4qsSrdxr+J8cItbWgbbqNaM+3W4HROq2ojiAhsNw6yCmSBXl73Yhgb44vl5Q8qD',
 
+        afkVoters: []
     }
 
-    optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normalObject) }
 
-    await fetch(CREDS.url+'/super_finalization',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-
+    await fetch(CREDS.url + '/super_finalization', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
 
 // POST_SUPER_FINALIZATION_ROUTE_TEST()
 
-
-
-
-
-
-
-
-let GET_SUPER_FINALIZATION_ROUTE_TEST=async()=>{
-
-/*
+let GET_SUPER_FINALIZATION_ROUTE_TEST = async () => {
+    /*
 
 To return SUPER_FINALIZATION_PROOF related to some block PubX:Index
 
@@ -234,11 +202,12 @@ Returns:
 
 */
 
-
-
     //______________________ Empty blockID ______________________
 
-    await fetch(CREDS.url+'/super_finalization/').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url + '/super_finalization/')
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
     //______________________ Normal blockID ______________________
 
@@ -249,21 +218,21 @@ Returns:
     {"blockID":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta:596","blockHash":"84ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e","aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"oIkKCqcwY1tWqeK5ZlvCdiVoiPA5f/lbVqXwwjPK1bUguOPonRV7NMNOxHjOds6JGANj+uGTb7RnkNP4ZdG3GUms1A/5Uv98EIki80PM1bWvCqaLjcEVTb2aN4laqzgh","afkVoters":[]}
 
     */
-    await fetch(CREDS.url+'/super_finalization/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
-
-
+    await fetch(
+        CREDS.url +
+            '/super_finalization/' +
+            CREDS.pub +
+            ':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e'
+    )
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
-
 
 // GET_SUPER_FINALIZATION_ROUTE_TEST()
 
-
-
-
-let GET_PAYLOAD_FOR_CHECKPOINT_ROUTE_TEST=async()=>{
-
-
-/*
+let GET_PAYLOAD_FOR_CHECKPOINT_ROUTE_TEST = async () => {
+    /*
 
 GET /payload_for_checkpoint/:PAYLOAD_HASH
 
@@ -286,12 +255,13 @@ Returns:
     }
 
 */
-    
-    
-    
+
     //______________________ Empty hash ______________________
 
-    await fetch(CREDS.url+'/payload_for_checkpoint/').then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url + '/payload_for_checkpoint/')
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
     //_____________ Invalid hash (some random data) __________
 
@@ -300,21 +270,21 @@ Returns:
     Returns 
 
     */
-    await fetch(CREDS.url+'/payload_for_checkpoint/'+CREDS.pub+':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e').then(r=>r.text()).then(console.log).catch(console.log)
-    
-    
+    await fetch(
+        CREDS.url +
+            '/payload_for_checkpoint/' +
+            CREDS.pub +
+            ':59684ff11c3f40f915cd257d4b8b1fc5887356b3320b746d8a80cb230f54bf6ba7e'
+    )
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
-
 
 // GET_PAYLOAD_FOR_CHECKPOINT_ROUTE_TEST()
 
-
-
-
-
-let TEST_SPECIAL_OPERATIONS_ROUTE=async()=>{
-
-/*
+let TEST_SPECIAL_OPERATIONS_ROUTE = async () => {
+    /*
 
 Body is
 
@@ -343,11 +313,9 @@ VERSION_UPDATE
 
 */
 
-
     let optionsToSend
 
     //______________________ Empty object ______________________
-
 
     // let emptyObject={}
 
@@ -355,37 +323,25 @@ VERSION_UPDATE
 
     // await fetch(CREDS.url+'/special_operations',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-
     //______________________ STAKING_CONTRACT_CALL(negative test) ______________________
 
-    let normalObject =   {
-        
-        type:'STAKING_CONTRACT_CALL',
-        payload:'LOL'
+    let normalObject = {
+        type: 'STAKING_CONTRACT_CALL',
+        payload: 'LOL'
     }
 
-    optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normalObject) }
 
-    await fetch(CREDS.url+'/special_operations',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-
-
-
+    await fetch(CREDS.url + '/special_operations', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
-
 
 // TEST_SPECIAL_OPERATIONS_ROUTE()
 
-
-
-
-
-
-
-
-let TEST_CHECKPOINT_STAGE_1_ROUTE=async()=>{
-
-
-/*
+let TEST_CHECKPOINT_STAGE_1_ROUTE = async () => {
+    /*
 
 Accept checkpoints from other pools in quorum and returns own version as answer
 ! Check the trigger START_SHARING_CHECKPOINT
@@ -474,14 +430,9 @@ Response - it's object with the following structure:
 
 */
 
-
-
-    
-    
     let optionsToSend
 
     //______________________ Empty object ______________________
-
 
     // let emptyObject={}
 
@@ -489,11 +440,10 @@ Response - it's object with the following structure:
 
     // await fetch(CREDS.url+'/checkpoint_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-
     //__________ Negative test __________
 
     // let normalObject =   {
-        
+
     //     ISSUER:'LOL',
     //     OPERATIONS:[],
     //     PREV_CHECKPOINT_PAYLOAD_HASH:'',
@@ -505,29 +455,29 @@ Response - it's object with the following structure:
 
     // await fetch(CREDS.url+'/checkpoint_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
 
-    
     //__________ Negative test __________
 
     // Here we approve that pool has never vote for block with lower index that pool already voted
 
-    let objectLikeNormal =   {
-        
-        ISSUER:'LOL',
-        OPERATIONS:[],
-        PREV_CHECKPOINT_PAYLOAD_HASH:'',
-        POOLS_METADATA:{
-            "7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta":{
-                IS_STOPPED:false,
-                INDEX:-33
+    let objectLikeNormal = {
+        ISSUER: 'LOL',
+        OPERATIONS: [],
+        PREV_CHECKPOINT_PAYLOAD_HASH: '',
+        POOLS_METADATA: {
+            '7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta': {
+                IS_STOPPED: false,
+                INDEX: -33
             }
         },
-        OTHER_SYMBIOTES:{}
-    
+        OTHER_SYMBIOTES: {}
     }
-    
-    optionsToSend={method:'POST',body:JSON.stringify(objectLikeNormal)}
-    
-    await fetch(CREDS.url+'/checkpoint_stage_1',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+
+    optionsToSend = { method: 'POST', body: JSON.stringify(objectLikeNormal) }
+
+    await fetch(CREDS.url + '/checkpoint_stage_1', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
     /*
     
@@ -536,25 +486,12 @@ Response - it's object with the following structure:
     {"metadataUpdate":[{"subchain":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","index":1748,"hash":"77277818a7cfaf11911ff46c260b3f4783efb5bbb416a8c7d411fe0eec9cf062","finalizationProof":{"aggregatedPub":"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta","aggregatedSignature":"lX8DSSIVZxGogpkDvvmhfXlinCfTVSo/dSQrC7FRA50R2yPT7mNm9ZXyFs66cOSkAjSb5m+9QiHHVHjlhYhYO8PdXmB+5HR8X+LGZry0AOeDf/gjZNTtpAKyqibu/DGy","afkVoters":[]}}]}
     
     */
-    
-    
 }
-    
-
 
 // TEST_CHECKPOINT_STAGE_1_ROUTE()
 
-
-
-
-
-
-
-let TEST_CHECKPOINT_STAGE_2_ROUTE=async()=>{
-
-
-
-/*
+let TEST_CHECKPOINT_STAGE_2_ROUTE = async () => {
+    /*
 
 [Description]:
 
@@ -630,12 +567,10 @@ Response - it's object with the following structure:
 {"sig":"k8RjJdv/bzSGCz2I/XIZJZ1FyfomK5ZmTOgZvqB/HG6xHYF02LmgvjuWQCHAhJIeDI5s8M7L3+jZPPP3appbImuL5iweebMKPg8glEESaz6Ec/T0Lw8QrvkZZNR/5tDW"}
 
 */
-    
-    
+
     let optionsToSend
 
     //______________________ Empty object ______________________
-
 
     // let emptyObject={}
 
@@ -645,28 +580,27 @@ Response - it's object with the following structure:
 
     // Result = {"error":"No CHECKPOINT_FINALIZATION_PROOF in input data"}
 
-
     //__________ Negative test __________
 
-    let normalObject =   {
-
-        CHECKPOINT_FINALIZATION_PROOF:{},
-        ISSUER_PROOF:'',
-        CHECKPOINT_PAYLOAD:{}
-
+    let normalObject = {
+        CHECKPOINT_FINALIZATION_PROOF: {},
+        ISSUER_PROOF: '',
+        CHECKPOINT_PAYLOAD: {}
     }
 
-    optionsToSend={method:'POST',body:JSON.stringify(normalObject)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normalObject) }
 
-    await fetch(CREDS.url+'/checkpoint_stage_2',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url + '/checkpoint_stage_2', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
-    
     //__________ Negative test __________
 
     // Here we approve that pool has never vote for block with lower index that pool already voted
 
     // let objectLikeNormal =   {
-        
+
     //     ISSUER:'LOL',
     //     OPERATIONS:[],
     //     PREV_CHECKPOINT_PAYLOAD_HASH:'',
@@ -677,27 +611,18 @@ Response - it's object with the following structure:
     //         }
     //     },
     //     OTHER_SYMBIOTES:{}
-    
+
     // }
-    
+
     // optionsToSend={method:'POST',body:JSON.stringify(objectLikeNormal)}
-    
+
     // await fetch(CREDS.url+'/checkpoint_stage_2',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-    
-    
 }
-
-
-
 
 // TEST_CHECKPOINT_STAGE_2_ROUTE()
 
-
-
-
-let TEST_SEND_BLOCK_AND_GET_COMMITMENT = async() => {
-
-/*
+let TEST_SEND_BLOCK_AND_GET_COMMITMENT = async () => {
+    /*
 
 [Description]:
     Accept blocks and return commitment if subchain sequence completed
@@ -733,29 +658,23 @@ let TEST_SEND_BLOCK_AND_GET_COMMITMENT = async() => {
 
     //______________________ Empty object ______________________
 
-    let emptyObject={}
+    let emptyObject = {}
 
-    optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(emptyObject) }
 
-    await fetch(CREDS.url+'/block',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
-
-
+    await fetch(CREDS.url + '/block', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 }
 
-
-
 // TEST_SEND_BLOCK_AND_GET_COMMITMENT()
-
-
 
 //Format of body : {symbiote,body}
 //There is no <creator> field-we get it from tx
 
-
-
-let TEST_SEND_EVENT = async() => {
-
-/*
+let TEST_SEND_EVENT = async () => {
+    /*
     
 Format of body : {symbiote,body}
 There is no <creator> field-we get it from tx
@@ -774,8 +693,6 @@ There is no <creator> field-we get it from tx
 
     // Result => Event structure is wrong
 
-
-
     //______________________ Normal,but no filter ________________________
 
     // let normal = {
@@ -790,38 +707,31 @@ There is no <creator> field-we get it from tx
 
     // Result => No such filter. Make sure your <tx.type> is supported by current version of workflow runned on symbiote
 
-
     //_____________________________ Normal _______________________________
 
     let normal = {
-        creator:CREDS.pub,
-        type:'TX',
-        nonce:9,
-        amount:228,
-        sig:'fdfdf',
-        to:'LOL'
+        creator: CREDS.pub,
+        type: 'TX',
+        nonce: 9,
+        amount: 228,
+        sig: 'fdfdf',
+        to: 'LOL'
     }
 
-    optionsToSend={method:'POST',body:JSON.stringify(normal)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normal) }
 
-    await fetch(CREDS.url+'/transaction',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url + '/transaction', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
     // Response => Can't get filtered value of tx
-
-
 }
-    
 
 // TEST_SEND_EVENT()
 
-
-
-
-
-
-let ADD_PEER_TEST = async()=>{
-
-/*
+let ADD_PEER_TEST = async () => {
+    /*
 
 To add node to local set of peers to exchange data with
 
@@ -854,7 +764,6 @@ Returns:
 
     //___________ Not array ___________
 
-
     // let emptyObject={}
 
     // optionsToSend={method:'POST',body:JSON.stringify(emptyObject)}
@@ -863,23 +772,18 @@ Returns:
 
     // Res => Input must be a 2-elements array like [symbioteID,you_endpoint]
 
-
     //___________ Normal ___________
 
-    
-    let normArray=[
-        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "lalalla"
-    ]
+    let normArray = ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'lalalla']
 
-    optionsToSend={method:'POST',body:JSON.stringify(normArray)}
+    optionsToSend = { method: 'POST', body: JSON.stringify(normArray) }
 
-    await fetch(CREDS.url+'/addpeer',optionsToSend).then(r=>r.text()).then(console.log).catch(console.log)
+    await fetch(CREDS.url + '/addpeer', optionsToSend)
+        .then(r => r.text())
+        .then(console.log)
+        .catch(console.log)
 
     // Response - "Symbiote not supported"
-
 }
-
-
 
 // ADD_PEER_TEST()

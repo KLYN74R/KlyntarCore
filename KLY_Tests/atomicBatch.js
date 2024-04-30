@@ -1,24 +1,19 @@
 // import l from 'level'
 
-
 // let db = l('TEST')
 
 // let batch = db.batch()
 
 // await batch.put('A','VALUE_A')
 
-
 // db.createReadStream().on('data',v=>console.log('First batch => ',v))
 
 // batch.put('B','VALUE_B')
 // batch.put('C','VALUE_C')
 
-
-
 // await batch.write()
 
 // db.createReadStream().on('data',v=>console.log('After commit => ',v))
-
 
 //=============================================Test2=============================================
 
@@ -34,16 +29,13 @@
 
 // process.exit(1)
 
-
 //=============================================Test3 - Performance=============================================
-
 
 import l from 'level'
 
 let db = l('TEST')
 
 // let batch = db.batch()
-
 
 // for(let i=0;i<100000;i++){
 
@@ -53,4 +45,4 @@ let db = l('TEST')
 
 // await batch.write()
 
-db.createReadStream().on('data',v=>console.log('After commit => ',v))
+db.createReadStream().on('data', v => console.log('After commit => ', v))

@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img src="./images/CorePreview.png">
@@ -9,20 +8,21 @@
 
 ## 📖 Content
 
-- [Intro](#intro)
-- [WhoAmI](#who_am_i)
-- [How to build](#build)
-- [Running AntiVenom(testnet)](#testnet)
-- [Running kNULL](#kNULL)
-- [Summary](#summary)
-- [Advice](#advice)
-- [Docs](#docs)
+-   [Intro](#intro)
+-   [WhoAmI](#who_am_i)
+-   [How to build](#build)
+-   [Running AntiVenom(testnet)](#testnet)
+-   [Running kNULL](#kNULL)
+-   [Summary](#summary)
+-   [Advice](#advice)
+-   [Docs](#docs)
 
 <br/><br/>
 
 <div name="intro"></div>
 
-## ⚡ <b>Intro</b> 
+## ⚡ <b>Intro</b>
+
 <br/>
 
 <div align="center">
@@ -44,12 +44,12 @@ Working on KLYNTAR, we've been trying to make a project so powerful to wonder yo
 
 ## This project can involve literally everyone:
 
-- Developers will find here abilites to create decentralized services on any language they want and using latest & most reliable technologies like powerful set of crypto algorithms(Cryptoland), tons of offchain work, cross & multichain interactions, and so on. Our strong community will devolope plugins to customize your infrastructure and improve workflows, create best practises, will work on our Cryptoland, improve security of runners & containers by adding cybersec stuff and so on! 
-- Enterprise players will have an ability to build & control clusters of nodes,runners and run symbiotes
-- Resources owners can use probably the most advanced staking system using <b>Unobtanium</b> - a KLYNTAR unified resource which includes your mined Bitcoin blocks, combination of tokens on Avalanche, validators place on Polkadot and so on!
-- Everyone who has server & laptop & any other machine will make our empire more powerful. The installation processes are minified to several commands in pre-build Docker images, so we also save your health & nervous system & time
-- It you are miner, journalist, sportsmen, crypto-geek - welcome to KLYNTAR where everything you own can be useful
-- ...and...read our other docs 😀
+-   Developers will find here abilites to create decentralized services on any language they want and using latest & most reliable technologies like powerful set of crypto algorithms(Cryptoland), tons of offchain work, cross & multichain interactions, and so on. Our strong community will devolope plugins to customize your infrastructure and improve workflows, create best practises, will work on our Cryptoland, improve security of runners & containers by adding cybersec stuff and so on!
+-   Enterprise players will have an ability to build & control clusters of nodes,runners and run symbiotes
+-   Resources owners can use probably the most advanced staking system using <b>Unobtanium</b> - a KLYNTAR unified resource which includes your mined Bitcoin blocks, combination of tokens on Avalanche, validators place on Polkadot and so on!
+-   Everyone who has server & laptop & any other machine will make our empire more powerful. The installation processes are minified to several commands in pre-build Docker images, so we also save your health & nervous system & time
+-   It you are miner, journalist, sportsmen, crypto-geek - welcome to KLYNTAR where everything you own can be useful
+-   ...and...read our other docs 😀
 
 <br/><br/>
 
@@ -63,18 +63,17 @@ The <a href="https://github.com/KlyntarTeam"><b>@KlyntarTeam</b></a> consists of
 
 <br/>
 
-- <b>Vlad Chernenko(CTO,CEO,Co-Founder)</b>  
-  
-  It's me) .../add more info soon/ 
-    
-- <b>Ivan Ushkov(CFO,COO,Co-Founder)</b>
-  
-  Ivan is .../add more info soon/  
+-   <b>Vlad Chernenko(CTO,CEO,Co-Founder)</b>
 
-- <b>KLY Community</b> 
-  
-  Join our community and let's make the future brighter
+    It's me) .../add more info soon/
 
+-   <b>Ivan Ushkov(CFO,COO,Co-Founder)</b>
+
+    Ivan is .../add more info soon/
+
+-   <b>KLY Community</b>
+
+    Join our community and let's make the future brighter
 
 <br/><br/>
 
@@ -90,6 +89,7 @@ As you've seen, KLYNTAR is in symbiotic relationship with other blockchains. By 
 <br/>
 
 ### <b>NOTE</b>
+
 We assume that you have Docker on the board. You can install Docker for Linux & Windows & Mac <a href="https://docs.docker.com/engine/install/">here</a>
 
 ```shell
@@ -111,7 +111,6 @@ We present you our first image <a href="https://hub.docker.com/repository/docker
 
 This is universal image with preinstalled Node.js, Go , Python and some tools like <code>pnpm</code> , <code>node-gyp</code>, <code>git</code> and so on. This is the base layer for all our Dockerfiles(at least for core and Apollo). The aproximate compressed size is 606M. Also, in our repository <a href="https://github.com/KLYN74R/KlyntarBaseImage" target="_blank" rel="noopener">KlyntarBaseImages</a> you can find the sources of all base-layer Dockerfiles, so you can clone and build it yourself or find the bash build script and so through the process to install requirements to your host machine. But anyway,we recomend you to use containers.
 
-
 <img src="https://user-images.githubusercontent.com/53381472/174490998-2041af0d-6cd5-4873-ad64-fa810cda02df.jpg"/>
 
 ```shell
@@ -128,20 +127,17 @@ docker pull klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219f
 
 Honestly,you can choose other ports,but use these ones as a good manner
 
-- <b>7331</b> - mainnet/kNULL default port for initial symbiote kNULL <b> Easter egg:It's reversed 1337 :) </b> 
-  
-- <b>9691</b> - default Apollo UI server port <b>Easter egg:it's reversed 1969-the Apollo-11 mission and the first moon landing</b>
-  
-- <b>11111</b> - local testnet(AntiVenom)
+-   <b>7331</b> - mainnet/kNULL default port for initial symbiote kNULL <b> Easter egg:It's reversed 1337 :) </b>
+-   <b>9691</b> - default Apollo UI server port <b>Easter egg:it's reversed 1969-the Apollo-11 mission and the first moon landing</b>
+-   <b>11111</b> - local testnet(AntiVenom)
 
 <br/><br/>
 
-> <b>⚠ ATTENTION:</b>  
->   
+> <b>⚠ ATTENTION:</b>
+>
 > This setup is the most default & simple way. If you need,you can manually run container with more advanced steps e.g. by using volumes,set user and so on
 
 <br/><br/>
-
 
 ```shell
 docker run -dtp 7331:7331 -p 9691:9691 -p 11111:11111 --name klyntar0 klyntar/all_in_one@sha256:dff001a9cd3da6328c504b52ed8a5748c47d23219feae220930dac1c1981cfe7
@@ -163,6 +159,7 @@ cd ~
 ```
 
 Clone KlyntarCore repository
+
 ```shell
 
 git clone https://github.com/KLYN74R/KlyntarCore.git
@@ -172,6 +169,7 @@ cd KlyntarCore
 ```
 
 Finally,run the only one command
+
 ```shell
 
 pnpm run build
@@ -180,7 +178,7 @@ pnpm run build
 
 <div align="center">
 
-  ## <b>Now take a rest and see the building process. It may take some minutes,but you're free from self-install tons of libs,dependencies and walking among dirs</b>
+## <b>Now take a rest and see the building process. It may take some minutes,but you're free from self-install tons of libs,dependencies and walking among dirs</b>
 
   <img src="https://i.pinimg.com/originals/d0/63/09/d063096ba4e07795c1bdf98572cb79a8.gif" style="height:200px;width:auto;">
 
@@ -188,8 +186,8 @@ pnpm run build
 
 </div>
 
-> <b>⚠ ATTENTION:</b>  
-> 
+> <b>⚠ ATTENTION:</b>
+>
 > As we said before,this setup is the most default way for quick start. In a nutshell, KLYNTAR go through the dirs and runs Typescript compiler, set access rights(700 by default for root user) for build scripts, build addons via Go compiler and run <code>npm link</code> to make possible to run <code>klyntar</code> as binary from <code>PATH</code> (by creating symlink to Node.js dir)
 
 <br/><br/>
@@ -197,6 +195,7 @@ pnpm run build
 <div align="center">
 
 ### The signs that build was succesful are messages to console like this
+
 <br/>
 
   <img src="https://user-images.githubusercontent.com/53381472/174610940-55ed92b8-bba3-4057-921e-2f1809c332d4.jpg">
@@ -204,6 +203,7 @@ pnpm run build
 <br/>
 
 ### ...and after building Go addons
+
 <br/>
 
   <img src="https://user-images.githubusercontent.com/53381472/174610936-3df6ea44-25fc-441d-8cc3-0f3dd414edf5.jpg">
@@ -270,11 +270,11 @@ We assume that before to start some symbiote, you want to run at least local tes
 
 ```
 KlyntarCore
-│     
-│   
+│
+│
 └───ANTIVENOM (default testnet directory if you don't override it via env variable)
-│   │   
-│   │   
+│   │
+│   │
 │   └───CHAINDATA(will be created after the daemon run in testnet mode)
 │   │    │
 │   │    │───CANDIDATES
@@ -283,7 +283,7 @@ KlyntarCore
 │   │    │───INSTANT_BLOCKS
 │   │    │───METADATA
 │   │    └───STATE
-│   │        
+│   │
 │   └───CONFIGS
 │   │    │
 │   │    │───network.json
@@ -292,7 +292,7 @@ KlyntarCore
 │   │    └───symbiotes.json
 │   │
 │   └───GENESIS
-│   
+│
 
 ```
 
@@ -430,20 +430,18 @@ KLYNTAR can do literally everything. Described here is less than 0.001% of poten
 
 <br/><br/> -->
 
-
 <div align="center">
 
 # <b>It's just beginning</b>
 
 </div>
 
-
-
 <br/><br/>
 
 <div name="advice"></div>
 
 ## 🤓 <b>Advice</b>
+
 <br/>
 <p>
 Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help newbies to make our community more powerful.We're happy to involve new members to KLY community 😊
@@ -510,7 +508,6 @@ Follow us to get the news & updates ASAP. Discuss, share ideas, advices, help ne
 </a>
 
 <br/><br/>
-
 
 <div name="docs"></div>
 

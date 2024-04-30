@@ -1,6 +1,7 @@
 # <b>KLYNTAR Virtual Machines Collection</b>
 
 ### <b>Coming soon</b>
+
 <b>
     <i>
         <u>We'll publish more detailed instructions soon</u>    
@@ -25,20 +26,21 @@ Create subdirectory in <code>KLY_VirtualMachines</code> for your implementation.
 ```bash
 
 KLY_VirtualMachines
-│     
-│   
+│
+│
 └───default
-│   │   
+│   │
 │   │  //...(default implementation of KLYNTAR VM)
 │   ...
 │
 └───custom_VM
-    │  
+    │
     └─── main.js
     │
     └─── configsTemplate.json
 
 ```
+
 Such structure will help you to easily has access to VM implementation from each KLYNTAR daemon running for some symbiote. Subdirectory might be repository(to track changes).
 
 Each new VM must have <code>configsTemplate.json</code> file where your provide the required options for your VM implementation. Developers and node operators will use it to set appropriate options required by symbiote manifest & genesis. By default, you should put file <code>vm.json</code> based on <code>configsTemplate.json</code> to symbiote directory
