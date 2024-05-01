@@ -7,7 +7,7 @@
 #           Install all dependencies              #
 ###################################################
 
-cd KLY_Addons/must_have_signatures
+cd KLY_Addons/must_have
 
 echo -e "\e[43mFetching dependencies ...\e[49m"
 

@@ -7,20 +7,9 @@
 
 import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
 
-import crypto from 'crypto'
-
 import fs from 'fs'
 
 import os from 'os'
-
-
-
-
-globalThis.crypto = {
-
-	getRandomValues:b=>crypto.randomFillSync(b)
-
-}
 
 
 
@@ -309,7 +298,7 @@ globalThis.Go = class {
 
 		this.importObject = {
 
-			go: {
+			gojs: {
 				// Go's SP does not change as long as no Go code is running. Some operations (e.g. calls, getters and setters)
 				// may synchronously trigger a Go event handler. This makes Go code get executed in the middle of the imported
 				// function. A goroutine can switch to a new stack if the current stack is too small (see morestack function).
@@ -700,7 +689,7 @@ go.env = Object.assign({ TMPDIR: os.tmpdir() }, process.env);
 go.exit = process.exit;
 
 
-let webAssemblyInstantiatedSource = await WebAssembly.instantiate(fs.readFileSync(PATH_RESOLVE('KLY_Addons/must_have_signatures/main.wasm')),go.importObject)
+let webAssemblyInstantiatedSource = await WebAssembly.instantiate(fs.readFileSync(PATH_RESOLVE('KLY_Addons/must_have/main.wasm')),go.importObject)
 
 
 go.run(webAssemblyInstantiatedSource.instance);

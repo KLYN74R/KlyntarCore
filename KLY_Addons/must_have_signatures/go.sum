@@ -1,8 +1,0 @@
-github.com/LoCCS/bliss v0.0.0-20180223025823-07585ac9b817 h1:NDsBS8kyF3QPOIQ6Yk8a1VD+8N56oiNAQPykm0TA2H4=
-github.com/LoCCS/bliss v0.0.0-20180223025823-07585ac9b817/go.mod h1:NcO8qUafnT7MIuK/fQb7DxFVk5hWUqY8BlFqISQTJKQ=
-github.com/cloudflare/circl v1.3.3 h1:fE/Qz0QdIGqeWfnwq0RE0R7MI51s0M2E4Ga9kq5AEMs=
-github.com/cloudflare/circl v1.3.3/go.mod h1:5XYMA4rFBvNIrhs50XuiBJ15vF2pZn4nnUKZrLbUZFA=
-golang.org/x/crypto v0.11.0 h1:6Ewdq3tDic1mg5xRO4milcWCfMVQhI4NkqWWvqejpuA=
-golang.org/x/crypto v0.11.0/go.mod h1:xgJhtzW8F9jGdVFWZESrid1U1bjeNy4zgy5cRr/CIio=
-golang.org/x/sys v0.10.0 h1:SqMFp9UcQJZa+pmYuAKjd9xq1f0j5rLcDIk0mj4qAsA=
-golang.org/x/sys v0.10.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
