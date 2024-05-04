@@ -1491,7 +1491,24 @@ GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
 
     //____________ Now, all the txs where all accounts in <touchedAccount> has 1 point can be executed independently ____________
 
-    for(let transaction of txsArray){}
+    let collectionWithIndependentTxs = new Set()
+
+    let allTheRestTransactions = new Set()
+
+    for(let transaction of txsArray){
+
+        let eachTouchedAccountInTxHasOnePoint = transaction.touched.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
+
+        if(eachTouchedAccountInTxHasOnePoint){
+
+            collectionWithIndependentTxs.add(transaction)
+
+        } else allTheRestTransactions.add(transaction)
+
+    }
+
+
+    return {collectionWithIndependentTxs, allTheRestTransactions}
 
 
 },
