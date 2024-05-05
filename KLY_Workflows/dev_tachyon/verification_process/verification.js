@@ -1455,7 +1455,7 @@ CHECK_CONNECTION_WITH_POOL=async(poolToVerifyRightNow,vtEpochHandler)=>{
 
 
 
-GET_PREPARED_TXS_FOR_PARALLELIZATION = async txsArray => {
+GET_PREPARED_TXS_FOR_PARALLELIZATION = txsArray => {
 
 
     /*
@@ -1928,12 +1928,34 @@ DISTRIBUTE_FEES_AMONG_STAKERS_AND_OTHER_POOLS=async(totalFees,shardContext,array
      
     await Promise.all(shareFeesPromises.splice(0))
 
-},
+}
 
 
 
+let executeTransaction = async (shardContext,currentBlockID,transaction,rewardBox,atomicBatch) => {
 
-verifyBlock=async(block,shardContext)=>{
+    if(VERIFIERS[transaction.type]){
+
+        let txCopy = JSON.parse(JSON.stringify(transaction))
+
+        let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+
+        // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+        if(reason!=='EVM'){
+
+            let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+
+            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+
+        }
+    
+    }
+
+}
+
+
+
+let verifyBlock=async(block,shardContext)=>{
 
 
     let blockHash = Block.genHash(block),
@@ -2004,32 +2026,31 @@ verifyBlock=async(block,shardContext)=>{
             //___________________________________________START TO EXECUTE TXS____________________________________________
 
 
-            let txIndexInBlock = 0
+            // First of all - split the transactions for groups that can be executed simultaneously
 
-            for(let transaction of block.transactions){
+            let groupsOfTransactions = GET_PREPARED_TXS_FOR_PARALLELIZATION(block.transactions)
 
-                if(VERIFIERS[transaction.type]){
+            // Firstly - execute independent transactions in a parallel way
 
-                    let txCopy = JSON.parse(JSON.stringify(transaction))
+            let txsPromises = []
 
-                    let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+            for(let independentTransaction of groupsOfTransactions.collectionWithIndependentTxs){
 
-                    // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
-                    if(reason!=='EVM'){
-
-                        let txid = BLAKE3(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
-
-                        atomicBatch.put('TX:'+txid,{blockID:currentBlockID,id:txIndexInBlock,isOk,reason})
-    
-                    }
-
-                    txIndexInBlock++
-                
-                }
+                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardBox,atomicBatch))
 
             }
-        
 
+            await Promise.all(txsPromises)
+
+            // Now, execute all the rest transactions
+
+            for(let sequentialTransaction of groupsOfTransactions.allTheRestTransactions){
+
+                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardBox,atomicBatch)
+
+            }        
+
+        
             //__________________________________________SHARE FEES AMONG POOLS_________________________________________
         
             /*
