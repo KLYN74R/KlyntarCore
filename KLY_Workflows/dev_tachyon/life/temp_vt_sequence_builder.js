@@ -1,14 +1,14 @@
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {CHECK_ALRP_CHAIN_VALIDITY,GET_BLOCK} from '../verification_process/verification.js'
+import {checkAlrpChainValidity,getBlock} from '../verification_process/verification.js'
 
-import {GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {GET_RANDOM_FROM_ARRAY} from '../utils.js'
+import {getRandomFromArray} from '../utils.js'
 
 import Block from '../structures/block.js'
 
@@ -16,7 +16,7 @@ import Block from '../structures/block.js'
 
 
 
-export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
+export let buildTemporarySequenceForVerificationThread=async()=>{
 
     /*
     
@@ -68,9 +68,9 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
     // TODO: Choose only several random sources instead of the whole quorum
 
-    let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
+    let quorumMembers = await getQuorumUrlsAndPubkeys(true)
 
-    let randomTarget = GET_RANDOM_FROM_ARRAY(quorumMembers)
+    let randomTarget = getRandomFromArray(quorumMembers)
     
     //___________________Ask quorum member about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
@@ -174,7 +174,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
                     // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afpForSecondBlockByCurrentLeader,vtEpochHandler)
+                    let afpIsOk = await verifyAggregatedFinalizationProof(afpForSecondBlockByCurrentLeader,vtEpochHandler)
     
                     afpIsOk &&= afpForSecondBlockByCurrentLeader.prevBlockHash === Block.genHash(firstBlockByCurrentLeader)
 
@@ -182,7 +182,7 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
                         // Verify all the ALRPs in block header
     
-                        let {isOK,filteredReassignments:filteredReassignmentsInBlockOfProposedLeader} = await CHECK_ALRP_CHAIN_VALIDITY(
+                        let {isOK,filteredReassignments:filteredReassignmentsInBlockOfProposedLeader} = await checkAlrpChainValidity(
                                 
                             primePoolPubKey, firstBlockByCurrentLeader, vtLeadersSequences[primePoolPubKey], proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
                             
@@ -233,13 +233,13 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
     
                                             // Ask the first block and extract next set of ALRPs
     
-                                            let firstBlockInThisEpochByPool = await GET_BLOCK(vtEpochHandler.id,poolOnThisPosition,0)
+                                            let firstBlockInThisEpochByPool = await getBlock(vtEpochHandler.id,poolOnThisPosition,0)
     
                                             // Compare hashes to make sure it's really the first block by pool X in epoch Y
     
                                             if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === alrpForThisPoolFromCurrentSet.firstBlockHash){
                             
-                                                let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await CHECK_ALRP_CHAIN_VALIDITY(
+                                                let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await checkAlrpChainValidity(
                                                     
                                                     primePoolPubKey, firstBlockInThisEpochByPool, vtLeadersSequences[primePoolPubKey], position, vtEpochFullID, vtEpochHandler, true
                                                     
@@ -325,6 +325,6 @@ export let BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD=async()=>{
 
     }
         
-    setTimeout(BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD,CONFIGURATION.NODE_LEVEL.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
+    setTimeout(buildTemporarySequenceForVerificationThread,CONFIGURATION.NODE_LEVEL.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
 
 }

@@ -1,8 +1,8 @@
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from './quorum_related.js'
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
-import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import Block from '../structures/block.js'
 
@@ -13,7 +13,7 @@ import Block from '../structures/block.js'
 
 
 
-export let VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,epochFullID) => {
+export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregatedEpochFinalizationProof,quorum,majority,epochFullID) => {
 
     let overviewIsOK =
         
@@ -74,7 +74,7 @@ export let VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggreg
 
         for(let [signerPubKey,signa] of Object.entries(itsProbablyAggregatedEpochFinalizationProof.proofs)){
 
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+            promises.push(verifyEd25519(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
 
                 if(isOK && quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
@@ -109,7 +109,7 @@ export let VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF = async (itsProbablyAggreg
 
 
 
-export let VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
+export let verifyAggregatedFinalizationProof = async (itsProbablyAggregatedFinalizationProof,epochHandler) => {
 
     // Make the initial overview
     let generalAndTypeCheck =   itsProbablyAggregatedFinalizationProof
@@ -131,7 +131,7 @@ export let VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFi
 
         let dataThatShouldBeSigned = prevBlockHash+blockID+blockHash+epochFullID
 
-        let majority = GET_QUORUM_MAJORITY(epochHandler)
+        let majority = getQuorumMajority(epochHandler)
 
 
         let promises = []
@@ -143,7 +143,7 @@ export let VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFi
 
         for(let [signerPubKey,signa] of Object.entries(proofs)){
 
-            promises.push(ED25519_VERIFY(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
+            promises.push(verifyEd25519(dataThatShouldBeSigned,signa,signerPubKey).then(isOK => {
 
                 if(isOK && epochHandler.quorum.includes(signerPubKey) && !unique.has(signerPubKey)){
 
@@ -169,7 +169,7 @@ export let VERIFY_AGGREGATED_FINALIZATION_PROOF = async (itsProbablyAggregatedFi
 
 
 
-export let GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (blockID,epochHandler) => {
+export let getVerifiedAggregatedFinalizationProofByBlockId = async (blockID,epochHandler) => {
 
     let localVersionOfAfp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockID).catch(()=>null)
 
@@ -177,7 +177,7 @@ export let GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (block
 
         // Go through known hosts and find AGGREGATED_FINALIZATION_PROOF. Call GET /aggregated_finalization_proof route
     
-        let setOfUrls = await GET_QUORUM_URLS_AND_PUBKEYS(false,epochHandler)
+        let setOfUrls = await getQuorumUrlsAndPubkeys(false,epochHandler)
 
         for(let endpoint of setOfUrls){
 
@@ -185,7 +185,7 @@ export let GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (block
 
             if(itsProbablyAggregatedFinalizationProof){
 
-                let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(itsProbablyAggregatedFinalizationProof,epochHandler)
+                let isOK = await verifyAggregatedFinalizationProof(itsProbablyAggregatedFinalizationProof,epochHandler)
 
                 if(isOK){
 
@@ -206,7 +206,7 @@ export let GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID = async (block
 
 
 
-export let GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunction) => {
+export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) => {
 
     // Check if we already tried to find first block by finding pivot in cache
 
@@ -226,7 +226,7 @@ export let GET_FIRST_BLOCK_ON_EPOCH = async(epochHandler,shardID,getBlockFunctio
 
             // Try to get AFP & first block to commit pivot and continue to find first block
 
-            let afp = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisPubKey,epochHandler)
+            let afp = await getVerifiedAggregatedFinalizationProofByBlockId(firstBlockIDByThisPubKey,epochHandler)
 
             let potentialFirstBlock = await getBlockFunction(epochHandler.id,potentialPivotPubKey,0)
 

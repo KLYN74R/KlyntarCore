@@ -1,16 +1,16 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE} from './approvement_thread_related.js'
+import {getFromApprovementThreadState} from './approvement_thread_related.js'
 
 import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {BLAKE3} from '../../../KLY_Utils/utils.js'
+import {blake3Hash} from '../../../KLY_Utils/utils.js'
 
-import {HEAP_SORT} from '../utils.js'
-
-
+import {heapSort} from '../utils.js'
 
 
 
-export let GET_QUORUM_MAJORITY = epochHandler => {
+
+
+export let getQuorumMajority = epochHandler => {
 
     let quorumNumber = epochHandler.quorum.length
 
@@ -26,7 +26,7 @@ export let GET_QUORUM_MAJORITY = epochHandler => {
 
 
 
-export let GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
+export let getQuorumUrlsAndPubkeys = async (withPubkey,epochHandler) => {
 
     let toReturn = []
 
@@ -34,7 +34,7 @@ export let GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
     for(let pubKey of epochHandler.quorum){
 
-        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(poolStorage){
 
@@ -51,7 +51,7 @@ export let GET_QUORUM_URLS_AND_PUBKEYS = async (withPubkey,epochHandler) => {
 
 
 
-export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHandler)=>{
+export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
 
     /*
 
@@ -105,7 +105,7 @@ export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHand
 
         for(let i=0 ; i < 21 ; i++) {
 
-            let seed = BLAKE3(`${epochHandler.hash}:${ticketID}:${i}`)
+            let seed = blake3Hash(`${epochHandler.hash}:${ticketID}:${i}`)
 
             // Hex => Number
             let hashAsNumber = parseInt(seed, 16);
@@ -134,24 +134,24 @@ export let GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID=(ticketID,epochHand
 
 //We get the quorum based on pools' metadata(pass via parameter)
 
-export let GET_CURRENT_EPOCH_QUORUM = (poolsRegistry,workflowOptions,newEpochSeed) => {
+export let getCurrentEpochQuorum = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
     let pools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
     //If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
     if(pools.length > workflowOptions.QUORUM_SIZE){
 
-        let poolsMetadataHash = BLAKE3(JSON.stringify(poolsRegistry)+newEpochSeed),
+        let poolsMetadataHash = blake3Hash(JSON.stringify(poolsRegistry)+newEpochSeed),
 
             mapping = new Map(),
 
-            sortedChallenges = HEAP_SORT(
+            sortedChallenges = heapSort(
 
                 pools.map(
                 
                     validatorPubKey => {
 
-                        let challenge = parseInt(BLAKE3(validatorPubKey+poolsMetadataHash),16)
+                        let challenge = parseInt(blake3Hash(validatorPubKey+poolsMetadataHash),16)
 
                         mapping.set(challenge,validatorPubKey)
 

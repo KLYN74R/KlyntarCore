@@ -1,8 +1,8 @@
-import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import {getAccountFromState,getFromState} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {BLAKE3} from '../../../KLY_Utils/utils.js'
+import {blake3Hash} from '../../../KLY_Utils/utils.js'
 
 
 
@@ -128,7 +128,7 @@ export let CONTRACT = {
 
             {amount,units} = transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
+            poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -136,7 +136,7 @@ export let CONTRACT = {
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-            let stakerAccount = await GET_ACCOUNT_FROM_STATE(originShard+':'+transaction.creator)
+            let stakerAccount = await getAccountFromState(originShard+':'+transaction.creator)
 
             if(stakerAccount){
 
@@ -144,7 +144,7 @@ export let CONTRACT = {
 
                 if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
-                    poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
+                    poolStorage.waitingRoom[blake3Hash(transaction.sig)]={
 
                         epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 
@@ -192,7 +192,7 @@ export let CONTRACT = {
 
             {amount,units}=transaction.payload.params[0],
 
-            poolStorage = await GET_FROM_STATE(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
+            poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
 
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
 
@@ -201,7 +201,7 @@ export let CONTRACT = {
 
         if(poolStorage && wishedUnstakingAmountIsOk){
 
-            poolStorage.waitingRoom[BLAKE3(transaction.sig)]={
+            poolStorage.waitingRoom[blake3Hash(transaction.sig)]={
 
                 epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
 

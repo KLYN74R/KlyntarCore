@@ -33,7 +33,7 @@
  * 
  */
 
-import {COLORS, LOG, PATH_RESOLVE} from './KLY_Utils/utils.js'
+import {logColors, customLog, pathResolve} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
@@ -133,13 +133,13 @@ if(!(pathToChainDataIsAbsolute && finishWithNoSlashes)){
 
         // If path was set directly(like CONFIGS_PATH=...)-then OK,no problems. DBs without direct paths will use default path
         
-        else process.env[`${scope}_PATH`] ||= PATH_RESOLVE('MAINNET/'+scope)  
+        else process.env[`${scope}_PATH`] ||= pathResolve('MAINNET/'+scope)  
 
     }else{
 
         if(process.env.SYMBIOTE_DIR) process.env[`${scope}_PATH`] = process.env.SYMBIOTE_DIR+`/${scope}`
 
-        process.env[`${scope}_PATH`] ||= PATH_RESOLVE(`TESTNET/${scope}`) //Testnet available in a separate directory
+        process.env[`${scope}_PATH`] ||= pathResolve(`TESTNET/${scope}`) //Testnet available in a separate directory
 
     }
 
@@ -236,7 +236,7 @@ d"""    `""""""""""""Y:d8P                              8,          `b
 
 //____________________LOAD CONFIGS FROM FILES_______________________
 
-export let CONFIGURATION = {}
+export const CONFIGURATION = {}
 
 
 // Load all the configs
@@ -251,7 +251,7 @@ fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
 
 //____________________LOAD GENESIS FROM FILE_______________________
 
-export let BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
+export const BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_PATH+`/genesis.json`))
 
 
 
@@ -288,7 +288,7 @@ export let BLOCKCHAIN_GENESIS = JSON.parse(fs.readFileSync(process.env.GENESIS_P
 // Run cool short animation
 await new Promise(resolve=>{
     
-    let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(PATH_RESOLVE('images/intro.txt')).toString()+'\x1b[0m')
+    let animation = chalkAnimation.glitch('\x1b[31;1m'+fs.readFileSync(pathResolve('images/intro.txt')).toString()+'\x1b[0m')
 
     setTimeout(()=>{
         
@@ -305,7 +305,7 @@ await new Promise(resolve=>{
 if(process.env.KLY_MODE==='mainnet'){
 
     //Read banner
-    console.log('\x1b[36;1m'+fs.readFileSync(PATH_RESOLVE('images/banner.txt')).toString()
+    console.log('\x1b[36;1m'+fs.readFileSync(pathResolve('images/banner.txt')).toString()
 
     //...and add extra colors & changes)
     .replace('Made on Earth for Universe','\x1b[31mMade on Earth for Universe\x1b[36m')
@@ -318,7 +318,7 @@ if(process.env.KLY_MODE==='mainnet'){
     //else show the testnet banner
 
      //Read banner
-    console.log('\u001b[37m'+fs.readFileSync(PATH_RESOLVE('images/testmode_banner.txt')).toString()
+    console.log('\u001b[37m'+fs.readFileSync(pathResolve('images/testmode_banner.txt')).toString()
 
     //...and add extra colors & changes)
     .replace('Made on Earth for Universe','\u001b[38;5;87mMade on Earth for Universe\u001b[37m')
@@ -339,19 +339,19 @@ if(process.env.KLY_MODE==='mainnet'){
 }
 
 
-LOG(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,COLORS.CYAN)
+customLog(`System info \x1b[31m${['node:'+process.version,`info:${process.platform+os.arch()} # ${os.version()} # threads_num:${process.env.UV_THREADPOOL_SIZE}/${os.cpus().length}`,`runned as:${os.userInfo().username}`].join('\x1b[36m / \x1b[31m')}`,logColors.CYAN)
 
 console.log('\n\n\n')
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),COLORS.GREEN)
+customLog(fs.readFileSync(pathResolve('images/events/serverConfigs.txt')).toString().replaceAll('@','\x1b[31m@\x1b[32m').replaceAll('Check the configs carefully','\u001b[38;5;50mCheck the configs carefully\x1b[32m'),logColors.GREEN)
 
-LOG(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.TLS.ENABLED?'enabled':'disabled'}`,COLORS.CON)
+customLog(`\u001b[38;5;202mTLS\u001b[38;5;168m is \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.TLS.ENABLED?'enabled':'disabled'}`,logColors.CON)
 
-LOG(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.CON)
+customLog(`Server is working on \u001b[38;5;50m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,logColors.CON)
 
-LOG(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',COLORS.CON)
+customLog(CONFIGURATION.NODE_LEVEL.PLUGINS.length!==0 ? `Runned plugins(${CONFIGURATION.NODE_LEVEL.PLUGINS.length}) are \u001b[38;5;50m${CONFIGURATION.NODE_LEVEL.PLUGINS.join(' \u001b[38;5;202m<>\u001b[38;5;50m ')}`:'No plugins will be runned. Find the best plugins for you here \u001b[38;5;50mhttps://github.com/KLYN74R/Plugins',logColors.CON)
 
-LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.GREEN)
+customLog(fs.readFileSync(pathResolve('images/events/start.txt')).toString(),logColors.GREEN)
 
 
 
@@ -361,7 +361,7 @@ LOG(fs.readFileSync(PATH_RESOLVE('images/events/start.txt')).toString(),COLORS.G
 
 // Export it to use in KLY_Workflows(there we'll add routes+handlers)
 
-export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
+export const FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
 
 
@@ -371,9 +371,9 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
     // 0. Import the entrypoint to run the blockchain logic
 
-    let {RUN_BLOCKCHAIN} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/entrypoint.js`)
+    let {runBlockchain} = await import(`./KLY_Workflows/${BLOCKCHAIN_GENESIS.WORKFLOW}/entrypoint.js`)
 
-    await RUN_BLOCKCHAIN()
+    await runBlockchain()
 
 
     // 1. Load plugins in case they need access to process (memory)
@@ -382,7 +382,7 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
 
         import(`./KLY_Plugins/${scriptPath}`).catch(
             
-            e => LOG(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,COLORS.RED)
+            e => customLog(`Some error has been occured in process of plugin \u001b[38;5;50m${scriptPath}\x1b[31;1m load\n${e}\n`,logColors.RED)
             
         )
     
@@ -397,9 +397,9 @@ export let FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
     
     FASTIFY_SERVER.listen({port:CONFIGURATION.NODE_LEVEL.PORT,host:CONFIGURATION.NODE_LEVEL.INTERFACE},err=>{
     
-        if(!err) LOG(`Node started on \x1b[36;1m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,COLORS.GREEN)
+        if(!err) customLog(`Node started on \x1b[36;1m[${CONFIGURATION.NODE_LEVEL.INTERFACE}]:${CONFIGURATION.NODE_LEVEL.PORT}`,logColors.GREEN)
     
-        else LOG('Oops,some problems with server module',COLORS.RED)
+        else customLog('Oops,some problems with server module',logColors.RED)
     
     })
 

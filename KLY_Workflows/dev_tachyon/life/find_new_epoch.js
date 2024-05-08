@@ -1,26 +1,26 @@
 import {
     
-    EPOCH_STILL_FRESH,
+    epochStillFresh,
     
-    IS_MY_VERSION_OLD
+    isMyCoreVersionOld
 
 } from '../utils.js'
 
 import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
 
-import {GET_FROM_APPROVEMENT_THREAD_STATE} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
-import {GET_FIRST_BLOCK_ON_EPOCH, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
-import {GET_CURRENT_EPOCH_QUORUM, GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {SET_LEADERS_SEQUENCE_FOR_SHARDS} from './shards_leaders_monitoring.js'
+import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
 
-import {BLAKE3, COLORS, LOG, PATH_RESOLVE} from '../../../KLY_Utils/utils.js'
+import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
-import {GET_BLOCK} from '../verification_process/verification.js'
+import {getBlock} from '../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -40,11 +40,11 @@ import fs from 'fs'
 
 
 
-let DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQuorumThread) => {
+let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfQuorumThread) => {
 
     // Try to get storage "POOL" of appropriate pool
 
-    let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(validatorPubKey+'(POOL)_STORAGE_POOL')
+    let poolStorage = await getFromApprovementThreadState(validatorPubKey+'(POOL)_STORAGE_POOL')
 
 
     poolStorage.lackOfTotalPower = true
@@ -66,7 +66,7 @@ let DELETE_POOLS_WITH_LACK_OF_STAKING_POWER = async (validatorPubKey,fullCopyOfQ
 
 
 
-let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations) => {
+let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
@@ -115,7 +115,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
 
     for(let poolPubKey of allThePools){
 
-        let promise = GET_FROM_APPROVEMENT_THREAD_STATE(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
+        let promise = getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
             if(poolStorage.totalPower < fullCopyOfQuorumThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
 
@@ -133,7 +133,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
     
     for(let address of toRemovePools){
     
-        deletePoolsPromises.push(DELETE_POOLS_WITH_LACK_OF_STAKING_POWER(address,fullCopyOfQuorumThread))
+        deletePoolsPromises.push(deletePoolsWithLackOfStakingPower(address,fullCopyOfQuorumThread))
     
     }
 
@@ -144,7 +144,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
     //________________________________Remove rogue pools_________________________________
 
     
-    let slashObject = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
+    let slashObject = await getFromApprovementThreadState('SLASH_OBJECT')
     
     let slashObjectKeys = Object.keys(slashObject)
         
@@ -193,7 +193,7 @@ let EXECUTE_EPOCH_EDGE_OPERATIONS = async (atomicBatch,fullCopyOfQuorumThread,ep
 
 
 //Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
-export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
+export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
     //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE OPERATIONS INSTANTLY_____________________________
@@ -275,7 +275,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
     */
 
-    if(!EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
+    if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
         let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -285,7 +285,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
     
         if(!temporaryObject){
     
-            setTimeout(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS,3000)
+            setTimeout(findAggregatedEpochFinalizationProofs,3000)
     
             return
     
@@ -300,9 +300,9 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
         let leadersSequence = qtEpochHandler.leadersSequence
 
-        let majority = GET_QUORUM_MAJORITY(qtEpochHandler)
+        let majority = getQuorumMajority(qtEpochHandler)
 
-        let allKnownPeers = await GET_QUORUM_URLS_AND_PUBKEYS()
+        let allKnownPeers = await getQuorumUrlsAndPubkeys()
 
         // Get the special object from DB not to repeat requests
 
@@ -379,7 +379,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(itsProbablyAggregatedEpochFinalizationProof,qtEpochHandler.quorum,majority,oldEpochFullID)
+                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,qtEpochHandler.quorum,majority,oldEpochFullID)
     
                             if(aefpPureObject && aefpPureObject.shard === primePoolPubKey){
     
@@ -418,7 +418,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
             if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
-                let findResult = await GET_FIRST_BLOCK_ON_EPOCH(qtEpochHandler,primePoolPubKey,GET_BLOCK)
+                let findResult = await getFirstBlockOnEpoch(qtEpochHandler,primePoolPubKey,getBlock)
 
                 if(findResult){
 
@@ -462,7 +462,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 // Try to get the epoch edge operations from the first blocks
 
-                let firstBlockOnThisShard = await GET_BLOCK(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[primePoolPubKey].firstBlockHash){
 
@@ -510,14 +510,14 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
 
                 // Execute epoch edge operations from new checkpoint using our copy of QT and atomic handler
-                await EXECUTE_EPOCH_EDGE_OPERATIONS(atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations)
+                await executeEpochEdgeOperations(atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations)
 
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
                 
                 let nextEpochId = qtEpochHandler.id + 1
 
-                let nextEpochHash = BLAKE3(JSON.stringify(firstBlocksHashes))
+                let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
@@ -526,12 +526,12 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await SET_LEADERS_SEQUENCE_FOR_SHARDS(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
+                await setLeadersSequenceForShards(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
 
 
-                LOG(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,COLORS.GREEN)
+                customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,logColors.GREEN)
 
                 //_______________________ Update the values for new epoch _______________________
 
@@ -541,7 +541,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 fullCopyOfQuorumThread.EPOCH.hash = nextEpochHash
 
-                fullCopyOfQuorumThread.EPOCH.quorum = GET_CURRENT_EPOCH_QUORUM(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
+                fullCopyOfQuorumThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
                 
@@ -576,18 +576,18 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfQuorumThread
 
-                LOG(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,COLORS.GREEN)
+                customLog(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
 
 
                 //_______________________Check the version required for the next checkpoint________________________
 
 
-                if(IS_MY_VERSION_OLD('APPROVEMENT_THREAD')){
+                if(isMyCoreVersionOld('APPROVEMENT_THREAD')){
 
-                    LOG(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
+                    customLog(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,logColors.YELLOW)
 
                     console.log('\n')
-                    console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+                    console.log(fs.readFileSync(pathResolve('images/events/update.txt')).toString())
         
                     // Stop the node to update the software
                     GRACEFUL_STOP()
@@ -611,7 +611,7 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
                 let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
-                if(EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
+                if(epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD) && iAmInTheQuorum){
 
                     // Fill the checkpoints manager with the latest data
 
@@ -646,11 +646,11 @@ export let FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS=async()=>{
         }
 
         // Continue to find checkpoints
-        setImmediate(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS)
+        setImmediate(findAggregatedEpochFinalizationProofs)
 
     }else{
 
-        setTimeout(FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS,3000)
+        setTimeout(findAggregatedEpochFinalizationProofs,3000)
 
     }
 

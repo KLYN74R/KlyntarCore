@@ -1,10 +1,10 @@
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../../verification_process/epoch_edge_operations_verifiers.js'
 
-import{BLAKE3, ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../../KLY_Utils/utils.js'
-
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {GET_QUORUM_MAJORITY} from '../../common_functions/quorum_related.js'
+import{blake3Hash, signEd25519, verifyEd25519} from '../../../../KLY_Utils/utils.js'
+
+import {getQuorumMajority} from '../../common_functions/quorum_related.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
@@ -93,14 +93,14 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
 
     // Verify agreement and if OK - add to mempool
 
-    let hashOfEpochFullIDAndOperation = BLAKE3(
+    let hashOfEpochFullIDAndOperation = blake3Hash(
 
         JSON.stringify(epochEdgeOperationWithAgreementProofs.epochEdgeOperation) + epochFullID
 
     )
 
 
-    let majority = GET_QUORUM_MAJORITY(epochHandler)
+    let majority = getQuorumMajority(epochHandler)
 
     let promises = []
 
@@ -109,7 +109,7 @@ FASTIFY_SERVER.post('/epoch_edge_operation_to_mempool',{bodyLimit:CONFIGURATION.
 
     for(let [signerPubKey,signa] of Object.entries(epochEdgeOperationWithAgreementProofs.aggreementProofs)){
 
-        promises.push(ED25519_VERIFY(hashOfEpochFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && epochHandler.quorum.includes(signerPubKey) && okSignatures++))
+        promises.push(verifyEd25519(hashOfEpochFullIDAndOperation,signa,signerPubKey).then(isOK => isOK && epochHandler.quorum.includes(signerPubKey) && okSignatures++))
 
     }
 
@@ -191,9 +191,9 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
 
             // Generate signature
 
-            let signature = await ED25519_SIGN_DATA(
+            let signature = await signEd25519(
 
-                BLAKE3(JSON.stringify(possibleEpochEdgeOperation)+epochFullID),
+                blake3Hash(JSON.stringify(possibleEpochEdgeOperation)+epochFullID),
 
                 CONFIGURATION.NODE_LEVEL.PRIVATE_KEY
 

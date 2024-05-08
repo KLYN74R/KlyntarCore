@@ -1,12 +1,12 @@
-import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {GET_BLOCK} from '../../verification_process/verification.js'
+import {getBlock} from '../../verification_process/verification.js'
 
-import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
+import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
 import Block from '../../structures/block.js'
 
@@ -202,7 +202,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
                 if(typeof afp === 'object' && afp.blockHash === hash && index == indexOfBlockInAfp){
 
-                    afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)
+                    afpIsOk = await verifyAggregatedFinalizationProof(afp,epochHandler)
 
                 }
 
@@ -255,9 +255,9 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
                 let blockIdOfFirstBlock = epochHandler.id+':'+requestForLeaderRotationProof.poolPubKey+':0'
             
-                if(await VERIFY_AGGREGATED_FINALIZATION_PROOF(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
+                if(await verifyAggregatedFinalizationProof(requestForLeaderRotationProof.afpForFirstBlock,epochHandler) && requestForLeaderRotationProof.afpForFirstBlock.blockID === blockIdOfFirstBlock){
 
-                    let block = await GET_BLOCK(epochHandler.id,requestForLeaderRotationProof.poolPubKey,0)
+                    let block = await getBlock(epochHandler.id,requestForLeaderRotationProof.poolPubKey,0)
 
                     if(block && Block.genHash(block) === requestForLeaderRotationProof.afpForFirstBlock.blockHash){
 
@@ -283,7 +283,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
                     
                     type:'OK',
 
-                    sig:await ED25519_SIGN_DATA(dataToSignForSkipProof,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                    sig:await signEd25519(dataToSignForSkipProof,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                 }
 
                 response.send(skipMessage)
@@ -380,7 +380,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
                     let secondBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:1`
 
-                    let afpForSecondBlockByCurrentLeader = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(secondBlockID,epochHandler).catch(()=>null)
+                    let afpForSecondBlockByCurrentLeader = await getVerifiedAggregatedFinalizationProofByBlockId(secondBlockID,epochHandler).catch(()=>null)
 
                     if(afpForSecondBlockByCurrentLeader){
 

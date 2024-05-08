@@ -1,14 +1,14 @@
-import {VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+import {verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID} from '../../common_functions/quorum_related.js'
+import {getPseudoRandomSubsetFromQuorumByTicketId} from '../../common_functions/quorum_related.js'
 
-import {LOG, ED25519_SIGN_DATA, ED25519_VERIFY, COLORS} from '../../../../KLY_Utils/utils.js'
+import {signEd25519, verifyEd25519, logColors, customLog} from '../../../../KLY_Utils/utils.js'
 
-import {USE_TEMPORARY_DB} from '../../common_functions/approvement_thread_related.js'
+import {useTemporaryDb} from '../../common_functions/approvement_thread_related.js'
 
-import {CHECK_ALRP_CHAIN_VALIDITY} from '../../verification_process/verification.js'
+import {checkAlrpChainValidity} from '../../verification_process/verification.js'
 
 import {CONFIGURATION} from '../../../../klyn74r.js'
 
@@ -89,7 +89,7 @@ import http from 'http'
  *  
  *  
  */
-let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
+let returnFinalizationProofForBlock=async(parsedData,connection)=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -194,7 +194,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
             let futureMetadataToStore
 
 
-            if(await ED25519_VERIFY(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
+            if(await verifyEd25519(proposedBlockHash,block.sig,block.creator).catch(()=>false)){
 
                 if(finalizationStatsForThisPool.index === block.index){
 
@@ -238,7 +238,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                     
                     let legacyEpochData = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`LEGACY_DATA:${epochHandler.id-1}`).catch(()=>null) // {epochFullID,quorum,majority}
 
-                    let aefpIsOk = epochHandler.id === 0 || legacyEpochData && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+                    let aefpIsOk = epochHandler.id === 0 || legacyEpochData && await verifyAggregatedEpochFinalizationProof(
         
                         block.extraData.aefpForPreviousEpoch,
                             
@@ -258,7 +258,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                     let positionOfBlockCreatorInLeadersSequence = leadersSequence.indexOf(block.creator)
 
-                    let alrpChainIsOk = itsPrimePool || await CHECK_ALRP_CHAIN_VALIDITY(
+                    let alrpChainIsOk = itsPrimePool || await checkAlrpChainValidity(
         
                         primePoolPubKey,
         
@@ -304,7 +304,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
                 
                     }
                        
-                    let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
+                    let isOK = await verifyAggregatedFinalizationProof(previousBlockAFP,epochHandler)
     
                     if(!isOK){
 
@@ -320,7 +320,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                 // Store the metadata for FINALIZATION_STATS
 
-                USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,block.creator,futureMetadataToStore).then(()=>
+                useTemporaryDb('put',currentEpochMetadata.DATABASE,block.creator,futureMetadataToStore).then(()=>
 
                     // Store the block
 
@@ -337,13 +337,13 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
 
                             let dataToSign = (previousBlockAFP.blockHash || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')+proposedBlockID+proposedBlockHash+epochFullID
         
-                            let finalizationProof = await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                            let finalizationProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
 
                             // Once we get the block - return the TMB(Trust Me Bro) proof that we have received the valid block
 
                             dataToSign += 'VALID_BLOCK_RECEIVED'
 
-                            let tmbProof = await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                            let tmbProof = await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
     
     
                             currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
@@ -399,7 +399,7 @@ let RETURN_FINALIZATION_PROOF_FOR_BLOCK=async(parsedData,connection)=>{
     }
 
 */
-let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
+let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -491,7 +491,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
             // Verify the TMB proofs
 
-            let subsetOfValidators = GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID(tmbTicketID,epochHandler)
+            let subsetOfValidators = getPseudoRandomSubsetFromQuorumByTicketId(tmbTicketID,epochHandler)
 
             let dataThatShouldBeSignedInTMB = dataToSignToApproveProposedBlock+'VALID_BLOCK_RECEIVED'
 
@@ -502,7 +502,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
             for(let choosenValidator of subsetOfValidators) {
 
-                let signaIsOk = await ED25519_VERIFY(dataThatShouldBeSignedInTMB,tmbProofs[choosenValidator],choosenValidator)
+                let signaIsOk = await verifyEd25519(dataThatShouldBeSignedInTMB,tmbProofs[choosenValidator],choosenValidator)
 
                 if(!signaIsOk) {
 
@@ -556,7 +556,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
                 
                     }
                        
-                    let isOK = await VERIFY_AGGREGATED_FINALIZATION_PROOF(previousBlockAFP,epochHandler)
+                    let isOK = await verifyAggregatedFinalizationProof(previousBlockAFP,epochHandler)
     
                     if(!isOK){
     
@@ -571,7 +571,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                 // Store the metadata for FINALIZATION_STATS
 
-                USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
+                useTemporaryDb('put',currentEpochMetadata.DATABASE,blockCreator,futureMetadataToStore).then(()=>{
 
                     // Store the AFP for previous block
 
@@ -579,7 +579,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
                         currentEpochMetadata.FINALIZATION_STATS.set(blockCreator,futureMetadataToStore)
             
-                        let finalizationProof = await ED25519_SIGN_DATA(dataToSignToApproveProposedBlock,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)    
+                        let finalizationProof = await signEd25519(dataToSignToApproveProposedBlock,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)    
     
                         currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+blockCreator)
         
@@ -606,7 +606,7 @@ let RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF=async(parsedData,connection)=>{
 
 
 
-let RETURN_BLOCKS_RANGE = async(data,connection)=>{
+let returnBlocksRange = async(data,connection)=>{
 
     // We need to send range of blocks from <heightThatUserHave+1> to <heightThatUserHave+499> or less(limit is up to 500 blocks). Also, send the AFP for latest block
     // Also, the response structure is {blocks:[],afpForLatest}
@@ -664,12 +664,12 @@ let server = http.createServer({},(_,response)=>{
 
 server.listen(CONFIGURATION.NODE_LEVEL.WEBSOCKET_PORT,CONFIGURATION.NODE_LEVEL.WEBSOCKET_INTERFACE,()=>
 
-    LOG(`Websocket server was activated on \u001b[38;5;168m${CONFIGURATION.NODE_LEVEL.WEBSOCKET_INTERFACE}:${CONFIGURATION.NODE_LEVEL.WEBSOCKET_PORT}`,COLORS.CD)
+    customLog(`Websocket server was activated on \u001b[38;5;168m${CONFIGURATION.NODE_LEVEL.WEBSOCKET_INTERFACE}:${CONFIGURATION.NODE_LEVEL.WEBSOCKET_PORT}`,logColors.CD)
     
 )
 
 
-let WEBSOCKET_SERVER = new WebSocketServer({
+let klyntarWebsocketServer = new WebSocketServer({
     
     httpServer: server,
 
@@ -687,7 +687,7 @@ let WEBSOCKET_SERVER = new WebSocketServer({
 
 
 
-WEBSOCKET_SERVER.on('request',request=>{
+klyntarWebsocketServer.on('request',request=>{
 
     let connection = request.accept('echo-protocol', request.origin)
 
@@ -699,18 +699,18 @@ WEBSOCKET_SERVER.on('request',request=>{
 
             if(data.route==='get_finalization_proof'){
 
-                RETURN_FINALIZATION_PROOF_FOR_BLOCK(data,connection)
+                returnFinalizationProofForBlock(data,connection)
 
             }else if(data.route==='tmb'){
 
                 // For TMB(Trust Me Bro) requests
 
-                RETURN_FINALIZATION_PROOF_BASED_ON_TMB_PROOF(data,connection)
+                returnFinalizationProofBasedOnTmbProof(data,connection)
                 
 
             }else if(data.route==='get_blocks'){
 
-                RETURN_BLOCKS_RANGE(data,connection)
+                returnBlocksRange(data,connection)
 
             }
 

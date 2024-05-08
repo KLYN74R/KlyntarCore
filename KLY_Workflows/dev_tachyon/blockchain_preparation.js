@@ -1,14 +1,14 @@
-import {GET_CURRENT_EPOCH_QUORUM, GET_QUORUM_MAJORITY} from './common_functions/quorum_related.js'
+import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
 
-import {SET_LEADERS_SEQUENCE_FOR_SHARDS} from './life/shards_leaders_monitoring.js'
+import {customLog, pathResolve, blake3Hash, logColors} from '../../KLY_Utils/utils.js'
 
-import {LOG, PATH_RESOLVE, BLAKE3, COLORS} from '../../KLY_Utils/utils.js'
+import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
 
 import {BLOCKCHAIN_GENESIS, FASTIFY_SERVER} from '../../klyn74r.js'
 
 import {KLY_EVM} from '../../KLY_VirtualMachines/kly_evm/vm.js'
 
-import {IS_MY_VERSION_OLD, DECRYPT_KEYS} from './utils.js'
+import {isMyCoreVersionOld, decryptKeys} from './utils.js'
 
 import level from 'level'
 
@@ -23,7 +23,7 @@ import fs from 'fs'
 
 export let NODE_METADATA = {
 
-    VERSION:+(fs.readFileSync(PATH_RESOLVE('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
+    VERSION:+(fs.readFileSync(pathResolve('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
@@ -129,17 +129,17 @@ export let GRACEFUL_STOP = async() => {
 
     console.log('\n')
 
-    LOG('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...',COLORS.CYAN)
+    customLog('\x1b[31;1mKLYNTAR\x1b[36;1m stop has been initiated.Keep waiting...',logColors.CYAN)
     
-    LOG(fs.readFileSync(PATH_RESOLVE('images/events/termination.txt')).toString(),COLORS.YELLOW)
+    customLog(fs.readFileSync(pathResolve('images/events/termination.txt')).toString(),logColors.YELLOW)
 
     console.log('\n')
 
-    LOG('Closing server connections...',COLORS.CYAN)
+    customLog('Closing server connections...',logColors.CYAN)
 
     await FASTIFY_SERVER.close()
 
-    LOG('Node was gracefully stopped',COLORS.CYAN)
+    customLog('Node was gracefully stopped',logColors.CYAN)
         
     process.exit(0)
 
@@ -165,7 +165,7 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-let RESTORE_METADATA_CACHE=async()=>{
+let restoreMetadataCache=async()=>{
 
     let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
 
@@ -244,7 +244,7 @@ let RESTORE_METADATA_CACHE=async()=>{
 
 
 
-export let SET_GENESIS_TO_STATE=async()=>{
+export let setGenesisToState=async()=>{
 
 
     let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
@@ -343,7 +343,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
             if(anotherValidatorPubKey!==poolPubKey){
 
-                atomicBatch.put(BLAKE3(poolPubKey+':'+anotherValidatorPubKey),{
+                atomicBatch.put(blake3Hash(poolPubKey+':'+anotherValidatorPubKey),{
     
                     type:"account",
                     balance:0,
@@ -550,15 +550,15 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
-    vtEpochHandler.quorum = GET_CURRENT_EPOCH_QUORUM(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
+    vtEpochHandler.quorum = getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
     //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
-    qtEpochHandler.quorum = GET_CURRENT_EPOCH_QUORUM(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
+    qtEpochHandler.quorum = getCurrentEpochQuorum(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
     //Finally, build the reassignment chains for current epoch in QT and VT
 
-    await SET_LEADERS_SEQUENCE_FOR_SHARDS(qtEpochHandler,nullHash)
+    await setLeadersSequenceForShards(qtEpochHandler,nullHash)
 
     vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(qtEpochHandler.leadersSequence))
 
@@ -580,7 +580,7 @@ export let SET_GENESIS_TO_STATE=async()=>{
 
 
 
-export let PREPARE_BLOCKCHAIN=async()=>{
+export let prepareBlockchain=async()=>{
 
 
     // Create the directory for chaindata in case it's doesn't exist yet
@@ -626,7 +626,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
     if(WORKING_THREADS.VERIFICATION_THREAD.VERSION===undefined){
 
-        await SET_GENESIS_TO_STATE()
+        await setGenesisToState()
 
         //______________________________________Commit the state of VT and QT___________________________________________
 
@@ -648,12 +648,12 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
 
 
-    if(IS_MY_VERSION_OLD('APPROVEMENT_THREAD')){
+    if(isMyCoreVersionOld('APPROVEMENT_THREAD')){
 
-        LOG(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
+        customLog(`New version detected on APPROVEMENT_THREAD. Please, upgrade your node software`,logColors.YELLOW)
 
         console.log('\n')
-        console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+        console.log(fs.readFileSync(pathResolve('images/events/update.txt')).toString())
     
 
         // Stop the node to update the software
@@ -662,12 +662,12 @@ export let PREPARE_BLOCKCHAIN=async()=>{
     }
 
 
-    if(IS_MY_VERSION_OLD('VERIFICATION_THREAD')){
+    if(isMyCoreVersionOld('VERIFICATION_THREAD')){
 
-        LOG(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,COLORS.YELLOW)
+        customLog(`New version detected on VERIFICATION_THREAD. Please, upgrade your node software`,logColors.YELLOW)
 
         console.log('\n')
-        console.log(fs.readFileSync(PATH_RESOLVE('images/events/update.txt')).toString())
+        console.log(fs.readFileSync(pathResolve('images/events/update.txt')).toString())
     
 
         // Stop the node to update the software
@@ -683,7 +683,7 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
         WORKING_THREADS.GENERATION_THREAD.quorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum
 
-        WORKING_THREADS.GENERATION_THREAD.majority = GET_QUORUM_MAJORITY(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
+        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH)
 
     }
 
@@ -715,18 +715,18 @@ export let PREPARE_BLOCKCHAIN=async()=>{
 
     // Fill the FINALIZATION_STATS with the latest, locally stored data
 
-    await RESTORE_METADATA_CACHE()
+    await restoreMetadataCache()
 
 
     //__________________________________Decrypt private key to memory of process__________________________________
 
-    await DECRYPT_KEYS().then(()=>
+    await decryptKeys().then(()=>
             
-        LOG(`Private key was decrypted successfully`,COLORS.GREEN)        
+        customLog(`Private key was decrypted successfully`,logColors.GREEN)        
     
     ).catch(error=>{
     
-        LOG(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,COLORS.RED)
+        customLog(`Keys decryption failed.Please,check your password carefully.In the worst case-use your decrypted keys from safezone and repeat procedure of encryption via CLI\n${error}`,logColors.RED)
  
         process.exit(107)
 

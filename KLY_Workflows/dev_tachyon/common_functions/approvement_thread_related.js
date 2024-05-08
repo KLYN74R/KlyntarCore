@@ -5,7 +5,7 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 
 
-export let GET_FROM_APPROVEMENT_THREAD_STATE = async recordID => {
+export let getFromApprovementThreadState = async recordID => {
 
     return GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(recordID)
     
@@ -23,7 +23,7 @@ export let GET_FROM_APPROVEMENT_THREAD_STATE = async recordID => {
 
 
 
-export let USE_TEMPORARY_DB = async(operationType,dbReference,keys,values) => {
+export let useTemporaryDb = async(operationType,dbReference,keys,values) => {
 
 
     if(operationType === 'get'){

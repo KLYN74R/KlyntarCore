@@ -1,10 +1,10 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {GET_ACCOUNT_FROM_STATE, GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
-import {SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE} from './txs_verifiers.js'
+import {simplifiedVerifyBasedOnSignaType} from './txs_verifiers.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -98,13 +98,13 @@ export default {
 
             // Basic ops on APPROVEMENT_THREAD
 
-            let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
+            let slashHelper = await getFromApprovementThreadState('SLASH_OBJECT')
 
             if(slashHelper[pool]) return
 
 
 
-            let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await getFromApprovementThreadState(pool+'(POOL)_STORAGE_POOL')
 
             /* 
             
@@ -219,13 +219,13 @@ export default {
             // To check payload received from route
 
 
-            let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
+            let slashHelper = await getFromState('SLASH_OBJECT')
 
             if(slashHelper[pool]) return
 
 
 
-            let poolStorage = await GET_FROM_STATE(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await getFromState(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL')
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
             
@@ -251,7 +251,7 @@ export default {
                     poolStorage.totalPower-=stakeOrUnstakeTx.amount
 
                     // Add KLY / UNO to the user's account
-                    let unstakingOperationsArray = await GET_FROM_STATE('UNSTAKING_OPERATIONS')
+                    let unstakingOperationsArray = await getFromState('UNSTAKING_OPERATIONS')
 
                     let txTemplate={
 
@@ -370,7 +370,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.SLASH_UNSTAKE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
+            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
             &&
             await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(data.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
@@ -389,7 +389,7 @@ export default {
 
             if(poolStorage){
 
-                let slashObject = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
+                let slashObject = await getFromApprovementThreadState('SLASH_OBJECT')
 
                 slashObject[payload.pool] = {isReserve:poolStorage.isReserve}
     
@@ -408,7 +408,7 @@ export default {
 
             if(poolStorage){
 
-                let slashObject = await GET_FROM_STATE('SLASH_OBJECT')
+                let slashObject = await getFromState('SLASH_OBJECT')
 
                 payload.poolOrigin = originWherePoolStorage
 
@@ -482,7 +482,7 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let slashHelper = await GET_FROM_APPROVEMENT_THREAD_STATE('SLASH_OBJECT')
+            let slashHelper = await getFromApprovementThreadState('SLASH_OBJECT')
 
             //Put to cache that this tx was spent
             if(!slashHelper[pool]) GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
@@ -490,7 +490,7 @@ export default {
         }
         else{
 
-            let slashHelper = await GET_FROM_STATE('SLASH_OBJECT')
+            let slashHelper = await getFromState('SLASH_OBJECT')
 
             if(slashHelper[pool]) return
 
@@ -499,7 +499,7 @@ export default {
 
             if(originWherePoolStorage){
 
-                let poolStorage = await GET_FROM_STATE(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL'),
+                let poolStorage = await getFromState(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL'),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
@@ -514,7 +514,7 @@ export default {
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
 
-                    let stakerAccount = await GET_ACCOUNT_FROM_STATE(originWherePoolStorage+':'+stakingTx.staker)
+                    let stakerAccount = await getAccountFromState(originWherePoolStorage+':'+stakingTx.staker)
 
                     if(stakerAccount){
                     
@@ -576,7 +576,7 @@ export default {
             &&
             WORKING_THREADS.APPROVEMENT_THREAD.RUBICON < data //new value of rubicon should be more than current 
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
+            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -641,7 +641,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
+            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
         if(overviewIfFromRoute){
@@ -653,14 +653,14 @@ export default {
         }
         else if(usedOnQuorumThread){
 
-            let updatedOptions = await GET_FROM_APPROVEMENT_THREAD_STATE('WORKFLOW_OPTIONS')
+            let updatedOptions = await getFromApprovementThreadState('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 
         }else{
 
             //Used on VT
-            let updatedOptions = await GET_FROM_STATE('WORKFLOW_OPTIONS')
+            let updatedOptions = await getFromState('WORKFLOW_OPTIONS')
 
             updatedOptions[payload.fieldName]=payload.newValue
 
@@ -706,7 +706,7 @@ export default {
             &&
             CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
             &&
-            await SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
+            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
 
 
 

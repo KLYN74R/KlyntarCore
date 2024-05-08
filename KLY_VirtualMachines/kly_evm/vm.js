@@ -1,4 +1,4 @@
-import {GET_FROM_STATE} from '../../KLY_Workflows/dev_tachyon/common_functions/state_interactions.js'
+import {getFromState} from '../../KLY_Workflows/dev_tachyon/common_functions/state_interactions.js'
 
 import {DefaultStateManager} from '@ethereumjs/statemanager'
 import {Address,Account} from '@ethereumjs/util'
@@ -50,7 +50,7 @@ const web3 = new Web3()
 
 global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
-    let bindedToShard = await GET_FROM_STATE('SHARD_BIND:'+addressAsString)
+    let bindedToShard = await getFromState('SHARD_BIND:'+addressAsString)
 
     if(bindedToShard) return bindedToShard.shard
 

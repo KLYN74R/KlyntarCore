@@ -1,10 +1,10 @@
-import {GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID, GET_QUORUM_MAJORITY} from '../common_functions/quorum_related.js'
+import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../common_functions/quorum_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {GET_FROM_APPROVEMENT_THREAD_STATE, USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
-import {COLORS,ED25519_VERIFY,LOG} from '../../../KLY_Utils/utils.js'
+import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
@@ -15,7 +15,7 @@ import WS from 'websocket'
 
 
 
-let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => {
+let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
     // Now we can open required WebSocket connections with quorums majority
 
@@ -29,7 +29,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => 
 
         if(!TEMP_CACHE.has('WS:'+pubKey)){
             
-            let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await GET_FROM_APPROVEMENT_THREAD_STATE(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+            let poolStorage = GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.get(pubKey+'(POOL)_STORAGE_POOL') || await getFromApprovementThreadState(pubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(poolStorage){
 
@@ -57,7 +57,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => 
 
                                     let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
                         
-                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
 
                                     if(finalizationProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                         
@@ -71,13 +71,13 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => 
                         
                                     let dataThatShouldBeSigned = proofsGrabber.acceptedHash+proofsGrabber.huntingForBlockID+proofsGrabber.huntingForHash+epochFullID
                         
-                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
+                                    let finalizationProofIsOk = FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID) && epochHandler.quorum.includes(parsedData.voter) && await verifyEd25519(dataThatShouldBeSigned,parsedData.finalizationProof,parsedData.voter)
 
                                     // Now verify the TMB proof(that block was delivered)
 
                                     dataThatShouldBeSigned += 'VALID_BLOCK_RECEIVED'
 
-                                    let tmbProofIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,parsedData.tmbProof,parsedData.voter)
+                                    let tmbProofIsOk = await verifyEd25519(dataThatShouldBeSigned,parsedData.tmbProof,parsedData.voter)
                             
                                     if(finalizationProofIsOk && tmbProofIsOk && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
                         
@@ -114,7 +114,7 @@ let OPEN_CONNECTIONS_WITH_QUORUM = async (epochHandler,currentEpochMetadata) => 
 
 
 
-let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
+let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
     let epochFullID = epochHandler.hash + "#" + epochHandler.id
 
@@ -151,7 +151,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
     }
 
-    let majority = GET_QUORUM_MAJORITY(epochHandler)
+    let majority = getQuorumMajority(epochHandler)
 
     let blockToSend = TEMP_CACHE.get(blockIDForHunting) || await BLOCKCHAIN_DATABASES.BLOCKS.get(blockIDForHunting).catch(()=>null)
 
@@ -242,7 +242,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
     
             // Send only to safe subset of validators from quorum
 
-            let subsetToSendBlocks = GET_PSEUDO_RANDOM_SUBSET_FROM_QUORUM_BY_TICKET_ID(0,epochHandler)
+            let subsetToSendBlocks = getPseudoRandomSubsetFromQuorumByTicketId(0,epochHandler)
     
             for(let pubKeyOfQuorumMember of subsetToSendBlocks){
     
@@ -312,7 +312,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
         // Store locally
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put('AFP:'+blockIDForHunting,aggregatedFinalizationProof).catch(()=>false)
 
-        LOG(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,COLORS.RED)
+        customLog(`Approved height for epoch \u001b[38;5;50m${epochHandler.id} \x1b[31;1mis \u001b[38;5;50m${proofsGrabber.acceptedIndex} \x1b[32;1m(${(finalizationProofsMapping.size/epochHandler.quorum.length).toFixed(3)*100}% agreements)`,logColors.RED)
 
         console.log('\n')
 
@@ -323,7 +323,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
 
         // Repeat procedure for the next block and store the progress
-        await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
+        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).then(()=>{
 
             proofsGrabber.afpForPrevious = aggregatedFinalizationProof
 
@@ -357,7 +357,7 @@ let RUN_FINALIZATION_PROOFS_GRABBING = async (epochHandler,proofsGrabber) => {
 
 
 
-export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
+export let shareBlocksAndGetFinalizationProofs = async () => {
 
     let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -369,7 +369,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
     if(!currentEpochMetadata){
 
-        setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,2000)
+        setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 
         return
 
@@ -379,7 +379,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
     // If we don't generate the blocks - skip this function
     if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
 
-        setTimeout(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS,2000)
+        setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 
         return
 
@@ -394,7 +394,7 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
-        proofsGrabber = await USE_TEMPORARY_DB('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
+        proofsGrabber = await useTemporaryDb('get',DATABASE,'PROOFS_GRABBER').catch(()=>false)
 
         if(!proofsGrabber){
 
@@ -415,18 +415,18 @@ export let SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS = async () => {
         
         // And store new descriptor
 
-        await USE_TEMPORARY_DB('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>false)
+        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>false)
 
         TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
     }
 
 
-    await OPEN_CONNECTIONS_WITH_QUORUM(qtEpochHandler,currentEpochMetadata)
+    await openConnectionsWithQuorum(qtEpochHandler,currentEpochMetadata)
 
-    await RUN_FINALIZATION_PROOFS_GRABBING(qtEpochHandler,proofsGrabber).catch(()=>{})
+    await runFinaliationProofsGrabbing(qtEpochHandler,proofsGrabber).catch(()=>{})
 
 
-    setImmediate(SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS)
+    setImmediate(shareBlocksAndGetFinalizationProofs)
 
 }

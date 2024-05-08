@@ -1,6 +1,6 @@
 import {LOG} from '../../KLY_Services/CommonResources/utils.js'
 import {LOG as UTIL_LOG} from '../../KLY_Utils/utils.js'
-import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
+import {pathResolve} from '../../KLY_Utils/utils.js'
 import Docker from 'dockerode'
 import fs from 'fs'
 
@@ -58,7 +58,7 @@ this.dec_storage?           //does this service hosted somewhere in decentralize
 
 */
 
-let RUNNER_CONFIGS=JSON.parse(fs.readFileSync(PATH_RESOLVE('KLY_Runners/dev_andromeda/configs.json')))
+let RUNNER_CONFIGS=JSON.parse(fs.readFileSync(pathResolve('KLY_Runners/dev_andromeda/configs.json')))
 
 let docker = new Docker(RUNNER_CONFIGS.DOCKER_CONFIGS)//https://www.npmjs.com/package/dockerode - use to check the configs 
 
@@ -85,7 +85,7 @@ export default async service=>{
 let servicesToRun = RUNNER_CONFIGS.SERVICES_TO_RUN
 
 
-UTIL_LOG(fs.readFileSync(PATH_RESOLVE('images/events/services.txt')).toString(),'CD')
+UTIL_LOG(fs.readFileSync(pathResolve('images/events/services.txt')).toString(),'CD')
 
 if(Object.keys(servicesToRun).length){
 

@@ -1,43 +1,39 @@
-import {
-
-    GET_ALL_KNOWN_PEERS
-
-} from '../utils.js'
-
-import {GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID, VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF, VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {ED25519_SIGN_DATA, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {signEd25519, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
-import {BLOCKLOG} from '../common_functions/logging.js'
+import {blockLog} from '../common_functions/logging.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
+
+import {getAllKnownPeers} from '../utils.js'
 
 import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
 
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 
 
 
 
-export let BLOCKS_GENERATION=async()=>{
+export let blocksGenerationProcess=async()=>{
 
-    await GENERATE_BLOCKS_PORTION()
+    await generateBlocksPortion()
 
-    setTimeout(BLOCKS_GENERATION,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
+    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
  
 }
 
 
 
 
-let GET_TRANSACTIONS = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
 
-let GET_EPOCH_EDGE_OPERATIONS = epochFullID => {
+let getEpochEdgeOperationsFromMempool = epochFullID => {
 
     if(!EPOCH_METADATA_MAPPING.has(epochFullID)) return []
 
@@ -61,10 +57,10 @@ Ask the network in special order:
     3) Other known peers
 
 */
-let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
+let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
 
-    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await GET_QUORUM_URLS_AND_PUBKEYS(),...GET_ALL_KNOWN_PEERS()]
+    let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
 
     let shardID = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
 
@@ -82,7 +78,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(()=>false)
     
-            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await VERIFY_AGGREGATED_EPOCH_FINALIZATION_PROOF(
+            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await verifyAggregatedEpochFinalizationProof(
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
@@ -105,7 +101,7 @@ let GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH = async() => {
 
 
 
-GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
+getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
 
     /**
     * This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
@@ -127,7 +123,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
     let firstBlockIDByThisLeader = epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':0' // epochID:PubKeyOfCreator:0 - first block in epoch
 
-    let afpForFirstBlock = await GET_VERIFIED_AGGREGATED_FINALIZATION_PROOF_BY_BLOCK_ID(firstBlockIDByThisLeader,epochHandler)
+    let afpForFirstBlock = await getVerifiedAggregatedFinalizationProofByBlockId(firstBlockIDByThisLeader,epochHandler)
 
     let firstBlockHash
 
@@ -179,7 +175,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
     
         }
 
-        let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true,epochHandler)
+        let quorumMembers = await getQuorumUrlsAndPubkeys(true,epochHandler)
 
 
         // Descriptor is {url,pubKey}
@@ -254,7 +250,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
             
         let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${localFinalizationStatsForThisPool.index}:${localFinalizationStatsForThisPool.hash}:${epochFullID}`
         
-        let majority = GET_QUORUM_MAJORITY(epochHandler)
+        let majority = getQuorumMajority(epochHandler)
         
 
         // Start the cycle over results
@@ -263,7 +259,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
             if(result.type === 'OK' && typeof result.sig === 'string'){
         
-                let signatureIsOk = await ED25519_VERIFY(dataThatShouldBeSigned,result.sig,result.pubKey)
+                let signatureIsOk = await verifyEd25519(dataThatShouldBeSigned,result.sig,result.pubKey)
         
                 if(signatureIsOk){
         
@@ -286,7 +282,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
                 let blockIdInAfp = (epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':'+index)
         
         
-                if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,epochHandler)){
+                if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)){
         
                     // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
          
@@ -344,7 +340,7 @@ GET_AGGREGATED_LEADER_ROTATION_PROOF = async (epochHandler,pubKeyOfOneOfPrevious
 
 
 
-let GENERATE_BLOCKS_PORTION = async() => {
+let generateBlocksPortion = async() => {
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
@@ -395,7 +391,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         if(epochIndex !== 0){
 
-            let aefpForPreviousEpoch = await GET_AGGREGATED_EPOCH_FINALIZATION_PROOF_FOR_PREVIOUS_EPOCH()
+            let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch()
 
             // If we can't find a proof - try to do it later
             // Only in case it's initial epoch(index is -1) - no sense to push it
@@ -415,7 +411,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
         WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
 
-        WORKING_THREADS.GENERATION_THREAD.majority = GET_QUORUM_MAJORITY(epochHandler)
+        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
 
 
         // And nullish the index & hash in generation thread for new epoch
@@ -489,7 +485,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
-                let aggregatedLeaderRotationProof = await GET_AGGREGATED_LEADER_ROTATION_PROOF(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myPrimePool).catch(()=>null)
+                let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myPrimePool).catch(()=>null)
 
                 if(aggregatedLeaderRotationProof){
 
@@ -526,7 +522,7 @@ let GENERATE_BLOCKS_PORTION = async() => {
 
     // 0.Add the epoch edge operations to block extra data
 
-    extraData.epochEdgeOperations = GET_EPOCH_EDGE_OPERATIONS(WORKING_THREADS.GENERATION_THREAD.epochFullId)
+    extraData.epochEdgeOperations = getEpochEdgeOperationsFromMempool(WORKING_THREADS.GENERATION_THREAD.epochFullId)
 
     // 1.Add the extra data to block from configs(it might be your note, for instance)
 
@@ -540,14 +536,14 @@ let GENERATE_BLOCKS_PORTION = async() => {
     for(let i=0;i<numberOfBlocksToGenerate;i++){
 
 
-        let blockCandidate = new Block(GET_TRANSACTIONS(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
+        let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
                         
         let hash = Block.genHash(blockCandidate)
 
 
-        blockCandidate.sig = await ED25519_SIGN_DATA(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+        blockCandidate.sig = await signEd25519(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
             
-        BLOCKLOG(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
+        blockLog(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
 
 
         WORKING_THREADS.GENERATION_THREAD.prevHash = hash

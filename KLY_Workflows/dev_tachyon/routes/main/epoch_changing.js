@@ -1,10 +1,10 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../../common_functions/work_with_proofs.js'
+import {verifyAggregatedFinalizationProof} from '../../common_functions/work_with_proofs.js'
 
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {ED25519_SIGN_DATA} from '../../../../KLY_Utils/utils.js'
+import {signEd25519} from '../../../../KLY_Utils/utils.js'
 
 
 
@@ -272,7 +272,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                     // Verify the AFP for first block
 
-                    let afpIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(proposition.afpForFirstBlock,qtEpochHandler)
+                    let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,qtEpochHandler)
 
                     if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
 
@@ -299,7 +299,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                                                 
                             status:'OK',
                                             
-                            sig:await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                            sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                                             
                         }
 
@@ -310,7 +310,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         let {index,hash,afp} = proposition.metadataForCheckpoint
 
-                        let isOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
+                        let isOk = await verifyAggregatedFinalizationProof(afp,qtEpochHandler)
 
 
                         if(isOk){
@@ -347,7 +347,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                             
                                     status:'OK',
                         
-                                    sig:await ED25519_SIGN_DATA(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                                    sig:await signEd25519(dataToSign,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
                         
                                 }
 

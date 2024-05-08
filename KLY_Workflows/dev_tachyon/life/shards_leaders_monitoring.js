@@ -1,28 +1,28 @@
-import {GET_FROM_APPROVEMENT_THREAD_STATE, USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
+import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {BLAKE3, GET_UTC_TIMESTAMP} from '../../../KLY_Utils/utils.js'
+import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {EPOCH_STILL_FRESH, HEAP_SORT,} from '../utils.js'
-
-
+import {epochStillFresh, heapSort,} from '../utils.js'
 
 
 
 
 
-let TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER=(epochHandler,indexOfCurrentLeaderInSequence,leaderShipTimeframe)=>{
+
+
+let timeIsOutForCurrentShardLeader=(epochHandler,indexOfCurrentLeaderInSequence,leaderShipTimeframe)=>{
 
     // Function to check if time frame for current shard leader is done and we have to move to next reserve pools in reassignment chain
 
-    return GET_UTC_TIMESTAMP() >= epochHandler.startTimestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
+    return getUtcTimestamp() >= epochHandler.startTimestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
 
 }
 
 
 
-export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
+export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
 
 
     epochHandler.leadersSequence = {}
@@ -37,7 +37,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 
         // Otherwise - it's reserve pool
         
-        let poolStorage = await GET_FROM_APPROVEMENT_THREAD_STATE(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
+        let poolStorage = await getFromApprovementThreadState(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
     
         if(poolStorage){
 
@@ -62,7 +62,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
     
     */
 
-    let hashOfMetadataFromOldEpoch = BLAKE3(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
+    let hashOfMetadataFromOldEpoch = blake3Hash(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
 
     
     //___________________________________________________ Now, build the leaders sequence ___________________________________________________
@@ -76,7 +76,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 
         let arrayOfChallanges = arrayOfReservePoolsRelatedToThisShard.map(validatorPubKey=>{
 
-            let challenge = parseInt(BLAKE3(validatorPubKey+hashOfMetadataFromOldEpoch),16)
+            let challenge = parseInt(blake3Hash(validatorPubKey+hashOfMetadataFromOldEpoch),16)
 
             mapping.set(challenge,validatorPubKey)
 
@@ -85,7 +85,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
         })
 
 
-        let sortedChallenges = HEAP_SORT(arrayOfChallanges)
+        let sortedChallenges = heapSort(arrayOfChallanges)
 
         let leadersSequence = []
 
@@ -101,7 +101,7 @@ export let SET_LEADERS_SEQUENCE_FOR_SHARDS = async (epochHandler,epochSeed) => {
 
 
 // Iterate over shards and change the leader if it's appropriate timeframe
-export let SHARDS_LEADERS_MONITORING=async()=>{
+export let shardsLeadersMonitoring=async()=>{
 
     let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -111,16 +111,16 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
 
     if(!currentEpochMetadata){
 
-        setTimeout(SHARDS_LEADERS_MONITORING,3000)
+        setTimeout(shardsLeadersMonitoring,3000)
 
         return
 
     }
 
 
-    if(!EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
+    if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        setTimeout(SHARDS_LEADERS_MONITORING,3000)
+        setTimeout(shardsLeadersMonitoring,3000)
 
         return
 
@@ -154,7 +154,7 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
         // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
         let itsNotFinishOfSequence = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence+1]
 
-        if(itsNotFinishOfSequence && TIME_IS_OUT_FOR_CURRENT_SHARD_LEADER(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
+        if(itsNotFinishOfSequence && timeIsOutForCurrentShardLeader(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
 
             // Inform websocket server that we shouldn't generate proofs for this leader anymore
             currentEpochMetadata.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)
@@ -170,7 +170,7 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
                 
                 }
 
-                await USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
+                await useTemporaryDb('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
 
                     // Set new reserve pool and delete the old one
 
@@ -194,6 +194,6 @@ export let SHARDS_LEADERS_MONITORING=async()=>{
     }
 
     // Start again
-    setImmediate(SHARDS_LEADERS_MONITORING)
+    setImmediate(shardsLeadersMonitoring)
     
 }

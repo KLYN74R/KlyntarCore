@@ -1,12 +1,12 @@
-import {GET_ACCOUNT_FROM_STATE,GET_FROM_STATE} from '../common_functions/state_interactions.js'
+import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import tbls from '../../../KLY_Utils/signatures/threshold/tbls.js'
-
-import {BLAKE3, ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
 
 import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 
@@ -25,7 +25,7 @@ import web3 from 'web3'
 
 
 
-let GET_SPEND_BY_SIG_TYPE = transaction => {
+let getPricePerSignatureType = transaction => {
 
     if(transaction.payload.type==='D') return 0
     
@@ -42,25 +42,30 @@ let GET_SPEND_BY_SIG_TYPE = transaction => {
 
 //Load required modules and inject to contract
 // eslint-disable-next-line no-unused-vars
-let GET_METHODS_TO_INJECT=_imports=>{
+let getMethodsToInject=_imports=>{
 
     return {}
 
 }
 
 
-let DEFAULT_VERIFICATION_PROCESS=async(senderAccount,tx,goingToSpend)=>
-
-    senderAccount.type==='account'
-    &&
-    senderAccount.balance-goingToSpend>=0
-    &&
-    senderAccount.nonce<tx.nonce
 
 
+let defaultVerificationProcess=async(senderAccount,tx,goingToSpend)=>{
 
 
-export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,originShard) => {
+    return  senderAccount.type==='account'
+            &&
+            senderAccount.balance-goingToSpend>=0
+            &&
+            senderAccount.nonce<tx.nonce
+
+}
+
+
+
+
+export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originShard) => {
 
     
     if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){
@@ -70,7 +75,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
         let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
-        if(tx.payload.type==='D') return ED25519_VERIFY(signedData,tx.sig,tx.creator)
+        if(tx.payload.type==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
         
         if(tx.payload.type==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
         
@@ -80,7 +85,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
             try{
 
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
+                isOk = blake3Hash(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -94,7 +99,7 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
             try{
 
-                isOk = BLAKE3(tx.payload.pubKey) === tx.creator && globalThis.verifyBlissSignature(signedData,tx.payload.pubKey,tx.sig)
+                isOk = blake3Hash(tx.payload.pubKey) === tx.creator && globalThis.verifyBlissSignature(signedData,tx.payload.pubKey,tx.sig)
             
             }catch{ isOk = false}
 
@@ -111,9 +116,9 @@ export let VERIFY_BASED_ON_SIG_TYPE_AND_VERSION = async(tx,senderStorageObject,o
 
 
 
-export let SIMPLIFIED_VERIFY_BASED_ON_SIG_TYPE=(type,pubkey,signa,data)=>{
+export let simplifiedVerifyBasedOnSignaType=(type,pubkey,signa,data)=>{
 
-    if(type==='D') return ED25519_VERIFY(data,signa,pubkey)
+    if(type==='D') return verifyEd25519(data,signa,pubkey)
     
     if(type==='P/D') return globalThis.verifyDilithiumSignature(data,pubkey,signa)
     
@@ -144,11 +149,11 @@ export let VERIFIERS = {
 
     TX:async (originShard,tx,rewardBox)=>{
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
+        let senderAccount=await getAccountFromState(originShard+':'+tx.creator),
         
-            recipientAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.payload.to),
+            recipientAccount=await getAccountFromState(originShard+':'+tx.payload.to),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.payload.amount+tx.fee
+            goingToSpend = getPricePerSignatureType(tx)+tx.payload.amount+tx.fee
 
         tx = await TXS_FILTERS.TX(tx,originShard) //pass through the filter
 
@@ -156,7 +161,7 @@ export let VERIFIERS = {
 
             return {isOk:false,reason:`Can't get filtered value of tx`}
         
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
+        }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(!recipientAccount){
     
@@ -218,9 +223,9 @@ export let VERIFIERS = {
 
     CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator)
+        let senderAccount=await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+JSON.stringify(tx.payload).length+tx.fee
+        let goingToSpend = getPricePerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
         tx = await TXS_FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
@@ -231,7 +236,7 @@ export let VERIFIERS = {
             return {isOk:false,reason:`Can't get filtered value of tx`}
 
         }
-        else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
+        else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(tx.payload.lang.startsWith('system/')){
 
@@ -251,7 +256,7 @@ export let VERIFIERS = {
 
             }else{
 
-                let contractID = BLAKE3(originShard+JSON.stringify(tx))
+                let contractID = blake3Hash(originShard+JSON.stringify(tx))
 
                 let contractTemplate = {
     
@@ -301,9 +306,9 @@ export let VERIFIERS = {
     */
     CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator),
+        let senderAccount=await getAccountFromState(originShard+':'+tx.creator),
 
-            goingToSpend = GET_SPEND_BY_SIG_TYPE(tx)+tx.fee+tx.payload.gasLimit
+            goingToSpend = getPricePerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 
         tx = await TXS_FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
 
@@ -312,10 +317,10 @@ export let VERIFIERS = {
 
             return {isOk:false,reason:`Can't get filtered value of tx`}
         
-        }else if(await DEFAULT_VERIFICATION_PROCESS(senderAccount,tx,goingToSpend)){
+        }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
 
-            let contractMeta = await GET_FROM_STATE(originShard+':'+tx.payload.contractID)
+            let contractMeta = await getFromState(originShard+':'+tx.payload.contractID)
 
 
             if(contractMeta){
@@ -351,7 +356,7 @@ export let VERIFIERS = {
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
                         */
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),gasLimit,await GET_METHODS_TO_INJECT(tx.payload.imports))
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),gasLimit,await getMethodsToInject(tx.payload.imports))
 
                     let result
             

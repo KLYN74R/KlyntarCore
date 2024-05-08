@@ -17,7 +17,7 @@ process.env.KLY_MODE||='mainnet'
 
 
 
-export let COLORS = {
+export const logColors = {
     
     CLEAR:'\x1b[0m',
     TIME_COLOR:`\u001b[38;5;${process.env.KLY_MODE==='mainnet'?'23':'202'}m`, // for time view
@@ -35,11 +35,11 @@ export let COLORS = {
 
 
 
-export let PATH_RESOLVE=path=>__dirname+'/'+path // path is relative to this root scope */KLYNTARCORE
+export let pathResolve=path=>__dirname+'/'+path // path is relative to this root scope */KLYNTARCORE
 
-export let BLAKE3=(input,length)=>hash(input,{length}).toString('hex')
+export let blake3Hash=(input,length)=>hash(input,{length}).toString('hex')
 
-export let GET_UTC_TIMESTAMP=()=>new Date().getTime()
+export let getUtcTimestamp=()=>new Date().getTime()
 
 
 /**
@@ -50,7 +50,7 @@ export let GET_UTC_TIMESTAMP=()=>new Date().getTime()
  * @param {string} pubKey - Ed25519 public key in RFC8410 format.
  * @returns {Promise<boolean>} Promise that resolves to true if the signature is valid, and false otherwise.
  */
-export let ED25519_VERIFY = (data, signature, pubKey) => {
+export let verifyEd25519 = (data, signature, pubKey) => {
     
     return new Promise((resolve, reject) => {
 
@@ -106,7 +106,7 @@ export let ED25519_VERIFY = (data, signature, pubKey) => {
  * @param {string} prv - Ed25519 private key in RFC8410 format.
  * @returns {Promise<string>} Promise that resolves to the Base64 encoded Ed25519 signature, or an empty string on failure.
  */
-export let ED25519_SIGN_DATA = (data, prv) => {
+export let signEd25519 = (data, prv) => {
 
     return new Promise((resolve, reject) => {
 
@@ -125,8 +125,8 @@ export let ED25519_SIGN_DATA = (data, prv) => {
 
 
 
-export let LOG=(msg,msgColor)=>{
+export let customLog=(msg,msgColor)=>{
 
-    console.log(COLORS.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,COLORS.CLEAR)
+    console.log(logColors.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,msgColor,msg,logColors.CLEAR)
 
 }

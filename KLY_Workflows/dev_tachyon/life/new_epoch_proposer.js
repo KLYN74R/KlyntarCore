@@ -1,21 +1,21 @@
-import {USE_TEMPORARY_DB} from '../common_functions/approvement_thread_related.js'
+import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {VERIFY_AGGREGATED_FINALIZATION_PROOF} from '../common_functions/work_with_proofs.js'
+import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {EPOCH_STILL_FRESH} from '../utils.js'
+import {epochStillFresh} from '../utils.js'
 
-import {ED25519_VERIFY} from '../../../KLY_Utils/utils.js'
+import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {GET_QUORUM_MAJORITY, GET_QUORUM_URLS_AND_PUBKEYS} from '../common_functions/quorum_related.js'
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 
 
 
-export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
+export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
@@ -26,7 +26,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
     if(!currentEpochMetadata){
 
-        setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
+        setTimeout(checkIfItsTimeToStartNewEpoch,3000)
 
         return
 
@@ -36,7 +36,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
     let iAmInTheQuorum = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
 
-    if(iAmInTheQuorum && !EPOCH_STILL_FRESH(WORKING_THREADS.APPROVEMENT_THREAD)){
+    if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
         
         // Stop to generate commitments/finalization proofs
         currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
@@ -63,7 +63,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         if(canGenerateEpochFinalizationProof){
 
-            await USE_TEMPORARY_DB('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
+            await useTemporaryDb('put',currentEpochMetadata.DATABASE,'TIME_TO_NEW_EPOCH',true).then(()=>
 
                 currentEpochMetadata.SYNCHRONIZER.set('READY_FOR_NEW_EPOCH',true)
 
@@ -76,7 +76,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
         // Check the safety
         if(!currentEpochMetadata.SYNCHRONIZER.has('READY_FOR_NEW_EPOCH')){
 
-            setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000)
+            setTimeout(checkIfItsTimeToStartNewEpoch,3000)
 
             return
 
@@ -85,7 +85,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let epochFinishProposition = {}
 
-        let majority = GET_QUORUM_MAJORITY(qtEpochHandler)
+        let majority = getQuorumMajority(qtEpochHandler)
 
         let leadersSequencePerShard = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
@@ -301,7 +301,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
         let optionsToSend = {method:'POST',body:JSON.stringify(epochFinishProposition)}
         
-        let quorumMembers = await GET_QUORUM_URLS_AND_PUBKEYS(true)
+        let quorumMembers = await getQuorumUrlsAndPubkeys(true)
 
 
         //Descriptor is {url,pubKey}
@@ -362,7 +362,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
                                 let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
 
-                                let isOk = await ED25519_VERIFY(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
+                                let isOk = await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
                                 if(isOk) agreementsForThisShard.set(descriptor.pubKey,response.sig)
 
@@ -375,7 +375,7 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
                             
                                 let pubKeyOfProposedLeader = leadersSequencePerShard[primePoolPubKey][response.currentLeader] || primePoolPubKey
                                 
-                                let afpToUpgradeIsOk = await VERIFY_AGGREGATED_FINALIZATION_PROOF(afp,qtEpochHandler)
+                                let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,qtEpochHandler)
 
                                 let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
                             
@@ -444,6 +444,6 @@ export let CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH=async()=>{
 
     }
 
-    setTimeout(CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH,3000) // each 3 seconds - do monitoring
+    setTimeout(checkIfItsTimeToStartNewEpoch,3000) // each 3 seconds - do monitoring
 
 }

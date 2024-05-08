@@ -1,6 +1,6 @@
-import {NODE_METADATA, WORKING_THREADS} from './blockchain_preparation.js'
+import {customLog, logColors, getUtcTimestamp} from '../../KLY_Utils/utils.js'
 
-import {LOG, COLORS, GET_UTC_TIMESTAMP} from '../../KLY_Utils/utils.js'
+import {NODE_METADATA, WORKING_THREADS} from './blockchain_preparation.js'
 
 import {BLOCKCHAIN_GENESIS, CONFIGURATION} from '../../klyn74r.js'
 
@@ -14,7 +14,7 @@ import readline from 'readline'
 
 
 
-export let HEAP_SORT = arr => {
+export let heapSort = arr => {
 
     // Build max heap
     buildMaxHeap(arr)
@@ -42,7 +42,7 @@ export let HEAP_SORT = arr => {
 
 
 
-export let GET_RANDOM_FROM_ARRAY = arr => {
+export let getRandomFromArray = arr => {
 
     let randomIndex = Math.floor(Math.random() * arr.length)
   
@@ -53,7 +53,7 @@ export let GET_RANDOM_FROM_ARRAY = arr => {
 
 
 
-export let GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...NODE_METADATA.PEERS]
+export let getAllKnownPeers=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...NODE_METADATA.PEERS]
 
 
 
@@ -61,28 +61,28 @@ export let GET_ALL_KNOWN_PEERS=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,
 // NODE_METADATA.VERSION shows the software version of your node
 // We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure we can continue to work
 // If major version was changed and we still has an old version - we should stop node and update software
-export let IS_MY_VERSION_OLD = threadID => WORKING_THREADS[threadID].VERSION > NODE_METADATA.VERSION
+export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].VERSION > NODE_METADATA.VERSION
 
 
 
 
-export let EPOCH_STILL_FRESH = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > GET_UTC_TIMESTAMP()
+export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > getUtcTimestamp()
 
 
 
 
-export let DECRYPT_KEYS=async()=>{
+export let decryptKeys=async()=>{
     
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    LOG(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${NODE_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,COLORS.CYAN)
+    customLog(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${NODE_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,logColors.CYAN)
 
 
     
     let hexSeed = await new Promise(resolve=>
         
-        readLineInterface.question(`\n ${COLORS.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${COLORS.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
+        readLineInterface.question(`\n ${logColors.TIME_COLOR}[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})${logColors.CLEAR}  Enter \x1b[32mpassword\x1b[0m to decrypt private key in memory of process ———> \x1b[31m`,resolve)
         
     )
         

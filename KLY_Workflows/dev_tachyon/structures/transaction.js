@@ -1,6 +1,6 @@
 export default class{
     
-    constructor(version,creator,txType,nonce,fee,payload){
+    constructor(version, creator, txType, nonce, fee, payload, touched){
     
         this.v=version
 
@@ -13,6 +13,8 @@ export default class{
         this.fee=fee
 
         this.payload=payload
+
+        this.touched = touched || []
 
         //this.sig=signature
         

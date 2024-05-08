@@ -1,26 +1,24 @@
 // 7 main threads - main core logic
 
-import {BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD} from './life/temp_vt_sequence_builder.js'
+import {buildTemporarySequenceForVerificationThread} from './life/temp_vt_sequence_builder.js'
 
-import {SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS} from './life/share_block_and_grab_proofs.js'
+import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
 
-import {FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS} from './life/find_new_epoch.js'
+import {startVerificationThread} from './verification_process/verification.js'
 
-import {CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH} from './life/new_epoch_proposer.js'
+import {findAggregatedEpochFinalizationProofs} from './life/find_new_epoch.js'
 
-import {START_VERIFICATION_THREAD} from './verification_process/verification.js'
+import {shardsLeadersMonitoring} from './life/shards_leaders_monitoring.js'
 
-import {SHARDS_LEADERS_MONITORING} from './life/shards_leaders_monitoring.js'
+import {checkIfItsTimeToStartNewEpoch} from './life/new_epoch_proposer.js'
 
-import {CONFIGURATION,BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
+import {blocksGenerationProcess} from './life/block_generation.js'
 
-import {PREPARE_BLOCKCHAIN} from './blockchain_preparation.js'
+import {CONFIGURATION, BLOCKCHAIN_GENESIS} from '../../klyn74r.js'
 
-import {BLOCKS_GENERATION} from './life/block_generation.js'
+import {prepareBlockchain} from './blockchain_preparation.js'
 
-import {LOG, COLORS} from '../../KLY_Utils/utils.js'
-
-
+import {customLog, logColors} from '../../KLY_Utils/utils.js'
 
 
 
@@ -28,34 +26,36 @@ import {LOG, COLORS} from '../../KLY_Utils/utils.js'
 
 
 
-export let RUN_BLOCKCHAIN=async()=>{
 
 
-    await PREPARE_BLOCKCHAIN()
+export let runBlockchain=async()=>{
+
+
+    await prepareBlockchain()
 
 
     //_________________________ RUN SEVERAL ASYNC THREADS _________________________
 
     //✅0.Start verification process - process blocks and find new epoch step-by-step
-    START_VERIFICATION_THREAD()
+    startVerificationThread()
 
     //✅1.Thread to find AEFPs and change the epoch for QT
-    FIND_AGGREGATED_EPOCH_FINALIZATION_PROOFS()
+    findAggregatedEpochFinalizationProofs()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs
-    SHARE_BLOCKS_AND_GET_FINALIZATION_PROOFS()
+    shareBlocksAndGetFinalizationProofs()
 
     //✅3.Thread to propose AEFPs to move to next epoch
-    CHECK_IF_ITS_TIME_TO_START_NEW_EPOCH()
+    checkIfItsTimeToStartNewEpoch()
 
     //✅4.Thread to track changes of leaders on shards
-    SHARDS_LEADERS_MONITORING()
+    shardsLeadersMonitoring()
 
     //✅5.Function to build the temporary sequence of blocks to verify them
-    BUILD_TEMPORARY_SEQUENCE_OF_VERIFICATION_THREAD()
+    buildTemporarySequenceForVerificationThread()
 
     //✅6.Start to generate blocks
-    BLOCKS_GENERATION()
+    blocksGenerationProcess()
 
 
     
@@ -75,9 +75,9 @@ export let RUN_BLOCKCHAIN=async()=>{
             
             .then(res=>res.text())
             
-            .then(val=>LOG(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,COLORS.CYAN))
+            .then(val=>customLog(val==='OK'?`Received pingback from \x1b[32;1m${endpoint}\x1b[36;1m. Node is \x1b[32;1malive`:`\x1b[36;1mAnswer from bootstrap \x1b[32;1m${endpoint}\x1b[36;1m => \x1b[34;1m${val}`,logColors.CYAN))
             
-            .catch(error=>LOG(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,COLORS.RED))
+            .catch(error=>customLog(`Bootstrap node \x1b[32;1m${endpoint}\x1b[31;1m send no response or some error occured \n${error}`,logColors.RED))
 
     )
 

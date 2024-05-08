@@ -5,7 +5,7 @@
 "use strict";
 
 
-import {PATH_RESOLVE} from '../../KLY_Utils/utils.js'
+import {pathResolve} from '../../KLY_Utils/utils.js'
 
 import fs from 'fs'
 
@@ -689,7 +689,7 @@ go.env = Object.assign({ TMPDIR: os.tmpdir() }, process.env);
 go.exit = process.exit;
 
 
-let webAssemblyInstantiatedSource = await WebAssembly.instantiate(fs.readFileSync(PATH_RESOLVE('KLY_Addons/must_have/main.wasm')),go.importObject)
+let webAssemblyInstantiatedSource = await WebAssembly.instantiate(fs.readFileSync(pathResolve('KLY_Addons/must_have/main.wasm')),go.importObject)
 
 
 go.run(webAssemblyInstantiatedSource.instance);

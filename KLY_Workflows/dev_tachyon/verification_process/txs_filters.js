@@ -7,18 +7,18 @@
 
 //You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
-import {GET_ACCOUNT_FROM_STATE} from '../common_functions/state_interactions.js'
+import {getAccountFromState} from '../common_functions/state_interactions.js'
 
-import {VERIFY_BASED_ON_SIG_TYPE_AND_VERSION} from './txs_verifiers.js'
-
-
+import {verifyBasedOnSigTypeAndVersion} from './txs_verifiers.js'
 
 
-let VERIFY_WRAP=async (tx,originShard)=>{
 
-    let creatorAccount = await GET_ACCOUNT_FROM_STATE(originShard+':'+tx.creator)
 
-    let result = await VERIFY_BASED_ON_SIG_TYPE_AND_VERSION(tx,creatorAccount,originShard).catch(()=>false)
+let verifyWrap=async (tx,originShard)=>{
+
+    let creatorAccount = await getAccountFromState(originShard+':'+tx.creator)
+
+    let result = await verifyBasedOnSigTypeAndVersion(tx,creatorAccount,originShard).catch(()=>false)
 
     
     if(result){
@@ -59,12 +59,13 @@ export let TXS_FILTERS = {
     }
 
     */
-    TX:async (tx,originShard) =>
+    TX:async (tx,originShard) => {
 
-        typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
-        &&
-        await VERIFY_WRAP(tx,originShard)
-    ,
+        return  typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
+                &&
+                await verifyWrap(tx,originShard)
+
+    },
 
     /*
     
@@ -85,13 +86,13 @@ export let TXS_FILTERS = {
     }
 
     */
-    CONTRACT_DEPLOY:async (tx,originShard) =>
-    
-        typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('spec/')) && Array.isArray(tx.payload.constructorParams)
-        &&
-        await VERIFY_WRAP(tx,originShard)
+    CONTRACT_DEPLOY:async (tx,originShard) => {
 
-    ,
+        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('spec/')) && Array.isArray(tx.payload.constructorParams)
+                &&
+                await verifyWrap(tx,originShard)
+
+    },
 
     /*
     
@@ -108,11 +109,13 @@ export let TXS_FILTERS = {
         }
 
     */
-    CONTRACT_CALL:async (tx,originShard) =>
-    
-        typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
-        &&
-        await VERIFY_WRAP(tx,originShard)
+    CONTRACT_CALL:async (tx,originShard) => {
+
+        return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
+                &&
+                await verifyWrap(tx,originShard)
+
+    }
 
 }
 
