@@ -27,7 +27,7 @@ export let VM = {
 
         let contract = new ContractInstance(extraModules,contractBytecodeAsBuffer)
 
-        let contractHandler = await contract.setUpContract(gasLimit) //return instance and pointer to metadata to track gas changes => {contractInstance,contractMetadata}
+        let contractHandler = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractMetadata}
 
         return contractHandler
         
