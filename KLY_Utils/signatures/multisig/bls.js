@@ -26,47 +26,44 @@ export default {
         return `0x${publicKey.serializeToHexStr()}`
 
     },
-    
-    //async
-    singleSig:async(msg,privateKeyAsHexString)=>new Promise(resolve=>{
+
+    singleSig:(msg,privateKeyAsHexString)=>{
 
         let secretKey = bls.deserializeHexStrToSecretKey(privateKeyAsHexString)
 
-        resolve(secretKey.sign(msg).serializeToHexStr())
+        return secretKey.sign(msg).serializeToHexStr()
 
-    }),
+    },
     
-    //async
-    singleVerify:async(msg,pubKeyAsHexWith0x,signaAsHex)=>new Promise(resolve=>{
+    singleVerify:(msg,pubKeyAsHexWith0x,signaAsHex)=>{
 
         let publicKey = bls.deserializeHexStrToPublicKey(pubKeyAsHexWith0x.slice(2))
 
         let signature = bls.deserializeHexStrToSignature(signaAsHex)
 
-        resolve(publicKey.verify(signature,msg))
+        return publicKey.verify(signature,msg)
 
-    }),
+    },
 
-    aggregatePublicKeys:publicKeysArrayAsHexWith0x=>new Promise(resolve=>{
+    aggregatePublicKeys:publicKeysArrayAsHexWith0x=>{
 
         // Create empty template
         
         let rootPub = new bls.PublicKey()
 
         for(let hexPubKey of publicKeysArrayAsHexWith0x){
-
+        
             let pubKey = bls.deserializeHexStrToPublicKey(hexPubKey.slice(2))
-
+        
             rootPub.add(pubKey)            
-            
+                    
         }
 
-        resolve(`0x${rootPub.serializeToHexStr()}`)
+        return `0x${rootPub.serializeToHexStr()}`
 
+    },
 
-    }),
-
-    aggregateSignatures:signaturesArrayAsHex=>new Promise(resolve=>{
+    aggregateSignatures:signaturesArrayAsHex=>{
 
         // Create empty template
         
@@ -77,12 +74,12 @@ export default {
             let signa = bls.deserializeHexStrToSignature(hexSigna)
 
             aggregatedSignature.add(signa)
-            
+    
         }
 
-        resolve(aggregatedSignature.serializeToHexStr())
+        return aggregatedSignature.serializeToHexStr()
 
-    }),
+    },
 
 
   /**
@@ -95,7 +92,7 @@ export default {
    * @param {Number} reverseThreshold - number of signers allowed to be afk
    * 
    */
-    verifyThresholdSignature:(aggregatedPubkeyWhoSignAsHexWith0x,afkPubkeysArray,rootPubKey,msg,aggregatedSignatureAsHex,reverseThreshold)=>new Promise(resolve=>{
+    verifyThresholdSignature:(aggregatedPubkeyWhoSignAsHexWith0x,afkPubkeysArray,rootPubKey,msg,aggregatedSignatureAsHex,reverseThreshold)=>{
 
         if(afkPubkeysArray.length <= reverseThreshold){
 
@@ -121,12 +118,12 @@ export default {
                 
                 aggregatedPubKeyOfAfk.add(aggregatedPubKeyOfActiveSigners)
 
-                resolve(`0x${aggregatedPubKeyOfAfk.serializeToHexStr()}` === rootPubKey)
+                return `0x${aggregatedPubKeyOfAfk.serializeToHexStr()}` === rootPubKey
 
-            } else resolve(false)
+            } else return false
             
-        }else resolve(false)     
+        }else return false     
 
-    })
+    }
 
 }

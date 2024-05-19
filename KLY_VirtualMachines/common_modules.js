@@ -30,27 +30,37 @@ import snarkjs from 'snarkjs'
 
 export let cryptography = {
 
-    bls:(vmID,functionName,params)=>{
+    bls:(functionName,params)=>{
 
-        if (vmID==='EVM') return bls[functionName](...params)
+        let gasSpent = 0 // TODO
 
-        else {
+        let result = bls[functionName](...params)
 
-            // TODO for WVM
-
-        }
+        return {result,gasSpent}
 
     },
 
     pqc:(algorithm,signedData,pubKey,signature)=>{
 
         // BLISS / Dilithium
+
+        let gasSpent = 0
+
+        let result = globalThis[algorithm === 'bliss'?'verifyBlissSignature':'verifyDilithiumSignature'](signedData,pubKey,signature)
        
-        return globalThis[algorithm === 'bliss'?'verifyBlissSignature':'verifyDilithiumSignature'](signedData,pubKey,signature)    
+        return {result,gasSpent}
 
     },
 
-    tbls:(signedData,masterPubKey,masterSigna)=>tbls.verifyTBLS(masterPubKey,masterSigna,signedData),
+    tbls:(functionName,params)=>{
+
+        let gasSpent = 0
+
+        let result = tbls[functionName](...params)
+
+        return {result,gasSpent}
+
+    },
 
     ed25519:(vmID,signedData,pubKey,signature)=>{
 

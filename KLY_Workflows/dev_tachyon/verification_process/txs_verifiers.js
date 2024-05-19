@@ -87,7 +87,7 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
 
                 isOk = blake3Hash(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
             
-            }catch{ isOk = false}
+            }catch{isOk = false}
 
             return isOk === 'true'
             
@@ -107,7 +107,7 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
 
         }
         
-        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t).catch(()=>false)      
+        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
 
     }else return false
 
