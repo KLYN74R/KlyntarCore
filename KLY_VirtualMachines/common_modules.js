@@ -2,7 +2,7 @@ import tbls from '../KLY_Utils/signatures/threshold/tbls'
 
 import bls from '../KLY_Utils/signatures/multisig/bls'
 
-import {verifyEd25519} from '../KLY_Utils/utils'
+import {verifyEd25519Sync} from '../KLY_Utils/utils'
 
 import snarkjs from 'snarkjs'
 
@@ -34,6 +34,8 @@ export let cryptography = {
 
         let gasSpent = 0 // TODO
 
+        // Available functions => singleVerify, aggregatePublicKeys, aggregateSignatures, verifyThresholdSignature
+
         let result = bls[functionName](...params)
 
         return {result,gasSpent}
@@ -42,9 +44,9 @@ export let cryptography = {
 
     pqc:(algorithm,signedData,pubKey,signature)=>{
 
-        // BLISS / Dilithium
-
         let gasSpent = 0
+
+        // Available functions BLISS / Dilithium
 
         let result = globalThis[algorithm === 'bliss'?'verifyBlissSignature':'verifyDilithiumSignature'](signedData,pubKey,signature)
        
@@ -52,24 +54,24 @@ export let cryptography = {
 
     },
 
-    tbls:(functionName,params)=>{
+    tbls:(masterPubKey,masterSigna,signedData)=>{
 
-        let gasSpent = 0
+        return {
 
-        let result = tbls[functionName](...params)
+            gasSpent: 6000,
+            result: tbls.verifyTBLS(masterPubKey,masterSigna,signedData)
 
-        return {result,gasSpent}
+        }
 
     },
 
-    ed25519:(vmID,signedData,pubKey,signature)=>{
+    ed25519:(signedData,pubKey,signature)=>{
 
-        if (vmID==='EVM') return verifyEd25519(signedData,signature,pubKey)
+        return {
 
-        else {
+            gasSpent:5000,
+            result:verifyEd25519Sync(signedData,signature,pubKey)
 
-            // TODO for WVM
-    
         }
 
     },

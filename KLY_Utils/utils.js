@@ -84,6 +84,34 @@ export let verifyEd25519 = (data, signature, pubKey) => {
 
 
 
+/**
+ * Verifies the signature of given data using an Ed25519 public key.
+ * 
+ * @param {string} data - UTF-8 encoded data (usually BLAKE3 hashes).
+ * @param {string} signature - Base64 encoded signature.
+ * @param {string} pubKey - Ed25519 public key in RFC8410 format.
+ * @returns {Promise<boolean>} Promise that resolves to true if the signature is valid, and false otherwise.
+ */
+export let verifyEd25519Sync = (data, signature, pubKey) => {
+        
+    // Decode public key from Base58 and encode to hex
+    let pubInHex = Buffer.from(Base58.decode(pubKey)).toString('hex');
+
+    // Now add ASN.1 prefix
+    let pubWithAsnPrefix = '302a300506032b6570032100' + pubInHex;
+
+    // Encode to Base64
+    let pubAsBase64 = Buffer.from(pubWithAsnPrefix, 'hex').toString('base64');
+
+    // Finally, add required prefix and postfix
+    let finalPubKey = `-----BEGIN PUBLIC KEY-----\n${pubAsBase64}\n-----END PUBLIC KEY-----`;
+
+    return cryptoModule.verify(null, data, finalPubKey, Buffer.from(signature, 'base64'))
+
+}
+
+
+
 
 /*
 
