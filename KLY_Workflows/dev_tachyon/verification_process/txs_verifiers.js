@@ -400,7 +400,7 @@ export let VERIFIERS = {
 
                                 let {vmID,contractID,functionID,params} = parsedResult.callBackData
 
-                                callbacksQueue.push()
+                                callbacksQueue.push(parsedResult.callBackData)
 
                             }
 
