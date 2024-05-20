@@ -1,7 +1,7 @@
 // Will be available in the following releases
 // let systemContracts = ['aliases','mintUnobtanium','deployService','stakingPool','rwxContract']
 
-export let SYSTEM_CONTRACTS = new Map()
+export const SYSTEM_CONTRACTS = new Map()
 
 let systemContractsNames = ['staking_pool']
 

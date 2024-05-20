@@ -147,7 +147,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async (originShard,tx,rewardBox)=>{
+    TX:async(originShard,tx,rewardBox)=>{
 
         let senderAccount=await getAccountFromState(originShard+':'+tx.creator),
         

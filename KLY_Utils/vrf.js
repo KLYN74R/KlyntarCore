@@ -5,11 +5,11 @@ import('module').then(
                 
     mod => mod.createRequire(import.meta.url)
 
-).then(require=>{
+).then(()=>{
 
-    let {Wallet} = require('../signatures/ringsig/lrs-ecdsa/export.js')
+    // let {Wallet} = require('../signatures/ringsig/lrs-ecdsa/export.js')
 
-    const w = Wallet.createRandom()
+    // const _ = Wallet.createRandom()
        
     // let PUB=new Uint8Array(Buffer.from(w.signingKey.publicKey.slice(2),'hex'))
     // let PRV=new Uint8Array(Buffer.from(w.privateKey.slice(2),'hex'))
