@@ -215,7 +215,7 @@ export let VERIFIERS = {
 
     {
         bytecode:'',(empty)
-        lang:'spec/<name of contract>'
+        lang:'system/<name of contract>'
         constructorParams:[]
     }
 
@@ -319,13 +319,11 @@ export let VERIFIERS = {
         
         }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-
             let contractMeta = await getFromState(originShard+':'+tx.payload.contractID)
-
 
             if(contractMeta){
 
-                if(contractMeta.lang.startsWith('spec/')){
+                if(contractMeta.lang.startsWith('system/')){
 
                     let systemContractName = contractMeta.lang.split('/')[1]
 
@@ -348,38 +346,78 @@ export let VERIFIERS = {
 
                 }else {
 
-                    //Create contract instance
+                    // Prepare the contract instance
+
                     let gasLimit = tx.payload.gasLimit * 1_000_000_000 // 1 KLY = 10^9 gas. You set the gasLimit in KLY(to avoid confusing)
 
-                        /*
+                    /*
                 
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
-                        */
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMeta.bytecode,'hex'),gasLimit,await getMethodsToInject(tx.payload.imports))
+                    */
 
-                    let result
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
+                        
+                        Buffer.from(contractMeta.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
+                    
+                    )
+
+                    let resultAsJSON
             
-
                     try{
 
-                        // Get the initial data to pass as '' param
-                        // Check if contract is binded to given shard
+                        //__________________________ Run the contract call logic __________________________
 
-                        result = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
+                        /*
+                        
+                            Since transaction may contain cross-contract / cross-VM calls - we have to run the infinite while loop and process transaction step-by-step
+                        
+                            Handle all the sub-calls. In case contract call returns object like:
+                            
+                                {
+                                    next:<contractID>,func:<method>,params:<params>}
+
+                        */
+
+                        let lastSubCallInChain = false
+
+                        let results = new Map() // callID => result
+
+                        let callbacksQueue = []
+
+                        while(!lastSubCallInChain) {
+
+                            resultAsJSON = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
+                            
+                            let parsedResult = JSON.parse(resultAsJSON)
+
+                            results.set('',parsedResult)
+
+                            // If this contract call includes next subcalls(saying, cross-contract / cross-VM call) - continue this while
+                            if(!parsedResult.nextCall) lastSubCallInChain = true
+
+                            else if (parsedResult.callBackData){
+
+                                let {vmID,contractID,functionID,params} = parsedResult.callBackData
+
+                                callbacksQueue.push()
+
+                            }
+
+                        }
 
                     }catch(err){
 
                         // eslint-disable-next-line no-unused-vars
-                        result = err.message
+                        resultAsJSON = err.message
 
                     }
             
-                    senderAccount.balance-=goingToSpend
+                    senderAccount.balance -= goingToSpend
     
-                    senderAccount.nonce=tx.nonce
+                    senderAccount.nonce = tx.nonce
             
-                    rewardBox.fees+=tx.fee
+                    rewardBox.fees += tx.fee
 
                 }
 

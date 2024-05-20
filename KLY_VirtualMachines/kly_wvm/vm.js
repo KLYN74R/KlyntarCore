@@ -27,9 +27,9 @@ export let VM = {
 
         let contract = new ContractInstance(extraModules,contractBytecodeAsBuffer)
 
-        let contractHandler = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractMetadata}
+        let contractHandlerWithMetadata = await contract.setUpContract(gasLimit) // return instance and pointer to metadata to track gas changes => {contractInstance,contractMetadata}
 
-        return contractHandler
+        return contractHandlerWithMetadata
         
     },
 
@@ -46,8 +46,6 @@ export let VM = {
      */
     callContract:(contractInstance,contractMetadata,params,functionName,type)=>{
 
-        contractMetadata.gasBurned=0 //make null before call contract
-
         let result
 
         if(type==='RUST'){
@@ -61,6 +59,8 @@ export let VM = {
             result = contractInstance.__getString(contractInstance[functionName](pointerToChunk))
 
         }
+
+        // Returns result as JSON
 
         return {result,contractMetadata}
 

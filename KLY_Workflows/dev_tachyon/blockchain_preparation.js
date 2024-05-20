@@ -284,7 +284,7 @@ export let setGenesisToState=async()=>{
         let contractMetadataTemplate = {
 
             type:"contract",
-            lang:'spec/stakingPool',
+            lang:'system/stakingPool',
             balance:0,
             uno:0,
             storages:['POOL'],

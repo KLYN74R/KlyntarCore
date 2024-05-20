@@ -81,14 +81,14 @@ export let TXS_FILTERS = {
 
     {
         bytecode:'',(empty)
-        lang:'spec/<name of contract>'
+        lang:'system/<name of contract>'
         constructorParams:[]
     }
 
     */
     CONTRACT_DEPLOY:async (tx,originShard) => {
 
-        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('spec/')) && Array.isArray(tx.payload.constructorParams)
+        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('system/')) && Array.isArray(tx.payload.constructorParams)
                 &&
                 await verifyWrap(tx,originShard)
 

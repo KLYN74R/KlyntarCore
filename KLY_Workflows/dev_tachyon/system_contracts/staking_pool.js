@@ -19,7 +19,7 @@ export let CONTRACT = {
     
     {
         bytecode:'',(empty)
-        lang:'spec/stakingPool'
+        lang:'system/stakingPool'
         constructorParams:[]
     }
 
@@ -56,7 +56,7 @@ export let CONTRACT = {
             let contractMetadataTemplate = {
 
                 type:"contract",
-                lang:'spec/stakingPool',
+                lang:'system/stakingPool',
                 balance:0,
                 uno:0,
                 storages:['POOL'],
