@@ -40,7 +40,7 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
 FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
-    //Set triggers
+    // Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
         response

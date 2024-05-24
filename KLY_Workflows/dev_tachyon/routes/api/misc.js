@@ -206,7 +206,7 @@ FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 
 
 
-//Returns the info about epoch on QT and VT
+// Returns the info about epoch on QT and VT
 
 FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
 

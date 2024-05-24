@@ -355,14 +355,6 @@ export let VERIFIERS = {
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
                     */
-
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
-                        
-                        Buffer.from(contractMeta.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
-                    
-                    )
-
-                    let resultAsJSON
             
                     try{
 
@@ -377,7 +369,23 @@ export let VERIFIERS = {
                                 {
                                     next:<contractID>,func:<method>,params:<params>}
 
+                                }
+
                         */
+
+                        let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
+                        
+                            Buffer.from(contractMeta.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
+                                    
+                        )
+
+                        
+                        let goingToCallContractID = tx.payload.contractID
+
+                        let methodToCall = tx.payload.method
+
+                        let paramsToPass = tx.payload.params
+
 
                         let lastSubCallInChain = false
 
@@ -387,20 +395,21 @@ export let VERIFIERS = {
 
                         while(!lastSubCallInChain) {
 
-                            resultAsJSON = VM.callContract(contractInstance,contractMetadata,tx.payload.params,tx.payload.method,contractMeta.type)
+                            let intermediateResultAsJSON = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMeta.type)
                             
-                            let parsedResult = JSON.parse(resultAsJSON)
+                            let parsedIntermediateResult = JSON.parse(intermediateResultAsJSON)
 
-                            results.set('',parsedResult)
+                            results.set(goingToCallContractID+methodToCall,parsedIntermediateResult)
 
                             // If this contract call includes next subcalls(saying, cross-contract / cross-VM call) - continue this while
-                            if(!parsedResult.nextCall) lastSubCallInChain = true
+                            
+                            if(!parsedIntermediateResult.nextCall) lastSubCallInChain = true
 
-                            else if (parsedResult.callBackData){
+                            else if (parsedIntermediateResult.callBackData){
 
-                                let {vmID,contractID,functionID,params} = parsedResult.callBackData
+                                let {vmID,contractID,methodID,params} = parsedIntermediateResult.callBackData
 
-                                callbacksQueue.push(parsedResult.callBackData)
+                                callbacksQueue.push(parsedIntermediateResult.callBackData)
 
                             }
 
