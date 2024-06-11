@@ -1,6 +1,6 @@
-import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
-
 import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
+
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from './quorum_related.js'
 
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 

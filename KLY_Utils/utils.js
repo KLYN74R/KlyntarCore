@@ -90,7 +90,7 @@ export let verifyEd25519 = (data, signature, pubKey) => {
  * @param {string} data - UTF-8 encoded data (usually BLAKE3 hashes).
  * @param {string} signature - Base64 encoded signature.
  * @param {string} pubKey - Ed25519 public key in RFC8410 format.
- * @returns {Promise<boolean>} Promise that resolves to true if the signature is valid, and false otherwise.
+ * @returns {boolean} True if the signature is valid, and false otherwise.
  */
 export let verifyEd25519Sync = (data, signature, pubKey) => {
         
@@ -107,6 +107,7 @@ export let verifyEd25519Sync = (data, signature, pubKey) => {
     let finalPubKey = `-----BEGIN PUBLIC KEY-----\n${pubAsBase64}\n-----END PUBLIC KEY-----`;
 
     return cryptoModule.verify(null, data, finalPubKey, Buffer.from(signature, 'base64'))
+
 
 }
 

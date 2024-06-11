@@ -1457,14 +1457,6 @@ checkConnectionWithPool=async(poolToVerifyRightNow,vtEpochHandler)=>{
 getPreparedTxsForParallelization = txsArray => {
 
 
-    /*
-    
-    
-    
-    
-    
-    */
-
     let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
 
 

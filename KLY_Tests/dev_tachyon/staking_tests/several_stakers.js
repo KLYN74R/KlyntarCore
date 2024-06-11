@@ -8,9 +8,9 @@ So, we deploy pool as usual, but with 3 stakers
 
 */
 
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import fetch from 'node-fetch'
-import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
+import {ED25519_SIGN_DATA} from '../../../KLY_Utils/utils.js'
 
 
 

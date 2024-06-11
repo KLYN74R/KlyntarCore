@@ -94,8 +94,8 @@ So, in our special operation
 */
 
 
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
-import {ED25519_SIGN_DATA} from '../../KLY_Utils/utils.js'
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
+import {ED25519_SIGN_DATA} from '../../../KLY_Utils/utils.js'
 import fetch from 'node-fetch'
 
 

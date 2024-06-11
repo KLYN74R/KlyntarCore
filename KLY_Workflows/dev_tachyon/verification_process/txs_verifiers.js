@@ -178,7 +178,7 @@ export let VERIFIERS = {
                 //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
     
-                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount)//add to cache to collapse after all events in blocks of block
+                GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) //add to cache to collapse after all events in blocks of block
             
             }
             
