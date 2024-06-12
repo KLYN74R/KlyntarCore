@@ -1,6 +1,6 @@
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import Block from '../../structures/block.js'
 
@@ -95,6 +95,15 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
         let limit =  20
 
         let promises = []
+
+        // In case <start_index> is equal to "x" - this is a signal that requestor doesn't know the latest block on shard, so we set it manually based on this node data
+
+        if(request.params.start_index === "x"){
+
+            request.params.start_index = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[request.params.shard] - 1 // -1 because value in tracker point to the next block
+
+        }
+
 
         for(let i=0 ; i < limit ; i++){
 
