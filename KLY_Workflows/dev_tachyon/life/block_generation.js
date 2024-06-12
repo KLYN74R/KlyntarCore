@@ -2,6 +2,8 @@ import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedEpochFi
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+
 import {signEd25519, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
@@ -13,8 +15,6 @@ import {getAllKnownPeers} from '../utils.js'
 import Block from '../structures/block.js'
 
 import fetch from 'node-fetch'
-
-import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 
 

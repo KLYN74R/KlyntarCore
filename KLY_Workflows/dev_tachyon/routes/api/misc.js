@@ -91,7 +91,7 @@ FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
         // Get the current version of workflows_options on VT and QT
 
         let verificationThreadWorkflowOptions = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
-        let quorumThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
+        let approvementThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
 
 
         response.send({
@@ -112,7 +112,7 @@ FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
             approvementThread:{
 
                 version:approvementThreadWorkflowVersion,
-                options:quorumThreadWorkflowOptions
+                options:approvementThreadWorkflowOptions
             
             }
 
@@ -321,8 +321,6 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE}
 TODO:
 
 GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
-
-GET /epoch_info - {vtEpochHandler,gtEpochHandler}
 
 GET /current_shard_leader/:SHARD - returns info about current shard leader - returns data from tempData.SHARD_LEADERS_HANDLERS.get(SHARD)
 

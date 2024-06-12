@@ -12,14 +12,14 @@ import {heapSort} from '../utils.js'
 
 export let getQuorumMajority = epochHandler => {
 
-    let quorumNumber = epochHandler.quorum.length
+    let quorumSize = epochHandler.quorum.length
 
-    let majority = Math.floor(quorumNumber*(2/3))+1
+    let majority = Math.floor(quorumSize*(2/3))+1
 
 
     //Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
 
-    return majority > quorumNumber ? quorumNumber : majority
+    return majority > quorumSize ? quorumSize : majority
 
 }
 

@@ -1,26 +1,20 @@
-import {
-    
-    epochStillFresh,
-    
-    isMyCoreVersionOld
-
-} from '../utils.js'
-
 import {GRACEFUL_STOP, BLOCKCHAIN_DATABASES, WORKING_THREADS, GLOBAL_CACHES, EPOCH_METADATA_MAPPING} from '../blockchain_preparation.js'
 
-import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
+import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
 
-import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
-
-import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
+import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
+
 import {getBlock} from '../verification_process/verification.js'
+
+import {epochStillFresh, isMyCoreVersionOld} from '../utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 

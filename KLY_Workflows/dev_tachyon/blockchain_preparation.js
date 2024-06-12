@@ -249,7 +249,7 @@ export let setGenesisToState=async()=>{
 
     let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
 
-        quorumThreadAtomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch(),
+        approvementThreadAtomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch(),
     
         epochTimestamp,
 
@@ -328,7 +328,7 @@ export let setGenesisToState=async()=>{
         }
         
 
-        quorumThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
 
 
         //Put metadata
@@ -488,7 +488,7 @@ export let setGenesisToState=async()=>{
     
     await atomicBatch.write()
 
-    await quorumThreadAtomicBatch.write()
+    await approvementThreadAtomicBatch.write()
 
 
 
@@ -689,7 +689,7 @@ export let prepareBlockchain=async()=>{
 
     //_________________________________Add the temporary data of current QT__________________________________________
     
-    let quorumTemporaryDB = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
+    let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 
@@ -708,7 +708,7 @@ export let prepareBlockchain=async()=>{
 
         //____________________Mapping which contains temporary databases for____________________
 
-        DATABASE:quorumTemporaryDB // DB with temporary data that we need during epoch    
+        DATABASE:temporaryDatabaseForApprovementThread // DB with temporary data that we need during epoch    
 
     })
 

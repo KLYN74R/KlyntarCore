@@ -1,16 +1,16 @@
-import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
-
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
 import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {epochStillFresh} from '../utils.js'
+import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {verifyEd25519} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
 
-import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
+import {epochStillFresh} from '../utils.js'
 
 
 

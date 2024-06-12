@@ -144,7 +144,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
             -----------------------------------------------[What to do next?]-----------------------------------------------
         
-            Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[quorumThreadCheckpointFullID][primePool].currentAuthority
+            Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[approvementThreadCheckpointFullID][primePool].currentAuthority
 
             In case our local version has bigger index - ignore
 
