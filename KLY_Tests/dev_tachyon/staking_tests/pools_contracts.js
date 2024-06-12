@@ -1,4 +1,4 @@
-import bls from '../../KLY_Utils/signatures/multisig/bls.js'
+import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
 import fetch from 'node-fetch'
 
 

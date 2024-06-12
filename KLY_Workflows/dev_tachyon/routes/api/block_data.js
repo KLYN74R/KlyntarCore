@@ -73,14 +73,15 @@ FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
 /*
 
-0 - START to ask blocks from
-1 - N | Ask N blocks(25 by default)
+0 - shard identifier
+1 - start from (indexation by SID)
+2 - limit (20 by default)
 
 Returns array of blocks sorted by SID in reverse order
 
 */
 
-FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,response)=>{
+FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,response)=>{
 
     //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
@@ -91,15 +92,15 @@ FASTIFY_SERVER.get('/latest_n_blocks/:num_of_blocks/:limit',async(request,respon
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
             
 
-        let startCount = +request.params.num_of_blocks
+        let limit =  20
 
-        let limit =  25
+        let promises = []
 
-        let promises=[]
+        for(let i=0 ; i < limit ; i++){
 
-        for(let i=0;i<limit;i++){
+            let index = request.params.start_index - i
 
-            let sid = startCount-i
+            let sid = request.params.shard+':'+index
 
             let blockPromise = BLOCKCHAIN_DATABASES.STATE.get('SID:'+sid).then(
             
