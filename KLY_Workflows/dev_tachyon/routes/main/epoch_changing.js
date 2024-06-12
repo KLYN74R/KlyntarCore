@@ -75,9 +75,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     // CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE - set the limit mb
 
-    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
+    let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -244,7 +244,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                     localIndexOfLeader = leadersHandlerForThisShard.currentLeader
 
-                    pubKeyOfCurrentLeaderOnShard = qtEpochHandler.leadersSequence[shardID][localIndexOfLeader] || shardID
+                    pubKeyOfCurrentLeaderOnShard = atEpochHandler.leadersSequence[shardID][localIndexOfLeader] || shardID
 
                 }else{
 
@@ -266,13 +266,13 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                         
                 let hashOfFirstBlockByLastLeaderInThisEpoch
 
-                let blockIdOfFirstBlock = qtEpochHandler.id+':'+pubKeyOfCurrentLeaderOnShard+':0' // first block has index 0 - numeration from 0
+                let blockIdOfFirstBlock = atEpochHandler.id+':'+pubKeyOfCurrentLeaderOnShard+':0' // first block has index 0 - numeration from 0
 
                 if(blockIdOfFirstBlock === proposition.afpForFirstBlock.blockID && proposition.metadataForCheckpoint.index>=0){
 
                     // Verify the AFP for first block
 
-                    let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,qtEpochHandler)
+                    let afpIsOk = await verifyAggregatedFinalizationProof(proposition.afpForFirstBlock,atEpochHandler)
 
                     if(afpIsOk) hashOfFirstBlockByLastLeaderInThisEpoch = proposition.afpForFirstBlock.blockHash
 
@@ -310,7 +310,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         let {index,hash,afp} = proposition.metadataForCheckpoint
 
-                        let isOk = await verifyAggregatedFinalizationProof(afp,qtEpochHandler)
+                        let isOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
 
                         if(isOk){

@@ -619,6 +619,8 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
+    let vtEpochOldIndex = vtEpochHandler.id
+
     // Stuff related for next epoch
 
     let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
@@ -1013,6 +1015,8 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
+
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_CACHE:${vtEpochOldIndex}`).catch(()=>{})
 
 
 

@@ -277,9 +277,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
     if(!epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
 
-        let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+        let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-        let oldEpochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
+        let oldEpochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
     
         let temporaryObject = EPOCH_METADATA_MAPPING.get(oldEpochFullID)
     
@@ -298,9 +298,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
         let totalNumberOfReadyShards = 0
 
-        let leadersSequence = qtEpochHandler.leadersSequence
+        let leadersSequence = atEpochHandler.leadersSequence
 
-        let majority = getQuorumMajority(qtEpochHandler)
+        let majority = getQuorumMajority(atEpochHandler)
 
         let allKnownPeers = await getQuorumUrlsAndPubkeys()
 
@@ -364,7 +364,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // Try to find locally
 
-                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
+                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
 
                 if(aefp){
 
@@ -375,11 +375,11 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${qtEpochHandler.id}/${primePoolPubKey}`).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${atEpochHandler.id}/${primePoolPubKey}`).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
-                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,qtEpochHandler.quorum,majority,oldEpochFullID)
+                            let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,oldEpochFullID)
     
                             if(aefpPureObject && aefpPureObject.shard === primePoolPubKey){
     
@@ -387,7 +387,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                                 // Store locally
 
-                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
+                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
 
                                 // No sense to find more
 
@@ -418,7 +418,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
 
-                let findResult = await getFirstBlockOnEpoch(qtEpochHandler,primePoolPubKey,getBlock)
+                let findResult = await getFirstBlockOnEpoch(atEpochHandler,primePoolPubKey,getBlock)
 
                 if(findResult){
 
@@ -462,7 +462,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // Try to get the epoch edge operations from the first blocks
 
-                let firstBlockOnThisShard = await getBlock(qtEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
 
                 if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[primePoolPubKey].firstBlockHash){
 
@@ -493,13 +493,17 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${qtEpochHandler.id}`,{
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${atEpochHandler.id}`,{
 
                     epochFullID:oldEpochFullID,
-                    quorum:qtEpochHandler.quorum,
+                    quorum:atEpochHandler.quorum,
                     majority
 
                 }).catch(()=>false)
+
+                
+                // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>false)
 
 
                 // We need it for changes
@@ -515,7 +519,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
                 
-                let nextEpochId = qtEpochHandler.id + 1
+                let nextEpochId = atEpochHandler.id + 1
 
                 let nextEpochHash = blake3Hash(JSON.stringify(firstBlocksHashes))
 
@@ -535,7 +539,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfQuorumThread.EPOCH.startTimestamp = qtEpochHandler.startTimestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
+                fullCopyOfQuorumThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
 
                 fullCopyOfQuorumThread.EPOCH.id = nextEpochId
 
@@ -645,7 +649,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
         }
 
-        // Continue to find checkpoints
+        // Continue to find
         setImmediate(findAggregatedEpochFinalizationProofs)
 
     }else{

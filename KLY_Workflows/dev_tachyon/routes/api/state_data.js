@@ -34,7 +34,7 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 
         let cellID = request.params.cellID
 
-        let fullID = shardContext === 'X' ? cellID : shardContext+':'+cellID
+        let fullID = shardContext === 'x' ? cellID : shardContext+':'+cellID
 
         let data = await BLOCKCHAIN_DATABASES.STATE.get(fullID).catch(()=>null)
 
@@ -54,7 +54,6 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 // 0 - txid
 FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.TX_RECEIPT){
 
         response
@@ -77,9 +76,33 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
 
 
+/** 
+* 
+* returns object like {shardID => {currentLeader,index,hash}}
+* 
+*/
+
+FASTIFY_SERVER.get('/sync_state',(request,response)=>{
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATE){
+ 
+        response
+        
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATE}`)
+            
+            .send(WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
+            
+ 
+    }else response.send({err:'Route is off'})
+ 
+})
+
+
+
+
 FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SEARCH_RESULT){
 
         response
@@ -186,28 +209,4 @@ FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
 
     }else response.send({err:'Route is off'})
 
-})
-
-
-/** 
-* 
-* returns object like {shardID => {currentLeader,index,hash}}
-* 
-*/
-
-FASTIFY_SERVER.get('/sync_state',(request,response)=>{
-
-    //Set triggers
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATE){
- 
-        response
-        
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATE}`)
-            
-            .send(WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
-            
- 
-    }else response.send({err:'Route is off'})
- 
 })

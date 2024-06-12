@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
-
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+
+import {NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
 
@@ -13,63 +13,6 @@ let PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURAT
 
 
 
-
-/*
-
-To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index
-
-Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid shard and will be included to epoch
-
-Params:
-
-    [0] - blockID in format EpochID:BlockCreatorEd25519PubKey:IndexOfBlockInEpoch. Example 733:9H9iFRYHgN7SbZqPfuAkE6J6brPd4B5KzW5C6UzdGwxz:99
-
-Returns:
-
-    {
-        prevBlockHash,
-        blockID,
-        blockHash,
-        proofs:{
-
-            signerPubKey:ed25519Signature,
-            ...
-
-        }
-        
-    }
-
-*/
-
-// Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>) ✅
-FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,response)=>{
-
-    response.header('Access-Control-Allow-Origin','*')
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
-
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
-
-            response.send({err:'Epoch handler on QT is not ready'})
-
-            return
-        }
-       
-
-        let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
-
-
-        if(aggregatedFinalizationProof){
-
-            response.send(aggregatedFinalizationProof)
-
-        }else response.send({err:'No proof'})
-
-    }else response.send({err:'Route is off'})
-
-})
 
 
 
@@ -95,7 +38,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
  *  
  * */
 
-FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
+FASTIFY_SERVER.get('/infrastructure_info',(_request,response)=>{
 
     response
         
@@ -112,15 +55,14 @@ FASTIFY_SERVER.get('/kly_infrastructure_info',(request,response)=>{
 
 // Returns info about symbiotic chain
 
-FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
+FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
 
-    //Set triggers
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYMBIOTE_INFO){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.CHAIN_INFO){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYMBIOTE_INFO}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.CHAIN_INFO}`)
             
 
 
@@ -128,25 +70,25 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
         let symbioteID = BLOCKCHAIN_GENESIS.SYMBIOTE_ID
 
-        //Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
+        // Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
 
         let {
         
             WORKFLOW:workflowID,
             HIVEMIND:hivemind,
             HOSTCHAINS:hostchains,
-            EPOCH_TIMESTAMP:createTimestamp
+            EPOCH_TIMESTAMP:startOfFirstEpoch
         
         } = BLOCKCHAIN_GENESIS
 
         
-        //Get the current version of VT and QT
+        // Get the current version of VT and QT(need to understand the core version)
 
         let verificationThreadWorkflowVersion = WORKING_THREADS.VERIFICATION_THREAD.VERSION
-        let quorumThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.VERSION
+        let approvementThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.VERSION
 
 
-        //Get the current version of workflows_options on VT and QT
+        // Get the current version of workflows_options on VT and QT
 
         let verificationThreadWorkflowOptions = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
         let quorumThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
@@ -156,7 +98,7 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
             genesis:{
 
-                symbioteID,createTimestamp,workflowID,hivemind,hostchains
+                symbioteID,startOfFirstEpoch,workflowID,hivemind,hostchains
             
             },
 
@@ -167,9 +109,9 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
             },
 
-            quorumThread:{
+            approvementThread:{
 
-                version:quorumThreadWorkflowVersion,
+                version:approvementThreadWorkflowVersion,
                 options:quorumThreadWorkflowOptions
             
             }
@@ -184,10 +126,9 @@ FASTIFY_SERVER.get('/symbiote_info',(_request,response)=>{
 
 
 
-//Returns current pools data
+// Returns current pools data
 FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
 
         response
@@ -206,11 +147,10 @@ FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
 
 
 
-// Returns the info about epoch on QT and VT
+// Returns the info about epoch on AT(Approvement Thread) and VT(Verification Thread)
 
-FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
+FASTIFY_SERVER.get('/epoch_data/:threadID',(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
 
         response
@@ -218,14 +158,12 @@ FASTIFY_SERVER.get('/epoch_on_threads',(request,response)=>{
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
             
+        
+        response.send(
 
-        response.send({
+            WORKING_THREADS[request.params.threadID === 'vt' ? 'VERIFICATION_THREAD': 'APPROVEMENT_THREAD'].EPOCH
 
-            quorumThread:WORKING_THREADS.APPROVEMENT_THREAD.EPOCH,
-
-            verificationThread:WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
-        })
+        )
 
     }else response.send({err:'Route is off'})
 

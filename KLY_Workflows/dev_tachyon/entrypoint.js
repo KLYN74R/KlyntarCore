@@ -39,7 +39,7 @@ export let runBlockchain=async()=>{
     //✅0.Start verification process - process blocks and find new epoch step-by-step
     startVerificationThread()
 
-    //✅1.Thread to find AEFPs and change the epoch for QT
+    //✅1.Thread to find AEFPs and change the epoch for AT
     findAggregatedEpochFinalizationProofs()
 
     //✅2.Share our blocks within quorum members and get the finalization proofs

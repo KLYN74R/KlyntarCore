@@ -17,9 +17,9 @@ import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/qu
 
 export let checkIfItsTimeToStartNewEpoch=async()=>{
 
-    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-    let epochFullID = qtEpochHandler.hash+"#"+qtEpochHandler.id
+    let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -44,11 +44,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
         let canGenerateEpochFinalizationProof = true
 
         
-        for(let primePoolPubKey of qtEpochHandler.poolsRegistry.primePools){
+        for(let primePoolPubKey of atEpochHandler.poolsRegistry.primePools){
 
             let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
 
-            let pubKeyOfLeader = qtEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
 
 
             if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -85,9 +85,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let epochFinishProposition = {}
 
-        let majority = getQuorumMajority(qtEpochHandler)
+        let majority = getQuorumMajority(atEpochHandler)
 
-        let leadersSequencePerShard = qtEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+        let leadersSequencePerShard = atEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
 
         
     
@@ -267,7 +267,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
             */
          
-            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${qtEpochHandler.id}:${shardId}`).catch(()=>false)
+            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardId}`).catch(()=>false)
 
             if(!aefpExistsLocally){
 
@@ -285,7 +285,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
                 if(epochFinishProposition[shardId].metadataForCheckpoint.index >= 0){
     
-                    let firstBlockID = qtEpochHandler.id+':'+pubKeyOfLeader+':0'
+                    let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
     
                     epochFinishProposition[shardId].afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
     
@@ -375,9 +375,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                             
                                 let pubKeyOfProposedLeader = leadersSequencePerShard[primePoolPubKey][response.currentLeader] || primePoolPubKey
                                 
-                                let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,qtEpochHandler)
+                                let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
-                                let blockIDThatShouldBeInAfp = qtEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
+                                let blockIDThatShouldBeInAfp = atEpochHandler.id+':'+pubKeyOfProposedLeader+':'+index
                             
                                 if(afpToUpgradeIsOk && blockIDThatShouldBeInAfp === afp.blockID && hash === afp.blockHash){
 
@@ -436,7 +436,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                     
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${qtEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             }
 

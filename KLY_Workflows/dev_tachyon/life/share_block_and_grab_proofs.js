@@ -359,9 +359,9 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
 
 export let shareBlocksAndGetFinalizationProofs = async () => {
 
-    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
-    let epochFullID = qtEpochHandler.hash + "#" + qtEpochHandler.id
+    let epochFullID = atEpochHandler.hash + "#" + atEpochHandler.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
@@ -390,7 +390,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
     let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
 
 
-    if(!proofsGrabber || proofsGrabber.epochID !== qtEpochHandler.id){
+    if(!proofsGrabber || proofsGrabber.epochID !== atEpochHandler.id){
 
         //If we still works on the old checkpoint - continue
         //Otherwise,update the latest height/hash and send them to the new QUORUM
@@ -401,7 +401,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
             // Set the new handler with index 0(because each new epoch start with block index 0)
             proofsGrabber = {
     
-                epochID:qtEpochHandler.id,
+                epochID:atEpochHandler.id,
 
                 acceptedIndex:-1,
 
@@ -422,9 +422,9 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
     }
 
 
-    await openConnectionsWithQuorum(qtEpochHandler,currentEpochMetadata)
+    await openConnectionsWithQuorum(atEpochHandler,currentEpochMetadata)
 
-    await runFinaliationProofsGrabbing(qtEpochHandler,proofsGrabber).catch(()=>{})
+    await runFinaliationProofsGrabbing(atEpochHandler,proofsGrabber).catch(()=>{})
 
 
     setImmediate(shareBlocksAndGetFinalizationProofs)

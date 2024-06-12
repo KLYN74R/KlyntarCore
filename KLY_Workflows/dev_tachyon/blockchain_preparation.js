@@ -546,21 +546,21 @@ export let setGenesisToState=async()=>{
 
     let vtEpochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-    let qtEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+    let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
     vtEpochHandler.quorum = getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
 
     //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
-    qtEpochHandler.quorum = getCurrentEpochQuorum(qtEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
+    atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
     //Finally, build the reassignment chains for current epoch in QT and VT
 
-    await setLeadersSequenceForShards(qtEpochHandler,nullHash)
+    await setLeadersSequenceForShards(atEpochHandler,nullHash)
 
-    vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(qtEpochHandler.leadersSequence))
+    vtEpochHandler.leadersSequence = JSON.parse(JSON.stringify(atEpochHandler.leadersSequence))
 
 }
 

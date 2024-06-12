@@ -1,6 +1,6 @@
-import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
+import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import Block from '../../structures/block.js'
 
@@ -8,11 +8,10 @@ import Block from '../../structures/block.js'
 
 
 // Returns block
-// 0 - blockID(in format <EpochID>:<Ed25519_ValidatorPubkey>:<Index of block in epoch>)
+// 0 - blockID(in format <EpochID>:<ValidatorPubkey>:<Index of block in epoch>)
 
 FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK){
 
         response
@@ -40,7 +39,6 @@ FASTIFY_SERVER.get('/block/:id',(request,response)=>{
 
 FASTIFY_SERVER.get('/block_by_sid/:shard/:sid',(request,response)=>{
 
-    // Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.BLOCK_BY_SID){
 
         response
@@ -83,7 +81,6 @@ Returns array of blocks sorted by SID in reverse order
 
 FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,response)=>{
 
-    //Set triggers
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.LATEST_N_BLOCKS){
 
         response
@@ -134,6 +131,66 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
         response.send(blocksArray)
 
+
+    }else response.send({err:'Route is off'})
+
+})
+
+
+
+
+/*
+
+To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index
+
+Only in case when we have AGGREGATED_FINALIZATION_PROOF we can verify block with the 100% garantee that it's the part of valid shard and will be included to epoch
+
+Params:
+
+    [0] - blockID in format EpochID:BlockCreatorEd25519PubKey:IndexOfBlockInEpoch. Example 733:9H9iFRYHgN7SbZqPfuAkE6J6brPd4B5KzW5C6UzdGwxz:99
+
+Returns:
+
+    {
+        prevBlockHash,
+        blockID,
+        blockHash,
+        proofs:{
+
+            signerPubKey:ed25519Signature,
+            ...
+
+        }
+        
+    }
+
+*/
+
+// Just GET route to return the AFP for block by it's id (reminder - BlockID structure is <epochID>:<blockCreatorPubKey>:<index of block in this epoch>) ✅
+FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,response)=>{
+
+    response.header('Access-Control-Allow-Origin','*')
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.MAIN.GET_AGGREGATED_FINALIZATION_PROOFS){
+
+        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
+
+        if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
+
+            response.send({err:'Epoch handler on QT is not ready'})
+
+            return
+        }
+       
+
+        let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+request.params.blockID).catch(()=>null)
+
+
+        if(aggregatedFinalizationProof){
+
+            response.send(aggregatedFinalizationProof)
+
+        }else response.send({err:'No proof'})
 
     }else response.send({err:'Route is off'})
 
