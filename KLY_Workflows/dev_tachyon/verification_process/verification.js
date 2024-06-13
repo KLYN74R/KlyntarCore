@@ -623,11 +623,11 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     // Stuff related for next epoch
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
 
 
     // Get the epoch edge operations that we need to execute
@@ -1045,33 +1045,6 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
 tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
-    /* 
-            
-        Start to build the WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
-            
-        For this we need 5 things:
-
-            1) Epoch edge operations for current epoch - we take it from await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EEO:${oldEpochFullID}`).catch(()=>false)
-
-                This is the array that we need to execute later in sync mode
-
-            2) Next epoch hash - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`).catch(()=>false)
-
-            3) Next epoch quorum - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`).catch(()=>false)
-
-            4) Reassignment chains for new epoch - await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`).catch(()=>false)
-
-            5) AEFPs for all the shard from the first blocks of next epoch(X+1) to know where current epoch finished
-
-                For this, we use the [3](next epoch quorum) and ask them for first blocks in epoch. After we get it & AFPs for them, we
-
-                try to resolve the real first block in epoch X+1. Get the AEFP from it and start reverse cycle to build the reassignment metadata
-                    
-                to know how each of shard done in epoch X(current one)
-
-
-
-    */
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
@@ -1079,11 +1052,11 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     let nextEpochIndex = vtEpochIndex+1
 
-    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochHash = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_HASH:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>false)
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
 
     let nextEpochHandlerTemplate = {
 
@@ -1126,7 +1099,7 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_CACHE:${vtEpochIndex}`,epochCache).catch(()=>{})
 
             }
 

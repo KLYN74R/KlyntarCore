@@ -493,11 +493,14 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                     quorum:atEpochHandler.quorum,
                     majority
 
-                }).catch(()=>false)
+                }).catch(()=>{})
 
+                // For API - store the whole epoch handler object by epoch numerical index
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${atEpochHandler.id}`,atEpochHandler).catch(()=>{})
+                
                 
                 // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>{})
 
 
                 // We need it for changes
@@ -520,13 +523,13 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 let nextEpochFullID = nextEpochHash+'#'+nextEpochId
 
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>{})
 
 
                 // After execution - create the reassignment chains
                 await setLeadersSequenceForShards(fullCopyOfApprovementThread.EPOCH,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>{})
 
 
                 customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,logColors.GREEN)
@@ -541,7 +544,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 fullCopyOfApprovementThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfApprovementThread.EPOCH.poolsRegistry,fullCopyOfApprovementThread.WORKFLOW_OPTIONS,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.quorum).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.quorum).catch(()=>{})
                 
                 // Create new temporary db for the next epoch
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})

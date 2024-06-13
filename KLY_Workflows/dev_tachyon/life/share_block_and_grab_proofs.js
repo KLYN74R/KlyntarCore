@@ -415,7 +415,7 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
         
         // And store new descriptor
 
-        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>false)
+        await useTemporaryDb('put',DATABASE,'PROOFS_GRABBER',proofsGrabber).catch(()=>{})
 
         TEMP_CACHE.set('PROOFS_GRABBER',proofsGrabber)
 
