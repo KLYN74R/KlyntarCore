@@ -80,7 +80,7 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
 
 
-FASTIFY_SERVER.get('/pool_stats/:poolId',async(request,response)=>{
+FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.POOL_STATS){
