@@ -34,7 +34,7 @@ import fs from 'fs'
 
 
 
-let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfQuorumThread) => {
+let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfApprovementThread) => {
 
     // Try to get storage "POOL" of appropriate pool
 
@@ -43,12 +43,12 @@ let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfQuorumT
 
     poolStorage.lackOfTotalPower = true
 
-    poolStorage.stopEpochID = fullCopyOfQuorumThread.EPOCH.id
+    poolStorage.stopEpochID = fullCopyOfApprovementThread.EPOCH.id
 
     
     // Remove from POOLS array(to prevent be elected to quorum) and metadata
 
-    let arrayToDeleteFrom = fullCopyOfQuorumThread.EPOCH.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
+    let arrayToDeleteFrom = fullCopyOfApprovementThread.EPOCH.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
 
     let indexToDelete = arrayToDeleteFrom.indexOf(validatorPubKey)
 
@@ -60,12 +60,12 @@ let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfQuorumT
 
 
 
-let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations) => {
+let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,epochEdgeOperations) => {
 
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
 
-    let workflowOptionsTemplate = {...fullCopyOfQuorumThread.WORKFLOW_OPTIONS}
+    let workflowOptionsTemplate = {...fullCopyOfApprovementThread.WORKFLOW_OPTIONS}
     
     GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
     
@@ -96,13 +96,13 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epoch
             }
             
         */
-        await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfQuorumThread)
+        await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
     
     }
 
     //_______________________Remove pools if lack of staking power_______________________
 
-    let epochHandlerReference = fullCopyOfQuorumThread.EPOCH
+    let epochHandlerReference = fullCopyOfApprovementThread.EPOCH
 
     let toRemovePools = [], promises = [], allThePools = epochHandlerReference.poolsRegistry.primePools.concat(epochHandlerReference.poolsRegistry.reservePools)
 
@@ -111,7 +111,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epoch
 
         let promise = getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-            if(poolStorage.totalPower < fullCopyOfQuorumThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
+            if(poolStorage.totalPower < fullCopyOfApprovementThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
 
         })
 
@@ -127,7 +127,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epoch
     
     for(let address of toRemovePools){
     
-        deletePoolsPromises.push(deletePoolsWithLackOfStakingPower(address,fullCopyOfQuorumThread))
+        deletePoolsPromises.push(deletePoolsWithLackOfStakingPower(address,fullCopyOfApprovementThread))
     
     }
 
@@ -151,7 +151,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epoch
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
 
         // Remove from pools
-        let arrayToDeleteFrom = fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools[ slashObject[poolIdentifier].isReserve ? 'reservePools' : 'primePools' ]
+        let arrayToDeleteFrom = fullCopyOfApprovementThread.EPOCH.poolsRegistry.reservePools[ slashObject[poolIdentifier].isReserve ? 'reservePools' : 'primePools' ]
 
         let indexToDelete = arrayToDeleteFrom.indexOf(poolIdentifier)
         
@@ -164,7 +164,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfQuorumThread,epoch
 
 
     // Update the WORKFLOW_OPTIONS
-    fullCopyOfQuorumThread.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+    fullCopyOfApprovementThread.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
 
     GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
 
@@ -501,14 +501,14 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 // We need it for changes
-                let fullCopyOfQuorumThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
+                let fullCopyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
 
                 // All operations must be atomic
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
 
                 // Execute epoch edge operations from new checkpoint using our copy of QT and atomic handler
-                await executeEpochEdgeOperations(atomicBatch,fullCopyOfQuorumThread,epochEdgeOperations)
+                await executeEpochEdgeOperations(atomicBatch,fullCopyOfApprovementThread,epochEdgeOperations)
 
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
@@ -524,30 +524,30 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await setLeadersSequenceForShards(fullCopyOfQuorumThread.EPOCH,nextEpochHash)
+                await setLeadersSequenceForShards(fullCopyOfApprovementThread.EPOCH,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.leadersSequence).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>false)
 
 
                 customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,logColors.GREEN)
 
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfQuorumThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfQuorumThread.WORKFLOW_OPTIONS.EPOCH_TIME
+                fullCopyOfApprovementThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfApprovementThread.WORKFLOW_OPTIONS.EPOCH_TIME
 
-                fullCopyOfQuorumThread.EPOCH.id = nextEpochId
+                fullCopyOfApprovementThread.EPOCH.id = nextEpochId
 
-                fullCopyOfQuorumThread.EPOCH.hash = nextEpochHash
+                fullCopyOfApprovementThread.EPOCH.hash = nextEpochHash
 
-                fullCopyOfQuorumThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfQuorumThread.EPOCH.poolsRegistry,fullCopyOfQuorumThread.WORKFLOW_OPTIONS,nextEpochHash)
+                fullCopyOfApprovementThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfApprovementThread.EPOCH.poolsRegistry,fullCopyOfApprovementThread.WORKFLOW_OPTIONS,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfQuorumThread.EPOCH.quorum).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.quorum).catch(()=>false)
                 
                 // Create new temporary db for the next epoch
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
 
                 // Commit changes
-                atomicBatch.put('AT',fullCopyOfQuorumThread)
+                atomicBatch.put('AT',fullCopyOfApprovementThread)
 
                 await atomicBatch.write()
 
@@ -572,7 +572,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 }
 
 
-                WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfQuorumThread
+                WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfApprovementThread
 
                 customLog(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
 

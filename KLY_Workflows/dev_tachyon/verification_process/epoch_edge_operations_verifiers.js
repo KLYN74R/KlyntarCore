@@ -25,7 +25,7 @@ export default {
 
 
     //Function to move stakes between pool <=> waiting room of pool
-    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
+    STAKING_CONTRACT_CALL:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
 
     /*
 
@@ -94,7 +94,7 @@ export default {
             }
 
         }
-        else if(usedOnQuorumThread){
+        else if(usedOnApprovementThread){
 
             // Basic ops on APPROVEMENT_THREAD
 
@@ -159,15 +159,15 @@ export default {
             GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(txid,true)
 
             
-            let workflowConfigs = fullCopyOfQuorumThread.WORKFLOW_OPTIONS
+            let workflowConfigs = fullCopyOfApprovementThread.WORKFLOW_OPTIONS
 
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
 
-                if(poolStorage.isReserve) fullCopyOfQuorumThread.EPOCH.poolsRegistry.reservePools.push(pool)
+                if(poolStorage.isReserve) fullCopyOfApprovementThread.EPOCH.poolsRegistry.reservePools.push(pool)
 
-                else fullCopyOfQuorumThread.EPOCH.poolsRegistry.primePools.push(pool)
+                else fullCopyOfApprovementThread.EPOCH.poolsRegistry.primePools.push(pool)
                 
 
                 // Make it "null" again
@@ -329,7 +329,7 @@ export default {
     
     //To slash unstaking if validator gets rogue
     //Here we remove the pool storage and remove unstaking from delayed operations
-    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnQuorumThread)=>{
+    SLASH_UNSTAKE:async(payload,isFromRoute,usedOnApprovementThread)=>{
 
         /*
         
@@ -380,7 +380,7 @@ export default {
             return overviewIfFromRoute ? {type:'SLASH_UNSTAKE',payload:payload.data} : false
 
         }
-        else if(usedOnQuorumThread){
+        else if(usedOnApprovementThread){
 
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
@@ -426,7 +426,7 @@ export default {
 
 
     //Only for "STAKE" operation
-    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnQuorumThread)=>{
+    REMOVE_FROM_WAITING_ROOM:async(payload,isFromRoute,usedOnApprovementThread)=>{
         
         //Here we should take the unstake operation from delayed operations and delete from there(burn) or distribute KLY | UNO to another account(for example, as reward to someone)
 
@@ -480,7 +480,7 @@ export default {
             }
 
         }
-        else if(usedOnQuorumThread){
+        else if(usedOnApprovementThread){
 
             let slashHelper = await getFromApprovementThreadState('SLASH_OBJECT')
 
@@ -540,7 +540,7 @@ export default {
 
 
     //To set new rubicon and clear tracks from APPROVEMENT_THREAD_METADATA
-    RUBICON_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
+    RUBICON_UPDATE:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
 
         /*
         
@@ -584,9 +584,9 @@ export default {
             //In this case, <proposer> property is the address should be included to your whitelist in configs
             return {type:'UPDATE_RUBICON',payload:data}
 
-        }else if(usedOnQuorumThread){
+        }else if(usedOnApprovementThread){
     
-            if(fullCopyOfQuorumThread.RUBICON < payload) fullCopyOfQuorumThread.RUBICON=payload
+            if(fullCopyOfApprovementThread.RUBICON < payload) fullCopyOfApprovementThread.RUBICON=payload
 
         }else{
 
@@ -601,7 +601,7 @@ export default {
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnQuorumThread)=>{
+    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnApprovementThread)=>{
 
         /*
         
@@ -651,7 +651,7 @@ export default {
             return {type:'WORKFLOW_UPDATE',payload:data}
 
         }
-        else if(usedOnQuorumThread){
+        else if(usedOnApprovementThread){
 
             let updatedOptions = await getFromApprovementThreadState('WORKFLOW_OPTIONS')
 
@@ -671,7 +671,7 @@ export default {
 
 
 
-    VERSION_UPDATE:async(payload,isFromRoute,usedOnQuorumThread,fullCopyOfQuorumThread)=>{
+    VERSION_UPDATE:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
 
         /*
         
@@ -717,9 +717,9 @@ export default {
             return {type:'VERSION_UPDATE',payload:data}
 
         }
-        else if(usedOnQuorumThread && payload.major > fullCopyOfQuorumThread.VERSION){
+        else if(usedOnApprovementThread && payload.major > fullCopyOfApprovementThread.VERSION){
 
-            fullCopyOfQuorumThread.VERSION=payload.major
+            fullCopyOfApprovementThread.VERSION=payload.major
 
         }else if(payload.major > WORKING_THREADS.VERIFICATION_THREAD.VERSION){
 

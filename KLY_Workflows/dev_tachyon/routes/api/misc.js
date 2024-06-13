@@ -126,46 +126,34 @@ FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
 
 
 
-// Returns current pools data
-FASTIFY_SERVER.get('/verification_stats_per_pool',(request,response)=>{
+// Returns metadata related to KLY-EVM on shards
+FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
 
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VERIFICATION_STATS_PER_POOL){
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.KLY_EVM_METADATA){
 
         response
         
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VERIFICATION_STATS_PER_POOL}`)
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.KLY_EVM_METADATA}`)
+    
 
+        let responseObject = {
 
-        response.send(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
+            klyEvmMetadata:WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA, // shardID => {nextEvmBlockIndex,parentHash,timestamp},
+
+            epochMetadata:{
+
+                id: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
+                hash: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash,
+                startTimestamp: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp,
+
+            }
+
+        }
+
+        response.send(responseObject)
 
     }else response.send({err:'Symbiote not supported'})
-
-})
-
-
-
-
-
-// Returns the info about epoch on AT(Approvement Thread) and VT(Verification Thread)
-
-FASTIFY_SERVER.get('/epoch_data/:threadID',(request,response)=>{
-
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.GET_EPOCH_DATA){
-
-        response
-            
-            .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.DATA_ABOUT_EPOCH_ON_THREAD}`)
-            
-        
-        response.send(
-
-            WORKING_THREADS[request.params.threadID === 'vt' ? 'VERIFICATION_THREAD': 'APPROVEMENT_THREAD'].EPOCH
-
-        )
-
-    }else response.send({err:'Route is off'})
 
 })
 

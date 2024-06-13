@@ -124,11 +124,11 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
         // Add the sync flag to prevent creation proofs during the process of skip this pool
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
 
-        let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
+        let poolsRegistryOnApprovementThread = epochHandler.poolsRegistry
 
-        let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(block.creator)
+        let itsPrimePool = poolsRegistryOnApprovementThread.primePools.includes(block.creator)
     
-        let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(block.creator)
+        let itsReservePool = poolsRegistryOnApprovementThread.reservePools.includes(block.creator)
     
         let poolIsReal = itsPrimePool || itsReservePool
     
@@ -444,11 +444,11 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
         // Add the sync flag to prevent creation proofs during the process of skip this pool
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
-        let poolsRegistryOnQuorumThread = epochHandler.poolsRegistry
+        let poolsRegistryOnApprovementThread = epochHandler.poolsRegistry
 
-        let itsPrimePool = poolsRegistryOnQuorumThread.primePools.includes(blockCreator)
+        let itsPrimePool = poolsRegistryOnApprovementThread.primePools.includes(blockCreator)
     
-        let itsReservePool = poolsRegistryOnQuorumThread.reservePools.includes(blockCreator)
+        let itsReservePool = poolsRegistryOnApprovementThread.reservePools.includes(blockCreator)
     
         let poolIsReal = itsPrimePool || itsReservePool
 
