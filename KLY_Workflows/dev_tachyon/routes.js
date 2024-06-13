@@ -3,8 +3,10 @@
 let modules = [
     
     'api/block_data.js',
-    'api/state_data.js',
+    'api/epoch_data.js',
+    'api/mempools.js',
     'api/misc.js',
+    'api/state_data.js',
     
     'main/epoch_changing.js',
     'main/epoch_edge_operations.js',

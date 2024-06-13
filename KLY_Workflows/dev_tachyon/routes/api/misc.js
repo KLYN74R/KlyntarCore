@@ -160,6 +160,40 @@ FASTIFY_SERVER.get('/kly_evm_metadata',(_request,response)=>{
 
 
 
+// Returns data that shows your node synchronization height on shards
+FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATS){
+
+        response
+        
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATS}`)
+    
+
+        let responseObject = {
+
+            heightPerShard:WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER, // shardID => height
+
+            epochMetadata:{
+
+                id: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
+                hash: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash,
+                startTimestamp: WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp,
+
+            }
+
+        }
+
+        response.send(responseObject)
+
+    }else response.send({err:'Symbiote not supported'})
+
+})
+
+
+
+
 // Handler to accept transaction, make overview and add to mempool ✅
 
 FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
@@ -311,9 +345,5 @@ TODO:
 GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
 
 GET /current_shard_leader/:SHARD - returns info about current shard leader - returns data from tempData.SHARD_LEADERS_HANDLERS.get(SHARD)
-
-GET /finalization_stats - returns the data from local FINALIZATION_STATS object (currentEpochMetadata.FINALIZATION_STATS.get(poolPubKey))
-
-GET /eeo_mempool - tempData.EPOCH_EDGE_OPERATIONS_MEMPOOL
 
 */

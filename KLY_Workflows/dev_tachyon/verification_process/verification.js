@@ -2125,9 +2125,9 @@ let verifyBlock = async(block,shardContext) => {
         */
 
 
-        let currentSID = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
+        let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
 
-        atomicBatch.put(`SID:${shardContext}:${currentSID}`,currentBlockID)
+        atomicBatch.put(`SID:${shardContext}:${generalBlockIndexInShard}`,currentBlockID)
 
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
@@ -2188,7 +2188,7 @@ let verifyBlock = async(block,shardContext) => {
         
         atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
 
-            sid:currentSID
+            sid:generalBlockIndexInShard
 
         })
 

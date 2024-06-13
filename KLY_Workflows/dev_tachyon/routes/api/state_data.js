@@ -1,5 +1,9 @@
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../../blockchain_preparation.js'
 
+import {getFromApprovementThreadState} from '../../common_functions/approvement_thread_related.js'
+
+import {getFromState} from '../../common_functions/state_interactions.js'
+
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
@@ -76,26 +80,32 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
 
 
 
-/** 
-* 
-* returns object like {shardID => {currentLeader,index,hash}}
-* 
-*/
+FASTIFY_SERVER.get('/pool_stats/:poolId',async(request,response)=>{
 
-FASTIFY_SERVER.get('/sync_state',(request,response)=>{
 
-    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SYNC_STATE){
- 
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.POOL_STATS){
+
+        // Take the info related to pool based on data in VT(verification thread) and AT(approvement thread)
+
+        let poolOriginShard = await getFromState(`${request.params.poolID}(POOL)_POINTER`)
+
+        let poolMetadataFromState = await getFromState(`${poolOriginShard}:${request.params.poolID}(POOL)`)
+
+        let poolStorageFromState = await getFromState(`${poolOriginShard}:${request.params.poolID}(POOL)_STORAGE_POOL`)
+
+        let poolStorageFromApprovementThread = await getFromApprovementThreadState(`${request.params.poolID}(POOL)_STORAGE_POOL`)
+
+
         response
-        
+
             .header('Access-Control-Allow-Origin','*')
-            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SYNC_STATE}`)
+            .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.POOL_STATS)
+        
+            .send({poolMetadataFromState, poolStorageFromState, poolStorageFromApprovementThread})
+
             
-            .send(WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS)
-            
- 
-    }else response.send({err:'Route is off'})
- 
+    }else response.send({err:'Trigger is off'})
+
 })
 
 
