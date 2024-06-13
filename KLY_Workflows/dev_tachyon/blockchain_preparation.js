@@ -517,7 +517,7 @@ export let setGenesisToState=async()=>{
     }
     
 
-    //Make template, but anyway - we'll find checkpoints on hostchains
+    // Make template, but anyway - we'll find checkpoints on hostchains
     WORKING_THREADS.APPROVEMENT_THREAD.EPOCH = {
 
         id:0,

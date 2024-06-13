@@ -42,17 +42,32 @@ FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.GET_CURRENT_SHARD_LEADERS}`)
             
         
+        let responseObj = {}
+
         // Get the current epoch metadata
+
+        let atEpochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
         
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
+        let epochFullID = atEpochHandler.hash+"#"+atEpochHandler.id
 
         let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
 
-        response.send(
 
-            currentEpochMetadata.SHARDS_LEADERS_HANDLERS // primePoolPubKey => {currentLeader:<number>} | ReservePool => PrimePool
+        // Iterate over shards to get information about current leader
 
-        )
+        for(let shardID of atEpochHandler.poolsRegistry.primePools){
+
+            let currentShardLeader = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:-1}
+
+            // Once we know index => get the pubkey
+            // It might be pubkey of prime pool (if index of current leader is -1) or one of reserve pools
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][currentShardLeader.currentLeader] || shardID
+
+            responseObj[shardID] = pubKeyOfLeader
+
+        }
+
+        response.send(responseObj)
 
     }else response.send({err:'Route is off'})
 
