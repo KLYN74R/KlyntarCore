@@ -334,14 +334,3 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE}
 
 
 })
-
-
-
-
-/*
-
-TODO:
-
-GET /plugins - get the list of available plugins runned in the same instance. Via /info you can get the list about other plugins related to "this" infrastructure(runned as a separate process, available via other hosts etc.)
-
-*/
