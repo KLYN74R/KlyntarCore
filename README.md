@@ -16,17 +16,144 @@
 Working on KLYNTAR, we've been trying to make a project so powerful to wonder you as in your 8 y.o. when you've got to know Santa doesn't exsist 🎅. This project isn't another shitcoin, 10<sup>th</sup> generation of memecoins, scam NFT project or so on. We want to resurrect the time of useful projects by creating cool stuff for our industry like <b>Unobtanium</b>, <b>KLYNTAR Services</b>, <b>Hivemind</b>, <b>SpookyAction</b>, <b>symbiotes</b> and much more! Symbiosis with other projects(chains) will give you ability to use the best and so loved functions from other cryptos. The sense is to join as new blockchains as old ones in one super organizm and make a revolution in cryptoindustry! Common resources, different consensuses, BTC miners, ETH token hodlers, Solana validators, maximum security based on security of whole the crypto industry - everything on KLYNTAR :)
 
 <br/>
-<div align="center">
 
 # How to build
 
-> See https://docs.klyntar.org
+
+
+## Node.js installation
+
+<div align="center">
+
+![alt text](./images/nodejs.png)
 
 </div>
 
-<br/>
+Since the core is written on Node.js you should to install it. If you already have installed, we recommend checking the version. The recommended version is **v21.4.0**
+
+**Linux:**
+
+```bash
+johndoe@klyntar:~$ node -v
+v21.4.0
+```
+**Windows:**
+
+```sh
+C:\Users\JohnDoe>node -v
+v21.4.0
+```
 
 
+## Go installation
+
+<div align="center">
+
+![alt text](./images/golang.png)
+
+</div>
+
+Some parts of KLY is written on Go(for example, PQC schemes), so you need to install it too. Or, check if you already have Go
+
+```sh
+go version
+```
+
+## PNPM install
+
+<div align="center">
+
+![alt text](./images/pnpm.png)
+
+</div>
+
+As a package manager for Node.js we use pnpm. To install it globally, run:
+
+```sh
+npm install -g pnpm
+```
+
+## After all
+
+Now, clone the core repository
+
+```sh
+git clone https://github.com/KLYN74R/KlyntarCore.git
+
+cd KlyntarCore
+```
+
+### Install dependencies
+
+```sh
+pnpm install
+```
+
+### Link core to make it available from any location
+
+```sh
+npm link
+```
+
+### Build Golang addons
+
+Now depending on your OS run the following commands:
+
+**Linux:**
+
+```bash
+chmod 700 build_must_have_addons.sh
+
+./build_must_have_addons.sh
+```
+
+**Windows:**
+
+```sh
+build_must_have_addons.bat
+```
+
+### Build KLY-EVM
+
+**Linux:**
+
+```sh
+cd KLY_VirtualMachines\kly_evm
+
+pnpm install
+
+chmod 700 build_kly_evm.sh
+
+./build_kly_evm.sh
+```
+
+**Windows:**
+
+```sh
+cd KLY_VirtualMachines\kly_evm
+
+pnpm install
+
+build_kly_evm.bat
+```
+
+### Return to main directory
+
+```sh
+cd ../../
+
+// Set appropriate access (Linux only)
+chmod 700 klyn74r.js
+```
+
+# Prepare configuration and genesis files
+
+Now, you need 2 things to run your node and join some network:
+
+1. Genesis file
+2. Configuration for your node
+
+To see how to setup it follow [here](https://docs.klyntar.org/deep-dive-into-kly/run-kly-node#prepare-configuration-and-genesis-files)
 
 
 <div name="advice"></div>
