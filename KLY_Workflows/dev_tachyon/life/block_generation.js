@@ -427,7 +427,7 @@ let generateBlocksPortion = async() => {
 
     //___________________ Add the AEFP to the first block of epoch ___________________
 
-    if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0){
+    if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0 && WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
 
         // Add the AEFP for previous epoch
 
