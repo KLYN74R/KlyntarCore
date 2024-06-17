@@ -1461,9 +1461,9 @@ getPreparedTxsForParallelization = txsArray => {
 
     //____________ Now, all the txs where all accounts in <touchedAccount> has 1 point can be executed independently ____________
 
-    let collectionWithIndependentTxs = new Set()
+    let independentTransactions = new Set()
 
-    let allTheRestTransactions = new Set()
+    let syncTransactions = new Set()
 
     for(let transaction of txsArray){
 
@@ -1471,14 +1471,55 @@ getPreparedTxsForParallelization = txsArray => {
 
         if(eachTouchedAccountInTxHasOnePoint){
 
-            collectionWithIndependentTxs.add(transaction)
+            independentTransactions.add(transaction)
 
-        } else allTheRestTransactions.add(transaction)
+        } else syncTransactions.add(transaction)
+
+    }
+
+    //____________ To increase speedup - start another iteration. Create independent groups where one account has >1 touched and all the rest has 1 touch ____________
+
+    let independentGroups = new Map() // account => txs
+
+
+    for(let transaction of syncTransactions){
+
+        // Now iterate over array of touched accounts
+
+        let numberOfAccountsTouchedMoreThanOnce = 0
+
+        let accountThatChangesMoreThanOnce
+
+        for(let accountID of transaction.touched){
+
+            if(numberOfAccountTouchesPerAccount.get(accountID) > 1){
+
+                accountThatChangesMoreThanOnce = accountID
+            
+                numberOfAccountsTouchedMoreThanOnce++
+
+            }
+
+            if(numberOfAccountsTouchedMoreThanOnce > 1) break
+
+        }
+
+        if(numberOfAccountsTouchedMoreThanOnce === 1){
+
+            let threadForThisGroup = independentGroups.get(accountThatChangesMoreThanOnce) || []
+
+            threadForThisGroup.push(transaction)
+
+            syncTransactions.delete(transaction)
+
+            independentGroups.set(accountThatChangesMoreThanOnce,threadForThisGroup)
+
+        }
 
     }
 
 
-    return {collectionWithIndependentTxs, allTheRestTransactions}
+    return {independentTransactions, independentGroups, syncTransactions}
 
 
 },
@@ -1926,6 +1967,34 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardBo
 
 
 
+let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardBox,atomicBatch) => {
+
+    for(let txFromIndependentGroup of independentGroup){
+
+        if(VERIFIERS[txFromIndependentGroup.type]){
+
+            let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
+    
+            let {isOk,reason} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+    
+            // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
+            if(reason!=='EVM'){
+    
+                let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
+    
+                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+    
+            }
+        
+        }
+    
+    }
+
+}
+
+
+
+
 let verifyBlock = async(block,shardContext) => {
 
 
@@ -1999,23 +2068,39 @@ let verifyBlock = async(block,shardContext) => {
 
             // First of all - split the transactions for groups that can be executed simultaneously
 
-            let groupsOfTransactions = getPreparedTxsForParallelization(block.transactions)
+            let txsPreparedForParallelization = getPreparedTxsForParallelization(block.transactions)
 
             // Firstly - execute independent transactions in a parallel way
 
             let txsPromises = []
 
-            for(let independentTransaction of groupsOfTransactions.collectionWithIndependentTxs){
+            //____________Add the independent transactions. 1 tx = 1 thread____________
+
+            for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
                 txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardBox,atomicBatch))
 
             }
 
+            //____________Add all the transactions from independent groups. 1 group(with many txs) = 1 thread____________
+
+            for(let [,independentGroup] of txsPreparedForParallelization.independentGroups){
+
+                // Groups might be executed in parallel, but all the txs in a single groups must be executed in a sync way
+                
+                txsPromises.push(
+
+                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardBox,atomicBatch)
+
+                )
+
+            }
+
             await Promise.all(txsPromises)
 
-            // Now, execute all the rest transactions
+            // Now, execute all the rest transactions that can't be executed in a async(parallel) way
 
-            for(let sequentialTransaction of groupsOfTransactions.allTheRestTransactions){
+            for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
                 await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardBox,atomicBatch)
 
