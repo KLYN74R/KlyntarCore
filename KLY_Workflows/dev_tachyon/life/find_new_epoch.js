@@ -577,7 +577,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfApprovementThread
 
-                customLog(`Epoch on quorum thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
+                customLog(`Epoch on approvement thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
 
 
                 //_______________________Check the version required for the next checkpoint________________________
