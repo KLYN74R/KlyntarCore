@@ -223,7 +223,7 @@ export let VERIFIERS = {
 
     CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await getAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
         let goingToSpend = getPricePerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
 

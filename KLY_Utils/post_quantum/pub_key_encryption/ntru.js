@@ -13,14 +13,14 @@ The default parameter set is EES743EP1 (roughly 256-bit strength, as per NTRU's 
 
 import ntru from 'ntru'
 
-let keys=await ntru.keyPair('hello')
+let keys = await ntru.keyPair('hello')
 
 console.log(keys)
 
 console.log(ntru)
 
 let text=Buffer.from('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaq','utf8')
-let encrypted=await ntru.encrypt(text,keys.publicKey)
+let encrypted = await ntru.encrypt(text,keys.publicKey)
 
 console.log(encrypted)
 

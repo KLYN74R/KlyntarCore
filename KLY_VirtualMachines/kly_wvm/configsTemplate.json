@@ -15,7 +15,7 @@
     
         "CONTRACTS_CACHE_SIZE":10000,
     
-        "PENALTY_IF_LACK_OF_ENERGY":0.1,
+        "PENALTY_IF_LACK_OF_GAS":0.1,
     
         "ALLOWED_MODULES":["github","btc","polygon","twitter"],
     
