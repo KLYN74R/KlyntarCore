@@ -149,9 +149,9 @@ export let VERIFIERS = {
 
     TX:async(originShard,tx,rewardBox)=>{
 
-        let senderAccount=await getAccountFromState(originShard+':'+tx.creator),
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
         
-            recipientAccount=await getAccountFromState(originShard+':'+tx.payload.to),
+            recipientAccount = await getAccountFromState(originShard+':'+tx.payload.to),
 
             goingToSpend = getPricePerSignatureType(tx)+tx.payload.amount+tx.fee
 
@@ -306,7 +306,7 @@ export let VERIFIERS = {
     */
     CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
-        let senderAccount=await getAccountFromState(originShard+':'+tx.creator),
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
 
             goingToSpend = getPricePerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 

@@ -1,4 +1,4 @@
-export let GAS_USED_BY_METHOD=methodID=>{return
+export let GAS_USED_BY_METHOD=methodID=>{
 
     if(methodID==='constructor') return 0.1
 
@@ -30,25 +30,6 @@ export let CONTRACT = {
 
         
 
-    },
-
-
-    stake:async (payload,originShard,atomicBatch)=>{
-
-        
-
-    },
-
-    unstake:async (payload,originShard,atomicBatch)=>{
-
-        
-
-    },
-
-    slash:async (payload,originShard,atomicBatch)=>{
-
-        
-
-    },
+    }
 
 }

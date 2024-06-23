@@ -730,6 +730,20 @@ export default {
         
     }
 
+    ALIAS_CONTRACT_CALL:async(payload,isFromRoute,_usedOnApprovementThread,_fullCopyOfApprovementThread)=>{
+
+
+        /*
+    
+            Used to assign some alias to account identifier
+    
+        */
+
+
+    }
+
+
+
 }
 
 
