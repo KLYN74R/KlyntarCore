@@ -60,6 +60,13 @@ global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 // Need this object inside EVM
 global.KLY_EVM_OPTIONS = { bindContext, coinbase}
 
+// Need this for JSON-RPC compatibility
+global.CONFIG = {
+    
+    EVM: CONFIGURATION.KLY_EVM
+
+}
+
 
 /*
 

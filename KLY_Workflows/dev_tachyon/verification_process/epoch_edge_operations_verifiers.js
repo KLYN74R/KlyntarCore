@@ -728,7 +728,7 @@ export default {
 
         }
         
-    }
+    },
 
     ALIAS_CONTRACT_CALL:async(payload,isFromRoute,_usedOnApprovementThread,_fullCopyOfApprovementThread)=>{
 
@@ -736,6 +736,13 @@ export default {
         /*
     
             Used to assign some alias to account identifier
+
+            Payload is {
+
+                alias:"blablabla",
+                assignTo:"<normal KLY identifier - eth address or kly ids(ed25519,bls,tbls,pqc)>"
+                shard:"<shard id where identifier is>"
+            }
     
         */
 
