@@ -35,7 +35,10 @@ const {
     coinbase, // this address will be set as a block creator, but all the fees will be automatically redirected to KLY env and distributed among pool stakers
     hardfork,
     gasLimitForBlock,
-    bindContext
+    bindContext,
+    gasPriceInWeiAndHex,
+    protocolVersionInHex,
+    clientVersion
 
 } = CONFIGURATION.KLY_EVM
 
@@ -58,14 +61,7 @@ global.GET_SHARD_ASSIGNMENT = async addressAsString => {
 
 
 // Need this object inside EVM
-global.KLY_EVM_OPTIONS = { bindContext, coinbase}
-
-// Need this for JSON-RPC compatibility
-global.CONFIG = {
-    
-    EVM: CONFIGURATION.KLY_EVM
-
-}
+global.KLY_EVM_OPTIONS = { bindContext, coinbase, gasPriceInWeiAndHex, protocolVersionInHex, chainId, clientVersion, networkId}
 
 
 /*

@@ -93,6 +93,9 @@ export let WORKING_THREADS = {
 }
 
 
+// Need it for KLY-EVM JSON-RPC compatibility
+
+global.KLY_EVM_METADATA = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA
 
 
 // Global object which holds LevelDB instances for databases for blocks, state, metadata, KLY_EVM, etc.
