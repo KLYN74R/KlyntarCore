@@ -13,7 +13,7 @@ dependencies:
     version: 1.0.1
   '@klyntar/klyntarevmjsonrpc':
     specifier: github:KLYN74R/KlyntarEVMJsonRPC#v3
-    version: github.com/KLYN74R/KlyntarEVMJsonRPC/9a4d15db81770d5dabc6fa2af6b206bdc0cdf841
+    version: github.com/KLYN74R/KlyntarEVMJsonRPC/46aa9c89b657596b27aea6dfea69dc2b4abfaf48
   assemblyscript:
     specifier: ^0.19.23
     version: 0.19.23
@@ -5258,10 +5258,10 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  github.com/KLYN74R/KlyntarEVMJsonRPC/9a4d15db81770d5dabc6fa2af6b206bdc0cdf841:
-    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/9a4d15db81770d5dabc6fa2af6b206bdc0cdf841}
+  github.com/KLYN74R/KlyntarEVMJsonRPC/46aa9c89b657596b27aea6dfea69dc2b4abfaf48:
+    resolution: {tarball: https://codeload.github.com/KLYN74R/KlyntarEVMJsonRPC/tar.gz/46aa9c89b657596b27aea6dfea69dc2b4abfaf48}
     name: '@klyntar/klyntarevmjsonrpc'
-    version: 3.3.2
+    version: 3.4.0
     hasBin: true
     dependencies:
       '@ethereumjs/tx': 4.2.0

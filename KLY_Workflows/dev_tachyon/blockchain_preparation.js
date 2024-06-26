@@ -93,9 +93,6 @@ export let WORKING_THREADS = {
 }
 
 
-// Need it for KLY-EVM JSON-RPC compatibility
-
-global.KLY_EVM_METADATA = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA
 
 
 // Global object which holds LevelDB instances for databases for blocks, state, metadata, KLY_EVM, etc.
@@ -638,6 +635,10 @@ export let prepareBlockchain=async()=>{
         await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
     }
+
+    // Need it for KLY-EVM JSON-RPC compatibility
+
+    global.KLY_EVM_METADATA = WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA
 
 
     //________________________________________Set the state of KLY-EVM______________________________________________
