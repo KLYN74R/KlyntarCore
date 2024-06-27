@@ -83,7 +83,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 DEFAULT_SIMPLE_QUERIES()
 
 
-let EVM_DEFAULT_TX=async()=>{
+let EVM_DEFAULT_TX = async() => {
 
     let nonce = await web3.eth.getTransactionCount(evmAccount0.address)
 
