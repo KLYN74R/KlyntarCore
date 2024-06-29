@@ -1,4 +1,5 @@
-import bls from '../../../KLY_Utils/signatures/multisig/bls.js'
+import {signEd25519,verifyEd25519} from '../../../KLY_Utils/utils.js'
+
 import fetch from 'node-fetch'
 
 
@@ -9,7 +10,9 @@ import fetch from 'node-fetch'
 
 
 
-const SYMBIOTE_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'//chain on which you wanna send tx
+const SYMBIOTIC_CHAIN_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' // chain on which you wanna send tx
+
+const SHARD = '9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK'
 
 const WORKFLOW_VERSION = 0
 
@@ -34,12 +37,12 @@ const SIG_TYPES = {
     MULTISIG:'M'                    // Multisig BLS
 }
 
-const SPECIAL_OPERATIONS_TYPES={
+const EPOCH_EDGE_OPERATIONS_TYPES = {
 
     STAKING_CONTRACT_CALL:'STAKING_CONTRACT_CALL',
     SLASH_UNSTAKE:'SLASH_UNSTAKE',
     REMOVE_FROM_WAITING_ROOM:'REMOVE_FROM_WAITING_ROOM',
-    UPDATE_RUBICON:'UPDATE_RUBICON',
+    RUBICON_UPDATE:'RUBICON_UPDATE',
     WORKFLOW_UPDATE:'WORKFLOW_UPDATE',
     VERSION_UPDATE:'VERSION_UPDATE',
 
@@ -47,13 +50,13 @@ const SPECIAL_OPERATIONS_TYPES={
 
 //___________________________________________ TEST ACCOUNTS ___________________________________________
 
+// Ed25519 keypair. Pubkey is pool id
 
-// BLS multisig
 const POOL_OWNER = {
 
-    privateKey:"aa73f1798339b56fbf9a7e8e73b69a2e0e8d71dcaa9d9d114c6bd467d79d5d24",
-        
-    pubKey:"61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8"
+    pubKey:"6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE",
+
+    privateKey:"MC4CAQAwBQYDK2VwBCIEIJT7NA/u+Df874H2DFRbyg43LpJwlhcRsS3Bv8/FUIZN"
     
 }
 
@@ -61,17 +64,11 @@ const POOL_OWNER = {
 //___________________________________________ FUNCTIONS ___________________________________________
 
 
-let GET_ACCOUNT_DATA=async account=>{
+let GET_ACCOUNT_DATA = async account=>{
 
-    return fetch(`http://localhost:7331/account/${account}`)
+    return fetch(`http://localhost:7332/state/${SHARD}/${account}`)
 
-    .then(r=>r.json()).catch(()=>{
-    
-        console.log(_)
-
-        console.log(`Can't get chain level data`)
-
-    })
+    .then(r=>r.json()).catch(()=>{})
 
 }
 
@@ -94,24 +91,6 @@ let SEND_TRANSACTION=transaction=>{
 
 
 
-let SEND_SPECIAL_OPERATION=(type,payload)=>{
-
-    return fetch('http://localhost:7331/special_operations',
-
-        {
-        
-            method:'POST',
-        
-            body:JSON.stringify({type,payload})
-    
-        }
-
-    ).then(r=>r.text()).catch(console.log)
-
-}
-
-
-
 
 /*
 
@@ -123,29 +102,32 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
 ![*] ------------------------------------------------------- Pool deployment. See dev_tachyon/systemContracts/stakingPool.js --------------------------------------------------------
 
 
-    0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload
+    0) Create new pool via TX_TYPE = CONTRACT_DEPLOY with the following payload
 
     {
         {
             bytecode:'',(empty)
             lang:'spec/stakingPool'
-            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList,PoolURL]
+            constructorParams:[Ed25519PoolRootKey,Percentage,OverStake,WhiteList,PoolURL]
         }
     }
 
-*    [*] BLSPoolRootKey - BLS pubkey for validator. The same as PoolID. It should be your pubkey or aggregated pubkey controlled by some group
+*    [*] Ed25519PoolRootKey - Ed25519 pubkey for validator. The same as PoolID
 
     We'll create the pool for our KLY_TESTNET_V1 with the following creds
 
     {
-        privateKey: '8cd685bd53078dd908dc49c40eb38c46305eba1473348b0a573f3598a5c2e32f',
-        pubKey: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'
+
+        pubKey:"6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE",
+        privateKey:"MC4CAQAwBQYDK2VwBCIEIJT7NA/u+Df874H2DFRbyg43LpJwlhcRsS3Bv8/FUIZN"
+    
     }
 
+ 
 
-*    [*] Percentage - % of fees that will be earned by BLS pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers. The value is in range 0-1
+*    [*] Percentage - % of fees that will be earned by Ed25519 pubkey related to PoolID. The rest(100-Percentage %) will be shared among stakers. The value is in range 0-1
 
-    Our stake will be 70%(so the 30% will be shared among the rest validators). For this, set the value to 0.7
+    Our stake will be 70%(so the 30% will be shared among the rest stakers). For this, set the value to 0.7
     
     
 
@@ -155,12 +137,12 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
     
 
 
-*    [*] WhiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
+*    [*] WhiteList - array of addresses who can stake in this pool. Thanks to this, you can set own logic to distribute fees, make changes and so on by adding only one address - ID of smart contract
 
-    To prevent contract call by the someone else, set the whitelist to ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u']
+    To prevent contract call by the someone else, set the whitelist to ['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE']
 
 
-*    [*] PoolURL - endpoint to know how to find pool authority. Need to grab commitments, finalization proofs and so on.
+*    [*] PoolURL - endpoint to know how to find pool authority. Need to grab finalization proofs and so on.
 
     The default form is http(s)://<domain_or_ip>:<port>/<optional path>
 
@@ -176,7 +158,7 @@ let SEND_SPECIAL_OPERATION=(type,payload)=>{
 
 *    So, the payload for constructor for system contract will be like this:
 
-    ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],'http://localhost:7334']
+    ['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE',0.7,0,['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE'],'http://localhost:7334']
 
 
 +++++++++++++++++++++++++++++++++++++++++++++++++ RESULT +++++++++++++++++++++++++++++++++++++++++++++++++
@@ -187,7 +169,7 @@ After pool's contract deployment we should have the following in state
         0) Pool metadata should be present
 
         {
-            key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+            key: '9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK:6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE(POOL)',
             value: {
                 type: 'contract',
                 lang: 'spec/stakingPool',
@@ -202,11 +184,11 @@ After pool's contract deployment we should have the following in state
 
         {
 
-            key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
+            key: '9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK:6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE(POOL)_STORAGE_POOL',
             value: {
                 percentage: 0.7,
                 overStake: 0,
-                whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
+                whiteList: ['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE'],
                 totalPower: 0,
                 stakers: {},
                 waitingRoom: {},
@@ -231,41 +213,32 @@ let DEPLOY_POOL_CONTRACT=async()=>{
         {
             bytecode:'',(empty)
             lang:'spec/stakingPool'
-            constructorParams:[BLSPoolRootKey,Percentage,OverStake,WhiteList]
+            constructorParams:[Ed25519PoolRootKey,Percentage,OverStake,WhiteList]
         }
     }
 
     */
 
     let poolContractCreationTx={
-
-        v:WORKFLOW_VERSION,
-        creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_DEPLOY',
-        nonce:1,
-        fee:FEE,
-        payload:{
-            
-            //________________ Account related stuff ________________
-
-            type:'M', //multisig tx
-            active:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-            afk:[],
-
-            //____________________ For contract _____________________
-
-            bytecode:'',
-            lang:'spec/stakingPool',
-            constructorParams:['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',0.7,0,['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],'http://localhost:7334']
+        v: 0,
+        creator: '6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE',
+        type: 'CONTRACT_DEPLOY',
+        nonce: 1,
+        fee: 5,
+        payload: {
+          type: 'D',
+          bytecode: '',
+          lang: 'system/stakingPool',
+          constructorParams: [
+            '6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE',
+            0.7,
+            0,
+            ['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE'],
+            'http://localhost:7334'
+          ]
         },
-        sig:''
-
+        sig: 'cKJHTq1o2LbwmJZzLfn7zErpN7oZv/5P9wbpddNAeUC3HTvi6+S36Ye7IB8Ay6C4ehumCSz1/Ex/lNnUyypwDQ=='
     }
-
-
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_DEPLOY'+JSON.stringify(poolContractCreationTx.payload)+poolContractCreationTx.nonce+FEE
-
-    poolContractCreationTx.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
 
     console.log('\n=============== SIGNED METADATA FOR CONTRACT DEPLOYMENT IS READY ===============\n')
 
@@ -296,7 +269,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
     {
 
-        contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)',
+        contractID:'6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE(POOL)',
         method:'stake',
         gasLimit:0,
         params:[A] params to pass to function. A is alias - see below
@@ -319,11 +292,11 @@ The state will look like this
 
     {
 
-        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
+        key: '6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE(POOL)_STORAGE_POOL',
         value: {
             percentage: 0.7,
             overStake: 0,
-            whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
+            whiteList: ['6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE'],
             totalPower: 0,
             stakers: {},
             waitingRoom: {
@@ -332,7 +305,7 @@ The state will look like this
 
                     checkpointID:global.SYMBIOTE_META.VERIFICATION_THREAD.CHECKPOINT.id,
 
-                    staker:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
+                    staker:'6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE',
 
                     amount:55000,
 
@@ -412,7 +385,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
     }
 
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
 
     stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
 
@@ -793,7 +766,7 @@ let UNSTAKING=async()=>{
     }
 
 
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
+    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
 
     unstakingTxToPool.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
 
@@ -852,123 +825,6 @@ let MOVE_FROM_WAITING_ROOM_TO_UNSTAKE=async()=>{
 
 
 // MOVE_FROM_WAITING_ROOM_TO_UNSTAKE()
-
-
-
-/*
-![*] ------------------------------------------------------ How to get rewards --------------------------------------------------------
-
-Imagine that you want to get rewards from pool. Since previous step we have the following in state
-
-
-[Pool storage]:
-    
-    {
-
-        key: '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u(POOL)_STORAGE_POOL',
-        value: {
-            percentage: 0.7,
-            overStake: 0,
-            whiteList: ['7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u'],
-            totalPower: 55000-X,
-            STAKERS: {
-
-                '7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u':{
-                    
-                    KLY:55000-X,
-                    UNO:0,
-                    REWARD:Y
-                }                
-
-            },
-            WAITING_ROOM: {}
-        
-        }
-
-    }
-
-
-0) You need to call the <getReward> function of pool to move the FULL reward(since previous reward withdraw) to your account
-
-TX_TYPE=CONTRACT_CALL
-
-PAYLOAD={
-
-    contractID:'7bWUpRvRZPQ4QiPVCZ6iKLK9VaUzyzatdxdKbF6iCvgFA1CwfF6694G1K2wyLMT55u',
-    method:'getReward',
-    gasLimit:0
-    params:[]
-    imports:[]
-
-}
-
-1) If OK - then you'll notice that your account state contains +Y on balance
-
-*/
-
-
-let GET_REWARD=async()=>{
-
-
-    const GENESIS_VALIDATOR_1 = {
-
-        privateKey:"af837c459929895651315e878f4917c7622daeb522086ec95cfe64fed2496867",
-        pubKey:"7GPupbq1vtKUgaqVeHiDbEJcxS7sSjwPnbht4eRaDBAEJv8ZKHNCSu2Am3CuWnHjta"
-    
-    }
-    
-
-    let getRewardTxCall={
-
-        v:WORKFLOW_VERSION,
-        creator:GENESIS_VALIDATOR_1.pubKey,
-        type:'CONTRACT_CALL',
-        nonce:4,
-        fee:FEE,
-        payload:{
-            
-            //________________ Account related stuff ________________
-
-            type:'M', //multisig tx
-            active:GENESIS_VALIDATOR_1.pubKey,
-            afk:[],
-
-            //____________________ For contract _____________________
-
-            contractID:GENESIS_VALIDATOR_1.pubKey+'(POOL)',
-            method:'getReward',
-            gasLimit:0,
-            params:[],
-            imports:[] 
-            
-        },
-
-        sig:''
-
-    }
-
-
-    let dataToSign = SYMBIOTE_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(getRewardTxCall.payload)+getRewardTxCall.nonce+FEE
-
-    getRewardTxCall.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
-
-    console.log('\n=============== SIGNED TX TO CALL POOL CONTRACT AND GET THE REWARDS ===============\n')
-
-    console.log(getRewardTxCall)
-
-    let status = await SEND_TRANSACTION(getRewardTxCall)
-
-    console.log('STATUS => ',status);
-
-
-}
-
-
-
-// GET_REWARD()
-
-
-
 
 
 

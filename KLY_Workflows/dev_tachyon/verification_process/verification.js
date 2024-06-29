@@ -1843,7 +1843,7 @@ shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
     if(mainStorageOfBlockCreator.percentage!==0){
 
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreator)|| await getEmptyAccountTemplateBindedToShard(shardContext,blockCreator)
+        let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreator) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreator)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
         
@@ -1875,7 +1875,7 @@ shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
 
 sendFeesToAccountsOnTheSameShard = async(shardID,feeRecepientPoolPubKey,feeReward) => {
 
-    // We should get the object {reward:X}. This metric shows "How much does pool <feeRecepientPool> get as a reward from txs on shard <shardID>"
+    // We should get the account of pool on specific shards
     // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
     let accountsForFeesId = shardID+':'+feeRecepientPoolPubKey
@@ -1889,7 +1889,7 @@ sendFeesToAccountsOnTheSameShard = async(shardID,feeRecepientPoolPubKey,feeRewar
 
 
 
-//Function to distribute stakes among blockCreator/his stakers/rest of prime pools
+// Function to distribute stakes among blockCreator/his stakers/rest of prime pools
 distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrimePools,blockCreator)=>{
 
     /*
