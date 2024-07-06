@@ -943,16 +943,6 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
                 newPrimePoolsArray.push(poolPubKey)
 
-                WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[poolPubKey] = {
-
-                    currentLeaderOnShard:poolPubKey,
-
-                    index:-1,
-                    
-                    hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-
-                }
-
             }
 
             WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
@@ -2214,21 +2204,9 @@ let verifyBlock = async(block,shardContext) => {
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalTxsNumber += block.transactions.length        
 
-  
         
         WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 
-        if(!WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext]) {
-
-            WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext] = {}
-
-        } 
-
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].currentLeaderOnShard = block.creator
-
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].index = block.index
-
-        WORKING_THREADS.VERIFICATION_THREAD.VT_FINALIZATION_STATS[shardContext].hash = blockHash
         
         // Change metadata per validator's thread
         
@@ -2284,7 +2262,7 @@ let verifyBlock = async(block,shardContext) => {
 
         await atomicBatch.write()
         
-        vtStatsLog(block.epoch,shardContext)
+        vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash)
 
     }
 

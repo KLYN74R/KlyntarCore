@@ -59,8 +59,6 @@ export let WORKING_THREADS = {
             
         SHARD_POINTER:'',
 
-        VT_FINALIZATION_STATS:{}, // primePoolPubKey => {currentLeaderOnShard,index,hash}
-
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
 
