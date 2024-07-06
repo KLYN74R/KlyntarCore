@@ -2191,6 +2191,14 @@ let verifyBlock = async(block,shardContext) => {
 
         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]++
 
+  
+        // Increase the total blocks & txs counters(for explorer & stats purposes)
+        
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_BLOCKS_NUMBER++
+
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_TXS_NUMBER += block.transactions.length
+
+  
         
         WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
 

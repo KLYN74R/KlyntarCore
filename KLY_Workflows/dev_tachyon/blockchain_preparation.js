@@ -71,6 +71,10 @@ export let WORKING_THREADS = {
 
         SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
 
+        TOTAL_BLOCKS_NUMBER:0,
+
+        TOTAL_TXS_NUMBER:0,
+
         EPOCH:{} // epoch handler
 
     },
