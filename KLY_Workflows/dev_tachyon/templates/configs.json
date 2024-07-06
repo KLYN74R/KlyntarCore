@@ -68,7 +68,9 @@
             "DATA_ABOUT_EPOCH_ON_THREAD":5,
             "GET_CURRENT_SHARD_LEADERS":5,
             "GET_EPOCH_BY_INDEX":5,
-            "KLY_EVM_METADATA":5
+            "KLY_EVM_METADATA":5,
+            "VT_TOTAL_STATS":5,
+            "VT_STATS_PER_EPOCH":5
 
         }   
     
@@ -96,6 +98,8 @@
             "BLOCK":1,
             "BLOCK_BY_SID":1,
             "LATEST_N_BLOCKS":1,
+            "VT_TOTAL_STATS":1,
+            "VT_STATS_PER_EPOCH":1,
 
             "MY_KLY_INFRASTRUCTURE":1,
             "SYNC_STATS":1,

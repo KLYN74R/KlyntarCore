@@ -15,7 +15,8 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 
 
 
-//Function for pretty output the information about verification thread(VT)
+// Function for pretty output the information about verification thread(VT)
+
 export let vtStatsLog = (epochFullID,shardContext,currentLeaderOnShard,blockIndex,blockHash) => {
 
     console.log(logColors.TIME_COLOR,`[${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}]\u001b[38;5;99m(pid:${process.pid})`,logColors.CYAN,'Local VERIFICATION_THREAD state is',logColors.CLEAR)

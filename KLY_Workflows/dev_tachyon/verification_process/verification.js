@@ -977,6 +977,12 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
         customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
+        // Store the stats during verification thread work in this epoch
+        
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`VT_STATS:${vtEpochHandler.id}`,WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH).catch(()=>{})
+
+
+
         // Finally - set the new index, hash and timestamp for next epoch
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
@@ -985,8 +991,10 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
 
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = { totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0 }
 
         // Commit the changes of state using atomic batch
+
         GLOBAL_CACHES.STATE_CACHE.forEach(
             
             (value,recordID) => atomicBatch.put(recordID,value)

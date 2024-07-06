@@ -139,6 +139,24 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
 
 
 
+// Returns stats - total number of blocks, total number of txs and number of succesful txs
+
+FASTIFY_SERVER.get('/total_blocks_and_txs_stats',(_,response)=>{
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_TOTAL_STATS){
+
+        response
+        
+            .header('Access-Control-Allow-Origin','*')    
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VT_TOTAL_STATS}`)
+    
+        response.send(WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS)
+
+    }else response.send({err:'Route is off'})
+
+})
+
+
 /*
 
 To return AGGREGATED_FINALIZATION_PROOF related to some block PubX:Index

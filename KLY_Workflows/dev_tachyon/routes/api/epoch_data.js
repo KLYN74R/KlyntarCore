@@ -98,3 +98,39 @@ FASTIFY_SERVER.get('/epoch_by_index/:index',async(request,response)=>{
     }else response.send({err:'Route is off'})
 
 })
+
+
+
+
+// Returns stats - total number of blocks, total number of txs and number of succesful txs
+
+FASTIFY_SERVER.get('/total_blocks_and_txs_stats_per_epoch/:index',async(request,response)=>{
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_STATS_PER_EPOCH){
+
+        response
+        
+            .header('Access-Control-Allow-Origin','*')    
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VT_STATS_PER_EPOCH}`)
+
+
+        if(request.params.index == WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
+
+            response.send(WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH)
+
+        }else{
+
+            // Get these stats from DB related to epoch data
+
+            let emptyTemplate = { totalBlocksNumber:'N/A', totalTxsNumber:'N/A', successfulTxsNumber:'N/A' }
+
+            let vtStatsPerEpoch = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`VT_STATS:${request.params.index}`).catch(()=>emptyTemplate)
+
+            response.send(vtStatsPerEpoch)
+
+        }
+
+
+    }else response.send({err:'Route is off'})
+
+})
