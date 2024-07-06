@@ -147,7 +147,7 @@ export let VERIFIERS = {
     
     */
 
-    TX:async(originShard,tx,rewardBox)=>{
+    TX:async(originShard,tx,rewardsAndSuccessfullTxsCollector)=>{
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
         
@@ -188,7 +188,7 @@ export let VERIFIERS = {
         
             senderAccount.nonce=tx.nonce
             
-            rewardBox.fees+=tx.fee
+            rewardsAndSuccessfullTxsCollector.fees+=tx.fee
 
             return {isOk:true}
 
@@ -221,7 +221,7 @@ export let VERIFIERS = {
 
     */
 
-    WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
+    WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardsAndSuccessfullTxsCollector,atomicBatch)=>{
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
@@ -250,7 +250,7 @@ export let VERIFIERS = {
             
                     senderAccount.nonce=tx.nonce
                     
-                    rewardBox.fees+=tx.fee
+                    rewardsAndSuccessfullTxsCollector.fees+=tx.fee
 
                 }else return {isOk:false,reason:`No such type of system contract`}
 
@@ -275,7 +275,7 @@ export let VERIFIERS = {
             
                 senderAccount.nonce=tx.nonce
                 
-                rewardBox.fees+=tx.fee
+                rewardsAndSuccessfullTxsCollector.fees+=tx.fee
     
             }
 
@@ -304,7 +304,7 @@ export let VERIFIERS = {
 
 
     */
-    WVM_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
+    WVM_CALL:async(originShard,tx,rewardsAndSuccessfullTxsCollector,atomicBatch)=>{
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
 
@@ -338,7 +338,7 @@ export let VERIFIERS = {
             
                         senderAccount.nonce=tx.nonce
                     
-                        rewardBox.fees+=tx.fee
+                        rewardsAndSuccessfullTxsCollector.fees+=tx.fee
 
 
                     }else return {isOk:false,reason:`No such type of system contract`}
@@ -426,7 +426,7 @@ export let VERIFIERS = {
     
                     senderAccount.nonce = tx.nonce
             
-                    rewardBox.fees += tx.fee
+                    rewardsAndSuccessfullTxsCollector.fees += tx.fee
 
                 }
 
@@ -446,7 +446,7 @@ export let VERIFIERS = {
         [+] Payload is hexadecimal evm bytecode with 0x prefix(important reminder not to omit tx)
 
     */
-    EVM_CALL:async(originShard,txWithPayload,rewardBox,atomicBatch)=>{
+    EVM_CALL:async(originShard,txWithPayload,rewardsAndSuccessfullTxsCollector,atomicBatch)=>{
 
         global.ATOMIC_BATCH = atomicBatch
 
@@ -464,7 +464,7 @@ export let VERIFIERS = {
 
             totalSpentByTxInKLY = +totalSpentByTxInKLY
 
-            rewardBox.fees += totalSpentByTxInKLY
+            rewardsAndSuccessfullTxsCollector.fees += totalSpentByTxInKLY
 
             let possibleReceipt = KLY_EVM.getTransactionWithReceiptToStore(
                 

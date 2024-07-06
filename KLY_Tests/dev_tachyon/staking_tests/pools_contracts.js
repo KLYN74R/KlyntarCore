@@ -21,8 +21,8 @@ const FEE = 5
 const TX_TYPES = {
 
     TX:'TX', // default address <=> address tx
-    CONTRACT_DEPLOY:'CONTRACT_DEPLOY',
-    CONTRACT_CALL:'CONTRACT_CALL',
+    WVM_CONTRACT_DEPLOY:'WVM_CONTRACT_DEPLOY',
+    WVM_CALL:'WVM_CALL',
     EVM_CALL:'EVM_CALL',
     MIGRATE_BETWEEN_ENV:'MIGRATE_BETWEEN_ENV'
 
@@ -102,7 +102,7 @@ let SEND_TRANSACTION=transaction=>{
 ![*] ------------------------------------------------------- Pool deployment. See dev_tachyon/systemContracts/stakingPool.js --------------------------------------------------------
 
 
-    0) Create new pool via TX_TYPE = CONTRACT_DEPLOY with the following payload
+    0) Create new pool via TX_TYPE = WVM_CONTRACT_DEPLOY with the following payload
 
     {
         {
@@ -207,7 +207,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
     /*
     
-    0) Create new pool(subchain) via TX_TYPE=CONTRACT_DEPLOY with the following payload
+    0) Create new pool(subchain) via TX_TYPE = WVM_CONTRACT_DEPLOY with the following payload
 
     {
         {
@@ -222,7 +222,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
     let poolContractCreationTx={
         v: 0,
         creator: '6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE',
-        type: 'CONTRACT_DEPLOY',
+        type: 'WVM_CONTRACT_DEPLOY',
         nonce: 1,
         fee: 5,
         payload: {
@@ -265,7 +265,7 @@ let DEPLOY_POOL_CONTRACT=async()=>{
 
 0) Insofar as for our pool we'll be a single staker, we should have at least 55000 KLY(due to WORKFLOW_OPTIONS on QUORUM_THREAD). We should call the <stake> method and send a 55 000 to contract
 
-TX_TYPE=CONTRACT_CALL, required payload is
+TX_TYPE=WVM_CALL, required payload is
 
     {
 
@@ -327,7 +327,7 @@ let SEND_STAKE_TX=async()=>{
 
     /*
     
-TX_TYPE=CONTRACT_CALL, required payload is
+TX_TYPE=WVM_CALL, required payload is
 
     {
 
@@ -353,7 +353,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
 
         v:WORKFLOW_VERSION,
         creator:POOL_OWNER.pubKey,
-        type:'CONTRACT_CALL',
+        type:'WVM_CALL',
         nonce:5,
         fee:FEE,
         payload:{
@@ -385,7 +385,7 @@ TX_TYPE=CONTRACT_CALL, required payload is
     }
 
 
-    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
+    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'WVM_CALL'+JSON.stringify(stakingTxToPool.payload)+stakingTxToPool.nonce+FEE
 
     stakingTxToPool.sig=await bls.singleSig(dataToSign,POOL_OWNER.privateKey)
 
@@ -545,7 +545,7 @@ ___________________________________________________________[Steps to unstake]___
 
 0) Send the contract call operation with the following payload
 
-TX_TYPE = CONTRACT_CALL(see dev_tachyon/verifiers.js)
+TX_TYPE = WVM_CALL(see dev_tachyon/verifiers.js)
 
 PAYLOD = {
 
@@ -733,7 +733,7 @@ let UNSTAKING=async()=>{
 
         v:WORKFLOW_VERSION,
         creator:GENESIS_VALIDATOR_1.pubKey,
-        type:'CONTRACT_CALL',
+        type:'WVM_CALL',
         nonce:2,
         fee:FEE,
         payload:{
@@ -766,7 +766,7 @@ let UNSTAKING=async()=>{
     }
 
 
-    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'CONTRACT_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
+    let dataToSign = SYMBIOTIC_CHAIN_ID+WORKFLOW_VERSION+'WVM_CALL'+JSON.stringify(unstakingTxToPool.payload)+unstakingTxToPool.nonce+FEE
 
     unstakingTxToPool.sig=await bls.singleSig(dataToSign,GENESIS_VALIDATOR_1.privateKey)
 

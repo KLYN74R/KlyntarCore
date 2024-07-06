@@ -63,17 +63,36 @@ export let WORKING_THREADS = {
 
         VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
 
+
         KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
 
         KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
+
 
         TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentLeader:<uint - index of current shard leader based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
 
         SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
 
-        TOTAL_BLOCKS_NUMBER:0,
 
-        TOTAL_TXS_NUMBER:0,
+        TOTAL_STATS:{
+
+            totalBlocksNumber:0,
+            
+            totalTxsNumber:0,
+
+            successfullTxsNumber:0
+
+        },
+
+        STATS_PER_EPOCH:{
+
+            totalBlocksNumber:0,
+            
+            totalTxsNumber:0,
+
+            successfullTxsNumber:0
+
+        },
 
         EPOCH:{} // epoch handler
 

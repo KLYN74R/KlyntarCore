@@ -1943,13 +1943,13 @@ distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrim
 
 
 
-let executeTransaction = async (shardContext,currentBlockID,transaction,rewardBox,atomicBatch) => {
+let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfullTxsCollector,atomicBatch) => {
 
     if(VERIFIERS[transaction.type]){
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+        let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfullTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
         if(reason!=='EVM'){
@@ -1957,6 +1957,8 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardBo
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
             atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+
+            if(isOk) rewardsAndSuccessfullTxsCollector.successfullTxsCounter++
 
         }
     
@@ -1967,7 +1969,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardBo
 
 
 
-let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardBox,atomicBatch) => {
+let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfullTxsCollector,atomicBatch) => {
 
     for(let txFromIndependentGroup of independentGroup){
 
@@ -1975,7 +1977,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardBox,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+            let {isOk,reason} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfullTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
@@ -1983,6 +1985,8 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
                 atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+
+                if(isOk) rewardsAndSuccessfullTxsCollector.successfullTxsCounter++
     
             }
         
@@ -2013,7 +2017,13 @@ let verifyBlock = async(block,shardContext) => {
 
         // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
         
-        let rewardBox = {fees:0}
+        let rewardsAndSuccessfullTxsCollector = {
+            
+            fees:0,
+
+            successfullTxsCounter:0
+
+        }
 
         let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
@@ -2078,7 +2088,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
-                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardBox,atomicBatch))
+                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfullTxsCollector,atomicBatch))
 
             }
 
@@ -2090,7 +2100,7 @@ let verifyBlock = async(block,shardContext) => {
                 
                 txsPromises.push(
 
-                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardBox,atomicBatch)
+                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfullTxsCollector,atomicBatch)
 
                 )
 
@@ -2102,7 +2112,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
-                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardBox,atomicBatch)
+                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfullTxsCollector,atomicBatch)
 
             }        
 
@@ -2118,7 +2128,7 @@ let verifyBlock = async(block,shardContext) => {
                     [2] Send the rest of fees to prime pools
 
             */
-            await distributeFeesAmongStakersAndOtherPools(rewardBox.fees,shardContext,primePools,block.creator)
+            await distributeFeesAmongStakersAndOtherPools(rewardsAndSuccessfullTxsCollector.fees,shardContext,primePools,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    
@@ -2194,9 +2204,15 @@ let verifyBlock = async(block,shardContext) => {
   
         // Increase the total blocks & txs counters(for explorer & stats purposes)
         
-        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_BLOCKS_NUMBER++
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalBlocksNumber++
 
-        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_TXS_NUMBER += block.transactions.length
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalTxsNumber += block.transactions.length
+
+        // Do the same for stats per each API (useful for API, charts and statistics)
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalBlocksNumber++
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalTxsNumber += block.transactions.length        
 
   
         
