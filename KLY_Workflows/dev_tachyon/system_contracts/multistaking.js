@@ -10,7 +10,7 @@ export let CONTRACT = {
 
     mintUnobtanium:async (payload,originShard,atomicBatch)=>{
 
-        
+        // Increase UNO balance on specific account on some shard in case majority of quorum voted for it
 
     },
 

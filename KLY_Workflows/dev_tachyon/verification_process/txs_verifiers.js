@@ -221,14 +221,14 @@ export let VERIFIERS = {
 
     */
 
-    CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
+    WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardBox,atomicBatch)=>{
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
         let goingToSpend = getPricePerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
-        tx = await TXS_FILTERS.CONTRACT_DEPLOY(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
 
         if(!tx){
@@ -304,13 +304,13 @@ export let VERIFIERS = {
 
 
     */
-    CONTRACT_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
+    WVM_CALL:async(originShard,tx,rewardBox,atomicBatch)=>{
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
 
             goingToSpend = getPricePerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 
-        tx = await TXS_FILTERS.CONTRACT_CALL(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.WVM_CALL(tx,originShard) //pass through the filter
 
         
         if(!tx){

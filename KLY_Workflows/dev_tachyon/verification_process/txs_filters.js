@@ -86,7 +86,7 @@ export let TXS_FILTERS = {
     }
 
     */
-    CONTRACT_DEPLOY:async (tx,originShard) => {
+    WVM_CONTRACT_DEPLOY:async (tx,originShard) => {
 
         return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('system/')) && Array.isArray(tx.payload.constructorParams)
                 &&
@@ -109,7 +109,7 @@ export let TXS_FILTERS = {
         }
 
     */
-    CONTRACT_CALL:async (tx,originShard) => {
+    WVM_CALL:async (tx,originShard) => {
 
         return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
                 &&
