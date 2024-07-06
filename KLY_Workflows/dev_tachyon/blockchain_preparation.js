@@ -80,7 +80,7 @@ export let WORKING_THREADS = {
             
             totalTxsNumber:0,
 
-            successfullTxsNumber:0
+            successfulTxsNumber:0
 
         },
 
@@ -90,7 +90,7 @@ export let WORKING_THREADS = {
             
             totalTxsNumber:0,
 
-            successfullTxsNumber:0
+            successfulTxsNumber:0
 
         },
 

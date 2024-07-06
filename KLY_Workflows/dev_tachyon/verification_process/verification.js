@@ -1943,13 +1943,13 @@ distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrim
 
 
 
-let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfullTxsCollector,atomicBatch) => {
+let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
 
     if(VERIFIERS[transaction.type]){
 
         let txCopy = JSON.parse(JSON.stringify(transaction))
 
-        let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfullTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+        let {isOk,reason} = await VERIFIERS[transaction.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
 
         // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
         if(reason!=='EVM'){
@@ -1958,7 +1958,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
             atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
 
-            if(isOk) rewardsAndSuccessfullTxsCollector.successfullTxsCounter++
+            if(isOk) rewardsAndSuccessfulTxsCollector.successfulTxsCounter++
 
         }
     
@@ -1969,7 +1969,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
 
 
-let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfullTxsCollector,atomicBatch) => {
+let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
 
     for(let txFromIndependentGroup of independentGroup){
 
@@ -1977,7 +1977,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
 
             let txCopy = JSON.parse(JSON.stringify(txFromIndependentGroup))
     
-            let {isOk,reason} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfullTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
+            let {isOk,reason} = await VERIFIERS[txFromIndependentGroup.type](shardContext,txCopy,rewardsAndSuccessfulTxsCollector,atomicBatch).catch(()=>({isOk:false,reason:'Unknown'}))
     
             // Set the receipt of tx(in case it's not EVM tx, because EVM automatically create receipt and we store it using KLY-EVM)
             if(reason!=='EVM'){
@@ -1986,7 +1986,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
     
                 atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
 
-                if(isOk) rewardsAndSuccessfullTxsCollector.successfullTxsCounter++
+                if(isOk) rewardsAndSuccessfulTxsCollector.successfulTxsCounter++
     
             }
         
@@ -2017,11 +2017,11 @@ let verifyBlock = async(block,shardContext) => {
 
         // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
         
-        let rewardsAndSuccessfullTxsCollector = {
+        let rewardsAndSuccessfulTxsCollector = {
             
             fees:0,
 
-            successfullTxsCounter:0
+            successfulTxsCounter:0
 
         }
 
@@ -2088,7 +2088,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
-                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfullTxsCollector,atomicBatch))
+                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch))
 
             }
 
@@ -2100,7 +2100,7 @@ let verifyBlock = async(block,shardContext) => {
                 
                 txsPromises.push(
 
-                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfullTxsCollector,atomicBatch)
+                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch)
 
                 )
 
@@ -2112,7 +2112,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
-                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfullTxsCollector,atomicBatch)
+                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch)
 
             }        
 
@@ -2128,7 +2128,7 @@ let verifyBlock = async(block,shardContext) => {
                     [2] Send the rest of fees to prime pools
 
             */
-            await distributeFeesAmongStakersAndOtherPools(rewardsAndSuccessfullTxsCollector.fees,shardContext,primePools,block.creator)
+            await distributeFeesAmongStakersAndOtherPools(rewardsAndSuccessfulTxsCollector.fees,shardContext,primePools,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    
