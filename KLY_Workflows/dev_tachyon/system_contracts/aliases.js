@@ -8,12 +8,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 
 export let CONTRACT = {
 
-    constructor:async(payload,originShard,atomicBatch)=>{
-
-        
-
-    },
-
+    
     setAlias:async(payload,originShard,atomicBatch)=>{
 
         
