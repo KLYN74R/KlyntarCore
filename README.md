@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<img src="./images/CoreHover.svg">
+<img src="./images/main.svg">
 
 #
 

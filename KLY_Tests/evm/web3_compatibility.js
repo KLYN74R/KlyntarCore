@@ -75,12 +75,10 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-// let receipt = await web3.eth.getTransactionReceipt('0xef2a25a99d97904b0c416716847c03413a3e4d516aabc79ece84876ac4cc72d3')
-
-// console.log('Receipt is ',receipt)
-
 
 DEFAULT_SIMPLE_QUERIES()
+
+
 
 
 let EVM_DEFAULT_TX = async() => {
