@@ -8,14 +8,14 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    mintUnobtanium:async (payload,originShard,atomicBatch)=>{
+    mintUnobtanium:async (transaction,originShard,atomicBatch)=>{
 
         // Increase UNO balance on specific account on some shard in case majority of quorum voted for it
 
     },
 
     // To decrease number of UNO from some account
-    burnUnobtanium:async (payload,originShard,atomicBatch)=>{
+    burnUnobtanium:async (transaction,originShard,atomicBatch)=>{
 
         
 

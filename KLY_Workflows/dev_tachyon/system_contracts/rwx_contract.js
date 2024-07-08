@@ -11,7 +11,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    createContract:async(payload,originShard,atomicBatch)=>{
+    createContract:async(transaction,originShard,atomicBatch)=>{
 
         
 
