@@ -5,6 +5,8 @@ import bls from '../KLY_Utils/signatures/multisig/bls'
 import {verifyEd25519Sync} from '../KLY_Utils/utils'
 
 import snarkjs from 'snarkjs'
+import { WORKING_THREADS } from '../KLY_Workflows/dev_tachyon/blockchain_preparation'
+import { getQuorumMajority } from '../KLY_Workflows/dev_tachyon/common_functions/quorum_related'
 
 
 
@@ -95,6 +97,31 @@ export let cryptography = {
 
 }
 
+
+export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapping) => {
+
+    // Take the epoch handler on verification thread (VT)
+
+    let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+    
+    let majority = getQuorumMajority(epochHandler)
+
+    let okSignatures = 0
+
+
+    for(let [quorumMemberPubKey,signa] of Object.entries(agreementsMapping)){
+
+        if(verifyEd25519Sync(dataThatShouldBeSigned,signa,quorumMemberPubKey) && epochHandler.quorum.includes(quorumMemberPubKey)){
+
+            okSignatures++
+
+        }
+
+    }
+
+    return okSignatures >= majority
+    
+}
 
 
 
