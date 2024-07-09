@@ -1,3 +1,10 @@
+import {getAccountFromState} from "../common_functions/state_interactions.js"
+
+import { GLOBAL_CACHES } from "../blockchain_preparation.js"
+
+
+
+
 export let GAS_USED_BY_METHOD=methodID=>{
 
     if(methodID==='constructor') return 0.1
@@ -23,13 +30,32 @@ export let CONTRACT = {
 
             [*] Delete the
             
-                originShard:transaction.from - ID in database
+                originShard:transaction.creator - ID in database
                 
             and move the account to
             
-                transaction.payload.wishedShard:transaction.from - ID in database
+                transaction.payload.wishedShard:transaction.creator - ID in database
         
         */
+
+        let wishedShard = transaction.payload.wishedShard
+
+        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
+
+        if(txCreatorAccount && typeof wishedShard === 'string'){
+
+            // Delete the old account on <originShard> and move to <wishedShard>
+
+            atomicBatch.del(originShard+':'+transaction.creator)
+
+            atomicBatch.put(wishedShard+':'+transaction.creator,txCreatorAccount)
+
+            // Delete from cache too
+
+            GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+transaction.creator)
+            
+
+        }
 
     }
 
