@@ -451,8 +451,9 @@ export let VERIFIERS = {
 
         global.ATOMIC_BATCH = atomicBatch
 
-        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(()=>false)
+        let evmResult = await KLY_EVM.callEVM(originShard,txWithPayload.payload).catch(err=>console.log('ERR ',err))
 
+        console.log('EVM RESULT IS ',evmResult)
 
         if(evmResult && !evmResult.execResult.exceptionError){
           
@@ -479,6 +480,8 @@ export let VERIFIERS = {
 
             if(possibleReceipt){
 
+                console.log('POSSIBLE RECEIPT IS => ',possibleReceipt)
+
                 let {tx,receipt} = possibleReceipt
 
                 atomicBatch.put('TX:'+tx.hash,{tx,receipt})
@@ -487,7 +490,7 @@ export let VERIFIERS = {
 
             }else return {isOk:false,reason:'EVM'}
 
-        }
+        } return {isOk:false,reason:'EVM'}
 
     }
 

@@ -32,6 +32,8 @@ export let NODE_METADATA = {
 }
 
 
+global.MEMPOOL = NODE_METADATA.MEMPOOL
+
 
 
 export let EPOCH_METADATA_MAPPING = new Map() // cache to hold metadata for specific epoch by it's ID. Mapping(EpochID=>Mapping)
@@ -134,7 +136,7 @@ export let BLOCKCHAIN_DATABASES = {
 }
 
 
-
+global.STATE = BLOCKCHAIN_DATABASES.STATE
 
 
 

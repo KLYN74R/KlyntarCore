@@ -1465,11 +1465,15 @@ getPreparedTxsForParallelization = txsArray => {
 
     for(let transaction of txsArray){
 
-        let eachTouchedAccountInTxHasOnePoint = transaction.touched.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
+        if(transaction.touched){
 
-        if(eachTouchedAccountInTxHasOnePoint){
+            let eachTouchedAccountInTxHasOnePoint = transaction.touched.every(account => numberOfAccountTouchesPerAccount.get(account) === 1)
 
-            independentTransactions.add(transaction)
+            if(eachTouchedAccountInTxHasOnePoint){
+
+                independentTransactions.add(transaction)
+
+            } else syncTransactions.add(transaction)
 
         } else syncTransactions.add(transaction)
 
@@ -1488,29 +1492,33 @@ getPreparedTxsForParallelization = txsArray => {
 
         let accountThatChangesMoreThanOnce
 
-        for(let accountID of transaction.touched){
+        if(transaction.touched){
 
-            if(numberOfAccountTouchesPerAccount.get(accountID) > 1){
+            for(let accountID of transaction.touched){
 
-                accountThatChangesMoreThanOnce = accountID
-            
-                numberOfAccountsTouchedMoreThanOnce++
-
+                if(numberOfAccountTouchesPerAccount.get(accountID) > 1){
+    
+                    accountThatChangesMoreThanOnce = accountID
+                
+                    numberOfAccountsTouchedMoreThanOnce++
+    
+                }
+    
+                if(numberOfAccountsTouchedMoreThanOnce > 1) break
+    
             }
-
-            if(numberOfAccountsTouchedMoreThanOnce > 1) break
-
-        }
-
-        if(numberOfAccountsTouchedMoreThanOnce === 1){
-
-            let threadForThisGroup = independentGroups.get(accountThatChangesMoreThanOnce) || []
-
-            threadForThisGroup.push(transaction)
-
-            syncTransactions.delete(transaction)
-
-            independentGroups.set(accountThatChangesMoreThanOnce,threadForThisGroup)
+    
+            if(numberOfAccountsTouchedMoreThanOnce === 1){
+    
+                let threadForThisGroup = independentGroups.get(accountThatChangesMoreThanOnce) || []
+    
+                threadForThisGroup.push(transaction)
+    
+                syncTransactions.delete(transaction)
+    
+                independentGroups.set(accountThatChangesMoreThanOnce,threadForThisGroup)
+    
+            }    
 
         }
 
@@ -2078,6 +2086,8 @@ let verifyBlock = async(block,shardContext) => {
 
             let txsPreparedForParallelization = getPreparedTxsForParallelization(block.transactions)
 
+            console.log(txsPreparedForParallelization)
+
             // Firstly - execute independent transactions in a parallel way
 
             let txsPromises = []
@@ -2206,11 +2216,15 @@ let verifyBlock = async(block,shardContext) => {
 
         WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.totalTxsNumber += block.transactions.length
 
+        WORKING_THREADS.VERIFICATION_THREAD.TOTAL_STATS.successfulTxsNumber += rewardsAndSuccessfulTxsCollector.successfulTxsCounter
+
         // Do the same for stats per each API (useful for API, charts and statistics)
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalBlocksNumber++
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.totalTxsNumber += block.transactions.length        
+
+        WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH.successfulTxsNumber += rewardsAndSuccessfulTxsCollector.successfulTxsCounter
 
         
         WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = shardContext
@@ -2246,7 +2260,10 @@ let verifyBlock = async(block,shardContext) => {
         
 
         // Finally, store the block
+
         let blockToStore = KLY_EVM.getBlockToStore(currentHash)
+
+
         
         atomicBatch.put(`${shardContext}:EVM_BLOCK:${blockToStore.number}`,blockToStore)
 
@@ -2270,7 +2287,7 @@ let verifyBlock = async(block,shardContext) => {
 
         await atomicBatch.write()
         
-        vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash)
+        vtStatsLog(block.epoch,shardContext,block.creator,block.index,blockHash,block.transactions.length)
 
     }
 

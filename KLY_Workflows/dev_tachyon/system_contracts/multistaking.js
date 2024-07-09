@@ -73,9 +73,45 @@ export let CONTRACT = {
 
     // To decrease number of UNO from some account
 
-    burnUnobtanium:async (transaction,originShard,atomicBatch)=>{
+    burnUnobtanium:async (transaction,originShard)=>{
 
+        /*
         
+            Transaction payload is 
+
+            {
+
+                amountToBurn:<number>,
+
+                recipient:<address to>
+
+
+            }
+        
+        */
+
+        let {amountUno, recipient, quorumAgreements} = transaction.payload 
+
+        let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+
+        let epochFullID = epochHandler.hash+'#'+epochHandler.id
+
+        let dataThatShouldBeSigned = `${epochFullID}:${amountUno}:${recipient}:mintUnobtanium`
+
+
+        if(typeof amountUno === 'number' && typeof recipient === 'number' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+
+            let recipientAccount = await getFromState(originShard+':'+recipient)
+
+            if(recipientAccount){
+
+                recipientAccount.uno += amountUno
+
+                return {isOk:true}
+
+            } else return {isOk:false, reason:'No such account'}
+
+        } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
 
     }
 

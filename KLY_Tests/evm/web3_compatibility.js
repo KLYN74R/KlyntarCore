@@ -37,6 +37,14 @@ const evmAccount1 = {
   
 }
 
+// {
+//     address: '0xd24F99516c385A5C3D1Dc8c663B944A21D8F0145',
+//     privateKey: '0x45e79f3c93f8f4ca9f9a498a4de246688af406f977ffc7190518947dac51627f',
+//     signTransaction: [Function: signTransaction],
+//     sign: [Function: sign],
+//     encrypt: [Function: encrypt]
+//   }
+
 
 //___________________________________________________________ TEST SECTION ___________________________________________________________
 
@@ -75,8 +83,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-
-DEFAULT_SIMPLE_QUERIES()
+// DEFAULT_SIMPLE_QUERIES()
 
 
 
@@ -121,6 +128,9 @@ let EVM_DEFAULT_TX = async() => {
 
 
 // EVM_DEFAULT_TX()
+
+// web3.eth.getTransactionReceipt('0x99d4261a8b60ef9947df4f56e8c8159a1cd46dcb5e82b9c70858687f5658c10c',(err,balance)=>console.log(balance))
+
 
 
 let EVM_CONTRACT_DEPLOY=async()=>{
@@ -198,7 +208,7 @@ let EVM_CONTRACT_CALL=async()=>{
 
             from:evmAccount0.address,
 
-            to:'0xf817fe43C607388E541765173d464050af4907C3', // our contract address
+            to:'0x2C7E31Dc9BF42eE4013C32FDEbBfa5eebbA4b1Fa', // our contract address
 
             nonce:web3.utils.toHex(txCount),
     
@@ -445,7 +455,7 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
         gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
     
         //Set payload in hex
-        data: `0x${Buffer.from('💡KLYNTAR💡').toString('hex')}`
+        data: `0x${Buffer.from('💡KLYNTARKLYNTARKLYNTARKLYNTAR💡').toString('hex')}`
     
     }
 

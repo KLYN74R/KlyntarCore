@@ -148,10 +148,11 @@ class KLY_EVM_CLASS {
 
         let block = this.block
         
-        // To prevent spam - limit the maximum allowed gas for free EVM calls
+        // TODO: To prevent spam - limit the maximum allowed gas for free EVM calls
         
         let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
     
+
         if(evmCaller){
 
             // tx.gasLimit = BigInt(CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
@@ -172,7 +173,7 @@ class KLY_EVM_CLASS {
             return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
     
 
-        }else return {error:{msg:`Can't get the <evmCaller> value - transaction is not signed or not <from> field in tx data`}}
+        } else return {error:{msg:`Can't get the <evmCaller> value - transaction is not signed or not <from> field in tx data`}}
 
         
     }
