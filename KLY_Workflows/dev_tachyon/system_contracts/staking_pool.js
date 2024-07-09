@@ -44,11 +44,11 @@ export let CONTRACT = {
     */
     constructor:async (transaction,originShard,atomicBatch) => {
 
-        let{constructorParams}=transaction.payload,
-        
-            [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor]=constructorParams,
+        let {constructorParams} = transaction.payload
 
-            poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
+        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor] = constructorParams
+
+        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
@@ -91,7 +91,7 @@ export let CONTRACT = {
             }
 
 
-            if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor=reserveFor
+            if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor = reserveFor
 
             //Put pool pointer
             atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
@@ -104,7 +104,9 @@ export let CONTRACT = {
             //NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
-        }
+            return {isOk:true}
+
+        } else return {isOk:false}
 
     },
 
@@ -163,11 +165,13 @@ export let CONTRACT = {
                     
                     else stakerAccount.uno-=amount
 
-                }
+                    return {isOk:true}
 
-            }
+                } else return {isOk:false}
+
+            } else return {isOk:false}
     
-        }
+        } else return {isOk:false}
 
     },
 
@@ -214,8 +218,10 @@ export let CONTRACT = {
                 type:'-' //means "UNSTAKE"
 
             }
+
+            return {isOk:true}
     
-        }
+        } else return {isOk:false, reason: 'No such pool or you try to unstake more than you allowed'}
 
     }
         

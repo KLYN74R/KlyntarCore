@@ -53,9 +53,11 @@ export let CONTRACT = {
             // Delete from cache too
 
             GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+transaction.creator)
+
+            return {isOk:true}
             
 
-        }
+        } else return {isOk:false, reason: 'No such account on shard or <wishedShard> variable is not string'}
 
     }
 

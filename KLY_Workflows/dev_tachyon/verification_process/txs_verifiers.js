@@ -319,20 +319,19 @@ export let VERIFIERS = {
         
         }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-            let contractMeta = await getFromState(originShard+':'+tx.payload.contractID)
+            let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
 
-            if(contractMeta){
+            if(contractMetadata){
 
-                if(contractMeta.lang.startsWith('system/')){
+                if(contractMetadata.lang.startsWith('system/')){
 
-                    let systemContractName = contractMeta.lang.split('/')[1]
+                    let systemContractName = contractMetadata.lang.split('/')[1]
 
                     if(SYSTEM_CONTRACTS.has(systemContractName)){
 
                         let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
                         
-                        await systemContract[tx.payload.method](tx,originShard,atomicBatch)
-
+                        let execResultWithReason = await systemContract[tx.payload.method](tx,originShard,atomicBatch) // result is {isOk:true/false, reason:''}
 
                         senderAccount.balance-=goingToSpend
             
@@ -340,11 +339,13 @@ export let VERIFIERS = {
                     
                         rewardsAndSuccessfulTxsCollector.fees+=tx.fee
 
+                        return execResultWithReason
 
-                    }else return {isOk:false,reason:`No such type of system contract`}
+
+                    } else return {isOk:false,reason:`No such type of system contract`}
 
 
-                }else {
+                } else {
 
                     // Prepare the contract instance
 
@@ -375,7 +376,7 @@ export let VERIFIERS = {
 
                         let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
                         
-                            Buffer.from(contractMeta.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
+                            Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
                                     
                         )
 
@@ -395,7 +396,7 @@ export let VERIFIERS = {
 
                         while(!lastSubCallInChain) {
 
-                            let intermediateResultAsJSON = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMeta.type)
+                            let intermediateResultAsJSON = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
                             
                             let parsedIntermediateResult = JSON.parse(intermediateResultAsJSON)
 
