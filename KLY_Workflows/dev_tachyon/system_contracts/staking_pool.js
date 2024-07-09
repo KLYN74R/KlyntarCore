@@ -1,4 +1,4 @@
-import {getAccountFromState,getFromState} from '../common_functions/state_interactions.js'
+import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
@@ -160,7 +160,7 @@ export let CONTRACT = {
                     
                     }
 
-                    //Reduce number of KLY/UNO from account
+                    // Reduce number of KLY/UNO from account
                     if(units==='kly') stakerAccount.balance-=amount
                     
                     else stakerAccount.uno-=amount
