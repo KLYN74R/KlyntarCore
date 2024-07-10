@@ -23,21 +23,26 @@ export let CONTRACT = {
         
             Transaction payload is 
 
-            {
+            [
 
-                amountUno: 10000,
+                {
 
-                recipient:<address to>
+                    amountUno: 10000,
+
+                    recipient:<address to>
                 
-                quorumAgreements:{
+                    quorumAgreements:{
 
-                    quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
-                    ...
-                    quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
+                        quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
+                        ...
+                        quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
+
+                    }
 
                 }
 
-            }
+
+            ]
 
             [1] Verify that majority of quorum agree to add UNO to account
             [2] Change .uno amount on account by increasing for .amountUno
@@ -45,7 +50,7 @@ export let CONTRACT = {
         
         */
 
-        let {amountUno, recipient, quorumAgreements} = transaction.payload 
+        let {amountUno, recipient, quorumAgreements} = transaction.payload.params[0] 
 
         let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
@@ -90,28 +95,28 @@ export let CONTRACT = {
         
         */
 
-        let {amountUno, recipient, quorumAgreements} = transaction.payload 
+        // let {amountUno, recipient, quorumAgreements} = transaction.payload[0]
 
-        let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
+        // let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-        let epochFullID = epochHandler.hash+'#'+epochHandler.id
+        // let epochFullID = epochHandler.hash+'#'+epochHandler.id
 
-        let dataThatShouldBeSigned = `${epochFullID}:${amountUno}:${recipient}:mintUnobtanium`
+        // let dataThatShouldBeSigned = `${epochFullID}:${amountUno}:${recipient}:mintUnobtanium`
 
 
-        if(typeof amountUno === 'number' && typeof recipient === 'number' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+        // if(typeof amountUno === 'number' && typeof recipient === 'number' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
 
-            let recipientAccount = await getFromState(originShard+':'+recipient)
+        //     let recipientAccount = await getFromState(originShard+':'+recipient)
 
-            if(recipientAccount){
+        //     if(recipientAccount){
 
-                recipientAccount.uno += amountUno
+        //         recipientAccount.uno += amountUno
 
-                return {isOk:true}
+        //         return {isOk:true}
 
-            } else return {isOk:false, reason:'No such account'}
+        //     } else return {isOk:false, reason:'No such account'}
 
-        } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
+        // } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
 
     }
 

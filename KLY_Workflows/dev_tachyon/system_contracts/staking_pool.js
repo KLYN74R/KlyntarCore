@@ -192,9 +192,9 @@ export let CONTRACT = {
     */
     unstake:async (transaction,originShard) => {
 
-        let fullPoolIdWithPostfix=transaction.payload.contractID,
+        let fullPoolIdWithPostfix = transaction.payload.contractID,
 
-            {amount,units}=transaction.payload.params[0],
+            {amount,units} = transaction.payload.params[0],
 
             poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
 

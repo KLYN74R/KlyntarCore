@@ -20,25 +20,29 @@ export let CONTRACT = {
 
         /*
         
-            transaction.payload format is
-       
-            {
+            transaction.payload.params format is
 
-                wishedShard:'<shardID to move to>'
+            [
 
-            }
+                {
 
+                    wishedShard:'<shardID to move to>'
+
+                }
+
+            ]
+            
             [*] Delete the
             
                 originShard:transaction.creator - ID in database
                 
             and move the account to
             
-                transaction.payload.wishedShard:transaction.creator - ID in database
+                transaction.payload.params[0].wishedShard:transaction.creator - ID in database
         
         */
 
-        let wishedShard = transaction.payload.wishedShard
+        let wishedShard = transaction.payload.params[0].wishedShard
 
         let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
 

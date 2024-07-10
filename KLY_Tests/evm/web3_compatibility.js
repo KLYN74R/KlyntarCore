@@ -10,7 +10,7 @@ import Web3 from 'web3'
 const web3 = new Web3('http://localhost:7332/kly_evm_rpc/9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK')
 
 // KLY-EVM
-const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'merge'})
+const common = Common.custom({name:'KLYNTAR',networkId:'0x1CA3',chainId:'0x1CA3'},{hardfork:'london'})
 
 
 // EVM account
@@ -83,7 +83,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-// DEFAULT_SIMPLE_QUERIES()
+DEFAULT_SIMPLE_QUERIES()
 
 
 
@@ -474,4 +474,4 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
 }
 
-// ESTIMATE_GAS_FOR_DEFAULT_TX()
+ESTIMATE_GAS_FOR_DEFAULT_TX()

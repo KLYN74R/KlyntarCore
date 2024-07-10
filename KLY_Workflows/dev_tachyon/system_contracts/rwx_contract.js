@@ -16,9 +16,9 @@ export let CONTRACT = {
 
         /*
         
-            Payload(transaction.payload) is
+            Format of transaction.payload.params is
        
-            Example:
+            [
             
                 {
 
@@ -38,7 +38,7 @@ export let CONTRACT = {
                     }
 
                 }
-            
+            ]
         
         */
 

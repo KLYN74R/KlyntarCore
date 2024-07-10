@@ -150,14 +150,29 @@ class KLY_EVM_CLASS {
         
         // TODO: To prevent spam - limit the maximum allowed gas for free EVM calls
         
-        let evmCaller = isJustCall ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : tx.isSigned() && tx.getSenderAddress()
-    
+        let evmCaller
+
+        if(isJustCall){
+
+            evmCaller = txDataOrSerializedTxInHexWith0x.from ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : Address.zero()
+
+        } else if (tx.isSigned()) {
+
+            evmCaller = tx.getSenderAddress()
+
+        }
+
+        console.log('DEBUG:EVM caller is => ',evmCaller)
+
+        console.log('DEBUG: Tx data is => ',txDataOrSerializedTxInHexWith0x)
 
         if(evmCaller){
 
             // tx.gasLimit = BigInt(CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
             
             let vmCopy = await this.vm.copy()
+
+            // vmCopy.evm.runCall()
 
             let txResult = await vmCopy.runTx({
                 
@@ -167,10 +182,11 @@ class KLY_EVM_CLASS {
                 isSandboxExecution:true,
                 evmCaller
             
-            })
+            }).catch(err=>console.log(err))
 
+            console.log('DEBUG: Sandbox result is ',txResult)
             
-            return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
+            return txResult.execResult.exceptionError || web3.utils.toHex(Buffer.from([0x1])) //txResult.execResult.returnValue
     
 
         } else return {error:{msg:`Can't get the <evmCaller> value - transaction is not signed or not <from> field in tx data`}}
@@ -304,6 +320,7 @@ class KLY_EVM_CLASS {
 
         txData.gasLimit = CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
 
+        console.log('DEBUG: Tx data is ',txData)
 
         let tx = Transaction.fromTxData(txData,{common})
 
