@@ -83,8 +83,7 @@ let DEFAULT_SIMPLE_QUERIES=async()=>{
 }
 
 
-DEFAULT_SIMPLE_QUERIES()
-
+// DEFAULT_SIMPLE_QUERIES()
 
 
 
@@ -129,7 +128,15 @@ let EVM_DEFAULT_TX = async() => {
 
 // EVM_DEFAULT_TX()
 
-// web3.eth.getTransactionReceipt('0x99d4261a8b60ef9947df4f56e8c8159a1cd46dcb5e82b9c70858687f5658c10c',(err,balance)=>console.log(balance))
+
+web3.eth.getTransactionReceipt('0x0416afec24bb8010e39a79663c695fdfdf26576fd1605cfcddec7a7c9611da8d',(err,txReceipt)=>console.log(txReceipt))
+
+web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+
+web3.eth.getBalance(evmAccount1.address).then(balance=>console.log(`Balance of ${evmAccount1.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+
+
+
 
 
 
