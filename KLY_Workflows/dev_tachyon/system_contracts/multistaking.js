@@ -1,13 +1,15 @@
-import { verifyQuorumMajoritySolution } from "../../../KLY_VirtualMachines/common_modules.js"
+import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
 
-import { getFromState } from "../common_functions/state_interactions.js"
+import {getFromState} from "../common_functions/state_interactions.js"
 
-import { WORKING_THREADS } from "../blockchain_preparation.js"
+import {WORKING_THREADS} from "../blockchain_preparation.js"
 
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
-    if(methodID==='constructor') return 0.1
+    if(methodID==='mintUnobtanium') return 0.5
+
+    else if(methodID==='burnUnobtanium') return 0.5
 
 }
 
@@ -17,7 +19,7 @@ export let CONTRACT = {
 
     // Increase UNO balance on specific account on some shard in case majority of quorum voted for it
 
-    mintUnobtanium:async (transaction, originShard)=>{
+    mintUnobtanium:async (transaction,originShard)=>{
 
         /*
         
@@ -82,41 +84,33 @@ export let CONTRACT = {
 
         /*
         
-            Transaction payload is 
+            transaction.payload.params[0] is equal to
 
             {
 
-                amountToBurn:<number>,
-
-                recipient:<address to>
-
+                amountToBurn:<number>
 
             }
         
         */
 
-        // let {amountUno, recipient, quorumAgreements} = transaction.payload[0]
 
-        // let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
-        // let epochFullID = epochHandler.hash+'#'+epochHandler.id
-
-        // let dataThatShouldBeSigned = `${epochFullID}:${amountUno}:${recipient}:mintUnobtanium`
+        let {amountToBurn} = transaction.payload.params[0] 
 
 
-        // if(typeof amountUno === 'number' && typeof recipient === 'number' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+        if(typeof amountToBurn === 'number'){
 
-        //     let recipientAccount = await getFromState(originShard+':'+recipient)
+            let recipientAccount = await getFromState(originShard+':'+transaction.creator)
 
-        //     if(recipientAccount){
+            if(recipientAccount){
 
-        //         recipientAccount.uno += amountUno
+                recipientAccount.uno -= amountToBurn
 
-        //         return {isOk:true}
+                return {isOk:true}
 
-        //     } else return {isOk:false, reason:'No such account'}
+            } else return {isOk:false, reason:'No such account'}
 
-        // } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
+        } else return {isOk:false, reason:'Wrong datatypes(amountToBurn must be a number)'}    
 
     }
 
