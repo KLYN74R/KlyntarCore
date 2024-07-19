@@ -10,6 +10,6 @@ let systemContractsNames = ['staking_pool']
 
 for(let name of systemContractsNames){
 
-    await import(`./${name}.js`).then(contract=>SYSTEM_CONTRACTS.set(name,contract.CONTRACT))
+    await import(`./${name}.js`).then(contractHandler=>SYSTEM_CONTRACTS.set(name,contractHandler.CONTRACT))
 
 }
