@@ -1,13 +1,13 @@
 import {getAccountFromState} from "../common_functions/state_interactions.js"
 
-import { GLOBAL_CACHES } from "../blockchain_preparation.js"
+import {GLOBAL_CACHES} from "../blockchain_preparation.js"
 
 
 
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
-    if(methodID==='constructor') return 0.1
+    if(methodID==='changeShard') return 0.01
 
 }
 
