@@ -37,7 +37,7 @@ import {logColors, customLog, pathResolve} from './KLY_Utils/utils.js'
 
 import chalkAnimation from 'chalk-animation'
 
-import {isAbsolute} from 'path'
+import {isAbsolute, extname} from 'path'
 
 import fastify from 'fastify'
 
@@ -240,11 +240,12 @@ export const CONFIGURATION = {}
 
 
 // Load all the configs
-fs.readdirSync(process.env.CONFIGS_PATH).forEach(file=>
-    
-    Object.assign(CONFIGURATION,JSON.parse(fs.readFileSync(process.env.CONFIGS_PATH+`/${file}`)))
-    
-)
+fs.readdirSync(process.env.CONFIGS_PATH).forEach(file => {
+    if (extname(file) === '.json') {
+        const configData = fs.readFileSync(process.env.CONFIGS_PATH + `/${file}`);
+        Object.assign(CONFIGURATION, JSON.parse(configData));
+    }
+});
 
 
 
