@@ -1,13 +1,14 @@
-import tbls from '../KLY_Utils/signatures/threshold/tbls'
+import {getQuorumMajority} from '../KLY_Workflows/dev_tachyon/common_functions/quorum_related.js'
 
-import bls from '../KLY_Utils/signatures/multisig/bls'
+import {WORKING_THREADS} from '../KLY_Workflows/dev_tachyon/blockchain_preparation.js'
 
-import {verifyEd25519Sync} from '../KLY_Utils/utils'
+import tbls from '../KLY_Utils/signatures/threshold/tbls.js'
+
+import bls from '../KLY_Utils/signatures/multisig/bls.js'
+
+import {verifyEd25519Sync} from '../KLY_Utils/utils.js'
 
 import snarkjs from 'snarkjs'
-import { WORKING_THREADS } from '../KLY_Workflows/dev_tachyon/blockchain_preparation'
-import { getQuorumMajority } from '../KLY_Workflows/dev_tachyon/common_functions/quorum_related'
-
 
 
 

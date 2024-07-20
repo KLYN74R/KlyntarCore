@@ -180,8 +180,6 @@ class KLY_EVM_CLASS {
                 evmCaller
             
             }).catch(err=>err)
-
-            console.log('DEBUG: Tx result is => ',txResult)
             
             return txResult.execResult.exceptionError || txResult.execResult.returnValue
     
