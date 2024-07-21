@@ -12,20 +12,14 @@ export let CONTRACT = {
 
     addContract:async(transaction,originShard,atomicBatch)=>{
 
-        
+        // Add contract whitelisted to using in account and storage abstractions
 
     },
 
     removeContract:async(transaction,originShard,atomicBatch)=>{
 
-        
+        // Remove contract that used in account and storage abstractions
 
-    },
-
-    bindStorageAbstractionContractToAccount:async(transaction,originShard,atomicBatch)=>{
-
-        
-
-    },
+    }
 
 }

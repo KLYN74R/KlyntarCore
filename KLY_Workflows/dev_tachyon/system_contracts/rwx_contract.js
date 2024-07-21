@@ -39,6 +39,17 @@ export let CONTRACT = {
 
                 }
 
+                signatures:{
+
+                    account1: {sigType:'D',sig:SIG(additionalParams+delegations)}
+                    
+                    account2: {sigType:'M',sig:SIG(additionalParams+delegations)},
+
+                    ...
+                    accountN: {sigType:'P/D',sig:SIG(additionalParams+delegations)}
+
+                }
+
             }
 
             
