@@ -385,7 +385,7 @@ export default {
             // Here we need to add the pool to special zone as a signal that all the rest SPEC_OPS will be disabled for this rogue pool
             // That's why we need to push poolID to slash array because we need to do atomic ops
             
-            let poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(payload.pool+'(POOL)_STORAGE_POOL').catch(()=>null)
 
             if(poolStorage){
 

@@ -110,8 +110,21 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
 
 
+/*
 
-FASTIFY_SERVER.get('/search_result/:query',async(request,response)=>{
+    API endpoint that is used for searchbar in explorer and useful for general purpose queries
+
+    Supported filters:
+
+        + block - to get block by ID or SID
+        + account - to get info about EOA account or contract by id in format <shard>:<id>
+        + txid - to get info about transaction by TXID
+        + epoch - to get info about epoch by epoch full id (format <epoch_hash>#<epoch_index>)
+        + pool - to get info about pool by id (format <pool_pubkey>(POOL))
+
+
+*/
+FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.SEARCH_RESULT){
 

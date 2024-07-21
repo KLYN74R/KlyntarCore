@@ -113,6 +113,7 @@ async function homomorphicOperations() {
   const keyGenerator = sealInstance.KeyGenerator(context);
   const publicKey = keyGenerator.createPublicKey();
   const secretKey = keyGenerator.secretKey();
+
   const relinKeys = keyGenerator.createRelinKeys();
 
 

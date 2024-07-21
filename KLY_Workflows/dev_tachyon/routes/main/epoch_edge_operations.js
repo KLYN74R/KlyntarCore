@@ -12,7 +12,7 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 
 
-// To accept system sync operation, verify that majority from quorum agree with it and add to mempool
+// To accept epoch edge operation, verify that majority from quorum agree with it and add to mempool
 
 /*
 
@@ -36,7 +36,7 @@ import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 Returns object like:
 
-    [If verification is OK and system sync operation was added to mempool]:
+    [If verification is OK and epoch edge operation was added to mempool]:
 
         {status:'OK'}
 
@@ -151,7 +151,7 @@ Body is
 
 */
 
-// Handler to accept system sync operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
+// Handler to accept epoch edge operation, verify it and sign if OK. The caller is EEO creator while verifiers - current quorum members ✅
 
 FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{
 
@@ -210,6 +210,6 @@ FASTIFY_SERVER.post('/sign_epoch_edge_operation',{bodyLimit:CONFIGURATION.NODE_L
         }
         else response.send({err:`Verification failed.Check your input data carefully. The returned object from function => ${JSON.stringify(possibleEpochEdgeOperation)}`})
 
-    }else response.send({err:`No verification function for this system sync operation => ${epochEdgeOperation.type}`})
+    }else response.send({err:`No verification function for this epoch edge operation => ${epochEdgeOperation.type}`})
 
 })

@@ -481,7 +481,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             if(!cycleWasBreak){
 
-                // Store the system sync operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
+                // Store the epoch edge operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
 
