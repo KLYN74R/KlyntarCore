@@ -194,10 +194,27 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
             if(!possibleTxReceipt.err){
                 
-                // Transaction receipt has body like this -> {}
-                // Get the block from receipt and 
+                /*
+                
+                    It might be KLY transaction and EVM transaction
 
-            }
+                    In case tx receipt has format {tx,receipt} - it's EVM transaction and we just send it as response
+
+                    But in case it has format {blockID,isOk,reason} - it's KLY transaction. We need to get the body of transaction from appropriate block and response with {tx,receipt}
+                
+                */
+
+                if(possibleTxReceipt.tx){
+
+                    responseData = possibleTxReceipt
+
+                } else {
+
+                    let blockWithWishedTransaction = await BLOCKCHAIN_DATABASES.BLOCKS.get(possibleTxReceipt.blockID).catch(() => null)
+
+                }
+
+            } else responseData = {err:`Impossible to get receipt of transaction. Make sure TXID is equal to BLAKE3 hash of tx signature`}
 
             
         } else if (searchFilter === 'epoch'){
@@ -217,14 +234,30 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
                 searchId is equal to full poolID. For example - 9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK(POOL)
             
-    
-                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
-
-                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
-
-                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-            
             */
+
+            let poolPointer = await BLOCKCHAIN_DATABASES.STATE.get(searchId+'_POINTER').catch(()=>null)
+
+            if(poolPointer){
+
+                // Now when we know the shard - extract the rest data
+
+                let poolContractMetadata = await BLOCKCHAIN_DATABASES.STATE.get(searchId).catch(()=>null)
+
+                let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(searchId+'_STORAGE_POOL').catch(()=>null)
+
+                responseData = {
+
+                    shard: poolPointer,
+
+                    poolContractMetadata,
+
+                    poolStorage
+
+                }
+
+
+            } else responseData = {err:'Impossible to get info about shard where pool binded'}
 
             
         } else if (searchFilter === 'storage'){

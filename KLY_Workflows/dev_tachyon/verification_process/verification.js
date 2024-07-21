@@ -1436,8 +1436,15 @@ getPreparedTxsForParallelization = txsArray => {
 
     let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
 
+    let txIdToOrderMapping = {} // txid => transaction order in block
+
+    let txCounter = 0
 
     for(let transaction of txsArray){
+
+        txIdToOrderMapping[transaction.sig] = txCounter
+
+        txCounter++
 
         if(transaction.touched){
 
@@ -1525,7 +1532,7 @@ getPreparedTxsForParallelization = txsArray => {
     }
 
 
-    return {independentTransactions, independentGroups, syncTransactions}
+    return {independentTransactions, independentGroups, syncTransactions, txIdToOrderMapping}
 
 
 },
@@ -1949,7 +1956,7 @@ distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrim
 
 
 
-let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
+let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
 
     if(VERIFIERS[transaction.type]){
 
@@ -1962,7 +1969,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
             let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
 
-            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+            atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
 
         }
 
@@ -1975,7 +1982,7 @@ let executeTransaction = async (shardContext,currentBlockID,transaction,rewardsA
 
 
 
-let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
+let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txIdToOrderMapping) => {
 
     for(let txFromIndependentGroup of independentGroup){
 
@@ -1990,7 +1997,7 @@ let executeGroupOfTransaction = async (shardContext,currentBlockID,independentGr
     
                 let txid = blake3Hash(txCopy.sig) // txID is a BLAKE3 hash of event you sent to blockchain. You can recount it locally(will be used by wallets, SDKs, libs and so on)
     
-                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,isOk,reason})
+                atomicBatch.put('TX:'+txid,{blockID:currentBlockID,order:txIdToOrderMapping[txCopy.sig],isOk,reason})
     
             }
 
@@ -2086,8 +2093,6 @@ let verifyBlock = async(block,shardContext) => {
 
             let txsPreparedForParallelization = getPreparedTxsForParallelization(block.transactions)
 
-            console.log(txsPreparedForParallelization)
-
             // Firstly - execute independent transactions in a parallel way
 
             let txsPromises = []
@@ -2096,7 +2101,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let independentTransaction of txsPreparedForParallelization.independentTransactions){
 
-                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch))
+                txsPromises.push(executeTransaction(shardContext,currentBlockID,independentTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping))
 
             }
 
@@ -2108,7 +2113,7 @@ let verifyBlock = async(block,shardContext) => {
                 
                 txsPromises.push(
 
-                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch)
+                    executeGroupOfTransaction(shardContext,currentBlockID,independentGroup,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
 
                 )
 
@@ -2120,7 +2125,7 @@ let verifyBlock = async(block,shardContext) => {
 
             for(let sequentialTransaction of txsPreparedForParallelization.syncTransactions){
 
-                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch)
+                await executeTransaction(shardContext,currentBlockID,sequentialTransaction,rewardsAndSuccessfulTxsCollector,atomicBatch,txsPreparedForParallelization.txIdToOrderMapping)
 
             }        
 
