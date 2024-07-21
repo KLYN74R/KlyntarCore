@@ -241,10 +241,15 @@ export const CONFIGURATION = {}
 
 // Load all the configs
 fs.readdirSync(process.env.CONFIGS_PATH).forEach(file => {
+
     if (extname(file) === '.json') {
+    
         const configData = fs.readFileSync(process.env.CONFIGS_PATH + `/${file}`);
+    
         Object.assign(CONFIGURATION, JSON.parse(configData));
+    
     }
+
 });
 
 

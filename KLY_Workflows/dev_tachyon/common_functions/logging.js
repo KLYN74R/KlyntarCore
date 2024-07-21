@@ -40,7 +40,8 @@ export let vtStatsLog = (epochFullID,shardContext,currentLeaderOnShard,blockInde
 
 
 
-//Function just for pretty output about information on symbiote
+//Function just for pretty output about information on symbiotic chain
+
 export let blockLog=(msg,hash,block,epochIndex)=>{
 
 
