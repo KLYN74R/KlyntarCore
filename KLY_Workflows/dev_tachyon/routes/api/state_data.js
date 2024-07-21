@@ -116,7 +116,7 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
     Supported filters:
 
-        + block - to get block by ID or SID
+        ✅ + block - to get block by ID or SID
         + account - to get info about EOA account or contract by id in format <shard>:<id>
         + txid - to get info about transaction by TXID
         + epoch - to get info about epoch by epoch full id (format <epoch_hash>#<epoch_index>)
@@ -141,6 +141,8 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
         let responseData
 
         if(searchFilter === 'block'){
+
+            // Response with block + AFP(if exists)
 
             // searchId might be BlockID(in format epochIndex:poolCreator:index) or SID(in format shardID:index)
 
@@ -175,116 +177,69 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
                 responseData = {block, aggregatedFinalizationProof}
 
-            }
+            } else responseData = {err:`No such block associated with ${searchId}. Make sure your BlockID or SID correct`}
 
-            // Response with block + AFP(if exists) + 
 
         } else if (searchFilter === 'account'){
+            
+            // Just return EOA account or contract metadata from state
 
+            responseData = await BLOCKCHAIN_DATABASES.STATE.get(searchFilter).catch(()=>({err:'No such EOA account or contract. Make sure input format is <shard>:<contract/address ID>'}))
 
         } else if (searchFilter === 'txid'){
+
+            // Just return tx receipt and tx body from block
+
+            let possibleTxReceipt = await BLOCKCHAIN_DATABASES.STATE.get('TX:'+searchFilter).catch(()=>({err:'No transaction with such TXID'}))
+
+            if(!possibleTxReceipt.err){
+                
+                // Transaction receipt has body like this -> {}
+                // Get the block from receipt and 
+
+            }
 
             
         } else if (searchFilter === 'epoch'){
 
+            // Return the data from BLOCKCHAIN_DATABASES.EPOCH_DATA Epoch handler + AEFPs(if it's finalized previous epoch) + list of EEOs(epoch edge operations)
+
+            // searchId is equal to epoch full id
+
+
             
         } else if (searchFilter === 'pool'){
 
+
+            /*
+
+                Return metadata of pool + storage with id <POOL> (to show stakers) + pool pointer (_POINTER)
+
+                searchId is equal to full poolID. For example - 9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK(POOL)
+            
+    
+                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
+
+                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+
+                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+            
+            */
+
             
         } else if (searchFilter === 'storage'){
+
+            // Just return account from state
+
+            responseData = await BLOCKCHAIN_DATABASES.STATE.get(searchFilter).catch(()=>({err:'No such storage for contract'}))
 
             
         } else responseData = {err:`Filter ${searchFilter} not supported`}
 
         
-        let possibleTxReceipt = await BLOCKCHAIN_DATABASES.STATE.get('TX:'+searchFilter).then(receipt=>{
-
-            responseData='TX_RECEIPT'
-
-            return receipt
-
-        }).catch(()=>false)
-
-
-        if(possibleTxReceipt){
-
-            response.send({responseType: responseData,data:possibleTxReceipt})
-
-            return
-
-        }
-        
-    
-        let possibleBlock = await BLOCKCHAIN_DATABASES.BLOCKS.get(searchFilter).then(block=>{
-
-            responseData='BLOCK_BY_ID'
-
-            return block
-
-        }).catch(()=>false)
-
-
-        if(possibleBlock){
-
-            response.send({responseType: responseData,data:possibleBlock})
-
-            return
-
-        }
-
-            
-        let possibleFromState = await BLOCKCHAIN_DATABASES.STATE.get(searchFilter).then(stateCell=>{
-
-            responseData='FROM_STATE'
-
-            return stateCell
-
-        }).catch(()=>false)
-
+        response.send(responseData)
 
         
-        if(possibleFromState){
-
-            response.send({responseType: responseData,data:possibleFromState})
-
-            return
-
-        }
-
-
-        let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
-
-        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
-
-        if(!currentEpochMetadata){
-
-            response.send({responseType:'ERROR',data:'Wait for a next epoch'})
-
-            return
-
-        }else{
-
-            let possibleAggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(searchFilter).then(aggregatedFinalizationProof=>{
-
-                responseData = searchFilter.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
-
-                return aggregatedFinalizationProof
-
-            }).catch(()=>false)
-    
-
-            if(possibleAggregatedFinalizationProof){
-
-                response.send({responseType: responseData,data:possibleAggregatedFinalizationProof})
-    
-                return
-    
-            }else response.send({responseType: responseData,data:`No data`})
-
-
-        }
-
-
     }else response.send({err:'Route is off'})
 
 })
