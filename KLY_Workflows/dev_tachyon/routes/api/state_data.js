@@ -121,7 +121,7 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
         + txid - to get info about transaction by TXID
         + epoch - to get info about epoch by epoch full id (format <epoch_hash>#<epoch_index>)
         + pool - to get info about pool by id (format <pool_pubkey>(POOL))
-
+        + storage - to get the key/value storage of some contract. Format (<shard>:<id>_STORAGE_<id>)
 
 */
 FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
@@ -134,17 +134,72 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.SEARCH_RESULT}`)
             
 
+        let searchFilter = request.params.filter
 
-        //_____________ Find possible values _____________
+        let searchId = request.params.to_find
 
-        let query = request.params.query
+        let responseData
 
-        let responseType
+        if(searchFilter === 'block'){
+
+            // searchId might be BlockID(in format epochIndex:poolCreator:index) or SID(in format shardID:index)
+
+            let blockById = await BLOCKCHAIN_DATABASES.BLOCKS.get(searchId).catch(() => null)
+
+            let block, blockId
+
+            if(blockById){
+
+                blockId = searchId
+
+                block = blockById
+
+            } else {
+
+                block = await BLOCKCHAIN_DATABASES.STATE.get(`SID:${searchId}`).then(blockID => {
+
+                    blockId = blockID
+    
+                    return BLOCKCHAIN_DATABASES.BLOCKS.get(blockID)
+    
+                }).catch(()=>null)
+
+            }
+
+
+            if(block){
+
+                // Find AFP to show finalization status of block
+
+                let aggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+blockId).catch(()=>null)
+
+                responseData = {block, aggregatedFinalizationProof}
+
+            }
+
+            // Response with block + AFP(if exists) + 
+
+        } else if (searchFilter === 'account'){
+
+
+        } else if (searchFilter === 'txid'){
+
+            
+        } else if (searchFilter === 'epoch'){
+
+            
+        } else if (searchFilter === 'pool'){
+
+            
+        } else if (searchFilter === 'storage'){
+
+            
+        } else responseData = {err:`Filter ${searchFilter} not supported`}
 
         
-        let possibleTxReceipt = await BLOCKCHAIN_DATABASES.STATE.get('TX:'+query).then(receipt=>{
+        let possibleTxReceipt = await BLOCKCHAIN_DATABASES.STATE.get('TX:'+searchFilter).then(receipt=>{
 
-            responseType='TX_RECEIPT'
+            responseData='TX_RECEIPT'
 
             return receipt
 
@@ -153,16 +208,16 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
         if(possibleTxReceipt){
 
-            response.send({responseType,data:possibleTxReceipt})
+            response.send({responseType: responseData,data:possibleTxReceipt})
 
             return
 
         }
         
     
-        let possibleBlock = await BLOCKCHAIN_DATABASES.BLOCKS.get(query).then(block=>{
+        let possibleBlock = await BLOCKCHAIN_DATABASES.BLOCKS.get(searchFilter).then(block=>{
 
-            responseType='BLOCK_BY_ID'
+            responseData='BLOCK_BY_ID'
 
             return block
 
@@ -171,16 +226,16 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
         if(possibleBlock){
 
-            response.send({responseType,data:possibleBlock})
+            response.send({responseType: responseData,data:possibleBlock})
 
             return
 
         }
 
             
-        let possibleFromState = await BLOCKCHAIN_DATABASES.STATE.get(query).then(stateCell=>{
+        let possibleFromState = await BLOCKCHAIN_DATABASES.STATE.get(searchFilter).then(stateCell=>{
 
-            responseType='FROM_STATE'
+            responseData='FROM_STATE'
 
             return stateCell
 
@@ -190,7 +245,7 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
         
         if(possibleFromState){
 
-            response.send({responseType,data:possibleFromState})
+            response.send({responseType: responseData,data:possibleFromState})
 
             return
 
@@ -209,9 +264,9 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
         }else{
 
-            let possibleAggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(query).then(aggregatedFinalizationProof=>{
+            let possibleAggregatedFinalizationProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(searchFilter).then(aggregatedFinalizationProof=>{
 
-                responseType = query.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
+                responseData = searchFilter.startsWith('AFP') && 'AGGREGATED_FINALIZATION_PROOF'
 
                 return aggregatedFinalizationProof
 
@@ -220,11 +275,11 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
             if(possibleAggregatedFinalizationProof){
 
-                response.send({responseType,data:possibleAggregatedFinalizationProof})
+                response.send({responseType: responseData,data:possibleAggregatedFinalizationProof})
     
                 return
     
-            }else response.send({responseType,data:`No data`})
+            }else response.send({responseType: responseData,data:`No data`})
 
 
         }
