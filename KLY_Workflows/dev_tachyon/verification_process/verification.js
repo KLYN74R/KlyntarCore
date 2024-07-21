@@ -632,7 +632,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     // Get the epoch edge operations that we need to execute
 
-    let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EEO:${vtEpochFullID}`).catch(()=>null)
+    let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>null)
 
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
@@ -1014,7 +1014,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
-        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EEO:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
+        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_CACHE:${vtEpochOldIndex}`).catch(()=>{})
 

@@ -483,7 +483,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // Store the epoch edge operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
                 // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EEO:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_OPS:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
 
 
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority

@@ -117,11 +117,11 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
     Supported filters:
 
         ✅ + block - to get block by ID or SID
-        + account - to get info about EOA account or contract by id in format <shard>:<id>
-        + txid - to get info about transaction by TXID
-        + epoch - to get info about epoch by epoch full id (format <epoch_hash>#<epoch_index>)
-        + pool - to get info about pool by id (format <pool_pubkey>(POOL))
-        + storage - to get the key/value storage of some contract. Format (<shard>:<id>_STORAGE_<id>)
+        ✅ + account - to get info about EOA account or contract by id in format <shard>:<id>
+        ✅ + txid - to get info about transaction by TXID
+        ✅ + epoch - to get info about epoch by epoch full id (format <epoch_hash>#<epoch_index>)
+        ✅ + pool - to get info about pool by id (format <pool_pubkey>(POOL))
+        ✅ + storage - to get the key/value storage of some contract. Format (<shard>:<id>_STORAGE_<id>)
 
 */
 FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
@@ -139,6 +139,9 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
         let searchId = request.params.to_find
 
         let responseData
+
+
+
 
         if(searchFilter === 'block'){
 
@@ -210,7 +213,15 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
                 } else {
 
-                    let blockWithWishedTransaction = await BLOCKCHAIN_DATABASES.BLOCKS.get(possibleTxReceipt.blockID).catch(() => null)
+                    let wishedTransaction = await BLOCKCHAIN_DATABASES.BLOCKS.get(possibleTxReceipt.blockID)
+                        
+                        .then( block => block.transactions[possibleTxReceipt.order]) // get the order of transaction from receipt, then fetch the block and extract the body of transaction from there
+                        
+                    .catch(()=>null)
+
+                    responseData = {tx: wishedTransaction,receipt: possibleTxReceipt}
+
+
 
                 }
 
@@ -219,10 +230,37 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
             
         } else if (searchFilter === 'epoch'){
 
-            // Return the data from BLOCKCHAIN_DATABASES.EPOCH_DATA Epoch handler + AEFPs(if it's finalized previous epoch) + list of EEOs(epoch edge operations)
+            // Return the data from BLOCKCHAIN_DATABASES.EPOCH_DATA Epoch handler + list of EEOs(epoch edge operations)
 
-            // searchId is equal to epoch full id
+            // searchId is equal to epoch full id(in format epochHash#epochIndex) or epoch index
 
+            let [epochHash, epochIndex] = searchId.split('#')
+
+            let epochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_HANDLER:'+epochIndex).catch(()=>null)
+
+            let listOfEpochEdgeOperations
+
+
+            if(epochHash && epochIndex){
+
+                // In case both valid - then it's request epoch data by full id (format epochHash#epochIndex)
+
+                listOfEpochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_OPS:'+searchId).catch(()=>null)
+
+
+            } else {
+
+                // Otherwise it's request of epoch data just by index
+
+                // So, get the epoch hash from handler and build the full id to get the list of epoch edge operations
+
+                let epochFullID = epochHandler.hash+'#'+searchId
+
+                listOfEpochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_OPS:'+epochFullID).catch(()=>null)
+
+            }
+
+            responseData = {epochHandler, listOfEpochEdgeOperations}
 
             
         } else if (searchFilter === 'pool'){
