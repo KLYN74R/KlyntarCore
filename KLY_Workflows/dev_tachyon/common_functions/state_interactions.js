@@ -27,7 +27,7 @@ export let getAccountFromState = async recordID =>{
 
 export let getFromState = async recordID => {
 
-    //We get from db only first time-the other attempts will be gotten from ACCOUNTS
+    // We get from db only first time-the other attempts will be gotten from ACCOUNTS
 
     return GLOBAL_CACHES.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
     

@@ -87,9 +87,8 @@ FASTIFY_SERVER.get('/latest_n_blocks/:shard/:start_index/:limit',async(request,r
         
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.LATEST_N_BLOCKS}`)
-            
 
-        let limit =  20
+        let limit = +request.params.limit
 
         let promises = []
 

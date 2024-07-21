@@ -103,9 +103,9 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
 getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
 
-    /**
-    * This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
-    * on this shard till the pool which was reassigned on non-zero height
+    /*
+        This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders
+        on this shard till the pool which was reassigned on non-zero height
     */
 
     let epochFullID = epochHandler.hash+"#"+epochHandler.id
@@ -373,7 +373,8 @@ let generateBlocksPortion = async() => {
     }
 
 
-    //Safe "if" branch to prevent unnecessary blocks generation
+    // Safe "if" branch to prevent unnecessary blocks generation
+    
     if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
 
     let myDataInShardsLeadersMonitoring = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
@@ -553,12 +554,12 @@ let generateBlocksPortion = async() => {
         // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
         let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
 
-        //Store block locally
+        // Store block locally
         atomicBatch.put(blockID,blockCandidate)
            
     }
 
-    //Update the GENERATION_THREAD after all
+    // Update the GENERATION_THREAD after all
     atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
 
     await atomicBatch.write()

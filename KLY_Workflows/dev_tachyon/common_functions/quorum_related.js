@@ -17,7 +17,7 @@ export let getQuorumMajority = epochHandler => {
     let majority = Math.floor(quorumSize*(2/3))+1
 
 
-    //Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
+    // Check if majority is not bigger than number of pools. It's possible when there is a small number of pools
 
     return majority > quorumSize ? quorumSize : majority
 
@@ -132,13 +132,14 @@ export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
 
 
 
-//We get the quorum based on pools' metadata(pass via parameter)
+// We get the quorum based on pools' metadata(pass via parameter)
 
 export let getCurrentEpochQuorum = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
     let pools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
 
-    //If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
+    // If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
+    
     if(pools.length > workflowOptions.QUORUM_SIZE){
 
         let poolsMetadataHash = blake3Hash(JSON.stringify(poolsRegistry)+newEpochSeed),

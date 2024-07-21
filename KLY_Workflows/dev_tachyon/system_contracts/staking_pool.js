@@ -104,15 +104,15 @@ export let CONTRACT = {
 
             if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor = reserveFor
 
-            //Put pool pointer
+            // Put pool pointer
             atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
 
             
-            //Put metadata
+            // Put metadata
             atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
-            //Put storage
-            //NOTE: We just need a simple storage with ID="POOL"
+            // Put storage
+            // NOTE: We just need a simple storage with ID="POOL"
             atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
             return {isOk:true}

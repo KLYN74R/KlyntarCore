@@ -1,6 +1,6 @@
-import {getFirstBlockOnEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
-
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS, GRACEFUL_STOP, GLOBAL_CACHES} from '../blockchain_preparation.js'
+
+import {getFirstBlockOnEpoch, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
@@ -2182,7 +2182,7 @@ let verifyBlock = async(block,shardContext) => {
 
         
         if(GLOBAL_CACHES.STATE_CACHE.size>=CONFIGURATION.NODE_LEVEL.BLOCK_TO_BLOCK_CACHE_SIZE) GLOBAL_CACHES.STATE_CACHE.clear() // flush cache.NOTE-some kind of advanced upgrade soon
-        
+
 
 
         let generalBlockIndexInShard = WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardContext]
