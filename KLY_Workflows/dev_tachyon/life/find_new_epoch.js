@@ -529,7 +529,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 // After execution - create the reassignment chains
                 await setLeadersSequenceForShards(fullCopyOfApprovementThread.EPOCH,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LS:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>{})
 
 
                 customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,logColors.GREEN)

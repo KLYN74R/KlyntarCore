@@ -627,7 +627,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
 
     // Get the epoch edge operations that we need to execute
@@ -1012,7 +1012,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
+        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EEO:${vtEpochFullID}`).catch(()=>{})
 
@@ -1054,7 +1054,7 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     let nextEpochQuorum = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_QUORUM:${vtEpochFullID}`).catch(()=>{})
 
-    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LS:${vtEpochFullID}`).catch(()=>{})
+    let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
     let nextEpochHandlerTemplate = {
 
