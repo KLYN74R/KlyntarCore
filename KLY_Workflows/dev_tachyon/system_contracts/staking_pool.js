@@ -153,7 +153,13 @@ export let CONTRACT = {
 
             if(stakerAccount){
 
-                let stakeIsOk = (units==='kly'?amount <= stakerAccount.balance:amount <= stakerAccount.uno) && amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+                
+                let hasEnough = amount <= (units==='kly' ? stakerAccount.balance : stakerAccount.uno)
+
+                let amountIsBiggerThanMinimalStake = amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+
+                let stakeIsOk = hasEnough && amountIsBiggerThanMinimalStake
+
 
                 if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 

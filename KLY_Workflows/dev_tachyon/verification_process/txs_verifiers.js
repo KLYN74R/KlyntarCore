@@ -166,12 +166,13 @@ export let VERIFIERS = {
             if(!recipientAccount){
     
                 //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
-                recipientAccount={
+                recipientAccount = {
                 
                     type:'account',
                     balance:0,
                     uno:0,
-                    nonce:0
+                    nonce:0,
+                    accountAbstractionContracts:[]
                 
                 }
                 
@@ -265,7 +266,8 @@ export let VERIFIERS = {
                     balance:0,
                     uno:0,
                     storages:[],
-                    bytecode:tx.payload.bytecode
+                    bytecode:tx.payload.bytecode,
+                    storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
     
                 }
             

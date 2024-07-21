@@ -372,7 +372,8 @@ export let setGenesisToState=async()=>{
                     balance:0,
                     uno:0,
                     nonce:0,
-                    rev_t:0
+                    rev_t:0,
+                    accountAbstractionContracts:[]
                 
                 })
 

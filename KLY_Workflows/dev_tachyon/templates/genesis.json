@@ -4,7 +4,7 @@
 
     "VERSION":0,
 
-    "EPOCH_TIMESTAMP":1701821310485,
+    "EPOCH_TIMESTAMP":1720665399465,
 
     "SYMBIOTE_CREATORS_CONTACT":{
         "telegram":"@symbiote_creator",
@@ -49,7 +49,7 @@
     
     },
 
-
+    
     "POOLS":{
 
         "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
@@ -59,7 +59,7 @@
             "whiteList":[],
             "totalPower":55000,
             "lackOfTotalPower":false,
-            "stopEpochID": -1,
+            "stopCheckpointID": -1,
             "isReserve":false,
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
@@ -70,94 +70,6 @@
             "waitingRoom":{},
             "poolURL":"http://localhost:7332",
             "wssPoolURL":"ws://localhost:9999"
-        
-        },
-
-        "6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE":{
-        
-            "percentage":0.5,
-            "overStake":10000,
-            "whiteList":[],
-            "totalPower":55000,
-            "lackOfTotalPower":false,
-            "stopEpochID": -1,
-            "storedMetadata": {},
-            "isReserve":false,
-            "stakers":{
-                "6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE":{
-                    "kly":55000,
-                    "uno":0
-                }
-            },
-            "waitingRoom":{},
-            "poolURL":"http://localhost:7333",
-            "wssPoolURL":"ws://localhost:9333"
-        
-        },
-        "GUbYLN5NqmRocMBHqS183r2FQRoUjhx1p5nKyyUBpntQ":{
-        
-            "percentage":0.5,
-            "overStake":10000,
-            "whiteList":[],
-            "totalPower":55000,
-            "lackOfTotalPower":false,
-            "stopEpochID": -1,
-            "storedMetadata": {},
-            "isReserve":false,
-            "stakers":{
-                "GUbYLN5NqmRocMBHqS183r2FQRoUjhx1p5nKyyUBpntQ":{
-                    "kly":55000,
-                    "uno":0
-                }
-            },
-            "waitingRoom":{},
-            "poolURL":"http://localhost:7334",
-            "wssPoolURL":"ws://localhost:9334"
-        
-        },
-        "3JAeBnsMedzxjCMNWQYcAXtwGVE9A5DBQyXgWBujtL9R":{
-        
-            "percentage":0.5,
-            "overStake":10000,
-            "whiteList":[],
-            "totalPower":55000,
-            "lackOfTotalPower":false,
-            "stopEpochID": -1,
-            "storedMetadata": {},
-            "isReserve":true,
-            "reserveFor":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
-            "stakers":{
-                "3JAeBnsMedzxjCMNWQYcAXtwGVE9A5DBQyXgWBujtL9R":{
-                    "kly":55000,
-                    "uno":0
-                }
-            },
-            "waitingRoom":{},
-            "poolURL":"http://localhost:7335",
-            "wssPoolURL":"ws://localhost:9335"
-        
-        },
-
-        "EGU4u3Anwahbtbx8F1ZZgFQSg2u49EkrkqMERT9r3q1o":{
-        
-            "percentage":0.5,
-            "overStake":10000,
-            "whiteList":[],
-            "totalPower":55000,
-            "lackOfTotalPower":false,
-            "stopEpochID": -1,
-            "storedMetadata": {},
-            "isReserve":true,
-            "reserveFor":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
-            "stakers":{
-                "EGU4u3Anwahbtbx8F1ZZgFQSg2u49EkrkqMERT9r3q1o":{
-                    "kly":55000,
-                    "uno":0
-                }
-            },
-            "waitingRoom":{},
-            "poolURL":"http://localhost:7336",
-            "wssPoolURL":"ws://localhost:9336"
         
         }
 
@@ -172,24 +84,27 @@
             "uno":0,
             "nonce":0,
             "rev_t":0,
+            "accountAbstractionContracts":[],
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },
-        "6XvZpuCDjdvSuot3eLr24C1wqzcf2w4QqeDh9BnDKsNE":{
+        "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
             
             "type":"account",
             "balance":200000,
             "uno":0,
             "nonce":0,
             "rev_t":0,
+            "accountAbstractionContracts":[],
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },
-        "GUbYLN5NqmRocMBHqS183r2FQRoUjhx1p5nKyyUBpntQ":{
+        "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
             
             "type":"account",
             "balance":200000,
             "uno":0,
             "nonce":0,
             "rev_t":0,
+            "accountAbstractionContracts":[],
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },
 
@@ -201,6 +116,7 @@
             "uno":0,
             "storages":["storageID_N"],
             "bytecode":"00",
+            "storageAbstractionLastPayment":0,
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
 
             "storageID_N":{
@@ -226,6 +142,24 @@
             },
     
             "0x4741c39e6096c192Db6E1375Ff32526512069dF5":{
+                
+                "nonce": 0,
+                "balance":100,
+                "code":"",
+                "storage":{}
+    
+            },
+
+            "0x069bdf66961ce2D38eBe48DD2E095f2c8015ac82":{
+                
+                "nonce": 0,
+                "balance":100,
+                "code":"",
+                "storage":{}
+    
+            },
+
+            "0xd24F99516c385A5C3D1Dc8c663B944A21D8F0145":{
                 
                 "nonce": 0,
                 "balance":100,
