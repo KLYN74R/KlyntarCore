@@ -1014,7 +1014,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
-        await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EEO:${vtEpochFullID}`).catch(()=>{})
+        // await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`EEO:${vtEpochFullID}`).catch(()=>{}) // decided to not to delete for API explicit information
 
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`VT_CACHE:${vtEpochOldIndex}`).catch(()=>{})
 
