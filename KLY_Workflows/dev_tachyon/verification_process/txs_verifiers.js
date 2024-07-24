@@ -171,8 +171,7 @@ export let VERIFIERS = {
                     type:'account',
                     balance:0,
                     uno:0,
-                    nonce:0,
-                    accountAbstractionContracts:[]
+                    nonce:0
                 
                 }
                 

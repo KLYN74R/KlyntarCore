@@ -36,7 +36,7 @@ import('module').then(
 
     // evaluate VRF proof from private key
 
-    const data = new Uint8Array(Buffer.from('Hello','utf-8'))// data
+    const data = new Uint8Array(Buffer.from('Hello','utf-8')) // data
     const [hash, proof] = Evaluate(PRV,data)
 
     console.log('Hash is ',Buffer.from(hash).toString('hex'))

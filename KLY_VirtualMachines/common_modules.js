@@ -62,6 +62,7 @@ export let cryptography = {
         return {
 
             gasSpent: 6000,
+            
             result: tbls.verifyTBLS(masterPubKey,masterSigna,signedData)
 
         }
@@ -73,6 +74,7 @@ export let cryptography = {
         return {
 
             gasSpent:5000,
+
             result:verifyEd25519Sync(signedData,signature,pubKey)
 
         }
