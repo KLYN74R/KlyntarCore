@@ -7,7 +7,7 @@ import {GLOBAL_CACHES} from "../blockchain_preparation.js"
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
-    if(methodID==='changeShard') return 0.01
+    if(methodID==='changeShard') return 10000
 
 }
 

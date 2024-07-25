@@ -7,9 +7,9 @@ import {WORKING_THREADS} from "../blockchain_preparation.js"
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
-    if(methodID==='mintUnobtanium') return 0.05
+    if(methodID==='mintUnobtanium') return 10000
 
-    else if(methodID==='burnUnobtanium') return 0.05
+    else if(methodID==='burnUnobtanium') return 10000
 
 }
 

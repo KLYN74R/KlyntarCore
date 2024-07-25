@@ -9,11 +9,11 @@ import {blake3Hash} from '../../../KLY_Utils/utils.js'
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
-    if(methodID==='constructor') return 0.05
+    if(methodID==='constructor') return 10000
 
-    else if(methodID==='stake') return 0.05
+    else if(methodID==='stake') return 10000
 
-    else if(methodID==='unstake') return 0.05
+    else if(methodID==='unstake') return 10000
 
 }
 
