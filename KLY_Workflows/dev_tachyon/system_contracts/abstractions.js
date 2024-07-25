@@ -20,6 +20,12 @@ export let CONTRACT = {
 
         // Remove contract that used in account and storage abstractions
 
-    }
+    },
+
+    chargePaymentForStorageUsedByContract:async(transaction,originShard,atomicBatch)=>{
+
+        // Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch
+
+    },
 
 }
