@@ -25,7 +25,7 @@ import web3 from 'web3'
 
 
 
-let getPricePerSignatureType = transaction => {
+let getGasCostPerSignatureType = transaction => {
 
     if(transaction.payload.type==='D') return 0
     
@@ -153,7 +153,7 @@ export let VERIFIERS = {
         
             recipientAccount = await getAccountFromState(originShard+':'+tx.payload.to),
 
-            goingToSpend = getPricePerSignatureType(tx)+tx.payload.amount+tx.fee
+            goingToSpend = getGasCostPerSignatureType(tx)+tx.payload.amount+tx.fee
 
         tx = await TXS_FILTERS.TX(tx,originShard) //pass through the filter
 
@@ -225,7 +225,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = getPricePerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
+        let goingToSpend = getGasCostPerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
 
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
@@ -309,7 +309,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
 
-            goingToSpend = getPricePerSignatureType(tx)+tx.fee+tx.payload.gasLimit
+            goingToSpend = getGasCostPerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) //pass through the filter
 

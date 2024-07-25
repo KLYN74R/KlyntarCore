@@ -52,11 +52,12 @@ export let CONTRACT = {
 
             atomicBatch.del(originShard+':'+transaction.creator)
 
-            atomicBatch.put(wishedShard+':'+transaction.creator,txCreatorAccount)
-
             // Delete from cache too
 
             GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+transaction.creator)
+
+            // Bind the same account to another shard 
+            atomicBatch.put(wishedShard+':'+transaction.creator,txCreatorAccount)
 
             return {isOk:true}
             
