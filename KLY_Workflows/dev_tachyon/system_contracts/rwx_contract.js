@@ -20,42 +20,48 @@ export let CONTRACT = {
        
             {
 
-                additionalParams:{
+                params:{
 
                     agreementText:'BlaBlaBLa',
+
+                    delegations:{
+
+                        account1:[], // delegations in form of {contract:'',method:'',params:[]}
+                    
+                        account2:[],
+
+                        ...
+                        accountN:[]
+
+                    }
 
                     ...<Here in form of key:value will be added additional params to extend the mediation setup. For example, preffered region and language, wished validators and other params>
 
                 }
 
-                delegations:{
-
-                    account1:[], // delegations in form of {contract:'',method:'',params:[]}
-                    
-                    account2:[],
-
-                    ...
-                    accountN:[]
-
-                }
-
                 signatures:{
 
-                    account1: {sigType:'D',sig:SIG(additionalParams+delegations)}
+                    account1: {sigType:'D',sig:SIG(params)}
                     
-                    account2: {sigType:'M',sig:SIG(additionalParams+delegations)},
+                    account2: {sigType:'M',sig:SIG(params)},
 
                     ...
-                    accountN: {sigType:'P/D',sig:SIG(additionalParams+delegations)}
+                    accountN: {sigType:'P/D',sig:SIG(params)}
 
                 }
 
             }
 
-            
-            Once transaction occured - we need to check signed delegations by agreement sides
         
         */
+
+    },
+
+    executeBatchOfDelegations:async(transaction,originShard,atomicBatch)=>{
+
+        // Here we simply execute array of delegations by contract parties dependent on solution and delete contract from state to mark deal as solved and prevent replay attacks
+        // For stats it's possible to leave the fact of contract in separate DB
+        // Batch of contract calls must be signed by quorum majority
 
     }
 
