@@ -16,31 +16,9 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    changeShard:async(transaction,originShard,atomicBatch)=>{
+    freezeAccount:async(transaction,originShard,atomicBatch)=>{
 
-        /*
-        
-            transaction.payload.params format is
-
-            [
-
-                {
-
-                    wishedShard:'<shardID to move to>'
-
-                }
-
-            ]
-            
-            [*] Delete the
-            
-                originShard:transaction.creator - ID in database
-                
-            and move the account to
-            
-                transaction.payload.params[0].wishedShard:transaction.creator - ID in database
-        
-        */
+        // Just freeze account on this shard to unfreeze on some another one
 
         let wishedShard = transaction.payload.params[0].wishedShard
 
@@ -63,6 +41,37 @@ export let CONTRACT = {
             
 
         } else return {isOk:false, reason: 'No such account on shard or <wishedShard> variable is not string'}
+
+    },
+
+
+
+
+    unfreezeAccount:async(transaction,originShard,atomicBatch)=>{
+
+/*
+        
+            transaction.payload.params format is
+
+            [
+
+                {
+
+                    wishedShard:'<shardID to move to>'
+
+                }
+
+            ]
+            
+            [*] Delete the
+            
+                originShard:transaction.creator - ID in database
+                
+            and move the account to
+            
+                transaction.payload.params[0].wishedShard:transaction.creator - ID in database
+        
+        */
 
     }
 
