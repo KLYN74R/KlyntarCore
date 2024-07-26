@@ -1,8 +1,10 @@
-import {blake3Hash} from "../../../KLY_Utils/utils.js"
 import { verifyQuorumMajoritySolution } from "../../../KLY_VirtualMachines/common_modules.js"
+
 import { GLOBAL_CACHES, WORKING_THREADS } from "../blockchain_preparation.js"
+
 import { getFromState } from "../common_functions/state_interactions.js"
 
+import {blake3Hash} from "../../../KLY_Utils/utils.js"
 
 
 
@@ -189,7 +191,7 @@ export let CONTRACT = {
                 
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+rwxContractId+':'+'REPLAY_PROTECTION',true)
 
-                    
+
                 } else return {isOk:false, reason:'No RWX contract with this id'}
                 
             } else return {isOk:false, reason:'Replay attack detection'}
