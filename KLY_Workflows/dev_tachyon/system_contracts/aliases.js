@@ -11,7 +11,18 @@ export let CONTRACT = {
 
     setAlias:async(transaction,originShard,atomicBatch)=>{
 
-        
+        /*
+    
+            Used to assign some alias to account identifier
+
+            Payload is {
+
+                alias:"blablabla",
+                assignTo:"<normal KLY identifier - eth address or kly ids(ed25519,bls,tbls,pqc)>"
+                shard:"<shard id where identifier is>"
+            }
+    
+        */
 
     },
 

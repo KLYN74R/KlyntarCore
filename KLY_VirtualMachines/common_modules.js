@@ -127,6 +127,24 @@ export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapp
 }
 
 
+export let getRandomValue = () => {
+
+    /*
+    
+        Returns source of randomness to EVM & WASM. Format - 256 bit string. This is current epoch hash
+
+        It's random enough because:
+            
+            1) EpochHash = blake3Hash(firstBlocksHashes)
+            2) Each first block in epoch must contains AEFPs(aggregated epoch finalization proofs) and each proof contains signature by quorum member
+            3) Since only quorum member can generate proof using own private key and these proofs will be in block(and in hash) - then we have a reliable and deterministic source of randomness 
+    
+    */
+
+    return WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash
+
+}
+
 
 /**
  * 

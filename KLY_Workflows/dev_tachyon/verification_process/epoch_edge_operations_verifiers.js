@@ -730,7 +730,7 @@ export default {
         
     },
 
-    ALIAS_CONTRACT_CALL:async(payload,isFromRoute,_usedOnApprovementThread,_fullCopyOfApprovementThread)=>{
+    ALIAS_CONTRACT_CALL:async(payload,isFromRoute)=>{
 
 
         /*
