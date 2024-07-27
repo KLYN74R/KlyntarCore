@@ -747,8 +747,44 @@ export default {
         */
 
 
-    }
+    },
 
+    
+    ABSTRACTIONS_CONTRACT_CALL:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
+
+        /*
+    
+            To add new contracts related to account abstraction 2.0 and storage abstraction in general registry
+        
+        */
+
+
+    },
+
+
+    CHANGE_SHARD_CONTRACT_CALL:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
+
+        /*
+    
+            To rebind account to a new shard
+        
+        */
+
+
+    },
+
+
+
+    ASSIGN_POOL_TO_SHARD:async(payload,isFromRoute)=>{
+
+        /*
+    
+            To get the proofs from quorum that you(as a pool owner) choose a specific shard
+        
+        */
+
+
+    },    
 
 
 }
