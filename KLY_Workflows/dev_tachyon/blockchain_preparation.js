@@ -319,7 +319,7 @@ export let setGenesisToState=async()=>{
         
         let idToAdd = poolPubKey+':'+poolPubKey
 
-        let templateForQt = {
+        let templateForAT = {
 
             totalPower:poolContractStorage.totalPower,
             lackOfTotalPower:false,
@@ -338,7 +338,7 @@ export let setGenesisToState=async()=>{
 
             idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
 
-            templateForQt.reserveFor = poolContractStorage.reserveFor
+            templateForAT.reserveFor = poolContractStorage.reserveFor
 
             poolsRegistryForEpochHandler.reservePools.push(poolPubKey)
 
@@ -353,7 +353,7 @@ export let setGenesisToState=async()=>{
         }
         
 
-        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForQt)
+        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForAT)
 
 
         //Put metadata
@@ -501,6 +501,9 @@ export let setGenesisToState=async()=>{
 
     }
 
+    atomicBatch.put('ABSTRACTIONS_SYSTEM_CONTRACT',abstractionsContractMetadata)
+
+    atomicBatch.put('ABSTRACTIONS_SYSTEM_CONTRACT_STORAGE_SET_OF_AA_CONTRACTS',abstractionsContractStorage)
 
 
     /*

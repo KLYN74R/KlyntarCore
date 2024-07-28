@@ -137,7 +137,7 @@ export let VERIFIERS = {
 
     Default transaction
     
-    Structure
+    Structure of payload
     
     {
         to:<address to send KLY to>
@@ -165,7 +165,7 @@ export let VERIFIERS = {
 
             if(!recipientAccount){
     
-                //Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
+                // Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
                 recipientAccount = {
                 
                     type:'account',
@@ -175,7 +175,7 @@ export let VERIFIERS = {
                 
                 }
                 
-                //Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
+                // Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
                 if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
     
                 GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) //add to cache to collapse after all events in blocks of block
@@ -244,7 +244,7 @@ export let VERIFIERS = {
 
                 if(SYSTEM_CONTRACTS.has(typeofContract)){
 
-                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(tx,atomicBatch) // do deployment logic
+                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // do deployment logic
 
                     senderAccount.balance-=goingToSpend
             
@@ -332,7 +332,7 @@ export let VERIFIERS = {
 
                         let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
                         
-                        let execResultWithReason = await systemContract[tx.payload.method](tx,originShard,atomicBatch) // result is {isOk:true/false, reason:''}
+                        let execResultWithReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
 
                         senderAccount.balance-=goingToSpend
             
@@ -456,7 +456,7 @@ export let VERIFIERS = {
 
         if(evmResult && !evmResult.execResult.exceptionError){
           
-            let totalSpentInWei = evmResult.amountSpent //BigInt value
+            let totalSpentInWei = evmResult.amountSpent // BigInt value
 
             let totalSpentByTxInKLY = web3.utils.fromWei(totalSpentInWei.toString(),'ether')
 

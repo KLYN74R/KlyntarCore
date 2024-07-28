@@ -9,7 +9,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    setAlias:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    setAlias:async(originShard,tx,atomicBatch)=>{
 
         /*
     
@@ -26,13 +26,13 @@ export let CONTRACT = {
 
     },
 
-    unSetAlias:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    unSetAlias:async(originShard,tx,atomicBatch)=>{
 
         
 
     },
 
-    changeRoot:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    changeRoot:async(originShard,tx,atomicBatch)=>{
 
         
 

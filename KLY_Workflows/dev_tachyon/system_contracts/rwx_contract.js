@@ -2,7 +2,7 @@ import { verifyQuorumMajoritySolution } from "../../../KLY_VirtualMachines/commo
 
 import { GLOBAL_CACHES, WORKING_THREADS } from "../blockchain_preparation.js"
 
-import { getFromState } from "../common_functions/state_interactions.js"
+import { getAccountFromState, getFromState } from "../common_functions/state_interactions.js"
 
 import {blake3Hash} from "../../../KLY_Utils/utils.js"
 
@@ -22,7 +22,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    createContract:async(originShard,transaction,_rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    createContract:async(originShard,transaction,atomicBatch)=>{
 
         /*
         
@@ -100,7 +100,7 @@ export let CONTRACT = {
 
 
 
-    executeBatchOfDelegations:async(originShard,transaction,_rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
+    executeBatchOfDelegations:async(originShard,transaction,atomicBatch)=>{
 
         // Here we simply execute array of delegations by contract parties dependent on solution and delete contract from state to mark deal as solved and prevent replay attacks
         // For stats it's possible to leave the fact of contract in separate DB
@@ -167,13 +167,23 @@ export let CONTRACT = {
 
                 // Check if contract present in state
 
-                let rwxContractWasCreated = await getFromState(rwxContractId)
+                let rwxContractRelatedToDeal = await getFromState(rwxContractId)
 
-                if(rwxContractWasCreated){
+                if(rwxContractRelatedToDeal){
 
-                    for(let tx of executionBatch){
+                    for(let subTx of executionBatch){
 
-                        tx
+                        // Each tx has format like TX type -> {to,amount}
+                        
+                        let recipientAccount = await getAccountFromState(originShard+':'+subTx.to)
+
+                        if(recipientAccount && (rwxContractRelatedToDeal.balance - subTx.amount) >= 0){                          
+
+                            recipientAccount.balance += subTx.amount
+
+                            rwxContractRelatedToDeal.balance -= subTx.amount
+
+                        }   
     
                     }
     

@@ -53,7 +53,7 @@ export let CONTRACT = {
         [*] reserveFor - ShardID(pubkey of prime pool)
 
     */
-    constructor:async (originShard,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
+    constructor:async (originShard,transaction,atomicBatch) => {
 
         let {constructorParams} = transaction.payload
 
