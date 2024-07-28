@@ -22,7 +22,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    createContract:async(transaction,originShard,atomicBatch)=>{
+    createContract:async(originShard,transaction,_rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         /*
         
@@ -100,7 +100,7 @@ export let CONTRACT = {
 
 
 
-    executeBatchOfDelegations:async(transaction,originShard,atomicBatch)=>{
+    executeBatchOfDelegations:async(originShard,transaction,_rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         // Here we simply execute array of delegations by contract parties dependent on solution and delete contract from state to mark deal as solved and prevent replay attacks
         // For stats it's possible to leave the fact of contract in separate DB

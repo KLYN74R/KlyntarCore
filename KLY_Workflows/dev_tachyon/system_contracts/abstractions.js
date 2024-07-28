@@ -10,19 +10,19 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    addContract:async(transaction,originShard,atomicBatch)=>{
+    addContract:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         // Add contract whitelisted to using in account and storage abstractions
 
     },
 
-    removeContract:async(transaction,originShard,atomicBatch)=>{
+    removeContract:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         // Remove contract that used in account and storage abstractions
 
     },
 
-    chargePaymentForStorageUsedByContract:async(transaction,originShard,atomicBatch)=>{
+    chargePaymentForStorageUsedByContract:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
         // Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch
 

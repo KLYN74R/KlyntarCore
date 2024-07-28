@@ -53,7 +53,7 @@ export let CONTRACT = {
         [*] reserveFor - ShardID(pubkey of prime pool)
 
     */
-    constructor:async (transaction,originShard,atomicBatch) => {
+    constructor:async (originShard,transaction,rewardsAndSuccessfulTxsCollector,atomicBatch) => {
 
         let {constructorParams} = transaction.payload
 
@@ -135,7 +135,7 @@ export let CONTRACT = {
     
     */
     
-    stake:async(transaction,originShard) => {
+    stake:async(originShard,transaction) => {
 
         let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => Ed25519_pubkey(POOL)
 
@@ -207,7 +207,7 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (transaction,originShard) => {
+    unstake:async (originShard,transaction) => {
 
         let fullPoolIdWithPostfix = transaction.payload.contractID,
 

@@ -19,7 +19,7 @@ export let CONTRACT = {
 
     // Increase UNO balance on specific account on some shard in case majority of quorum voted for it
 
-    mintUnobtanium:async (transaction,originShard)=>{
+    mintUnobtanium:async (originShard,transaction)=>{
 
         /*
         
@@ -80,7 +80,7 @@ export let CONTRACT = {
 
     // To decrease number of UNO from some account
 
-    burnUnobtanium:async (transaction,originShard)=>{
+    burnUnobtanium:async (originShard,transaction)=>{
 
         /*
         
