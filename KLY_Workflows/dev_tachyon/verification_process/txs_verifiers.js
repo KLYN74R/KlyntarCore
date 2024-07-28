@@ -151,7 +151,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
         
-            recipientAccount = await getAccountFromState(originShard+':'+tx.payload.to),
+            recipientAccount = await getFromState(originShard+':'+tx.payload.to),
 
             goingToSpend = getGasCostPerSignatureType(tx)+tx.payload.amount+tx.fee
 
