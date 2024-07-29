@@ -497,7 +497,7 @@ export let setGenesisToState=async()=>{
 
     let abstractionsContractStorage = {
 
-        contracts:[]
+        contracts:{} // contractID => index of epoch to activate
 
     }
 
