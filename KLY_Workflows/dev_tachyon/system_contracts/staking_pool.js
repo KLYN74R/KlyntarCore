@@ -1,5 +1,7 @@
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
+import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
+
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
@@ -48,7 +50,7 @@ export let CONTRACT = {
         [*] isReserve - define type of pool
         
                 isReserve=false means that this pool is a prime pool and will have a separate shard
-                isReserve=true means that you pool will be in reserve and will be used only when prime pool will be stopped
+                isReserve=true means that your pool will be in reserve and will be used only when prime pool will be stopped
         
         [*] reserveFor - ShardID(pubkey of prime pool)
 
@@ -57,7 +59,7 @@ export let CONTRACT = {
 
         let {constructorParams} = transaction.payload
 
-        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor] = constructorParams
+        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor,majorityProofs] = constructorParams
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
@@ -104,18 +106,29 @@ export let CONTRACT = {
 
             if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor = reserveFor
 
-            // Put pool pointer
-            atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
+            // To avoid async problems - verify that majority of quorum have voted to paste the pool data on appropriate shard
+
+            let epochFullID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash+"#"+WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+
+            let dataThatShouldBeSigned = `POOL_CREATION:${ed25519PubKey}:BIND_TO_SHARD:${originShard}:${epochFullID}`
+
+            if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,majorityProofs)){
+
+                // Put pool pointer
+                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
 
             
-            // Put metadata
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+                // Put metadata
+                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
-            // Put storage
-            // NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                // Put storage
+                // NOTE: We just need a simple storage with ID="POOL"
+                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
-            return {isOk:true}
+                return {isOk:true}
+
+            } else return {isOk:false}
+
 
         } else return {isOk:false}
 
