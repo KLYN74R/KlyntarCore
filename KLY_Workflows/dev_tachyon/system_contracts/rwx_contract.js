@@ -147,7 +147,7 @@ export let CONTRACT = {
 
         let epochFullID = epochHandler.hash+'#'+epochHandler.id
 
-        let payloadJSON = JSON.stringify(transaction.payload)
+        let payloadJSON = JSON.stringify(transaction.payload) 
     
         let dataThatShouldBeSigned = `RWX:${epochFullID}:${payloadJSON}`
     

@@ -8,6 +8,8 @@ import bls from '../KLY_Utils/signatures/multisig/bls.js'
 
 import {verifyEd25519Sync} from '../KLY_Utils/utils.js'
 
+import { Evaluate, ProofHoHash } from '@idena/vrf-js'
+
 import snarkjs from 'snarkjs'
 
 
@@ -142,6 +144,28 @@ export let getRandomValue = () => {
     */
 
     return WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash
+
+}
+
+export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) => {
+
+    // Deserialize (string => []uint8) and verify equality
+
+    try{
+
+        let data = new Uint8Array(Buffer.from(dataAsHexString,'utf-8'))
+
+        let pubkey = new Uint8Array(Buffer.from(pubkeyAsHexString,'utf-8'))
+
+        let proof = new Uint8Array(Buffer.from(proofAsHexString,'utf-8'))
+
+        
+        let hashCheck = ProofHoHash(pubkey, data, proof)
+
+        return Buffer.from(hashCheck).toString('hex') === randomHashAsHexString
+
+
+    } catch { return false }
 
 }
 
