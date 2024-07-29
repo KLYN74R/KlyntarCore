@@ -730,51 +730,6 @@ export default {
         
     },
 
-    ALIAS_CONTRACT_CALL:async(payload,isFromRoute)=>{
-
-
-        /*
-    
-            Used to assign some alias to account identifier
-
-            Payload is {
-
-                alias:"blablabla",
-                assignTo:"<normal KLY identifier - eth address or kly ids(ed25519,bls,tbls,pqc)>"
-                shard:"<shard id where identifier is>"
-            }
-    
-        */
-
-
-    },
-
-    
-    ABSTRACTIONS_CONTRACT_CALL:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
-
-        /*
-    
-            To add new contracts related to account abstraction 2.0 and storage abstraction in general registry
-        
-        */
-
-
-    },
-
-
-    CHANGE_SHARD_CONTRACT_CALL:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
-
-        /*
-    
-            To rebind account to a new shard
-        
-        */
-
-
-    },
-
-
-
     ASSIGN_POOL_TO_SHARD:async(payload,isFromRoute)=>{
 
         /*
@@ -784,8 +739,7 @@ export default {
         */
 
 
-    },    
-
+    }
 
 }
 
