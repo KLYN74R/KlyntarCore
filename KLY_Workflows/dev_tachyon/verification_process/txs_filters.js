@@ -55,7 +55,7 @@ export let TXS_FILTERS = {
         
         Optional:
 
-        rev_t:<if recepient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig who'se votes can be ignored)>
+        rev_t:<if recipient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig who'se votes can be ignored)>
     }
 
     */

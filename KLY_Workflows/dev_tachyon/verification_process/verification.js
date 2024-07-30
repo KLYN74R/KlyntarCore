@@ -1886,12 +1886,12 @@ shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
 
 
 
-sendFeesToAccountsOnTheSameShard = async(shardID,feeRecepientPoolPubKey,feeReward) => {
+sendFeesToAccountsOnTheSameShard = async(shardID,feeRecipientPoolPubKey,feeReward) => {
 
     // We should get the account of pool on specific shards
     // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
 
-    let accountsForFeesId = shardID+':'+feeRecepientPoolPubKey
+    let accountsForFeesId = shardID+':'+feeRecipientPoolPubKey
 
     let feesAccountForGivenPoolOnThisShard = await getAccountFromState(accountsForFeesId) || await getEmptyAccountTemplateBindedToShard(accountsForFeesId)
 
@@ -1944,9 +1944,9 @@ distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrim
 
     //_____________________________________________ THE REST ______________________________________________
 
-    arrayOfPrimePools.forEach(feesRecepientPrimePoolPubKey=>
+    arrayOfPrimePools.forEach(feesRecipientPrimePoolPubKey=>
 
-        feesRecepientPrimePoolPubKey !== shardContext && shareFeesPromises.push(sendFeesToAccountsOnTheSameShard(shardContext,feesRecepientPrimePoolPubKey,payToEachPool))
+        feesRecipientPrimePoolPubKey !== shardContext && shareFeesPromises.push(sendFeesToAccountsOnTheSameShard(shardContext,feesRecipientPrimePoolPubKey,payToEachPool))
             
     )
      

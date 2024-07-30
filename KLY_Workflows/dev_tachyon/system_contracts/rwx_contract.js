@@ -1,8 +1,8 @@
 import { verifyQuorumMajoritySolution } from "../../../KLY_VirtualMachines/common_modules.js"
 
-import { GLOBAL_CACHES, WORKING_THREADS } from "../blockchain_preparation.js"
-
 import { getAccountFromState, getFromState } from "../common_functions/state_interactions.js"
+
+import { GLOBAL_CACHES, WORKING_THREADS } from "../blockchain_preparation.js"
 
 import {blake3Hash} from "../../../KLY_Utils/utils.js"
 
@@ -116,15 +116,13 @@ export let CONTRACT = {
 
                 executionBatch:[
 
-                    -------- This is array of KLY operations - TX, WVM_DEPLOY, WVM_CALL, EVM_CALL
+                   {
 
-                    {
-            
-                        delegator:<KLY account ID - one of 4 types + EVM format>,
-                        type:TX | WVM_DEPLOY | WVM_CALL | EVM_CALL,
-                        payload:,
-            
-                    },
+                        to:'account to transfer KLY to',
+
+                        amount:<number of KLY to transfer to this account>
+
+                    }
 
                     ...
 

@@ -138,7 +138,7 @@ export let CONTRACT = {
      
     Method to delegate your assets to some validator | pool
 
-    Payload
+    transaction.payload.params[0] is:
 
     {
         pool:<id of special contract - Ed25519 validator's pubkey'>
@@ -210,7 +210,7 @@ export let CONTRACT = {
      
         Method to delegate your assets to some validator | pool
 
-        Payload
+        transaction.payload.params[0] is:
 
         {
             pool:<id of special contract - Ed25519 validator's pubkey'>

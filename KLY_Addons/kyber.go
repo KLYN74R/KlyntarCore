@@ -22,7 +22,7 @@ func genKYBER(schem *C.char, role *C.char) *C.char {
 	rand.Seed(time.Now().UnixNano())
 
 	//Prepare byte buffers
-	//40 bytes - sender, 20-bytes recepient
+	//40 bytes - sender, 20-bytes recipient
 
 	if C.GoString(role) == "sender" {
 
@@ -71,8 +71,8 @@ func getSharedKYBERAsSender(schem *C.char, hexPrivateKey *C.char, hexCipherText 
 
 }
 
-//export getSharedKYBERAsRecepient
-func getSharedKYBERAsRecepient(schem *C.char, hexSeed *C.char, hexSenderPubKey *C.char) *C.char {
+//export getSharedKYBERAsRecipient
+func getSharedKYBERAsRecipient(schem *C.char, hexSeed *C.char, hexSenderPubKey *C.char) *C.char {
 
 	scheme := schemes.ByName(C.GoString(schem)) //Kyber512 by default
 
