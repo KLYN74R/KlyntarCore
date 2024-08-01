@@ -1,3 +1,9 @@
+import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
+
+import {getFromState} from "../common_functions/state_interactions.js"
+
+
+
 export let GAS_USED_BY_METHOD=methodID=>{
 
     if(methodID==='constructor') return 10000
@@ -10,76 +16,64 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    addGas:async(originShard,tx,atomicBatch)=>{
+    changeGasAmount:async(originShard,transaction)=>{
 
         /*
-
-            Add contract whitelisted to using in account and storage abstractions
 
             tx.payload.params[0] format is:
 
             {
-                account:'',
 
-                amountToAdd:100000,
+                gasAmount:100000,
+
+                action:'+' | '-',
                 
                 majorityProofs:{
 
-                    quorumMember1: SIG(originShard+contractID+epochIndex),
+                    quorumMember1: SIG(`changeGasAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}`),
                     ...
 
                 }
                 
             }
-
-            If majority voted to add contract for AA 2.0 - verify signatures and it will be available to be used from the next epoch(not instantly because of async core work manner)
         
         */
 
+
+        let {gasAmount, action, quorumAgreements} = transaction.payload.params[0] 
+
+        let dataThatShouldBeSigned = `changeGasAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
+
+
+        if(typeof gasAmount === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+
+            let accountToModifyGasAmount = await getFromState(originShard+':'+transaction.creator)
+
+            if(accountToModifyGasAmount){
+
+                if(action === '+') accountToModifyGasAmount.gas += gasAmount
+
+                else accountToModifyGasAmount.gas -= gasAmount
+
+                return {isOk:true}
+
+            } else return {isOk:false, reason:'No such account'}
+
+        } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
+
+
     },
 
-    reduceGas:async(originShard,tx,atomicBatch)=>{
+    
+    chargePaymentForStorageUsedByContract:async(originShard,transaction,atomicBatch)=>{
 
         /*
-        
-            Remove contract that used in account and storage abstractions    
+
+            Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch        
         
             tx.payload.params[0] format is:
-
-            {
-                account:<ID of target account>,
-
-                amountToReduce:100000,
-                
-                majorityProofs:{
-
-                    quorumMember1: SIG(originShard+contractID+epochIndex),
-                    ...
-
-                }
-                
-            }
-
-            If majority voted to add contract for AA 2.0 - verify signatures and it will be available to be used from the next epoch(not instantly because of async core work manner)
-        
         
         */
-
-    },
-
-    chargeFeePayment:async(originShard,tx,atomicBatch)=>{
-
-        /*
-        
-            Function to charge gas from some account
-        
-        */
-
-    },
-
-    chargePaymentForStorageUsedByContract:async(originShard,tx,atomicBatch)=>{
-
-        // Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch
 
     },
 

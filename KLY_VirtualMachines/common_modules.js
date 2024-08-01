@@ -168,14 +168,3 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
     } catch { return false }
 
 }
-
-
-// /**
-//  * 
-//  * @param {'EVM'|'WASM'} vmID 
-//  */
-// export let crossVMCall = (vmID) => {
-
-//     console.log(vmID)
-
-// }

@@ -40,7 +40,7 @@ let getGasCostPerSignatureType = transaction => {
 }
 
 
-//Load required modules and inject to contract
+// Load required modules and inject to contract
 // eslint-disable-next-line no-unused-vars
 let getMethodsToInject=_imports=>{
 

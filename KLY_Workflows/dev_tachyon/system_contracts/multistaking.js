@@ -2,8 +2,6 @@ import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_
 
 import {getFromState} from "../common_functions/state_interactions.js"
 
-import {WORKING_THREADS} from "../blockchain_preparation.js"
-
 
 export let GAS_USED_BY_METHOD=methodID=>{
 
@@ -17,9 +15,9 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    // Increase UNO balance on specific account on some shard in case majority of quorum voted for it
+    // Change the UNO amount on specific account on some shard in case majority of quorum voted for it
 
-    mintUnobtanium:async (originShard,transaction)=>{
+    changeUnobtaniumAmount:async (originShard,transaction)=>{
 
         /*
         
@@ -29,13 +27,13 @@ export let CONTRACT = {
 
                 amountUno: 10000,
 
-                recipient:<address to>
+                action:'+' - to increase | '-' to decrease
                 
                 quorumAgreements:{
 
-                    quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
+                    quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`),
                     ...
-                    quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
+                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}`)
 
                 }
 
@@ -48,22 +46,20 @@ export let CONTRACT = {
         
         */
 
-        let {amountUno, recipient, quorumAgreements} = transaction.payload.params[0] 
+        let {amountUno, action, quorumAgreements} = transaction.payload.params[0]
 
-        let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
-
-        let epochFullID = epochHandler.hash+'#'+epochHandler.id
-
-        let dataThatShouldBeSigned = `${epochFullID}:${amountUno}:${recipient}:mintUnobtanium`
+        let dataThatShouldBeSigned = `changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
 
 
-        if(typeof amountUno === 'number' && typeof recipient === 'number' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+        if(typeof amountUno === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
 
-            let recipientAccount = await getFromState(originShard+':'+recipient)
+            let recipientAccount = await getFromState(originShard+':'+transaction.creator)
 
             if(recipientAccount){
 
-                recipientAccount.uno += amountUno
+                if(action === '+') recipientAccount.uno += amountUno
+
+                else recipientAccount.uno -= amountUno
 
                 return {isOk:true}
 
@@ -71,42 +67,6 @@ export let CONTRACT = {
 
         } else return {isOk:false, reason:'Wrong datatypes or majority verification failed'}
 
-
-    },
-
-    // To decrease number of UNO from some account
-
-    burnUnobtanium:async (originShard,transaction)=>{
-
-        /*
-        
-            transaction.payload.params[0] is equal to
-
-            {
-
-                amountToBurn:<number>
-
-            }
-        
-        */
-
-
-        let {amountToBurn} = transaction.payload.params[0] 
-
-
-        if(typeof amountToBurn === 'number'){
-
-            let recipientAccount = await getFromState(originShard+':'+transaction.creator)
-
-            if(recipientAccount){
-
-                recipientAccount.uno -= amountToBurn
-
-                return {isOk:true}
-
-            } else return {isOk:false, reason:'No such account'}
-
-        } else return {isOk:false, reason:'Wrong datatypes(amountToBurn must be a number)'}    
 
     }
 
