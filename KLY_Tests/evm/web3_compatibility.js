@@ -46,6 +46,11 @@ const evmAccount1 = {
 //   }
 
 
+console.log(web3.utils.fromWei('0x1611b5050a19938','ether'))
+
+
+
+
 //___________________________________________________________ TEST SECTION ___________________________________________________________
 
 
@@ -129,11 +134,11 @@ let EVM_DEFAULT_TX = async() => {
 // EVM_DEFAULT_TX()
 
 
-web3.eth.getTransactionReceipt('0x0416afec24bb8010e39a79663c695fdfdf26576fd1605cfcddec7a7c9611da8d',(err,txReceipt)=>console.log(txReceipt))
+// web3.eth.getTransactionReceipt('0x0416afec24bb8010e39a79663c695fdfdf26576fd1605cfcddec7a7c9611da8d',(err,txReceipt)=>console.log(txReceipt))
 
-web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+// web3.eth.getBalance(evmAccount0.address).then(balance=>console.log(`Balance of ${evmAccount0.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
-web3.eth.getBalance(evmAccount1.address).then(balance=>console.log(`Balance of ${evmAccount1.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
+// web3.eth.getBalance(evmAccount1.address).then(balance=>console.log(`Balance of ${evmAccount1.address} is ${web3.utils.fromWei(balance,'ether')} KLY`)).catch(e=>console.log(e))
 
 
 
@@ -481,4 +486,4 @@ let ESTIMATE_GAS_FOR_DEFAULT_TX = async()=>{
 
 }
 
-ESTIMATE_GAS_FOR_DEFAULT_TX()
+// ESTIMATE_GAS_FOR_DEFAULT_TX()

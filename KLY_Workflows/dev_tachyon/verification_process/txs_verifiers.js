@@ -264,7 +264,7 @@ export let VERIFIERS = {
                     lang:tx.payload.lang,
                     balance:0,
                     uno:0,
-                    storages:[],
+                    storages:['DEFAULT'],
                     bytecode:tx.payload.bytecode,
                     storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
     
@@ -311,7 +311,7 @@ export let VERIFIERS = {
 
             goingToSpend = getGasCostPerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 
-        tx = await TXS_FILTERS.WVM_CALL(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
         
         if(!tx){
@@ -357,36 +357,24 @@ export let VERIFIERS = {
                         TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
                 
                     */
+
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
+                        
+                        Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
+                                    
+                    )
+
+                    let methodToCall = tx.payload.method
+
+                    let paramsToPass = tx.payload.params
+
+                    
+                    let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
             
                     try{
-
-                        //__________________________ Run the contract call logic __________________________
-
-                        /*
-                        
-                            Since transaction may contain cross-contract / cross-VM calls - we have to run the infinite while loop and process transaction step-by-step
-                        
-                            Handle all the sub-calls. In case contract call returns object like:
-                            
-                                {
-                                    next:<contractID>,func:<method>,params:<params>}
-
-                                }
-
-                        */
-
-                        let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
-                        
-                            Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
-                                    
-                        )
-
                         
                         let goingToCallContractID = tx.payload.contractID
 
-                        let methodToCall = tx.payload.method
-
-                        let paramsToPass = tx.payload.params
 
 
                         let lastSubCallInChain = false

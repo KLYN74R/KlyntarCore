@@ -8,7 +8,7 @@ import bls from '../KLY_Utils/signatures/multisig/bls.js'
 
 import {verifyEd25519Sync} from '../KLY_Utils/utils.js'
 
-import { Evaluate, ProofHoHash } from '@idena/vrf-js'
+import {ProofHoHash} from '@idena/vrf-js'
 
 import snarkjs from 'snarkjs'
 
@@ -170,16 +170,12 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
 }
 
 
-/**
- * 
- * @param {'EVM'|'WASM'} vmID 
- */
-export let crossVMCall = (vmID) => {
+// /**
+//  * 
+//  * @param {'EVM'|'WASM'} vmID 
+//  */
+// export let crossVMCall = (vmID) => {
 
-    console.log(vmID)
+//     console.log(vmID)
 
-}
-
-// Params - logID,payload
-
-export let vmLog = () => {}
+// }

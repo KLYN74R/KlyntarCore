@@ -46,14 +46,14 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
 
-        let amountToMove = transaction.payload.params[0]
+        let {amount,recipientNextNonce} = transaction.payload.params[0]
 
 
-        if(txCreatorAccount.type === 'account' && typeof amountToMove === 'number' && amountToMove <= txCreatorAccount.balance){
+        if(txCreatorAccount.type === 'account' && typeof amount === 'number' && typeof recipientNextNonce === 'number' && amount <= txCreatorAccount.balance){
 
-            txCreatorAccount.balance -= amountToMove
+            txCreatorAccount.balance -= amount
 
-            return {isOk:true, reason:'', extraData:{amount:amountToMove,to:transaction.creator,recipientNonce:}}
+            return {isOk:true, reason:'', extraData:{amount,to:transaction.creator,recipientNextNonce}}
 
 
         } else return {isOk:false, reason:'No such account or not enough balance'}
