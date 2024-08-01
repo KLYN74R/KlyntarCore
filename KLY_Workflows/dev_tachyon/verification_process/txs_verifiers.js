@@ -326,30 +326,45 @@ export let VERIFIERS = {
         
         }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-            let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+            if(tx.payload.contractID?.startsWith('system/staking')){
+
+
+            } else if(tx.payload.contractID?.startsWith('system/')){
+
+                // Call system smart-contract
+
+                let systemContractName = tx.payload.contractID.split('/')[1]
+
+                if(SYSTEM_CONTRACTS.has(systemContractName)){
+
+                    let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
+                    
+                    let execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
+
+                    senderAccount.balance -= goingToSpend
+        
+                    senderAccount.nonce = tx.nonce
+                
+                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                    return execResultWithStatusAndReason
+
+
+                } else return {isOk:false,reason:`No such type of system contract`}
+
+
+            } else  {
+
+                let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+
+
+            }
+
 
             if(contractMetadata){
 
                 if(contractMetadata.lang.startsWith('system/')){
 
-                    let systemContractName = contractMetadata.lang.split('/')[1]
-
-                    if(SYSTEM_CONTRACTS.has(systemContractName)){
-
-                        let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
-                        
-                        let execResultWithReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
-
-                        senderAccount.balance-=goingToSpend
-            
-                        senderAccount.nonce=tx.nonce
-                    
-                        rewardsAndSuccessfulTxsCollector.fees+=tx.fee
-
-                        return execResultWithReason
-
-
-                    } else return {isOk:false,reason:`No such type of system contract`}
 
 
                 } else {

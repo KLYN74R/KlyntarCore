@@ -141,7 +141,7 @@ export let CONTRACT = {
     transaction.payload.params[0] is:
 
     {
-        pool:<id of special contract - Ed25519 validator's pubkey'>
+        fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
     }
@@ -150,11 +150,9 @@ export let CONTRACT = {
     
     stake:async(originShard,transaction) => {
 
-        let fullPoolIdWithPostfix = transaction.payload.contractID, // Format => Ed25519_pubkey(POOL)
+        let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0]
 
-            {amount,units} = transaction.payload.params[0],
-
-            poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
+        let poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
 
 
         //Here we also need to check if pool is still not fullfilled
@@ -213,7 +211,7 @@ export let CONTRACT = {
         transaction.payload.params[0] is:
 
         {
-            pool:<id of special contract - Ed25519 validator's pubkey'>
+            fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             type:<KLY|UNO>
         }
@@ -222,9 +220,7 @@ export let CONTRACT = {
     */
     unstake:async (originShard,transaction) => {
 
-        let fullPoolIdWithPostfix = transaction.payload.contractID,
-
-            {amount,units} = transaction.payload.params[0],
+        let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0],
 
             poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
 

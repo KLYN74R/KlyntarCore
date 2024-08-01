@@ -67,7 +67,15 @@ export let CONTRACT = {
 
     },
 
-    chargeFeePayment:async(originShard,tx,atomicBatch)=>{}
+    chargeFeePayment:async(originShard,tx,atomicBatch)=>{
+
+        /*
+        
+            Function to charge gas from some account
+        
+        */
+
+    },
 
     chargePaymentForStorageUsedByContract:async(originShard,tx,atomicBatch)=>{
 

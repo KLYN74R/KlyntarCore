@@ -1,8 +1,8 @@
-import { verifyQuorumMajoritySolution } from "../../../KLY_VirtualMachines/common_modules.js"
+import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
 
-import { getAccountFromState, getFromState } from "../common_functions/state_interactions.js"
+import {getAccountFromState, getFromState} from "../common_functions/state_interactions.js"
 
-import { GLOBAL_CACHES, WORKING_THREADS } from "../blockchain_preparation.js"
+import {GLOBAL_CACHES, WORKING_THREADS} from "../blockchain_preparation.js"
 
 import {blake3Hash} from "../../../KLY_Utils/utils.js"
 
