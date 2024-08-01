@@ -44,6 +44,12 @@ let getGasCostPerSignatureType = transaction => {
 // eslint-disable-next-line no-unused-vars
 let getMethodsToInject=_imports=>{
 
+    /*
+    
+        S
+    
+    */
+
     return {}
 
 }
@@ -360,57 +366,17 @@ export let VERIFIERS = {
 
                     let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
                         
-                        Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, await getMethodsToInject(tx.payload.imports)
+                        Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports)
                                     
                     )
 
                     let methodToCall = tx.payload.method
 
                     let paramsToPass = tx.payload.params
-
-                    
+        
                     let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
             
-                    try{
-                        
-                        let goingToCallContractID = tx.payload.contractID
-
-
-
-                        let lastSubCallInChain = false
-
-                        let results = new Map() // callID => result
-
-                        let callbacksQueue = []
-
-                        while(!lastSubCallInChain) {
-
-                            let intermediateResultAsJSON = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
-                            
-                            let parsedIntermediateResult = JSON.parse(intermediateResultAsJSON)
-
-                            results.set(goingToCallContractID+methodToCall,parsedIntermediateResult)
-
-                            // If this contract call includes next subcalls(saying, cross-contract / cross-VM call) - continue this while
-                            
-                            if(!parsedIntermediateResult.nextCall) lastSubCallInChain = true
-
-                            else if (parsedIntermediateResult.callBackData){
-
-                                let {vmID,contractID,methodID,params} = parsedIntermediateResult.callBackData
-
-                                callbacksQueue.push(parsedIntermediateResult.callBackData)
-
-                            }
-
-                        }
-
-                    }catch(err){
-
-                        // eslint-disable-next-line no-unused-vars
-                        resultAsJSON = err.message
-
-                    }
+                    console.log(resultAsJson)
             
                     senderAccount.balance -= goingToSpend
     

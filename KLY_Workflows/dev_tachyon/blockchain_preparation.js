@@ -481,31 +481,6 @@ export let setGenesisToState=async()=>{
     )
 
 
-    //________________________ Add the storage for system contract related to account abstraction 2.0 and storage abstraction(see abstractions.js) ________________________
-
-
-    let abstractionsContractMetadata = {
-
-        type:"contract",
-        lang:'system/abstractions',
-        balance:0,
-        uno:0,
-        storages:['SET_OF_AA_CONTRACTS'],
-        bytecode:''
-
-    }
-
-    let abstractionsContractStorage = {
-
-        contracts:{} // contractID => index of epoch to activate
-
-    }
-
-    atomicBatch.put('ABSTRACTIONS_SYSTEM_CONTRACT',abstractionsContractMetadata)
-
-    atomicBatch.put('ABSTRACTIONS_SYSTEM_CONTRACT_STORAGE_SET_OF_AA_CONTRACTS',abstractionsContractStorage)
-
-
     /*
     
     Set the initial workflow version from genesis

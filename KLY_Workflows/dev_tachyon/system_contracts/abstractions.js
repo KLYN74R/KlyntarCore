@@ -10,7 +10,7 @@ export let GAS_USED_BY_METHOD=methodID=>{
 export let CONTRACT = {
 
 
-    addContract:async(originShard,tx,atomicBatch)=>{
+    addGas:async(originShard,tx,atomicBatch)=>{
 
         /*
 
@@ -19,7 +19,9 @@ export let CONTRACT = {
             tx.payload.params[0] format is:
 
             {
-                contractID:<WASM or EVM contract to call>,
+                account:'',
+
+                amountToAdd:100000,
                 
                 majorityProofs:{
 
@@ -36,7 +38,7 @@ export let CONTRACT = {
 
     },
 
-    removeContract:async(originShard,tx,atomicBatch)=>{
+    reduceGas:async(originShard,tx,atomicBatch)=>{
 
         /*
         
@@ -45,7 +47,9 @@ export let CONTRACT = {
             tx.payload.params[0] format is:
 
             {
-                contractID:<WASM or EVM contract to call>,
+                account:<ID of target account>,
+
+                amountToReduce:100000,
                 
                 majorityProofs:{
 
