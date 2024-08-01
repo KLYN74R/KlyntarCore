@@ -72,7 +72,7 @@ export let CONTRACT = {
         // Create metadata first
         let futureRwxContractMetadataTemplate = {
 
-            type:"contract",
+            type:'contract',
             lang:'system/rwx',
             balance:0,
             uno:0,

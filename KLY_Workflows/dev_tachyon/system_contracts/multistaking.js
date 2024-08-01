@@ -23,28 +23,24 @@ export let CONTRACT = {
 
         /*
         
-            Transaction payload is 
+            transaction.payload.params[0] is 
 
-            [
+            {
 
-                {
+                amountUno: 10000,
 
-                    amountUno: 10000,
-
-                    recipient:<address to>
+                recipient:<address to>
                 
-                    quorumAgreements:{
+                quorumAgreements:{
 
-                        quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
-                        ...
-                        quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
-
-                    }
+                    quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
+                    ...
+                    quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
 
                 }
 
+            }
 
-            ]
 
             [1] Verify that majority of quorum agree to add UNO to account
             [2] Change .uno amount on account by increasing for .amountUno

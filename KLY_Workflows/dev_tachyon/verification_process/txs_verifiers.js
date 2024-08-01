@@ -217,7 +217,7 @@ export let VERIFIERS = {
             constructorParams:[]
         }
 
-    If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
+    If it's one of system contracts (alias define,service deploying,unobtanium mint and so on) the structure will be like this
 
     {
         bytecode:'',(empty)
@@ -244,19 +244,21 @@ export let VERIFIERS = {
         }
         else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-            if(tx.payload.lang.startsWith('system/')){
+            if(tx.payload.lang.startsWith('system/staking')){ //TODO - delete once we add more
 
                 let typeofContract = tx.payload.lang.split('/')[1]
 
                 if(SYSTEM_CONTRACTS.has(typeofContract)){
 
-                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // do deployment logic
+                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // run deployment logic
 
-                    senderAccount.balance-=goingToSpend
+                    senderAccount.balance -= goingToSpend
             
-                    senderAccount.nonce=tx.nonce
+                    senderAccount.nonce = tx.nonce
                     
-                    rewardsAndSuccessfulTxsCollector.fees+=tx.fee
+                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                    return {isOk:true}
 
                 }else return {isOk:false,reason:`No such type of system contract`}
 
@@ -264,9 +266,9 @@ export let VERIFIERS = {
 
                 let contractID = blake3Hash(originShard+JSON.stringify(tx))
 
-                let contractTemplate = {
+                let contractMetadataTemplate = {
     
-                    type:"contract",
+                    type:'contract',
                     lang:tx.payload.lang,
                     balance:0,
                     uno:0,
@@ -276,17 +278,19 @@ export let VERIFIERS = {
     
                 }
             
-                atomicBatch.put(contractID,contractTemplate)
+                atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+
+                atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',{}) // autocreate the default storage for contract
     
-                senderAccount.balance-=goingToSpend
+                senderAccount.balance -= goingToSpend
             
-                senderAccount.nonce=tx.nonce
+                senderAccount.nonce = tx.nonce
                 
-                rewardsAndSuccessfulTxsCollector.fees+=tx.fee
+                rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                return {isOk:true}
     
             }
-
-            return {isOk:true}
 
         }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
 
@@ -326,10 +330,7 @@ export let VERIFIERS = {
         
         }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-            if(tx.payload.contractID?.startsWith('system/staking')){
-
-
-            } else if(tx.payload.contractID?.startsWith('system/')){
+            if(tx.payload.contractID?.startsWith('system/')){
 
                 // Call system smart-contract
 
@@ -355,43 +356,31 @@ export let VERIFIERS = {
 
             } else  {
 
+                // Otherwise it's attempt to call custom contract
+
                 let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
 
-
-            }
-
-
-            if(contractMetadata){
-
-                if(contractMetadata.lang.startsWith('system/')){
-
-
-
-                } else {
+                if(contractMetadata){
 
                     // Prepare the contract instance
 
                     let gasLimit = tx.payload.gasLimit * 1_000_000_000 // 1 KLY = 10^9 gas. You set the gasLimit in KLY(to avoid confusing)
 
-                    /*
-                
-                        TODO: We should return only instance, and inside .bytesToMeteredContract() we should create object to allow to execute contract & host functions from modules with the same caller's handler to control the context & gas burned
-                
-                    */
-
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(
-                        
-                        Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports)
-                                    
-                    )
+                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
 
                     let methodToCall = tx.payload.method
 
                     let paramsToPass = tx.payload.params
-        
+
+                    // Before call - get the contract default storage from state DB
+
+                    let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
+
+
+                    // Call contract
+
                     let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
             
-                    console.log(resultAsJson)
             
                     senderAccount.balance -= goingToSpend
     
@@ -399,13 +388,13 @@ export let VERIFIERS = {
             
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                }
+                    return {isOk:true}
 
-                return {isOk:true}
+                } else return {isOk:false,reason:`No metadata for contract`}
 
-            }else return {isOk:false,reason:`No metadata for contract`}
+            }
 
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
+        } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
 
     },
 
