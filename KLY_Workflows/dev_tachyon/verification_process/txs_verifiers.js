@@ -175,9 +175,14 @@ export let VERIFIERS = {
                 recipientAccount = {
                 
                     type:'account',
+
                     balance:0,
+                    
                     uno:0,
-                    nonce:0
+                    
+                    nonce:0,
+
+                    gas:0
                 
                 }
                 

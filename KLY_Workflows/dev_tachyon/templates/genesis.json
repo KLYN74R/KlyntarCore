@@ -83,7 +83,7 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
-            "rev_t":0,
+            "gas":0,
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
@@ -92,6 +92,7 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
+            "gas":0,
             "rev_t":0,
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },
@@ -101,6 +102,7 @@
             "balance":200000,
             "uno":0,
             "nonce":0,
+            "gas":0,
             "rev_t":0,
             "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
         },

@@ -76,7 +76,7 @@ export let CONTRACT = {
             lang:'system/rwx',
             balance:0,
             uno:0,
-            storages:['CONTRACT_BODY'],
+            storages:['DEFAULT'],
             bytecode:''
 
         }
@@ -91,7 +91,7 @@ export let CONTRACT = {
 
         atomicBatch.put(originShard+':'+contractID,futureRwxContractMetadataTemplate)
 
-        atomicBatch.put(originShard+':'+contractID+'_STORAGE_CONTRACT_BODY',futureRwxContractSingleStorage)
+        atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',futureRwxContractSingleStorage)
 
         return {isOk:true}
 
@@ -189,13 +189,13 @@ export let CONTRACT = {
                 
                     atomicBatch.del(originShard+':'+rwxContractId)
     
-                    atomicBatch.del(originShard+':'+rwxContractId+'_STORAGE_CONTRACT_BODY')
+                    atomicBatch.del(originShard+':'+rwxContractId+'_STORAGE_DEFAULT')
 
                     // Delete from cache too
 
                     GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+rwxContractId)
 
-                    GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+rwxContractId+'_STORAGE_CONTRACT_BODY')
+                    GLOBAL_CACHES.STATE_CACHE.delete(originShard+':'+rwxContractId+'_STORAGE_DEFAULT')
                 
                     GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+rwxContractId+':'+'REPLAY_PROTECTION',true)
 
