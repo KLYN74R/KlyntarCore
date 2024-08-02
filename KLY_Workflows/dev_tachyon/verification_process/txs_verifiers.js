@@ -1,6 +1,6 @@
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -200,6 +200,30 @@ export let VERIFIERS = {
             senderAccount.nonce=tx.nonce
             
             rewardsAndSuccessfulTxsCollector.fees+=tx.fee
+
+            if(false){
+
+                let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
+
+                let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
+
+                let dataToPush = {
+
+                    isOk: true,
+
+                    txid:blake3Hash(tx.sig)
+
+                }
+
+                txsTrackerForSender.push(dataToPush)
+
+                txsTrackerForRecepient.push(dataToPush)
+
+                await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
+
+                await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
+
+            }
 
             return {isOk:true}
 
