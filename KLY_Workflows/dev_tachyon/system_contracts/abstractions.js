@@ -24,6 +24,8 @@ export let CONTRACT = {
 
             {
 
+                targetAccount
+
                 gasAmount:100000,
 
                 action:'+' | '-',
@@ -72,6 +74,14 @@ export let CONTRACT = {
             Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch        
         
             tx.payload.params[0] format is:
+
+            {
+
+                payForContract:<contract ID on the same shard>,
+
+                amount:
+
+            }
         
         */
 

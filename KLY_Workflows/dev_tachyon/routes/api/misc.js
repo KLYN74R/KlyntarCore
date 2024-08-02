@@ -194,6 +194,17 @@ FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
 
 
 
+// Returns data related to checkpoints to hostchains
+FASTIFY_SERVER.get('/checkpoints/:epoch_index',(_request,response)=>{
+
+    
+
+})
+
+
+
+
+
 // Handler to accept transaction, make overview and add to mempool ✅
 
 FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLOAD_SIZE},async(request,response)=>{

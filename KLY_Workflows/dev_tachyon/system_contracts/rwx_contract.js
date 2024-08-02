@@ -32,7 +32,7 @@ export let CONTRACT = {
 
                 params:{
 
-                    agreementText:'BlaBlaBLa',
+                    agreementText:'fjflksjl flsjl flksl fjlsdkjfls. If delivery delay with to transfer 5 KLY to account <bblalba>',
 
                     delegations:{
 

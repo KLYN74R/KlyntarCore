@@ -25,6 +25,8 @@ export let CONTRACT = {
 
             {
 
+                targetAccount:
+
                 amountUno: 10000,
 
                 action:'+' - to increase | '-' to decrease
