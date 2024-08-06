@@ -41,18 +41,18 @@ export let VM = {
      * @param {*} contractMetadata - handler for gas used metering
      * @param {Object} params - object that we should pass to contract
      * @param {*} functionName - function name of contract that we should call
-     * @param {'RUST'|'ASC'} type
+     * @param {'RUST'|'ASC'} contractLang
      * @returns 
      */
-    callContract:(contractInstance,contractMetadata,params,functionName,type)=>{
+    callContract:(contractInstance,contractMetadata,params,functionName,contractLang)=>{
 
         let result
 
-        if(type==='RUST'){
+        if(contractLang==='RUST'){
 
             result = contractInstance[functionName](params)
 
-        }else if(type==='ASC'){
+        }else if(contractLang==='ASC'){
 
             let pointerToChunk = contractInstance.__newString(params);
 

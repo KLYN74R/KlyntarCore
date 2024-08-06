@@ -27,15 +27,15 @@ import web3 from 'web3'
 
 let getGasCostPerSignatureType = transaction => {
 
-    if(transaction.payload.type==='D') return 0
+    if(transaction.payload.sigType==='D') return 0
     
-    if(transaction.payload.type==='T') return 0.01
+    if(transaction.payload.sigType==='T') return 0.01
 
-    if(transaction.payload.type==='P/D') return 0.03
+    if(transaction.payload.sigType==='P/D') return 0.03
 
-    if(transaction.payload.type==='P/B') return 0.02
+    if(transaction.payload.sigType==='P/B') return 0.02
 
-    if(transaction.payload.type==='M') return 0.01+transaction.payload.afk.length*0.001
+    if(transaction.payload.sigType==='M') return 0.01+transaction.payload.afk.length*0.001
 
 }
 
@@ -119,11 +119,11 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
         let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
     
 
-        if(tx.payload.type==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
+        if(tx.payload.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)
         
-        if(tx.payload.type==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
+        if(tx.payload.sigType==='T') return tbls.verifyTBLS(tx.creator,tx.sig,signedData)
         
-        if(tx.payload.type==='P/D') {
+        if(tx.payload.sigType==='P/D') {
 
             let isOk = false
 
@@ -137,7 +137,7 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
             
         }
         
-        if(tx.payload.type==='P/B'){
+        if(tx.payload.sigType==='P/B'){
           
             let isOk=false
 
@@ -151,7 +151,7 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
 
         }
         
-        if(tx.payload.type==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
+        if(tx.payload.sigType==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
 
     }else return false
 
@@ -427,7 +427,7 @@ export let VERIFIERS = {
 
                     // Call contract
 
-                    let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.type)
+                    let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.lang)
             
             
                     senderAccount.balance -= goingToSpend
