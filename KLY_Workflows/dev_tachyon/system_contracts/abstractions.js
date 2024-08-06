@@ -30,7 +30,7 @@ export let CONTRACT = {
 
                 action:'+' | '-',
                 
-                majorityProofs:{
+                quorumAgreements:{
 
                     quorumMember1: SIG(`changeGasAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}`),
                     ...

@@ -128,7 +128,7 @@ export let CONTRACT = {
 
                 ],
 
-                majorityProofs:{
+                quorumAgreements:{
 
                     quorumMemberPubKey1: Signa1,
                     ...
@@ -149,7 +149,7 @@ export let CONTRACT = {
     
         let dataThatShouldBeSigned = `RWX:${epochFullID}:${payloadJSON}`
     
-        let proofsByQuorumMajority = transaction.payload?.params?.[0]?.majorityProofs
+        let proofsByQuorumMajority = transaction.payload?.params?.[0]?.quorumAgreements
 
 
 

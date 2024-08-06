@@ -1,6 +1,9 @@
+import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
+
 import {getAccountFromState} from "../common_functions/state_interactions.js"
 
 import {GLOBAL_CACHES} from "../blockchain_preparation.js"
+
 
 
 
@@ -48,14 +51,14 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
 
-        let {amount,recipientNextNonce} = transaction.payload.params[0]
+        let {moveToShard,recipient,recipientNextNonce,amount} = transaction.payload.params[0]
 
 
-        if(txCreatorAccount.type === 'account' && typeof amount === 'number' && typeof recipientNextNonce === 'number' && amount <= txCreatorAccount.balance){
+        if(txCreatorAccount.type === 'account' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
 
             txCreatorAccount.balance -= amount
 
-            return {isOk:true, reason:'', extraData:{amount,to:transaction.creator,recipientNextNonce}}
+            return {isOk:true, extraData:{moveToShard,recipient,recipientNextNonce,amount}}
 
 
         } else return {isOk:false, reason:'No such account or not enough balance'}
@@ -64,7 +67,7 @@ export let CONTRACT = {
     },
 
 
-    acceptMessage:async(transaction,originShard,atomicBatch)=>{
+    acceptMessage:async(transaction,originShard)=>{
 
         /*
         
@@ -106,22 +109,46 @@ export let CONTRACT = {
             After that - message is valid
         
         */
-       
-        let epochHandler = WORKING_THREADS.VERIFICATION_THREAD.EPOCH
 
-        let epochFullID = epochHandler.hash+'#'+epochHandler.id
+        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
 
-        let payloadJSON = JSON.stringify(transaction.payload) 
-    
-        let dataThatShouldBeSigned = `RWX:${epochFullID}:${payloadJSON}`
-    
-        let proofsByQuorumMajority = transaction.payload?.params?.[0]?.majorityProofs
+        let {moveToShard,recipient,recipientNextNonce,amount, quorumAgreements} = transaction.payload.params[0]
 
+        if(!txCreatorAccount){
 
+            txCreatorAccount = {
+                
+                type:'account',
 
-        if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,proofsByQuorumMajority)){}
+                balance:0,
+                
+                uno:0,
+                
+                nonce:0,
 
-        
+                gas:0
+            
+            }
+
+            GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+transaction.creator)
+
+        }
+
+        let typesCheck = txCreatorAccount.type === 'account' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number'
+
+        if(typesCheck && recipient === transaction.creator && moveToShard === originShard && recipientNextNonce === transaction.nonce) {
+
+            let dataThatShouldBeSigned = `acceptMessage:${originShard}:${transaction.creator}:${recipientNextNonce}:${amount}` // with nonce + tx.creator to prevent replay
+ 
+            if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+
+                txCreatorAccount.balance += amount
+
+                return {isOk:true}
+
+            } else return {isOk:false, reason:'Impossible to verify that majority voted for this'}
+
+        } else return {isOk:false, reason:'Types check failed, wrong recipient(tx.creator must be equal to <recipient>), <moveToShard> not equal to <originShard> or wrong <recipientNextNonce>'}
 
     }
 
