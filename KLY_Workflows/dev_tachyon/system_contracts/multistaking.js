@@ -35,7 +35,7 @@ export let CONTRACT = {
 
                     quorumMember1: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`),
                     ...
-                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}`)
+                    quorumMemberPubKeyN: SIG(`changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}`)
 
                 }
 
@@ -61,7 +61,7 @@ export let CONTRACT = {
 
                 if(action === '+') recipientAccount.uno += amountUno
 
-                else recipientAccount.uno -= amountUno
+                else if(recipientAccount.uno - amountUno >= 0) recipientAccount.uno -= amountUno // you can't burn more UNO than you have
 
                 return {isOk:true}
 

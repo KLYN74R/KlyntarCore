@@ -71,6 +71,44 @@ let defaultVerificationProcess=async(senderAccount,tx,goingToSpend)=>{
 
 
 
+let trackTransactionsList=async(originShard,txid,...touchedAccounts)=>{
+
+    // Function to allow to fill the list of transaction per address
+
+    let dataToPush = {isOk: true, txid}
+
+    for(let account of touchedAccounts){
+
+        let accStore = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(_=>[])
+        
+        accStore.push(dataToPush)
+
+        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,accStore)        
+
+    }
+
+
+    let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
+
+    let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
+
+    txsTrackerForSender.push(dataToPush)
+
+
+
+    txsTrackerForRecepient.push(dataToPush)
+
+    await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
+
+    await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
+
+
+
+
+}
+
+
+
 export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originShard) => {
 
     
@@ -203,25 +241,6 @@ export let VERIFIERS = {
 
             if(false){
 
-                let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
-
-                let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
-
-                let dataToPush = {
-
-                    isOk: true,
-
-                    txid:blake3Hash(tx.sig)
-
-                }
-
-                txsTrackerForSender.push(dataToPush)
-
-                txsTrackerForRecepient.push(dataToPush)
-
-                await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
-
-                await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
 
             }
 
