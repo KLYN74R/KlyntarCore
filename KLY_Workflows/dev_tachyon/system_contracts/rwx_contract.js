@@ -76,6 +76,7 @@ export let CONTRACT = {
             lang:'system/rwx',
             balance:0,
             uno:0,
+            gas:0,
             storages:['DEFAULT'],
             bytecode:''
 

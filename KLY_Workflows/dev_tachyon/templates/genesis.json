@@ -113,6 +113,7 @@
             "lang":"RUST",
             "balance":0,
             "uno":0,
+            "gas":0,
             "storages":["storageID_N"],
             "bytecode":"00",
             "storageAbstractionLastPayment":0,

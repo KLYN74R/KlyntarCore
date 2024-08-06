@@ -320,6 +320,7 @@ export let VERIFIERS = {
                     lang:tx.payload.lang,
                     balance:0,
                     uno:0,
+                    gas:0,
                     storages:['DEFAULT'],
                     bytecode:tx.payload.bytecode,
                     storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id

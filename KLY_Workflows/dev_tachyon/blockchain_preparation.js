@@ -312,6 +312,7 @@ export let setGenesisToState=async()=>{
             lang:'system/staking',
             balance:0,
             uno:0,
+            gas:0,
             storages:['POOL'],
             bytecode:''
 
@@ -442,7 +443,7 @@ export let setGenesisToState=async()=>{
 
             if(BLOCKCHAIN_GENESIS.STATE[addressOrContractID].type==='contract'){
 
-                let {lang,balance,uno,storages,bytecode,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
+                let {lang,balance,uno,gas,storages,bytecode,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
 
                 let contractMeta = {
 
@@ -450,6 +451,7 @@ export let setGenesisToState=async()=>{
                     lang,
                     balance,
                     uno,
+                    gas,
                     storages,
                     bytecode
                 

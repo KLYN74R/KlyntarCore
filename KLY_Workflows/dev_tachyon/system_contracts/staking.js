@@ -72,6 +72,7 @@ export let CONTRACT = {
                 lang:'system/staking',
                 balance:0,
                 uno:0,
+                gas:0,
                 storages:['POOL'],
                 bytecode:''
 
