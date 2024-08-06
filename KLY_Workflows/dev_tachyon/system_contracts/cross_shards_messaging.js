@@ -32,8 +32,10 @@ export let CONTRACT = {
             transaction.payload.params[0] is:
 
             {
+                moveToShard:'',
+                recipient:'',
+                recipientNextNonce:<nonce of target address on another shard - need it to prevent replay attacks>,
                 amount:<amount of KLY to transfer to another shard>,
-                recipientNextNonce:<nonce of target address on another shard - need it to prevent replay attacks>
             }
             
         
@@ -78,19 +80,30 @@ export let CONTRACT = {
 
             {
 
-                moveToShard: 'new shard ID to move to',
-
-                amount:'',
+                moveToShard:'',
+                
+                recipient:'',
+                
+                recipientNextNonce:<nonce of target address on another shard - need it to prevent replay attacks>,
+                
+                amount:<amount of KLY to transfer to another shard>,
 
                 quorumAgreements:{
 
-                    quorumMemberPubKey1: Signature(epochFullID:amount:recipient:'mintUnobtanium'),
+                    quorumMemberPubKey1: Signature(moveToShard+recipient+recipientNextNonce+amount),
                     ...
-                    quorumMemberPubKeyN: Signature(epochFullID:amount:recipient:'mintUnobtanium')
+                    quorumMemberPubKeyN: Signature(moveToShard+recipient+recipientNextNonce+amount)
 
                 }
 
             }
+
+                1) Verify that moveToShard === originShard
+                2) recipientNextNonce === tx.nonce
+
+            ================================================================
+
+            After that - message is valid
         
         */
        

@@ -44,18 +44,19 @@ export let CONTRACT = {
 
         let {gasAmount, action, quorumAgreements} = transaction.payload.params[0] 
 
-        let dataThatShouldBeSigned = `changeGasAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
-
-
-        if(typeof gasAmount === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+        if(typeof gasAmount === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
 
             let accountToModifyGasAmount = await getFromState(originShard+':'+transaction.creator)
 
             if(accountToModifyGasAmount){
 
-                if(action === '+') accountToModifyGasAmount.gas += gasAmount
+                let dataThatShouldBeSigned = `changeGasAmount:${transaction.creator}:${gasAmount}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
 
-                else accountToModifyGasAmount.gas -= gasAmount
+
+                if(action === '+' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)) accountToModifyGasAmount.gas += gasAmount
+
+                else if(accountToModifyGasAmount.gas - gasAmount >=0) accountToModifyGasAmount.gas -= gasAmount
+
 
                 return {isOk:true}
 

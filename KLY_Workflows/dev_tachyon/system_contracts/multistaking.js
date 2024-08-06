@@ -50,18 +50,21 @@ export let CONTRACT = {
 
         let {amountUno, action, quorumAgreements} = transaction.payload.params[0]
 
-        let dataThatShouldBeSigned = `changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
-
-
-        if(typeof amountUno === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)){
+        if(typeof amountUno === 'number' && typeof action === 'string' && typeof quorumAgreements === 'object'){
 
             let recipientAccount = await getFromState(originShard+':'+transaction.creator)
 
             if(recipientAccount){
 
-                if(action === '+') recipientAccount.uno += amountUno
+                let dataThatShouldBeSigned = `changeUnoAmount:${transaction.creator}:${amountUno}:${action}:${transaction.nonce}` // with nonce + tx.creator to prevent replay
+
+                // Minting require quorum's majority agreement while burning is your own deal
+                // Burning is a signal for offchain service like "I burnt my UNO, please release my freezed assets"
+                
+                if(action === '+' && verifyQuorumMajoritySolution(dataThatShouldBeSigned,quorumAgreements)) recipientAccount.uno += amountUno
 
                 else if(recipientAccount.uno - amountUno >= 0) recipientAccount.uno -= amountUno // you can't burn more UNO than you have
+
 
                 return {isOk:true}
 
