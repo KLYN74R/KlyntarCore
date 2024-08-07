@@ -182,8 +182,11 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
+            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length/2) // 0.000002 KLY per byte
 
         } else if(tx.type === 'WVM_CALL'){
+
+            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length/2)
 
         } else if(tx.type === 'EVM_CALL'){
 
@@ -304,17 +307,21 @@ export let VERIFIERS = {
 
             if(!goingToSpent.errReason){
 
-                senderAccount.balance -= goingToSpent.goingToSpendInNativeCurrency
-                
-                recipientAccount.balance += tx.payload.amount
+                if(senderAccount.balance - goingToSpent.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpent.goingToBurnGasAmount >= 0){
 
-                senderAccount.gas -= goingToSpent.goingToBurnGasAmount
-            
-                senderAccount.nonce = tx.nonce
+                    senderAccount.balance -= goingToSpent.goingToSpendInNativeCurrency
                 
-                rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                    recipientAccount.balance += tx.payload.amount
     
-                return {isOk:true}    
+                    senderAccount.gas -= goingToSpent.goingToBurnGasAmount
+                
+                    senderAccount.nonce = tx.nonce
+                    
+                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
+        
+                    return {isOk:true}        
+
+                } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
             } else return {isOk:false,reason:goingToSpent.errReason}
             
@@ -351,17 +358,11 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = getCostPerSignatureType(tx)+tx.fee // +JSON.stringify(tx.payload).length
+        let goingToSpend = getCostPerSignatureType(tx)+tx.fee
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
-
-        if(!tx){
-
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-
-        }
-        else if(await commonVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await commonVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(tx.payload.lang.startsWith('system/staking')){ // TODO - delete once we add more
 
@@ -412,7 +413,7 @@ export let VERIFIERS = {
     
             }
 
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
+        } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
     },
 
@@ -443,12 +444,8 @@ export let VERIFIERS = {
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
-        
-        if(!tx){
 
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-        
-        }else if(await commonVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await commonVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(tx.payload.contractID?.startsWith('system/')){
 
@@ -513,7 +510,7 @@ export let VERIFIERS = {
 
             }
 
-        } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
+        } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
     },
 
