@@ -171,17 +171,30 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
     let goingToBurnGasAmount = 0
 
+    let transferAmount = tx.payload.amount || 0
     
+
     if(tx.fee > 0){
 
         // In this case creator pays fee in native KLY currency
-        goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
+
+        goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + transferAmount + tx.fee
+
+        if(tx.type === 'WVM_CONTRACT_DEPLOY'){
+
+
+        } else if(tx.type === 'WVM_CALL'){
+
+        } else if(tx.type === 'EVM_CALL'){
+
+
+        }
 
     } else if(tx.fee === 0 && tx.payload.abstractionBoosts){
 
         // In this case creator pays using boosts. This should be signed by current quorum
 
-        goingToSpendInNativeCurrency = tx.payload.amount
+        goingToSpendInNativeCurrency = transferAmount
 
         let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed
 
@@ -195,9 +208,19 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
 
-        goingToSpendInNativeCurrency = tx.payload.amount
+        goingToSpendInNativeCurrency = transferAmount
 
         goingToBurnGasAmount = getCostPerSignatureType(tx) * 1_000_000_000 * 2
+
+        if(tx.type === 'WVM_CONTRACT_DEPLOY'){
+
+
+        } else if(tx.type === 'WVM_CALL'){
+
+        } else if(tx.type === 'EVM_CALL'){
+
+            
+        }
 
     }
 
@@ -329,7 +352,6 @@ export let VERIFIERS = {
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
         let goingToSpend = getCostPerSignatureType(tx)+tx.fee // +JSON.stringify(tx.payload).length
-
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
