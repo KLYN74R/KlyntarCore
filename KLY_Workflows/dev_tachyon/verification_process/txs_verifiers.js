@@ -27,15 +27,15 @@ import web3 from 'web3'
 
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.payload.sigType==='D' || typeof transaction.payload.gasAbstractions === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
+    if(transaction.payload.sigType==='D' || typeof transaction.payload.feeBoosts === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
     
-    if(transaction.payload.sigType==='T') return 0.01
+    if(transaction.payload.sigType==='T') return 0.00001
 
-    if(transaction.payload.sigType==='P/D') return 0.03
+    if(transaction.payload.sigType==='P/D') return 0.0001
 
-    if(transaction.payload.sigType==='P/B') return 0.02
+    if(transaction.payload.sigType==='P/B') return 0.00007
 
-    if(transaction.payload.sigType==='M') return 0.01+transaction.payload.afk.length*0.001
+    if(transaction.payload.sigType==='M') return 0.00001+transaction.payload.afk.length*0.00001
 
 }
 
@@ -44,12 +44,6 @@ let getCostPerSignatureType = transaction => {
 // eslint-disable-next-line no-unused-vars
 let getMethodsToInject=_imports=>{
 
-    /*
-    
-        S
-    
-    */
-
     return {}
 
 }
@@ -57,14 +51,12 @@ let getMethodsToInject=_imports=>{
 
 
 
-let defaultVerificationProcess=async(senderAccount,tx,goingToSpend)=>{
+let commonVerificationProcess=async(senderAccount,tx)=>{
 
 
     return  tx.fee >= 0
             &&
             senderAccount.type==='account'
-            &&
-            senderAccount.balance-goingToSpend>=0
             &&
             senderAccount.nonce<tx.nonce
 
@@ -192,7 +184,7 @@ export let VERIFIERS = {
 
     You may add to payload:
 
-    gasAbstractions: {
+    feeBoosts: {
         
         proposedGasCost:<amount>,
 
@@ -214,11 +206,9 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator), recipientAccount = await getFromState(originShard+':'+tx.payload.to)
 
-        let goingToSpend = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
-
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
-        if(tx && await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await commonVerificationProcess(senderAccount,tx)){
 
             if(!recipientAccount){
     
@@ -243,14 +233,37 @@ export let VERIFIERS = {
                 GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
             
             }
+
+            let goingToSpendInNativeCurrency = 0
+
+            if(tx.fee > 0){
+
+                // In this case creator pays fee in native KLY currency
+                goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
+
+            } else if(tx.fee === 0 && tx.payload.feeBoosts){
+
+                // In this case creator pays using boosts. This should be signed by current quorum
+
+                goingToSpendInNativeCurrency = tx.payload.amount
+
+            } else {
+
+                // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
+
+                let goingToBurnGasAmount = getCostPerSignatureType(tx) * 1_
+
+                goingToSpendInNativeCurrency = tx.payload.amount
+
+            }
             
-            senderAccount.balance-=goingToSpend
+            senderAccount.balance -= tx.payload.amount
                 
-            recipientAccount.balance+=tx.payload.amount
+            recipientAccount.balance += tx.payload.amount
         
-            senderAccount.nonce=tx.nonce
+            senderAccount.nonce = tx.nonce
             
-            rewardsAndSuccessfulTxsCollector.fees+=tx.fee
+            rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
             return {isOk:true}
 
@@ -298,7 +311,7 @@ export let VERIFIERS = {
             return {isOk:false,reason:`Can't get filtered value of tx`}
 
         }
-        else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
+        else if(await commonVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(tx.payload.lang.startsWith('system/staking')){ // TODO - delete once we add more
 
@@ -385,7 +398,7 @@ export let VERIFIERS = {
 
             return {isOk:false,reason:`Can't get filtered value of tx`}
         
-        }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
+        }else if(await commonVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(tx.payload.contractID?.startsWith('system/')){
 
