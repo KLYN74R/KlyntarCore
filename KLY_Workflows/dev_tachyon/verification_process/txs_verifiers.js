@@ -368,7 +368,7 @@ export let VERIFIERS = {
 
         let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
-        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
         if(tx && await commonVerificationProcess(senderAccount,tx)){
 
@@ -448,77 +448,80 @@ export let VERIFIERS = {
     */
     WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-            goingToSpend = getCostPerSignatureType(tx)+tx.fee+tx.payload.gasLimit
+        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
-        if(tx && await commonVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await commonVerificationProcess(senderAccount,tx)){
 
-            if(tx.payload.contractID?.startsWith('system/')){
+            if(!goingToSpend.errReason){
 
-                // Call system smart-contract
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                let systemContractName = tx.payload.contractID.split('/')[1]
+                    let execResultWithStatusAndReason
 
-                if(SYSTEM_CONTRACTS.has(systemContractName)){
+                    if(tx.payload.contractID?.startsWith('system/')){
 
-                    let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
-                    
-                    let execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
-
-                    senderAccount.balance -= goingToSpend
+                        // Call system smart-contract
         
-                    senderAccount.nonce = tx.nonce
+                        let systemContractName = tx.payload.contractID.split('/')[1]
+        
+                        if(SYSTEM_CONTRACTS.has(systemContractName)){
+        
+                            let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
+                            
+                            execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
+        
+                        } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
                 
+                    } else {
+        
+                        // Otherwise it's attempt to call custom contract
+        
+                        let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
+        
+                        if(contractMetadata){
+        
+                            // Prepare the contract instance
+        
+                            let gasLimit = tx.payload.gasLimit
+        
+                            let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
+        
+                            let methodToCall = tx.payload.method
+        
+                            let paramsToPass = tx.payload.params
+        
+                            // Before call - get the contract default storage from state DB
+        
+                            let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
+        
+                            // Call contract
+        
+                            let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.lang)
+                           
+                            execResultWithStatusAndReason = {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
+        
+                        } else execResultWithStatusAndReason = {isOk:false,reason:`No metadata for contract`}
+        
+                    }
+
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+
+                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+            
+                    senderAccount.nonce = tx.nonce
+                    
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
                     return execResultWithStatusAndReason
 
+                } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-                } else return {isOk:false,reason:`No such type of system contract`}
-
-
-            } else  {
-
-                // Otherwise it's attempt to call custom contract
-
-                let contractMetadata = await getFromState(originShard+':'+tx.payload.contractID)
-
-                if(contractMetadata){
-
-                    // Prepare the contract instance
-
-                    let gasLimit = tx.payload.gasLimit * 1_000_000_000 // 1 KLY = 10^9 gas. You set the gasLimit in KLY(to avoid confusing)
-
-                    let {contractInstance,contractMetadata} = await VM.bytesToMeteredContract(Buffer.from(contractMetadata.bytecode,'hex'), gasLimit, getMethodsToInject(tx.payload.imports))
-
-                    let methodToCall = tx.payload.method
-
-                    let paramsToPass = tx.payload.params
-
-                    // Before call - get the contract default storage from state DB
-
-                    let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
-
-                    // Call contract
-
-                    let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.lang)
-            
-            
-                    senderAccount.balance -= goingToSpend
-    
-                    senderAccount.nonce = tx.nonce
-            
-                    rewardsAndSuccessfulTxsCollector.fees += tx.fee
-
-                    return {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
-
-                } else return {isOk:false,reason:`No metadata for contract`}
-
-            }
+            } else return {isOk:false,reason:goingToSpend.errReason}
 
         } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
