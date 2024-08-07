@@ -103,6 +103,8 @@ export let cryptography = {
 }
 
 
+
+
 export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapping) => {
 
     // Take the epoch handler on verification thread (VT)
@@ -129,6 +131,8 @@ export let verifyQuorumMajoritySolution = (dataThatShouldBeSigned,agreementsMapp
 }
 
 
+
+
 export let getRandomValue = () => {
 
     /*
@@ -146,6 +150,9 @@ export let getRandomValue = () => {
     return WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash
 
 }
+
+
+
 
 export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyAsHexString,proofAsHexString) => {
 
@@ -166,5 +173,21 @@ export let verifyVrfRandomValue = (randomHashAsHexString,dataAsHexString,pubkeyA
 
 
     } catch { return false }
+
+}
+
+
+
+
+// Function to bind to appropriate contract storage and call get/set operations in a seamless way within contract call
+export let stateInteraction = function(getOrSetOperation,idOfRecord,jsonStringToStore) {
+
+    if(getOrSetOperation === 'get') return this[idOfRecord] || ''
+
+    else if(getOrSetOperation === 'set'){
+
+        this[idOfRecord] = JSON.parse(jsonStringToStore)
+
+    }
 
 }

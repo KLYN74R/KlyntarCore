@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+
+import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -71,41 +71,38 @@ let defaultVerificationProcess=async(senderAccount,tx,goingToSpend)=>{
 
 
 
-let trackTransactionsList=async(originShard,txid,...touchedAccounts)=>{
+// let trackTransactionsList=async(originShard,txid,...touchedAccounts)=>{
 
-    // Function to allow to fill the list of transaction per address
+//     // Function to allow to fill the list of transaction per address
 
-    let dataToPush = {isOk: true, txid}
+//     let dataToPush = {isOk: true, txid}
 
-    for(let account of touchedAccounts){
+//     for(let account of touchedAccounts){
 
-        let accStore = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(_=>[])
+//         let accStore = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(_=>[])
         
-        accStore.push(dataToPush)
+//         accStore.push(dataToPush)
 
-        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,accStore)        
+//         await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,accStore)        
 
-    }
-
-
-    let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
-
-    let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
-
-    txsTrackerForSender.push(dataToPush)
+//     }
 
 
+//     let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
 
-    txsTrackerForRecepient.push(dataToPush)
+//     let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
 
-    await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
-
-    await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
+//     txsTrackerForSender.push(dataToPush)
 
 
 
+//     txsTrackerForRecepient.push(dataToPush)
 
-}
+//     await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
+
+//     await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
+
+// }
 
 
 
@@ -239,11 +236,6 @@ export let VERIFIERS = {
             
             rewardsAndSuccessfulTxsCollector.fees+=tx.fee
 
-            if(false){
-
-
-            }
-
             return {isOk:true}
 
         }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
@@ -292,7 +284,7 @@ export let VERIFIERS = {
         }
         else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
-            if(tx.payload.lang.startsWith('system/staking')){ //TODO - delete once we add more
+            if(tx.payload.lang.startsWith('system/staking')){ // TODO - delete once we add more
 
                 let typeofContract = tx.payload.lang.split('/')[1]
 
@@ -425,7 +417,6 @@ export let VERIFIERS = {
 
                     let contractStorage = await getFromState(originShard+':'+tx.payload.contractID+'_STORAGE_DEFAULT')
 
-
                     // Call contract
 
                     let resultAsJson = VM.callContract(contractInstance,contractMetadata,paramsToPass,methodToCall,contractMetadata.lang)
@@ -437,7 +428,7 @@ export let VERIFIERS = {
             
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
-                    return {isOk:true}
+                    return {isOk:true,extraData:JSON.parse(resultAsJson)} // TODO: Limit the size of <extraData> field
 
                 } else return {isOk:false,reason:`No metadata for contract`}
 
