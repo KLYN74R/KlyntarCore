@@ -25,9 +25,9 @@ import web3 from 'web3'
 
 
 
-let getGasCostPerSignatureType = transaction => {
+let getCostPerSignatureType = transaction => {
 
-    if(transaction.payload.sigType==='D') return 0
+    if(transaction.payload.sigType==='D' || typeof transaction.payload.gasAbstractions === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
     
     if(transaction.payload.sigType==='T') return 0.01
 
@@ -60,7 +60,9 @@ let getMethodsToInject=_imports=>{
 let defaultVerificationProcess=async(senderAccount,tx,goingToSpend)=>{
 
 
-    return  senderAccount.type==='account'
+    return  tx.fee >= 0
+            &&
+            senderAccount.type==='account'
             &&
             senderAccount.balance-goingToSpend>=0
             &&
@@ -136,7 +138,7 @@ export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originS
         
         if(tx.payload.sigType==='P/B'){
           
-            let isOk=false
+            let isOk = false
 
             try{
 
@@ -185,24 +187,38 @@ export let VERIFIERS = {
         amount:<KLY to transfer>
         rev_t:<if recipient is BLS address - then we need to give a reverse threshold(rev_t = number of members of msig whose votes can be ignored)>
     }
+
+    ----------------- In case of usage AA / boosts -----------------
+
+    You may add to payload:
+
+    gasAbstractions: {
+        
+        proposedGasCost:<amount>,
+
+        quorumAgreements:{
+
+            quorumMember1:SIG(),
+            ...
+            quorumMemberN:SIG()
+
+        }
+
+    }
+
+
     
     */
 
     TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
-        
-            recipientAccount = await getFromState(originShard+':'+tx.payload.to),
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator), recipientAccount = await getFromState(originShard+':'+tx.payload.to)
 
-            goingToSpend = getGasCostPerSignatureType(tx)+tx.payload.amount+tx.fee
+        let goingToSpend = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
 
-        tx = await TXS_FILTERS.TX(tx,originShard) //pass through the filter
+        tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
-        if(!tx){
-
-            return {isOk:false,reason:`Can't get filtered value of tx`}
-        
-        }else if(await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await defaultVerificationProcess(senderAccount,tx,goingToSpend)){
 
             if(!recipientAccount){
     
@@ -222,7 +238,7 @@ export let VERIFIERS = {
                 }
                 
                 // Only case when recipient is BLS multisig, so we need to add reverse threshold to account to allow to spend even in case REV_T number of pubkeys don't want to sign
-                if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t=tx.payload.rev_t
+                if(typeof tx.payload.rev_t === 'number') recipientAccount.rev_t = tx.payload.rev_t
     
                 GLOBAL_CACHES.STATE_CACHE.set(originShard+':'+tx.payload.to,recipientAccount) // add to cache to collapse after all events in block
             
@@ -238,7 +254,7 @@ export let VERIFIERS = {
 
             return {isOk:true}
 
-        }else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
+        } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
         
     },
 
@@ -271,7 +287,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = getGasCostPerSignatureType(tx)+JSON.stringify(tx.payload).length+tx.fee
+        let goingToSpend = getCostPerSignatureType(tx)+tx.fee // +JSON.stringify(tx.payload).length
 
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
@@ -360,7 +376,7 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator),
 
-            goingToSpend = getGasCostPerSignatureType(tx)+tx.fee+tx.payload.gasLimit
+            goingToSpend = getCostPerSignatureType(tx)+tx.fee+tx.payload.gasLimit
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 

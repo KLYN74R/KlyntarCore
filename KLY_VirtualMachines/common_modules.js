@@ -191,3 +191,15 @@ export let stateInteraction = function(getOrSetOperation,idOfRecord,jsonStringTo
     }
 
 }
+
+
+
+
+// Function transfer native coins to another account(used for WVM)
+export let transferNativeCoins = function(amount) {
+
+    this.from.balance -= amount
+
+    this.to.balance += amount
+
+}

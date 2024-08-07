@@ -100,7 +100,7 @@ export let TXS_FILTERS = {
 
         {
 
-            contractID:<BLAKE3 hashID of contract OR alias of contract(for example, PANDORA(mint unobtanium), ALIAS_BIND and so on)>,
+            contractID:<BLAKE3 hashID of contract OR alias of contract>,
             method:<string method to call>,
             gasLimit:<maximum allowed in KLY to execute contract>,
             params:[] params to pass to function,
@@ -111,7 +111,7 @@ export let TXS_FILTERS = {
     */
     WVM_CALL:async (tx,originShard) => {
 
-        return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=512 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
+        return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
                 &&
                 await verifyWrap(tx,originShard)
 
