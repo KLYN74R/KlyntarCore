@@ -1,5 +1,7 @@
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
+import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
+
 import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
@@ -24,10 +26,9 @@ import web3 from 'web3'
 
 
 
-
 let getCostPerSignatureType = transaction => {
 
-    if(transaction.payload.sigType==='D' || typeof transaction.payload.feeBoosts === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
+    if(transaction.payload.sigType==='D' || typeof transaction.payload.abstractionBoosts === 'object') return 0 // In case it's default ed25519 or AAv2 - don't charge extra fees
     
     if(transaction.payload.sigType==='T') return 0.00001
 
@@ -36,6 +37,8 @@ let getCostPerSignatureType = transaction => {
     if(transaction.payload.sigType==='P/B') return 0.00007
 
     if(transaction.payload.sigType==='M') return 0.00001+transaction.payload.afk.length*0.00001
+
+    return 0
 
 }
 
@@ -162,6 +165,46 @@ export let simplifiedVerifyBasedOnSignaType=(type,pubkey,signa,data)=>{
 }
 
 
+let calculateAmountToSpendAndGasToBurn = tx => {
+
+    let goingToSpendInNativeCurrency = 0
+
+    let goingToBurnGasAmount = 0
+
+    
+    if(tx.fee > 0){
+
+        // In this case creator pays fee in native KLY currency
+        goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
+
+    } else if(tx.fee === 0 && tx.payload.abstractionBoosts){
+
+        // In this case creator pays using boosts. This should be signed by current quorum
+
+        goingToSpendInNativeCurrency = tx.payload.amount
+
+        let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed
+
+        if(verifyQuorumMajoritySolution(dataThatShouldBeSignedForBoost,tx.payload.abstractionBoosts?.quorumAgreements)){
+
+            goingToBurnGasAmount = tx.payload.abstractionBoosts.proposedGasToBurn
+
+        } return {errReason:`Majority verification failed in attempt to use boost`}
+
+    } else {
+
+        // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
+
+        goingToSpendInNativeCurrency = tx.payload.amount
+
+        goingToBurnGasAmount = getCostPerSignatureType(tx) * 1_000_000_000 * 2
+
+    }
+
+    return {goingToSpendInNativeCurrency,goingToBurnGasAmount}
+
+}
+
 
 
 export let VERIFIERS = {
@@ -184,9 +227,9 @@ export let VERIFIERS = {
 
     You may add to payload:
 
-    feeBoosts: {
+    abstractionBoosts: {
         
-        proposedGasCost:<amount>,
+        proposedGasToBurn:<amount>,
 
         quorumAgreements:{
 
@@ -234,39 +277,24 @@ export let VERIFIERS = {
             
             }
 
-            let goingToSpendInNativeCurrency = 0
+            let goingToSpent = calculateAmountToSpendAndGasToBurn(tx)
 
-            if(tx.fee > 0){
+            if(!goingToSpent.errReason){
 
-                // In this case creator pays fee in native KLY currency
-                goingToSpendInNativeCurrency = getCostPerSignatureType(tx) + tx.payload.amount + tx.fee
-
-            } else if(tx.fee === 0 && tx.payload.feeBoosts){
-
-                // In this case creator pays using boosts. This should be signed by current quorum
-
-                goingToSpendInNativeCurrency = tx.payload.amount
-
-            } else {
-
-                // Otherwise - it's AA 2.0 usage and we just should reduce the gas amount from account
-
-                let goingToBurnGasAmount = getCostPerSignatureType(tx) * 1_
-
-                goingToSpendInNativeCurrency = tx.payload.amount
-
-            }
-            
-            senderAccount.balance -= tx.payload.amount
+                senderAccount.balance -= goingToSpent.goingToSpendInNativeCurrency
                 
-            recipientAccount.balance += tx.payload.amount
-        
-            senderAccount.nonce = tx.nonce
+                recipientAccount.balance += tx.payload.amount
+
+                senderAccount.gas -= goingToSpent.goingToBurnGasAmount
             
-            rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                senderAccount.nonce = tx.nonce
+                
+                rewardsAndSuccessfulTxsCollector.fees += tx.fee
+    
+                return {isOk:true}    
 
-            return {isOk:true}
-
+            } else return {isOk:false,reason:goingToSpent.errReason}
+            
         } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
         
     },
