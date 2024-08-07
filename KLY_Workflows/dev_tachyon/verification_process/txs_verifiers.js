@@ -165,6 +165,8 @@ export let simplifiedVerifyBasedOnSignaType=(type,pubkey,signa,data)=>{
 }
 
 
+
+
 let calculateAmountToSpendAndGasToBurn = tx => {
 
     let goingToSpendInNativeCurrency = 0
@@ -186,12 +188,13 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         } else if(tx.type === 'WVM_CALL'){
 
-            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length/2)
+            let totalSize = JSON.stringify(tx.payload).length
 
-        } else if(tx.type === 'EVM_CALL'){
+            goingToSpendInNativeCurrency += 0.000002 * totalSize
 
+            goingToSpendInNativeCurrency += tx.payload.gasLimit / 1_000_000_000
 
-        }
+        } // TODO: Add EVM_CALL type
 
     } else if(tx.fee === 0 && tx.payload.abstractionBoosts){
 
@@ -217,15 +220,20 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
+            goingToBurnGasAmount += (tx.payload.bytecode.length/2)
 
         } else if(tx.type === 'WVM_CALL'){
 
-        } else if(tx.type === 'EVM_CALL'){
+            let totalSize = JSON.stringify(tx.payload)
 
-            
-        }
+            goingToBurnGasAmount += totalSize
+
+            goingToBurnGasAmount += tx.payload.gasLimit
+
+        } // TODO: Add EVM_CALL type
 
     }
+    
 
     return {goingToSpendInNativeCurrency,goingToBurnGasAmount}
 
@@ -303,17 +311,17 @@ export let VERIFIERS = {
             
             }
 
-            let goingToSpent = calculateAmountToSpendAndGasToBurn(tx)
+            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
-            if(!goingToSpent.errReason){
+            if(!goingToSpend.errReason){
 
-                if(senderAccount.balance - goingToSpent.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpent.goingToBurnGasAmount >= 0){
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                    senderAccount.balance -= goingToSpent.goingToSpendInNativeCurrency
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
                 
                     recipientAccount.balance += tx.payload.amount
     
-                    senderAccount.gas -= goingToSpent.goingToBurnGasAmount
+                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
                 
                     senderAccount.nonce = tx.nonce
                     
@@ -323,7 +331,7 @@ export let VERIFIERS = {
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            } else return {isOk:false,reason:goingToSpent.errReason}
+            } else return {isOk:false,reason:goingToSpend.errReason}
             
         } else return {isOk:false,reason:`Default verification process failed. Make sure input is ok`}
         
@@ -358,21 +366,52 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = getCostPerSignatureType(tx)+tx.fee
+        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) //pass through the filter
 
-        if(tx && await commonVerificationProcess(senderAccount,tx,goingToSpend)){
+        if(tx && await commonVerificationProcess(senderAccount,tx)){
 
-            if(tx.payload.lang.startsWith('system/staking')){ // TODO - delete once we add more
+            if(!goingToSpend.errReason){
 
-                let typeofContract = tx.payload.lang.split('/')[1]
+                if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                if(SYSTEM_CONTRACTS.has(typeofContract)){
+                    if(tx.payload.lang.startsWith('system/staking')){
+                     
+                        let typeofContract = tx.payload.lang.split('/')[1]
 
-                    await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // run deployment logic
+                        if(SYSTEM_CONTRACTS.has(typeofContract)){
 
-                    senderAccount.balance -= goingToSpend
+                            await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // run deployment logic
+
+                        } else {
+
+                            let contractID = blake3Hash(originShard+JSON.stringify(tx))
+
+                            let contractMetadataTemplate = {
+                
+                                type:'contract',
+                                lang:tx.payload.lang,
+                                balance:0,
+                                uno:0,
+                                gas:0,
+                                storages:['DEFAULT'],
+                                bytecode:tx.payload.bytecode,
+                                storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+                
+                            }
+                        
+                            atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+            
+                            atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',{}) // autocreate the default storage for contract
+                
+                        }
+                        
+                    }
+
+                    senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+
+                    senderAccount.gas -= goingToSpend.goingToBurnGasAmount
             
                     senderAccount.nonce = tx.nonce
                     
@@ -380,38 +419,9 @@ export let VERIFIERS = {
 
                     return {isOk:true}
 
-                }else return {isOk:false,reason:`No such type of system contract`}
+                } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
 
-            }else{
-
-                let contractID = blake3Hash(originShard+JSON.stringify(tx))
-
-                let contractMetadataTemplate = {
-    
-                    type:'contract',
-                    lang:tx.payload.lang,
-                    balance:0,
-                    uno:0,
-                    gas:0,
-                    storages:['DEFAULT'],
-                    bytecode:tx.payload.bytecode,
-                    storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-    
-                }
-            
-                atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
-
-                atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',{}) // autocreate the default storage for contract
-    
-                senderAccount.balance -= goingToSpend
-            
-                senderAccount.nonce = tx.nonce
-                
-                rewardsAndSuccessfulTxsCollector.fees += tx.fee
-
-                return {isOk:true}
-    
-            }
+            } else return {isOk:false,reason:goingToSpend.errReason}
 
         } else return {isOk:false,reason:`Can't get filtered value of tx`}
 
