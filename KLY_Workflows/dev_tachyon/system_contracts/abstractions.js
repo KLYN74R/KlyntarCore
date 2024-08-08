@@ -70,15 +70,13 @@ export let CONTRACT = {
 
         /*
 
-            Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch        
+            Method to charge some assets as a rent for storage used by contract. Once charge - update the .storageAbstractionLastPayment field to current value of epoch on VERIFICATION_THREAD        
         
             tx.payload.params[0] format is:
 
             {
 
-                payForContract:<contract ID on the same shard>,
-
-                amount:
+                contractID
 
             }
         
