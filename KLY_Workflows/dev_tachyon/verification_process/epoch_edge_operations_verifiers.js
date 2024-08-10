@@ -728,20 +728,8 @@ export default {
 
         }
         
-    },
-
-    
-    ASSIGN_POOL_TO_SHARD:async(payload,isFromRoute)=>{
-
-        /*
-    
-            To get the proofs from quorum that you(as a pool owner) choose a specific shard
-        
-        */
-
-
     }
-
+    
 }
 
 

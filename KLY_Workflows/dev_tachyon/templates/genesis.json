@@ -60,7 +60,6 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
-            "isReserve":false,
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
                     "kly":55000,
