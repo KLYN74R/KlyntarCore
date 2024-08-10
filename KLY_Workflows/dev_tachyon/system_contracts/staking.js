@@ -1,7 +1,5 @@
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
-import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
-
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
@@ -50,7 +48,7 @@ export let CONTRACT = {
 
         let {constructorParams} = transaction.payload
 
-        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,reserveFor,majorityProofs] = constructorParams
+        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL] = constructorParams
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
@@ -81,8 +79,6 @@ export let CONTRACT = {
 
                 whiteList,
 
-                isReserve,
-
                 lackOfTotalPower:false,
                     
                 stopEpochID:-1,
@@ -95,32 +91,14 @@ export let CONTRACT = {
 
             }
 
+            // Put metadata
+            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
-            if(isReserve) onlyOnePossibleStorageForStakingContract.reserveFor = reserveFor
+            // Put storage
+            // NOTE: We just need a simple storage with ID="POOL"
+            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
-            // To avoid async problems - verify that majority of quorum have voted to paste the pool data on appropriate shard
-
-            let epochFullID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash+"#"+WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-            let dataThatShouldBeSigned = `POOL_CREATION:${ed25519PubKey}:BIND_TO_SHARD:${originShard}:${epochFullID}`
-
-            if(verifyQuorumMajoritySolution(dataThatShouldBeSigned,majorityProofs)){
-
-                // Put pool pointer
-                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',originShard)
-
-            
-                // Put metadata
-                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
-
-                // Put storage
-                // NOTE: We just need a simple storage with ID="POOL"
-                atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
-
-                return {isOk:true}
-
-            } else return {isOk:false}
-
+            return {isOk:true}
 
         } else return {isOk:false}
 
