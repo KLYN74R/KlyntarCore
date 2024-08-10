@@ -36,12 +36,7 @@ export default {
             pool:<Ed25519 pubkey of pool>,
             type:<'-' for unstake and '+' for stake>
             amount:<integer> - staking power
-            storageOrigin:<string> - origin where metadata/storage of pool
-            
-            ---- Only for reserve pools ----
-
-            isReserve:<boolean>
-            reserveFor:<string>
+            poolOriginShard:<string> - origin where metadata/storage of pool
 
         }
     
@@ -50,7 +45,7 @@ export default {
     
     */
 
-        let {txid,pool,type,amount,storageOrigin,isReserve,reserveFor,poolURL,wssPoolURL}=payload
+        let {txid,pool,type,amount,poolOriginShard,isReserve,reserveFor,poolURL,wssPoolURL}=payload
 
         if(txid==='AT') return
 
@@ -59,7 +54,7 @@ export default {
 
             //To check payload received from route
 
-            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
+            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(poolOriginShard+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
         
@@ -76,7 +71,7 @@ export default {
                     
                         payload:{
                             
-                            txid,pool,type,amount,storageOrigin,
+                            txid,pool,type,amount,poolOriginShard,
 
                             isReserve:poolStorage.isReserve,
                             reserveFor:poolStorage.reserveFor,
@@ -225,7 +220,7 @@ export default {
 
 
 
-            let poolStorage = await getFromState(storageOrigin+':'+pool+'(POOL)_STORAGE_POOL')
+            let poolStorage = await getFromState(poolOriginShard+':'+pool+'(POOL)_STORAGE_POOL')
 
             let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
             
@@ -257,7 +252,7 @@ export default {
 
                         fromPool:pool,
 
-                        storageOrigin,
+                        poolOriginShard,
 
                         to:stakeOrUnstakeTx.staker,
                         
@@ -302,7 +297,7 @@ export default {
 
                         // Add the pointer where pool is created to state
 
-                        GLOBAL_CACHES.STATE_CACHE.set(pool+'(POOL)_POINTER',storageOrigin)
+                        GLOBAL_CACHES.STATE_CACHE.set(pool+'(POOL)_POINTER',poolOriginShard)
 
                         // Add the SID tracker
 
@@ -729,7 +724,7 @@ export default {
         }
         
     }
-    
+
 }
 
 

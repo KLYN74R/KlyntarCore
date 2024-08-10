@@ -854,7 +854,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
                             {
                                 fromPool:<id of pool that staker withdraw stake from>,
 
-                                storageOrigin:<origin of where your pool created. Your unstaking will be returned there>,
+                                poolOriginShard:<origin of where your pool created. Your unstaking will be returned there>,
 
                                 to:<staker pubkey/address>,
                 
@@ -866,7 +866,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
                     
                         */
 
-                        let account = await getAccountFromState(blake3Hash(delayedTx.storageOrigin+delayedTx.to)) // return funds(unstaking) to account that binded to 
+                        let account = await getAccountFromState(delayedTx.poolOriginShard+':'+delayedTx.to) // return funds(unstaking) to account that binded to 
 
                         // Return back staked KLY / UNO to the state of user's account
                         if(delayedTx.units==='kly') account.balance += delayedTx.amount

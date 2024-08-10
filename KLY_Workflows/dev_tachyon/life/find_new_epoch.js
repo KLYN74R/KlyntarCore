@@ -48,12 +48,9 @@ let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfApprove
     
     // Remove from POOLS array(to prevent be elected to quorum) and metadata
 
-    let arrayToDeleteFrom = fullCopyOfApprovementThread.EPOCH.poolsRegistry[ poolStorage.isReserve ? 'reservePools' : 'primePools' ]
+    let indexToDelete = fullCopyOfApprovementThread.EPOCH.poolsRegistry.indexOf(validatorPubKey)
 
-    let indexToDelete = arrayToDeleteFrom.indexOf(validatorPubKey)
-
-    arrayToDeleteFrom.splice(indexToDelete,1)
-
+    fullCopyOfApprovementThread.EPOCH.poolsRegistry.splice(indexToDelete,1)
 
 }
 
@@ -151,11 +148,10 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,
         atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
 
         // Remove from pools
-        let arrayToDeleteFrom = fullCopyOfApprovementThread.EPOCH.poolsRegistry.reservePools[ slashObject[poolIdentifier].isReserve ? 'reservePools' : 'primePools' ]
-
-        let indexToDelete = arrayToDeleteFrom.indexOf(poolIdentifier)
         
-        arrayToDeleteFrom.splice(indexToDelete,1)
+        let indexToDelete = fullCopyOfApprovementThread.EPOCH.poolsRegistry.indexOf(poolIdentifier)
+        
+        fullCopyOfApprovementThread.EPOCH.poolsRegistry.splice(indexToDelete,1)
     
         // Remove from cache
         GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')

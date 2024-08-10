@@ -61,7 +61,7 @@ export let WORKING_THREADS = {
             
         SHARD_POINTER:'',
 
-        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:'',isReserve:boolean}
+        VERIFICATION_STATS_PER_POOL:{}, // PUBKEY => {index:'',hash:''}
 
 
         KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
@@ -301,7 +301,7 @@ export let setGenesisToState=async()=>{
 
         // Create the value in VT
 
-        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',isReserve}
+        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
         //Create the appropriate storage for pre-set pools. We'll create the simplest variant - but pools will have ability to change it via txs during the chain work
@@ -325,7 +325,6 @@ export let setGenesisToState=async()=>{
             totalPower:poolContractStorage.totalPower,
             lackOfTotalPower:false,
             stopEpochID:-1,
-            isReserve,
             poolURL:poolContractStorage.poolURL,
             wssPoolURL:poolContractStorage.wssPoolURL
         

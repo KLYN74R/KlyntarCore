@@ -45,21 +45,12 @@ export let CONTRACT = {
         [*] poolURL - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
-        ------------ For reserve pools ------------
-
-        [*] isReserve - define type of pool
-        
-                isReserve=false means that this pool is a prime pool and will have a separate shard
-                isReserve=true means that your pool will be in reserve and will be used only when prime pool will be stopped
-        
-        [*] reserveFor - ShardID(pubkey of prime pool)
-
     */
     constructor:async (originShard,transaction,atomicBatch) => {
 
         let {constructorParams} = transaction.payload
 
-        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,isReserve,reserveFor,majorityProofs] = constructorParams
+        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL,reserveFor,majorityProofs] = constructorParams
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
 
