@@ -106,13 +106,13 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
         {
 
-            primePool0:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
+            shard_0:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
 
-            primePool1:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
+            shard_1:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader},
 
             ...
 
-            primePoolN:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader}
+            shard_N:{proposedLeaderIndex,firstBlockByProposedLeader,afpForSecondBlockProposedLeader}
 
         }
 
@@ -225,7 +225,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     for(; position >= localVersionOfCurrentLeaders[shardID] ; position--){
 
-                                        let poolOnThisPosition = position === -1 ? shardID : vtLeadersSequences[shardID][position]
+                                        let poolOnThisPosition = vtLeadersSequences[shardID][position]
     
                                         let alrpForThisPoolFromCurrentSet = currentAlrpSet[poolOnThisPosition]
     
@@ -239,7 +239,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
                                             if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === alrpForThisPoolFromCurrentSet.firstBlockHash){
                             
-                                                let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await checkAlrpChainValidity(
+                                                let alrpChainValidation = position === 0 ? {isOK:true,filteredReassignments:{}} : await checkAlrpChainValidity(
                                                     
                                                     firstBlockInThisEpochByPool, vtLeadersSequences[shardID], position, vtEpochFullID, vtEpochHandler, true
                                                     

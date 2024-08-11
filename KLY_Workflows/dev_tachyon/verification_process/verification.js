@@ -310,7 +310,7 @@ checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,posi
 
 
 
-buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp) => {
+buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
 
 
     /*
@@ -319,7 +319,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
         {
 
-            shard:primePoolPubKey,
+            shardID,
 
             lastLeader,
                         
@@ -349,7 +349,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
     let vtEpochIndex = vtEpochHandler.id
 
-    let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[primePoolPubKey]
+    let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[shardID]
 
     if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
@@ -358,7 +358,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
     // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
 
-    let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader] || primePoolPubKey
+    let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader]
 
     emptyTemplate[lastLeaderPoolPubKey] = {
         
@@ -411,11 +411,11 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
     // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ALRP
 
-    for(let reservePool of oldLeadersSequenceForShard){
+    for(let poolPubKey of oldLeadersSequenceForShard){
 
-        if(infoAboutFinalBlocksByPool.has(reservePool)){
+        if(infoAboutFinalBlocksByPool.has(poolPubKey)){
 
-            let metadataForReassignment = infoAboutFinalBlocksByPool.get(reservePool)
+            let metadataForReassignment = infoAboutFinalBlocksByPool.get(poolPubKey)
 
             for(let [reassignedPoolPubKey,alrpData] of Object.entries(metadataForReassignment)){
 
@@ -427,7 +427,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey] = emptyTemplate
+    WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[shardID] = emptyTemplate
 
 
         /*
@@ -435,12 +435,12 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
         
         After execution of this function we have:
 
-        [0] WORKING_THREADS.VERIFICATION_THREAD.CHECKPOINT.leadersSequence with structure:
+        [0] WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence with structure:
         
         {
-            primePoolA:[ReservePool0A,ReservePool1A,....,ReservePoolNA],
+            shard_0:[Pool0A,Pool1A,....,PoolNA],
             
-            primePoolB:[ReservePool0B,ReservePool1B,....,ReservePoolNB]
+            shard_1:[Pool0B,Pool1B,....,PoolNB]
         
             ...
         }
@@ -450,21 +450,21 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
         [1] WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA with structure:
 
         {
-            primePoolA:{
+            shard_0:{
 
-                ReservePool0A:{index,hash},
-                ReservePool1A:{index,hash},
+                Pool0A:{index,hash},
+                Pool1A:{index,hash},
                 ....,
-                ReservePoolNA:{index,hash}
+                PoolNA:{index,hash}
 
             },
             
-            primePoolB:{
+            shard_1:{
 
-                ReservePool0B:{index,hash},
-                ReservePool1B:{index,hash},
+                Pool0B:{index,hash},
+                Pool1B:{index,hash},
                 ....,
-                ReservePoolNB:{index,hash}
+                PoolNB:{index,hash}
 
             }
 
@@ -949,23 +949,24 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
         // Find the first blocks for epoch X+1 and AFPs for these blocks
         // Once get it - get the real first block
-        for(let [primePoolPubKey] of Object.entries(nextEpochLeadersSequences)){
+        
+        for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
             totalNumberOfShards++
 
             // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
-            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey]={}
+            if(!epochCache[shardID]) epochCache[shardID]={}
 
-            if(!epochCache[primePoolPubKey].firstBlockCreator){
+            if(!epochCache[shardID].firstBlockCreator){
 
-                let findResult = await getFirstBlockOnEpoch(nextEpochHandlerTemplate,primePoolPubKey,getBlock)
+                let findResult = await getFirstBlockOnEpoch(nextEpochHandlerTemplate,shardID,getBlock)
 
                 if(findResult){
 
-                    epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
+                    epochCache[shardID].firstBlockCreator = findResult.firstBlockCreator
 
-                    epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
+                    epochCache[shardID].firstBlockHash = findResult.firstBlockHash
 
                 }
 
@@ -975,15 +976,15 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
             //____________After we get the first blocks for epoch X+1 - get the AEFP from it and build the reassignment metadata to finish epoch X____________
 
-            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,epochCache[primePoolPubKey].firstBlockCreator,0)
+            let firstBlockOnThisShardInThisEpoch = await getBlock(nextEpochIndex,epochCache[shardID].firstBlockCreator,0)
 
-            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[primePoolPubKey].firstBlockHash){
+            if(firstBlockOnThisShardInThisEpoch && Block.genHash(firstBlockOnThisShardInThisEpoch) === epochCache[shardID].firstBlockHash){
 
-                epochCache[primePoolPubKey].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
+                epochCache[shardID].aefp = firstBlockOnThisShardInThisEpoch.extraData.aefpForPreviousEpoch
 
             }
 
-            if(epochCache[primePoolPubKey].aefp) totalNumberOfShardsReadyForMove++
+            if(epochCache[shardID].aefp) totalNumberOfShardsReadyForMove++
 
         }
 
@@ -993,11 +994,11 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
             // Create empty template
             if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA) WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA = {}
 
-            for(let primePoolPubKey of Object.keys(nextEpochLeadersSequences)){
+            for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[primePoolPubKey]) await buildReassignmentMetadataForShards(vtEpochHandler,primePoolPubKey,epochCache[primePoolPubKey].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA[shardID]) await buildReassignmentMetadataForShards(vtEpochHandler,shardID,epochCache[shardID].aefp)
 
             }
 
@@ -1495,7 +1496,7 @@ startVerificationThread=async()=>{
         // eslint-disable-next-line no-constant-condition
         while(true){
 
-            let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify] || currentShardToCheck
+            let poolPubKey = vtEpochHandler.leadersSequence[currentShardToCheck][handlerWithIndexToVerify.indexOfCurrentPoolToVerify]
 
             localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
@@ -1590,16 +1591,13 @@ startVerificationThread=async()=>{
         
     }else if(currentEpochIsFresh && tempReassignmentsForSomeShard){
 
+        // Take the pool by it's position in reassignment chains
         
-        let indexOfCurrentPoolToVerify = tempReassignmentsForSomeShard.currentToVerify
+        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[currentShardToCheck][tempReassignmentsForSomeShard.currentToVerify]
+        
+        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
 
-        // Take the pool by it's position in reassignment chains. If -1 - then it's prime pool, otherwise - get the reserve pool by index
-        
-        let poolToVerifyRightNow = indexOfCurrentPoolToVerify === -1 ? currentShardToCheck : vtEpochHandler.leadersSequence[currentShardToCheck][indexOfCurrentPoolToVerify]
-        
-        let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash,isReserve}
-
-        let metadataWherePoolWasReassigned = tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash} || null(in case currentToVerify===currentLeader)
+        let metadataWherePoolWasReassigned = tempReassignmentsForSomeShard.reassignments[poolToVerifyRightNow] // {index,hash}
 
         
         if(metadataWherePoolWasReassigned && verificationStatsOfThisPool.index === metadataWherePoolWasReassigned.index){
