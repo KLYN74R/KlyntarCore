@@ -278,7 +278,9 @@ export let setGenesisToState=async()=>{
     
         epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP,
 
-        poolsRegistryForEpochHandler = []
+        poolsRegistryForEpochHandler = [],
+
+        numberOfShards = 0
 
 
 
@@ -329,6 +331,8 @@ export let setGenesisToState=async()=>{
             WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] = 0
 
             isNewShard = true
+
+            numberOfShards++
 
         }
 
@@ -502,12 +506,14 @@ export let setGenesisToState=async()=>{
         hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
+
+        numberOfShards,
         
         startTimestamp:epochTimestamp,
 
-        quorum:[],
+        quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:{}
+        leadersSequence:{} // shardID => [pool0,pool1,...,poolN]
     
     }
     
@@ -521,11 +527,13 @@ export let setGenesisToState=async()=>{
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
+        numberOfShards,
+
         startTimestamp:epochTimestamp,
 
-        quorum:[],
+        quorum:[], // [pool0,pool1,...,poolN]
 
-        leadersSequence:{}
+        leadersSequence:{} // shardID => [pool0,pool1,...,poolN]
     
     }
 
@@ -544,7 +552,7 @@ export let setGenesisToState=async()=>{
     atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
 
 
-    //Finally, build the reassignment chains for current epoch in QT and VT
+    // Finally, build the reassignment chains for current epoch in QT and VT
 
     await setLeadersSequenceForShards(atEpochHandler,nullHash)
 

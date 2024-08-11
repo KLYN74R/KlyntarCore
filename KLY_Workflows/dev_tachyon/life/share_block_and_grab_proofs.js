@@ -375,9 +375,11 @@ export let shareBlocksAndGetFinalizationProofs = async () => {
 
     }
 
+    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
     // If we don't generate the blocks - skip this function
-    if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')){
+    
+    if(typeof canGenerateBlocksNow !== 'string'){
 
         setTimeout(shareBlocksAndGetFinalizationProofs,2000)
 

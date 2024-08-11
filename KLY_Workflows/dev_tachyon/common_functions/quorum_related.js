@@ -136,11 +136,9 @@ export let getPseudoRandomSubsetFromQuorumByTicketId=(ticketID,epochHandler)=>{
 
 export let getCurrentEpochQuorum = (poolsRegistry,workflowOptions,newEpochSeed) => {
 
-    let pools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
-
     // If more than QUORUM_SIZE pools - then choose quorum. Otherwise - return full array of pools
     
-    if(pools.length > workflowOptions.QUORUM_SIZE){
+    if(poolsRegistry.length > workflowOptions.QUORUM_SIZE){
 
         let poolsMetadataHash = blake3Hash(JSON.stringify(poolsRegistry)+newEpochSeed),
 
@@ -148,7 +146,7 @@ export let getCurrentEpochQuorum = (poolsRegistry,workflowOptions,newEpochSeed) 
 
             sortedChallenges = heapSort(
 
-                pools.map(
+                poolsRegistry.map(
                 
                     validatorPubKey => {
 
@@ -166,8 +164,6 @@ export let getCurrentEpochQuorum = (poolsRegistry,workflowOptions,newEpochSeed) 
 
         return sortedChallenges.slice(0,workflowOptions.QUORUM_SIZE).map(challenge=>mapping.get(challenge))
 
-
-    } else return pools
-
+    } else return poolsRegistry
 
 }

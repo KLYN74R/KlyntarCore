@@ -1,6 +1,6 @@
-import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
-
 import {EPOCH_METADATA_MAPPING, WORKING_THREADS} from '../blockchain_preparation.js'
+
+import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
@@ -22,80 +22,59 @@ let timeIsOutForCurrentShardLeader=(epochHandler,indexOfCurrentLeaderInSequence,
 
 
 
+
 export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
 
 
-    epochHandler.leadersSequence = {}
+    epochHandler.leadersSequence = {} // shardID => [pool0,pool1,...poolN] 
 
-
-    let reservePoolsRelatedToShard = new Map() // shardID => [] - array of reserve pools
-
-    let primePoolsPubKeys = new Set(epochHandler.poolsRegistry.primePools)
-
-
-    for(let reservePoolPubKey of epochHandler.poolsRegistry.reservePools){
-
-        // Otherwise - it's reserve pool
-        
-        let poolStorage = await getFromApprovementThreadState(reservePoolPubKey+`(POOL)_STORAGE_POOL`)
-    
-        if(poolStorage){
-
-            let {reserveFor} = poolStorage
-
-            if(!reservePoolsRelatedToShard.has(reserveFor)) reservePoolsRelatedToShard.set(reserveFor,[])
-
-            reservePoolsRelatedToShard.get(reserveFor).push(reservePoolPubKey)
-                    
-        }
-
-    }
-
-
-    /*
-    
-        After this cycle we have:
-
-        [0] primePoolsIDs - Set(primePool0,primePool1,...)
-        [1] reservePoolsRelatedToShardAndStillNotUsed - Map(primePoolPubKey=>[reservePool1,reservePool2,...reservePoolN])
-
-    
-    */
 
     let hashOfMetadataFromOldEpoch = blake3Hash(JSON.stringify(epochHandler.poolsRegistry)+epochSeed)
 
-    
-    //___________________________________________________ Now, build the leaders sequence ___________________________________________________
-    
-    for(let primePoolID of primePoolsPubKeys){
 
+    // Change order of validators pseudo-randomly
 
-        let arrayOfReservePoolsRelatedToThisShard = reservePoolsRelatedToShard.get(primePoolID) || []
+    let arrayOfChallenges = []
 
-        let mapping = new Map()
+    let challenges = new Map()
 
-        let arrayOfChallanges = arrayOfReservePoolsRelatedToThisShard.map(validatorPubKey=>{
+    for(let validatorPubKey of epochHandler.poolsRegistry){
 
-            let challenge = parseInt(blake3Hash(validatorPubKey+hashOfMetadataFromOldEpoch),16)
+        let challengeForPoolBySeedAndPubKey = parseInt(blake3Hash(validatorPubKey+hashOfMetadataFromOldEpoch),16)
 
-            mapping.set(challenge,validatorPubKey)
+        challenges.set(challengeForPoolBySeedAndPubKey,validatorPubKey)
 
-            return challenge
+        arrayOfChallenges.push(challengeForPoolBySeedAndPubKey)
 
-        })
-
-
-        let sortedChallenges = heapSort(arrayOfChallanges)
-
-        let leadersSequence = []
-
-        for(let challenge of sortedChallenges) leadersSequence.push(mapping.get(challenge))
-
-        
-        epochHandler.leadersSequence[primePoolID] = leadersSequence
-        
     }
+
+    // Now sort it
+
+    let sortedChallenges = heapSort(arrayOfChallenges)
+
     
+    //_______________________________________ Now assign the validators to shards for new epoch ___________________________________________________
+    
+    let numberOfValidatorsPerShard = Math.floor(epochHandler.poolsRegistry.length / epochHandler.numberOfShards)
+
+    let assignToShardWithIndex = 0
+
+    for(let challenge of sortedChallenges){
+
+        let appropriateValidator = challenges.get(challenge)
+
+        let shardID = `shard_${assignToShardWithIndex}`
+
+        if(!epochHandler.leadersSequence[shardID]) epochHandler.leadersSequence[shardID] = []
+
+        if(epochHandler.leadersSequence[shardID].length !== numberOfValidatorsPerShard){
+
+            epochHandler.leadersSequence[shardID].push(appropriateValidator)
+
+        } else assignToShardWithIndex++ // start to assign validators to the next shards
+
+    }
+            
 }
 
 
@@ -128,31 +107,20 @@ export let shardsLeadersMonitoring=async()=>{
 
     //____________________ Now iterate over shards to check if time is out for current shards leaders and we have to move to next ones ____________________
 
-    for(let primePoolPubKey of epochHandler.poolsRegistry.primePools){
+    for(let shardID of Object.keys(epochHandler.leadersSequence)){
 
         // Get the current handler and check the timeframe
 
-        let leaderSequenceHandler = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
-
-        let pubKeyOfCurrentShardLeader, indexOfCurrentLeaderInSequence
-
-        if(leaderSequenceHandler.currentLeader !== -1){
-
-            indexOfCurrentLeaderInSequence = leaderSequenceHandler.currentLeader
-
-            pubKeyOfCurrentShardLeader = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence]
-
-        }else{
-
-            indexOfCurrentLeaderInSequence = -1
-
-            pubKeyOfCurrentShardLeader = primePoolPubKey
-
-        }
+        let leaderSequenceHandler = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
+        
+        let indexOfCurrentLeaderInSequence = leaderSequenceHandler.currentLeader
+        
+        let pubKeyOfCurrentShardLeader = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderInSequence]
 
 
         // In case more pools in sequence exists - we can move to it. Otherwise - no sense to change pool as leader because no more candidates
-        let itsNotFinishOfSequence = epochHandler.leadersSequence[primePoolPubKey][indexOfCurrentLeaderInSequence+1]
+
+        let itsNotFinishOfSequence = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderInSequence+1]
 
         if(itsNotFinishOfSequence && timeIsOutForCurrentShardLeader(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
 
@@ -170,18 +138,19 @@ export let shardsLeadersMonitoring=async()=>{
                 
                 }
 
-                await useTemporaryDb('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+primePoolPubKey,newLeadersHandler).then(()=>{
+                await useTemporaryDb('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+shardID,newLeadersHandler).then(()=>{
 
                     // Set new reserve pool and delete the old one
 
-                    // Delete the pointer to prime pool for old leader
+                    // Delete the pointer to shard for old leader
+
                     currentEpochMetadata.SHARDS_LEADERS_HANDLERS.delete(pubKeyOfCurrentShardLeader)
 
                     // Set new value of handler
-                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,newLeadersHandler)
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,newLeadersHandler)
 
                     // Add the pointer: NewShardLeaderPubKey => ShardID 
-                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[primePoolPubKey][newLeadersHandler.currentLeader],primePoolPubKey)
+                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[shardID][newLeadersHandler.currentLeader],shardID)
 
                     currentEpochMetadata.SYNCHRONIZER.delete('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader)
 
