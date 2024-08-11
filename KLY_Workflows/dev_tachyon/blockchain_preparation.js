@@ -308,8 +308,6 @@ export let setGenesisToState=async()=>{
         let templateForApprovementThread = {
 
             totalPower:poolContractStorage.totalPower,
-            lackOfTotalPower:false,
-            stopEpochID:-1,
             poolURL:poolContractStorage.poolURL,
             wssPoolURL:poolContractStorage.wssPoolURL
         

@@ -1,6 +1,6 @@
-import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
-
 import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+
+import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
 
@@ -187,6 +187,7 @@ FASTIFY_SERVER.get('/synchronization_stats',(_request,response)=>{
 
 
 // Returns data related to checkpoints to hostchains
+// eslint-disable-next-line no-unused-vars
 FASTIFY_SERVER.get('/checkpoints/:epoch_index',(_request,response)=>{
 
     

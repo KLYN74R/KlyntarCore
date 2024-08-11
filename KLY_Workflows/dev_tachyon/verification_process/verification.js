@@ -131,24 +131,6 @@ getBlock = async (epochIndex,blockCreator,index) => {
 
 
 
-
-deletePoolWithLackOfStakingPower = async ({poolHashID,poolPubKey}) => {
-
-    //Try to get storage "POOL" of appropriate pool
-
-    let poolStorage = await getFromState(poolHashID)
-
-    poolStorage.lackOfTotalPower = true
-
-    poolStorage.stopEpochID = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-    delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-
-},
-
-
-
-
 checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
 
     /*
@@ -612,18 +594,11 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
         
         //_____Now in <toRemovePools> we have IDs of pools which should be deleted from POOLS____
 
+        for(let poolPubKey of poolsToBeRemoved){
 
-        let deletePoolsPromises=[]
-
-        for(let poolHandlerWithPubKeyAndHashID of poolsToBeRemoved){
-
-            deletePoolsPromises.push(deletePoolWithLackOfStakingPower(poolHandlerWithPubKeyAndHashID))
+            delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
     
         }
-    
-        await Promise.all(deletePoolsPromises.splice(0))
-
-
 
         //________________________________Remove rogue pools_________________________________
 
@@ -1457,7 +1432,7 @@ startVerificationThread=async()=>{
 
         if(!GLOBAL_CACHES.STUFF_CACHE.has('SHARDS_READY_TO_NEW_EPOCH')) GLOBAL_CACHES.STUFF_CACHE.set('SHARDS_READY_TO_NEW_EPOCH',new Map())
 
-        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:-1})
+        if(!GLOBAL_CACHES.STUFF_CACHE.has('CURRENT_TO_FINISH:'+currentShardToCheck)) GLOBAL_CACHES.STUFF_CACHE.set('CURRENT_TO_FINISH:'+currentShardToCheck,{indexOfCurrentPoolToVerify:0})
 
 
         let shardsReadyToNewEpoch = GLOBAL_CACHES.STUFF_CACHE.get('SHARDS_READY_TO_NEW_EPOCH') // Mapping(shardID=>boolean)

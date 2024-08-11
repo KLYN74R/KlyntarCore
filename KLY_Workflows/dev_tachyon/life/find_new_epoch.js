@@ -36,18 +36,6 @@ import fs from 'fs'
 
 let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfApprovementThread) => {
 
-    // Try to get storage "POOL" of appropriate pool
-
-    let poolStorage = await getFromApprovementThreadState(validatorPubKey+'(POOL)_STORAGE_POOL')
-
-
-    poolStorage.lackOfTotalPower = true
-
-    poolStorage.stopEpochID = fullCopyOfApprovementThread.EPOCH.id
-
-    
-    // Remove from POOLS array(to prevent be elected to quorum) and metadata
-
     let indexToDelete = fullCopyOfApprovementThread.EPOCH.poolsRegistry.indexOf(validatorPubKey)
 
     fullCopyOfApprovementThread.EPOCH.poolsRegistry.splice(indexToDelete,1)

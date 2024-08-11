@@ -79,10 +79,6 @@ export let CONTRACT = {
 
                 whiteList,
 
-                lackOfTotalPower:false,
-                    
-                stopEpochID:-1,
-
                 totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
                 stakers:{}, // Pubkey => {kly,uno}

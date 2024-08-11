@@ -58,8 +58,6 @@
             "overStake":10000,
             "whiteList":[],
             "totalPower":55000,
-            "lackOfTotalPower":false,
-            "stopCheckpointID": -1,
             "shard":"shard_0",
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{

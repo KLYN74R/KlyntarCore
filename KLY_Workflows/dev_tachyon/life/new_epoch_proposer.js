@@ -111,7 +111,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                 // Change to previous leader that finish its work on height > -1
 
-                for(let position = indexOfLeader-1 ; position >= -1 ; position --){
+                for(let position = indexOfLeader-1 ; position >= 0 ; position --){
 
                     let previousShardLeader = arrayOfPools[position]
 

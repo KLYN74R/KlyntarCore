@@ -140,7 +140,7 @@ Body is
 
 {
     
-    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE | UPDATE_RUBICON , etc. See ../epoch_edge_operations_verifiers.js
+    type:<operation id> ===> STAKING_CONTRACT_CALL | SLASH_UNSTAKE , etc. See ../epoch_edge_operations_verifiers.js
     
     payload:{}
 

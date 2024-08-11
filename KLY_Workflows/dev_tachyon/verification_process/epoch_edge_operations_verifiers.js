@@ -105,8 +105,6 @@ export default {
 
                 {
                     totalPower:<number>
-                    lackOfTotalPower:<boolean>
-                    stopEpochID:<number>
                     poolURL:<string>
                     wssPoolURL:<string>
                 }
@@ -117,9 +115,7 @@ export default {
 
                 let poolTemplateForQt = {
 
-                    totalPower:0,       
-                    lackOfTotalPower:true,
-                    stopEpochID:-1,
+                    totalPower:0,
                     poolURL,
                     wssPoolURL
                 
@@ -148,13 +144,7 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-                fullCopyOfApprovementThread.EPOCH.poolsRegistry.push(pool)                
-
-                // Make it "null" again
-
-                poolStorage.lackOfTotalPower = false
-
-                poolStorage.stopEpochID = -1
+                fullCopyOfApprovementThread.EPOCH.poolsRegistry.push(pool)
 
             }
         
@@ -287,12 +277,6 @@ export default {
                         WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[pool] = 0                                
         
                     }
-                    
-                    // Make it "null" again
-
-                    poolStorage.lackOfTotalPower=false
-
-                    poolStorage.stopEpochID=-1
 
                 }
                 
@@ -425,13 +409,11 @@ export default {
                 let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(originWherePoolStorage+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false),
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
-                    
-                    isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.APPROVEMENT_THREAD.RUBICON,
 
                     isStakeTx = stakingTx?.type === '+'
             
 
-                if(stakingTx && isNotTooOld && isStakeTx){
+                if(stakingTx && isStakeTx){
 
                     let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
 
@@ -481,13 +463,11 @@ export default {
 
                     stakingTx = poolStorage?.waitingRoom?.[txid],
 
-                    isNotTooOld = stakingTx?.epochID >= WORKING_THREADS.VERIFICATION_THREAD.RUBICON,
-
                     isStakeTx = stakingTx?.type === '+'
 
             
 
-                if(stakingTx && isNotTooOld && isStakeTx){
+                if(stakingTx && isStakeTx){
 
                     //Remove from WAITING_ROOM
                     delete poolStorage.waitingRoom[txid]
@@ -514,68 +494,7 @@ export default {
     },
 
 
-    //___________________________________________________ Separate methods ___________________________________________________
-
-
-    //To set new rubicon and clear tracks from APPROVEMENT_THREAD_METADATA
-    RUBICON_UPDATE:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
-
-        /*
-        
-        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload=<ID of new epoch which will be rubicon>
-        
-        If received from route - then payload has the following structure
-
-            {
-                sigType,
-                pubKey,
-                signa,
-                data - new value of RUBICON
-            }
-
-
-        *data - new value of RUBICON for appropriate thread
-
-        Also, you must sign the data with the latest payload's header hash
-
-        SIG(data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)
-        
-        */
-
-        let {sigType,pubKey,signa,data} = payload
-
-        let overviewIfFromRoute = 
-
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            typeof data === 'number' //new value of rubicon. Some previous epochID
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.UPDATE_RUBICON.includes(pubKey) //set it in configs
-            &&
-            WORKING_THREADS.APPROVEMENT_THREAD.RUBICON < data //new value of rubicon should be more than current 
-            &&
-            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,data+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-        if(overviewIfFromRoute){
-
-            //In this case, <proposer> property is the address should be included to your whitelist in configs
-            return {type:'UPDATE_RUBICON',payload:data}
-
-        }else if(usedOnApprovementThread){
-    
-            if(fullCopyOfApprovementThread.RUBICON < payload) fullCopyOfApprovementThread.RUBICON=payload
-
-        }else{
-
-            //Used on VERIFICATION_THREAD
-            if(WORKING_THREADS.VERIFICATION_THREAD.RUBICON < payload) WORKING_THREADS.VERIFICATION_THREAD.RUBICON=payload
-
-        }
-
-    },
-
-
+    //___________________________________________________ Separate methods __________________________________________________
 
 
     //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
@@ -719,38 +638,23 @@ let MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL=(poolStorage,stakeOrUnstakeTx,threadI
     let {type,amount}=payload
 
     let workflowConfigs = WORKING_THREADS[threadID].WORKFLOW_OPTIONS,
-        
-        isNotTooOld = stakeOrUnstakeTx.epochID >= WORKING_THREADS[threadID].RUBICON,
     
-        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, //no limits for UNSTAKE
+        isMinimalRequiredAmountOrItsUnstake = type==='-' || stakeOrUnstakeTx.amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY, // no limits for UNSTAKE
 
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored = false,
+        ifStakeCheck = false,
 
         inWaitingRoomTheSameAsInPayload = stakeOrUnstakeTx.amount === amount && stakeOrUnstakeTx.type === type
 
 
     if(type==='+'){
 
-        let isStillPossibleBeActive = !poolStorage.lackOfTotalPower || WORKING_THREADS[threadID].EPOCH.id - poolStorage.stopEpochID <= workflowConfigs.POOL_AFK_MAX_TIME
-
         let noOverStake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+stakeOrUnstakeTx.amount
 
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored = isStillPossibleBeActive && noOverStake
+        ifStakeCheck = noOverStake
 
-    }else ifStakeCheckIfPoolIsActiveOrCanBeRestored = true
-
-
-    let overviewIsOk = 
-
-        isNotTooOld
-        &&
-        isMinimalRequiredAmountOrItsUnstake
-        &&
-        inWaitingRoomTheSameAsInPayload
-        &&
-        ifStakeCheckIfPoolIsActiveOrCanBeRestored
+    }else ifStakeCheck = true
 
 
-    return overviewIsOk
+    return isMinimalRequiredAmountOrItsUnstake && inWaitingRoomTheSameAsInPayload && ifStakeCheck
 
 }
