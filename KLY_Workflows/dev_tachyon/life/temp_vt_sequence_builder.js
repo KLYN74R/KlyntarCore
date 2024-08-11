@@ -74,16 +74,16 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
     //___________________Ask quorum member about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
-    let localVersionOfCurrentLeaders = {} // primePoolPubKey => assumptionAboutIndexOfCurrentLeader
+    let localVersionOfCurrentLeaders = {} // shardID => assumptionAboutIndexOfCurrentLeader
 
-    for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
+    for(let shardID of Object.keys(vtEpochHandler.poolsRegistry.leadersSequence)){
 
-        localVersionOfCurrentLeaders[primePoolPubKey] = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader
+        localVersionOfCurrentLeaders[shardID] = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader
 
     }
 
 
-    // Make request to /data_to_build_temp_data_for_verification_thread. Returns => {primePoolPubKey(shardID):<aggregatedSkipProofForProposedLeader>}
+    // Make request to /data_to_build_temp_data_for_verification_thread. Returns => {shardID:<aggregatedSkipProofForProposedLeader>}
 
     let optionsToSend = {
 
@@ -120,15 +120,15 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
         -----------------------------------------------[Decomposition]-----------------------------------------------
 
 
-        [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the APPROVEMENT_THREAD.EPOCH.reassignmentChains[<primePool>][proposedAuthorityIndex]
+        [0] proposedAuthorityIndex - index of current authority for subchain X. To get the pubkey of subchain authority - take the APPROVEMENT_THREAD.EPOCH.reassignmentChains[<shardID>][proposedAuthorityIndex]
 
-        [1] firstBlockByCurrentAuthority - default block structure with ASP for all the previous pools in a queue
+        [1] firstBlockByCurrentLeader - default block structure with ASP for all the previous pools in a queue
 
-        [2] afpForSecondBlockByCurrentAuthority - default AFP structure -> 
+        [2] afpForSecondBlockByCurrentLeader default AFP structure -> 
 
 
             {
-                prevBlockHash:<string>              => it should be the hash of <firstBlockByCurrentAuthority>
+                prevBlockHash:<string>              => it should be the hash of <firstBlockByCurrentLeader>
                 blockID:<string>,
                 blockHash:<string>,
                 proofs:{
@@ -144,7 +144,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
             -----------------------------------------------[What to do next?]-----------------------------------------------
         
-            Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[approvementThreadCheckpointFullID][primePool].currentAuthority
+            Compare the <proposedAuthorityIndex> with our local pointer tempReassignmentOnVerificationThread[approvementThreadCheckpointFullID][shardID].currentLeader
 
             In case our local version has bigger index - ignore
 
@@ -152,7 +152,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
             For this:
 
-                0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByCurrentAuthority>
+                0) Verify that this block was approved by quorum majority(2/3N+1) by checking the <afpForSecondBlockByCurrentLeader>
 
                 If all the verification steps is OK - add to some cache
 
@@ -211,7 +211,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                             Now, start the cycle in reverse order on range
 
-                            [proposedLeaderIndex-1 ; localVersionOfCurrentLeaders[primePoolPubKey]]
+                            [proposedLeaderIndex-1 ; localVersionOfCurrentLeaders[shardID]]
                             
                             
 
@@ -294,7 +294,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
 
-                                        // collectionOfAlrpsFromAllThePreviousLeaders[i] = {primePool:{index,hash},pool0:{index,hash},poolN:{index,hash}}
+                                        // collectionOfAlrpsFromAllThePreviousLeaders[i] = {shardID:{index,hash},pool0:{index,hash},poolN:{index,hash}}
 
                                         for(let [poolPubKey,descriptor] of Object.entries(reassignStats)){
 
@@ -304,7 +304,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     }
 
-                                    // Finally, set the <currentAuthority> to the new pointer
+                                    // Finally, set the <currentLeader> to the new pointer
 
                                     tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
 

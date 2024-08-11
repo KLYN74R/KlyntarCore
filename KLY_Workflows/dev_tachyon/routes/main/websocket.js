@@ -190,7 +190,7 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                         And finally, if it's the first block in epoch - verify that it contains:
         
                             1) AGGREGATED_EPOCH_FINALIZATION_PROOF for previous epoch(in case we're not working on epoch 0) in block.extraData.aefpForPreviousEpoch
-                            2) All the ALRPs for previous pools in leaders sequence in section block.extraData.aggregatedLeadersRotationProofs(in case the block creator is not a prime pool)
+                            2) All the ALRPs for previous pools in leaders sequence in section block.extraData.aggregatedLeadersRotationProofs(in case the block creator is not the first pool in sequence)
 
                         Also, these proofs should be only in the first block in epoch, so no sense to verify blocks with index !=0
 

@@ -101,7 +101,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,
 
     let epochHandlerReference = fullCopyOfApprovementThread.EPOCH
 
-    let toRemovePools = [], promises = [], allThePools = epochHandlerReference.poolsRegistry.primePools.concat(epochHandlerReference.poolsRegistry.reservePools)
+    let toRemovePools = [], promises = [], allThePools = epochHandlerReference.poolsRegistry
 
 
     for(let poolPubKey of allThePools){
@@ -234,14 +234,12 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             
         4. Now try to find our own assumption about the first block in epoch locally
 
-            For this, iterate over reassignment chains:
+            For this, iterate over leaders sequences for shards:
             
             
             for(shardID of shards){
 
-                ------Find first block for prime pool here------
-
-                Otherwise - try to find first block created by other pools on this shard
+                Try to find first block created by other pools on this shard
 
                 for(pool of leadersSequence[shardID])
 
@@ -416,7 +414,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                     epochCache[shardID].firstBlockHash = findResult.firstBlockHash
 
-                    epochCache[shardID].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    epochCache[shardID].firstBlockOnShardFound = true
 
                 }
 
@@ -448,22 +446,21 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             let cycleWasBreak = false
 
-            for(let [primePoolPubKey] of entries){
+            for(let [shardID] of entries){
 
                 // Try to get the epoch edge operations from the first blocks
 
-                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,epochCache[primePoolPubKey].firstBlockCreator,0)
+                let firstBlockOnThisShard = await getBlock(atEpochHandler.id,epochCache[shardID].firstBlockCreator,0)
 
-                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[primePoolPubKey].firstBlockHash){
+                if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[shardID].firstBlockHash){
 
                     if(Array.isArray(firstBlockOnThisShard.epochEdgeOperations)){
 
                         epochEdgeOperations.push(...firstBlockOnThisShard.epochEdgeOperations)
 
                     }
-                    
 
-                    firstBlocksHashes.push(epochCache[primePoolPubKey].firstBlockHash)
+                    firstBlocksHashes.push(epochCache[shardID].firstBlockHash)
 
                 }else{
 
@@ -614,18 +611,11 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                     let currentEpochManager = nextTemporaryObject.FINALIZATION_STATS
 
-                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.primePools.forEach(poolPubKey=>
+                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.forEach(poolPubKey=>
 
                         currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
 
                     )
-
-                    WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry.reservePools.forEach(poolPubKey=>
-
-                        currentEpochManager.set(poolPubKey,{index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}})
-
-                    )
-
 
                 }
 

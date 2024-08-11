@@ -459,11 +459,6 @@ let generateBlocksPortion = async() => {
             let pubKeysOfAllThePreviousPools = leadersSequenceOfMyShard.slice(0,myIndexInLeadersSequenceForShard).reverse()
 
 
-            // Add the pubkey of prime pool because we have to add the ALRP for it too
-
-            pubKeysOfAllThePreviousPools.push(myShardForThisEpoch)
-
-
 
             //_____________________ Fill the extraData.aggregatedLeadersRotationProofs _____________________
 

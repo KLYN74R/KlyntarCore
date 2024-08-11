@@ -356,7 +356,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
     let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
 
-    // Start the cycle in reverse order from <aefp.lastLeader> to prime pool
+    // Start the cycle in reverse order from <aefp.lastLeader>
 
     let lastLeaderPoolPubKey = oldLeadersSequenceForShard[aefp.lastLeader]
 
@@ -388,7 +388,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
 
             if(!firstBlockInThisEpochByPool) return
 
-            // In this block we should have ALRPs for all the previous reservePool + primePool
+            // In this block we should have ALRPs for all the previous pools
 
             let {isOK,filteredReassignments} = await checkAlrpChainValidity(
             
@@ -399,7 +399,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
 
             if(isOK){
 
-                infoAboutFinalBlocksByPool.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPrimePool:{index,hash},reassignedReservePool0:{index,hash},...reassignedReservePoolX:{index,hash}}
+                infoAboutFinalBlocksByPool.set(poolPubKey,filteredReassignments) // filteredReassignments = {reassignedPool0:{index,hash},reassignedPool1:{index,hash},...reassignedPoolN:{index,hash}}
 
                 infoAboutLastBlocksByPreviousPool = filteredReassignments
 
@@ -409,7 +409,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
 
     }
 
-    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[primePoolID] based on ALRP
+    // In direct way - use the filtratratedReassignment to build the REASSIGNMENT_METADATA[shardID] based on ALRP
 
     for(let poolPubKey of oldLeadersSequenceForShard){
 
@@ -800,30 +800,17 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
         // Update the quorum for next epoch
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
 
-        // Change reassignment chains
+        // Change set of validators for shards
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
 
-        
-        // Update the array of prime pools and reset the pools metadata for next epoch(to start with default -1 index and hash 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef)
 
-        let newPrimePoolsArray = []
-
-
-        for(let [poolPubKey,poolMetadata] of Object.entries(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
-
-            if(!poolMetadata.isReserve) {
-
-                newPrimePoolsArray.push(poolPubKey)
-
-            }
+        for(let poolPubKey of Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
 
             WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
                 
                 index:-1,
                 
-                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-                isReserve:poolMetadata.isReserve
+                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
             
             }
 
@@ -834,8 +821,6 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
             if(tunnelHandler) tunnelHandler.connection.close()
 
         }
-
-        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',newPrimePoolsArray)
 
         // Finally - delete the AEFP reassignment metadata
         delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
@@ -953,8 +938,6 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
         for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
             totalNumberOfShards++
-
-            // First of all - try to find block <epoch id+1>:<prime pool pubkey>:0 - first block by prime pool
 
             if(!epochCache[shardID]) epochCache[shardID]={}
 
@@ -1415,19 +1398,13 @@ getPreparedTxsForParallelization = txsArray => {
 
 startVerificationThread=async()=>{
 
-    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
+    let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('SHARDS_IDS')
 
     if(!shardsIdentifiers){
 
-        let primePools = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL).filter(
-                
-            pubKey => !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[pubKey].isReserve
-                
-        )
+        shardsIdentifiers = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence)
 
-        GLOBAL_CACHES.STATE_CACHE.set('PRIME_POOLS',primePools)
-
-        shardsIdentifiers = primePools
+        GLOBAL_CACHES.STATE_CACHE.set('SHARDS_IDS',shardsIdentifiers)
 
     }
 
@@ -1440,7 +1417,7 @@ startVerificationThread=async()=>{
 
     let indexOfPreviousShard = shardsIdentifiers.indexOf(previousShardWeChecked)
 
-    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next prime pool in a row. If it's end of pools - start from the first validator in array
+    let currentShardToCheck = shardsIdentifiers[indexOfPreviousShard+1] || shardsIdentifiers[0] // Take the next shard to verify. If it's end of array - start from the first shard
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
 
@@ -1716,7 +1693,26 @@ getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
 
 
 
-shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
+distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreator)=>{
+
+    /*
+
+        _____________________Here we perform the following logic_____________________
+
+        [*] totalFees - number of total fees received in this block
+
+        1) Send <REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees> to block creator
+
+        2) Distribute the rest among stakers
+
+            For this, we should:
+
+            2.1) Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
+
+            2.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {kly,uno}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
+
+    
+    */
 
     let blockCreatorOrigin = await getFromState(blockCreator+'(POOL)_POINTER')
 
@@ -1728,11 +1724,11 @@ shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
         let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreator) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreator)
 
-        poolBindedAccount.balance += mainStorageOfBlockCreator.percentage*feeToPay
+        poolBindedAccount.balance += mainStorageOfBlockCreator.percentage * totalFees
         
     }
 
-    let restOfFees = feeToPay - mainStorageOfBlockCreator.percentage*feeToPay
+    let restOfFees = totalFees - mainStorageOfBlockCreator.percentage * totalFees
 
 
     // Share the rest of fees among stakers due to their % part in total pool stake
@@ -1751,77 +1747,7 @@ shareFeesAmongStakersOfBlockCreator=async(shardContext,feeToPay,blockCreator)=>{
 
     }
 
-},
-
-
-
-
-sendFeesToAccountsOnTheSameShard = async(shardID,feeRecipientPoolPubKey,feeReward) => {
-
-    // We should get the account of pool on specific shards
-    // In order to protocol, not all the fees go to the shard leader - part of them are sent to the rest of shards authorities(to pools) and smart contract automatically distribute reward among stakers of this pool
-
-    let accountsForFeesId = shardID+':'+feeRecipientPoolPubKey
-
-    let feesAccountForGivenPoolOnThisShard = await getAccountFromState(accountsForFeesId) || await getEmptyAccountTemplateBindedToShard(accountsForFeesId)
-
-    feesAccountForGivenPoolOnThisShard.balance += feeReward
-
-},
-
-
-
-
-// Function to distribute stakes among blockCreator/his stakers/rest of prime pools
-distributeFeesAmongStakersAndOtherPools=async(totalFees,shardContext,arrayOfPrimePools,blockCreator)=>{
-
-    /*
-
-        _____________________Here we perform the following logic_____________________
-
-        [*] totalFees - number of total fees received in this block
-
-
-
-        1) Take all the PRIME pools from <arrayOfPrimePools>
-
-        2) Send <REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees> to block creator
-
-        3) Distribute the rest among all the other pools(excluding block creator)
-
-            For this, we should:
-
-            3.1) Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
-
-            3.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {kly,uno}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
-
-    
-    */
-
-    let payToCreatorAndHisPool = totalFees * WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.REWARD_PERCENTAGE_FOR_BLOCK_CREATOR, //the bigger part is usually for block creator
-
-        payToEachPool = Math.floor((totalFees - payToCreatorAndHisPool)/(arrayOfPrimePools.length-1)), //and share the rest among other pools
-    
-        shareFeesPromises = []
-
-          
-    if(arrayOfPrimePools.length===1) payToEachPool = totalFees - payToCreatorAndHisPool
-
-
-    //___________________________________________ BLOCK_CREATOR ___________________________________________
-
-    shareFeesPromises.push(shareFeesAmongStakersOfBlockCreator(shardContext,payToCreatorAndHisPool,blockCreator))
-
-    //_____________________________________________ THE REST ______________________________________________
-
-    arrayOfPrimePools.forEach(feesRecipientPrimePoolPubKey=>
-
-        feesRecipientPrimePoolPubKey !== shardContext && shareFeesPromises.push(sendFeesToAccountsOnTheSameShard(shardContext,feesRecipientPrimePoolPubKey,payToEachPool))
-            
-    )
      
-    await Promise.all(shareFeesPromises.splice(0))
-
 }
 
 
@@ -1931,31 +1857,6 @@ let verifyBlock = async(block,shardContext) => {
         if(block.transactions.length !== 0){
 
 
-            //_________________________________________GET ACCOUNTS FROM STORAGE____________________________________________
-    
-            // Push accounts for fees of shards prime pools
-
-
-            let primePools = GLOBAL_CACHES.STATE_CACHE.get('PRIME_POOLS')
-
-            let accountsToAddToCache=[]
-
-
-            primePools.forEach(
-            
-                pubKey => {
-    
-                    // Avoid own pubkey to be added. On own chains we send rewards directly
-                    if(pubKey !== block.creator) accountsToAddToCache.push(getFromState(shardContext+':'+pubKey))
-    
-                }
-                
-            )
-    
-            // Now cache has all accounts and ready for the next cycles
-            await Promise.all(accountsToAddToCache.splice(0))
-
-
             //___________________________________________START TO EXECUTE TXS____________________________________________
 
 
@@ -2008,10 +1909,9 @@ let verifyBlock = async(block,shardContext) => {
 
                     [0] Block creator itself
                     [1] Stakers of his pool
-                    [2] Send the rest of fees to prime pools
 
             */
-            await distributeFeesAmongStakersAndOtherPools(rewardsAndSuccessfulTxsCollector.fees,shardContext,primePools,block.creator)
+            await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,shardContext,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    

@@ -261,8 +261,6 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
                     if(block && Block.genHash(block) === requestForLeaderRotationProof.afpForFirstBlock.blockHash){
 
-                        // In case it's prime pool - it has the first position in own reassignment chain. That's why, the hash of ASP for previous pool will be null(0123456789ab...)
-
                         let firstBlockHash = requestForLeaderRotationProof.afpForFirstBlock.blockHash
 
                         dataToSignForSkipProof = `LEADER_ROTATION_PROOF:${requestForLeaderRotationProof.poolPubKey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
@@ -311,7 +309,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 [Accept]:
 
     {
-        primePoolPubKey:<index of current leader on shard by requester version>
+        shardID:<index of current leader on shard by requester version>
         ...
     }
 
@@ -319,13 +317,13 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
    {
 
-        primePool0:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+        shard_0:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
 
-        primePool1:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
+        shard_1:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader},
 
         ...
 
-        primePoolN:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
+        shard_N:{proposedLeaderIndex,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader}
 
     }
 
@@ -349,7 +347,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
     }
 
 
-    let proposedIndexesOfLeaders = JSON.parse(request.body) // format {primePoolPubKey:index}
+    let proposedIndexesOfLeaders = JSON.parse(request.body) // format {shardID:index}
 
 
     if(typeof proposedIndexesOfLeaders === 'object'){

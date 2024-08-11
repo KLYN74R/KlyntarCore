@@ -169,7 +169,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 
                     "shard0":{
 
-                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]. In case -1 - it's prime pool>
+                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]>
 
                         metadataForCheckpoint:{
                             index:,
@@ -246,9 +246,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                 7) Then, we can share these proofs by route GET /aggregated_epoch_finalization_proof/:EPOCH_ID/:SHARD_ID
 
-                8) Prime pool and other reserve pools on each shard can query network for this proofs to set to
-                
-                    block.extraData.aefpForPreviousEpoch to know where to start VERIFICATION_THREAD in a new epoch                
+                8) Pools on each shard can query network for this proofs to set to <block.extraData.aefpForPreviousEpoch> to know where to start VERIFICATION_THREAD in a new epoch                
                 
 
             */

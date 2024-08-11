@@ -16,7 +16,7 @@ import {signEd25519} from '../../../../KLY_Utils/utils.js'
     The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
     {
-        shard:<ed25519 pubkey of prime pool - the creator of new shard>
+        shard,
         lastLeader:<index of Ed25519 pubkey of some pool in shard's leaders sequence>,
         lastIndex:<index of his block in previous epoch>,
         lastHash:<hash of this block>,
@@ -162,9 +162,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
 
         1) We need to iterate over propositions(per shard)
-        2) Compare <currentAuth> with our local version of current leader on shard(take it from currentEpochMetadata.SHARDS_LEADERS_HANDLERS)
+        2) Compare <currentLeader> with our local version of current leader on shard(take it from currentEpochMetadata.SHARDS_LEADERS_HANDLERS)
         
-            [If proposed.currentAuth >= local.currentAuth]:
+            [If proposed.currentLeader >= local.currentLeader]:
 
                 1) Verify index & hash & afp in <metadataForCheckpoint>
                 
@@ -172,7 +172,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 3) Else - send status:'UPGRADE' with local version of finalization proof, index and hash(take it from currentEpochMetadata.FINALIZATION_STATS)
 
-            [Else if proposed.currentAuth < local.currentAuth AND currentEpochMetadata.FINALIZATION_STATS.has(local.currentAuth)]:
+            [Else if proposed.currentLeader < local.currentLeader AND currentEpochMetadata.FINALIZATION_STATS.has(local.currentLeader)]:
 
                 1) Send status:'UPGRADE' with local version of currentLeader, metadata for epoch(from currentEpochMetadata.FINALIZATION_STATS), index and hash
 

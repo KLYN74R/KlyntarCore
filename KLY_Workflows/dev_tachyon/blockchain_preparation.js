@@ -66,12 +66,12 @@ export let WORKING_THREADS = {
 
         KLY_EVM_STATE_ROOT:'', // General KLY-EVM state root
 
-        KLY_EVM_METADATA:{}, // primePoolEd25519PubKey => {nextBlockIndex,parentHash,timestamp}
+        KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
 
 
-        TEMP_REASSIGNMENTS:{}, // epochID => primePool => {currentLeader:<uint - index of current shard leader based on REASSIGNMENT_CHAINS>,reassignments:{ReservePool=>{index,hash}}}
+        TEMP_REASSIGNMENTS:{},
 
-        SID_TRACKER:{}, // shardID(Ed25519 pubkey of prime pool) => index
+        SID_TRACKER:{}, // shardID => index
 
 
         TOTAL_STATS:{
@@ -697,7 +697,7 @@ export let prepareBlockchain=async()=>{
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
-        SHARDS_LEADERS_HANDLERS:new Map(), // primePoolPubKey => {currentLeader:<number>} | ReservePool => PrimePool
+        SHARDS_LEADERS_HANDLERS:new Map(), // shardID => {currentLeader:<number>} | Pool => shardID
 
 
         //____________________Mapping which contains temporary databases for____________________

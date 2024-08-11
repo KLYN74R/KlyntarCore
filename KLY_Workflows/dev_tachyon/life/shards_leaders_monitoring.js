@@ -14,7 +14,7 @@ import {epochStillFresh, heapSort,} from '../utils.js'
 
 let timeIsOutForCurrentShardLeader=(epochHandler,indexOfCurrentLeaderInSequence,leaderShipTimeframe)=>{
 
-    // Function to check if time frame for current shard leader is done and we have to move to next reserve pools in reassignment chain
+    // Function to check if time frame for current shard leader is done and we have to move to next pool in reassignment chain
 
     return getUtcTimestamp() >= epochHandler.startTimestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
 
@@ -140,7 +140,7 @@ export let shardsLeadersMonitoring=async()=>{
 
                 await useTemporaryDb('put',currentEpochMetadata.DATABASE,'LEADERS_HANDLER:'+shardID,newLeadersHandler).then(()=>{
 
-                    // Set new reserve pool and delete the old one
+                    // Set new pool(shard leader) and delete the old one
 
                     // Delete the pointer to shard for old leader
 

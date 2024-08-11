@@ -40,7 +40,7 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
             The structure of AGGREGATED_EPOCH_FINALIZATION_PROOF is
 
             {
-                shard:<ed25519 pubkey of prime pool - creator of shard>,
+                shard,
                 lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
@@ -267,84 +267,59 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
         // Try to move closer to the beginning of the epochHandler.leadersSequence[shardID] to find the real first block
 
-        // Once we 
+        // Based on ALRP in pivot block - find the real first block
 
-        if(pivotPoolData.position === -1){
+        let blockToEnumerateAlrp = pivotPoolData.firstBlockByPivot
 
-            // Imediately return - it's signal that prime pool created the first block, so no sense to find smth more
-
-            return {firstBlockCreator:shardID,firstBlockHash:pivotPoolData.firstBlockHash}
+        let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
 
 
-        }else{
-
-            // Otherwise - continue to search
-
-            // Based on ALRP in pivot block - find the real first block
-
-            let blockToEnumerateAlrp = pivotPoolData.firstBlockByPivot
-
-            let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
-
-            for(let position = pivotPoolData.position-1 ; position >= 0 ; position--){
+        for(let position = pivotPoolData.position-1 ; position >= 0 ; position--){
+        
+            let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
     
-                
-                let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
-    
-                let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
+            let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
 
 
-                if(position === 0){
+            if(position === 0){
 
-                    // In case we're on the beginning of the leaders sequence
+                // In case we're on the beginning of the leaders sequence
 
-                    if(leaderRotationProofForPreviousPool.skipIndex === -1){
+                if(leaderRotationProofForPreviousPool.skipIndex === -1){
 
-                        GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
+                    GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
 
-                        return {firstBlockCreator:pivotPoolData.pivotPubKey,firstBlockHash:pivotPoolData.firstBlockHash}
-
-                    }else{
-
-                        // Clear the cache and return the result that the first block creator 
-
-                        GLOBAL_CACHES.STUFF_CACHE.delete(pivotShardID)
-                        
-                        return {firstBlockCreator:shardID,firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash}
-
-                    }
-
-
-                } else if(leaderRotationProofForPreviousPool.skipIndex !== -1) {
-
-                    // This means that we've found new pivot - so update it and break the cycle to repeat procedure later
-
-                    let firstBlockByNewPivot = await getBlockFunction(epochHandler.id,previousPoolInLeadersSequence,0)
-
-                    if(firstBlockByNewPivot && leaderRotationProofForPreviousPool.firstBlockHash === Block.genHash(firstBlockByNewPivot)){
-
-                        let newPivotTemplate = {
-
-                            position,
-    
-                            pivotPubKey:previousPoolInLeadersSequence,
-    
-                            firstBlockByPivot:firstBlockByNewPivot,
-    
-                            firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash
-    
-                        }
-
-                        GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
-
-                        return
-
-                    } else return
+                    return {firstBlockCreator:pivotPoolData.pivotPubKey,firstBlockHash:pivotPoolData.firstBlockHash}
 
                 }
-    
-            }
 
+
+            } else if(leaderRotationProofForPreviousPool.skipIndex !== -1) {
+
+                // This means that we've found new pivot - so update it and break the cycle to repeat procedure later
+
+                let firstBlockByNewPivot = await getBlockFunction(epochHandler.id,previousPoolInLeadersSequence,0)
+
+                if(firstBlockByNewPivot && leaderRotationProofForPreviousPool.firstBlockHash === Block.genHash(firstBlockByNewPivot)){
+
+                    let newPivotTemplate = {
+
+                        position,
+    
+                        pivotPubKey:previousPoolInLeadersSequence,
+    
+                        firstBlockByPivot:firstBlockByNewPivot,
+    
+                        firstBlockHash:leaderRotationProofForPreviousPool.firstBlockHash
+    
+                    }
+
+                    GLOBAL_CACHES.STUFF_CACHE.set(pivotShardID,newPivotTemplate)
+
+                } else return
+
+            }
+    
         }
 
     }
