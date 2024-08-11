@@ -55,18 +55,19 @@ FASTIFY_SERVER.get('/current_shards_leaders',(_request,response)=>{
 
         // Iterate over shards to get information about current leader
 
-        for(let shardID of atEpochHandler.poolsRegistry.primePools){
+        for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
 
-            let currentShardLeader = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:-1}
+            let currentShardLeader = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
 
             // Once we know index => get the pubkey
             // It might be pubkey of prime pool (if index of current leader is -1) or one of reserve pools
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][currentShardLeader.currentLeader] || shardID
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][currentShardLeader.currentLeader]
 
             responseObj[shardID] = pubKeyOfLeader
 
-        }
 
+        }
+        
         response.send(responseObj)
 
     }else response.send({err:'Route is off'})

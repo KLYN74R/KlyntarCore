@@ -45,15 +45,15 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
         tempReassignmentOnVerificationThread[vtEpochFullID] = {} // create empty template
 
-        // Fill with data from here. Structure: primePool => [reservePool0,reservePool1,...,reservePoolN]
+        // Fill with data from here. Structure: shardID => [pool0,pool1,...,poolN]
 
-        for(let primePoolPubKey of vtEpochHandler.poolsRegistry.primePools){
-            
-            tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey] = {
+        for(let shardID of Object.keys(vtLeadersSequences)){
 
-                currentLeader:-1, // -1 means that it's prime pool itself. Indexes 0,1,2...N are the pointers to reserve pools in VT.REASSIGNMENT_CHAINS
+            tempReassignmentOnVerificationThread[vtEpochFullID][shardID] = {
+
+                currentLeader:0,
                 
-                currentToVerify:-1, // to start the verification in START_VERIFICATION_THREAD from prime pool(-1 index) and continue with reserve pools(0,1,2,...N)
+                currentToVerify:0,
 
                 reassignments:{} // poolPubKey => {index,hash}
 
@@ -162,15 +162,15 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     */
 
-    for(let [primePoolPubKey, metadata] of Object.entries(response)){
+    for(let [shardID, metadata] of Object.entries(response)){
 
-        if(typeof primePoolPubKey === 'string' && typeof metadata==='object'){
+        if(typeof shardID === 'string' && typeof metadata==='object'){
 
             let {proposedIndexOfLeader,firstBlockByCurrentLeader,afpForSecondBlockByCurrentLeader} = metadata
     
             if(typeof proposedIndexOfLeader === 'number' && typeof firstBlockByCurrentLeader === 'object' && typeof afpForSecondBlockByCurrentLeader==='object'){
                   
-                if(localVersionOfCurrentLeaders[primePoolPubKey] <= proposedIndexOfLeader && firstBlockByCurrentLeader.index === 0){
+                if(localVersionOfCurrentLeaders[shardID] <= proposedIndexOfLeader && firstBlockByCurrentLeader.index === 0){
 
                     // Verify the AFP for second block(with index 1 in epoch) to make sure that block 0(first block in epoch) was 100% accepted
     
@@ -184,7 +184,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
                         let {isOK,filteredReassignments:filteredReassignmentsInBlockOfProposedLeader} = await checkAlrpChainValidity(
                                 
-                            primePoolPubKey, firstBlockByCurrentLeader, vtLeadersSequences[primePoolPubKey], proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
+                            firstBlockByCurrentLeader, vtLeadersSequences[shardID], proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
                             
                         )
 
@@ -218,14 +218,14 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
                             
                             */
 
-                            if(position>=localVersionOfCurrentLeaders[primePoolPubKey]){
+                            if(position>=localVersionOfCurrentLeaders[shardID]){
 
                                 // eslint-disable-next-line no-constant-condition
                                 while(true){
 
-                                    for(; position >= localVersionOfCurrentLeaders[primePoolPubKey] ; position--){
+                                    for(; position >= localVersionOfCurrentLeaders[shardID] ; position--){
 
-                                        let poolOnThisPosition = position === -1 ? primePoolPubKey : vtLeadersSequences[primePoolPubKey][position]
+                                        let poolOnThisPosition = position === -1 ? shardID : vtLeadersSequences[shardID][position]
     
                                         let alrpForThisPoolFromCurrentSet = currentAlrpSet[poolOnThisPosition]
     
@@ -241,7 +241,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
                             
                                                 let alrpChainValidation = position === -1 ? {isOK:true,filteredReassignments:{}} : await checkAlrpChainValidity(
                                                     
-                                                    primePoolPubKey, firstBlockInThisEpochByPool, vtLeadersSequences[primePoolPubKey], position, vtEpochFullID, vtEpochHandler, true
+                                                    firstBlockInThisEpochByPool, vtLeadersSequences[shardID], position, vtEpochFullID, vtEpochHandler, true
                                                     
                                                 )
                             
@@ -277,7 +277,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
                                     }
 
-                                    if(!shouldChangeThisShard || position <= localVersionOfCurrentLeaders[primePoolPubKey]) break
+                                    if(!shouldChangeThisShard || position <= localVersionOfCurrentLeaders[shardID]) break
 
                                 }
 
@@ -289,7 +289,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     // Update the reassignment data
 
-                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].reassignments // poolPubKey => {index,hash}
+                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].reassignments // poolPubKey => {index,hash}
 
 
                                     for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
@@ -306,7 +306,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     // Finally, set the <currentAuthority> to the new pointer
 
-                                    tempReassignmentOnVerificationThread[vtEpochFullID][primePoolPubKey].currentLeader = proposedIndexOfLeader
+                                    tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
 
 
                                 }

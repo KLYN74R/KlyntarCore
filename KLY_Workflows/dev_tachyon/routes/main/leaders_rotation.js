@@ -369,7 +369,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
                 // Get the index of current leader, first block by it and AFP to prove that this first block was accepted in this epoch
 
-                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][leaderHandlerForShard.currentLeader] || shardID
+                let currentLeaderPubKeyByMyVersion = epochHandler.leadersSequence[shardID][leaderHandlerForShard.currentLeader]
 
                 let firstBlockID = `${epochHandler.id}:${currentLeaderPubKeyByMyVersion}:0`
 

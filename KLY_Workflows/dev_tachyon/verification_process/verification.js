@@ -228,7 +228,7 @@ checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,a
 
 
 
-checkAlrpChainValidity = async (primePoolPubKey,firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
+checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
 
     /*
     
@@ -298,34 +298,12 @@ checkAlrpChainValidity = async (primePoolPubKey,firstBlockInThisEpochByPool,lead
         }
 
         if(arrayIndexer === position && !wasBreakedEarly){
+            
+            return {isOK:true,filteredReassignments}
 
-            // In case we've iterated over the whole range - check the ALRP for prime pool
-
-            let alrpForPrimePool = reassignmentsRef[primePoolPubKey]
-
-            let signaIsOk = dontCheckSignature || await checkAggregatedLeaderRotationProofValidity(primePoolPubKey,alrpForPrimePool,epochFullID,oldEpochHandler)
-
-            if(signaIsOk){
-
-                filteredReassignments[primePoolPubKey] = {
-                    
-                    index:alrpForPrimePool.skipIndex,
-                    
-                    hash:alrpForPrimePool.skipHash,
-                    
-                    firstBlockHash:alrpForPrimePool.firstBlockHash
-                
-                }
-
-            }else return {isOK:false}
-
-        }
+        } else return {isOK:false}
     
-
     } else return {isOK:false}
-
-
-    return {isOK:true,filteredReassignments}
 
 },
 
@@ -334,112 +312,6 @@ checkAlrpChainValidity = async (primePoolPubKey,firstBlockInThisEpochByPool,lead
 
 buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp) => {
 
-
-        /*
-    
-    VT.REASSIGNMENT_METADATA has the following structure
-
-        KEY = <Ed25519 pubkey of prime pool>
-    
-        VALUE = {
-
-            primePool:{index,hash},
-            reservePool0:{index,hash},
-            reservePool1:{index,hash},
-            
-            ...
-
-            reservePoolN:{index,hash}
-
-        }
-
-        
-        We should finish to verify blocks upto height in prime pool and reserve pools
-
-        ________________________________Let's use this algorithm________________________________
-
-        0) Once we get the new valid AEFP, use the REASSIGNMENT_CHAINS built for this epoch(from WORKING_THREADS.VERIFICATION_THREAD.EPOCH)
-
-        1) Using WORKING_THREADS.VERIFICATION_THREAD.CHECKPOINT[<primePool>] in reverse order to find the first block in this epoch(checkpoint) and do filtration. The valid points will be those pools which includes the <leaderRotationProof> for all the previous reserve pools
-
-        2) Once we get it, run the second cycle for another filtration - now we should ignore pointers in pools which was reassigned on the first block of this epoch
-
-        3) Using this values - we can build the reasssignment metadata to finish verification process on epoch and move to a new one
-
-            _________________________________For example:_________________________________
-            
-            Imagine that prime pool <MAIN_POOL_A> has 5 reserve pools: [Reserve0,Reserve1,Reserve2,Reserve3,Reserve4]
-
-            The pools metadata from epoch shows us that previous epoch finished on these heights for pools:
-            
-                For prime pool => INDEX:1337 HASH:adcd...
-
-                For reserve pools:
-
-                    [Reserve0]: INDEX:1245 HASH:0012...
-
-                    [Reserve1]: INDEX:1003 HASH:2363...
-                    
-                    [Reserve2]: INDEX:1000 HASH:fa56...
-
-                    [Reserve3]: INDEX:2003 HASH:ad79...
-
-                    [Reserve4]: INDEX:1566 HASH:ce77...
-
-
-            (1) We run the initial cycle in reverse order to find the <leaderRotationProof>
-
-                Each next pool in a row must have ALRP for all the previous pools.
-
-                For example, imagine the following situation:
-                    
-                    🙂[Reserve0]: [ALRP for prime pool]           <==== in header of block 1246(1245+1 - first block in new epoch)
-
-                    🙂[Reserve1]: [ALRP for prime pool,ALRP for reserve pool 0]       <==== in header of block 1004(1003+1 - first block in new epoch)
-                    
-                    🙂[Reserve2]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1]         <==== in header of block 1001(1000+1 - first block in new epoch)
-
-                    🙂[Reserve3]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2]      <==== in header of block 2004(2003+1 - first block in new epoch)
-
-                    🙂[Reserve4]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2,ALRP for reserve pool 3]       <==== in header of block 1567(1566+1 - first block in new epoch)
-
-
-                It was situation when all the reserve pools are fair players(non malicious). However, some of reserve pools will be byzantine(offline or in ignore mode), so
-
-                we should cope with such a situation. That's why in the first iteration we should go through the pools in reverse order, get only those who have ALRP for all the previous pools
-
-                For example, in situation with malicious players:
-                    
-                    🙂[Reserve0]: [ALRP for prime pool]
-
-                    😈[Reserve1]: []    - nothing because AFK(offline/ignore)
-                    
-                    🙂[Reserve2]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1]
-
-                    😈[Reserve3]: [ALRP for prime pool,ALRP for reserve pool 2]        - no ALRP for ReservePool0  and ReservePool1
-
-                    🙂[Reserve4]: [ALRP for prime pool,ALRP for reserve pool 0,ALRP for reserve pool 1,ALRP for reserve pool 2,ALRP for reserve pool 3]
-                
-
-                In this case we'll find that reserve pools 0,2,4 is OK because have ALRPs for ALL the previous pools(including prime pool)
-
-            (2) Then, we should check if all of them weren't reassigned on their first block in epoch:
-                
-                    For this, if we've found that pools 0,2,4 are valid, check if:
-
-                        0) Pool 4 doesn't have ALRP for ReservePool2 on block 1000. If so, then ReservePool2 is also invalid and should be excluded
-                        0) Pool 2 doesn't have ALRP for ReservePool0 on block 1245. If so, then ReservePool0 is also invalid and should be excluded
-                    
-                    After this final filtration, take the first ALRP in valid pools and based on this - finish the verification to checkpoint's range.
-
-                    In our case, imagine that Pool2 was reassigned on block 1000 and we have a ALRP proof in header of block 1567(first block by ReservePool4 in this epoch)
-
-                    That's why, take ALRP for primePool from ReservePool0 and ALRPs for reserve pools 0,1,2,3 from pool4
-
-
-            ___________________________________________This is how it works___________________________________________
-
-    */
 
     /*
                 
@@ -520,7 +392,7 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,primePoolPubKey,aefp)
 
             let {isOK,filteredReassignments} = await checkAlrpChainValidity(
             
-                primePoolPubKey,firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
+                firstBlockInThisEpochByPool,oldLeadersSequenceForShard,position,null,null,true
             
             )
 

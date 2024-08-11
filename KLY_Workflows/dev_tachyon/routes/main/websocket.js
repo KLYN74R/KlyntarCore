@@ -123,13 +123,8 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
     
         // Add the sync flag to prevent creation proofs during the process of skip this pool
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+block.creator,true)
-
-        let poolsRegistryOnApprovementThread = epochHandler.poolsRegistry
-
-        let itsPrimePool = poolsRegistryOnApprovementThread.primePools.includes(block.creator)
             
         let shardID
-
 
         if(epochHandler.poolsRegistry.includes(block.creator) && typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
             
@@ -224,17 +219,15 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
                     //_________________________________________2_________________________________________
 
 
-                    let leadersSequence = epochHandler.leadersSequence[shardID]
+                    let leadersSequenceForThisShardAndEpoch = epochHandler.leadersSequence[shardID]
 
-                    let positionOfBlockCreatorInLeadersSequence = leadersSequence.indexOf(block.creator)
+                    let positionOfBlockCreatorInLeadersSequence = leadersSequenceForThisShardAndEpoch.indexOf(block.creator)
 
-                    let alrpChainIsOk = itsPrimePool || await checkAlrpChainValidity(
-        
-                        shardID,
+                    let alrpChainIsOk = await checkAlrpChainValidity(
         
                         block,
 
-                        leadersSequence,
+                        leadersSequenceForThisShardAndEpoch,
         
                         positionOfBlockCreatorInLeadersSequence,
         

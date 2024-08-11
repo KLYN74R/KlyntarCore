@@ -194,15 +194,13 @@ let restoreMetadataCache=async()=>{
 
     let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
 
-    let allThePools = poolsRegistry.primePools.concat(poolsRegistry.reservePools)
-
     let epochFullID = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash+"#"+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id
 
     let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
     
 
 
-    for(let poolPubKey of allThePools){
+    for(let poolPubKey of poolsRegistry){
 
         // If this value is related to the current epoch - set to manager, otherwise - take from the VERIFICATION_STATS_PER_POOL as a start point
         // Returned value is {index,hash,(?)afp}
@@ -212,27 +210,23 @@ let restoreMetadataCache=async()=>{
         
         currentEpochMetadata.FINALIZATION_STATS.set(poolPubKey,{index,hash,afp})
 
-        //___________________________________ Get the info about current leader _______________________________________
+    }
 
-        // *only for prime pools
-        
-        if(poolsRegistry.primePools.includes(poolPubKey)){
+    for(let shardIndex = 0 ; shardIndex < WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.numberOfShards ; shardIndex++) {
 
-            let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+poolPubKey).catch(()=>false) // {currentLeader:<pointer to current reserve pool in (QT/VT).EPOCH.leadersSequence[<primePool>]>}
+        let shardID = `shard_${shardIndex}`
 
-            if(leadersHandler){
+        let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>null)
 
-                currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(poolPubKey,leadersHandler)
+        if(leadersHandler){
 
-                // Using pointer - find the appropriate reserve pool
+            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,leadersHandler)
 
-                let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[poolPubKey][leadersHandler.currentLeader]
+            // Using pointer - find the current leader
 
-                // Key is reserve pool which points to his prime pool
+            let currentLeaderPubKey = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence[shardID][leadersHandler.currentLeader]
 
-                currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,poolPubKey)                
-
-            }
+            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(currentLeaderPubKey,shardID)                
 
         }
 

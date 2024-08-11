@@ -216,11 +216,11 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
     if(!pivotPoolData){
 
-        let arrayOfReservePoolsForShard = epochHandler.leadersSequence[shardID]
+        let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
         
-        for(let position = -1, length = arrayOfReservePoolsForShard.length ; position < length ; position++){
+        for(let position = 0, length = arrayOfPoolsForShard.length ; position < length ; position++){
 
-            let potentialPivotPubKey = arrayOfReservePoolsForShard[position] || shardID
+            let potentialPivotPubKey = arrayOfPoolsForShard[position]
 
             let firstBlockIDByThisPubKey = epochHandler.id+':'+potentialPivotPubKey+':0'
 
@@ -284,17 +284,17 @@ export let getFirstBlockOnEpoch = async(epochHandler,shardID,getBlockFunction) =
 
             let blockToEnumerateAlrp = pivotPoolData.firstBlockByPivot
 
-            let arrayOfReservePoolsForShard = epochHandler.leadersSequence[shardID]
+            let arrayOfPoolsForShard = epochHandler.leadersSequence[shardID]
 
-            for(let position = pivotPoolData.position-1 ; position >= -1 ; position--){
+            for(let position = pivotPoolData.position-1 ; position >= 0 ; position--){
     
                 
-                let previousPoolInLeadersSequence = arrayOfReservePoolsForShard[position] || shardID
+                let previousPoolInLeadersSequence = arrayOfPoolsForShard[position]
     
                 let leaderRotationProofForPreviousPool = blockToEnumerateAlrp.extraData.aggregatedLeadersRotationProofs[previousPoolInLeadersSequence]
 
 
-                if(previousPoolInLeadersSequence === shardID){
+                if(position === 0){
 
                     // In case we're on the beginning of the leaders sequence
 

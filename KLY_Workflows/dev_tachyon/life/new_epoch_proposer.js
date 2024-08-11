@@ -43,12 +43,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let canGenerateEpochFinalizationProof = true
 
-        
-        for(let primePoolPubKey of atEpochHandler.poolsRegistry.primePools){
+        for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
 
-            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(primePoolPubKey) || {currentLeader:-1}
+            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
 
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[primePoolPubKey][reassignmentData.currentLeader] || primePoolPubKey
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][reassignmentData.currentLeader]
 
 
             if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -60,6 +59,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             }
 
         }
+        
 
         if(canGenerateEpochFinalizationProof){
 
@@ -87,31 +87,17 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         let majority = getQuorumMajority(atEpochHandler)
 
-        let leadersSequencePerShard = atEpochHandler.leadersSequence // primePoolPubKey => [reservePool0,reservePool1,...,reservePoolN]
+        let leadersSequencePerShard = atEpochHandler.leadersSequence // shardID => [pool0,pool1,...,poolN]
 
         
     
-        for(let [shardId,arrayOfReservePools] of Object.entries(leadersSequencePerShard)){
+        for(let [shardID,arrayOfPools] of Object.entries(leadersSequencePerShard)){
 
-            let handlerWithIndexOfCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardId) || {currentLeader:-1}// {currentLeader:<number>}
+            let handlerWithIndexOfCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}// {currentLeader:<number>}
 
-            let pubKeyOfLeader, indexOfLeader
+            let pubKeyOfLeader = arrayOfPools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
             
-            
-            if(handlerWithIndexOfCurrentLeaderOnShard.currentLeader !== -1){
-
-                pubKeyOfLeader = arrayOfReservePools[handlerWithIndexOfCurrentLeaderOnShard.currentLeader]
-
-                indexOfLeader = handlerWithIndexOfCurrentLeaderOnShard.currentLeader
-
-            }else{
-
-                pubKeyOfLeader = shardId
-
-                indexOfLeader = -1
-
-            }
-            
+            let indexOfLeader = handlerWithIndexOfCurrentLeaderOnShard.currentLeader
 
             /*
             
@@ -127,7 +113,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                 for(let position = indexOfLeader-1 ; position >= -1 ; position --){
 
-                    let previousShardLeader = arrayOfReservePools[position] || shardId
+                    let previousShardLeader = arrayOfPools[position]
 
                     let localVotingData = currentEpochMetadata.FINALIZATION_STATS.get(previousShardLeader) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 
@@ -139,7 +125,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                         // Also, change the value in pointer to current leader
 
-                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardId,{currentLeader:position})
+                        currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:position})
 
                         break
 
@@ -161,13 +147,13 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
             
             }
 
-            let agreementsForThisShard = agreements.get(shardId)
+            let agreementsForThisShard = agreements.get(shardID)
 
             if(!agreementsForThisShard){
 
                 agreementsForThisShard = new Map()
 
-                agreements.set(shardId,agreementsForThisShard)
+                agreements.set(shardID,agreementsForThisShard)
             
             }
 
@@ -183,7 +169,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 
                     "shard0":{
 
-                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[primePool]. In case -1 - it's prime pool>
+                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]. In case -1 - it's prime pool>
 
                         metadataForCheckpoint:{
                             index:,
@@ -267,11 +253,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
             */
          
-            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardId}`).catch(()=>false)
+            let aefpExistsLocally = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardID}`).catch(()=>false)
 
             if(!aefpExistsLocally){
 
-                epochFinishProposition[shardId] = {
+                epochFinishProposition[shardID] = {
 
                     currentLeader:indexOfLeader,
     
@@ -283,11 +269,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
                 // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
     
-                if(epochFinishProposition[shardId].metadataForCheckpoint.index >= 0){
+                if(epochFinishProposition[shardID].metadataForCheckpoint.index >= 0){
     
                     let firstBlockID = atEpochHandler.id+':'+pubKeyOfLeader+':0'
     
-                    epochFinishProposition[shardId].afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
+                    epochFinishProposition[shardID].afpForFirstBlock = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('AFP:'+firstBlockID).catch(()=>({}))
     
                 }    
 
@@ -348,11 +334,11 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                     // Start iteration
 
-                    for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
+                    for(let [shardID,metadata] of Object.entries(epochFinishProposition)){
 
-                        let agreementsForThisShard = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature                        
+                        let agreementsForThisShard = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(shardID) // signer => signature                        
 
-                        let response = possibleAgreements[primePoolPubKey]
+                        let response = possibleAgreements[shardID]
 
                         if(response){
 
@@ -360,7 +346,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 // Verify EPOCH_FINALIZATION_PROOF signature and store to mapping
 
-                                let dataThatShouldBeSigned = 'EPOCH_DONE'+primePoolPubKey+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
+                                let dataThatShouldBeSigned = 'EPOCH_DONE'+shardID+metadata.currentLeader+metadata.metadataForCheckpoint.index+metadata.metadataForCheckpoint.hash+metadata.afpForFirstBlock.blockHash+epochFullID
 
                                 let isOk = await verifyEd25519(dataThatShouldBeSigned,response.sig,descriptor.pubKey)
 
@@ -373,7 +359,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                                 let {index,hash,afp} = response.metadataForCheckpoint
                             
-                                let pubKeyOfProposedLeader = leadersSequencePerShard[primePoolPubKey][response.currentLeader] || primePoolPubKey
+                                let pubKeyOfProposedLeader = leadersSequencePerShard[shardID][response.currentLeader]
                                 
                                 let afpToUpgradeIsOk = await verifyAggregatedFinalizationProof(afp,atEpochHandler)
 
@@ -385,7 +371,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                             
                                     // Update the SHARDS_LEADERS_HANDLERS
 
-                                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(primePoolPubKey,{currentLeader:response.currentLeader})
+                                    currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:response.currentLeader})
                                     
                                     // Update FINALIZATION_STATS
 
@@ -413,16 +399,16 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
         // Iterate over upgrades and set new values for finalization proofs
 
-        for(let [primePoolPubKey,metadata] of Object.entries(epochFinishProposition)){
+        for(let [shardID,metadata] of Object.entries(epochFinishProposition)){
 
-            let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(primePoolPubKey) // signer => signature
+            let agreementsForEpochManager = currentEpochMetadata.TEMP_CACHE.get('EPOCH_PROPOSITION').get(shardID) // signer => signature
 
             if(agreementsForEpochManager.size >= majority){
 
         
                 let aggregatedEpochFinalizationProof = {
 
-                    shard:primePoolPubKey,
+                    shard:shardID,
 
                     lastLeader:metadata.currentLeader,
                     
@@ -436,7 +422,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                     
                 }
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`,aggregatedEpochFinalizationProof).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aggregatedEpochFinalizationProof).catch(()=>{})
 
             }
 

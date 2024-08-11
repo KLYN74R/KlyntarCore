@@ -302,13 +302,13 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
         //____________________Ask the quorum for AEFP for shard___________________
         
-        for(let [primePoolPubKey] of entries){
+        for(let [shardID] of entries){
         
             totalNumberOfShards++
         
-            if(!epochCache[primePoolPubKey]) epochCache[primePoolPubKey] = {firstBlockOnShardFound:false}
+            if(!epochCache[shardID]) epochCache[shardID] = {firstBlockOnShardFound:false}
 
-            if(epochCache[primePoolPubKey].aefp && epochCache[primePoolPubKey].firstBlockOnShardFound){
+            if(epochCache[shardID].aefp && epochCache[shardID].firstBlockOnShardFound){
 
                 totalNumberOfReadyShards++
 
@@ -331,7 +331,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 Reminder: AEFP structure is
 
                     {
-                        shard:<ed25519 pubkey of prime pool - ID of shard>,
+                        shard:<ID of shard>,
                         lastLeader:<index of ed25519 pubkey of some pool in shard's reassignment chain>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
@@ -350,34 +350,34 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             */
 
             
-            if(!epochCache[primePoolPubKey].aefp){
+            if(!epochCache[shardID].aefp){
 
                 // Try to find locally
 
-                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`).catch(()=>false)
+                let aefp = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${atEpochHandler.id}:${shardID}`).catch(()=>false)
 
                 if(aefp){
 
-                    epochCache[primePoolPubKey].aefp = aefp
+                    epochCache[shardID].aefp = aefp
 
                 }else{
 
                     // Ask quorum for AEFP
                     for(let peerURL of allKnownPeers){
             
-                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${atEpochHandler.id}/${primePoolPubKey}`).then(r=>r.json()).catch(()=>false)
+                        let itsProbablyAggregatedEpochFinalizationProof = await fetch(peerURL+`/aggregated_epoch_finalization_proof/${atEpochHandler.id}/${shardID}`).then(r=>r.json()).catch(()=>false)
                 
                         if(itsProbablyAggregatedEpochFinalizationProof){
                 
                             let aefpPureObject = await verifyAggregatedEpochFinalizationProof(itsProbablyAggregatedEpochFinalizationProof,atEpochHandler.quorum,majority,oldEpochFullID)
     
-                            if(aefpPureObject && aefpPureObject.shard === primePoolPubKey){
+                            if(aefpPureObject && aefpPureObject.shard === shardID){
     
-                                epochCache[primePoolPubKey].aefp = aefpPureObject
+                                epochCache[shardID].aefp = aefpPureObject
 
                                 // Store locally
 
-                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${primePoolPubKey}`,aefpPureObject).catch(()=>{})
+                                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`AEFP:${atEpochHandler.id}:${shardID}`,aefpPureObject).catch(()=>{})
 
                                 // No sense to find more
 
@@ -406,17 +406,17 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
     
             */
 
-            if(!epochCache[primePoolPubKey].firstBlockOnShardFound){
+            if(!epochCache[shardID].firstBlockOnShardFound){
 
-                let findResult = await getFirstBlockOnEpoch(atEpochHandler,primePoolPubKey,getBlock)
+                let findResult = await getFirstBlockOnEpoch(atEpochHandler,shardID,getBlock)
 
                 if(findResult){
 
-                    epochCache[primePoolPubKey].firstBlockCreator = findResult.firstBlockCreator
+                    epochCache[shardID].firstBlockCreator = findResult.firstBlockCreator
 
-                    epochCache[primePoolPubKey].firstBlockHash = findResult.firstBlockHash
+                    epochCache[shardID].firstBlockHash = findResult.firstBlockHash
 
-                    epochCache[primePoolPubKey].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
+                    epochCache[shardID].firstBlockOnShardFound = true // if we get the block 0 by prime pool - it's 100% the first block
 
                 }
 
@@ -425,9 +425,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             
             //___________________ Here we should have understanding of first block for each shard on this epoch __________________________
 
-            if(epochCache[primePoolPubKey].firstBlockOnShardFound && epochCache[primePoolPubKey].aefp) totalNumberOfReadyShards++
+            if(epochCache[shardID].firstBlockOnShardFound && epochCache[shardID].aefp) totalNumberOfReadyShards++
 
-            if(!epochCache[primePoolPubKey].firstBlockHash) epochCache[primePoolPubKey] = {}
+            if(!epochCache[shardID].firstBlockHash) epochCache[shardID] = {}
     
         
         }

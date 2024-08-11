@@ -107,7 +107,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                 
             "shard0":{
 
-                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[primePool]. In case -1 - it's prime pool>
+                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]>
                 
                 afpForFirstBlock:{
 
@@ -236,26 +236,9 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 let leadersHandlerForThisShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) // {currentLeader:<uint>}
 
-                let pubKeyOfCurrentLeaderOnShard, localIndexOfLeader
-                
-                if(typeof leadersHandlerForThisShard === 'string') continue // type string is only for reserve pool. So, if this branch is true it's a sign that shardID is pubkey of reserve pool what is impossible. So, continue
+                let localIndexOfLeader = leadersHandlerForThisShard.currentLeader
 
-                else if(typeof leadersHandlerForThisShard === 'object') {
-
-                    localIndexOfLeader = leadersHandlerForThisShard.currentLeader
-
-                    pubKeyOfCurrentLeaderOnShard = atEpochHandler.leadersSequence[shardID][localIndexOfLeader] || shardID
-
-                }else{
-
-                    // Assume that there is no data about leaders for given shard locally. So, imagine that epoch will stop on prime pool (prime pool pubkey === shardID)
-
-                    localIndexOfLeader = -1
-
-                    pubKeyOfCurrentLeaderOnShard = shardID
-
-                }
-
+                let pubKeyOfCurrentLeaderOnShard = atEpochHandler.leadersSequence[shardID][localIndexOfLeader]
 
                 // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
 
