@@ -62,11 +62,13 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
     let allKnownNodes = [CONFIGURATION.NODE_LEVEL.GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL,...await getQuorumUrlsAndPubkeys(),...getAllKnownPeers()]
 
-    let shardID = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
+    let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(WORKING_THREADS.GENERATION_THREAD.epochFullId)
+    
+    let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
 
     // Find locally
 
-    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${WORKING_THREADS.GENERATION_THREAD.epochIndex}:${shardID}`).catch(()=>null)
+    let aefpProof = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`AEFP:${WORKING_THREADS.GENERATION_THREAD.epochIndex}:${myShardForThisEpoch}`).catch(()=>null)
 
     if(aefpProof) return aefpProof
 
@@ -74,11 +76,11 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
         for(let nodeEndpoint of allKnownNodes){
 
-            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${WORKING_THREADS.GENERATION_THREAD.epochIndex}/${shardID}`
+            let finalURL = `${nodeEndpoint}/aggregated_epoch_finalization_proof/${WORKING_THREADS.GENERATION_THREAD.epochIndex}/${myShardForThisEpoch}`
     
             let itsProbablyAggregatedEpochFinalizationProof = await fetch(finalURL).then(r=>r.json()).catch(()=>false)
     
-            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === shardID && await verifyAggregatedEpochFinalizationProof(
+            let aefpProof = itsProbablyAggregatedEpochFinalizationProof?.shard === myShardForThisEpoch && await verifyAggregatedEpochFinalizationProof(
                 
                 itsProbablyAggregatedEpochFinalizationProof,
     
@@ -358,100 +360,96 @@ let generateBlocksPortion = async() => {
 
     let proofsGrabber = currentEpochMetadata.TEMP_CACHE.get('PROOFS_GRABBER')
 
-
     if(proofsGrabber && WORKING_THREADS.GENERATION_THREAD.nextIndex > proofsGrabber.acceptedIndex+1) return
 
-    //__________________________________________________________________________________________________________________
+    //_________________ Once we moved to new epoch - check the shard where this validator was assigned _________________
 
+    if(!currentEpochMetadata.TEMP_CACHE.has('MY_SHARD_FOR_THIS_EPOCH')){
 
-    if(!currentEpochMetadata.TEMP_CACHE.has('CAN_PRODUCE_BLOCKS')){
+        for(let [shardID, poolsForShardOnThisEpoch] of Object.entries(epochHandler.leadersSequence)){
 
-        let poolPresent = epochHandler.poolsRegistry[CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY ? 'reservePools' : 'primePools' ].includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY) 
+            if(poolsForShardOnThisEpoch.includes(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)){
 
-        currentEpochMetadata.TEMP_CACHE.set('CAN_PRODUCE_BLOCKS',poolPresent)
+                currentEpochMetadata.TEMP_CACHE.set('MY_SHARD_FOR_THIS_EPOCH',shardID)
 
-    }
-
-
-    // Safe "if" branch to prevent unnecessary blocks generation
-    
-    if(!currentEpochMetadata.TEMP_CACHE.get('CAN_PRODUCE_BLOCKS')) return
-
-    let myDataInShardsLeadersMonitoring = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
-
-
-
-    if(typeof myDataInShardsLeadersMonitoring === 'object') return
-
-
-    // Check if <epochFullID> is the same in QT and in GT
-
-    if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
-
-        // If new epoch - add the aggregated proof of previous epoch finalization
-
-        if(epochIndex !== 0){
-
-            let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch()
-
-            // If we can't find a proof - try to do it later
-            // Only in case it's initial epoch(index is -1) - no sense to push it
-            if(!aefpForPreviousEpoch) return
-
-            WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
+            }
 
         }
 
-        // Update the index & hash of epoch
+    }
 
-        WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
+    // Safe "if" branch to prevent unnecessary blocks generation
 
-        WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
+    // Must be string value
 
-        // Recount new values
+    let canGenerateBlocksNow = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
 
-        WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
-
-        WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
+    let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
 
 
-        // And nullish the index & hash in generation thread for new epoch
+    if(typeof canGenerateBlocksNow === 'string'){
 
-        WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+        // Check if <epochFullID> is the same in QT and in GT
+
+        if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
+
+            // If new epoch - add the aggregated proof of previous epoch finalization
+
+            if(epochIndex !== 0){
+
+                let aefpForPreviousEpoch = await getAggregatedEpochFinalizationProofForPreviousEpoch()
+
+                // If we can't find a proof - try to do it later
+                // Only in case it's initial epoch(index is -1) - no sense to push it
+                if(!aefpForPreviousEpoch) return
+
+                WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch = aefpForPreviousEpoch
+
+            }
+
+            // Update the index & hash of epoch
+
+            WORKING_THREADS.GENERATION_THREAD.epochFullId = epochFullID
+
+            WORKING_THREADS.GENERATION_THREAD.epochIndex = epochIndex
+
+            // Recount new values
+
+            WORKING_THREADS.GENERATION_THREAD.quorum = epochHandler.quorum
+
+            WORKING_THREADS.GENERATION_THREAD.majority = getQuorumMajority(epochHandler)
+
+
+            // And nullish the index & hash in generation thread for new epoch
+
+            WORKING_THREADS.GENERATION_THREAD.prevHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
  
-        WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
+            WORKING_THREADS.GENERATION_THREAD.nextIndex = 0
     
-    }
+        }
+
+        let extraData = {}
+
+        //___________________ Add the AEFP to the first block of epoch ___________________
+
+        if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0 && WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
+
+            // Add the AEFP for previous epoch
+
+            extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
+
+            if(!extraData.aefpForPreviousEpoch) return
 
 
-    let extraData = {}
-
-    //___________________ Add the AEFP to the first block of epoch ___________________
-
-    if(WORKING_THREADS.GENERATION_THREAD.epochIndex > 0 && WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
-
-        // Add the AEFP for previous epoch
-
-        extraData.aefpForPreviousEpoch = WORKING_THREADS.GENERATION_THREAD.aefpForPreviousEpoch
-
-        if(!extraData.aefpForPreviousEpoch) return
-
-
-    }
-    
-    // If we are even not in reserve - return
-
-    if(typeof myDataInShardsLeadersMonitoring === 'string'){
+        }
 
         // Do it only for the first block in epoch(with index 0)
 
         if(WORKING_THREADS.GENERATION_THREAD.nextIndex === 0){
 
-            // Build the template to insert to the extraData of block. Structure is {primePool:ALRP,reservePool0:ALRP,...,reservePoolN:ALRP}
-        
-            let myPrimePool = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY
+            // Build the template to insert to the extraData of block. Structure is {pool0:ALRP,...,poolN:ALRP}
 
-            let leadersSequenceOfMyShard = epochHandler.leadersSequence[myPrimePool]
+            let leadersSequenceOfMyShard = epochHandler.leadersSequence[myShardForThisEpoch]
     
             let myIndexInLeadersSequenceForShard = leadersSequenceOfMyShard.indexOf(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY)
     
@@ -463,7 +461,7 @@ let generateBlocksPortion = async() => {
 
             // Add the pubkey of prime pool because we have to add the ALRP for it too
 
-            pubKeysOfAllThePreviousPools.push(myPrimePool)
+            pubKeysOfAllThePreviousPools.push(myShardForThisEpoch)
 
 
 
@@ -486,7 +484,7 @@ let generateBlocksPortion = async() => {
 
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
-                let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myPrimePool).catch(()=>null)
+                let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
 
                 if(aggregatedLeaderRotationProof){
 
@@ -502,66 +500,62 @@ let generateBlocksPortion = async() => {
 
         }
 
+        /*
 
-    }else if(CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY) return
+        _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
     
-
-    /*
-
-    _________________________________________GENERATE PORTION OF BLOCKS___________________________________________
+        Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
     
-    Here we check how many transactions(events) we have locally and generate as many blocks as it's possible
+        */
+
+        let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+
+
+        //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
+
+        // 0.Add the epoch edge operations to block extra data
+
+        extraData.epochEdgeOperations = getEpochEdgeOperationsFromMempool(WORKING_THREADS.GENERATION_THREAD.epochFullId)
+
+        // 1.Add the extra data to block from configs(it might be your note, for instance)
+
+        extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
+
+
+        if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
+
+        let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
+
+        for(let i=0;i<numberOfBlocksToGenerate;i++){
+
+
+            let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
+                            
+            let hash = Block.genHash(blockCandidate)
     
-    */
-
-    let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
-
-
-
-
-    //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________
-
-    // 0.Add the epoch edge operations to block extra data
-
-    extraData.epochEdgeOperations = getEpochEdgeOperationsFromMempool(WORKING_THREADS.GENERATION_THREAD.epochFullId)
-
-    // 1.Add the extra data to block from configs(it might be your note, for instance)
-
-    extraData.rest = {...CONFIGURATION.NODE_LEVEL.EXTRA_DATA_TO_BLOCK}
-
-
-    if(numberOfBlocksToGenerate===0) numberOfBlocksToGenerate++
-
-    let atomicBatch = BLOCKCHAIN_DATABASES.BLOCKS.batch()
-
-    for(let i=0;i<numberOfBlocksToGenerate;i++){
-
-
-        let blockCandidate = new Block(getTransactionsFromMempool(),extraData,WORKING_THREADS.GENERATION_THREAD.epochFullId)
-                        
-        let hash = Block.genHash(blockCandidate)
-
-
-        blockCandidate.sig = await signEd25519(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
-            
-        blockLog(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
-
-
-        WORKING_THREADS.GENERATION_THREAD.prevHash = hash
- 
-        WORKING_THREADS.GENERATION_THREAD.nextIndex++
     
-        // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
-        let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
-
-        // Store block locally
-        atomicBatch.put(blockID,blockCandidate)
-           
+            blockCandidate.sig = await signEd25519(hash,CONFIGURATION.NODE_LEVEL.PRIVATE_KEY)
+                
+            blockLog(`New block generated`,hash,blockCandidate,WORKING_THREADS.GENERATION_THREAD.epochIndex)
+    
+    
+            WORKING_THREADS.GENERATION_THREAD.prevHash = hash
+     
+            WORKING_THREADS.GENERATION_THREAD.nextIndex++
+        
+            // BlockID has the following format => epochID(epochIndex):Ed25519_Pubkey:IndexOfBlockInCurrentEpoch
+            let blockID = WORKING_THREADS.GENERATION_THREAD.epochIndex+':'+CONFIGURATION.NODE_LEVEL.PUBLIC_KEY+':'+blockCandidate.index
+    
+            // Store block locally
+            atomicBatch.put(blockID,blockCandidate)
+               
+        }
+    
+        // Update the GENERATION_THREAD after all
+        atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
+    
+        await atomicBatch.write()
+    
     }
-
-    // Update the GENERATION_THREAD after all
-    atomicBatch.put('GT',WORKING_THREADS.GENERATION_THREAD)
-
-    await atomicBatch.write()
 
 }

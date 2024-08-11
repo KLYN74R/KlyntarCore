@@ -1,16 +1,8 @@
 import {BLOCKCHAIN_GENESIS, CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
-import {NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
+import {EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../../blockchain_preparation.js'
 
 import {TXS_FILTERS} from '../../verification_process/txs_filters.js'
-
-
-
-
-
-
-let PUBKEY_FOR_FILTER = CONFIGURATION.NODE_LEVEL.PRIME_POOL_PUBKEY || CONFIGURATION.NODE_LEVEL.PUBLIC_KEY
-
 
 
 
@@ -254,18 +246,30 @@ FASTIFY_SERVER.post('/transaction',{bodyLimit:CONFIGURATION.NODE_LEVEL.MAX_PAYLO
     
         
     if(NODE_METADATA.MEMPOOL.length < CONFIGURATION.NODE_LEVEL.TXS_MEMPOOL_SIZE){
+
+        let epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
     
-        let filteredEvent = await TXS_FILTERS[transaction.type](transaction,PUBKEY_FOR_FILTER)
+        let epochFullID = epochHandler.hash+"#"+epochHandler.id
+
+        let currentEpochMetadata = EPOCH_METADATA_MAPPING.get(epochFullID)
+
+        if(currentEpochMetadata){
+
+            let myShardForThisEpoch = currentEpochMetadata.TEMP_CACHE.get('MY_SHARD_FOR_THIS_EPOCH')
     
-        if(filteredEvent){
-    
-            response.send({status:'OK'})
-    
-            NODE_METADATA.MEMPOOL.push(filteredEvent)
-                            
-        }else response.send({err:`Can't get filtered value of tx`})
-    
-    }else response.send({err:'Mempool is fullfilled'})
+            let filteredEvent = await TXS_FILTERS[transaction.type](transaction,myShardForThisEpoch)
+        
+            if(filteredEvent){
+        
+                response.send({status:'OK'})
+        
+                NODE_METADATA.MEMPOOL.push(filteredEvent)
+                                
+            }else response.send({err:`Can't get filtered value of tx`})
+
+        } else response.send({err:'Try later'})
+
+    } else response.send({err:'Mempool is fullfilled'})
     
 
 })
