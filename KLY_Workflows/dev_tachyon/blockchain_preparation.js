@@ -1,8 +1,8 @@
 import {getCurrentEpochQuorum, getQuorumMajority} from './common_functions/quorum_related.js'
 
-import {customLog, pathResolve, blake3Hash, logColors} from '../../KLY_Utils/utils.js'
-
 import {setLeadersSequenceForShards} from './life/shards_leaders_monitoring.js'
+
+import {customLog, pathResolve, logColors} from '../../KLY_Utils/utils.js'
 
 import {BLOCKCHAIN_GENESIS, FASTIFY_SERVER} from '../../klyn74r.js'
 
@@ -272,32 +272,23 @@ let restoreMetadataCache=async()=>{
 export let setGenesisToState=async()=>{
 
 
-    let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
+    let verificationThreadAtomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
 
         approvementThreadAtomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch(),
     
-        epochTimestamp,
+        epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP,
 
-        startPool,
-
-        poolsRegistryForEpochHandler = {primePools:[],reservePools:[]}
+        poolsRegistryForEpochHandler = []
 
 
 
 
-    //__________________________________ Load all the configs __________________________________
-
-        
-    epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP
-
-    let primePools = new Set(Object.keys(BLOCKCHAIN_GENESIS.POOLS))
+    //__________________________________ Load info about pools __________________________________
 
 
     for(let [poolPubKey,poolContractStorage] of Object.entries(BLOCKCHAIN_GENESIS.POOLS)){
 
-        let {isReserve} = poolContractStorage
-
-        if(!isReserve) startPool ||= poolPubKey
+        let bindToShard = poolContractStorage.shard
 
         // Create the value in VT
 
@@ -316,11 +307,9 @@ export let setGenesisToState=async()=>{
             storages:['POOL'],
             bytecode:''
 
-        }            
-        
-        let idToAdd = poolPubKey+':'+poolPubKey
+        }
 
-        let templateForAT = {
+        let templateForApprovementThread = {
 
             totalPower:poolContractStorage.totalPower,
             lackOfTotalPower:false,
@@ -330,63 +319,42 @@ export let setGenesisToState=async()=>{
         
         }
 
-        // Put the pointer to know the shard which store the pool's data(metadata+storages)
-        // Pools' contract metadata & storage are in own shard. Also, reserve pools also here as you see below
-        if(isReserve){
+        
+        // If new shard occured - add appropriate indexer
 
-            atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolContractStorage.reserveFor)
+        let isNewShard = false
 
-            idToAdd = poolContractStorage.reserveFor+':'+poolPubKey
+        if(WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] !== 0) {
 
-            templateForAT.reserveFor = poolContractStorage.reserveFor
+            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[bindToShard] = 0
 
-            poolsRegistryForEpochHandler.reservePools.push(poolPubKey)
-
-        }else {
-
-            atomicBatch.put(poolPubKey+'(POOL)_POINTER',poolPubKey)
-
-            WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[poolPubKey] = 0
-
-            poolsRegistryForEpochHandler.primePools.push(poolPubKey)
+            isNewShard = true
 
         }
+
         
+        // Store all info about pool(pointer+metadata+storage) to state
 
-        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForAT)
+        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)_POINTER',bindToShard)
 
-
-        //Put metadata
-        atomicBatch.put(idToAdd+'(POOL)',contractMetadataTemplate)
-
-        //Put storage
-        //NOTE: We just need a simple storage with ID="POOL"
-        atomicBatch.put(idToAdd+'(POOL)_STORAGE_POOL',poolContractStorage)
-
-        // Add the account for fees for each leader
-        primePools.forEach(anotherValidatorPubKey=>{
-
-            if(anotherValidatorPubKey!==poolPubKey){
-
-                atomicBatch.put(blake3Hash(poolPubKey+':'+anotherValidatorPubKey),{
+        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)',contractMetadataTemplate)
     
-                    type:"account",
-                    balance:0,
-                    uno:0,
-                    nonce:0,
-                    rev_t:0
-                
-                })
+        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)_STORAGE_POOL',poolContractStorage)
 
-            }
+        // Do the same for approvement thread
 
-        })
+        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForApprovementThread)
+
+        // Register new pool
+
+        poolsRegistryForEpochHandler.push(poolPubKey)
+
 
         //________________________ Fill the state of KLY-EVM ________________________
 
-        if(!isReserve){
+        if(isNewShard){
 
-            let evmStateForThisShard = BLOCKCHAIN_GENESIS.EVM[poolPubKey]
+            let evmStateForThisShard = BLOCKCHAIN_GENESIS.EVM[bindToShard]
 
             if(evmStateForThisShard){
 
@@ -411,13 +379,13 @@ export let setGenesisToState=async()=>{
                     let caseIgnoreAccountAddress = Buffer.from(evmKey.slice(2),'hex').toString('hex')
 
                     // Add assignment to shard
-                    atomicBatch.put('SHARD_BIND:'+caseIgnoreAccountAddress,{shard:poolPubKey})
+                    verificationThreadAtomicBatch.put('SHARD_BIND:'+caseIgnoreAccountAddress,{shard:bindToShard})
     
                 }
 
             }
 
-            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[poolPubKey] = {
+            WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[bindToShard] = {
         
                 nextBlockIndex:Web3.utils.toHex(BigInt(0).toString()),
         
@@ -457,23 +425,24 @@ export let setGenesisToState=async()=>{
                 } 
 
                 // Write metadata first
-                atomicBatch.put(shard+':'+addressOrContractID,contractMeta)
+                
+                verificationThreadAtomicBatch.put(shard+':'+addressOrContractID,contractMeta)
 
                 // Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
 
                 for(let storageID of BLOCKCHAIN_GENESIS.STATE[addressOrContractID].storages){
 
-                    BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID].shard = shard
-
-                    atomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID])
+                    verificationThreadAtomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID])
 
                 }
 
             } else {
 
+                // Else - it's default EOA account
+
                 let shardID = BLOCKCHAIN_GENESIS.STATE[addressOrContractID].shard
 
-                atomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID]) // else - it's default account
+                verificationThreadAtomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID])
 
             }
 
@@ -512,7 +481,7 @@ export let setGenesisToState=async()=>{
 
 
     
-    await atomicBatch.write()
+    await verificationThreadAtomicBatch.write()
 
     await approvementThreadAtomicBatch.write()
 
@@ -521,7 +490,7 @@ export let setGenesisToState=async()=>{
 
     // Node starts to verify blocks from the first validator in genesis, so sequency matter
     
-    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = startPool
+    WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = 'shard_0'
 
     WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT = await KLY_EVM.getStateRoot()
 
@@ -559,13 +528,6 @@ export let setGenesisToState=async()=>{
         leadersSequence:{}
     
     }
-
-
-    // Set the rubicon to stop tracking spent txs from WAITING_ROOMs of pools' contracts. Value means the checkpoint id lower edge
-    // If your stake/unstake tx was below this line - it might be burned. However, the line is set by QUORUM, so it should be safe
-    WORKING_THREADS.VERIFICATION_THREAD.RUBICON = 0
-    
-    WORKING_THREADS.APPROVEMENT_THREAD.RUBICON = 0
 
 
     let nullHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'

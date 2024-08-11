@@ -45,7 +45,7 @@ export default {
     
     */
 
-        let {txid,pool,type,amount,poolOriginShard,isReserve,reserveFor,poolURL,wssPoolURL}=payload
+        let {txid,pool,type,amount,poolOriginShard,poolURL,wssPoolURL} = payload
 
         if(txid==='AT') return
 
@@ -73,8 +73,6 @@ export default {
                             
                             txid,pool,type,amount,poolOriginShard,
 
-                            isReserve:poolStorage.isReserve,
-                            reserveFor:poolStorage.reserveFor,
                             poolURL:poolStorage.poolURL,
                             wssPoolURL:poolStorage.wssPoolURL
                         
@@ -109,7 +107,6 @@ export default {
                     totalPower:<number>
                     lackOfTotalPower:<boolean>
                     stopEpochID:<number>
-                    isReserve:<boolean>
                     poolURL:<string>
                     wssPoolURL:<string>
                 }
@@ -126,14 +123,6 @@ export default {
                     poolURL,
                     wssPoolURL
                 
-                }
-
-                if(isReserve){
-
-                    poolTemplateForQt.isReserve=isReserve
-
-                    poolTemplateForQt.reserveFor=reserveFor
-
                 }
 
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(pool+'(POOL)_STORAGE_POOL',poolTemplateForQt)
@@ -159,11 +148,7 @@ export default {
 
             if(poolStorage.totalPower >= workflowConfigs.VALIDATOR_STAKE){
 
-
-                if(poolStorage.isReserve) fullCopyOfApprovementThread.EPOCH.poolsRegistry.reservePools.push(pool)
-
-                else fullCopyOfApprovementThread.EPOCH.poolsRegistry.primePools.push(pool)
-                
+                fullCopyOfApprovementThread.EPOCH.poolsRegistry.push(pool)                
 
                 // Make it "null" again
 
@@ -289,9 +274,7 @@ export default {
                                 
                             index:-1,
                         
-                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-
-                            isReserve:poolStorage.isReserve
+                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
                         
                         }
 

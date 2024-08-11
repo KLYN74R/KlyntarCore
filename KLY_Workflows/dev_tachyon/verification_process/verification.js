@@ -729,11 +729,11 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
             let poolOrigin = await getFromState(poolPubKey+'(POOL)_POINTER')
     
-            let poolHashID = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
+            let poolStorageIdInDatabase = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
     
-            let poolStorage = await getFromState(poolHashID)
+            let poolStorage = await getFromState(poolStorageIdInDatabase)
     
-            if(poolStorage.totalPower<WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolHashID,poolPubKey})
+            if(poolStorage.totalPower<WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolStorageIdInDatabase,poolPubKey})
     
         }
     

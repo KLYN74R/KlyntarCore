@@ -127,52 +127,22 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
         let poolsRegistryOnApprovementThread = epochHandler.poolsRegistry
 
         let itsPrimePool = poolsRegistryOnApprovementThread.primePools.includes(block.creator)
-    
-        let itsReservePool = poolsRegistryOnApprovementThread.reservePools.includes(block.creator)
-    
-        let poolIsReal = itsPrimePool || itsReservePool
-    
-        let primePoolPubKey, itIsReservePoolWhichIsLeaderNow
-
-
-        if(poolIsReal){
-    
-            if(itsPrimePool){
-
-                primePoolPubKey = block.creator
-
-                // Check if it still a leader on own shard
-
-                if(currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)){
-
-                    connection.close()
-
-                    currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
             
-                    return
-                    
-                }
+        let shardID
 
-            } else if(typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
-    
-                primePoolPubKey = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)
-    
-                itIsReservePoolWhichIsLeaderNow = true
-    
-            }
-    
-        }
 
-        let thisLeaderCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsLeaderNow || itsPrimePool )
-    
-        if(!thisLeaderCanGenerateBlocksNow){
-    
+        if(epochHandler.poolsRegistry.includes(block.creator) && typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator) === 'string'){
+            
+            shardID = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(block.creator)
+
+        } else {
+
             connection.close()
 
             currentEpochMetadata.SYNCHRONIZER.delete('GENERATE_FINALIZATION_PROOFS:'+block.creator)
     
             return
-    
+
         }
 
         
@@ -248,19 +218,19 @@ let returnFinalizationProofForBlock=async(parsedData,connection)=>{
         
                         legacyEpochData.epochFullID
                             
-                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === primePoolPubKey
+                    ).catch(()=>false) && block.extraData.aefpForPreviousEpoch.shard === shardID
 
                         
                     //_________________________________________2_________________________________________
 
 
-                    let leadersSequence = epochHandler.leadersSequence[primePoolPubKey]
+                    let leadersSequence = epochHandler.leadersSequence[shardID]
 
                     let positionOfBlockCreatorInLeadersSequence = leadersSequence.indexOf(block.creator)
 
                     let alrpChainIsOk = itsPrimePool || await checkAlrpChainValidity(
         
-                        primePoolPubKey,
+                        shardID,
         
                         block,
 
@@ -442,21 +412,10 @@ let returnFinalizationProofBasedOnTmbProof=async(parsedData,connection)=>{
     }else if(!currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+blockCreator)){
     
         // Add the sync flag to prevent creation proofs during the process of skip this pool
+        
         currentEpochMetadata.SYNCHRONIZER.set('GENERATE_FINALIZATION_PROOFS:'+blockCreator,true)
 
-        let poolsRegistryOnApprovementThread = epochHandler.poolsRegistry
-
-        let itsPrimePool = poolsRegistryOnApprovementThread.primePools.includes(blockCreator)
-    
-        let itsReservePool = poolsRegistryOnApprovementThread.reservePools.includes(blockCreator)
-    
-        let poolIsReal = itsPrimePool || itsReservePool
-
-        let shardsLeadersData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(blockCreator)
-    
-        let itIsReservePoolWhichIsLeaderNow = poolIsReal && typeof shardsLeadersData === 'string'
-
-        let thisLeaderCanGenerateBlocksNow = poolIsReal && ( itIsReservePoolWhichIsLeaderNow || itsPrimePool )
+        let thisLeaderCanGenerateBlocksNow = epochHandler.poolsRegistry.includes(blockCreator) && typeof currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(blockCreator) === 'string'
     
         
         if(!thisLeaderCanGenerateBlocksNow){

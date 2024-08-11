@@ -60,6 +60,7 @@
             "totalPower":55000,
             "lackOfTotalPower":false,
             "stopCheckpointID": -1,
+            "shard":"shard_0",
             "stakers":{
                 "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
                     "kly":55000,
@@ -83,7 +84,7 @@
             "uno":0,
             "nonce":0,
             "gas":0,
-            "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
+            "shard":"shard_0"
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
             
@@ -93,7 +94,7 @@
             "nonce":0,
             "gas":0,
             "rev_t":0,
-            "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
+            "shard":"shard_0"
         },
         "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
             
@@ -103,7 +104,7 @@
             "nonce":0,
             "gas":0,
             "rev_t":0,
-            "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK"
+            "shard":"shard_0"
         },
 
         "0000000000000000000000000000000000000000000000000000000000000000":{
@@ -116,7 +117,7 @@
             "storages":["storageID_N"],
             "bytecode":"00",
             "storageAbstractionLastPayment":0,
-            "shard":"9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK",
+            "shard":"shard_0",
 
             "storageID_N":{
                 "key1":"value1",
@@ -129,7 +130,7 @@
 
     "EVM":{
 
-        "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
+        "shard_0":{
 
             "0x407d73d8a49eeb85d32cf465507dd71d507100c1":{
             
