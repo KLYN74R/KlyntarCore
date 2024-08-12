@@ -65,7 +65,6 @@
                     "uno":0
                 }
             },
-            "waitingRoom":{},
             "poolURL":"http://localhost:7332",
             "wssPoolURL":"ws://localhost:9999"
         

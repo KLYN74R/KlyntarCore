@@ -81,9 +81,7 @@ export let CONTRACT = {
 
                 totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
                 
-                stakers:{}, // Pubkey => {kly,uno}
-
-                waitingRoom:{} // We'll move stakes from "WAITING_ROOM" to "STAKERS" via epoch edge operations
+                stakers:{} // Pubkey => {kly,uno}
 
             }
 
