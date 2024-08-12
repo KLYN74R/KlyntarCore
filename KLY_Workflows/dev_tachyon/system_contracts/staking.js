@@ -26,16 +26,24 @@ export let CONTRACT = {
     
     Used by pool creators to create contract instance and a storage "POOL"
 
-    Payload is
+    transaction.payload is
     
     {
-        bytecode:'',(empty)
-        lang:'system/staking'
-        constructorParams:[]
-    }
+        contractID:'system/staking',
+        method:'createStakingPool',
+        gasLimit:0,
+        imports:[],
+        params:[
 
-    Required params:[Ed25519PubKey,Percentage,OverStake,WhiteList,PoolAddress]
+            {
+                shard, ed25519PubKey, percentage, overStake, whiteList, poolURL, wssPoolURL
+            }
 
+        ]
+        
+    Required input params
+
+        [*] shard - shard id to bind pool
         [*] ed25519PubKey - Ed25519 pubkey for validator. The same as PoolID
         [*] percentage - % of fees that will be earned by pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
         [*] overStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
@@ -44,16 +52,13 @@ export let CONTRACT = {
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
-    constructor:async (originShard,transaction,atomicBatch) => {
+    createStakingPool:async (threadContext,transaction,atomicBatch) => {
 
-        let {constructorParams} = transaction.payload
+        let {shard,ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL} = transaction.payload.params[0]
 
-        let [ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL] = constructorParams
+        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(originShard+':'+ed25519PubKey+'(POOL)').catch(()=>false)
-
-
-        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -85,12 +90,25 @@ export let CONTRACT = {
 
             }
 
-            // Put metadata
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+            if(threadContext === 'AT'){
 
-            // Put storage
-            // NOTE: We just need a simple storage with ID="POOL"
-            atomicBatch.put(originShard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                // Put storage
+                // NOTE: We just need a simple storage with ID="POOL"
+                
+                atomicBatch.put(ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+            } else {
+
+                atomicBatch.put(ed25519PubKey+':'+'(POOL)_POINTER',shard)
+
+                // Put storage
+                // NOTE: We just need a simple storage with ID="POOL"
+                atomicBatch.put(shard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+
+                // Put metadata
+                atomicBatch.put(shard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+
+            }
 
             return {isOk:true}
 
