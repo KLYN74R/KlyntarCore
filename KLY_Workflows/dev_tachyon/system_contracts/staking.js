@@ -67,7 +67,7 @@ export let CONTRACT = {
 
             }
 
-            let onlyOnePossibleStorageForStakingContract={
+            let onlyOnePossibleStorageForStakingContract = {
                 
                 percentage,
 
@@ -112,7 +112,7 @@ export let CONTRACT = {
     
     */
     
-    stake:async(originShard,transaction) => {
+    stake:async(originShard,transaction,threadContext) => {
 
         let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0]
 

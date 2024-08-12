@@ -304,15 +304,6 @@ export let setGenesisToState=async()=>{
             bytecode:''
 
         }
-
-        let templateForApprovementThread = {
-
-            totalPower:poolContractStorage.totalPower,
-            poolURL:poolContractStorage.poolURL,
-            wssPoolURL:poolContractStorage.wssPoolURL
-        
-        }
-
         
         // If new shard occured - add appropriate indexer
 
@@ -339,7 +330,7 @@ export let setGenesisToState=async()=>{
 
         // Do the same for approvement thread
 
-        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',templateForApprovementThread)
+        approvementThreadAtomicBatch.put(poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
 
         // Register new pool
 
