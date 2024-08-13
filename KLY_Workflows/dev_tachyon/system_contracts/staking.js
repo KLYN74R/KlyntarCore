@@ -1,5 +1,7 @@
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
+import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
+
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash} from '../../../KLY_Utils/utils.js'
@@ -162,9 +164,9 @@ export let CONTRACT = {
         units:<KLY|UNO>
         quorumAgreements:{
 
-            quorumMemberPubKey1: Signature(`stake:${fullPoolIdWithPostfix}:${amountUno}:${action}:${transaction.nonce}`),
+            quorumMemberPubKey1: Signature(`stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`),
             ...
-            quorumMemberPubKeyN: Signature(moveToShard+recipient+recipientNextNonce+amount)
+            quorumMemberPubKeyN: Signature(`stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`)
 
         }
     }
@@ -173,7 +175,7 @@ export let CONTRACT = {
     
     stake:async(threadContext,transaction) => {
 
-        let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0]
+        let {fullPoolIdWithPostfix,amount,units,quorumAgreements} = transaction.payload.params[0]
 
         let poolStorage
 
@@ -189,62 +191,49 @@ export let CONTRACT = {
 
         }
 
+        // Verify the majority's proof
 
-        // Here we also need to check if pool is still not fullfilled
-        // Also, instantly check if account is whitelisted
+        let dataThatShouldBeSignedByQuorum = `stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`
 
-        if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
+        let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
-            let stakerAccount = await getAccountFromState(originShard+':'+transaction.creator)
+        if(majorityProofIsOk){
 
-            if(stakerAccount){
+            // Here we also need to check if pool is still not fullfilled
+            // Also, instantly check if account is whitelisted
 
-                
-                let hasEnough = amount <= (units==='kly' ? stakerAccount.balance : stakerAccount.uno)
+            if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
                 let amountIsBiggerThanMinimalStake = amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+ 
+                let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
 
-                let stakeIsOk = hasEnough && amountIsBiggerThanMinimalStake
 
-                // Make overview verification
+                if(amountIsBiggerThanMinimalStake && noOverstake){
 
-                let workflowConfigs = WORKING_THREADS[threadContext].WORKFLOW_OPTIONS
+                    if(!poolStorage.stakers[transaction.creator]) poolStorage.stakers[transaction.creator] = {kly:0, uno:0}
+
+                    if(units === 'kly') poolStorage.stakers[transaction.creator].kly += amount
+
+                    else poolStorage.stakers[transaction.creator].uno += amount
+
+                } else {
+
+                    // TODO: return funds
+
+                    return {isOk:false,reason:'Overview failed'}
     
-                let isMinimalRequiredAmount = amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY
+                }
+
+
+            } else {
+
+                // TODO: return funds
+
+                return {isOk:false,reason:'No such pool or your account is not in whitelist'}
+
+            }
             
-                let ifStakeCheck = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
-            
-                
-                let overviewIsOk = isMinimalRequiredAmount && inWaitingRoomTheSameAsInPayload && ifStakeCheck
-            
-
-                if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
-
-                    poolStorage.waitingRoom[blake3Hash(transaction.sig)]={
-
-                        epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
-
-                        staker:transaction.creator,
-
-                        amount,
-
-                        units,
-
-                        type:'+' //means "STAKE"
-                    
-                    }
-
-                    // Reduce number of KLY/UNO from account
-                    if(units==='kly') stakerAccount.balance-=amount
-                    
-                    else stakerAccount.uno-=amount
-
-                    return {isOk:true}
-
-                } else return {isOk:false}
-
-            } else return {isOk:false}
-    
         } else return {isOk:false}
 
     },
@@ -299,6 +288,12 @@ export let CONTRACT = {
 
 
     slashing:async(threadContext,transaction) => {
+
+
+
+    },
+
+    reduceNumberOfUno:async(threadContext,transaction) => {
 
 
 
