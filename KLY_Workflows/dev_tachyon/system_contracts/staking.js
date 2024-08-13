@@ -56,7 +56,7 @@ export let CONTRACT = {
 
         let {shard,ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL} = transaction.payload.params[0]
 
-        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.STATE.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
+        let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
@@ -99,7 +99,7 @@ export let CONTRACT = {
 
             } else {
 
-                atomicBatch.put(ed25519PubKey+':'+'(POOL)_POINTER',shard)
+                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',shard)
 
                 // Put storage
                 // NOTE: We just need a simple storage with ID="POOL"
@@ -116,9 +116,43 @@ export let CONTRACT = {
 
     },
 
+
+    /*
+    
+        Method to burn KLY / UNO to make it possible to stake on some pool
+
+        transaction.payload.params[0] is:
+
+        {
+            fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>,
+            recipientNextNonce:<next nonce of target address - need it to prevent replay attacks>,
+            amount:<amount in KLY or UNO> | NOTE:must be int - not float
+            units:<KLY|UNO>
+        }
+    
+    */
+    burnAssetsToGetStakingTicket:async (originShard,transaction)=>{
+
+        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
+
+        let {fullPoolIdWithPostfix,recipientNextNonce,amount,units} = transaction.payload.params[0]
+
+
+        if(txCreatorAccount && typeof fullPoolIdWithPostfix === 'string' && typeof recipientNextNonce === 'number' && typeof units === 'string' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
+
+            if(units === 'kly') txCreatorAccount.balance -= amount
+
+            else txCreatorAccount.uno -= amount
+
+            return {isOk:true, extraData:{fullPoolIdWithPostfix,recipient:transaction.creator,recipientNextNonce,amount,units}}
+
+        } else return {isOk:false, reason:'No such account or wrong input to function of contract'}
+
+    },
+
     /*
      
-    Method to delegate your assets to some validator | pool
+    Method to delegate your assets to some validator | pool once you have staking ticket
 
     transaction.payload.params[0] is:
 
@@ -126,19 +160,38 @@ export let CONTRACT = {
         fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
+        quorumAgreements:{
+
+            quorumMemberPubKey1: Signature(`stake:${fullPoolIdWithPostfix}:${amountUno}:${action}:${transaction.nonce}`),
+            ...
+            quorumMemberPubKeyN: Signature(moveToShard+recipient+recipientNextNonce+amount)
+
+        }
     }
     
     */
     
-    stake:async(originShard,transaction,threadContext) => {
+    stake:async(threadContext,transaction) => {
 
         let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0]
 
-        let poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL')
+        let poolStorage
+
+        if(threadContext === 'AT'){
+
+            poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(fullPoolIdWithPostfix+'_STORAGE_POOL')
+
+        } else {
+        
+            let shardWherePoolStorageLocated = await BLOCKCHAIN_DATABASES.STATE.get(fullPoolIdWithPostfix+'_POINTER').catch(()=>null)
+
+            poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(shardWherePoolStorageLocated+':'+fullPoolIdWithPostfix+'_STORAGE_POOL').catch(()=>null)
+
+        }
 
 
-        //Here we also need to check if pool is still not fullfilled
-        //Also, instantly check if account is whitelisted
+        // Here we also need to check if pool is still not fullfilled
+        // Also, instantly check if account is whitelisted
 
         if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
@@ -153,6 +206,17 @@ export let CONTRACT = {
 
                 let stakeIsOk = hasEnough && amountIsBiggerThanMinimalStake
 
+                // Make overview verification
+
+                let workflowConfigs = WORKING_THREADS[threadContext].WORKFLOW_OPTIONS
+    
+                let isMinimalRequiredAmount = amount >= workflowConfigs.MINIMAL_STAKE_PER_ENTITY
+            
+                let ifStakeCheck = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
+            
+                
+                let overviewIsOk = isMinimalRequiredAmount && inWaitingRoomTheSameAsInPayload && ifStakeCheck
+            
 
                 if(stakeIsOk && poolStorage.totalPower + amount <= poolStorage.overStake+WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE){
 
@@ -200,7 +264,7 @@ export let CONTRACT = {
 
     
     */
-    unstake:async (originShard,transaction) => {
+    unstake:async (threadContext,transaction) => {
 
         let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0],
 
@@ -230,6 +294,13 @@ export let CONTRACT = {
             return {isOk:true}
     
         } else return {isOk:false, reason: 'No such pool or you try to unstake more than you allowed'}
+
+    },
+
+
+    slashing:async(threadContext,transaction) => {
+
+
 
     }
         

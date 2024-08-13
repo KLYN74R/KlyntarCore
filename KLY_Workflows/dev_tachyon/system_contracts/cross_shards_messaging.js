@@ -37,7 +37,7 @@ export let CONTRACT = {
             {
                 moveToShard:'',
                 recipient:'',
-                recipientNextNonce:<nonce of target address on another shard - need it to prevent replay attacks>,
+                recipientNextNonce:<next nonce of target address on another shard - need it to prevent replay attacks>,
                 amount:<amount of KLY to transfer to another shard>,
             }
             
