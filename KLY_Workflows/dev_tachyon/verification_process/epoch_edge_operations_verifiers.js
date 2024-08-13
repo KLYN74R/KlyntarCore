@@ -50,44 +50,7 @@ export default {
         if(txid==='AT') return
 
 
-        if(isFromRoute){
-
-            //To check payload received from route
-
-            let poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(poolOriginShard+':'+pool+'(POOL)_STORAGE_POOL').catch(()=>false)
-
-            let stakeOrUnstakeTx = poolStorage?.waitingRoom?.[txid]
-        
-
-            if(stakeOrUnstakeTx && MAKE_OVERVIEW_OF_STAKING_CONTRACT_CALL(poolStorage,stakeOrUnstakeTx,'APPROVEMENT_THREAD',payload)){
-
-                let stillUnspent = !(await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(txid).catch(()=>false))
-
-                if(stillUnspent){
-                    
-                    let specOpsTemplate = {
-                    
-                        type:'STAKING_CONTRACT_CALL',
-                    
-                        payload:{
-                            
-                            txid,pool,type,amount,poolOriginShard,
-
-                            poolURL:poolStorage.poolURL,
-                            wssPoolURL:poolStorage.wssPoolURL
-                        
-                        }
-                    
-                    }
-                
-                    return specOpsTemplate
-                
-                }
-
-            }
-
-        }
-        else if(usedOnApprovementThread){
+        if(usedOnApprovementThread){
 
             // Basic ops on APPROVEMENT_THREAD
 
