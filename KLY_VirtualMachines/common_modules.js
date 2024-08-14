@@ -10,7 +10,15 @@ import {verifyEd25519Sync} from '../KLY_Utils/utils.js'
 
 import {ProofHoHash} from '@idena/vrf-js'
 
-import snarkjs from 'snarkjs'
+
+
+
+let {createRequire} = await import('module');
+                
+let require = createRequire(import.meta.url);
+
+let snarkjs = require('snarkjs');
+
 
 
 
