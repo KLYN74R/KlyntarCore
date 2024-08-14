@@ -1,10 +1,11 @@
+/* eslint-disable no-unused-vars */
 import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
 
 import {getFromState} from "../common_functions/state_interactions.js"
 
 
 
-export let GAS_USED_BY_METHOD=methodID=>{
+export let gasUsedByMethod=methodID=>{
 
     if(methodID==='constructor') return 10000
 

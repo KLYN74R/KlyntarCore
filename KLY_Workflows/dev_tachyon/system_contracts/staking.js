@@ -10,7 +10,7 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.j
 
 
 
-export let GAS_USED_BY_METHOD=methodID=>{
+export let gasUsedByMethod=methodID=>{
 
     if(methodID==='constructor') return 10000
 

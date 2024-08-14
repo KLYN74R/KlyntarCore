@@ -8,7 +8,7 @@ import {blake3Hash} from "../../../KLY_Utils/utils.js"
 
 
 
-export let GAS_USED_BY_METHOD=methodID=>{
+export let gasUsedByMethod=methodID=>{
 
     if(methodID==='createContract') return 10000
 

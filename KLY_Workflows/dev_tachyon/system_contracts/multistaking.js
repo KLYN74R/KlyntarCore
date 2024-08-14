@@ -3,7 +3,7 @@ import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_
 import {getFromState} from "../common_functions/state_interactions.js"
 
 
-export let GAS_USED_BY_METHOD=methodID=>{
+export let gasUsedByMethod=methodID=>{
 
     if(methodID==='mintUnobtanium') return 10000
 

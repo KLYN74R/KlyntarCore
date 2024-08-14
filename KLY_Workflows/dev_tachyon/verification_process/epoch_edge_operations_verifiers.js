@@ -1,12 +1,8 @@
-import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
-
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
+import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {getFromState} from '../common_functions/state_interactions.js'
-
-import {simplifiedVerifyBasedOnSignaType} from './txs_verifiers.js'
-
-import {CONFIGURATION} from '../../../klyn74r.js'
 
 
 
@@ -247,141 +243,6 @@ export default {
 
         }
 
-    },
-
-
-
-    //___________________________________________________ Separate methods __________________________________________________
-
-
-    //To make updates of workflow(e.g. version change, WORKFLOW_OPTIONS changes and so on)
-    WORKFLOW_UPDATE:async(payload,isFromRoute,usedOnApprovementThread)=>{
-
-        /*
-        
-        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
-
-        {
-            fieldName
-            newValue
-        }
-        
-        If received from route - then payload has the following structure
-
-        {
-            sigType,
-            pubKey,
-            signa,
-            data:{
-                fieldName
-                newValue
-            }
-        }
-
-        *data - object with the new option(proposition) for WORKFLOW_OPTIONS
-
-        Also, you must sign the data with the latest payload's header hash
-
-        SIG(JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)
-        
-        
-        */
-
-        let {sigType,pubKey,signa,data} = payload
-
-        let overviewIfFromRoute = 
-
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.WORKFLOW_UPDATE.includes(pubKey) //set it in configs
-            &&
-            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-        if(overviewIfFromRoute){
-
-            //In this case, <proposer> property is the address should be included to your whitelist in configs
-
-            return {type:'WORKFLOW_UPDATE',payload:data}
-
-        }
-        else if(usedOnApprovementThread){
-
-            let updatedOptions = await getFromApprovementThreadState('WORKFLOW_OPTIONS')
-
-            updatedOptions[payload.fieldName]=payload.newValue
-
-        }else{
-
-            //Used on VT
-            let updatedOptions = await getFromState('WORKFLOW_OPTIONS')
-
-            updatedOptions[payload.fieldName]=payload.newValue
-
-        }
-        
-    },
-
-
-
-
-    VERSION_UPDATE:async(payload,isFromRoute,usedOnApprovementThread,fullCopyOfApprovementThread)=>{
-
-        /*
-        
-        If used on APPROVEMENT_THREAD | VERIFICATION_THREAD - then payload has the following structure:
-
-        {
-            major:<typeof Number>
-        }
-        
-        If received from route - then payload has the following structure
-
-        {
-            sigType,
-            pubKey,
-            signa,
-            data:{
-                major:<typeof Number>
-            }
-        }
-
-        Also, you must sign the data with the latest payload's header hash
-
-        SIG(JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash)        
-        
-        */
-
-        let {sigType,pubKey,signa,data} = payload
-
-        let overviewIfFromRoute = 
-
-            isFromRoute //method used on POST /sign_epoch_edge_operation
-            &&
-            CONFIGURATION.NODE_LEVEL.TRUSTED_POOLS.VERSION_UPDATE.includes(pubKey) //set it in configs
-            &&
-            await simplifiedVerifyBasedOnSignaType(sigType,pubKey,signa,JSON.stringify(data)+WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash) // and signature check
-
-
-
-        if(overviewIfFromRoute){
-
-            //In this case, <proposer> property is the address should be included to your whitelist in configs
-
-            return {type:'VERSION_UPDATE',payload:data}
-
-        }
-        else if(usedOnApprovementThread && payload.major > fullCopyOfApprovementThread.VERSION){
-
-            fullCopyOfApprovementThread.VERSION=payload.major
-
-        }else if(payload.major > WORKING_THREADS.VERIFICATION_THREAD.VERSION){
-
-            //Used on VT
-            WORKING_THREADS.VERIFICATION_THREAD.VERSION=payload.major
-
-        }
-        
     }
 
 }

@@ -8,7 +8,7 @@ import {GLOBAL_CACHES} from "../blockchain_preparation.js"
 
 
 
-export let GAS_USED_BY_METHOD=methodID=>{
+export let gasUsedByMethod=methodID=>{
 
     if(methodID==='changeShard') return 10000
 
