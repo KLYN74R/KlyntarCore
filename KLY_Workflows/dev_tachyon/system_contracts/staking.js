@@ -1,3 +1,6 @@
+/* eslint-disable no-unused-vars */
+import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
+
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
@@ -126,7 +129,7 @@ export let CONTRACT = {
         transaction.payload.params[0] is:
 
         {
-            fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>,
+            poolPubKey:<Format is Ed25519>,
             recipientNextNonce:<next nonce of target address - need it to prevent replay attacks>,
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             units:<KLY|UNO>
@@ -137,16 +140,18 @@ export let CONTRACT = {
 
         let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
 
-        let {fullPoolIdWithPostfix,recipientNextNonce,amount,units} = transaction.payload.params[0]
+        let {poolPubKey,recipientNextNonce,amount,units} = transaction.payload.params[0]
 
 
-        if(txCreatorAccount && typeof fullPoolIdWithPostfix === 'string' && typeof recipientNextNonce === 'number' && typeof units === 'string' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
+        if(txCreatorAccount && typeof poolPubKey === 'string' && typeof recipientNextNonce === 'number' && typeof units === 'string' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
 
-            if(units === 'kly') txCreatorAccount.balance -= amount
+            
+            if(units === 'kly' && amount <= txCreatorAccount.balance) txCreatorAccount.balance -= amount
 
-            else txCreatorAccount.uno -= amount
+            else if (units === 'uno' && amount <= txCreatorAccount.uno) txCreatorAccount.uno -= amount
 
-            return {isOk:true, extraData:{fullPoolIdWithPostfix,recipient:transaction.creator,recipientNextNonce,amount,units}}
+
+            return {isOk:true, extraData:{poolPubKey,recipient:transaction.creator,recipientNextNonce,amount,units}}
 
         } else return {isOk:false, reason:'No such account or wrong input to function of contract'}
 
@@ -159,14 +164,14 @@ export let CONTRACT = {
     transaction.payload.params[0] is:
 
     {
-        fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>
+        poolPubKey:<Format is Ed25519_pubkey>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
         quorumAgreements:{
 
-            quorumMemberPubKey1: Signature(`stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`),
+            quorumMemberPubKey1: Signature(`stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`),
             ...
-            quorumMemberPubKeyN: Signature(`stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`)
+            quorumMemberPubKeyN: Signature(`stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`)
 
         }
     }
@@ -175,25 +180,25 @@ export let CONTRACT = {
     
     stake:async(threadContext,transaction) => {
 
-        let {fullPoolIdWithPostfix,amount,units,quorumAgreements} = transaction.payload.params[0]
+        let {poolPubKey,amount,units,quorumAgreements} = transaction.payload.params[0]
 
         let poolStorage
 
         if(threadContext === 'AT'){
 
-            poolStorage = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(fullPoolIdWithPostfix+'_STORAGE_POOL')
+            poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
         } else {
         
-            let shardWherePoolStorageLocated = await BLOCKCHAIN_DATABASES.STATE.get(fullPoolIdWithPostfix+'_POINTER').catch(()=>null)
+            let shardWherePoolStorageLocated = await getFromState(poolPubKey+'(POOL)_POINTER').catch(()=>null)
 
-            poolStorage = await BLOCKCHAIN_DATABASES.STATE.get(shardWherePoolStorageLocated+':'+fullPoolIdWithPostfix+'_STORAGE_POOL').catch(()=>null)
+            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolPubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
         }
 
         // Verify the majority's proof
 
-        let dataThatShouldBeSignedByQuorum = `stake:${fullPoolIdWithPostfix}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`
+        let dataThatShouldBeSignedByQuorum = `stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
@@ -204,7 +209,9 @@ export let CONTRACT = {
 
             if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
 
-                let amountIsBiggerThanMinimalStake = amount >= WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+                let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+
+                let amountIsBiggerThanMinimalStake = amount >= threadById.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
  
                 let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
 
@@ -213,9 +220,42 @@ export let CONTRACT = {
 
                     if(!poolStorage.stakers[transaction.creator]) poolStorage.stakers[transaction.creator] = {kly:0, uno:0}
 
-                    if(units === 'kly') poolStorage.stakers[transaction.creator].kly += amount
 
-                    else poolStorage.stakers[transaction.creator].uno += amount
+                    if(units === 'kly'){
+
+                        poolStorage.stakers[transaction.creator].kly += amount
+
+                        poolStorage.totalPower += amount
+
+                    } else {
+
+                        poolStorage.stakers[transaction.creator].uno += amount
+
+                        poolStorage.totalPower += amount
+
+                    }
+
+
+                    
+                    // Now check if pool has enough power
+
+                    if(poolStorage.totalPower >= threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+
+                        threadById.EPOCH.poolsRegistry.push(poolPubKey)
+
+                    }
+
+                    if(threadContext === 'VT' && !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]){
+
+                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]={   
+                                
+                            index:-1,
+                        
+                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                        
+                        }
+
+                    }
 
                 } else {
 
@@ -246,7 +286,7 @@ export let CONTRACT = {
         transaction.payload.params[0] is:
 
         {
-            fullPoolIdWithPostfix:<Format is Ed25519_pubkey(POOL)>
+            poolPubKey:<Format is Ed25519_pubkey(POOL)>
             amount:<amount in KLY or UNO> | NOTE:must be int - not float
             type:<KLY|UNO>
         }
@@ -255,9 +295,9 @@ export let CONTRACT = {
     */
     unstake:async (threadContext,transaction) => {
 
-        let {fullPoolIdWithPostfix,amount,units} = transaction.payload.params[0],
+        let {poolPubKey,amount,units} = transaction.payload.params[0],
 
-            poolStorage = await getFromState(originShard+':'+fullPoolIdWithPostfix+'_STORAGE_POOL'),
+            poolStorage = await getFromState(originShard+':'+poolPubKey+'_STORAGE_POOL'),
 
             stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
 
@@ -287,6 +327,7 @@ export let CONTRACT = {
     },
 
 
+    
     slashing:async(threadContext,transaction) => {
 
 
