@@ -212,9 +212,7 @@ let restoreMetadataCache=async()=>{
 
     }
 
-    for(let shardIndex = 0 ; shardIndex < WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.numberOfShards ; shardIndex++) {
-
-        let shardID = `shard_${shardIndex}`
+    for(let shardID of WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.shardsRegistry){
 
         let leadersHandler = await currentEpochMetadata.DATABASE.get('LEADERS_HANDLER:'+shardID).catch(()=>null)
 
@@ -231,7 +229,6 @@ let restoreMetadataCache=async()=>{
         }
 
     }
-
 
     // Finally, once we've started the "next epoch" process - restore it
 
@@ -273,6 +270,8 @@ export let setGenesisToState=async()=>{
         epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP,
 
         poolsRegistryForEpochHandler = [],
+
+        shardsRegistry = [],
 
         numberOfShards = 0
 
@@ -316,6 +315,8 @@ export let setGenesisToState=async()=>{
             isNewShard = true
 
             numberOfShards++
+
+            shardsRegistry.push(`shard_${numberOfShards}`)
 
         }
 
@@ -490,7 +491,7 @@ export let setGenesisToState=async()=>{
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
-        numberOfShards,
+        shardsRegistry,
         
         startTimestamp:epochTimestamp,
 
@@ -510,7 +511,7 @@ export let setGenesisToState=async()=>{
 
         poolsRegistry:JSON.parse(JSON.stringify(poolsRegistryForEpochHandler)),
 
-        numberOfShards,
+        shardsRegistry,
 
         startTimestamp:epochTimestamp,
 

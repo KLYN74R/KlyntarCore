@@ -5,9 +5,7 @@ import {getFromState} from "../common_functions/state_interactions.js"
 
 export let gasUsedByMethod=methodID=>{
 
-    if(methodID==='mintUnobtanium') return 10000
-
-    else if(methodID==='burnUnobtanium') return 10000
+    if(methodID==='changeUnobtaniumAmount') return 10000
 
 }
 

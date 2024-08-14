@@ -55,7 +55,7 @@ export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
     
     //_______________________________________ Now assign the validators to shards for new epoch ___________________________________________________
     
-    let numberOfValidatorsPerShard = Math.floor(epochHandler.poolsRegistry.length / epochHandler.numberOfShards)
+    let numberOfValidatorsPerShard = Math.floor(epochHandler.poolsRegistry.length / epochHandler.shardsRegistry.length)
 
     let assignToShardWithIndex = 0
 
@@ -63,7 +63,7 @@ export let setLeadersSequenceForShards = async (epochHandler,epochSeed) => {
 
         let appropriateValidator = challenges.get(challenge)
 
-        let shardID = `shard_${assignToShardWithIndex}`
+        let shardID = epochHandler.shardsRegistry[assignToShardWithIndex]
 
         if(!epochHandler.leadersSequence[shardID]) epochHandler.leadersSequence[shardID] = []
 

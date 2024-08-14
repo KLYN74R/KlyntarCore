@@ -10,7 +10,9 @@ import {GLOBAL_CACHES} from "../blockchain_preparation.js"
 
 export let gasUsedByMethod=methodID=>{
 
-    if(methodID==='changeShard') return 10000
+    if(methodID==='sendMessage') return 10000
+
+    else if(methodID==='acceptMessage') return 10000
 
 }
 

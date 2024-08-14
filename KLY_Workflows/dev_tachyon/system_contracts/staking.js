@@ -12,11 +12,17 @@ import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.j
 
 export let gasUsedByMethod=methodID=>{
 
-    if(methodID==='constructor') return 10000
+    if(methodID==='createStakingPool') return 10000
+
+    else if(methodID==='burnAssetsToGetStakingTicket') return 10000
 
     else if(methodID==='stake') return 10000
 
     else if(methodID==='unstake') return 10000
+
+    else if(methodID==='slashing') return 10000
+
+    else if(methodID==='reduceNumberOfUno') return 10000
 
 }
 
@@ -230,6 +236,14 @@ export let CONTRACT = {
                         poolStorage.stakers[transaction.creator].uno += amount
 
                         poolStorage.totalPower += amount
+
+                    }
+
+                    // Check if pool has enough power to be added to pools registry
+
+                    if(poolStorage.totalPower >= threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+
+                        threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
                     }
 
