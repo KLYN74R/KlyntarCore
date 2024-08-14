@@ -7,8 +7,6 @@ import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_
 
 import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
-import {blake3Hash} from '../../../KLY_Utils/utils.js'
-
 
 
 
@@ -235,28 +233,6 @@ export let CONTRACT = {
 
                     }
 
-
-                    
-                    // Now check if pool has enough power
-
-                    if(poolStorage.totalPower >= threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
-
-                        threadById.EPOCH.poolsRegistry.push(poolPubKey)
-
-                    }
-
-                    if(threadContext === 'VT' && !WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]){
-
-                        WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]={   
-                                
-                            index:-1,
-                        
-                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-                        
-                        }
-
-                    }
-
                 } else {
 
                     // TODO: return funds
@@ -274,55 +250,79 @@ export let CONTRACT = {
 
             }
             
-        } else return {isOk:false}
+        } else return {isOk:false,reason:'Majority proof verification failed'}
 
     },
 
 
     /*
      
-        Method to delegate your assets to some validator | pool
+    Method to unstake from pool and get your assets back
 
-        transaction.payload.params[0] is:
+    transaction.payload.params[0] is:
 
-        {
-            poolPubKey:<Format is Ed25519_pubkey(POOL)>
-            amount:<amount in KLY or UNO> | NOTE:must be int - not float
-            type:<KLY|UNO>
-        }
-
+    {
+        shardToAcceptAssets:<>,
+        poolToUnstakeFrom:<Format is Ed25519_pubkey>
+        amount:<amount in KLY or UNO> | NOTE:must be int - not float
+        units:<KLY|UNO>
+    }
     
     */
     unstake:async (threadContext,transaction) => {
 
-        let {poolPubKey,amount,units} = transaction.payload.params[0],
+        let {shardToAcceptAssets,poolToUnstakeFrom,amount,units} = transaction.payload.params[0]
 
-            poolStorage = await getFromState(originShard+':'+poolPubKey+'_STORAGE_POOL'),
+        let poolStorage
 
-            stakerInfo = poolStorage.stakers[transaction.creator], // Pubkey => {kly,uno}
+        if(threadContext === 'AT'){
 
-            wishedUnstakingAmountIsOk = stakerInfo[units==='kly'?'kly':'uno'] >= amount
+            poolStorage = await getFromApprovementThreadState(poolToUnstakeFrom+'(POOL)_STORAGE_POOL')
 
+        } else {
+        
+            let shardWherePoolStorageLocated = await getFromState(poolToUnstakeFrom+'(POOL)_POINTER').catch(()=>null)
 
-        if(poolStorage && wishedUnstakingAmountIsOk){
+            poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolToUnstakeFrom+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-            poolStorage.waitingRoom[blake3Hash(transaction.sig)]={
+        }
 
-                epochID:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id,
+        if(poolStorage){
 
-                staker:transaction.creator,
+            if(poolStorage.stakers[transaction.creator]){
 
-                amount,
+                if(units === 'kly'){
 
-                units,
-
-                type:'-' //means "UNSTAKE"
-
-            }
-
-            return {isOk:true}
+                    poolStorage.stakers[transaction.creator].kly -= amount
     
-        } else return {isOk:false, reason: 'No such pool or you try to unstake more than you allowed'}
+                    poolStorage.totalPower -= amount
+    
+                } else if(units === 'uno') {
+    
+                    poolStorage.stakers[transaction.creator].uno -= amount
+    
+                    poolStorage.totalPower -= amount
+    
+                }
+
+                if(threadContext === 'VT'){
+
+                    let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
+
+                    if(unstakerAccount){
+
+                        if(units === 'kly') unstakerAccount.balance += amount
+
+                        else if(units === 'uno') unstakerAccount.uno += amount
+
+                    }
+
+                }
+
+            } else return {isOk:false,reason:`Impossbile to unstake because tx.creator not a staker`}
+
+        } else return {isOk:false,reason:'No such pool'}
+
 
     },
 
