@@ -37,7 +37,7 @@ let getCostPerSignatureType = transaction => {
 
     if(transaction.payload.sigType==='P/B') return 0.00007
 
-    if(transaction.payload.sigType==='M') return 0.00001+transaction.payload.afk.length*0.00001
+    if(transaction.payload.sigType==='M') return 0.00001 + transaction.payload.afk.length * 0.00001
 
     return 0
 
@@ -46,23 +46,9 @@ let getCostPerSignatureType = transaction => {
 
 // Load required modules and inject to contract
 // eslint-disable-next-line no-unused-vars
-let getMethodsToInject=_imports=>{
+let getMethodsToInject = _imports => {
 
     return {}
-
-}
-
-
-
-
-let commonVerificationProcess=async(senderAccount,tx)=>{
-
-
-    return  tx.fee >= 0
-            &&
-            senderAccount.type==='account'
-            &&
-            senderAccount.nonce<tx.nonce
 
 }
 
@@ -155,19 +141,6 @@ export let verifyTxSignatureAndVersion = async(tx,senderStorageObject,originShar
 
 
 
-export let simplifiedVerifyBasedOnSignaType=(type,pubkey,signa,data)=>{
-
-    if(type==='D') return verifyEd25519(data,signa,pubkey)
-    
-    if(type==='P/D') return globalThis.verifyDilithiumSignature(data,pubkey,signa)
-    
-    if(type==='P/B') return globalThis.verifyBlissSignature(data,pubkey,signa)
-    
-}
-
-
-
-
 let calculateAmountToSpendAndGasToBurn = tx => {
 
     let goingToSpendInNativeCurrency = 0
@@ -185,7 +158,7 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         if(tx.type === 'WVM_CONTRACT_DEPLOY'){
 
-            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length/2) // 0.000002 KLY per byte
+            goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
 
         } else if(tx.type === 'WVM_CALL'){
 
@@ -282,11 +255,15 @@ export let VERIFIERS = {
 
     TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator), recipientAccount = await getFromState(originShard+':'+tx.payload.to)
+        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+        
+        let recipientAccount = await getFromState(originShard+':'+tx.payload.to)
 
+        
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
-        if(tx && await commonVerificationProcess(senderAccount,tx)){
+
+        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
 
             if(!recipientAccount){
     
@@ -369,9 +346,11 @@ export let VERIFIERS = {
 
         let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
+
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
-        if(tx && await commonVerificationProcess(senderAccount,tx)){
+
+        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
 
             if(!goingToSpend.errReason){
 
@@ -456,7 +435,7 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
-        if(tx && await commonVerificationProcess(senderAccount,tx)){
+        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
 
             if(!goingToSpend.errReason){
 

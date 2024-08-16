@@ -1628,6 +1628,7 @@ let getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
         balance:0,
         uno:0,
         nonce:0,
+        gas:0,
         rev_t:0
     
     }
@@ -1669,7 +1670,7 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
     let mainStorageOfBlockCreator = await getFromState(blockCreatorOrigin+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
     // Transfer part of fees to account with pubkey associated with block creator
-    if(mainStorageOfBlockCreator.percentage!==0){
+    if(mainStorageOfBlockCreator.percentage !== 0){
 
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
         let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreatorPubKey) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreatorPubKey)
@@ -1699,6 +1700,7 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
 
      
 }
+
 
 
 

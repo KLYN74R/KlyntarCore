@@ -76,7 +76,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     let localVersionOfCurrentLeaders = {} // shardID => assumptionAboutIndexOfCurrentLeader
 
-    for(let shardID of Object.keys(vtEpochHandler.poolsRegistry.leadersSequence)){
+    for(let shardID of Object.keys(vtEpochHandler.leadersSequence)){
 
         localVersionOfCurrentLeaders[shardID] = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader
 
