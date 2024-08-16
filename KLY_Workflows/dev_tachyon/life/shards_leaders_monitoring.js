@@ -4,7 +4,7 @@ import {useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
 import {blake3Hash, getUtcTimestamp} from '../../../KLY_Utils/utils.js'
 
-import {epochStillFresh, heapSort,} from '../utils.js'
+import {epochStillFresh, heapSort} from '../utils.js'
 
 
 

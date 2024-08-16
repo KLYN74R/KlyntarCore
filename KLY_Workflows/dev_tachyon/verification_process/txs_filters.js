@@ -5,20 +5,20 @@
 */
 
 
-//You can also provide DDoS protection & WAFs & Caches & Advanced filters here
+// You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
 import {getAccountFromState} from '../common_functions/state_interactions.js'
 
-import {verifyBasedOnSigTypeAndVersion} from './txs_verifiers.js'
+import {verifyTxSignatureAndVersion} from './txs_verifiers.js'
 
 
 
 
-let verifyWrap=async (tx,originShard)=>{
+let overviewToCheckIfTxIsOk = async(tx,originShard) => {
 
     let creatorAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-    let result = await verifyBasedOnSigTypeAndVersion(tx,creatorAccount,originShard).catch(()=>false)
+    let result = await verifyTxSignatureAndVersion(tx,creatorAccount,originShard).catch(()=>false)
 
     
     if(result){
@@ -35,7 +35,7 @@ let verifyWrap=async (tx,originShard)=>{
         
         }
 
-    }else return false
+    } else return false
 
 }
 
@@ -63,7 +63,7 @@ export let TXS_FILTERS = {
 
         return  typeof tx.payload?.amount==='number' && typeof tx.payload.to==='string' && tx.payload.amount>0 && (!tx.payload.rev_t || typeof tx.payload.rev_t==='number')
                 &&
-                await verifyWrap(tx,originShard)
+                await overviewToCheckIfTxIsOk(tx,originShard)
 
     },
 
@@ -90,7 +90,7 @@ export let TXS_FILTERS = {
 
         return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('system/')) && Array.isArray(tx.payload.constructorParams)
                 &&
-                await verifyWrap(tx,originShard)
+                await overviewToCheckIfTxIsOk(tx,originShard)
 
     },
 
@@ -113,7 +113,7 @@ export let TXS_FILTERS = {
 
         return  typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
                 &&
-                await verifyWrap(tx,originShard)
+                await overviewToCheckIfTxIsOk(tx,originShard)
 
     }
 

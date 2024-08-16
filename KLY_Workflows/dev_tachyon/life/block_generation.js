@@ -98,12 +98,12 @@ let getAggregatedEpochFinalizationProofForPreviousEpoch = async() => {
 
     }
     
-},
+}
 
 
 
 
-getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
+let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPreviousLeader,hisIndexInLeadersSequence,shardID) => {
 
     /*
         This function is used once you become shard leader and you need to get the ALRPs for all the previous leaders

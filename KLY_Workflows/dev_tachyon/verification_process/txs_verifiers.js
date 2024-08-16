@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
@@ -103,7 +104,7 @@ let commonVerificationProcess=async(senderAccount,tx)=>{
 
 
 
-export let verifyBasedOnSigTypeAndVersion = async(tx,senderStorageObject,originShard) => {
+export let verifyTxSignatureAndVersion = async(tx,senderStorageObject,originShard) => {
 
     
     if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){

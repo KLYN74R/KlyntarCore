@@ -19,6 +19,11 @@ import fs from 'fs'
 
 
 
+let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{valueEncoding:'json'})
+
+
+
+
 // First of all - define the NODE_METADATA globally available object
 
 export let NODE_METADATA = {
@@ -33,6 +38,7 @@ export let NODE_METADATA = {
 
 
 global.MEMPOOL = NODE_METADATA.MEMPOOL
+
 
 
 
@@ -120,9 +126,6 @@ export let WORKING_THREADS = {
 
 // Global object which holds LevelDB instances for databases for blocks, state, metadata, KLY_EVM, etc.
 
-let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{valueEncoding:'json'})
-
-
 export let BLOCKCHAIN_DATABASES = {
 
     BLOCKS: resolveDatabase('BLOCKS'), // blockID => block
@@ -185,12 +188,9 @@ process.on('SIGHUP',GRACEFUL_STOP)
 
 
 
-//___________________________________________________________ 1. Function to restore metadata since the last turn off ___________________________________________________________
+let restoreMetadataCaches=async()=>{
 
-
-
-
-let restoreMetadataCache=async()=>{
+    // Function to restore metadata since the last turn off
 
     let poolsRegistry = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry
 
@@ -251,16 +251,7 @@ let restoreMetadataCache=async()=>{
 
 
 
-
-
-
-
-//___________________________________________________________ 2. Function to load the data from genesis to state ___________________________________________________________
-
-
-
-
-export let setGenesisToState=async()=>{
+let setGenesisToState=async()=>{
 
 
     let verificationThreadAtomicBatch = BLOCKCHAIN_DATABASES.STATE.batch(),
@@ -699,7 +690,7 @@ export let prepareBlockchain=async()=>{
 
     // Fill the FINALIZATION_STATS with the latest, locally stored data
 
-    await restoreMetadataCache()
+    await restoreMetadataCaches()
 
 
     //__________________________________Decrypt private key to memory of process__________________________________

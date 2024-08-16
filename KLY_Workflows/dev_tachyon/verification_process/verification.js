@@ -34,11 +34,7 @@ import Web3 from 'web3'
 
 
 
-export let
-
-
-
-getBlock = async (epochIndex,blockCreator,index) => {
+export let getBlock = async (epochIndex,blockCreator,index) => {
 
     let blockID = epochIndex+':'+blockCreator+':'+index
 
@@ -124,12 +120,12 @@ getBlock = async (epochIndex,blockCreator,index) => {
 
     return block
 
-},
+}
 
 
 
 
-checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
+let checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,aggregatedLeaderRotationProof,epochFullID,epochHandler) => {
 
     /*
 
@@ -203,12 +199,12 @@ checkAggregatedLeaderRotationProofValidity = async (pubKeyOfSomePreviousLeader,a
 
     }
 
-},
+}
 
 
 
 
-checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
+export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,position,epochFullID,oldEpochHandler,dontCheckSignature) => {
 
     /*
     
@@ -285,12 +281,12 @@ checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSequence,posi
     
     } else return {isOK:false}
 
-},
+}
 
 
 
 
-buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
+let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
 
 
     /*
@@ -460,13 +456,13 @@ buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
         */
    
 
-},
+}
 
 
 
 
 
-setUpNewEpochForVerificationThread = async vtEpochHandler => {
+let setUpNewEpochForVerificationThread = async vtEpochHandler => {
  
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
@@ -847,12 +843,12 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     }
 
-},
+}
 
 
 
 
-tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
+let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
 
     let vtEpochFullID = vtEpochHandler.hash+"#"+vtEpochHandler.id
@@ -943,12 +939,12 @@ tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
 
     }
 
-},
+}
 
 
 
 
-openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
+let openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epochHandler) => {
 
     /* 
     
@@ -1194,54 +1190,54 @@ openTunnelToFetchBlocksForPool = async (poolPubKeyToOpenConnectionWith,epochHand
  
     }
 
-},
+}
 
 
 
 
-checkConnectionWithPool=async(poolToVerifyRightNow,vtEpochHandler)=>{
+let checkConnectionWithPool = async(poolToCheckConnectionWith,vtEpochHandler) => {
 
-    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL:'+poolToVerifyRightNow) && !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)){
+    if(!GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL:'+poolToCheckConnectionWith) && !GLOBAL_CACHES.STUFF_CACHE.has('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith)){
 
-        await openTunnelToFetchBlocksForPool(poolToVerifyRightNow,vtEpochHandler)
+        await openTunnelToFetchBlocksForPool(poolToCheckConnectionWith,vtEpochHandler)
 
-        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith,true)
 
         setTimeout(()=>{
 
-            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith)
 
         },5000)
 
         
-    }else if(GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToVerifyRightNow)){
+    }else if(GLOBAL_CACHES.STUFF_CACHE.has('CHANGE_TUNNEL:'+poolToCheckConnectionWith)){
 
         // Check if endpoint wasn't changed dynamically(via priority changes in configs/storage)
 
-        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
+        let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToCheckConnectionWith) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
         tunnelHandler.connection.close()
 
-        GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToVerifyRightNow)
+        GLOBAL_CACHES.STUFF_CACHE.delete('CHANGE_TUNNEL:'+poolToCheckConnectionWith)
 
-        await openTunnelToFetchBlocksForPool(poolToVerifyRightNow,vtEpochHandler)
+        await openTunnelToFetchBlocksForPool(poolToCheckConnectionWith,vtEpochHandler)
         
-        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow,true)
+        GLOBAL_CACHES.STUFF_CACHE.set('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith,true)
 
         setTimeout(()=>{
 
-            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToVerifyRightNow)
+            GLOBAL_CACHES.STUFF_CACHE.delete('TUNNEL_OPENING_PROCESS:'+poolToCheckConnectionWith)
 
         },5000)
 
     }
 
-},
+}
 
 
 
 
-getPreparedTxsForParallelization = txsArray => {
+let getPreparedTxsForParallelization = txsArray => {
 
 
     let numberOfAccountTouchesPerAccount = new Map() // account => number of touch based on all txs in current block
@@ -1345,12 +1341,12 @@ getPreparedTxsForParallelization = txsArray => {
     return {independentTransactions, independentGroups, syncTransactions, txIdToOrderMapping}
 
 
-},
+}
 
 
 
 
-startVerificationThread=async()=>{
+export let startVerificationThread=async()=>{
 
     let shardsIdentifiers = GLOBAL_CACHES.STATE_CACHE.get('SHARDS_IDS')
 
@@ -1619,12 +1615,12 @@ startVerificationThread=async()=>{
             
     setImmediate(startVerificationThread)
 
-},
+}
 
 
 
 
-getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
+let getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
 
     let emptyTemplate = {
         
@@ -1642,12 +1638,12 @@ getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
 
     return emptyTemplate
 
-},
+}
 
 
 
 
-distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreator)=>{
+let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorPubKey)=>{
 
     /*
 
@@ -1668,15 +1664,15 @@ distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreator)=>{
     
     */
 
-    let blockCreatorOrigin = await getFromState(blockCreator+'(POOL)_POINTER')
+    let blockCreatorOrigin = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 
-    let mainStorageOfBlockCreator = await getFromState(blockCreatorOrigin+':'+blockCreator+'(POOL)_STORAGE_POOL')
+    let mainStorageOfBlockCreator = await getFromState(blockCreatorOrigin+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
     // Transfer part of fees to account with pubkey associated with block creator
     if(mainStorageOfBlockCreator.percentage!==0){
 
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreator) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreator)
+        let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreatorPubKey) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreatorPubKey)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage * totalFees
         
@@ -1778,15 +1774,9 @@ let verifyBlock = async(block,shardContext) => {
 
     if(overviewOk){
 
-        // To calculate fees and split among pools.Currently - general fees sum is 0. It will be increased each performed transaction
+        // To calculate fees and split among pool-creator & stakers. Currently - general fees sum is 0. It will be increased each performed transaction
         
-        let rewardsAndSuccessfulTxsCollector = {
-            
-            fees:0,
-
-            successfulTxsCounter:0
-
-        }
+        let rewardsAndSuccessfulTxsCollector = {fees:0, successfulTxsCounter:0}
 
         let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
 
