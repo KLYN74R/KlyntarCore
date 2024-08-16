@@ -113,11 +113,27 @@ export let CONTRACT = {
 
                 threadById.EPOCH.shardsRegistry.push(shardID)
 
+                // Add the SID tracker
+
+                if(threadContext === 'VT'){
+
+                    WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID] = 0
+
+                }
+
             } else if(operation === '-' && threadById.EPOCH.shardsRegistry.includes(shardID)){
 
                 let indexInRegistry = threadById.EPOCH.shardsRegistry.indexOf(shardID)
 
                 threadById.EPOCH.shardsRegistry.splice(indexInRegistry, 1)
+
+                // Remove the SID tracker
+
+                if(threadContext === 'VT'){
+
+                    delete WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID]
+                
+                }
 
             }
 
