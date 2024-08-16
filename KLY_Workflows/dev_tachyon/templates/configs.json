@@ -81,7 +81,6 @@
             "ACCEPT_TXS":1,
             "GET_AGGREGATED_FINALIZATION_PROOFS":1,
             "GET_AGGREGATED_EPOCH_FINALIZATION_PROOF":1,
-            "EPOCH_EDGE_OPERATIONS":1,
             "NEW_NODES":1
 
         },

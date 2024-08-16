@@ -9,7 +9,6 @@ let modules = [
     'api/state_data.js',
     
     'main/epoch_changing.js',
-    'main/epoch_edge_operations.js',
     'main/leaders_rotation.js',
     'main/websocket.js',
     

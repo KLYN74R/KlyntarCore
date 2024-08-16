@@ -4,8 +4,6 @@ import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from 
 
 import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import EPOCH_EDGE_OPERATIONS_VERIFIERS from '../verification_process/epoch_edge_operations_verifiers.js'
-
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'

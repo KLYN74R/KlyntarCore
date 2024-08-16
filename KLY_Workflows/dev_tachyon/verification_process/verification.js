@@ -8,8 +8,6 @@ import {getAccountFromState, getFromState} from '../common_functions/state_inter
 
 import {customLog, blake3Hash, verifyEd25519, logColors} from '../../../KLY_Utils/utils.js'
 
-import EPOCH_EDGE_OPERATIONS_VERIFIERS from './epoch_edge_operations_verifiers.js'
-
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
@@ -491,26 +489,7 @@ setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
 
-        // Copy the current workflow options(i.e. network params like epoch duration, required stake for validators,etc.)
-
-        let workflowOptionsTemplate = {...WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS}
-
-        // We add this copy to cache to make changes and update the WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS after the execution of all epoch edge operation
         
-        GLOBAL_CACHES.STATE_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
-
-
-        // Create the array of delayed unstaking transactions
-        // Since the unstaking require some time(due to security reasons - we must create checkpoints first) - put these txs to array and execute after X epoch
-        // X = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD (set it via genesis & change via epoch edge operations)
-
-        GLOBAL_CACHES.STATE_CACHE.set('UNSTAKING_OPERATIONS',[])
-    
-
-        // Create the object to perform slashing. Structure <pool> => <{delayedIds,pool}>
-
-        GLOBAL_CACHES.STATE_CACHE.set('SLASH_OBJECT',{})
-
 
         //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
 

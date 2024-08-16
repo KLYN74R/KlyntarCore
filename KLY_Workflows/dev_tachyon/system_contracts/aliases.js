@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 export let gasUsedByMethod=methodID=>{
 
     if(methodID==='constructor') return 10000
