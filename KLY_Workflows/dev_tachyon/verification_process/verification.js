@@ -1655,7 +1655,7 @@ distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreator)=>{
 
         [*] totalFees - number of total fees received in this block
 
-        1) Send <REWARD_PERCENTAGE_FOR_BLOCK_CREATOR * totalFees> to block creator
+        1) Send <stakingPoolStorage.percentage * totalFees> to block creator
 
         2) Distribute the rest among stakers
 

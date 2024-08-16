@@ -6,7 +6,7 @@
 
     "EPOCH_TIMESTAMP":1720665399465,
 
-    "SYMBIOTE_CREATORS_CONTACT":{
+    "SYMBIOTIC_CHAIN_CREATORS_CONTACT":{
         "telegram":"@symbiote_creator",
         "email":"user@email.com",
         "tor":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
@@ -33,9 +33,8 @@
     "WORKFLOW_OPTIONS":{
 
         "VALIDATOR_STAKE":50000,
-        "REWARD_PERCENTAGE_FOR_BLOCK_CREATOR":0.2,
         "MINIMAL_STAKE_PER_ENTITY":20,
-        "UNSTAKING_PERIOD":4,
+        "UNSTAKING_PERIOD":1,
         "QUORUM_SIZE":127,
         "EPOCH_TIME":86400000,
         "LEADERSHIP_TIMEFRAME":120000,
@@ -43,7 +42,6 @@
         "MAX_BLOCK_SIZE_IN_BYTES":12288000,
         "TXS_LIMIT_PER_BLOCK":30000,
         "EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK":500,
-        "DEFAULT_PAYMENT_IF_WRONG_TYPE":5,
         "MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS":1
     
     },
