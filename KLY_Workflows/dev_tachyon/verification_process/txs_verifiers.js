@@ -160,6 +160,8 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
             goingToSpendInNativeCurrency += 0.000002 * (tx.payload.bytecode.length / 2) // 0.000002 KLY per byte
 
+            goingToSpendInNativeCurrency += 0.002 * JSON.stringify(tx.payload.constructorParams.initStorage).length
+
         } else if(tx.type === 'WVM_CALL'){
 
             let totalSize = JSON.stringify(tx.payload).length
@@ -176,7 +178,7 @@ let calculateAmountToSpendAndGasToBurn = tx => {
 
         goingToSpendInNativeCurrency = transferAmount
 
-        let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed
+        let dataThatShouldBeSignedForBoost = `BOOST:${tx.creator}:${tx.nonce}` // TODO: Fix data that should be signed - sign payload(mb +epoch) instead of just creator+nonce
 
         if(verifyQuorumMajoritySolution(dataThatShouldBeSignedForBoost,tx.payload.abstractionBoosts?.quorumAgreements)){
 
@@ -362,13 +364,13 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
-
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
 
         if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+
+            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
             if(!goingToSpend.errReason){
 
@@ -435,12 +437,13 @@ export let VERIFIERS = {
 
         let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
 
-        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
         if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+
+            let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
             if(!goingToSpend.errReason){
 
