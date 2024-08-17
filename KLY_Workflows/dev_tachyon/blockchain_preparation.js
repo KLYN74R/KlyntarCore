@@ -28,7 +28,7 @@ let resolveDatabase = name => level(process.env.CHAINDATA_PATH+`/${name}`,{value
 
 export let NODE_METADATA = {
 
-    VERSION:+(fs.readFileSync(pathResolve('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
+    CORE_MAJOR_VERSION:+(fs.readFileSync(pathResolve('KLY_Workflows/dev_tachyon/version.txt')).toString()), // major version of core. In case network decides to add modification, fork is created & software should be updated
     
     MEMPOOL:[], // to hold onchain transactions here(contract calls,txs,delegations and so on)
 
@@ -258,7 +258,7 @@ let setGenesisToState=async()=>{
 
         approvementThreadAtomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch(),
     
-        epochTimestamp = BLOCKCHAIN_GENESIS.EPOCH_TIMESTAMP,
+        epochTimestamp = BLOCKCHAIN_GENESIS.FIRST_EPOCH_START_TIMESTAMP,
 
         poolsRegistryForEpochHandler = [],
 
@@ -445,17 +445,15 @@ let setGenesisToState=async()=>{
 
     */
 
-    //We update this during the verification process(in VERIFICATION_THREAD). Once we find the VERSION_UPDATE - update it !
-    WORKING_THREADS.VERIFICATION_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
+    WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION = BLOCKCHAIN_GENESIS.CORE_MAJOR_VERSION
 
-    //We update this during the work on APPROVEMENT_THREAD. But initially, APPROVEMENT_THREAD has the same version as VT
-    WORKING_THREADS.APPROVEMENT_THREAD.VERSION = BLOCKCHAIN_GENESIS.VERSION
+    WORKING_THREADS.APPROVEMENT_THREAD.CORE_MAJOR_VERSION = BLOCKCHAIN_GENESIS.CORE_MAJOR_VERSION
 
-    //Also, set the WORKFLOW_OPTIONS that will be changed during the threads' work
+    // Also, set the NETWORK_PARAMETERS that will be changed during the threads' work
 
-    WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
+    WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS = {...BLOCKCHAIN_GENESIS.NETWORK_PARAMETERS}
 
-    WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS = {...BLOCKCHAIN_GENESIS.WORKFLOW_OPTIONS}
+    WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS = {...BLOCKCHAIN_GENESIS.NETWORK_PARAMETERS}
 
 
 
@@ -521,10 +519,10 @@ let setGenesisToState=async()=>{
 
 
     //We get the quorum for VERIFICATION_THREAD based on own local copy of VERIFICATION_STATS_PER_POOL state
-    vtEpochHandler.quorum = getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS,nullHash)
+    vtEpochHandler.quorum = getCurrentEpochQuorum(vtEpochHandler.poolsRegistry,WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS,nullHash)
 
     //...However, quorum for APPROVEMENT_THREAD might be retrieved from VERIFICATION_STATS_PER_POOL of checkpoints. It's because both threads are async
-    atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS,nullHash)
+    atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nullHash)
 
 
     // Finally, build the reassignment chains for current epoch in QT and VT
@@ -595,7 +593,7 @@ export let prepareBlockchain=async()=>{
 
 
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.VERSION===undefined){
+    if(WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION === undefined){
 
         await setGenesisToState()
 

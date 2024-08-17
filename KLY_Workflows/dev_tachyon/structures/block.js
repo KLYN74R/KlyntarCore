@@ -29,6 +29,6 @@ export default class Block{
     
     }
     
-    static genHash = block => blake3Hash( block.creator + block.time + JSON.stringify(block.transactions) + BLOCKCHAIN_GENESIS.SYMBIOTE_ID + block.epoch + block.index + block.prevHash)
+    static genHash = block => blake3Hash( block.creator + block.time + JSON.stringify(block.transactions) + BLOCKCHAIN_GENESIS.NETWORK_ID + block.epoch + block.index + block.prevHash)
 
 }

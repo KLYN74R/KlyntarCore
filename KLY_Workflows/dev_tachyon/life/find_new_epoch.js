@@ -48,9 +48,9 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,
     
     //_______________________________Perform SPEC_OPERATIONS_____________________________
 
-    let workflowOptionsTemplate = {...fullCopyOfApprovementThread.WORKFLOW_OPTIONS}
+    let networkParamsTemplate = {...fullCopyOfApprovementThread.NETWORK_PARAMETERS}
     
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('WORKFLOW_OPTIONS',workflowOptionsTemplate)
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('NETWORK_PARAMETERS',networkParamsTemplate)
     
     // Structure is <poolID> => true if pool should be deleted
     GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('SLASH_OBJECT',{})
@@ -94,7 +94,7 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,
 
         let promise = getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
 
-            if(poolStorage.totalPower < fullCopyOfApprovementThread.WORKFLOW_OPTIONS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
+            if(poolStorage.totalPower < fullCopyOfApprovementThread.NETWORK_PARAMETERS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
 
         })
 
@@ -145,10 +145,10 @@ let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,
     }
 
 
-    // Update the WORKFLOW_OPTIONS
-    fullCopyOfApprovementThread.WORKFLOW_OPTIONS={...workflowOptionsTemplate}
+    // Update the NETWORK_PARAMETERS
+    fullCopyOfApprovementThread.NETWORK_PARAMETERS = {...networkParamsTemplate}
 
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('WORKFLOW_OPTIONS')
+    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('NETWORK_PARAMETERS')
 
     GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('SLASH_OBJECT')
 
@@ -211,7 +211,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             We'll use 1 option for this:
 
-                [*] WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
+                [*] WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
                 
                     This value shows how many first blocks we need to get to extract epoch edge operations to execute before move to next epoch
                     
@@ -266,7 +266,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
         }
 
 
-        // let numberOfFirstBlocksToFetchFromEachShard = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS // 1. DO NOT CHANGE
+        // let numberOfFirstBlocksToFetchFromEachShard = WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS // 1. DO NOT CHANGE
 
         let totalNumberOfShards = 0
 
@@ -515,13 +515,13 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfApprovementThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfApprovementThread.WORKFLOW_OPTIONS.EPOCH_TIME
+                fullCopyOfApprovementThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfApprovementThread.NETWORK_PARAMETERS.EPOCH_TIME
 
                 fullCopyOfApprovementThread.EPOCH.id = nextEpochId
 
                 fullCopyOfApprovementThread.EPOCH.hash = nextEpochHash
 
-                fullCopyOfApprovementThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfApprovementThread.EPOCH.poolsRegistry,fullCopyOfApprovementThread.WORKFLOW_OPTIONS,nextEpochHash)
+                fullCopyOfApprovementThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfApprovementThread.EPOCH.poolsRegistry,fullCopyOfApprovementThread.NETWORK_PARAMETERS,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.quorum).catch(()=>{})
                 

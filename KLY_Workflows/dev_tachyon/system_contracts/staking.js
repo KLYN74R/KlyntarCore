@@ -93,7 +93,7 @@ export let CONTRACT = {
 
                 whiteList,
 
-                totalPower:0, // KLY(converted to UNO by WORKFLOW_OPTIONS.VALIDATOR_STAKE_RATIO) + UNO. Must be greater than WORKFLOW_OPTIONS.VALIDATOR_STAKE
+                totalPower:0,
                 
                 stakers:{} // Pubkey => {kly,uno}
 
@@ -215,7 +215,7 @@ export let CONTRACT = {
 
                 let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
-                let amountIsBiggerThanMinimalStake = amount >= threadById.WORKFLOW_OPTIONS.MINIMAL_STAKE_PER_ENTITY
+                let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
  
                 let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
 
@@ -241,7 +241,7 @@ export let CONTRACT = {
 
                     // Check if pool has enough power to be added to pools registry
 
-                    if(poolStorage.totalPower >= threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
+                    if(poolStorage.totalPower >= threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && !threadById.EPOCH.poolsRegistry.includes(poolPubKey)){
 
                         threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
@@ -351,7 +351,7 @@ export let CONTRACT = {
 
                 // Check if pool has not enough power to be at pools registry
 
-                if(poolStorage.totalPower < threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolToUnstakeFrom)){
+                if(poolStorage.totalPower < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolToUnstakeFrom)){
 
                     // Remove from registry
 

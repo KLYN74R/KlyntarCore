@@ -562,7 +562,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     
             let poolStorage = await getFromState(poolStorageIdInDatabase)
     
-            if(poolStorage.totalPower<WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolStorageIdInDatabase,poolPubKey})
+            if(poolStorage.totalPower < WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolStorageIdInDatabase,poolPubKey})
     
         }
     
@@ -657,9 +657,9 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
 
-            // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to WORKFLOW_OPTIONS.UNSTAKING_PERIOD
+            // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to NETWORK_PARAMETERS.UNSTAKING_PERIOD
 
-            if(delayedTableOfIds[i] + WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.UNSTAKING_PERIOD < currentEpochIndex){
+            if(delayedTableOfIds[i] + WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.UNSTAKING_PERIOD < currentEpochIndex){
 
                 let oldDelayOperations = await getFromState('DEL_OPER_'+delayedTableOfIds[i])
 
@@ -741,10 +741,10 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         //_______________________Commit changes after operations here________________________
 
-        // Update the WORKFLOW_OPTIONS
-        WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS = {...workflowOptionsTemplate}
+        // Update the NETWORK_PARAMETERS
+        WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS = {...workflowOptionsTemplate}
 
-        GLOBAL_CACHES.STATE_CACHE.delete('WORKFLOW_OPTIONS')
+        GLOBAL_CACHES.STATE_CACHE.delete('NETWORK_PARAMETERS')
 
     
         // Update the quorum for next epoch
@@ -796,7 +796,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash = nextEpochHash
 
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.EPOCH_TIME
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = { totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0 }
 
@@ -1767,7 +1767,7 @@ let verifyBlock = async(block,shardContext) => {
 
         overviewOk=
         
-            block.transactions?.length<=WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK
+            block.transactions?.length<=WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK
             &&
             WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[block.creator].hash === block.prevHash // it should be a chain
 

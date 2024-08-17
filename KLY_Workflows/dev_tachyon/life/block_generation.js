@@ -24,14 +24,14 @@ export let blocksGenerationProcess=async()=>{
 
     await generateBlocksPortion()
 
-    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.BLOCK_TIME)
+    setTimeout(blocksGenerationProcess,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.BLOCK_TIME)
  
 }
 
 
 
 
-let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+let getTransactionsFromMempool = () => NODE_METADATA.MEMPOOL.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 let getEpochEdgeOperationsFromMempool = epochFullID => {
 
@@ -39,7 +39,7 @@ let getEpochEdgeOperationsFromMempool = epochFullID => {
 
     let epochEdgeOperationsMempool = EPOCH_METADATA_MAPPING.get(epochFullID).EPOCH_EDGE_OPERATIONS_MEMPOOL
 
-    return epochEdgeOperationsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
+    return epochEdgeOperationsMempool.splice(0,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_EDGE_OPERATIONS_LIMIT_PER_BLOCK)
 
 }
 
@@ -503,7 +503,7 @@ let generateBlocksPortion = async() => {
     
         */
 
-        let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.TXS_LIMIT_PER_BLOCK)
+        let numberOfBlocksToGenerate = Math.ceil(NODE_METADATA.MEMPOOL.length / WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.TXS_LIMIT_PER_BLOCK)
 
 
         //_______________________________________FILL THE BLOCK WITH EXTRA DATA_________________________________________

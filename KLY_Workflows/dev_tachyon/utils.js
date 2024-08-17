@@ -58,15 +58,15 @@ export let getAllKnownPeers=()=>[...CONFIGURATION.NODE_LEVEL.BOOTSTRAP_NODES,...
 
 
 
-// NODE_METADATA.VERSION shows the software version of your node
+// NODE_METADATA.CORE_MAJOR_VERSION shows the major version of your node(core)
 // We use this function on VERIFICATION_THREAD and APPROVEMENT_THREAD to make sure we can continue to work
 // If major version was changed and we still has an old version - we should stop node and update software
-export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].VERSION > NODE_METADATA.VERSION
+export let isMyCoreVersionOld = threadID => WORKING_THREADS[threadID].CORE_MAJOR_VERSION > NODE_METADATA.CORE_MAJOR_VERSION
 
 
 
 
-export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.WORKFLOW_OPTIONS.EPOCH_TIME > getUtcTimestamp()
+export let epochStillFresh = thread => thread.EPOCH.startTimestamp + thread.NETWORK_PARAMETERS.EPOCH_TIME > getUtcTimestamp()
 
 
 
@@ -76,7 +76,7 @@ export let decryptKeys=async()=>{
     let readLineInterface = readline.createInterface({input: process.stdin,output: process.stdout,terminal:false})
 
 
-    customLog(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.WORKFLOW}[QT major version:${NODE_METADATA.VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,logColors.CYAN)
+    customLog(`Blockchain info \x1b[32;1m(\x1b[36;1mworkflow:${BLOCKCHAIN_GENESIS.NETWORK_WORKFLOW}[AT major version:${NODE_METADATA.CORE_MAJOR_VERSION}] / your pubkey:${CONFIGURATION.NODE_LEVEL.PUBLIC_KEY}\x1b[32;1m)`,logColors.CYAN)
 
 
     

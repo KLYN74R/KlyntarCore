@@ -122,7 +122,7 @@ export let shardsLeadersMonitoring=async()=>{
 
         let itsNotFinishOfSequence = epochHandler.leadersSequence[shardID][indexOfCurrentLeaderInSequence+1]
 
-        if(itsNotFinishOfSequence && timeIsOutForCurrentShardLeader(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS.LEADERSHIP_TIMEFRAME)){
+        if(itsNotFinishOfSequence && timeIsOutForCurrentShardLeader(epochHandler,indexOfCurrentLeaderInSequence,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.LEADERSHIP_TIMEFRAME)){
 
             // Inform websocket server that we shouldn't generate proofs for this leader anymore
             currentEpochMetadata.SYNCHRONIZER.set('STOP_PROOFS_GENERATION:'+pubKeyOfCurrentShardLeader,true)

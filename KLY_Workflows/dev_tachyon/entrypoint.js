@@ -67,7 +67,7 @@ export let runBlockchain=async()=>{
             
             method:'POST',
             
-            body:JSON.stringify([BLOCKCHAIN_GENESIS.SYMBIOTE_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
+            body:JSON.stringify([BLOCKCHAIN_GENESIS.NETWORK_ID,CONFIGURATION.NODE_LEVEL.MY_HOSTNAME]),
 
             headers:{'contentType':'application/json'}
         

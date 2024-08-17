@@ -93,11 +93,11 @@ let getMethodsToInject = _imports => {
 export let verifyTxSignatureAndVersion = async(tx,senderStorageObject,originShard) => {
 
     
-    if(WORKING_THREADS.VERIFICATION_THREAD.VERSION === tx.v){
+    if(WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION === tx.v){
 
-        // Sender sign concatenated SYMBIOTE_ID(to prevent cross-symbiote attacks and reuse nonce & signatures), workflow version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
+        // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
         
-        let signedData = BLOCKCHAIN_GENESIS.SYMBIOTE_ID+tx.v+originShard+tx.type+JSON.stringify(tx.payload)+tx.nonce+tx.fee
+        let signedData = BLOCKCHAIN_GENESIS.NETWORK_ID + tx.v + originShard + tx.type + JSON.stringify(tx.payload) + tx.nonce + tx.fee
     
 
         if(tx.payload.sigType==='D') return verifyEd25519(signedData,tx.sig,tx.creator)

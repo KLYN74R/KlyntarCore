@@ -58,53 +58,53 @@ FASTIFY_SERVER.get('/chain_info',(_request,response)=>{
             
 
 
-        // SymbioteID - it's BLAKE3 hash of genesis( SYMBIOTE_ID = BLAKE3(JSON.stringify(<genesis object without SYMBIOTE_ID field>)))
-
-        let symbioteID = BLOCKCHAIN_GENESIS.SYMBIOTE_ID
+        let networkID = BLOCKCHAIN_GENESIS.NETWORK_ID
 
         // Get the info from symbiote manifest - its static info, as a genesis, but for deployment to hostchain
 
         let {
         
-            WORKFLOW:workflowID,
+            NETWORK_WORKFLOW:workflowID,
             HIVEMIND:hivemind,
             HOSTCHAINS:hostchains,
-            EPOCH_TIMESTAMP:startOfFirstEpoch
+            FIRST_EPOCH_START_TIMESTAMP:startOfFirstEpoch
         
         } = BLOCKCHAIN_GENESIS
 
         
-        // Get the current version of VT and QT(need to understand the core version)
+        // Get the current version of VT and AT(need to understand the core version)
 
-        let verificationThreadWorkflowVersion = WORKING_THREADS.VERIFICATION_THREAD.VERSION
-        let approvementThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.VERSION
+        let verificationThreadWorkflowVersion = WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION
+
+        let approvementThreadWorkflowVersion = WORKING_THREADS.APPROVEMENT_THREAD.CORE_MAJOR_VERSION
 
 
-        // Get the current version of workflows_options on VT and QT
+        // Get the current version of workflows_options on VT and AT
 
-        let verificationThreadWorkflowOptions = WORKING_THREADS.VERIFICATION_THREAD.WORKFLOW_OPTIONS
-        let approvementThreadWorkflowOptions = WORKING_THREADS.APPROVEMENT_THREAD.WORKFLOW_OPTIONS
+        let networkOptionsOnVerificationThread = WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS
+
+        let networkOptionsOnApprovementThread = WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS
 
 
         response.send({
 
             genesis:{
 
-                symbioteID,startOfFirstEpoch,workflowID,hivemind,hostchains
+                networkID,startOfFirstEpoch,workflowID,hivemind,hostchains
             
             },
 
             verificationThread:{
 
                 version:verificationThreadWorkflowVersion,
-                options:verificationThreadWorkflowOptions
+                params:networkOptionsOnVerificationThread
 
             },
 
             approvementThread:{
 
                 version:approvementThreadWorkflowVersion,
-                options:approvementThreadWorkflowOptions
+                params:networkOptionsOnApprovementThread
             
             }
 
@@ -310,9 +310,9 @@ FASTIFY_SERVER.post('/addpeer',{bodyLimit:CONFIGURATION.NODE_LEVEL.PAYLOAD_SIZE}
 
     }
 
-    let [symbioteID,domain] = acceptedData
+    let [networkID,domain] = acceptedData
    
-    if(BLOCKCHAIN_GENESIS.SYMBIOTE_ID!==symbioteID){
+    if(BLOCKCHAIN_GENESIS.NETWORK_ID !== networkID){
 
         response.send({err:'Symbiotic chain not supported'})
         

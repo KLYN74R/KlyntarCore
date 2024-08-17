@@ -1,13 +1,13 @@
 {
     
-    "SYMBIOTE_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "NETWORK_ID":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 
-    "VERSION":0,
+    "CORE_MAJOR_VERSION":0,
 
-    "EPOCH_TIMESTAMP":1720665399465,
+    "FIRST_EPOCH_START_TIMESTAMP":1720665399465,
 
-    "SYMBIOTIC_CHAIN_CREATORS_CONTACT":{
-        "telegram":"@symbiote_creator",
+    "NETWORK_CREATORS_CONTACT":{
+        "telegram":"@chain_creator",
         "email":"user@email.com",
         "tor":"klyntar66kjwhyirucco6sjgyp2f7lfznelzgpjcp6oha2olzb4rlead.onion"
     },
@@ -28,9 +28,9 @@
                 
     },
 
-    "WORKFLOW":"dev_tachyon",
+    "NETWORK_WORKFLOW":"dev_tachyon",
 
-    "WORKFLOW_OPTIONS":{
+    "NETWORK_PARAMETERS":{
 
         "VALIDATOR_STAKE":50000,
         "MINIMAL_STAKE_PER_ENTITY":20,

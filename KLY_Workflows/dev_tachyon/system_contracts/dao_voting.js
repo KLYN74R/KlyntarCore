@@ -24,7 +24,7 @@ export let CONTRACT = {
     
         {
 
-            votingType:'version' | 'workflow'
+            votingType:'version' | 'parameters'
 
             payload:{
 
@@ -32,7 +32,7 @@ export let CONTRACT = {
 
                 OR
 
-                updateField: 'Field name from workflow params',
+                updateField: 'Field name from network params',
                 newValue:''
 
             }
@@ -63,9 +63,9 @@ export let CONTRACT = {
 
         if(majorityProofIsOk){
 
-            if(votingType === 'version') threadById.VERSION = payload.newMajorVersion
+            if(votingType === 'version') threadById.CORE_MAJOR_VERSION = payload.newMajorVersion
 
-            else if (votingType === 'workflow') threadById.WORKFLOW_OPTIONS[payload.updateField] = payload.newValue
+            else if (votingType === 'parameters') threadById.NETWORK_PARAMETERS[payload.updateField] = payload.newValue
 
             return {isOk:true}
 
