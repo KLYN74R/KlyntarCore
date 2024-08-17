@@ -245,6 +245,18 @@ export let CONTRACT = {
 
                         threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
+                        if(threadContext === 'VT'){
+
+                            threadById.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
+                
+                                index:-1,
+                                
+                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                            
+                            }
+                            
+                        }
+
                     }
 
                 } else {
@@ -305,6 +317,8 @@ export let CONTRACT = {
 
             if(poolStorage.stakers[transaction.creator]){
 
+                let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+
                 if(units === 'kly'){
 
                     poolStorage.stakers[transaction.creator].kly -= amount
@@ -321,6 +335,8 @@ export let CONTRACT = {
 
                 if(threadContext === 'VT'){
 
+                    // Pay back to staker
+
                     let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
 
                     if(unstakerAccount){
@@ -329,6 +345,31 @@ export let CONTRACT = {
 
                         else if(units === 'uno') unstakerAccount.uno += amount
 
+                    }
+
+                }
+
+                // Check if pool has not enough power to be at pools registry
+
+                if(poolStorage.totalPower < threadById.WORKFLOW_OPTIONS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolToUnstakeFrom)){
+
+                    // Remove from registry
+
+                    let indexOfThisPool = threadById.EPOCH.poolsRegistry.indexOf(poolToUnstakeFrom)
+
+                    threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
+
+                    // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
+                    if(threadContext === 'VT'){
+
+                        threadById.VERIFICATION_STATS_PER_POOL[poolToUnstakeFrom] = {
+            
+                            index:-1,
+                            
+                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+                        
+                        }
+                        
                     }
 
                 }
