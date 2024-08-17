@@ -327,16 +327,34 @@ export let VERIFIERS = {
         {
             bytecode:<hexString>,
             lang:<RUST|ASC>,
-            constructorParams:[]
+            constructorParams:{}
         }
 
-    If it's one of system contracts (alias define,service deploying,unobtanium mint and so on) the structure will be like this
+    If it's one of system contracts the structure will be like this
 
     {
         bytecode:'',(empty)
         lang:'system/<name of contract>'
-        constructorParams:[]
+        constructorParams:{}
     }
+
+    In constructorParams you can pre-set the initial values to storage. E.g. some bool flags, initial balances of tokens, contract multisig authority etc.
+
+        constructorParams:{
+
+            initStorage:{
+
+                boolFlag: true,
+
+                tokenOwners:{
+                    acc1:1337,
+                    acc2:1500,
+                    ...
+                }
+
+            }
+
+        }
 
     */
 
@@ -356,38 +374,25 @@ export let VERIFIERS = {
 
                 if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
 
-                    if(tx.payload.lang.startsWith('system/staking')){
-                     
-                        let typeofContract = tx.payload.lang.split('/')[1]
+                    let contractID = blake3Hash(originShard+JSON.stringify(tx))
 
-                        if(SYSTEM_CONTRACTS.has(typeofContract)){
-
-                            await SYSTEM_CONTRACTS.get(typeofContract).constructor(originShard,tx,atomicBatch) // run deployment logic
-
-                        } else {
-
-                            let contractID = blake3Hash(originShard+JSON.stringify(tx))
-
-                            let contractMetadataTemplate = {
-                
-                                type:'contract',
-                                lang:tx.payload.lang,
-                                balance:0,
-                                uno:0,
-                                gas:0,
-                                storages:['DEFAULT'],
-                                bytecode:tx.payload.bytecode,
-                                storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-                
-                            }
-                        
-                            atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
-            
-                            atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',{}) // autocreate the default storage for contract
-                
-                        }
-                        
+                    let contractMetadataTemplate = {
+        
+                        type:'contract',
+                        lang:tx.payload.lang,
+                        balance:0,
+                        uno:0,
+                        gas:0,
+                        storages:['DEFAULT'],
+                        bytecode:tx.payload.bytecode,
+                        storageAbstractionLastPayment:WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+        
                     }
+                
+                    atomicBatch.put(originShard+':'+contractID,contractMetadataTemplate)
+    
+                    atomicBatch.put(originShard+':'+contractID+'_STORAGE_DEFAULT',tx.payload.constructorParams.initStorage) // autocreate the default storage for contract
+
 
                     senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
 

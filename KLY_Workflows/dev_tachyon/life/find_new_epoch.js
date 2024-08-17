@@ -24,7 +24,8 @@ import fs from 'fs'
 
 
 
-//Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
+// Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
+
 export let findAggregatedEpochFinalizationProofs=async()=>{
 
 

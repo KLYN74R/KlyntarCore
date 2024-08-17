@@ -74,7 +74,7 @@ export let TXS_FILTERS = {
         {
             bytecode:<hexString>,
             lang:<RUST|ASC>,
-            constructorParams:[]
+            constructorParams:{}
         }
 
     If it's one of SPEC_CONTRACTS (alias define,service deploying,unobtanium mint and so on) the structure will be like this
@@ -82,13 +82,13 @@ export let TXS_FILTERS = {
     {
         bytecode:'',(empty)
         lang:'system/<name of contract>'
-        constructorParams:[]
+        constructorParams:{}
     }
 
     */
     WVM_CONTRACT_DEPLOY:async (tx,originShard) => {
 
-        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('system/')) && Array.isArray(tx.payload.constructorParams)
+        return  typeof tx.payload?.bytecode==='string' && (tx.payload.lang==='RUST'||tx.payload.lang==='ASC'||tx.payload?.lang?.startsWith('system/')) && typeof tx.payload.constructorParams === 'object'
                 &&
                 await overviewToCheckIfTxIsOk(tx,originShard)
 

@@ -348,6 +348,7 @@ export let CONTRACT = {
                     threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
 
                     // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
+                    
                     if(threadContext === 'VT'){
 
                         delete WORKING_THREADS.VERIFICATION_THREAD[poolToUnstakeFrom]
