@@ -84,7 +84,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
     if(!currentEpochMetadata){
 
-        response.send({err:'Epoch handler on QT is not fresh'})
+        response.send({err:'Epoch handler on AT is not fresh'})
 
         return
     }
@@ -107,7 +107,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
                 
             "shard0":{
 
-                currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]>
+                currentLeader:<int - pointer to current leader of shard based on AT.EPOCH.leadersSequence[shardID]>
                 
                 afpForFirstBlock:{
 
@@ -117,7 +117,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                     proofs:{
                      
-                        pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.EPOCH.hash+"#"+QT.EPOCH.id
+                        pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.hash+"#"+AT.EPOCH.id
                         ...
                         
                     }
@@ -137,7 +137,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                         proofs:{
                      
-                            pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.CHECKPOINT.HASH+"#"+QT.CHECKPOINT.id
+                            pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.CHECKPOINT.HASH+"#"+AT.CHECKPOINT.id
                             ...
                         
                         }                        

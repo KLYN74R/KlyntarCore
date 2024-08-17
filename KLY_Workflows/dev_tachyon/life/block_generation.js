@@ -229,7 +229,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
                         blockHash,
                         proofs:{
 
-                            pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
+                            pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
                             ...
 
                         }
@@ -389,7 +389,7 @@ let generateBlocksPortion = async() => {
 
     if(typeof canGenerateBlocksNow === 'string'){
 
-        // Check if <epochFullID> is the same in QT and in GT
+        // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
         if(WORKING_THREADS.GENERATION_THREAD.epochFullId !== epochFullID){
 

@@ -484,277 +484,24 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
     
     if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
-
         
+        
+        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
+
 
         //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
 
-        /*
-
-            0. First of all - run slashing operations to punish the unfair players
-        
-            This helps us to prevent attacks when adversary stake must be slashed but instead of this unstaking tx runs. In case of success - adversary save his stake
-
-            For example, if in <epochEdgeOperations> array we have:
-
-                epochEdgeOperations[0] = <unstaking tx by adversary to save own stake>
-
-                epochEdgeOperations[1] = <slashing operation>
-
-            If we run these operations one-by-one(in for cycle) - we bump with a serius bug
-
-            --------------------------------------------------------
-            |                                                      |
-            |   [SOLUTION]: We must run slashing operations FIRST  |
-            |                                                      |
-            --------------------------------------------------------
-
-        */
 
         for(let epochEdgeOperation of epochEdgeOperations){
-            
-            if(epochEdgeOperation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
 
+            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
+    
         }
+    
 
-        // [Milestone]: Here we have the filled(or empty) object which store the data about pools and delayed IDs to delete it from state (in GLOBAL_CACHES.STATE_CACHE['SLASH_OBJECT']
-
-
-        //________________________________ NOW RUN THE REST OF EPOCH EDGE OPERATIONS ______________________________________
-
-        for(let epochEdgeOperation of epochEdgeOperations){
+        // Nullify values for the upcoming epoch
         
-            // Skip the previously executed SLASH_UNSTAKE operations
-
-            if(epochEdgeOperation.type==='SLASH_UNSTAKE') continue
-
-
-            /*
-            
-                Perform changes here before move to the next checkpoint
-            
-                Operation in checkpoint has the following structure
-
-                {
-                    type:<TYPE> - type from './epoch_edge_operations_verifiers.js' to perform this operation
-                    payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epoch_edge_operations_verifiers.js
-                }
-            
-
-            */
-
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload) //pass isFromRoute=undefined to make changes to state
-    
-        }
-
-
-        //_______________________Remove pools if lack of staking power_______________________
-
-
-        let poolsToBeRemoved = [], poolsArray = Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)
-
-
-        for(let poolPubKey of poolsArray){
-    
-            let poolOrigin = await getFromState(poolPubKey+'(POOL)_POINTER')
-    
-            let poolStorageIdInDatabase = poolOrigin+':'+poolPubKey+'(POOL)_STORAGE_POOL'
-    
-            let poolStorage = await getFromState(poolStorageIdInDatabase)
-    
-            if(poolStorage.totalPower < WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.VALIDATOR_STAKE) poolsToBeRemoved.push({poolStorageIdInDatabase,poolPubKey})
-    
-        }
-    
-        
-        //_____Now in <toRemovePools> we have IDs of pools which should be deleted from POOLS____
-
-        for(let poolPubKey of poolsToBeRemoved){
-
-            delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
-    
-        }
-
-        //________________________________Remove rogue pools_________________________________
-
-        // These operations must be atomic
-    
-        let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
-
-        let slashObject = await getFromState('SLASH_OBJECT')
-        
-        let slashObjectKeys = Object.keys(slashObject)
-
-
-        
-        for(let poolIdentifier of slashObjectKeys){
-
-
-            //_____________ SlashObject has the structure like this <pool> => <{delayedIds,pool,poolOrigin}> _____________
-        
-            let poolStorageHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)_STORAGE_POOL'
-
-            let poolMetadataHashID = slashObject[poolIdentifier].poolOrigin+':'+poolIdentifier+'(POOL)'
-
-            // Delete the single storage
-            atomicBatch.del(poolStorageHashID)
-
-            // Delete metadata
-            atomicBatch.del(poolMetadataHashID)
-
-            // Delete pointer
-            atomicBatch.del(poolIdentifier+'(POOL)_POINTER')
-
-
-            // Remove from pools tracking
-            delete WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolIdentifier]
-
-            // Delete from cache
-            GLOBAL_CACHES.STATE_CACHE.delete(poolStorageHashID)
-
-            GLOBAL_CACHES.STATE_CACHE.delete(poolMetadataHashID)
-
-
-            let arrayOfDelayed = slashObject[poolIdentifier].delayedIds
-
-            //Take the delayed operations array, move to cache and delete operations where pool === poolIdentifier
-            
-            for(let id of arrayOfDelayed){
-
-                let delayedArray = await getFromState('DEL_OPER_'+id)
-
-                // Each object in delayedArray has the following structure {fromPool,to,amount,units}
-                let toDeleteArray = []
-
-                for(let i=0;i<delayedArray.length;i++){
-
-                    if(delayedArray[i].fromPool===poolIdentifier) toDeleteArray.push(i)
-
-                }
-
-                // Here <toDeleteArray> contains id's of UNSTAKE operations that should be deleted
-
-                for(let txidIndex of toDeleteArray) delayedArray.splice(txidIndex,1) // remove single tx
-
-            }
-
-        }
-
-
-        //______________Perform earlier delayed operations & add new operations______________
-
-        let delayedTableOfIds = await getFromState('DELAYED_TABLE_OF_IDS')
-
-        // If it's first checkpoints - add this array
-        if(!delayedTableOfIds) delayedTableOfIds=[]
-    
-
-        let currentEpochIndex = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
-
-        let idsToDelete = []
-
-            
-
-        for(let i=0, lengthOfTable = delayedTableOfIds.length ; i < lengthOfTable ; i++){
-
-            // Here we get the arrays of delayed operations from state and perform those, which is old enough compared to NETWORK_PARAMETERS.UNSTAKING_PERIOD
-
-            if(delayedTableOfIds[i] + WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.UNSTAKING_PERIOD < currentEpochIndex){
-
-                let oldDelayOperations = await getFromState('DEL_OPER_'+delayedTableOfIds[i])
-
-                if(oldDelayOperations){
-
-                    for(let delayedTx of oldDelayOperations){
-
-                        /*
-
-                            Get the accounts and add appropriate amount of KLY / UNO
-
-                            delayedTX has the following structure
-
-                            {
-                                fromPool:<id of pool that staker withdraw stake from>,
-
-                                poolOriginShard:<origin of where your pool created. Your unstaking will be returned there>,
-
-                                to:<staker pubkey/address>,
-                
-                                amount:<number>,
-                
-                                units:< KLY | UNO >
-                
-                            }
-                    
-                        */
-
-                        let account = await getAccountFromState(delayedTx.poolOriginShard+':'+delayedTx.to) // return funds(unstaking) to account that binded to 
-
-                        // Return back staked KLY / UNO to the state of user's account
-                        if(delayedTx.units==='kly') account.balance += delayedTx.amount
-
-                        else account.uno += delayedTx.amount
-                    
-                    }
-
-
-                    // Remove ID (delayedID) from delayed table of IDs because we already used it
-                    idsToDelete.push(i)
-
-                }
-
-            }
-
-        }
-
-
-        // Remove "spent" ids
-
-        for(let id of idsToDelete) delayedTableOfIds.splice(id,1)
-
-
-        // Also, add the array of delayed operations from THIS checkpoint if it's not empty
-
-        let currentArrayOfDelayedOperations = await getFromState('UNSTAKING_OPERATIONS')
-        
-        if(currentArrayOfDelayedOperations.length !== 0){
-
-            delayedTableOfIds.push(currentEpochIndex)
-
-            GLOBAL_CACHES.STATE_CACHE.set('DEL_OPER_'+currentEpochIndex,currentArrayOfDelayedOperations)
-
-        }
-
-
-        // Set the DELAYED_TABLE_OF_IDS to DB
-
-        GLOBAL_CACHES.STATE_CACHE.set('DELAYED_TABLE_OF_IDS',delayedTableOfIds)
-
-    
-    
-        // Delete the temporary from cache
-    
-        GLOBAL_CACHES.STATE_CACHE.delete('UNSTAKING_OPERATIONS')
-    
-        GLOBAL_CACHES.STATE_CACHE.delete('SLASH_OBJECT')
-
-
-        //_______________________Commit changes after operations here________________________
-
-        // Update the NETWORK_PARAMETERS
-        WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS = {...workflowOptionsTemplate}
-
-        GLOBAL_CACHES.STATE_CACHE.delete('NETWORK_PARAMETERS')
-
-    
-        // Update the quorum for next epoch
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
-
-        // Change set of validators for shards
-        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
-
-
-        for(let poolPubKey of Object.keys(WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL)){
+        for(let poolPubKey of WORKING_THREADS.VERIFICATION_THREAD.EPOCH.poolsRegistry){
 
             WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
                 
@@ -773,10 +520,13 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         }
 
         // Finally - delete the AEFP reassignment metadata
+
         delete WORKING_THREADS.VERIFICATION_THREAD.REASSIGNMENT_METADATA
 
         // Delete the useless temporary reassignments from previous epoch
+        
         delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_REASSIGNMENTS[vtEpochFullID]
+
 
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
@@ -790,7 +540,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
 
 
-        // Finally - set the new index, hash and timestamp for next epoch
+        // Finally - set the new index, hash, timestamp, quorum and assign validators for shards for next epoch
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id = vtEpochHandler.id+1
 
@@ -798,8 +548,14 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp += WORKING_THREADS.VERIFICATION_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.quorum = nextEpochQuorum
+                
+        WORKING_THREADS.VERIFICATION_THREAD.EPOCH.leadersSequence = nextEpochLeadersSequences
+
+        
         WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH = { totalBlocksNumber:0, totalTxsNumber:0, successfulTxsNumber:0 }
 
+        
         // Commit the changes of state using atomic batch
 
         GLOBAL_CACHES.STATE_CACHE.forEach(
@@ -1387,7 +1143,7 @@ export let startVerificationThread=async()=>{
         
         /*
         
-            In case we have .REASSIGNMENT_METADATA - it's a signal that the new epoch on QT has started
+            In case we have .REASSIGNMENT_METADATA - it's a signal that the new epoch on APPROVEMENT_THREAD has started
             In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .REASSIGNMENT_METADATA which has the structure
 
             {

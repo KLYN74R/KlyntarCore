@@ -4,8 +4,6 @@ import {getCurrentEpochQuorum, getQuorumMajority, getQuorumUrlsAndPubkeys} from 
 
 import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
-import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
-
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
@@ -21,148 +19,6 @@ import Block from '../structures/block.js'
 import level from 'level'
 
 import fs from 'fs'
-
-
-
-
-
-
-
-
-
-
-
-let deletePoolsWithLackOfStakingPower = async (validatorPubKey,fullCopyOfApprovementThread) => {
-
-    let indexToDelete = fullCopyOfApprovementThread.EPOCH.poolsRegistry.indexOf(validatorPubKey)
-
-    fullCopyOfApprovementThread.EPOCH.poolsRegistry.splice(indexToDelete,1)
-
-}
-
-
-
-
-let executeEpochEdgeOperations = async (atomicBatch,fullCopyOfApprovementThread,epochEdgeOperations) => {
-
-    
-    //_______________________________Perform SPEC_OPERATIONS_____________________________
-
-    let networkParamsTemplate = {...fullCopyOfApprovementThread.NETWORK_PARAMETERS}
-    
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('NETWORK_PARAMETERS',networkParamsTemplate)
-    
-    // Structure is <poolID> => true if pool should be deleted
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set('SLASH_OBJECT',{})
-    
-
-    // But, initially, we should execute the SLASH_UNSTAKE operations because we need to prevent withdraw of stakes by rogue pool(s)/stakers
-    for(let operation of epochEdgeOperations){
-     
-        if(operation.type==='SLASH_UNSTAKE') await EPOCH_EDGE_OPERATIONS_VERIFIERS.SLASH_UNSTAKE(operation.payload,false,true)
-    
-    }
-
-    // Here we have the filled(or empty) array of pools and delayed IDs to delete it from state
-
-    for(let operation of epochEdgeOperations){
-        
-        if(operation.type==='SLASH_UNSTAKE') continue
-          /*
-            
-            Perform changes here before move to the next epoch
-            
-            OPERATION in epoch has the following structure
-            {
-                type:<TYPE> - type from './epoch_edge_operations_verifiers.js' to perform this operation
-                payload:<PAYLOAD> - operation body. More detailed about structure & verification process here => ./epoch_edge_operations_verifiers.js
-            }
-            
-        */
-        await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
-    
-    }
-
-    //_______________________Remove pools if lack of staking power_______________________
-
-    let epochHandlerReference = fullCopyOfApprovementThread.EPOCH
-
-    let toRemovePools = [], promises = [], allThePools = epochHandlerReference.poolsRegistry
-
-
-    for(let poolPubKey of allThePools){
-
-        let promise = getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL').then(poolStorage=>{
-
-            if(poolStorage.totalPower < fullCopyOfApprovementThread.NETWORK_PARAMETERS.VALIDATOR_STAKE) toRemovePools.push(poolPubKey)
-
-        })
-
-        promises.push(promise)
-
-    }
-
-    await Promise.all(promises.splice(0))
-    
-    //Now in toRemovePools we have IDs of pools which should be deleted from POOLS
-    
-    let deletePoolsPromises=[]
-    
-    for(let address of toRemovePools){
-    
-        deletePoolsPromises.push(deletePoolsWithLackOfStakingPower(address,fullCopyOfApprovementThread))
-    
-    }
-
-
-    await Promise.all(deletePoolsPromises.splice(0))
-
-
-    //________________________________Remove rogue pools_________________________________
-
-    
-    let slashObject = await getFromApprovementThreadState('SLASH_OBJECT')
-    
-    let slashObjectKeys = Object.keys(slashObject)
-        
-
-    for(let poolIdentifier of slashObjectKeys){
-    
-        //___________slashObject has the structure like this <pool> => true___________
-    
-        // Delete from DB
-        atomicBatch.del(poolIdentifier+'(POOL)_STORAGE_POOL')
-
-        // Remove from pools
-        
-        let indexToDelete = fullCopyOfApprovementThread.EPOCH.poolsRegistry.indexOf(poolIdentifier)
-        
-        fullCopyOfApprovementThread.EPOCH.poolsRegistry.splice(indexToDelete,1)
-    
-        // Remove from cache
-        GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete(poolIdentifier+'(POOL)_STORAGE_POOL')
-
-    }
-
-
-    // Update the NETWORK_PARAMETERS
-    fullCopyOfApprovementThread.NETWORK_PARAMETERS = {...networkParamsTemplate}
-
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('NETWORK_PARAMETERS')
-
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.delete('SLASH_OBJECT')
-
-
-    //After all ops - commit state and make changes to workflow
-
-    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
-
-        atomicBatch.put(recordID,value)
-
-    })
-
-
-}
 
 
 
@@ -244,7 +100,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
         7. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
     
-        8. Prepare new object in TEMP(checkpointFullID) and set new version of checkpoint on QT
+        8. Prepare new object in TEMP(checkpointFullID) and set new version of checkpoint on AT
     
     
     */
@@ -461,7 +317,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             if(!cycleWasBreak){
 
                 // Store the epoch edge operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
-                // So, no sense to grab it twice(on QT and later on VT). On VT we just get it from DB and execute these operations
+                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these operations
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_OPS:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
 
 
@@ -476,21 +332,47 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 // For API - store the whole epoch handler object by epoch numerical index
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_HANDLER:${atEpochHandler.id}`,atEpochHandler).catch(()=>{})
-                
-                
+                                
                 // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>{})
 
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
 
-                // We need it for changes
-                let fullCopyOfApprovementThread = JSON.parse(JSON.stringify(WORKING_THREADS.APPROVEMENT_THREAD))
-
-                // All operations must be atomic
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
+                for(let operation of epochEdgeOperations){
 
-                // Execute epoch edge operations from new checkpoint using our copy of QT and atomic handler
-                await executeEpochEdgeOperations(atomicBatch,fullCopyOfApprovementThread,epochEdgeOperations)
+                    /*
+                    
+                        operation structure is:
+
+                        {   v,
+                            fee,
+                            creator,
+                            type,
+                            nonce,
+                            payload:{
+
+                                contractID, method, gasLimit, params, imports
+
+                            },
+                            sig
+        
+                        }
+                    
+                    */
+        
+                    await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
+                
+                }
+                
+                // After all ops - commit state and make changes to workflow
+            
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
+            
+                    atomicBatch.put(recordID,value)
+            
+                })
 
                
                 // Now, after the execution we can change the checkpoint id and get the new hash + prepare new temporary object
@@ -506,12 +388,12 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 // After execution - create the reassignment chains
-                await setLeadersSequenceForShards(fullCopyOfApprovementThread.EPOCH,nextEpochHash)
+                await setLeadersSequenceForShards(atEpochHandler,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.leadersSequence).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
 
 
-                customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (QT)\u001b[0m`,logColors.GREEN)
+                customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
 
                 //_______________________ Update the values for new epoch _______________________
 

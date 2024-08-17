@@ -525,7 +525,7 @@ let setGenesisToState=async()=>{
     atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nullHash)
 
 
-    // Finally, build the reassignment chains for current epoch in QT and VT
+    // Finally, build the reassignment chains for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
     await setLeadersSequenceForShards(atEpochHandler,nullHash)
 
@@ -597,7 +597,7 @@ export let prepareBlockchain=async()=>{
 
         await setGenesisToState()
 
-        //______________________________________Commit the state of VT and QT___________________________________________
+        //______________________________________Commit the state of VT and AT___________________________________________
 
         await BLOCKCHAIN_DATABASES.BLOCKS.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
@@ -616,7 +616,7 @@ export let prepareBlockchain=async()=>{
     await KLY_EVM.setStateRoot(WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_STATE_ROOT)
 
 
-    //_______________________________Check the version of QT and VT and if need - update________________________________
+    //_______________________________Check the version of AT and VT and if need - update________________________________
     
 
 
@@ -660,13 +660,13 @@ export let prepareBlockchain=async()=>{
 
     }
 
-    //_________________________________Add the temporary data of current QT__________________________________________
+    //_________________________________Add the temporary data of current AT__________________________________________
     
     let temporaryDatabaseForApprovementThread = level(process.env.CHAINDATA_PATH+`/${epochFullID}`,{valueEncoding:'json'})
     
     EPOCH_METADATA_MAPPING.set(epochFullID,{
 
-        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
+        FINALIZATION_PROOFS:new Map(), // blockID => Map(quorumMemberPubKey=>SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)). Proofs that validator voted for block epochID:blockCreatorX:blockIndexY with hash H
 
         TEMP_CACHE:new Map(),  // simple key=>value mapping to be used as temporary cache for epoch
     

@@ -134,7 +134,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
                 proofs:{
 
                     quorumMemberPubKey0:ed25519Signa,
-                    ...                                             => Signa is prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
+                    ...                                             => Signa is prevBlockHash+blockID+hash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
                     quorumMemberPubKeyN:ed25519Signa,
 
                 }

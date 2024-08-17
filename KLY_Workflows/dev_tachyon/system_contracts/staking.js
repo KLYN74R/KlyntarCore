@@ -245,18 +245,6 @@ export let CONTRACT = {
 
                         threadById.EPOCH.poolsRegistry.push(poolPubKey)
 
-                        if(threadContext === 'VT'){
-
-                            threadById.VERIFICATION_STATS_PER_POOL[poolPubKey] = {
-                
-                                index:-1,
-                                
-                                hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-                            
-                            }
-                            
-                        }
-
                     }
 
                 } else {
@@ -362,13 +350,7 @@ export let CONTRACT = {
                     // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
                     if(threadContext === 'VT'){
 
-                        threadById.VERIFICATION_STATS_PER_POOL[poolToUnstakeFrom] = {
-            
-                            index:-1,
-                            
-                            hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-                        
-                        }
+                        delete WORKING_THREADS.VERIFICATION_THREAD[poolToUnstakeFrom]
                         
                     }
 

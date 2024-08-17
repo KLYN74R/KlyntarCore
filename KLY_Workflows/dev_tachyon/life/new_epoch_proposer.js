@@ -169,7 +169,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
                 
                     "shard0":{
 
-                        currentLeader:<int - pointer to current leader of shard based on QT.EPOCH.leadersSequence[shardID]>
+                        currentLeader:<int - pointer to current leader of shard based on AT.EPOCH.leadersSequence[shardID]>
 
                         metadataForCheckpoint:{
                             index:,

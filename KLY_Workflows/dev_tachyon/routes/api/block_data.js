@@ -194,7 +194,7 @@ FASTIFY_SERVER.get('/aggregated_finalization_proof/:blockID',async(request,respo
 
         if(!EPOCH_METADATA_MAPPING.has(epochFullID)){
 
-            response.send({err:'Epoch handler on QT is not ready'})
+            response.send({err:'Epoch handler on AT is not ready'})
 
             return
         }

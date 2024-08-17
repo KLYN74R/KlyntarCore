@@ -42,7 +42,7 @@ import Block from '../../structures/block.js'
             blockHash,
             proofs:{
 
-                pubkey0:signa0,         => SIG(prevBlockHash+blockID+blockHash+QT.EPOCH.HASH+"#"+QT.EPOCH.id)
+                pubkey0:signa0,         => SIG(prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id)
                 ...
                 pubkeyN:signaN
 
@@ -63,7 +63,7 @@ import Block from '../../structures/block.js'
 
                 proofs:{
                      
-                    pubKey0:signa0,         => prevBlockHash+blockID+hash+QT.EPOCH.HASH+"#"+QT.EPOCH.id
+                    pubKey0:signa0,         => prevBlockHash+blockID+hash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
                     ...
                         
                 }
@@ -119,7 +119,7 @@ import Block from '../../structures/block.js'
 
                 proofs:{
                      
-                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+QT.EPOCH.hash+"#"+QT.EPOCH.id
+                    pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.hash+"#"+AT.EPOCH.id
                     ...
                         
                 }
@@ -145,7 +145,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
     if(!currentEpochMetadata){
 
-        response.send({err:'Epoch handler on QT is not ready'})
+        response.send({err:'Epoch handler on AT is not ready'})
 
         return
     }
@@ -341,7 +341,7 @@ FASTIFY_SERVER.post('/data_to_build_temp_data_for_verification_thread',{bodyLimi
 
     if(!currentEpochMetadata){
         
-        response.send({err:'Epoch handler on QT is not ready'})
+        response.send({err:'Epoch handler on AT is not ready'})
 
         return
     }
