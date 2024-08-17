@@ -478,23 +478,23 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
     let nextEpochLeadersSequences = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`NEXT_EPOCH_LEADERS_SEQUENCES:${vtEpochFullID}`).catch(()=>{})
 
 
-    // Get the epoch edge operations that we need to execute
+    // Get the epoch edge transactions that we need to execute
 
-    let epochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_EDGE_OPS:${vtEpochFullID}`).catch(()=>null)
+    let epochEdgeTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_EDGE_TXS:${vtEpochFullID}`).catch(()=>null)
 
     
-    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeOperations){
+    if(nextEpochHash && nextEpochQuorum && nextEpochLeadersSequences && epochEdgeTransactions){
         
         
         let atomicBatch = BLOCKCHAIN_DATABASES.STATE.batch()
 
 
-        //____________________________________ START TO EXECUTE EPOCH EDGE OPERATIONS ____________________________________
+        //____________________________________ START TO EXECUTE EPOCH EDGE TRANSACTIONS ____________________________________
 
 
-        for(let epochEdgeOperation of epochEdgeOperations){
+        for(let epochEdgeTx of epochEdgeTransactions){
 
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeOperation.type](epochEdgeOperation.payload) // pass isFromRoute=undefined to make changes to state
+            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeTx.type](epochEdgeTx.payload) // pass isFromRoute=undefined to make changes to state
     
         }
     
@@ -531,7 +531,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
 
 
-        customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
+        customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id} ### ${WORKING_THREADS.VERIFICATION_THREAD.EPOCH.hash} (VT)\u001b[0m`,logColors.GREEN)
 
 
         // Store the stats during verification thread work in this epoch

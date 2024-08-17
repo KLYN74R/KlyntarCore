@@ -23,13 +23,68 @@ import fs from 'fs'
 
 
 
+export let executeEpochEdgeTransaction = async() => {
+
+
+    let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+
+
+    tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
+
+
+    if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+
+        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
+
+        if(!goingToSpend.errReason){
+
+            if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
+
+                let execResultWithStatusAndReason
+
+                if(tx.payload.contractID?.startsWith('system/')){
+
+                    // Call system smart-contract
+    
+                    let systemContractName = tx.payload.contractID.split('/')[1]
+    
+                    if(SYSTEM_CONTRACTS.has(systemContractName)){
+    
+                        let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
+                        
+                        execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
+    
+                    } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
+            
+                }
+
+                senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+
+                senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+        
+                senderAccount.nonce = tx.nonce
+                
+                rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                return execResultWithStatusAndReason
+
+            } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
+
+        } else return {isOk:false,reason:goingToSpend.errReason}
+
+    } else return {isOk:false,reason:`Can't get filtered value of tx`}
+
+}
+
+
+
 
 // Use it to find checkpoints on hostchains, perform them and join to QUORUM by finding the latest valid checkpoint
 
 export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
-    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE OPERATIONS INSTANTLY_____________________________
+    //_________________________FIND THE NEXT CHECKPOINT AND EXECUTE EPOCH EDGE TRANSACTIONS INSTANTLY_____________________________
 
     /*
     
@@ -70,9 +125,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 [*] WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.MAX_NUM_OF_BLOCKS_PER_SHARD_FOR_SYNC_OPS - 1 by default. Don't change it
                 
-                    This value shows how many first blocks we need to get to extract epoch edge operations to execute before move to next epoch
+                    This value shows how many first blocks we need to get to extract epoch edge transactions to execute before move to next epoch
                     
-                    Epoch edge operations used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
+                    Epoch edge transactions used mostly for staking/unstaking operations, to change network params(e.g. epoch time, minimal stake,etc.)
  
             
         4. Now try to find our own assumption about the first block in epoch locally
@@ -97,7 +152,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 AFP_FOR_FIRST_BLOCK.blockHash
  
 
-        6. Once we find all of them - extract EPOCH_EDGE_OPERATIONS from block headers and run it in a sync mode
+        6. Once we find all of them - extract EPOCH_EDGE_TRANSACTIONS from block headers and run it in a sync mode
 
         7. Increment value of checkpoint index(checkpoint.id) and recount new hash(checkpoint.hash)
     
@@ -278,12 +333,12 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
         await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_CACHE:${oldEpochFullID}`,epochCache).catch(()=>false)
 
 
-        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge operations and set the new epoch____
+        //_____Now, when we've resolved all the first blocks & found all the AEFPs - get blocks, extract epoch edge transactions and set the new epoch____
 
 
         if(totalNumberOfShards === totalNumberOfReadyShards){
 
-            let epochEdgeOperations = []
+            let epochEdgeTransactions = []
 
             let firstBlocksHashes = []
 
@@ -291,15 +346,15 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             for(let [shardID] of entries){
 
-                // Try to get the epoch edge operations from the first blocks
+                // Try to get the epoch edge transactions from the first blocks
 
                 let firstBlockOnThisShard = await getBlock(atEpochHandler.id,epochCache[shardID].firstBlockCreator,0)
 
                 if(firstBlockOnThisShard && Block.genHash(firstBlockOnThisShard) === epochCache[shardID].firstBlockHash){
 
-                    if(Array.isArray(firstBlockOnThisShard.epochEdgeOperations)){
+                    if(Array.isArray(firstBlockOnThisShard.epochEdgeTransactions)){
 
-                        epochEdgeOperations.push(...firstBlockOnThisShard.epochEdgeOperations)
+                        epochEdgeTransactions.push(...firstBlockOnThisShard.epochEdgeTransactions)
 
                     }
 
@@ -317,9 +372,9 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             if(!cycleWasBreak){
 
-                // Store the epoch edge operations locally because we'll need it later(to change the epoch on VT - Verification Thread)
-                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these operations
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_OPS:${oldEpochFullID}`,epochEdgeOperations).catch(()=>false)
+                // Store the epoch edge transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
+                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${oldEpochFullID}`,epochEdgeTransactions).catch(()=>false)
 
 
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
@@ -341,7 +396,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
-                for(let operation of epochEdgeOperations){
+                for(let operation of epochEdgeTransactions){
 
                     /*
                     
@@ -394,7 +449,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
 
 
-                customLog(`\u001b[38;5;154mEpoch edge operations were executed for epoch \u001b[38;5;93m${oldEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
+                customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${oldEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
 
                 //_______________________ Update the values for new epoch _______________________
 
@@ -426,7 +481,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                     TEMP_CACHE:new Map(),
 
-                    EPOCH_EDGE_OPERATIONS_MEMPOOL:[],
+                    EPOCH_EDGE_TRANSACTIONS_MEMPOOL:[],
 
                     SYNCHRONIZER:new Map(),
             

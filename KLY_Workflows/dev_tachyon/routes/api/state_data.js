@@ -230,7 +230,7 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
             
         } else if (searchFilter === 'epoch'){
 
-            // Return the data from BLOCKCHAIN_DATABASES.EPOCH_DATA Epoch handler + list of EEOs(epoch edge operations)
+            // Return the data from BLOCKCHAIN_DATABASES.EPOCH_DATA Epoch handler + list of epoch edge transactions
 
             // searchId is equal to epoch full id(in format epochHash#epochIndex) or epoch index
 
@@ -238,29 +238,29 @@ FASTIFY_SERVER.get('/search_result/:filter/:to_find',async(request,response)=>{
 
             let epochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_HANDLER:'+epochIndex).catch(()=>null)
 
-            let listOfEpochEdgeOperations
+            let listOfEpochEdgeTransactions
 
 
             if(epochHash && epochIndex){
 
                 // In case both valid - then it's request epoch data by full id (format epochHash#epochIndex)
 
-                listOfEpochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_OPS:'+searchId).catch(()=>null)
+                listOfEpochEdgeTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_TXS:'+searchId).catch(()=>null)
 
 
             } else {
 
                 // Otherwise it's request of epoch data just by index
 
-                // So, get the epoch hash from handler and build the full id to get the list of epoch edge operations
+                // So, get the epoch hash from handler and build the full id to get the list of epoch edge transactions
 
                 let epochFullID = epochHandler.hash+'#'+searchId
 
-                listOfEpochEdgeOperations = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_OPS:'+epochFullID).catch(()=>null)
+                listOfEpochEdgeTransactions = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get('EPOCH_EDGE_OPS:'+epochFullID).catch(()=>null)
 
             }
 
-            responseData = {epochHandler, listOfEpochEdgeOperations}
+            responseData = {epochHandler, listOfEpochEdgeTransactions}
 
             
         } else if (searchFilter === 'pool'){

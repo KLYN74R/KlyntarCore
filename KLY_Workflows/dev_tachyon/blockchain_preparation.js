@@ -672,7 +672,7 @@ export let prepareBlockchain=async()=>{
     
         FINALIZATION_STATS:new Map(), // mapping( validatorID => {index,hash,afp} ). Used to start voting for checkpoints.      Each pair is a special handler where key is a pubkey of appropriate validator and value is the ( index <=> id ) which will be in checkpoint
     
-        EPOCH_EDGE_OPERATIONS_MEMPOOL:[],  // default mempool for epoch edge operations
+        EPOCH_EDGE_TRANSACTIONS_MEMPOOL:[],  // default mempool for epoch edge transactions
         
         SYNCHRONIZER:new Map(), // used as mutex to prevent async changes of object | multiple operations with several await's | etc.
 
