@@ -45,7 +45,7 @@ export let CONTRACT = {
         params:[
 
             {
-                shard, ed25519PubKey, percentage, overStake, whiteList, poolURL, wssPoolURL
+                shard, ed25519PubKey, percentage, overStake, poolURL, wssPoolURL
             }
 
         ]
@@ -56,18 +56,17 @@ export let CONTRACT = {
         [*] ed25519PubKey - Ed25519 pubkey for validator. The same as PoolID
         [*] percentage - % of fees that will be earned by pubkey related to PoolID. The rest(100%-Percentage) will be shared among stakers
         [*] overStake - number of power(in UNO) allowed to overfill the minimum stake. You need this to prevent deletion from validators pool if your stake are lower than minimum
-        [*] whiteList - array of addresses who can invest in this pool. Thanks to this, you can set own logic to distribute fees,make changes and so on by adding only one address - ID of smart contract
         [*] poolURL - URL in form http(s)://<domain_or_direct_ip_of_server_cloud_or_smth_like_this>:<port>/<optional_path>
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
     createStakingPool:async (threadContext,transaction,atomicBatch) => {
 
-        let {shard,ed25519PubKey,percentage,overStake,whiteList,poolURL,wssPoolURL} = transaction.payload.params[0]
+        let {shard,ed25519PubKey,percentage,overStake,poolURL,wssPoolURL} = transaction.payload.params[0]
 
         let poolAlreadyExists = await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.get(ed25519PubKey+'(POOL)_STORAGE_POOL').catch(()=>null)
 
-        if(!poolAlreadyExists && overStake>=0 && Array.isArray(whiteList) && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
+        if(!poolAlreadyExists && overStake>=0 && typeof shard === 'string' && typeof poolURL === 'string' && typeof wssPoolURL === 'string'){
 
             let contractMetadataTemplate = {
 
@@ -90,8 +89,6 @@ export let CONTRACT = {
                 poolURL,
 
                 wssPoolURL,
-
-                whiteList,
 
                 totalPower:0,
                 
@@ -208,10 +205,7 @@ export let CONTRACT = {
 
         if(majorityProofIsOk){
 
-            // Here we also need to check if pool is still not fullfilled
-            // Also, instantly check if account is whitelisted
-
-            if(poolStorage && (poolStorage.whiteList.length===0 || poolStorage.whiteList.includes(transaction.creator))){
+            if(poolStorage){
 
                 let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
@@ -219,6 +213,7 @@ export let CONTRACT = {
  
                 let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
 
+                // Here we also need to check if pool is still not fullfilled
 
                 if(amountIsBiggerThanMinimalStake && noOverstake){
 
@@ -260,7 +255,7 @@ export let CONTRACT = {
 
                 // TODO: return funds
 
-                return {isOk:false,reason:'No such pool or your account is not in whitelist'}
+                return {isOk:false,reason:'No such pool'}
 
             }
             

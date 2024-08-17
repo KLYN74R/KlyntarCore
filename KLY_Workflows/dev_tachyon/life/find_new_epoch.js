@@ -409,7 +409,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                             nonce,
                             payload:{
 
-                                contractID, method, gasLimit, params, imports
+                                contractID, method, gasLimit, params, imports, shardContext
 
                             },
                             sig

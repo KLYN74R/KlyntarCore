@@ -53,7 +53,6 @@
         
             "percentage":0.5,
             "overStake":10000,
-            "whiteList":[],
             "totalPower":55000,
             "shard":"shard_0",
             "stakers":{
