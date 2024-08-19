@@ -16,13 +16,13 @@ import Block from '../structures/block.js'
 
 
 
-export let buildTemporarySequenceForVerificationThread=async()=>{
+export let findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards=async()=>{
 
     /*
     
         [+] In this function we should time by time ask for ALRPs for pools to build the reassignment chains
 
-        [+] Use VT.TEMP_VERIFY_UNTILL
+        [+] Use VT.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
 
 
         Based on current epoch in APPROVEMENT_THREAD - build the temporary info about index/hashes of pools on shards to keep work on verification thread
@@ -32,7 +32,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     let verificationThread = WORKING_THREADS.VERIFICATION_THREAD
 
-    let tempReassignmentOnVerificationThread = verificationThread.TEMP_VERIFY_UNTILL
+    let tempInfoAboutLastBlocksByPreviousPoolsOnShards = verificationThread.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
 
     let vtEpochHandler = verificationThread.EPOCH
 
@@ -41,15 +41,15 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     let vtLeadersSequences = vtEpochHandler.leadersSequence
 
 
-    if(!tempReassignmentOnVerificationThread[vtEpochFullID]){
+    if(!tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID]){
 
-        tempReassignmentOnVerificationThread[vtEpochFullID] = {} // create empty template
+        tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID] = {} // create empty template
 
         // Fill with data from here. Structure: shardID => [pool0,pool1,...,poolN]
 
         for(let shardID of Object.keys(vtLeadersSequences)){
 
-            tempReassignmentOnVerificationThread[vtEpochFullID][shardID] = {
+            tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID] = {
 
                 currentLeader:0,
                 
@@ -78,7 +78,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     for(let shardID of Object.keys(vtEpochHandler.leadersSequence)){
 
-        localVersionOfCurrentLeaders[shardID] = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader
+        localVersionOfCurrentLeaders[shardID] = tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].currentLeader
 
     }
 
@@ -289,7 +289,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     // Update the reassignment data
 
-                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
+                                    let tempReassignmentChain = tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
 
 
                                     for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
@@ -306,7 +306,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     // Finally, set the <currentLeader> to the new pointer
 
-                                    tempReassignmentOnVerificationThread[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
+                                    tempInfoAboutLastBlocksByPreviousPoolsOnShards[vtEpochFullID][shardID].currentLeader = proposedIndexOfLeader
 
 
                                 }
@@ -325,6 +325,6 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     }
         
-    setTimeout(buildTemporarySequenceForVerificationThread,CONFIGURATION.NODE_LEVEL.TEMPORARY_VERIFY_UNTILL_BUILDER_TIMEOUT)
-
+    setTimeout(findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards,CONFIGURATION.NODE_LEVEL.TIMEOUT_TO_FIND_TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS)
+    
 }

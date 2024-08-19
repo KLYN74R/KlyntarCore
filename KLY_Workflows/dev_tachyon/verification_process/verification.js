@@ -286,7 +286,7 @@ export let checkAlrpChainValidity = async (firstBlockInThisEpochByPool,leadersSe
 
 
 
-let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => {
+let findInfoAboutLastBlocksByPreviousShardsLeaders = async (vtEpochHandler,shardID,aefp) => {
 
 
     /*
@@ -326,8 +326,8 @@ let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => 
     let vtEpochIndex = vtEpochHandler.id
 
     let oldLeadersSequenceForShard = vtEpochHandler.leadersSequence[shardID]
-
-    if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL) WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL = {}
+    
+    if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS = {}
 
     let infoAboutFinalBlocksByPool = new Map() // poolID => {reassignedPool:ALRP,reassignedPool0:ALRP,...reassignedPoolX:ALRP}
         
@@ -385,7 +385,7 @@ let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => 
 
     }
 
-    // In direct way - use the filtratratedReassignment to build the VERIFY_UNTILL[shardID] based on ALRP
+    // In direct way - use the filtratratedReassignment to build the INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID] based on ALRP
 
     for(let poolPubKey of oldLeadersSequenceForShard){
 
@@ -403,7 +403,7 @@ let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => 
 
     }
 
-    WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL[shardID] = emptyTemplate
+    WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID] = emptyTemplate
 
 
         /*
@@ -423,7 +423,7 @@ let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => 
 
         Using this chains we'll finish the verification process to get the ranges of checkpoint
 
-        [1] WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL with structure:
+        [1] WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS with structure:
 
         {
             shard_0:{
@@ -450,7 +450,7 @@ let buildReassignmentMetadataForShards = async (vtEpochHandler,shardID,aefp) => 
 
         ___________________________________ So ___________________________________
 
-        Using the order in REASSIGNMENT_CHAINS finish the verification based on index:hash pairs in VERIFY_UNTILL
+        Using the order in EPOCH.leadersSequence finish the verification based on index:hash pairs in INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
         
         
         */
@@ -521,11 +521,11 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         // Finally - delete the AEFP metadata with info about hights and hashes per shard
 
-        delete WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL
+        delete WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS
 
         // Delete the useless temporary info from previous epoch about indexes/hashes to verify on shards
         
-        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_VERIFY_UNTILL[vtEpochFullID]
+        delete WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]
 
 
         GLOBAL_CACHES.STUFF_CACHE.delete('SHARDS_READY_TO_NEW_EPOCH')
@@ -681,13 +681,14 @@ let tryToFinishCurrentEpochOnVerificationThread = async vtEpochHandler => {
         if(totalNumberOfShards === totalNumberOfShardsReadyForMove){
 
             // Create empty template
-            if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL) WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL = {}
+
+            if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS) WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS = {}
 
             for(let shardID of Object.keys(nextEpochLeadersSequences)){
 
                 // Now, using this AEFP (especially fields lastLeader,lastIndex,lastHash,firstBlockHash) build reassignment metadata to finish epoch for this shard
                 
-                if(!WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL[shardID]) await buildReassignmentMetadataForShards(vtEpochHandler,shardID,epochCache[shardID].aefp)
+                if(!WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[shardID]) await findInfoAboutLastBlocksByPreviousShardsLeaders(vtEpochHandler,shardID,epochCache[shardID].aefp)
 
             }
 
@@ -1131,16 +1132,16 @@ export let startVerificationThread=async()=>{
 
     
 
-    let tempVerifyUntillForSomeShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_VERIFY_UNTILL[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
+    let tempInfoAboutFinalBlocksByPreviousPoolsOnShard = WORKING_THREADS.VERIFICATION_THREAD.TEMP_INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[vtEpochFullID]?.[currentShardToCheck] // {currentLeader,currentToVerify,infoAboutFinalBlocksInThisEpoch:{poolPubKey:{index,hash}}}
 
 
-    if(WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL?.[currentShardToCheck]){
+    if(WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
 
         
         /*
         
-            In case we have .VERIFY_UNTILL - it's a signal that the new epoch on APPROVEMENT_THREAD has started
-            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .VERIFY_UNTILL which has the structure
+            In case we have .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS - it's a signal that the new epoch on APPROVEMENT_THREAD has started
+            In this case, in function TRY_TO_CHANGE_EPOCH_FOR_VERIFICATION_THREAD we update the epoch and add the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS which has the structure
 
             {
                 shard:{
@@ -1152,7 +1153,7 @@ export let startVerificationThread=async()=>{
                 }
             }
 
-            We just need to go through the .VERIFY_UNTILL[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
+            We just need to go through the .INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[currentShardToCheck] and start the cycle over vtEpochHandler.leadersSequence[currentShardToCheck] and verify all the blocks
 
         */
 
@@ -1166,7 +1167,7 @@ export let startVerificationThread=async()=>{
         
         let handlerWithIndexToVerify = GLOBAL_CACHES.STUFF_CACHE.get('CURRENT_TO_FINISH:'+currentShardToCheck) // {indexOfCurrentPoolToVerify:int}
 
-        let metadataForShardFromAefp = WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL[currentShardToCheck] // {pool:{index,hash},...}
+        let infoFromAefpAboutLastBlocksByPoolsOnShards = WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS[currentShardToCheck] // {pool:{index,hash},...}
 
         let localVtMetadataForPool, metadataFromAefpForThisPool
 
@@ -1179,7 +1180,7 @@ export let startVerificationThread=async()=>{
 
             localVtMetadataForPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolPubKey]
 
-            metadataFromAefpForThisPool = metadataForShardFromAefp[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
+            metadataFromAefpForThisPool = infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey] || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'}
 
 
 
@@ -1210,7 +1211,7 @@ export let startVerificationThread=async()=>{
 
             if(tunnelHandler){
 
-                GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,metadataForShardFromAefp[poolPubKey])
+                GLOBAL_CACHES.STUFF_CACHE.set('GET_FINAL_BLOCK:'+poolPubKey,infoFromAefpAboutLastBlocksByPoolsOnShards[poolPubKey])
             
                 let biggestHeightInCache = tunnelHandler.hasUntilHeight
 
@@ -1268,21 +1269,21 @@ export let startVerificationThread=async()=>{
         }
 
         
-    }else if(currentEpochIsFresh && tempVerifyUntillForSomeShard){
+    }else if(currentEpochIsFresh && tempInfoAboutFinalBlocksByPreviousPoolsOnShard){
 
         // Take the pool by it's position in reassignment chains
         
-        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[currentShardToCheck][tempVerifyUntillForSomeShard.currentToVerify]
+        let poolToVerifyRightNow = vtEpochHandler.leadersSequence[currentShardToCheck][tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify]
         
         let verificationStatsOfThisPool = WORKING_THREADS.VERIFICATION_THREAD.VERIFICATION_STATS_PER_POOL[poolToVerifyRightNow] // {index,hash}
 
-        let infoAboutLastBlockByThisPool = tempVerifyUntillForSomeShard.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
+        let infoAboutLastBlockByThisPool = tempInfoAboutFinalBlocksByPreviousPoolsOnShard.infoAboutFinalBlocksInThisEpoch[poolToVerifyRightNow] // {index,hash}
 
         
         if(infoAboutLastBlockByThisPool && verificationStatsOfThisPool.index === infoAboutLastBlockByThisPool.index){
 
             // Move to next one
-            tempVerifyUntillForSomeShard.currentToVerify++
+            tempInfoAboutFinalBlocksByPreviousPoolsOnShard.currentToVerify++
 
             WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
@@ -1349,7 +1350,7 @@ export let startVerificationThread=async()=>{
     WORKING_THREADS.VERIFICATION_THREAD.SHARD_POINTER = currentShardToCheck
 
 
-    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.VERIFY_UNTILL?.[currentShardToCheck]){
+    if(!currentEpochIsFresh && !WORKING_THREADS.VERIFICATION_THREAD.INFO_ABOUT_LAST_BLOCKS_BY_PREVIOUS_POOLS_ON_SHARDS?.[currentShardToCheck]){
 
         await tryToFinishCurrentEpochOnVerificationThread(vtEpochHandler)
 

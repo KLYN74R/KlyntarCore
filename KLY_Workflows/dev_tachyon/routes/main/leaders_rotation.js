@@ -273,7 +273,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
             }
             
-            // If proof is ok - generate reassignment proof
+            // If proof is ok - generate LRP(leader rotation proof)
 
             if(firstBlockAfpIsOk){
 
