@@ -45,9 +45,9 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
         for(let shardID of Object.keys(atEpochHandler.leadersSequence)){
 
-            let reassignmentData = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
+            let dataAboutCurrentLeaderOnShard = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
 
-            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][reassignmentData.currentLeader]
+            let pubKeyOfLeader = atEpochHandler.leadersSequence[shardID][dataAboutCurrentLeaderOnShard.currentLeader]
 
 
             if(currentEpochMetadata.SYNCHRONIZER.has('GENERATE_FINALIZATION_PROOFS:'+pubKeyOfLeader)){
@@ -228,7 +228,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
                        {
                 
-                            lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
+                            lastLeader:<index of Ed25519 pubkey of some pool in sequence of validators for this shard>,
                             lastIndex:<index of his block in previous epoch>,
                             lastHash:<hash of this block>,
                             firstBlockHash,
@@ -265,7 +265,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
     
                 }
     
-                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread to build reassignment metadata
+                // In case we vote for index > 0 - we need to add the AFP proof to proposition. This will be added to AEFP and used on verification thread
     
                 if(epochFinishProposition[shardID].metadataForCheckpoint.index >= 0){
     

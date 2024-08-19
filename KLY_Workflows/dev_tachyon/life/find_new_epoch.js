@@ -228,7 +228,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
                     {
                         shard:<ID of shard>,
-                        lastLeader:<index of ed25519 pubkey of some pool in shard's reassignment chain>,
+                        lastLeader:<index of ed25519 pubkey of some pool in sequence of pool for this shard in current epoch>,
                         lastIndex:<index of his block in previous epoch>,
                         lastHash:<hash of this block>,
                         hashOfFirstBlockByLastLeader,
@@ -443,7 +443,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_HASH:${oldEpochFullID}`,nextEpochHash).catch(()=>{})
 
 
-                // After execution - create the reassignment chains
+                // After execution - assign pools(validators) to shards
                 await setLeadersSequenceForShards(atEpochHandler,nextEpochHash)
 
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})

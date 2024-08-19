@@ -22,17 +22,17 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
         [+] In this function we should time by time ask for ALRPs for pools to build the reassignment chains
 
-        [+] Use VT.TEMP_REASSIGNMENTS
+        [+] Use VT.TEMP_VERIFY_UNTILL
 
 
-        Based on current epoch in APPROVEMENT_THREAD - build the temporary reassignments
+        Based on current epoch in APPROVEMENT_THREAD - build the temporary info about index/hashes of pools on shards to keep work on verification thread
     
     */
 
 
     let verificationThread = WORKING_THREADS.VERIFICATION_THREAD
 
-    let tempReassignmentOnVerificationThread = verificationThread.TEMP_REASSIGNMENTS
+    let tempReassignmentOnVerificationThread = verificationThread.TEMP_VERIFY_UNTILL
 
     let vtEpochHandler = verificationThread.EPOCH
 
@@ -54,8 +54,8 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
                 currentLeader:0,
                 
                 currentToVerify:0,
-
-                reassignments:{} // poolPubKey => {index,hash}
+                
+                infoAboutFinalBlocksInThisEpoch:{} // poolPubKey => {index,hash}
 
             }
 
@@ -72,7 +72,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     let randomTarget = getRandomFromArray(quorumMembers)
     
-    //___________________Ask quorum member about reassignments. Grab this results, verify the proofs and build the temporary reassignment chains___________________
+    //___________________Ask quorum member about last block info. Grab this results, verify the proofs and build the temporary reassignment chains___________________
 
     let localVersionOfCurrentLeaders = {} // shardID => assumptionAboutIndexOfCurrentLeader
 
@@ -148,7 +148,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
             In case our local version has bigger index - ignore
 
-            In case proposed version has bigger index it's a clear signal that some of reassignments occured and we need to update our local data
+            In case proposed version has bigger index - we need to update our local data
 
             For this:
 
@@ -182,7 +182,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                         // Verify all the ALRPs in block header
     
-                        let {isOK,filteredReassignments:filteredReassignmentsInBlockOfProposedLeader} = await checkAlrpChainValidity(
+                        let {isOK,infoAboutFinalBlocksInThisEpoch} = await checkAlrpChainValidity(
                                 
                             firstBlockByCurrentLeader, vtLeadersSequences[shardID], proposedIndexOfLeader, vtEpochFullID, vtEpochHandler, true
                             
@@ -192,9 +192,9 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                         if(isOK){
 
-                            let collectionOfAlrpsFromAllThePreviousLeaders = [filteredReassignmentsInBlockOfProposedLeader] // each element here is object like {pool:{index,hash,firstBlockHash}}
+                            let collectionOfAlrpsFromAllThePreviousLeaders = [infoAboutFinalBlocksInThisEpoch] // each element here is object like {pool:{index,hash,firstBlockHash}}
 
-                            let currentAlrpSet = {...filteredReassignmentsInBlockOfProposedLeader}
+                            let currentAlrpSet = {...infoAboutFinalBlocksInThisEpoch}
 
                             let position = proposedIndexOfLeader-1
 
@@ -239,7 +239,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
     
                                             if(firstBlockInThisEpochByPool && Block.genHash(firstBlockInThisEpochByPool) === alrpForThisPoolFromCurrentSet.firstBlockHash){
                             
-                                                let alrpChainValidation = position === 0 ? {isOK:true,filteredReassignments:{}} : await checkAlrpChainValidity(
+                                                let alrpChainValidation = position === 0 ? {isOK:true,infoAboutFinalBlocksInThisEpoch:{}} : await checkAlrpChainValidity(
                                                     
                                                     firstBlockInThisEpochByPool, vtLeadersSequences[shardID], position, vtEpochFullID, vtEpochHandler, true
                                                     
@@ -247,11 +247,11 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
                             
                                                 if(alrpChainValidation.isOK){
     
-                                                    // If ok - fill the <potentialReassignments>
+                                                    // If ok - fill the potential <infoAboutFinalBlocksInThisEpoch>
     
-                                                    collectionOfAlrpsFromAllThePreviousLeaders.push(alrpChainValidation.filteredReassignments)
+                                                    collectionOfAlrpsFromAllThePreviousLeaders.push(alrpChainValidation.infoAboutFinalBlocksInThisEpoch)
     
-                                                    currentAlrpSet = alrpChainValidation.filteredReassignments
+                                                    currentAlrpSet = alrpChainValidation.infoAboutFinalBlocksInThisEpoch
 
                                                     position--
     
@@ -289,7 +289,7 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
                                     // Update the reassignment data
 
-                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].reassignments // poolPubKey => {index,hash}
+                                    let tempReassignmentChain = tempReassignmentOnVerificationThread[vtEpochFullID][shardID].infoAboutFinalBlocksInThisEpoch // poolPubKey => {index,hash}
 
 
                                     for(let reassignStats of collectionOfAlrpsFromAllThePreviousLeaders.reverse()){
@@ -325,6 +325,6 @@ export let buildTemporarySequenceForVerificationThread=async()=>{
 
     }
         
-    setTimeout(buildTemporarySequenceForVerificationThread,CONFIGURATION.NODE_LEVEL.TEMPORARY_REASSIGNMENTS_BUILDER_TIMEOUT)
+    setTimeout(buildTemporarySequenceForVerificationThread,CONFIGURATION.NODE_LEVEL.TEMPORARY_VERIFY_UNTILL_BUILDER_TIMEOUT)
 
 }

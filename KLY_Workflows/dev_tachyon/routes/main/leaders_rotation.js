@@ -173,7 +173,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
 
 
-        // We can't sign the reassignment proof in case requested height is lower than our local version of aggregated commitments. So, send 'UPDATE' message
+        // We can't sign the LRP(leader rotation proof) in case requested height is lower than our local version. So, send 'UPDATE' message to requester
         if(localFinalizationStats && localFinalizationStats.index > index){
 
             let responseData = {
@@ -220,7 +220,7 @@ FASTIFY_SERVER.post('/leader_rotation_proof',{bodyLimit:CONFIGURATION.NODE_LEVEL
 
             //_____________________ Verify the AFP for the first block to understand the hash of first block ______________________________
 
-            // We need the hash of first block to fetch it over the network and extract the ASP for previous pool in reassignment chain, take the hash of it and include to final signature
+            // We need the hash of first block to fetch it over the network and extract the aggregated leader rotation proof for previous pool, take the hash of it and include to final signature
             
 
             let dataToSignForSkipProof, firstBlockAfpIsOk = false

@@ -14,7 +14,7 @@ import {epochStillFresh, heapSort} from '../utils.js'
 
 let timeIsOutForCurrentShardLeader=(epochHandler,indexOfCurrentLeaderInSequence,leaderShipTimeframe)=>{
 
-    // Function to check if time frame for current shard leader is done and we have to move to next pool in reassignment chain
+    // Function to check if time frame for current shard leader is done and we have to move to next pool in sequence of validators for this shard in this epoch
 
     return getUtcTimestamp() >= epochHandler.startTimestamp+(indexOfCurrentLeaderInSequence+2)*leaderShipTimeframe
 

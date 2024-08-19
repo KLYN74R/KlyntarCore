@@ -41,7 +41,7 @@ export let verifyAggregatedEpochFinalizationProof = async (itsProbablyAggregated
 
             {
                 shard,
-                lastLeader:<index of Ed25519 pubkey of some pool in shard's reassignment chain>,
+                lastLeader:<index of Ed25519 pubkey of some pool in sequences of validators for this shard in current epoch>,
                 lastIndex:<index of his block in previous epoch>,
                 lastHash:<hash of this block>,
                 hashOfFirstBlockByLastLeader,

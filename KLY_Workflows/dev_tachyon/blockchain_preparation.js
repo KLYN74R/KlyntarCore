@@ -75,7 +75,7 @@ export let WORKING_THREADS = {
         KLY_EVM_METADATA:{}, // shardID => {nextBlockIndex,parentHash,timestamp}
 
 
-        TEMP_REASSIGNMENTS:{},
+        TEMP_VERIFY_UNTILL:{},
 
         SID_TRACKER:{}, // shardID => index
 
@@ -525,7 +525,7 @@ let setGenesisToState=async()=>{
     atEpochHandler.quorum = getCurrentEpochQuorum(atEpochHandler.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nullHash)
 
 
-    // Finally, build the reassignment chains for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
+    // Finally, assign validators to shards for current epoch in APPROVEMENT_THREAD and VERIFICAION_THREAD
 
     await setLeadersSequenceForShards(atEpochHandler,nullHash)
 
