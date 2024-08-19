@@ -3,6 +3,8 @@ import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_
 
 import {WORKING_THREADS} from "../blockchain_preparation.js"
 
+import Web3 from 'web3'
+
 
 
 
@@ -119,6 +121,16 @@ export let CONTRACT = {
 
                     WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID] = 0
 
+                    WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardID] = {
+        
+                        nextBlockIndex: Web3.utils.toHex(BigInt(0).toString()),
+                
+                        parentHash:'0000000000000000000000000000000000000000000000000000000000000000',
+                
+                        timestamp:Math.floor(WORKING_THREADS.VERIFICATION_THREAD.EPOCH.startTimestamp/1000)
+                
+                    }
+
                 }
 
             } else if(operation === '-' && threadById.EPOCH.shardsRegistry.includes(shardID)){
@@ -132,6 +144,8 @@ export let CONTRACT = {
                 if(threadContext === 'VT'){
 
                     delete WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID]
+
+                    delete WORKING_THREADS.VERIFICATION_THREAD.KLY_EVM_METADATA[shardID]
                 
                 }
 
