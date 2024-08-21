@@ -37,7 +37,7 @@
         ],
         
         "MAX_CONNECTIONS":15,
-        "MY_HOSTNAME":"http://somenode.com:6666",
+        "MY_HOSTNAME":"http://localhost:7332",
             
         "ROUTE_TTL":{
     
@@ -107,19 +107,19 @@
         
         },
     
-        "GET_BLOCKS_URL":"http://localhost:7331",
-        "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
-        "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7331",
+        "GET_BLOCKS_URL":"http://localhost:7332",
+        "GET_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
+        "GET_PREVIOUS_EPOCH_AGGREGATED_FINALIZATION_PROOF_URL":"http://localhost:7332",
     
         "ANIMATION_DURATION":1000,
     
         "PLUGINS":[],
     
         "INTERFACE":"::",
-        "PORT":6664,
+        "PORT":7332,
     
         "WEBSOCKET_INTERFACE":"::",
-        "WEBSOCKET_PORT":9998,
+        "WEBSOCKET_PORT":9999,
     
         "PAYLOAD_SIZE":1000,
         "MAX_PAYLOAD_SIZE":10000000,
