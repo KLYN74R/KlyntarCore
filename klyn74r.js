@@ -39,6 +39,8 @@ import chalkAnimation from 'chalk-animation'
 
 import {isAbsolute, extname} from 'path'
 
+import fastifyCors from '@fastify/cors'
+
 import fastify from 'fastify'
 
 import fs from 'fs'
@@ -368,6 +370,11 @@ customLog(fs.readFileSync(pathResolve('images/events/start.txt')).toString(),log
 // Export it to use in KLY_Workflows(there we'll add routes+handlers)
 
 export const FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
+
+
+
+
+FASTIFY_SERVER.register(fastifyCors,CONFIGURATION.FASTIFY_OPTIONS);
 
 
 

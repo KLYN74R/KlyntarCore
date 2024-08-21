@@ -23,6 +23,7 @@
   "homepage": "https://github.com/KLYN74R/KlyntarCore#readme",
   "dependencies": {
     "@assemblyscript/loader": "^0.20.19",
+    "@fastify/cors": "^9.0.1",
     "@idena/vrf-js": "^1.0.1",
     "@klyntar/klyntarevmjsonrpc": "github:KLYN74R/KlyntarEVMJsonRPC#v3",
     "assemblyscript": "^0.19.23",
