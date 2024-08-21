@@ -38,7 +38,8 @@ const {
     bindContext,
     gasPriceInWeiAndHex,
     protocolVersionInHex,
-    clientVersion
+    clientVersion,
+    maxAllowedGasAmountForSandboxExecution
 
 } = CONFIGURATION.KLY_EVM
 
@@ -148,46 +149,77 @@ class KLY_EVM_CLASS {
 
         let block = this.block
         
-        // TODO: To prevent spam - limit the maximum allowed gas for free EVM calls
-        
-        let evmCaller
 
         if(isJustCall){
 
-            evmCaller = txDataOrSerializedTxInHexWith0x.from ? Address.fromString(txDataOrSerializedTxInHexWith0x.from) : Address.zero()
+            let {to,data} = tx
 
-        } else if (tx.isSigned()) {
+            let vmCopy = await this.vm.copy()
 
-            evmCaller = tx.getSenderAddress()
+            // To prevent spam - set limit in configs for your RPC. This will protect your node from executing "intensive" logic
+
+            let gasLimitFromConfigsToPreventDdos = BigInt(maxAllowedGasAmountForSandboxExecution)
+
+            let gasLimit = gasLimit >= gasLimitFromConfigsToPreventDdos ? gasLimitFromConfigsToPreventDdos : gasLimit
+
+
+            let txResult = await vmCopy.evm.runCall({
+
+                to, data,
+
+                block, gasLimit,
+
+                skipBalance:true, isSandboxExecution:true
+
+            })
+
+            return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
+
+        }else {
+
+            let vmCopy = await this.vm.copy()
+
+            let origin = tx.getSenderAddress()
+
+            let {to,data,value,gasLimit} = tx
+
+            let caller = origin
+
+
+            if(tx.validate() && tx.verifySignature()){
+
+                let account = await vmCopy.stateManager.getAccount(origin)
+
+                // To prevent spam - set limit in configs for your RPC. This will protect your node from executing "intensive" logic
+
+                let gasLimitFromConfigsToPreventDdos = BigInt(maxAllowedGasAmountForSandboxExecution)
+
+                gasLimit = gasLimit >= gasLimitFromConfigsToPreventDdos ? gasLimitFromConfigsToPreventDdos : gasLimit
+
+
+                if(account.nonce === tx.nonce && account.balance >= value){
+
+                    let txResult = await vmCopy.evm.runCall({
+
+                        origin,caller,to,data,gasLimit,
+
+                        block,
+
+                        isSandboxExecution:true
+
+                    })
+
+                    return txResult.execResult.exceptionError || web3.utils.toHex(txResult.execResult.returnValue)
+
+                } return {error:{msg:'Wrong nonce value or insufficient balance'}}
+
+            } return {error:{msg:'Transaction validation failed. Make sure signature is ok and required amount of gas is set'}}
 
         }
 
-
-        if(evmCaller){
-
-            // tx.gasLimit = BigInt(CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution)
-            
-            let vmCopy = await this.vm.copy()
-
-            // vmCopy.evm.runCall()
-
-            let txResult = await vmCopy.runTx({
-                
-                tx,block,
-                
-                skipBalance:isJustCall,
-                isSandboxExecution:true,
-                evmCaller
-            
-            }).catch(err=>err)
-            
-            return txResult.execResult.exceptionError || txResult.execResult.returnValue
-    
-
-        } else return {error:{msg:`Can't get the <evmCaller> value - transaction is not signed or not <from> field in tx data`}}
-
-        
     }
+        
+    
 
      /**
      * 
