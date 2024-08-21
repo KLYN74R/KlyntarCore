@@ -369,12 +369,12 @@ customLog(fs.readFileSync(pathResolve('images/events/start.txt')).toString(),log
 
 // Export it to use in KLY_Workflows(there we'll add routes+handlers)
 
-export const FASTIFY_SERVER = fastify(CONFIGURATION.FASTIFY_OPTIONS);
+export const FASTIFY_SERVER = fastify(CONFIGURATION.NODE_LEVEL.FASTIFY_OPTIONS);
 
 
 
 
-FASTIFY_SERVER.register(fastifyCors,CONFIGURATION.FASTIFY_OPTIONS);
+FASTIFY_SERVER.register(fastifyCors,CONFIGURATION.NODE_LEVEL.FASTIFY_OPTIONS);
 
 
 
