@@ -87,13 +87,11 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
 
         // Take the info related to pool based on data in VT(verification thread) and AT(approvement thread)
 
-        let poolOriginShard = await getFromState(`${request.params.poolID}(POOL)_POINTER`)
+        let poolOriginShard = await getFromState(`${request.params.poolID}_POINTER`)
 
-        let poolMetadataFromState = await getFromState(`${poolOriginShard}:${request.params.poolID}(POOL)`)
+        let poolMetadata = await getFromState(`${poolOriginShard}:${request.params.poolID}`)
 
-        let poolStorageFromState = await getFromState(`${poolOriginShard}:${request.params.poolID}(POOL)_STORAGE_POOL`)
-
-        let poolStorageFromApprovementThread = await getFromApprovementThreadState(`${request.params.poolID}(POOL)_STORAGE_POOL`)
+        let poolStorage = await getFromState(`${poolOriginShard}:${request.params.poolID}_STORAGE_POOL`)
 
 
         response
@@ -101,7 +99,7 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
             .header('Access-Control-Allow-Origin','*')
             .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.POOL_STATS)
         
-            .send({poolMetadataFromState, poolStorageFromState, poolStorageFromApprovementThread})
+            .send({poolOriginShard,poolMetadata,poolStorage})
 
             
     }else response.send({err:'Trigger is off'})
