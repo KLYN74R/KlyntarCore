@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
 
@@ -257,7 +257,7 @@ export let VERIFIERS = {
 
     TX:async(originShard,tx,rewardsAndSuccessfulTxsCollector)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
         
         let recipientAccount = await getFromState(originShard+':'+tx.payload.to)
 
@@ -265,14 +265,14 @@ export let VERIFIERS = {
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
 
             if(!recipientAccount){
     
                 // Create default empty account.Note-here without NonceSet and NonceDuplicates,coz it's only recipient,not spender.If it was spender,we've noticed it on sift process
                 recipientAccount = {
                 
-                    type:'account',
+                    type:'eoa',
 
                     balance:0,
                     
@@ -362,13 +362,13 @@ export let VERIFIERS = {
 
     WVM_CONTRACT_DEPLOY:async (originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
@@ -435,13 +435,13 @@ export let VERIFIERS = {
     */
     WVM_CALL:async(originShard,tx,rewardsAndSuccessfulTxsCollector,atomicBatch)=>{
 
-        let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+        let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 

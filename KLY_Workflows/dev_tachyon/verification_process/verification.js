@@ -4,7 +4,7 @@ import {getFirstBlockOnEpoch, verifyAggregatedFinalizationProof} from '../common
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {customLog, blake3Hash, verifyEd25519, logColors} from '../../../KLY_Utils/utils.js'
 
@@ -1373,11 +1373,11 @@ export let startVerificationThread=async()=>{
 
 
 
-let getEmptyAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
+let getEmptyUserAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
 
     let emptyTemplate = {
         
-        type:"account",
+        type:"eoa",
         balance:0,
         uno:0,
         nonce:0,
@@ -1426,7 +1426,7 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
     if(mainStorageOfBlockCreator.percentage !== 0){
 
         // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await getAccountFromState(shardContext+':'+blockCreatorPubKey) || await getEmptyAccountTemplateBindedToShard(shardContext,blockCreatorPubKey)
+        let poolBindedAccount = await getUserAccountFromState(shardContext+':'+blockCreatorPubKey) || await getEmptyUserAccountTemplateBindedToShard(shardContext,blockCreatorPubKey)
 
         poolBindedAccount.balance += mainStorageOfBlockCreator.percentage * totalFees
         
@@ -1445,7 +1445,7 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
 
         let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
 
-        let stakerAccountBindedToCurrentShardContext = await getAccountFromState(shardContext+':'+stakerPubKey) || await getEmptyAccountTemplateBindedToShard(shardContext,stakerPubKey)
+        let stakerAccountBindedToCurrentShardContext = await getUserAccountFromState(shardContext+':'+stakerPubKey) || await getEmptyUserAccountTemplateBindedToShard(shardContext,stakerPubKey)
 
         stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent*restOfFees
 

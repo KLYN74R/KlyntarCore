@@ -72,7 +72,7 @@
 
         "9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK":{
             
-            "type":"account",
+            "type":"eoa",
             "balance":200000,
             "uno":0,
             "nonce":0,
@@ -81,7 +81,7 @@
         },
         "75XPnpDxrAtyjcwXaATfDhkYTGBoHuonDU1tfqFc6JcNPf5sgtcsvBRXaXZGuJ8USG":{
             
-            "type":"account",
+            "type":"eoa",
             "balance":200000,
             "uno":0,
             "nonce":0,
@@ -91,7 +91,7 @@
         },
         "61TXxKDrBtb7bjpBym8zS9xRDoUQU6sW9aLvvqN9Bp9LVFiSxhRPd9Dwy3N3621RQ8":{
             
-            "type":"account",
+            "type":"eoa",
             "balance":200000,
             "uno":0,
             "nonce":0,

@@ -7,7 +7,7 @@
 
 // You can also provide DDoS protection & WAFs & Caches & Advanced filters here
 
-import {getAccountFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState} from '../common_functions/state_interactions.js'
 
 import {verifyTxSignatureAndVersion} from './txs_verifiers.js'
 
@@ -16,7 +16,7 @@ import {verifyTxSignatureAndVersion} from './txs_verifiers.js'
 
 let overviewToCheckIfTxIsOk = async(tx,originShard) => {
 
-    let creatorAccount = await getAccountFromState(originShard+':'+tx.creator)
+    let creatorAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
     let result = await verifyTxSignatureAndVersion(tx,creatorAccount,originShard).catch(()=>false)
 

@@ -7,13 +7,13 @@ import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES} from '../blockchain_preparation.js'
 
 
 
-export let getAccountFromState = async recordID =>{
+export let getUserAccountFromState = async recordID =>{
 
     return GLOBAL_CACHES.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
     
         .then(account=>{
  
-            if(account.type==='account') GLOBAL_CACHES.STATE_CACHE.set(recordID,account)
+            if(account.type==='eoa') GLOBAL_CACHES.STATE_CACHE.set(recordID,account)
 
             return GLOBAL_CACHES.STATE_CACHE.get(recordID)
  
@@ -27,7 +27,7 @@ export let getAccountFromState = async recordID =>{
 
 export let getFromState = async recordID => {
 
-    // We get from db only first time-the other attempts will be gotten from ACCOUNTS
+    // We get from db only first time-the other attempts will be gotten from cache
 
     return GLOBAL_CACHES.STATE_CACHE.get(recordID) || BLOCKCHAIN_DATABASES.STATE.get(recordID)
     

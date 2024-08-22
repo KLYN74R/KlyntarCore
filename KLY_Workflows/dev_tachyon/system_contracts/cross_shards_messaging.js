@@ -1,6 +1,6 @@
 import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
 
-import {getAccountFromState} from "../common_functions/state_interactions.js"
+import {getUserAccountFromState} from "../common_functions/state_interactions.js"
 
 import {GLOBAL_CACHES} from "../blockchain_preparation.js"
 
@@ -51,12 +51,12 @@ export let CONTRACT = {
        
         */
 
-        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
         let {moveToShard,recipient,recipientNextNonce,amount} = transaction.payload.params[0]
 
 
-        if(txCreatorAccount.type === 'account' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
+        if(txCreatorAccount.type === 'eoa' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number' && amount <= txCreatorAccount.balance){
 
             txCreatorAccount.balance -= amount
 
@@ -112,7 +112,7 @@ export let CONTRACT = {
         
         */
 
-        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
         let {moveToShard,recipient,recipientNextNonce,amount, quorumAgreements} = transaction.payload.params[0]
 
@@ -120,7 +120,7 @@ export let CONTRACT = {
 
             txCreatorAccount = {
                 
-                type:'account',
+                type:'eoa',
 
                 balance:0,
                 
@@ -136,7 +136,7 @@ export let CONTRACT = {
 
         }
 
-        let typesCheck = txCreatorAccount.type === 'account' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number'
+        let typesCheck = txCreatorAccount.type === 'eoa' && typeof moveToShard === 'string' && typeof recipient === 'string' && typeof recipientNextNonce === 'number' && typeof amount === 'number'
 
         if(typesCheck && recipient === transaction.creator && moveToShard === originShard && recipientNextNonce === transaction.nonce) {
 

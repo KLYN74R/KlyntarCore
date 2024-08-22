@@ -32,7 +32,7 @@ export let executeEpochEdgeTransaction = async() => {
     tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
-    if(tx && tx.fee >= 0 && senderAccount.type==='account' && senderAccount.nonce < tx.nonce){
+    if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
 
         let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
