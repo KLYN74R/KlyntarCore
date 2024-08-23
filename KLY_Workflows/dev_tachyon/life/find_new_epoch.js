@@ -6,6 +6,8 @@ import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../c
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
+import {getUserAccountFromState} from '../common_functions/state_interactions.js'
+
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
 
 import {getBlock} from '../verification_process/verification.js'
@@ -26,7 +28,7 @@ import fs from 'fs'
 export let executeEpochEdgeTransaction = async() => {
 
 
-    let senderAccount = await getAccountFromState(originShard+':'+tx.creator)
+    let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
 
     tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter

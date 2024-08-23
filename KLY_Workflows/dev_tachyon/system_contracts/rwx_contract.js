@@ -1,6 +1,6 @@
-import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
+import {getUserAccountFromState, getFromState} from "../common_functions/state_interactions.js"
 
-import {getAccountFromState, getFromState} from "../common_functions/state_interactions.js"
+import {verifyQuorumMajoritySolution} from "../../../KLY_VirtualMachines/common_modules.js"
 
 import {GLOBAL_CACHES, WORKING_THREADS} from "../blockchain_preparation.js"
 
@@ -174,7 +174,7 @@ export let CONTRACT = {
 
                         // Each tx has format like TX type -> {to,amount}
                         
-                        let recipientAccount = await getAccountFromState(originShard+':'+subTx.to)
+                        let recipientAccount = await getUserAccountFromState(originShard+':'+subTx.to)
 
                         if(recipientAccount && (rwxContractRelatedToDeal.balance - subTx.amount) >= 0){                          
 

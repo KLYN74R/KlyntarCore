@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
-import {getAccountFromState, getFromState} from '../common_functions/state_interactions.js'
+import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
 
@@ -139,7 +139,7 @@ export let CONTRACT = {
     */
     burnAssetsToGetStakingTicket:async (originShard,transaction)=>{
 
-        let txCreatorAccount = await getAccountFromState(originShard+':'+transaction.creator)
+        let txCreatorAccount = await getUserAccountFromState(originShard+':'+transaction.creator)
 
         let {poolPubKey,recipientNextNonce,amount,units} = transaction.payload.params[0]
 
