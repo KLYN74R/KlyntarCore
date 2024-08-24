@@ -347,8 +347,23 @@ class KLY_EVM_CLASS {
 
         txData.gasLimit = CONFIGURATION.KLY_EVM.maxAllowedGasAmountForSandboxExecution  // To prevent spam - limit the maximum allowed gas for free EVM calls
 
+        txData.gasPrice = web3.utils.toHex(web3.utils.toWei('2','gwei'))
 
-        let tx = Transaction.fromTxData(txData,{common})
+        if(!txData.nonce){
+
+            let fromAccount = await this.getAccount(txData.from).catch(()=>false)
+
+            if(fromAccount){
+
+                let nonceInHex = web3.utils.toHex(fromAccount.nonce.toString())
+
+                txData.nonce = nonceInHex
+    
+            }
+
+        }
+
+        let tx = Transaction.fromTxData(txData,{common,freeze:false})
 
         let evmCaller = Address.fromString(txData.from) || tx.isSigned() && tx.getSenderAddress()
     
