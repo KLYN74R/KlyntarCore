@@ -28,7 +28,7 @@ import fs from 'fs'
 export let executeEpochEdgeTransaction = async() => {
 
 
-    let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
+    // let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
 
     tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
