@@ -118,7 +118,7 @@ build_must_have_addons.bat
 **Linux:**
 
 ```sh
-cd KLY_VirtualMachines\kly_evm
+cd KLY_VirtualMachines/kly_evm
 
 pnpm install
 
