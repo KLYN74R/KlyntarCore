@@ -4,11 +4,11 @@ import {getFirstBlockOnEpoch, verifyAggregatedFinalizationProof} from '../common
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
-
 import {customLog, blake3Hash, verifyEd25519, logColors} from '../../../KLY_Utils/utils.js'
 
 import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js'
+
+import {getFromState} from '../common_functions/state_interactions.js'
 
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
@@ -494,7 +494,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         for(let epochEdgeTx of epochEdgeTransactions){
 
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeTx.type](epochEdgeTx.payload) // pass isFromRoute=undefined to make changes to state
+            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeTx.type](epochEdgeTx.payload) // pass isFromRoute = undefined to make changes to state
     
         }
     
@@ -560,7 +560,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         GLOBAL_CACHES.STATE_CACHE.forEach(
             
-            (value,recordID) => atomicBatch.put(recordID,value)
+            (value,storageCellID) => atomicBatch.put(storageCellID,value)
             
         )
 

@@ -6,9 +6,9 @@ import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../c
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
-import {getUserAccountFromState} from '../common_functions/state_interactions.js'
-
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
+
+import {TXS_FILTERS} from '../verification_process/txs_filters.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -25,13 +25,10 @@ import fs from 'fs'
 
 
 
-export let executeEpochEdgeTransaction = async() => {
+export let executeEpochEdgeTransaction = async(threadContext,transaction,atomicBatch) => {
 
 
-    // let senderAccount = await getUserAccountFromState(originShard+':'+tx.creator)
-
-
-    tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
+    let filteredTx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
 
     if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
@@ -420,7 +417,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                     
                     */
         
-                    await EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
+                    await executeEpochEdgeTransaction() EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
                 
                 }
                 

@@ -330,7 +330,7 @@ export let CONTRACT = {
 
     getRewardFromPool:async(threadContext,transaction) => {
 
-
+        
 
     },
 
