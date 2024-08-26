@@ -1373,31 +1373,7 @@ export let startVerificationThread=async()=>{
 
 
 
-let getEmptyUserAccountTemplateBindedToShard=async(shardContext,publicKey)=>{
-
-    let emptyTemplate = {
-        
-        type:"eoa",
-        balance:0,
-        uno:0,
-        nonce:0,
-        gas:0,
-        rev_t:0
-    
-    }
-
-    // Add to cache to write to permanent db after block verification
-
-    GLOBAL_CACHES.STATE_CACHE.set(shardContext+':'+publicKey,emptyTemplate)
-
-    return emptyTemplate
-
-}
-
-
-
-
-let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorPubKey)=>{
+let distributeFeesAmongPoolAndStakers = async(totalFees,blockCreatorPubKey) => {
 
     /*
 
@@ -1405,34 +1381,52 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
 
         [*] totalFees - number of total fees received in this block
 
-        1) Send <stakingPoolStorage.percentage * totalFees> to block creator
+        1) Get the pool storage to extract list of stakers
 
-        2) Distribute the rest among stakers
+        2) In this list (poolStorage.stakers) we have structure like:
+
+            {
+                poolCreatorPubkey:{kly,uno,reward},
+                ...
+                stakerPubkey:{kly,uno,reward}
+                ...
+            }
+
+        3) Send <stakingPoolStorage.percentage * totalFees> to block creator:
+
+            poolStorage.stakers[poolCreatorPubkey].reward += stakingPoolStorage.percentage * totalFees
+
+        2) Distribute the rest among other stakers
 
             For this, we should:
 
-            2.1) Take the pool storage from state by id = validatorPubKey+'(POOL)_STORAGE_POOL'
+                2.1) Go through poolStorage.stakers
 
-            2.2) Run the cycle over the POOL.STAKERS(structure is STAKER_PUBKEY => {kly,uno}) and increase reward by FEES_FOR_THIS_VALIDATOR * ( STAKER_POWER_IN_UNO / TOTAL_POOL_POWER )
-
+                2.2) Increase reward poolStorage.stakers[stakerPubkey].reward += totalStakerPowerPercentage * restOfFees
     
     */
 
-    let blockCreatorOrigin = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
+    let shardOfBlockCreatorStorage = await getFromState(blockCreatorPubKey+'(POOL)_POINTER')
 
-    let mainStorageOfBlockCreator = await getFromState(blockCreatorOrigin+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
+    let mainStorageOfBlockCreator = await getFromState(shardOfBlockCreatorStorage+':'+blockCreatorPubKey+'(POOL)_STORAGE_POOL')
 
     // Transfer part of fees to account with pubkey associated with block creator
+
+    let rewardForBlockCreator = 0
+
     if(mainStorageOfBlockCreator.percentage !== 0){
 
-        // Get the pool percentage and send to appropriate Ed25519 address in the <shardContext>
-        let poolBindedAccount = await getUserAccountFromState(shardContext+':'+blockCreatorPubKey) || await getEmptyUserAccountTemplateBindedToShard(shardContext,blockCreatorPubKey)
+        rewardForBlockCreator = mainStorageOfBlockCreator.percentage * totalFees
 
-        poolBindedAccount.balance += mainStorageOfBlockCreator.percentage * totalFees
-        
+        if(!mainStorageOfBlockCreator.stakers[blockCreatorPubKey]) mainStorageOfBlockCreator.stakers[blockCreatorPubKey] = {kly:0,uno:0,reward:0}
+
+        let poolCreatorAccountForRewards = mainStorageOfBlockCreator.stakers[blockCreatorPubKey]  
+
+        poolCreatorAccountForRewards.reward += rewardForBlockCreator
+
     }
 
-    let restOfFees = totalFees - mainStorageOfBlockCreator.percentage * totalFees
+    let feesToDistributeAmongStakers = totalFees - rewardForBlockCreator
 
 
     // Share the rest of fees among stakers due to their % part in total pool stake
@@ -1443,11 +1437,11 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
 
         let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
 
-        let totalStakerPowerPercent = stakerTotalPower/mainStorageOfBlockCreator.totalPower
+        let totalStakerPowerPercent = stakerTotalPower / mainStorageOfBlockCreator.totalPower
 
-        let stakerAccountBindedToCurrentShardContext = await getUserAccountFromState(shardContext+':'+stakerPubKey) || await getEmptyUserAccountTemplateBindedToShard(shardContext,stakerPubKey)
+        let stakerAccountForReward = mainStorageOfBlockCreator.stakers[stakerPubKey]
 
-        stakerAccountBindedToCurrentShardContext.balance += totalStakerPowerPercent*restOfFees
+        stakerAccountForReward.reward += totalStakerPowerPercent * feesToDistributeAmongStakers
 
     }
 
@@ -1600,7 +1594,7 @@ let verifyBlock = async(block,shardContext) => {
             }        
 
         
-            //__________________________________________SHARE FEES AMONG POOLS_________________________________________
+            //_____________________________________SHARE FEES AMONG POOL OWNER AND STAKERS__________________________________
         
             /*
             
@@ -1610,15 +1604,15 @@ let verifyBlock = async(block,shardContext) => {
                     [1] Stakers of his pool
 
             */
-            await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,shardContext,block.creator)
+            await distributeFeesAmongPoolAndStakers(rewardsAndSuccessfulTxsCollector.fees,block.creator)
 
             
             //________________________________________________COMMIT STATE__________________________________________________    
 
 
-            GLOBAL_CACHES.STATE_CACHE.forEach((account,addr)=>
+            GLOBAL_CACHES.STATE_CACHE.forEach((account,storageCellID)=>
 
-                atomicBatch.put(addr,account)
+                atomicBatch.put(storageCellID,account)
 
             )
 

@@ -264,39 +264,39 @@ export let CONTRACT = {
 
         }
 
-        if(poolStorage){
+        if(poolStorage && (units === 'kly' || units === 'uno')){
 
             if(poolStorage.stakers[transaction.creator]){
 
                 let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
-                if(units === 'kly'){
+                if(poolStorage.stakers[transaction.creator][units] >= amount){
 
-                    poolStorage.stakers[transaction.creator].kly -= amount
-    
+                    poolStorage.stakers[transaction.creator][units] -= amount
+
                     poolStorage.totalPower -= amount
-    
-                } else if(units === 'uno') {
-    
-                    poolStorage.stakers[transaction.creator].uno -= amount
-    
-                    poolStorage.totalPower -= amount
-    
-                }
 
-                if(threadContext === 'VT'){
+                    if(poolStorage.stakers[transaction.creator].kly === 0 && poolStorage.stakers[transaction.creator].uno === 0){
 
-                    // Pay back to staker
-
-                    let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
-
-                    if(unstakerAccount){
-
-                        if(units === 'kly') unstakerAccount.balance += amount
-
-                        else if(units === 'uno') unstakerAccount.uno += amount
+                        delete poolStorage.stakers[transaction.creator] // just to make pool storage more clear
 
                     }
+
+                    if(threadContext === 'VT'){
+
+                        // Pay back to staker
+    
+                        let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
+    
+                        if(unstakerAccount){
+    
+                            if(units === 'kly') unstakerAccount.balance += amount
+    
+                            else if(units === 'uno') unstakerAccount.uno += amount
+    
+                        }
+    
+                    }    
 
                 }
 
