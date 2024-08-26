@@ -1439,7 +1439,7 @@ let distributeFeesAmongPoolAndStakers=async(totalFees,shardContext,blockCreatorP
     
     for(let [stakerPubKey,stakerMetadata] of Object.entries(mainStorageOfBlockCreator.stakers)){
 
-        // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno}
+        // Iteration over the stakerPubKey = <any of supported pubkeys>     |       stakerMetadata = {kly,uno,reward}
 
         let stakerTotalPower = stakerMetadata.uno + stakerMetadata.kly
 

@@ -94,6 +94,11 @@ export let CONTRACT = {
 
             }
 
+            // Add the pool creator to stakers, but with zero amount of assets => {kly:0,uno:0}
+            // We need it to send rewards to this special address
+
+            onlyOnePossibleStorageForStakingContract.stakers[ed25519PubKey] = {kly:0,uno:0,reward:0}
+
             if(threadContext === 'AT'){
 
                 // Put storage
@@ -180,7 +185,7 @@ export let CONTRACT = {
 
                 if(amountIsBiggerThanMinimalStake && noOverstake){
 
-                    if(!poolStorage.stakers[transaction.creator]) poolStorage.stakers[transaction.creator] = {kly:0, uno:0}
+                    if(!poolStorage.stakers[transaction.creator]) poolStorage.stakers[transaction.creator] = {kly:0, uno:0, reward:0}
 
 
                     if(units === 'kly'){
@@ -332,12 +337,13 @@ export let CONTRACT = {
 
     slashing:async(threadContext,transaction) => {
 
+        // Need quorum majority agreements here
 
     },
 
     reduceNumberOfUno:async(threadContext,transaction) => {
 
-
+        // Need quorum majority agreements here
 
     }
 
