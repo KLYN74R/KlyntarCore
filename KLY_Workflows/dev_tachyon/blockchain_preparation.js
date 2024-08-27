@@ -599,7 +599,7 @@ export let prepareBlockchain=async()=>{
 
         //______________________________________Commit the state of VT and AT___________________________________________
 
-        await BLOCKCHAIN_DATABASES.BLOCKS.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
+        await BLOCKCHAIN_DATABASES.STATE.put('VT',WORKING_THREADS.VERIFICATION_THREAD)
 
         await BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 

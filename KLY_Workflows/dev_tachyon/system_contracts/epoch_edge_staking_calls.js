@@ -99,7 +99,7 @@ export let CONTRACT = {
 
             onlyOnePossibleStorageForStakingContract.stakers[ed25519PubKey] = {kly:0,uno:0,reward:0}
 
-            if(threadContext === 'AT'){
+            if(threadContext === 'APPROVEMENT_THREAD'){
 
                 // Put storage
                 // NOTE: We just need a simple storage with ID="POOL"
@@ -154,7 +154,7 @@ export let CONTRACT = {
 
         let poolStorage
 
-        if(threadContext === 'AT'){
+        if(threadContext === 'APPROVEMENT_THREAD'){
 
             poolStorage = await getFromApprovementThreadState(poolPubKey+'(POOL)_STORAGE_POOL')
 
@@ -166,7 +166,7 @@ export let CONTRACT = {
 
         }
 
-        let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
         let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
 
@@ -249,7 +249,7 @@ export let CONTRACT = {
 
         let poolStorage
 
-        if(threadContext === 'AT'){
+        if(threadContext === 'APPROVEMENT_THREAD'){
 
             poolStorage = await getFromApprovementThreadState(poolToUnstakeFrom+'(POOL)_STORAGE_POOL')
 
@@ -265,7 +265,7 @@ export let CONTRACT = {
 
             if(poolStorage.stakers[transaction.creator]){
 
-                let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+                let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
                 if(poolStorage.stakers[transaction.creator][units] >= amount){
 
@@ -279,7 +279,7 @@ export let CONTRACT = {
 
                     }
 
-                    if(threadContext === 'VT'){
+                    if(threadContext === 'VERIFICATION_THREAD'){
 
                         // Pay back to staker
     
@@ -309,7 +309,7 @@ export let CONTRACT = {
 
                     // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
                     
-                    if(threadContext === 'VT'){
+                    if(threadContext === 'VERIFICATION_THREAD'){
 
                         delete WORKING_THREADS.VERIFICATION_THREAD[poolToUnstakeFrom]
                         
@@ -349,7 +349,7 @@ export let CONTRACT = {
 
         if(poolStorage && accountOfStakerToReceiveRewards && poolStorage.stakers[transaction.creator]){
 
-            if(threadContext === 'VT'){
+            if(threadContext === 'VERIFICATION_THREAD'){
 
                 accountOfStakerToReceiveRewards.balance += poolStorage.stakers[transaction.creator].reward
 

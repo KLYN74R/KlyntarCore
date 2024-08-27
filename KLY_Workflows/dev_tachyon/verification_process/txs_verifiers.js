@@ -90,10 +90,10 @@ let getMethodsToInject = _imports => {
 
 
 
-export let verifyTxSignatureAndVersion = async(tx,senderStorageObject,originShard) => {
+export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,originShard) => {
 
     
-    if(WORKING_THREADS.VERIFICATION_THREAD.CORE_MAJOR_VERSION === tx.v){
+    if(WORKING_THREADS[threadID].CORE_MAJOR_VERSION === tx.v){
 
         // Sender sign concatenated NETWORK_ID(to prevent cross-chains attacks and reuse nonce & signatures), core version, shard(context where to execute tx), tx type, JSON'ed payload,nonce and fee
         
@@ -134,7 +134,7 @@ export let verifyTxSignatureAndVersion = async(tx,senderStorageObject,originShar
         
         if(tx.payload.sigType==='M') return bls.verifyThresholdSignature(tx.payload.active,tx.payload.afk,tx.creator,signedData,tx.sig,senderStorageObject.rev_t)     
 
-    }else return false
+    } else return false
 
 }
 

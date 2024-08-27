@@ -6,9 +6,13 @@ import {getFirstBlockOnEpoch, verifyAggregatedEpochFinalizationProof} from '../c
 
 import {blake3Hash, logColors, customLog, pathResolve} from '../../../KLY_Utils/utils.js'
 
+import {verifyTxSignatureAndVersion} from '../verification_process/txs_verifiers.js'
+
+import {getUserAccountFromState} from '../common_functions/state_interactions.js'
+
 import {setLeadersSequenceForShards} from './shards_leaders_monitoring.js'
 
-import {TXS_FILTERS} from '../verification_process/txs_filters.js'
+import {EPOCH_EDGE_SYSTEM_CONTRACTS} from '../system_contracts/root.js'
 
 import {getBlock} from '../verification_process/verification.js'
 
@@ -25,53 +29,68 @@ import fs from 'fs'
 
 
 
-export let executeEpochEdgeTransaction = async(threadContext,transaction,atomicBatch) => {
+export let executeEpochEdgeTransaction = async(threadID,tx,atomicBatch) => {
 
 
-    let filteredTx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
-
-
-    if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
-
-        let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
-
-        if(!goingToSpend.errReason){
-
-            if(senderAccount.balance - goingToSpend.goingToSpendInNativeCurrency >= 0 && senderAccount.gas - goingToSpend.goingToBurnGasAmount >= 0){
-
-                let execResultWithStatusAndReason
-
-                if(tx.payload.contractID?.startsWith('system/')){
-
-                    // Call system smart-contract
+       /*
     
-                    let systemContractName = tx.payload.contractID.split('/')[1]
-    
-                    if(SYSTEM_CONTRACTS.has(systemContractName)){
-    
-                        let systemContract = SYSTEM_CONTRACTS.get(systemContractName)
-                        
-                        execResultWithStatusAndReason = await systemContract[tx.payload.method](originShard,tx,atomicBatch) // result is {isOk:true/false, reason:''}
-    
-                    } else execResultWithStatusAndReason = {isOk:false,reason:`No such type of system contract`}
-            
-                }
+        tx.payload is
 
-                senderAccount.balance -= goingToSpend.goingToSpendInNativeCurrency
+        {
 
-                senderAccount.gas -= goingToSpend.goingToBurnGasAmount
+            contractID:<BLAKE3 hashID of contract OR alias of contract>,
+            method:<string method to call>,
+            gasLimit:<maximum allowed in KLY to execute contract>,
+            params:[] params to pass to function,
+            imports:[] imports which should be included to contract instance to call. Example ['default.CROSS-CONTRACT','storage.GET_FROM_ARWEAVE']. As you understand, it's form like <MODULE_NAME>.<METHOD_TO_IMPORT>
+
+        }
+
+    */
+
+    let syncTxOverviewIsOk = typeof tx.payload?.contractID==='string' && tx.payload.contractID.length<=256 && typeof tx.payload.method==='string' && Array.isArray(tx.payload.params) && Array.isArray(tx.payload.imports)
+
+    let filteredTransaction
+
+    if(syncTxOverviewIsOk){
+
+        let shardOfTxCreator = tx.payload.params[1]
+
+        let creatorAccount = await getUserAccountFromState(shardOfTxCreator+':'+tx.creator)
+    
+        let result = await verifyTxSignatureAndVersion(threadID,tx,creatorAccount,shardOfTxCreator).catch(()=>false)
+
+        if(result){
         
-                senderAccount.nonce = tx.nonce
+            filteredTransaction = {
                 
-                rewardsAndSuccessfulTxsCollector.fees += tx.fee
+                v:tx.v,
+                fee:tx.fee,
+                creator:tx.creator,
+                type:tx.type,
+                nonce:tx.nonce,
+                payload:tx.payload,
+                sig:tx.sig
+            
+            }
+    
+        }
 
-                return execResultWithStatusAndReason
+    }
+    
+    if(filteredTransaction && tx.payload.params[0]){
 
-            } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
+        let {contractID, method} = tx.payload.params[0]
 
-        } else return {isOk:false,reason:goingToSpend.errReason}
+        let contractEntity = EPOCH_EDGE_SYSTEM_CONTRACTS.get(contractID)
 
-    } else return {isOk:false,reason:`Can't get filtered value of tx`}
+        if(contractEntity && contractEntity[method]){
+
+            await contractEntity[method](threadID,tx,atomicBatch)
+
+        }
+
+    }
 
 }
 
@@ -416,16 +435,18 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                         }
                     
                     */
+
+                    // TODO: Add filtering(remove duplicates) + add order priority( 1. DAO voting calls => 2. Slashing => 3. Reduce UNO => 4. All the rest)
         
-                    await executeEpochEdgeTransaction() EPOCH_EDGE_OPERATIONS_VERIFIERS[operation.type](operation.payload,false,true,fullCopyOfApprovementThread)
+                    await executeEpochEdgeTransaction('APPROVEMENT_THREAD',operation,atomicBatch)
                 
                 }
                 
                 // After all ops - commit state and make changes to workflow
             
-                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,recordID)=>{
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,storageCellID)=>{
             
-                    atomicBatch.put(recordID,value)
+                    atomicBatch.put(storageCellID,value)
             
                 })
 

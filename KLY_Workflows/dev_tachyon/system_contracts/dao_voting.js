@@ -54,7 +54,7 @@ export let CONTRACT = {
 
         let {votingType, payload, quorumAgreements} = transaction.payload.params[0]
 
-        let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
         // Verify the majority's proof
 
@@ -100,7 +100,7 @@ export let CONTRACT = {
 
         let {shardID, operation, quorumAgreements} = transaction.payload.params[0]
 
-        let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+        let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
         // Verify the majority's proof
 
@@ -141,7 +141,7 @@ export let CONTRACT = {
 
                 // Remove the SID tracker
 
-                if(threadContext === 'VT'){
+                if(threadContext === 'VERIFICATION_THREAD'){
 
                     delete WORKING_THREADS.VERIFICATION_THREAD.SID_TRACKER[shardID]
 

@@ -18,7 +18,7 @@ let overviewToCheckIfTxIsOk = async(tx,originShard) => {
 
     let creatorAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
-    let result = await verifyTxSignatureAndVersion(tx,creatorAccount,originShard).catch(()=>false)
+    let result = await verifyTxSignatureAndVersion('VERIFICATION_THREAD',tx,creatorAccount,originShard).catch(()=>false)
 
     
     if(result){
