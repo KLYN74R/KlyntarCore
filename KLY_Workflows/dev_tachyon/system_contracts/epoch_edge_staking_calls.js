@@ -90,7 +90,7 @@ export let CONTRACT = {
 
                 totalPower:0,
                 
-                stakers:{} // Pubkey => {kly,uno}
+                stakers:{} // Pubkey => {kly,uno,reward}
 
             }
 
@@ -328,9 +328,39 @@ export let CONTRACT = {
     },
 
 
+    /*
+
+        Method that should be executed only on VT(VERFICATION_THREAD) because only on VT you can spent coins(rewards) and no sense in it on APPROVEMENT_THREAD
+    
+        {
+            poolToGetRewardsFrom:<Format is Ed25519_pubkey>
+        }
+    
+    */
     getRewardFromPool:async(threadContext,transaction) => {
 
-        
+        let {poolToGetRewardsFrom} = transaction.payload.params[0]
+
+        let shardWherePoolStorageLocated = await getFromState(poolToGetRewardsFrom+'(POOL)_POINTER').catch(()=>null)
+
+        let poolStorage = await getFromState(shardWherePoolStorageLocated+':'+poolToGetRewardsFrom+'(POOL)_STORAGE_POOL').catch(()=>null)
+
+        // You will be rewarded on the same shard where you made a stake on pool
+
+        let accountOfStakerToReceiveRewards = await getFromState(shardWherePoolStorageLocated+':'+transaction.creator).catch(()=>null)
+
+
+        if(poolStorage && accountOfStakerToReceiveRewards && poolStorage.stakers[transaction.creator]){
+
+            if(threadContext === 'VT'){
+
+                accountOfStakerToReceiveRewards.balance += poolStorage.stakers[transaction.creator].reward
+
+                poolStorage.stakers[transaction.creator].reward = 0
+
+            }
+
+        } else return {isOk:false,reason:`Impossbile to unstake because tx.creator not a staker or pool does not exist`}
 
     },
 
