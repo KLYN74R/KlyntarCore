@@ -41,9 +41,9 @@ export let CONTRACT = {
 
             quorumAgreements:{
 
-                quorumMemberPubKey1: Signature(`votingAccept:${votingType}:${JSON.stringify(payload)}`),
+                quorumMemberPubKey1: Signature(`votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`),
                 ...
-                quorumMemberPubKeyN: Signature(`votingAccept:${votingType}:${JSON.stringify(payload)}`)
+                quorumMemberPubKeyN: Signature(`votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`)
 
             }
         }
@@ -56,9 +56,11 @@ export let CONTRACT = {
 
         let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
+        let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
+
         // Verify the majority's proof
 
-        let dataThatShouldBeSignedByQuorum = `votingAccept:${votingType}:${JSON.stringify(payload)}`
+        let dataThatShouldBeSignedByQuorum = `votingAccept:${epochFullID}:${votingType}:${JSON.stringify(payload)}`
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
@@ -78,7 +80,7 @@ export let CONTRACT = {
 
     /*
     
-        Method to cahnge number of shards
+        Method to change number of shards
     
         {
 
@@ -88,9 +90,9 @@ export let CONTRACT = {
 
             quorumAgreements:{
 
-                quorumMemberPubKey1: Signature(`changeNumberOfShards:${shardID}:${operation}`),
+                quorumMemberPubKey1: Signature(`changeNumberOfShards:${epochFullID}:${shardID}:${operation}`),
                 ...
-                quorumMemberPubKeyN: Signature(`changeNumberOfShards:${shardID}:${operation}`)
+                quorumMemberPubKeyN: Signature(`changeNumberOfShards:${epochFullID}:${shardID}:${operation}`)
 
             }
         }
@@ -102,9 +104,11 @@ export let CONTRACT = {
 
         let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
+        let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
+
         // Verify the majority's proof
 
-        let dataThatShouldBeSignedByQuorum = `changeNumberOfShards:${shardID}:${operation}`
+        let dataThatShouldBeSignedByQuorum = `changeNumberOfShards:${epochFullID}:${shardID}:${operation}`
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 

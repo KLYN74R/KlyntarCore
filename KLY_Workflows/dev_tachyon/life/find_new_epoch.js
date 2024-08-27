@@ -100,7 +100,7 @@ export let executeEpochEdgeTransaction = async(threadID,tx,atomicBatch) => {
 
         if(contractEntity && contractEntity[method]){
 
-            await contractEntity[method](threadID,tx,atomicBatch)
+            await contractEntity[method](threadID,tx,atomicBatch).catch(()=>{})
 
         }
 
