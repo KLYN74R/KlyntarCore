@@ -29,7 +29,7 @@ import fs from 'fs'
 
 
 
-export let executeEpochEdgeTransaction = async(threadID,tx,atomicBatch) => {
+export let executeEpochEdgeTransaction = async(threadID,tx) => {
 
 
        /*
@@ -100,7 +100,7 @@ export let executeEpochEdgeTransaction = async(threadID,tx,atomicBatch) => {
 
         if(contractEntity && contractEntity[method]){
 
-            await contractEntity[method](threadID,tx,atomicBatch).catch(()=>{})
+            await contractEntity[method](threadID,tx).catch(()=>{})
 
         }
 
@@ -450,13 +450,13 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                     
                     */
 
-                    // TODO: Add filtering(remove duplicates) + add order priority( 1. DAO voting calls => 2. Slashing => 3. Reduce UNO => 4. All the rest)
+                    // TODO: Add add order priority( 1. DAO voting calls => 2. Slashing => 3. Reduce UNO => 4. All the rest)
         
                     await executeEpochEdgeTransaction('APPROVEMENT_THREAD',operation,atomicBatch)
                 
                 }
                 
-                // After all ops - commit state and make changes to workflow
+                // After all ops - commit state and make changes in databases
             
                 GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.forEach((value,storageCellID)=>{
             

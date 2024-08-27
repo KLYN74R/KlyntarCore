@@ -1,9 +1,10 @@
 /* eslint-disable no-unused-vars */
+
+import {BLOCKCHAIN_DATABASES,GLOBAL_CACHES,WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {getFromApprovementThreadState} from '../common_functions/approvement_thread_related.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
-
-import {BLOCKCHAIN_DATABASES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {getFromState} from '../common_functions/state_interactions.js'
 
@@ -58,7 +59,7 @@ export let CONTRACT = {
         [*] wssPoolURL - WSS(WebSocket over HTTPS) URL provided by pool for fast data exchange, proofs grabbing, etc.
 
     */
-    createStakingPool:async (threadContext,transaction,atomicBatch) => {
+    createStakingPool:async (threadContext,transaction) => {
 
         let {shard,ed25519PubKey,percentage,overStake,poolURL,wssPoolURL} = transaction.payload.params[0]
 
@@ -104,18 +105,18 @@ export let CONTRACT = {
                 // Put storage
                 // NOTE: We just need a simple storage with ID="POOL"
                 
-                atomicBatch.put(ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
             } else {
 
-                atomicBatch.put(ed25519PubKey+'(POOL)_POINTER',shard)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(ed25519PubKey+'(POOL)_POINTER',shard)
 
                 // Put storage
                 // NOTE: We just need a simple storage with ID="POOL"
-                atomicBatch.put(shard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(shard+':'+ed25519PubKey+'(POOL)_STORAGE_POOL',onlyOnePossibleStorageForStakingContract)
 
                 // Put metadata
-                atomicBatch.put(shard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
+                GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(shard+':'+ed25519PubKey+'(POOL)',contractMetadataTemplate)
 
             }
 
@@ -148,7 +149,7 @@ export let CONTRACT = {
     
     */
     
-    stake:async(threadContext,transaction,atomicBatch) => {
+    stake:async(threadContext,transaction) => {
 
         let {poolPubKey,randomChallenge,amount,units,quorumAgreements} = transaction.payload.params[0]
 
@@ -176,13 +177,17 @@ export let CONTRACT = {
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
-        if(majorityProofIsOk){
+        // Check if ticket is unspent
+
+        let stakingTicketStillUnspent = await getFromApprovementThreadState(randomChallenge)
+
+        if(majorityProofIsOk && stakingTicketStillUnspent){
 
             if(poolStorage){
 
                 let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
  
-                let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower+amount
+                let noOverstake = poolStorage.totalPower+poolStorage.overStake <= poolStorage.totalPower + amount
 
                 // Here we also need to check if pool is still not fullfilled
 
@@ -216,7 +221,7 @@ export let CONTRACT = {
                     // Finally, add the appropriate signal to AT storage that this staking ticket was spent
                     // Need it to prevent replay attacks when you burn asset once, but try to stake twice and more
                     
-                    atomicBatch.put(randomChallenge,true)
+                    GLOBAL_CACHES.APPROVEMENT_THREAD_CACHE.set(randomChallenge,true)
 
                     return {isOk:true}
 
@@ -224,7 +229,7 @@ export let CONTRACT = {
 
             } else return {isOk:false,reason:'No such pool'}
             
-        } else return {isOk:false,reason:'Majority proof verification failed'}
+        } else return {isOk:false,reason:'Majority proof verification failed or staking ticket already used'}
 
     },
 
@@ -237,6 +242,7 @@ export let CONTRACT = {
 
     {
         shardToAcceptAssets:<>,
+        epochFullID,
         poolToUnstakeFrom:<Format is Ed25519_pubkey>
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
@@ -245,7 +251,7 @@ export let CONTRACT = {
     */
     unstake:async (threadContext,transaction) => {
 
-        let {shardToAcceptAssets,poolToUnstakeFrom,amount,units} = transaction.payload.params[0]
+        let {shardToAcceptAssets,epochFullID,poolToUnstakeFrom,amount,units} = transaction.payload.params[0]
 
         let poolStorage
 
@@ -267,60 +273,65 @@ export let CONTRACT = {
 
                 let threadById = threadContext === 'APPROVEMENT_THREAD' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
-                if(poolStorage.stakers[transaction.creator][units] >= amount){
+                let realEpochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
 
-                    poolStorage.stakers[transaction.creator][units] -= amount
+                if(realEpochFullID === epochFullID){
 
-                    poolStorage.totalPower -= amount
+                    if(poolStorage.stakers[transaction.creator][units] >= amount){
 
-                    if(poolStorage.stakers[transaction.creator].kly === 0 && poolStorage.stakers[transaction.creator].uno === 0){
-
-                        delete poolStorage.stakers[transaction.creator] // just to make pool storage more clear
-
-                    }
-
-                    if(threadContext === 'VERIFICATION_THREAD'){
-
-                        // Pay back to staker
+                        poolStorage.stakers[transaction.creator][units] -= amount
     
-                        let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
+                        poolStorage.totalPower -= amount
     
-                        if(unstakerAccount){
+                        if(poolStorage.stakers[transaction.creator].kly === 0 && poolStorage.stakers[transaction.creator].uno === 0){
     
-                            if(units === 'kly') unstakerAccount.balance += amount
-    
-                            else if(units === 'uno') unstakerAccount.uno += amount
+                            delete poolStorage.stakers[transaction.creator] // just to make pool storage more clear
     
                         }
     
-                    }    
-
-                }
-
-                // Check if pool has not enough power to be at pools registry
-
-                if(poolStorage.totalPower < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolToUnstakeFrom)){
-
-                    // Remove from registry
-
-                    let indexOfThisPool = threadById.EPOCH.poolsRegistry.indexOf(poolToUnstakeFrom)
-
-                    threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
-
-                    // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
-                    
-                    if(threadContext === 'VERIFICATION_THREAD'){
-
-                        delete WORKING_THREADS.VERIFICATION_THREAD[poolToUnstakeFrom]
+                        if(threadContext === 'VERIFICATION_THREAD'){
+    
+                            // Pay back to staker
+        
+                            let unstakerAccount = await getFromState(shardToAcceptAssets+':'+transaction.creator)
+        
+                            if(unstakerAccount){
+        
+                                if(units === 'kly') unstakerAccount.balance += amount
+        
+                                else if(units === 'uno') unstakerAccount.uno += amount
+        
+                            }
+        
+                        }    
+    
+                    }
+    
+                    // Check if pool has not enough power to be at pools registry
+    
+                    if(poolStorage.totalPower < threadById.NETWORK_PARAMETERS.VALIDATOR_STAKE && threadById.EPOCH.poolsRegistry.includes(poolToUnstakeFrom)){
+    
+                        // Remove from registry
+    
+                        let indexOfThisPool = threadById.EPOCH.poolsRegistry.indexOf(poolToUnstakeFrom)
+    
+                        threadById.EPOCH.poolsRegistry.splice(indexOfThisPool, 1)
+    
+                        // ... and in case tx is runned in VERIFICATION_THREAD context - remove pool from VERIFICATION_STATS_PER_POOL
                         
+                        if(threadContext === 'VERIFICATION_THREAD'){
+    
+                            delete WORKING_THREADS.VERIFICATION_THREAD[poolToUnstakeFrom]
+                            
+                        }
+    
                     }
 
-                }
+                } else return {isOk:false,reason:'Replay attack detection. Attempt to unstake in different epoch'}
 
             } else return {isOk:false,reason:`Impossbile to unstake because tx.creator not a staker`}
 
         } else return {isOk:false,reason:'No such pool'}
-
 
     },
 
