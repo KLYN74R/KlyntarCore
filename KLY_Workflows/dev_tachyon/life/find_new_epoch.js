@@ -33,6 +33,20 @@ export let executeEpochEdgeTransaction = async(threadID,tx,atomicBatch) => {
 
 
        /*
+
+        Reminder: full tx structure is
+
+        {
+            
+            v,
+            fee:<zero for epoch edge txs>,
+            creator:tx.creator,
+            type:<always WVM_CALL>,
+            nonce:<any, doesn't matter for epoch edge txs>,
+            payload,
+            sig
+
+        }
     
         tx.payload is
 
