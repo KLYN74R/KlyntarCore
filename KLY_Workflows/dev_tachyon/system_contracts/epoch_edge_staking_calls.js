@@ -133,23 +133,24 @@ export let CONTRACT = {
     transaction.payload.params[0] is:
 
     {
-        poolPubKey:<Format is Ed25519_pubkey>
+        poolPubKey:<Format is Ed25519_pubkey>,
+        randomChallenge,
         amount:<amount in KLY or UNO> | NOTE:must be int - not float
         units:<KLY|UNO>
         quorumAgreements:{
 
-            quorumMemberPubKey1: Signature(`stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`),
+            quorumMemberPubKey1: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`),
             ...
-            quorumMemberPubKeyN: Signature(`stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`)
+            quorumMemberPubKeyN: Signature(`stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`)
 
         }
     }
     
     */
     
-    stake:async(threadContext,transaction) => {
+    stake:async(threadContext,transaction,atomicBatch) => {
 
-        let {poolPubKey,amount,units,quorumAgreements} = transaction.payload.params[0]
+        let {poolPubKey,randomChallenge,amount,units,quorumAgreements} = transaction.payload.params[0]
 
         let poolStorage
 
@@ -165,17 +166,19 @@ export let CONTRACT = {
 
         }
 
+        let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
+
+        let epochFullID = threadById.EPOCH.hash+'#'+threadById.EPOCH.hash
+
         // Verify the majority's proof
 
-        let dataThatShouldBeSignedByQuorum = `stake:${poolPubKey}:${transaction.creator}:${transaction.nonce}:${amount}:${units}`
+        let dataThatShouldBeSignedByQuorum = `stake:${epochFullID}:${poolPubKey}:${transaction.creator}:${randomChallenge}:${amount}:${units}`
 
         let majorityProofIsOk = verifyQuorumMajoritySolution(dataThatShouldBeSignedByQuorum,quorumAgreements)
 
         if(majorityProofIsOk){
 
             if(poolStorage){
-
-                let threadById = threadContext === 'AT' ? WORKING_THREADS.APPROVEMENT_THREAD : WORKING_THREADS.VERIFICATION_THREAD
 
                 let amountIsBiggerThanMinimalStake = amount >= threadById.NETWORK_PARAMETERS.MINIMAL_STAKE_PER_ENTITY
  
@@ -210,22 +213,16 @@ export let CONTRACT = {
 
                     }
 
-                } else {
+                    // Finally, add the appropriate signal to AT storage that this staking ticket was spent
+                    // Need it to prevent replay attacks when you burn asset once, but try to stake twice and more
+                    
+                    atomicBatch.put(randomChallenge,true)
 
-                    // TODO: return funds
+                    return {isOk:true}
 
-                    return {isOk:false,reason:'Overview failed'}
-    
-                }
+                } else return {isOk:false,reason:'Overview failed'}
 
-
-            } else {
-
-                // TODO: return funds
-
-                return {isOk:false,reason:'No such pool'}
-
-            }
+            } else return {isOk:false,reason:'No such pool'}
             
         } else return {isOk:false,reason:'Majority proof verification failed'}
 
