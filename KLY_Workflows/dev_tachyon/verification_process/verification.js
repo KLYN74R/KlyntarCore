@@ -10,6 +10,8 @@ import {getAllKnownPeers, isMyCoreVersionOld, epochStillFresh} from '../utils.js
 
 import {getFromState} from '../common_functions/state_interactions.js'
 
+import {executeEpochEdgeTransaction} from '../life/find_new_epoch.js'
+
 import {KLY_EVM} from '../../../KLY_VirtualMachines/kly_evm/vm.js'
 
 import {vtStatsLog} from '../common_functions/logging.js'
@@ -494,7 +496,7 @@ let setUpNewEpochForVerificationThread = async vtEpochHandler => {
 
         for(let epochEdgeTx of epochEdgeTransactions){
 
-            await EPOCH_EDGE_OPERATIONS_VERIFIERS[epochEdgeTx.type](epochEdgeTx.payload) // pass isFromRoute = undefined to make changes to state
+            await executeEpochEdgeTransaction('VERIFICATION_THREAD',epochEdgeTx).catch(()=>{})
     
         }
     

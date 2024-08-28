@@ -404,11 +404,6 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
             if(!cycleWasBreak){
 
-                // Store the epoch edge transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
-                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${oldEpochFullID}`,epochEdgeTransactions).catch(()=>false)
-
-
                 // Store the legacy data about this epoch that we'll need in future - epochFullID,quorum,majority
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`LEGACY_DATA:${atEpochHandler.id}`,{
 
@@ -447,6 +442,11 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 let epochEdgeTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(reduceUnoContractCalls).concat(allTheRestContractCalls)
+
+
+                // Store the epoch edge transactions locally because we'll need it later(to change the epoch on VT - Verification Thread)
+                // So, no sense to grab it twice(on AT and later on VT). On VT we just get it from DB and execute these transactions(already in priority order)
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`EPOCH_EDGE_TXS:${oldEpochFullID}`,epochEdgeTransactions).catch(()=>false)
 
 
                 for(let operation of epochEdgeTransactionsOrderByPriority){
