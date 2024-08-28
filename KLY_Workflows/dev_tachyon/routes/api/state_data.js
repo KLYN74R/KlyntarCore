@@ -103,3 +103,29 @@ FASTIFY_SERVER.get('/pool_stats/:poolID',async(request,response)=>{
     }else response.send({err:'Trigger is off'})
 
 })
+
+
+
+
+FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
+
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
+
+        let shardID = request.params.shardID
+
+        let accountID = request.params.accountID
+
+        let data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
+
+
+        response
+
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.FROM_STATE)
+        
+            .send(data)
+    
+    }else response.send({err:'Trigger is off'})
+
+})
