@@ -110,11 +110,13 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
             try{
 
-                isOk = blake3Hash(tx.payload.pubKey) === tx.creator && globalThis.verifyDilithiumSignature(signedData,tx.payload.pubKey,tx.sig)
-            
-            }catch{isOk = false}
+                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
-            return isOk === 'true'
+                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyDilithiumSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
+            
+            }catch{ isOk = false }
+
+            return isOk
             
         }
         
@@ -124,11 +126,13 @@ export let verifyTxSignatureAndVersion = async(threadID,tx,senderStorageObject,o
 
             try{
 
-                isOk = blake3Hash(tx.payload.pubKey) === tx.creator && globalThis.verifyBlissSignature(signedData,tx.payload.pubKey,tx.sig)
-            
-            }catch{ isOk = false}
+                let appropriatePqcUserAccount = await getUserAccountFromState(originShard+':'+tx.creator)
 
-            return isOk === 'true'
+                isOk = blake3Hash(appropriatePqcUserAccount.pqcPub) === tx.creator && globalThis.verifyBlissSignature(signedData,appropriatePqcUserAccount.pqcPub,tx.sig)
+            
+            }catch{ isOk = false }
+
+            return isOk
 
         }
         
