@@ -37,7 +37,7 @@ FASTIFY_SERVER.get('/infrastructure_info',(_request,response)=>{
         .header('Access-Control-Allow-Origin','*')
         .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.MY_KLY_INFRASTRUCTURE)
 
-        .send(JSON.stringify(CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE))
+        .send(CONFIGURATION.NODE_LEVEL.MY_KLY_INFRASTRUCTURE)
 
 
 })

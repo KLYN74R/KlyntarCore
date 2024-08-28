@@ -85,13 +85,15 @@ export let CONTRACT = {
 
                 overStake,
 
+                totalPower:0,
+
+                shard,
+
+                stakers:{}, // Pubkey => {kly,uno,reward}
+
                 poolURL,
 
-                wssPoolURL,
-
-                totalPower:0,
-                
-                stakers:{} // Pubkey => {kly,uno,reward}
+                wssPoolURL
 
             }
 

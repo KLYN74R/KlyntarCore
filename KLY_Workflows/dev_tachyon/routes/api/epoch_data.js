@@ -89,11 +89,11 @@ FASTIFY_SERVER.get('/epoch_by_index/:index',async(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.GET_EPOCH_BY_INDEX}`)
             
         
-        // Get epoch handle from DB
+        // Get epoch handler from DB
 
-        let epochHandle = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${request.params.index}`).catch(()=>null)
+        let epochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${request.params.index}`).catch(()=>null)
 
-        response.send(epochHandle)
+        response.send(epochHandler)
 
 
     }else response.send({err:'Route is off'})
