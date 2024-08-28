@@ -1312,7 +1312,6 @@ export let startVerificationThread=async()=>{
 
         let tunnelHandler = GLOBAL_CACHES.STUFF_CACHE.get('TUNNEL:'+poolToVerifyRightNow) // {url,hasUntilHeight,connection,cache(blockID=>block)}
 
-
         if(tunnelHandler){
 
             let biggestHeightInCache = tunnelHandler.hasUntilHeight

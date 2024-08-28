@@ -1,6 +1,6 @@
 // 7 main threads - main core logic
 
-import {buildTemporarySequenceForVerificationThread} from './life/temp_vt_sequence_builder.js'
+import {findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards} from './life/temp_vt_sequence_builder.js'
 
 import {shareBlocksAndGetFinalizationProofs} from './life/share_block_and_grab_proofs.js'
 
@@ -52,7 +52,7 @@ export let runBlockchain=async()=>{
     shardsLeadersMonitoring()
 
     //✅5.Function to build the temporary sequence of blocks to verify them
-    buildTemporarySequenceForVerificationThread()
+    findTemporaryInfoAboutFinalBlocksByPreviousPoolsOnShards()
 
     //✅6.Start to generate blocks
     blocksGenerationProcess()

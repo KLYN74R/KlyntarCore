@@ -111,7 +111,15 @@ export let shardsLeadersMonitoring=async()=>{
 
         // Get the current handler and check the timeframe
 
-        let leaderSequenceHandler = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID) || {currentLeader:0}
+        if(!currentEpochMetadata.SHARDS_LEADERS_HANDLERS.has(shardID)){
+
+            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(shardID,{currentLeader:0})
+
+            currentEpochMetadata.SHARDS_LEADERS_HANDLERS.set(epochHandler.leadersSequence[shardID][0],shardID)
+
+        }
+
+        let leaderSequenceHandler = currentEpochMetadata.SHARDS_LEADERS_HANDLERS.get(shardID)
         
         let indexOfCurrentLeaderInSequence = leaderSequenceHandler.currentLeader
         

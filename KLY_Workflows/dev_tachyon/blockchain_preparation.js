@@ -136,7 +136,7 @@ export let BLOCKCHAIN_DATABASES = {
 
     APPROVEMENT_THREAD_METADATA: resolveDatabase('APPROVEMENT_THREAD_METADATA'), // metadata for APPROVEMENT_THREAD
 
-    EXPLORER_DATA: resolveDatabase('APPROVEMENT_THREAD_METADATA') // just a database for misc useful data for explorers & API. Just to store useful artifacts separately from state
+    EXPLORER_DATA: resolveDatabase('EXPLORER_DATA') // just a database for misc useful data for explorers & API. Just to store useful artifacts separately from state
 
 }
 
@@ -305,20 +305,20 @@ let setGenesisToState=async()=>{
 
             isNewShard = true
 
-            numberOfShards++
-
             shardsRegistry.push(`shard_${numberOfShards}`)
+
+            numberOfShards++
 
         }
 
         
         // Store all info about pool(pointer+metadata+storage) to state
 
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)_POINTER',bindToShard)
+        verificationThreadAtomicBatch.put(poolPubKey+'(POOL)_POINTER',bindToShard)
 
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)',contractMetadataTemplate)
+        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)',contractMetadataTemplate)
     
-        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+'(POOL)_STORAGE_POOL',poolContractStorage)
+        verificationThreadAtomicBatch.put(poolContractStorage.shard+':'+poolPubKey+'(POOL)_STORAGE_POOL',poolContractStorage)
 
         // Do the same for approvement thread
 
