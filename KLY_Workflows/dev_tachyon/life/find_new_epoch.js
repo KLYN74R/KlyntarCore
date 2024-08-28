@@ -424,11 +424,32 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                 // ... and delete the legacy data for previos epoch(don't need it anymore for approvements)
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.del(`LEGACY_DATA:${atEpochHandler.id-1}`).catch(()=>{})
 
-                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+                let daoVotingContractCalls = [], slashingContractCalls = [], reduceUnoContractCalls = [], allTheRestContractCalls = []
 
                 let atomicBatch = BLOCKCHAIN_DATABASES.APPROVEMENT_THREAD_METADATA.batch()
 
                 for(let operation of epochEdgeTransactions){
+
+                    let contractID = operation?.payload?.contractID
+
+                    let methodID = operation?.payload?.method
+
+                    if(contractID === 'system/dao_voting') daoVotingContractCalls.push(operation)
+
+                    else if (contractID === 'system/epoch_edge_staking_calls' && methodID === 'slashing') slashingContractCalls.push(operation)
+
+                    else if (contractID === 'system/epoch_edge_staking_calls' && methodID === 'reduceAmountOfUno') reduceUnoContractCalls.push(operation)
+
+                    else allTheRestContractCalls.push(operation)
+
+                }
+
+
+                let epochEdgeTransactionsOrderByPriority = daoVotingContractCalls.concat(slashingContractCalls).concat(reduceUnoContractCalls).concat(allTheRestContractCalls)
+
+
+                for(let operation of epochEdgeTransactionsOrderByPriority){
 
                     /*
                     
@@ -449,10 +470,8 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
                         }
                     
                     */
-
-                    // TODO: Add add order priority( 1. DAO voting calls => 2. Slashing => 3. Reduce UNO => 4. All the rest)
         
-                    await executeEpochEdgeTransaction('APPROVEMENT_THREAD',operation,atomicBatch)
+                    await executeEpochEdgeTransaction('APPROVEMENT_THREAD',operation).catch(()=>{})
                 
                 }
                 
@@ -478,30 +497,35 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
 
 
                 // After execution - assign pools(validators) to shards
+
                 await setLeadersSequenceForShards(atEpochHandler,nextEpochHash)
 
+                
                 await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_LEADERS_SEQUENCES:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.leadersSequence).catch(()=>{})
 
 
                 customLog(`\u001b[38;5;154mEpoch edge transactions were executed for epoch \u001b[38;5;93m${oldEpochFullID} (AT)\u001b[0m`,logColors.GREEN)
 
+
                 //_______________________ Update the values for new epoch _______________________
 
-                fullCopyOfApprovementThread.EPOCH.startTimestamp = atEpochHandler.startTimestamp + fullCopyOfApprovementThread.NETWORK_PARAMETERS.EPOCH_TIME
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.startTimestamp = atEpochHandler.startTimestamp + WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS.EPOCH_TIME
 
-                fullCopyOfApprovementThread.EPOCH.id = nextEpochId
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.id = nextEpochId
 
-                fullCopyOfApprovementThread.EPOCH.hash = nextEpochHash
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.hash = nextEpochHash
 
-                fullCopyOfApprovementThread.EPOCH.quorum = getCurrentEpochQuorum(fullCopyOfApprovementThread.EPOCH.poolsRegistry,fullCopyOfApprovementThread.NETWORK_PARAMETERS,nextEpochHash)
+                WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum = getCurrentEpochQuorum(WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.poolsRegistry,WORKING_THREADS.APPROVEMENT_THREAD.NETWORK_PARAMETERS,nextEpochHash)
 
-                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,fullCopyOfApprovementThread.EPOCH.quorum).catch(()=>{})
+                await BLOCKCHAIN_DATABASES.EPOCH_DATA.put(`NEXT_EPOCH_QUORUM:${oldEpochFullID}`,WORKING_THREADS.APPROVEMENT_THREAD.EPOCH.quorum).catch(()=>{})
                 
                 // Create new temporary db for the next epoch
+
                 let nextTempDB = level(process.env.CHAINDATA_PATH+`/${nextEpochFullID}`,{valueEncoding:'json'})
 
                 // Commit changes
-                atomicBatch.put('AT',fullCopyOfApprovementThread)
+
+                atomicBatch.put('AT',WORKING_THREADS.APPROVEMENT_THREAD)
 
                 await atomicBatch.write()
 
@@ -525,11 +549,7 @@ export let findAggregatedEpochFinalizationProofs=async()=>{
             
                 }
 
-
-                WORKING_THREADS.APPROVEMENT_THREAD = fullCopyOfApprovementThread
-
                 customLog(`Epoch on approvement thread was updated => \x1b[34;1m${nextEpochHash}#${nextEpochId}`,logColors.GREEN)
-
 
                 //_______________________Check the version required for the next checkpoint________________________
 

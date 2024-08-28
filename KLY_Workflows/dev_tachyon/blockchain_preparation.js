@@ -286,7 +286,7 @@ let setGenesisToState=async()=>{
         let contractMetadataTemplate = {
 
             type:'contract',
-            lang:'system/staking',
+            lang:'N/A',
             balance:0,
             uno:0,
             gas:0,

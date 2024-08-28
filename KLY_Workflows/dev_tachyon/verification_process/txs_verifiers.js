@@ -332,14 +332,6 @@ export let VERIFIERS = {
             constructorParams:{}
         }
 
-    If it's one of system contracts the structure will be like this
-
-    {
-        bytecode:'',(empty)
-        lang:'system/<name of contract>'
-        constructorParams:{}
-    }
-
     In constructorParams you can pre-set the initial values to storage. E.g. some bool flags, initial balances of tokens, contract multisig authority etc.
 
         constructorParams:{

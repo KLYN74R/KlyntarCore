@@ -21,7 +21,7 @@ export let gasUsedByMethod=methodID=>{
 
     else if(methodID==='slashing') return 10000
 
-    else if(methodID==='reduceNumberOfUno') return 10000
+    else if(methodID==='reduceAmountOfUno') return 10000
 
 }
 
@@ -70,7 +70,7 @@ export let CONTRACT = {
             let contractMetadataTemplate = {
 
                 type:'contract',
-                lang:'system/staking',
+                lang:'N/A',
                 balance:0,
                 uno:0,
                 gas:0,
@@ -379,7 +379,7 @@ export let CONTRACT = {
 
     },
 
-    reduceNumberOfUno:async(threadContext,transaction) => {
+    reduceAmountOfUno:async(threadContext,transaction) => {
 
         // Need quorum majority agreements here
 
