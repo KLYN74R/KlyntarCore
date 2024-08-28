@@ -268,8 +268,9 @@ export let VERIFIERS = {
         
         tx = await TXS_FILTERS.TX(tx,originShard) // pass through the filter
 
+        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
 
             if(!recipientAccount){
     
@@ -366,8 +367,9 @@ export let VERIFIERS = {
 
         tx = await TXS_FILTERS.WVM_CONTRACT_DEPLOY(tx,originShard) // pass through the filter
 
+        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
@@ -439,8 +441,9 @@ export let VERIFIERS = {
 
         tx = await TXS_FILTERS.WVM_CALL(tx,originShard) // pass through the filter
 
+        if(senderAccount.nonce > tx.nonce) return {isOk:false,reason:'Replay'}
 
-        if(tx && tx.fee >= 0 && senderAccount.type==='eoa' && senderAccount.nonce < tx.nonce){
+        if(tx && tx.fee >= 0 && senderAccount.type==='eoa'){
 
             let goingToSpend = calculateAmountToSpendAndGasToBurn(tx)
 
