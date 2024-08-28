@@ -91,7 +91,13 @@ FASTIFY_SERVER.get('/epoch_by_index/:index',async(request,response)=>{
         
         // Get epoch handler from DB
 
-        let epochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${request.params.index}`).catch(()=>null)
+        let epochHandler
+
+        if(request.params.index == WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
+
+            epochHandler = WORKING_THREADS.APPROVEMENT_THREAD.EPOCH
+
+        } else epochHandler = await BLOCKCHAIN_DATABASES.EPOCH_DATA.get(`EPOCH_HANDLER:${request.params.index}`).catch(()=>null)
 
         response.send(epochHandler)
 
