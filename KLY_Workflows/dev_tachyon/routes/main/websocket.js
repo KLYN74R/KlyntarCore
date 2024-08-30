@@ -603,6 +603,14 @@ let returnBlocksRange = async(data,connection)=>{
 
 
 
+let returnLeaderRotationProofForSetOfLeaders = async(data,connection)=>{
+
+
+}
+
+
+
+
 let WebSocketServer = WS.server
 
 let server = http.createServer({},(_,response)=>{
@@ -664,11 +672,15 @@ klyntarWebsocketServer.on('request',request=>{
 
                 returnBlocksRange(data,connection)
 
+            }else if(data.route==='get_leader_rotation_proof'){
+
+                returnLeaderRotationProofForSetOfLeaders(data,connection)
+
             }
 
             else{
 
-                connection.close(1337,'No available route. You can use <get_commitment_for_block_range> | <get_finalization_proof_for_range>')
+                connection.close(1337,'No available route')
 
             }
 

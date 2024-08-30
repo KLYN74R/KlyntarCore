@@ -38,7 +38,7 @@ export let checkIfItsTimeToStartNewEpoch=async()=>{
 
     if(iAmInTheQuorum && !epochStillFresh(WORKING_THREADS.APPROVEMENT_THREAD)){
         
-        // Stop to generate commitments/finalization proofs
+        // Stop to generate finalization proofs
         currentEpochMetadata.SYNCHRONIZER.set('TIME_TO_NEW_EPOCH',true)
 
         let canGenerateEpochFinalizationProof = true

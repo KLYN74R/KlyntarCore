@@ -240,7 +240,7 @@ FASTIFY_SERVER.post('/epoch_proposition',async(request,response)=>{
 
                 let pubKeyOfCurrentLeaderOnShard = atEpochHandler.leadersSequence[shardID][localIndexOfLeader]
 
-                // Structure is {index,hash,aggregatedCommitments:{aggregatedPub,aggregatedSignature,afkVoters}}
+                // Structure is {index,hash,afp}
 
                 let epochManagerForLeader = currentEpochMetadata.FINALIZATION_STATS.get(pubKeyOfCurrentLeaderOnShard) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
 

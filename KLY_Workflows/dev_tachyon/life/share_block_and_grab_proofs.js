@@ -205,7 +205,7 @@ let runFinaliationProofsGrabbing = async (epochHandler,proofsGrabber) => {
     
             for(let pubKeyOfQuorumMember of epochHandler.quorum){
     
-                // No sense to get the commitment if we already have
+                // No sense to get finaliation proof again if we already have
     
                 if(finalizationProofsMapping.has(pubKeyOfQuorumMember)) continue
     
