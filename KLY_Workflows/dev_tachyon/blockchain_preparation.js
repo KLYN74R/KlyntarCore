@@ -389,7 +389,7 @@ let setGenesisToState=async()=>{
 
             if(BLOCKCHAIN_GENESIS.STATE[addressOrContractID].type==='contract'){
 
-                let {lang,balance,uno,gas,storages,bytecode,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
+                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
 
                 let contractMeta = {
 
@@ -399,6 +399,7 @@ let setGenesisToState=async()=>{
                     uno,
                     gas,
                     storages,
+                    storageAbstractionLastPayment,
                     bytecode
                 
                 } 

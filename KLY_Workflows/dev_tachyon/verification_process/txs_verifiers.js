@@ -1,9 +1,9 @@
 /* eslint-disable no-unused-vars */
+import {BLOCKCHAIN_DATABASES, GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
+
 import {getUserAccountFromState, getFromState} from '../common_functions/state_interactions.js'
 
 import {verifyQuorumMajoritySolution} from '../../../KLY_VirtualMachines/common_modules.js'
-
-import {GLOBAL_CACHES, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {blake3Hash, verifyEd25519} from '../../../KLY_Utils/utils.js'
 
@@ -55,38 +55,31 @@ let getMethodsToInject = _imports => {
 
 
 
-// let trackTransactionsList=async(originShard,txid,...touchedAccounts)=>{
+let trackTransactionsList=async(originShard,txid,txType,sigType,fee,touchedAccounts)=>{
 
-//     // Function to allow to fill the list of transaction per address
+    // Function to allow to fill the list of transaction per address
 
-//     let dataToPush = {isOk: true, txid}
+    let dataToPush = {txid,txType,sigType,fee}
 
-//     for(let account of touchedAccounts){
+    for(let account of touchedAccounts){
 
-//         let accStore = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(_=>[])
-        
-//         accStore.push(dataToPush)
+        let txsListForAccount = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${account}`).catch(()=>[])
 
-//         await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,accStore)        
+        txsListForAccount.push(dataToPush)
 
-//     }
+        // Limit only for last 200 txs
 
+        if (txsListForAccount.length > 200) {
 
-//     let txsTrackerForSender = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.creator}`)
+            txsListForAccount = txsListForAccount.slice(-200)
 
-//     let txsTrackerForRecepient = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:${originShard}:${tx.payload.to}`)
+        }
 
-//     txsTrackerForSender.push(dataToPush)
+        await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${account}`,txsListForAccount)        
 
+    }
 
-
-//     txsTrackerForRecepient.push(dataToPush)
-
-//     await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.creator}`,txsTrackerForSender)
-
-//     await BLOCKCHAIN_DATABASES.EXPLORER_DATA.put(`TXS_TRACKER:${originShard}:${tx.payload.to}`,txsTrackerForRecepient)
-
-// }
+}
 
 
 
@@ -314,6 +307,8 @@ export let VERIFIERS = {
                     senderAccount.nonce = tx.nonce
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.payload.sigType,tx.fee,[tx.creator,tx.payload.to])
         
                     return {isOk:true}        
 
@@ -404,6 +399,8 @@ export let VERIFIERS = {
                     senderAccount.nonce = tx.nonce
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
+
+                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.payload.sigType,tx.fee,[tx.creator,contractID])
 
                     return {isOk:true}
 
@@ -507,6 +504,8 @@ export let VERIFIERS = {
                     
                     rewardsAndSuccessfulTxsCollector.fees += tx.fee
 
+                    trackTransactionsList(originShard,blake3Hash(tx.sig),tx.type,tx.payload.sigType,tx.fee,[tx.creator,tx.payload.contractID])
+
                     return execResultWithStatusAndReason
 
                 } else return {isOk:false,reason:`Not enough native currency or gas to execute transaction`}
@@ -558,7 +557,7 @@ export let VERIFIERS = {
 
                 let {tx,receipt} = possibleReceipt
 
-                atomicBatch.put('TX:'+tx.hash,{tx,receipt})
+                atomicBatch.put('TX:'+tx.hash,{tx,receipt,originShard})
 
                 return {isOk:true,reason:'EVM'}
 

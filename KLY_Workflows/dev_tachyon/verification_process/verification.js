@@ -1717,7 +1717,7 @@ let verifyBlock = async(block,shardContext) => {
 
         atomicBatch.put(`${shardContext}:EVM_LOGS:${blockToStore.number}`,GLOBAL_CACHES.STATE_CACHE.get('EVM_LOGS_MAP'))
 
-        atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{kly_block:currentBlockID})
+        atomicBatch.put(`${shardContext}:EVM_BLOCK_RECEIPT:${blockToStore.number}`,{klyBlock:currentBlockID})
         
         atomicBatch.put(`BLOCK_RECEIPT:${currentBlockID}`,{
 

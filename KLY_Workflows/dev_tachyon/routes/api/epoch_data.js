@@ -141,3 +141,54 @@ FASTIFY_SERVER.get('/total_blocks_and_txs_stats_per_epoch/:index',async(request,
     }else response.send({err:'Route is off'})
 
 })
+
+
+
+
+FASTIFY_SERVER.get('/historical_stats_per_epoch/:start_index/:limit',async(request,response)=>{
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.VT_STATS_PER_EPOCH){
+
+        response
+
+            .header('Access-Control-Allow-Origin','*')    
+            .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.VT_STATS_PER_EPOCH}`)
+
+
+        let startFromEpoch
+
+        if(request.params.start_index === 'latest') startFromEpoch = WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id
+
+        else startFromEpoch = +(request.params.start_index)
+
+
+        let limit = +(request.params.limit) // 20 recommended
+
+        let responseObject = {} // epochIndex => {totalBlocksNumber, totalTxsNumber, successfulTxsNumber}
+
+
+        for(let i = 0 ; i < limit ; i++){
+
+            responseObject[startFromEpoch] = await BLOCKCHAIN_DATABASES.EPOCH_DATA
+
+                                                .get(`VT_STATS:${startFromEpoch}`)
+
+                                                .catch(()=>({totalBlocksNumber:'N/A', totalTxsNumber:'N/A', successfulTxsNumber:'N/A'}))
+
+            if(startFromEpoch === WORKING_THREADS.VERIFICATION_THREAD.EPOCH.id){
+
+                responseObject[startFromEpoch] = WORKING_THREADS.VERIFICATION_THREAD.STATS_PER_EPOCH
+
+            }
+
+            if(startFromEpoch === 0) break
+
+            startFromEpoch--
+
+        }
+
+        response.send(responseObject)
+
+    }else response.send({err:'Route is off'})
+
+})

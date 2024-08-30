@@ -1,8 +1,12 @@
 import {getFromState} from '../../common_functions/state_interactions.js'
 
+import {KLY_EVM} from '../../../../KLY_VirtualMachines/kly_evm/vm.js'
+
 import {CONFIGURATION, FASTIFY_SERVER} from '../../../../klyn74r.js'
 
 import {BLOCKCHAIN_DATABASES} from '../../blockchain_preparation.js'
+
+import Web3 from 'web3'
 
 
 
@@ -64,14 +68,61 @@ FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
             .header('Cache-Control',`max-age=${CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.TX_RECEIPT}`)
             
 
-        BLOCKCHAIN_DATABASES.STATE.get('TX:'+request.params.txid).then(
-            
-            txReceipt => response.send(txReceipt)
-            
-        ).catch(()=>response.send({err:'No tx with such id'}))
+        BLOCKCHAIN_DATABASES.STATE.get('TX:'+request.params.txID).then(
+
+            async txReceipt => {
+
+                if(request.params.txID.startsWith('0x')){
+
+                    let blockIdWithThisTx = await BLOCKCHAIN_DATABASES.STATE.get(`${txReceipt.originShard}:EVM_BLOCK_RECEIPT:${txReceipt.receipt.blockNumber}`).then(pointer=>pointer.klyBlock).catch(err=>err)
+
+                    let formatCompatibleReceipt = {
+
+                        blockID: blockIdWithThisTx,
+
+                        order:0,
+
+                        isOk: txReceipt.receipt.status === 1
+
+                    }
+
+                    response.send(formatCompatibleReceipt)
+
+                } else response.send(txReceipt)
+
+            }
+
+        ).catch(err=>response.send({err}))
 
 
     }else response.send({err:'Route is off'})
+
+})
+
+
+
+
+FASTIFY_SERVER.get('/txs_list/:shardID/:accountID',async(request,response)=>{
+
+
+    if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.FROM_STATE){
+
+        let shardID = request.params.shardID
+
+        let accountID = request.params.accountID
+
+        let txsList = await BLOCKCHAIN_DATABASES.EXPLORER_DATA.get(`TXS_TRACKER:`+shardID+':'+accountID).catch(()=>({err:'Not found'}))
+
+
+        response
+
+            .header('Access-Control-Allow-Origin','*')
+            .header('Cache-Control','max-age='+CONFIGURATION.NODE_LEVEL.ROUTE_TTL.API.FROM_STATE)
+
+            .send(txsList)
+
+
+    } else response.send({err:'Trigger is off'})
 
 })
 
@@ -117,6 +168,30 @@ FASTIFY_SERVER.get('/account/:shardID/:accountID',async(request,response)=>{
         let accountID = request.params.accountID
 
         let data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
+
+        if(accountID.startsWith('0x') && accountID.length === 42){
+
+            let account = await KLY_EVM.getAccount(accountID).catch(()=>null)
+
+            if(account){
+
+                let balanceInKlyUnits = Number(Web3.utils.fromWei(account.balance.toString(),'ether'))
+
+                let nonce = Number(account.nonce)
+
+                data = {
+
+                    type:"eoa",
+                    balance:balanceInKlyUnits,
+                    uno:0,
+                    nonce,
+                    gas:0
+
+                }
+
+            }else data = {}
+
+        } else data = await BLOCKCHAIN_DATABASES.STATE.get(shardID+':'+accountID).catch(()=>({err:'Not found'}))
 
 
         response
