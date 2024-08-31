@@ -4,6 +4,8 @@ import {getPseudoRandomSubsetFromQuorumByTicketId, getQuorumMajority} from '../c
 
 import {getFromApprovementThreadState, useTemporaryDb} from '../common_functions/approvement_thread_related.js'
 
+import {verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+
 import {logColors,verifyEd25519,customLog} from '../../../KLY_Utils/utils.js'
 
 import {CONFIGURATION} from '../../../klyn74r.js'
@@ -11,6 +13,8 @@ import {CONFIGURATION} from '../../../klyn74r.js'
 import Block from '../structures/block.js'
 
 import WS from 'websocket'
+
+
 
 
 
@@ -50,6 +54,134 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
                             let parsedData = JSON.parse(message.utf8Data)
 
                             let proofsGrabber = TEMP_CACHE.get('PROOFS_GRABBER')
+
+
+                            if(parsedData.route === 'get_leader_rotation_proof'){
+
+                                
+                            /*                                
+ 
+                                ___________________________ Now analyze the responses ___________________________
+
+                            [1] In case quroum member has the same or lower index in own FINALIZATION_STATS for this pool - we'll get the response like this:
+
+                            {
+                                type:'OK',
+                                sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
+                            }
+
+                            We should just verify this signature and add to local list for further aggregation
+                            And this quorum member update his own local version of FP to have FP with bigger index
+
+
+                            [2] In case quorum member has bigger index in FINALIZATION_STATS - it sends us 'UPDATE' message with the following format:
+
+                            {
+                
+                                type:'UPDATE',
+             
+                                skipData:{
+                                
+                                    index,
+                                    hash,
+                                    afp:{
+
+                                        prevBlockHash,      => must be the same as skipData.hash
+                                        blockID,            => must be skipData.index+1 === blockID
+                                        blockHash,
+                                        proofs:{
+
+                                            pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
+                                        ...
+
+                                        }
+
+                                    }
+
+                                }
+             
+                            }
+
+
+                                parsedData format is:
+
+                                {
+                                    route,voter,type,forPoolPubkey
+
+                                    skipData:{index,hash,afp} | sig:string
+                                }
+
+                                    
+                                    
+                            */
+
+                                let localMetadataForPotentialAlrp = TEMP_CACHE.get(`LRPS:${parsedData.forPoolPubkey}`) // format is {firstBlockHash,skipIndex,skipHash,proofs}
+
+
+                                if(localMetadataForPotentialAlrp){
+
+                                    let firstBlockHash = localMetadataForPotentialAlrp.firstBlockHash
+
+                                    let index = localMetadataForPotentialAlrp.skipIndex
+
+                                    let hash = localMetadataForPotentialAlrp.skipHash
+
+                                    let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${parsedData.forPoolPubkey}:${firstBlockHash}:${index}:${hash}:${epochFullID}`
+
+
+                                    if(parsedData.type === 'OK' && typeof parsedData.sig === 'string'){
+        
+                                        let signatureIsOk = await verifyEd25519(dataThatShouldBeSigned,parsedData.sig,parsedData.voter)
+                                
+                                        if(signatureIsOk){
+
+                                            localMetadataForPotentialAlrp.proofs[parsedData.voter] = parsedData.sig
+                                                                
+                                        }
+                                
+                                    }else if(parsedData.type === 'UPDATE' && typeof parsedData.skipData === 'object'){
+                                                                
+                                        let {index,hash,afp} = parsedData.skipData
+                                
+                                        let blockIdInAfp = (epochHandler.id+':'+parsedData.forPoolPubkey+':'+index)
+                                
+                                
+                                        if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)){
+                                
+                                            // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
+
+                                            let localFinalizationStatsForThisPool = currentEpochMetadata.FINALIZATION_STATS.get(parsedData.forPoolPubkey) || {index:-1,hash:'0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',afp:{}}
+                                 
+                                            if(localFinalizationStatsForThisPool.index < index){
+                                                 
+                                                let {prevBlockHash,blockID,blockHash,proofs} = afp
+                                                 
+                                
+                                                localFinalizationStatsForThisPool.index = index
+                                
+                                                localFinalizationStatsForThisPool.hash = hash
+                                
+                                                localFinalizationStatsForThisPool.afp = {prevBlockHash,blockID,blockHash,proofs}
+                                 
+                            
+                                                // Store the updated version of finalization stats
+                        
+                                                currentEpochMetadata.FINALIZATION_STATS.set(parsedData.forPoolPubkey,localFinalizationStatsForThisPool)                    
+                            
+                                                // If our local version had lower index - clear grabbed signatures to repeat grabbing process again, with bigger block height
+                                
+                                                localMetadataForPotentialAlrp.proofs = {}
+                                
+                                            }
+                                
+                                        }
+                                     
+                                    }
+
+                                }
+
+                            }
+
 
                             if(parsedData.finalizationProof && proofsGrabber.huntingForHash === parsedData.votedForHash && FINALIZATION_PROOFS.has(proofsGrabber.huntingForBlockID)){
 

@@ -758,7 +758,13 @@ let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationPro
         if(localFinalizationStats && localFinalizationStats.index > index){
 
             let responseData = {
+
+                route: 'get_leader_rotation_proof',
+
+                voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,
                 
+                forPoolPubkey: requestForLeaderRotationProof.poolPubKey,
+
                 type:'UPDATE',
 
                 skipData:localFinalizationStats // {index,hash,afp:{prevBlockHash,blockID,blockHash,proofs:{quorumMember0:signa,...,quorumMemberN:signaN}}}
@@ -858,6 +864,12 @@ let returnLeaderRotationProofForSetOfLeaders = async(requestForLeaderRotationPro
             if(firstBlockAfpIsOk){
 
                 let skipMessage = {
+
+                    route:'get_leader_rotation_proof',
+
+                    voter:CONFIGURATION.NODE_LEVEL.PUBLIC_KEY,
+
+                    forPoolPubkey: requestForLeaderRotationProof.poolPubKey,
                     
                     type:'OK',
 

@@ -33,6 +33,7 @@ export let useTemporaryDb = async(operationType,dbReference,keys,values) => {
         return value
 
     }
+    
     else if(operationType === 'put') await dbReference.put(keys,values)
 
     else if(operationType === 'atomicPut'){

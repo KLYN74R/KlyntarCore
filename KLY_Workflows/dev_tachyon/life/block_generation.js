@@ -1,10 +1,10 @@
-import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedEpochFinalizationProof, verifyAggregatedFinalizationProof} from '../common_functions/work_with_proofs.js'
+import {getVerifiedAggregatedFinalizationProofByBlockId, verifyAggregatedEpochFinalizationProof} from '../common_functions/work_with_proofs.js'
 
 import {BLOCKCHAIN_DATABASES, EPOCH_METADATA_MAPPING, NODE_METADATA, WORKING_THREADS} from '../blockchain_preparation.js'
 
 import {getQuorumMajority, getQuorumUrlsAndPubkeys} from '../common_functions/quorum_related.js'
 
-import {signEd25519, verifyEd25519} from '../../../KLY_Utils/utils.js'
+import {signEd25519} from '../../../KLY_Utils/utils.js'
 
 import {blockLog} from '../common_functions/logging.js'
 
@@ -120,6 +120,20 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
     }
 
+
+    // Try to return immediately
+    
+    let aggregatedLeaderRotationProofs = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`)
+
+    let quorumMajority = getQuorumMajority(epochHandler)
+
+    if(aggregatedLeaderRotationProofs && Object.keys(aggregatedLeaderRotationProofs.proofs).length >= quorumMajority){
+
+        return aggregatedLeaderRotationProofs
+
+    }
+
+
     // Prepare the template that we're going to send to quorum to get the ALRP
     // Send payload to => POST /leader_rotation_proof
 
@@ -144,6 +158,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
     // Set the hash of first block for pool
     // In case previous leader created zero blocks - set the <firstBlockHash> to "null-hash-value"('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
     // Otherwise, if at least one block was created & shared among quorum - take the hash value from AFP (.blockHash field(see AFP structure))
+    
     if(!afpForFirstBlock && localFinalizationStatsForThisPool.index === -1) firstBlockHash = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 
     else if(afpForFirstBlock) firstBlockHash = afpForFirstBlock.blockHash
@@ -155,173 +170,11 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
     if(firstBlockHash){
 
-        let responsePromises = []
+        // Create the cache to store LRPs for appropriate previous leader
 
-        let sendOptions = {
-     
-            method:'POST',
-    
-            body:JSON.stringify({
-    
-                poolPubKey:pubKeyOfOneOfPreviousLeader,
+        if(!currentEpochMetadata.TEMP_CACHE.has(`LRPS:${pubKeyOfOneOfPreviousLeader}`)){
 
-                hisIndexInLeadersSequence,
-    
-                shard:shardID,
-    
-                afpForFirstBlock,
-    
-                skipData:localFinalizationStatsForThisPool
-    
-            })
-    
-        }
-
-        let quorumMembers = await getQuorumUrlsAndPubkeys(true,epochHandler)
-
-
-        // Descriptor is {url,pubKey}
-        for(let descriptor of quorumMembers){
-
-            let responsePromise = fetch(descriptor.url+'/leader_rotation_proof',sendOptions).then(r=>r.json()).then(response=>{
-
-                response.pubKey = descriptor.pubKey
-       
-                return response
-       
-            }).catch(()=>false)
-       
-            responsePromises.push(responsePromise)            
-    
-        }
-
-        let results = (await Promise.all(responsePromises)).filter(Boolean)
-
-        /*
- 
-            ___________________________ Now analyze the responses ___________________________
-
-            [1] In case quroum member has the same or lower index in own FINALIZATION_STATS for this pool - we'll get the response like this:
-
-            {
-                type:'OK',
-                sig: ED25519_SIG('LEADER_ROTATION_PROOF:<poolPubKey>:<firstBlockHash>:<skipIndex>:<skipHash>:<epochFullID>')
-            }
-
-            We should just verify this signature and add to local list for further aggregation
-            And this quorum member update his own local version of FP to have FP with bigger index
-
-
-            [2] In case quorum member has bigger index in FINALIZATION_STATS - it sends us 'UPDATE' message with the following format:
-
-            {
-                
-                type:'UPDATE',
-             
-                skipData:{
-                 
-                    index,
-                    hash,
-                    afp:{
-
-                        prevBlockHash,      => must be the same as skipData.hash
-                        blockID,            => must be skipData.index+1 === blockID
-                        blockHash,
-                        proofs:{
-
-                            pubKey0:signa0,         => prevBlockHash+blockID+blockHash+AT.EPOCH.HASH+"#"+AT.EPOCH.id
-                            ...
-
-                        }
-
-                    }
-
-                }
-             
-            }
-
-
-            Again - we should verify the signature, update local version of FINALIZATION_STATS and repeat the grabbing procedure
-
-        */
-
-
-        let skipAgreementSignatures = {} // pubkey => signa
-
-        let totalNumberOfSignatures = 0
-            
-        let dataThatShouldBeSigned = `LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${localFinalizationStatsForThisPool.index}:${localFinalizationStatsForThisPool.hash}:${epochFullID}`
-        
-        let majority = getQuorumMajority(epochHandler)
-        
-
-        // Start the cycle over results
-
-        for(let result of results){
-
-            if(result.type === 'OK' && typeof result.sig === 'string'){
-        
-                let signatureIsOk = await verifyEd25519(dataThatShouldBeSigned,result.sig,result.pubKey)
-        
-                if(signatureIsOk){
-        
-                    skipAgreementSignatures[result.pubKey] = result.sig
-        
-                    totalNumberOfSignatures++
-        
-                }
-        
-                // If we get 2/3N+1 signatures to skip - we already have ability to create <aggregatedSkipProof>
-        
-                if(totalNumberOfSignatures >= majority) break
-        
-        
-            }else if(result.type === 'UPDATE' && typeof result.skipData === 'object'){
-        
-        
-                let {index,hash,afp} = result.skipData
-        
-                let blockIdInAfp = (epochHandler.id+':'+pubKeyOfOneOfPreviousLeader+':'+index)
-        
-        
-                if(typeof afp === 'object' && hash === afp.blockHash && blockIdInAfp === afp.blockID && await verifyAggregatedFinalizationProof(afp,epochHandler)){
-        
-                    // If signature is ok and index is bigger than we have - update the <skipData> in our local skip handler
-         
-                    if(localFinalizationStatsForThisPool.index < index){
-                         
-                        let {prevBlockHash,blockID,blockHash,proofs} = afp
-                         
-        
-                        localFinalizationStatsForThisPool.index = index
-        
-                        localFinalizationStatsForThisPool.hash = hash
-        
-                        localFinalizationStatsForThisPool.afp = {prevBlockHash,blockID,blockHash,proofs}
-         
-    
-                        // Store the updated version of finalization stats
-
-                        currentEpochMetadata.FINALIZATION_STATS.set(pubKeyOfOneOfPreviousLeader,localFinalizationStatsForThisPool)                    
-    
-                        // If our local version had lower index - break the cycle and try again next time with updated value
-        
-                        break
-        
-                    }
-        
-                }
-             
-            }
-        
-        }
-
-
-        //____________________If we get 2/3+1 of LRPs - aggregate and get the ALRP(<aggregated LRP>)____________________
-
-        if(totalNumberOfSignatures >= majority){
-
-            return {
+            let templateToStore = {
 
                 firstBlockHash,
 
@@ -329,11 +182,50 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
 
                 skipHash:localFinalizationStatsForThisPool.hash,
 
-                proofs:skipAgreementSignatures
+                proofs:{} // quorumMemberPubkey => SIG(`LEADER_ROTATION_PROOF:${pubKeyOfOneOfPreviousLeader}:${firstBlockHash}:${skipIndex}:${skipHash}:${epochFullID}`)
 
             }
 
+            currentEpochMetadata.TEMP_CACHE.set(`LRPS:${pubKeyOfOneOfPreviousLeader}`,templateToStore)
+    
         }
+
+        let lrpsCacheForLeader = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`).proofs
+
+        let messageToSend = JSON.stringify({
+
+            route:'get_leader_rotation_proof',
+     
+            poolPubKey:pubKeyOfOneOfPreviousLeader,
+
+            hisIndexInLeadersSequence,
+
+            shard:shardID,
+
+            afpForFirstBlock,
+
+            skipData:localFinalizationStatsForThisPool
+    
+        })
+
+
+        for(let pubKeyOfQuorumMember of epochHandler.quorum){
+    
+            // No sense to get finalization proof again if we already have
+
+            if(lrpsCacheForLeader.has(pubKeyOfQuorumMember)) continue
+
+            let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
+
+            if(connection) connection.sendUTF(messageToSend)
+
+        }
+
+        await new Promise(resolve=>
+
+            setTimeout(()=>resolve(),1000)
+    
+        )
 
     }
 

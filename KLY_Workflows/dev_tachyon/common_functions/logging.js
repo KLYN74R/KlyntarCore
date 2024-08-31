@@ -40,9 +40,9 @@ export let vtStatsLog = (epochFullID,shardContext,currentLeaderOnShard,blockInde
 
 
 
-//Function just for pretty output about information on symbiotic chain
+// Function just for pretty output about information on symbiotic chain
 
-export let blockLog=(msg,hash,block,epochIndex)=>{
+export let blockLog = (msg,hash,block,epochIndex) => {
 
 
     if(CONFIGURATION.NODE_LEVEL.DAEMON_LOGS){
