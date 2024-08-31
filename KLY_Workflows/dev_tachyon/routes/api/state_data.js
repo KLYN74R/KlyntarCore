@@ -58,7 +58,7 @@ FASTIFY_SERVER.get('/state/:shardID/:cellID',async(request,response)=>{
 
 
 // 0 - txid
-FASTIFY_SERVER.get('/tx_receipt/:txid',(request,response)=>{
+FASTIFY_SERVER.get('/tx_receipt/:txID',(request,response)=>{
 
     if(CONFIGURATION.NODE_LEVEL.ROUTE_TRIGGERS.API.TX_RECEIPT){
 
