@@ -58,6 +58,10 @@ let openConnectionsWithQuorum = async (epochHandler,currentEpochMetadata) => {
 
                             if(parsedData.route === 'get_leader_rotation_proof'){
 
+
+                                console.log('DEBUG: Accepted LRP => ',parsedData)
+                                
+
                                 
                             /*                                
  

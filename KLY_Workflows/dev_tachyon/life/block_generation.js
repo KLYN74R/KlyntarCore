@@ -187,12 +187,6 @@ let generateBatchOfMockTransactionsAndPushToMempool = async() => {
 }
 
 
-if(CONFIGURATION.NODE_LEVEL.PUBLIC_KEY === '9GQ46rqY238rk2neSwgidap9ww5zbAN4dyqyC7j5ZnBK'){
-
-    setInterval(generateBatchOfMockTransactionsAndPushToMempool,2000)
-
-}
-
 
 
 /*
@@ -339,7 +333,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
     
         }
 
-        let lrpsCacheForLeader = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`).proofs
+        let lrpsSignaturesForPreviousLeader = currentEpochMetadata.TEMP_CACHE.get(`LRPS:${pubKeyOfOneOfPreviousLeader}`).proofs
 
         let messageToSend = JSON.stringify({
 
@@ -362,7 +356,7 @@ let getAggregatedLeaderRotationProof = async (epochHandler,pubKeyOfOneOfPrevious
     
             // No sense to get finalization proof again if we already have
 
-            if(lrpsCacheForLeader.has(pubKeyOfQuorumMember)) continue
+            if(lrpsSignaturesForPreviousLeader[pubKeyOfQuorumMember]) continue
 
             let connection = currentEpochMetadata.TEMP_CACHE.get('WS:'+pubKeyOfQuorumMember)
 
@@ -429,6 +423,8 @@ let generateBlocksPortion = async() => {
 
 
     if(typeof canGenerateBlocksNow === 'string'){
+
+        generateBatchOfMockTransactionsAndPushToMempool()
 
         // Check if <epochFullID> is the same in APPROVEMENT_THREAD and in GENERATION_THREAD
 
@@ -521,6 +517,9 @@ let generateBlocksPortion = async() => {
             for(let pubKeyOfPreviousLeader of pubKeysOfAllThePreviousPools){
 
                 let aggregatedLeaderRotationProof = await getAggregatedLeaderRotationProof(epochHandler,pubKeyOfPreviousLeader,indexOfPreviousLeaderInSequence,myShardForThisEpoch).catch(()=>null)
+
+                console.log('DEBUG: Try to get ALRP => ',aggregatedLeaderRotationProof)
+                
 
                 if(aggregatedLeaderRotationProof){
 
