@@ -381,15 +381,15 @@ let setGenesisToState=async()=>{
 
     //_______________________ Now add the data to state _______________________
 
-    // * Each account / contract must have <shard> property to assign it to appropriate shard
+    for(let [shardID, collectionOfAccountsToBindToShard] of Object.entries(BLOCKCHAIN_GENESIS.STATE)){
 
-    Object.keys(BLOCKCHAIN_GENESIS.STATE).forEach(
-    
-        addressOrContractID => {
+        // Now iterate over objects
 
-            if(BLOCKCHAIN_GENESIS.STATE[addressOrContractID].type==='contract'){
+        for(let [accountID, accountData] of Object.entries(collectionOfAccountsToBindToShard)){
 
-                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = BLOCKCHAIN_GENESIS.STATE[addressOrContractID]
+            if(accountData.type === 'contract'){
+
+                let {lang,balance,uno,gas,storages,bytecode,storageAbstractionLastPayment,shard} = accountData
 
                 let contractMeta = {
 
@@ -406,30 +406,30 @@ let setGenesisToState=async()=>{
 
                 // Write metadata first
                 
-                verificationThreadAtomicBatch.put(shard+':'+addressOrContractID,contractMeta)
+                verificationThreadAtomicBatch.put(shardID+':'+accountID,contractMeta)
 
-                // Finally - write genesis storage of contract sharded by contractID_STORAGE_ID => {}(object)
+                // Finally - write genesis storage of contract
 
-                for(let storageID of BLOCKCHAIN_GENESIS.STATE[addressOrContractID].storages){
+                for(let storageID of storages){
 
-                    verificationThreadAtomicBatch.put(shard+':'+addressOrContractID+'_STORAGE_'+storageID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID][storageID])
+                    verificationThreadAtomicBatch.put(shard+':'+accountID+'_STORAGE_'+storageID,accountData[storageID])
 
                 }
+
 
             } else {
 
                 // Else - it's default EOA account
 
-                let shardID = BLOCKCHAIN_GENESIS.STATE[addressOrContractID].shard
-
-                verificationThreadAtomicBatch.put(shardID+':'+addressOrContractID,BLOCKCHAIN_GENESIS.STATE[addressOrContractID])
+                verificationThreadAtomicBatch.put(shardID+':'+accountID,accountData)
 
             }
-
+ 
         }
-        
-    )
 
+    }
+
+  
 
     /*
     
